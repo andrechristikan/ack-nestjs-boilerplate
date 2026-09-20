@@ -1,14 +1,10 @@
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
-import {
-    ISessionAnalyticListRow,
-    ISessionAnalyticSessionRow,
+import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import type {
+    ISessionAnalyticSession,
     ISessionAnalyticUserCount,
-} from '@modules/session/interfaces/session.analytic.repository.interface';
+} from '@modules/session/interfaces/session.interface';
 import { SessionAnalyticRepository } from '@modules/session/repositories/session.analytic.repository';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client';
 
 @Injectable()
 export class SessionAnalyticDomain {
@@ -19,7 +15,7 @@ export class SessionAnalyticDomain {
     findActiveWithGeoInRange(
         startDate?: Date,
         endDate?: Date
-    ): Promise<ISessionAnalyticSessionRow[]> {
+    ): Promise<ISessionAnalyticSession[]> {
         return this.sessionAnalyticRepository.findActiveWithGeoInRange(
             startDate,
             endDate
@@ -46,11 +42,5 @@ export class SessionAnalyticDomain {
 
     countActive(): Promise<number> {
         return this.sessionAnalyticRepository.countActive();
-    }
-
-    listOffset(
-        params: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>
-    ): Promise<IResponsePagingReturn<ISessionAnalyticListRow>> {
-        return this.sessionAnalyticRepository.listOffset(params);
     }
 }

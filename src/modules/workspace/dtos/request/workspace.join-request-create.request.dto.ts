@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
+/**
+ * Validates the body for requesting to join a public workspace.
+ * @public
+ */
 export const WorkspaceJoinRequestCreateRequestSchema = z.strictObject({
     workspaceId: z
         .string()
@@ -17,6 +21,10 @@ export const WorkspaceJoinRequestCreateRequestSchema = z.strictObject({
     }),
 });
 
+/**
+ * Body for requesting to join a public workspace.
+ * @public
+ */
 export type WorkspaceJoinRequestCreateRequestDto = z.infer<
     typeof WorkspaceJoinRequestCreateRequestSchema
 >;

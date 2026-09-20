@@ -2,17 +2,17 @@ import {
     PaginationCursorQuery,
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
-import {
+import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-import {
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
@@ -21,11 +21,13 @@ import {
     EnumWorkspaceJoinRequestStatus,
     EnumWorkspaceMemberRole,
     Prisma,
+} from '@generated/prisma-client/client';
+import type {
     Workspace,
     WorkspaceInvite,
     WorkspaceJoinRequest,
     WorkspaceMember,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -69,59 +71,38 @@ import {
     WorkspaceUserUpdateIsPublicDoc,
     WorkspaceUserUpdateSlugDoc,
 } from '@modules/workspace/docs/workspace.user.doc';
-import {
-    WorkspaceCreateRequestDto,
-    WorkspaceCreateRequestSchema,
-} from '@modules/workspace/dtos/request/workspace.create.request.dto';
-import {
-    WorkspaceInviteClaimRequestDto,
-    WorkspaceInviteClaimRequestSchema,
-} from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
-import {
-    WorkspaceInviteCreateRequestDto,
-    WorkspaceInviteCreateRequestSchema,
-} from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
-import {
-    WorkspaceInviteResendRequestDto,
-    WorkspaceInviteResendRequestSchema,
-} from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
-import {
-    WorkspaceJoinRequestCreateRequestDto,
-    WorkspaceJoinRequestCreateRequestSchema,
-} from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
-import {
-    WorkspaceJoinRequestRejectRequestDto,
-    WorkspaceJoinRequestRejectRequestSchema,
-} from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
-import {
-    WorkspaceMemberUpdateRoleRequestDto,
-    WorkspaceMemberUpdateRoleRequestSchema,
-} from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
-import {
-    WorkspaceSwitchRequestDto,
-    WorkspaceSwitchRequestSchema,
-} from '@modules/workspace/dtos/request/workspace.switch.request.dto';
-import {
-    WorkspaceTransferOwnershipRequestDto,
-    WorkspaceTransferOwnershipRequestSchema,
-} from '@modules/workspace/dtos/request/workspace.transfer-ownership.request.dto';
-import {
-    WorkspaceUpdateIsPublicRequestDto,
-    WorkspaceUpdateIsPublicRequestSchema,
-} from '@modules/workspace/dtos/request/workspace.update-is-public.request.dto';
-import {
-    WorkspaceUpdateSlugRequestDto,
-    WorkspaceUpdateSlugRequestSchema,
-} from '@modules/workspace/dtos/request/workspace.update-slug.request.dto';
-import {
-    WorkspaceUpdateRequestDto,
-    WorkspaceUpdateRequestSchema,
-} from '@modules/workspace/dtos/request/workspace.update.request.dto';
+import { WorkspaceCreateRequestSchema } from '@modules/workspace/dtos/request/workspace.create.request.dto';
+import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
+import { WorkspaceInviteClaimRequestSchema } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
+import type { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
+import { WorkspaceInviteCreateRequestSchema } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
+import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
+import { WorkspaceInviteResendRequestSchema } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
+import type { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
+import { WorkspaceJoinRequestCreateRequestSchema } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
+import type { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
+import { WorkspaceJoinRequestRejectRequestSchema } from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
+import type { WorkspaceJoinRequestRejectRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
+import { WorkspaceMemberUpdateRoleRequestSchema } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
+import type { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
+import { WorkspaceSwitchRequestSchema } from '@modules/workspace/dtos/request/workspace.switch.request.dto';
+import type { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/workspace.switch.request.dto';
+import { WorkspaceTransferOwnershipRequestSchema } from '@modules/workspace/dtos/request/workspace.transfer-ownership.request.dto';
+import type { WorkspaceTransferOwnershipRequestDto } from '@modules/workspace/dtos/request/workspace.transfer-ownership.request.dto';
+import { WorkspaceUpdateIsPublicRequestSchema } from '@modules/workspace/dtos/request/workspace.update-is-public.request.dto';
+import type { WorkspaceUpdateIsPublicRequestDto } from '@modules/workspace/dtos/request/workspace.update-is-public.request.dto';
+import { WorkspaceUpdateSlugRequestSchema } from '@modules/workspace/dtos/request/workspace.update-slug.request.dto';
+import type { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/request/workspace.update-slug.request.dto';
+import { WorkspaceUpdateRequestSchema } from '@modules/workspace/dtos/request/workspace.update.request.dto';
+import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
 import { WorkspaceInviteResponseSchema } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
 import { WorkspaceJoinRequestResponseSchema } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
-import { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceInviteList,
+    IWorkspaceMember,
+} from '@modules/workspace/interfaces/workspace.interface';
 import {
     WorkspaceCurrent,
     WorkspaceMemberCurrent,
@@ -491,7 +472,7 @@ export class WorkspaceUserController {
             WorkspaceInviteDefaultStatus
         )
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceInvite>> {
+    ): Promise<IResponsePagingReturn<IWorkspaceInviteList>> {
         return this.workspaceInviteHttpService.getInvitesList(
             workspace.id,
             pagination,

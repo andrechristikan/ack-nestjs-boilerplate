@@ -1,6 +1,7 @@
-import { Injectable, PipeTransform, Type, mixin } from '@nestjs/common';
+import { Injectable, mixin } from '@nestjs/common';
+import type { PipeTransform, Type } from '@nestjs/common';
 import { FileRequiredException } from '@common/file/exceptions/file.required.exception';
-import { IFileInput } from '@common/file/interfaces/file.interface';
+import type { IFileInput } from '@common/file/interfaces/file.interface';
 
 /**
  * Rejects an absent or empty upload. First pipe on a required @UploadedFile chain.
@@ -19,7 +20,8 @@ export function FileRequiredPipe(): Type<PipeTransform> {
         }
 
         transform(value: IFileInput): IFileInput {
-            if (this.isEmptyValue(value)) {
+            const isEmpty = this.isEmptyValue(value);
+            if (isEmpty) {
                 throw new FileRequiredException();
             }
 

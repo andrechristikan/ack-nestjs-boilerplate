@@ -1,27 +1,28 @@
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import {
+import type {
     INotificationAcceptTermPolicyPayload,
-    INotificationForgotPasswordPayload,
+    INotificationForgotPasswordEncryptedPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationQueuePayload,
-    INotificationTemporaryPasswordPayload,
-    INotificationVerificationEmailPayload,
+    INotificationTemporaryPasswordEncryptedPayload,
+    INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
-    INotificationWelcomeByAdminPayload,
-    INotificationWorkspaceInvitePayload,
+    INotificationWelcomeByAdminEncryptedPayload,
+    INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceJoinAcceptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
-    INotificationWorkspaceJoinRequestPayload,
+    INotificationWorkspaceJoinRequestEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationProcessorService } from '@modules/notification/services/notification.processor.service';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
+import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { EnumQueue } from '@queues/enums/queue.enum';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /**
  * Consumes the main notification queue and fans each job out to email, push, and in-app channels.
@@ -31,9 +32,10 @@ export class NotificationProcessor extends QueueProcessorBase {
     private readonly logger = new Logger(NotificationProcessor.name);
 
     constructor(
-        private readonly notificationProcessorService: NotificationProcessorService
+        private readonly notificationProcessorService: NotificationProcessorService,
+        sentryService: SentryService
     ) {
-        super();
+        super(sentryService);
     }
 
     /** Dispatches each job to its handler by job name. */
@@ -53,7 +55,7 @@ export class NotificationProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.welcomeByAdmin:
                     return this.notificationProcessorService.processWelcomeByAdmin(
                         job as Job<
-                            INotificationQueuePayload<INotificationWelcomeByAdminPayload>,
+                            INotificationQueuePayload<INotificationWelcomeByAdminEncryptedPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -61,7 +63,7 @@ export class NotificationProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.temporaryPasswordByAdmin:
                     return this.notificationProcessorService.processTemporaryPasswordByAdmin(
                         job as Job<
-                            INotificationQueuePayload<INotificationTemporaryPasswordPayload>,
+                            INotificationQueuePayload<INotificationTemporaryPasswordEncryptedPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -69,7 +71,7 @@ export class NotificationProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.verificationEmail:
                     return this.notificationProcessorService.processVerificationEmail(
                         job as Job<
-                            INotificationQueuePayload<INotificationVerificationEmailPayload>,
+                            INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -77,7 +79,7 @@ export class NotificationProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.forgotPassword:
                     return this.notificationProcessorService.processForgotPassword(
                         job as Job<
-                            INotificationQueuePayload<INotificationForgotPasswordPayload>,
+                            INotificationQueuePayload<INotificationForgotPasswordEncryptedPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -101,7 +103,7 @@ export class NotificationProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.welcome:
                     return this.notificationProcessorService.processWelcome(
                         job as Job<
-                            INotificationQueuePayload<INotificationVerificationEmailPayload>,
+                            INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -117,7 +119,7 @@ export class NotificationProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.resetPassword:
                     return this.notificationProcessorService.processResetPassword(
                         job as Job<
-                            INotificationQueuePayload<INotificationVerificationEmailPayload>,
+                            INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -125,7 +127,7 @@ export class NotificationProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.resetTwoFactorByAdmin:
                     return this.notificationProcessorService.processResetTwoFactorByAdmin(
                         job as Job<
-                            INotificationQueuePayload<INotificationVerificationEmailPayload>,
+                            INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -133,7 +135,7 @@ export class NotificationProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.welcomeSocial:
                     return this.notificationProcessorService.processWelcomeSocial(
                         job as Job<
-                            INotificationQueuePayload<INotificationVerificationEmailPayload>,
+                            INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -157,7 +159,7 @@ export class NotificationProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.workspaceInvite:
                     return this.notificationProcessorService.processWorkspaceInvite(
                         job as Job<
-                            INotificationQueuePayload<INotificationWorkspaceInvitePayload>,
+                            INotificationQueuePayload<INotificationWorkspaceInviteEncryptedPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -165,7 +167,7 @@ export class NotificationProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.workspaceJoinRequest:
                     return this.notificationProcessorService.processWorkspaceJoinRequest(
                         job as Job<
-                            INotificationQueuePayload<INotificationWorkspaceJoinRequestPayload>,
+                            INotificationQueuePayload<INotificationWorkspaceJoinRequestEncryptedPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >

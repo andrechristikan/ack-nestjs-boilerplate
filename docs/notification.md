@@ -1,6 +1,6 @@
 # Notification Documentation
 
-This documentation explains the features and usage of **Notification Module**: Located at `src/modules/notification`
+Notification lives in `src/modules/notification`.
 
 ## Overview
 
@@ -32,6 +32,7 @@ Key features:
     - [Orchestration Queue](#orchestration-queue)
     - [Email Queue](#email-queue)
     - [Push Queue](#push-queue)
+    - [Payload Encryption](#payload-encryption)
 - [Push Notifications](#push-notifications)
     - [Push Token Management](#push-token-management)
     - [Token Cleanup Strategy](#token-cleanup-strategy)
@@ -73,7 +74,7 @@ Each notification record carries one or more `NotificationDelivery` rows, one pe
 | `inApp` | In-application UI | Pre-filled at notification creation time |
 | `silent` | No external delivery; record-only | Pre-filled at notification creation time |
 
-A notification can target multiple channels simultaneously. Which channels an event carries is declared in `NotificationKindRules` (`src/modules/notification/constants/notification.notify.constant.ts`), one entry per `EnumNotificationKind`, holding the type, the priority, the i18n title and body keys, and two channel lists: `pendingChannels` and `deliveredChannels`. `NotificationRepository` reads that entry and creates the delivery rows from it.
+A notification can target multiple channels simultaneously. Which channels an event carries is declared in `NotificationKindContract` (`src/modules/notification/contracts/notification.kind.contract.ts`), one entry per `EnumNotificationKind`, holding the type, the priority, the i18n title and body keys, and two channel lists: `pendingChannels` and `deliveredChannels`. `NotificationRepository` reads that entry and creates the delivery rows from it.
 
 > **`inApp` and `silent` are considered immediately "delivered"**: they sit in `deliveredChannels`, so their `processedAt` and `sentAt` are both stamped at creation time in the repository and no separate queue job is needed for them. `email` and `push` sit in `pendingChannels` and go through the async queue.
 
@@ -97,7 +98,7 @@ Handles the main event orchestration. `NotificationProcessor` dispatches a consu
 2. Mints the `notificationId` up front with `DatabaseUtil.createId()`.
 3. Creates the `Notification` record (with its delivery rows) **and** dispatches the `notificationEmail` / `notificationPush` jobs in one `Promise.allSettled` batch, all carrying that pre-minted id.
 
-Step 3 is deliberately not sequential: the id is generated before either side runs, so a queued delivery job references a record the same batch is writing. `allSettled` also means a failed dispatch does not undo the notification record, and one channel failing does not stop the other. A push job is only added when the user actually has at least one device token.
+Step 3 runs both sides in one batch: the id exists before either side runs, so a queued delivery job references a record the same batch is writing. `allSettled` also means a failed dispatch does not undo the notification record, and one channel failing does not stop the other. A push job is only added when the user has at least one device token.
 
 Jobs reach this queue through `NotificationQueue`, which deduplicates on the process name plus whatever identifies that event: the target user for the account and security events, the workspace and the target user for a join request, the invite `reference` for an invite, and the policy type and version for a publication. The TTL is `notification.dedupTtlInMs` (1 second), so two different events for the same user never collapse into one.
 
@@ -160,11 +161,27 @@ Rate-limited to `FirebaseMaxRateLimitPerDuration` (500,000) per `FirebaseRateLim
 
 On `onModuleInit`, `NotificationPushProcessorService` calls `NotificationPushQueue.sendCleanupStaleTokens()`, which registers a recurring `cleanupStaleTokens` job via BullMQ `upsertJobScheduler` (cron `0 0 * * *` from `notification.push.cleanupStaleTokensCron`, in the app's configured timezone). The scheduler carries no `immediately` option, so the first sweep waits for the first cron tick.
 
+### Payload Encryption
+
+A job payload sits in Redis until a worker consumes it, so the queue classes seal every secret-bearing field before `add()`, and only the email channel domain that sends the message opens it. Each field is sealed with `HelperEncryptionService.aes256Encrypt` under `app.encryptionSecretKey` (`APP_ENCRYPTION_SECRET_KEY`), the purpose `NotificationPayloadEncryptionPurpose` (`notification.payload`), and the recipient as authenticated data, so a sealed value copied into another recipient's job fails to open.
+
+| Sealed field | Plain input | Processes | Authenticated data |
+|---|---|---|---|
+| `encryptedPassword` | `password` | `welcomeByAdmin`, `temporaryPasswordByAdmin` | recipient `userId` |
+| `encryptedLink` | `link` | `welcome`, `verificationEmail`, `forgotPassword` | recipient `userId` |
+| `encryptedInviteAcceptLink` | `inviteAcceptLink` | `workspaceInvite` | invited `userId` |
+| `encryptedInviteAcceptLink` | `inviteAcceptLink` | `workspaceInviteUnregistered` (email queue only) | invite `reference` |
+| `encryptedJoinRequestReviewLink` | `joinRequestReviewLink` | `workspaceJoinRequest` | reviewer `userId` |
+
+`NotificationQueue` seals the fields of the orchestration jobs; the orchestration domains pass the sealed value through to the email job unopened. `NotificationEmailQueue` seals the invite link of `workspaceInviteUnregistered`, which skips the orchestration queue. Push jobs carry no secret: `NotificationPushQueue` builds each push payload from an explicit field list (`INotification*PushPayload`) that leaves out passwords and links.
+
+A payload that fails to open (a rotated key, a tampered value, the wrong recipient) raises `HelperDecryptFailedException` (`52200`). `NotificationEmailProcessor` turns it into a BullMQ `UnrecoverableError`, so the job fails at once without retries, and `QueueProcessorBase` reports it to Sentry. Every other email failure is rethrown as it is and retried. The constraint when changing this: `.claude/rules/notification.md`.
+
 ## Push Notifications
 
 ### Push Token Management
 
-Push tokens (FCM device tokens) are part of the **Device module** (`src/modules/device`), not stored in the notification module directly. The orchestration-side domain reads them through `DeviceOwnershipRepository.findTokensByUserId()` and places them on the push job payload as `notificationTokens`; the push channel domain sends to the tokens it receives on the job.
+Push tokens (FCM device tokens) are part of the **Device module** (`src/modules/device`), not stored in the notification module directly. The orchestration-side domains read them through `DeviceDomain.getOwnershipsWithNotificationToken()`, which calls `DeviceOwnershipRepository.findTokensByUserId()`, and place them on the push job payload as `notificationTokens`; the push channel domain sends to the tokens it receives on the job. The lookup returns only device ownerships that are not revoked and whose device holds a token, so a revoked ownership never receives a push.
 
 For push token registration, revocation, and session-linking details, see the [Device documentation][ref-doc-device].
 
@@ -173,16 +190,16 @@ For push token registration, revocation, and session-linking details, see the [D
 After each multicast send, `FirebaseService.sendMulticast()` returns `failureTokens`; tokens that FCM identified as invalid (codes in `FirebaseInvalidTokenCodes`). These are:
 
 1. Stored on the delivery record via `NotificationRepository.updateSentAt()` (`failureTokens` field)
-2. Queued as a `cleanupTokens` job in `EnumQueue.notificationPush` through `NotificationPushQueue.sendCleanupTokens()`, deduplicated per user for `notification.push.cleanupDedupTtlInMs` (1 hour), and handled by `NotificationPushMaintenanceDomain.processCleanupTokens()`
+2. Queued as a `cleanupTokens` job in `EnumQueue.notificationPush` through `NotificationPushQueue.sendCleanupTokens()`, deduplicated per user for `notification.push.cleanupDedupTtlInMs` (1 hour), and handled by `NotificationPushMaintenanceDomain.processCleanupTokens()`. It calls `DeviceDomain.cleanupNotificationTokens()`, which resolves the user's devices holding those tokens through `DeviceOwnershipRepository.findDeviceIdsByUserAndTokens()` and clears `notificationToken` and `notificationProvider` on them through `DeviceRepository.clearTokens()`
 
-Stale tokens, those whose device has no `lastActiveAt` activity within `notification.push.staleTokenThresholdInMs` (30 days), are pruned daily by the recurring `cleanupStaleTokens` job registered at startup. `NotificationPushMaintenanceDomain` reads that config value and passes it to `DeviceOwnershipRepository.cleanupStaleTokens(thresholdInMs)`, which clears `notificationToken` and `notificationProvider` on every device past the threshold.
+Stale tokens, those whose device has no `lastActiveAt` activity within `notification.push.staleTokenThresholdInMs` (30 days), are pruned daily by the recurring `cleanupStaleTokens` job registered at startup. `NotificationPushMaintenanceDomain` reads that config value and passes it to `DeviceDomain.cleanupStaleNotificationTokens(thresholdInMs)`, which calls `DeviceRepository.clearStaleTokens(thresholdInMs)`. That write clears `notificationToken` and `notificationProvider` on every device past the threshold.
 
 ```mermaid
 graph TD
     A[FCM Multicast Send] --> B{Any failureTokens?}
     B -->|Yes| C[Store failureTokens <br/> on delivery record]
     C --> D[Enqueue cleanupTokens job]
-    D --> E[DeviceOwnershipRepository removes <br/> invalid tokens]
+    D --> E[DeviceRepository clears <br/> invalid tokens]
     B -->|No| F[Record sentAt only]
     
     G[Module Init] --> H[Register daily <br/> cleanupStaleTokens job]
@@ -256,7 +273,7 @@ Each `Notification` record has related `NotificationDelivery` rows in `Notificat
 
 `email` and `push` deliveries are created with no timestamps and go through the queue.
 
-**Only the push channel writes them back.** The email channel domains send through SES and never read or update the delivery record, so an `email` delivery row keeps `processedAt` and `sentAt` null for its whole life. Do not read a null `sentAt` on an `email` row as "not delivered".
+**Only the push channel writes them back.** The email channel domains send through SES and never read or update the delivery record, so an `email` delivery row keeps `processedAt` and `sentAt` null for its whole life. A null `sentAt` on an `email` row says nothing about delivery.
 
 The push lifecycle:
 
@@ -279,13 +296,13 @@ sequenceDiagram
 
 Both skips return a message rather than throwing, so a push job on a deployment with Firebase disabled completes instead of being retried.
 
-The email lifecycle is only: job dequeued, `AwsSESService.send()` or `sendBulk()`, done. A send failure is logged and rethrown, so the job retries under the queue's own retry policy.
+The email lifecycle is only: job dequeued, sealed fields opened, `AwsSESService.send()` or `sendBulk()`, done. A send failure is logged and rethrown, so the job retries under the queue's own retry policy; a field that fails to open ends the job without retries (see [Payload Encryption](#payload-encryption)).
 
 ## User Notification Settings
 
 Users control which notification channels are active per type. Settings are stored in `NotificationUserSetting` (one row per `userId + type + channel`).
 
-Allowed type+channel combinations are defined in `NotificationSettingUpdateAllowedCombinations`:
+Allowed type+channel combinations are defined in `NotificationSettingContract` (`src/modules/notification/contracts/notification.setting.contract.ts`):
 
 | Type | Allowed Channels |
 |------|-----------------|

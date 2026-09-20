@@ -1,17 +1,18 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import {
+import type {
     IAuthTwoFactorChallenge,
     IAuthTwoFactorChallengeCache,
 } from '@modules/auth/interfaces/auth.interface';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Cache } from '@nestjs/cache-manager';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 /** Auth cache: two-factor challenge tokens and attempt locking. */
 @Injectable()
 export class AuthCache {
+    private readonly logger = new Logger(AuthCache.name);
     private readonly challengeKeyPattern: string;
     private readonly challengeTtlInMs: number;
     private readonly lockKeyPattern: string;
@@ -45,7 +46,10 @@ export class AuthCache {
         cachePayload: IAuthTwoFactorChallengeCache
     ): Promise<IAuthTwoFactorChallenge> {
         const challengeToken = this.helperStringService.random(48);
-        const key = this.challengeKeyPattern.replace('{token}', challengeToken);
+        const key = this.challengeKeyPattern.replace(
+            '{token}',
+            () => challengeToken
+        );
         await this.cacheManager.set<IAuthTwoFactorChallengeCache>(
             key,
             cachePayload,
@@ -58,7 +62,7 @@ export class AuthCache {
     async getChallenge(
         token: string
     ): Promise<IAuthTwoFactorChallengeCache | null> {
-        const key = this.challengeKeyPattern.replace('{token}', token);
+        const key = this.challengeKeyPattern.replace('{token}', () => token);
         const cached =
             await this.cacheManager.get<IAuthTwoFactorChallengeCache>(key);
 
@@ -66,24 +70,33 @@ export class AuthCache {
     }
 
     async clearChallenge(token: string): Promise<void> {
-        const key = this.challengeKeyPattern.replace('{token}', token);
-        await this.cacheManager.del(key);
+        const key = this.challengeKeyPattern.replace('{token}', () => token);
+        try {
+            await this.cacheManager.del(key);
+        } catch (error: unknown) {
+            this.logger.error(
+                error,
+                'Two-factor challenge cache delete failed'
+            );
+        }
     }
 
     /** Locks 2FA in cache with exponential backoff TTL `2^(attempt/maxAttempt) * lockAttemptDurationInMs` to throttle brute force. */
     async lockTwoFactorAttempt(user: IUser): Promise<void> {
-        const key = this.lockKeyPattern.replace('{userId}', user.id);
+        const key = this.lockKeyPattern.replace('{userId}', () => user.id);
         const ttlExponentialInMs =
             Math.pow(2, (user.twoFactor?.attempt ?? 0) / this.maxAttempt) *
             this.lockAttemptDurationInMs;
-        await this.cacheManager.set<boolean>(key, true, ttlExponentialInMs);
-
-        return;
+        try {
+            await this.cacheManager.set<boolean>(key, true, ttlExponentialInMs);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Two-factor lock cache write failed');
+        }
     }
 
     /** Returns the remaining 2FA lock duration in ms, or 0 when not locked. */
     async getLockTwoFactorAttempt(user: IUser): Promise<number> {
-        const key = this.lockKeyPattern.replace('{userId}', user.id);
+        const key = this.lockKeyPattern.replace('{userId}', () => user.id);
         const [isLocked, retryAfterMs] = await Promise.all([
             this.cacheManager.get<boolean>(key),
             this.cacheManager.ttl(key),
@@ -93,9 +106,11 @@ export class AuthCache {
     }
 
     async clearLockTwoFactorAttempt(user: IUser): Promise<void> {
-        const key = this.lockKeyPattern.replace('{userId}', user.id);
-        await this.cacheManager.del(key);
-
-        return;
+        const key = this.lockKeyPattern.replace('{userId}', () => user.id);
+        try {
+            await this.cacheManager.del(key);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Two-factor lock cache delete failed');
+        }
     }
 }

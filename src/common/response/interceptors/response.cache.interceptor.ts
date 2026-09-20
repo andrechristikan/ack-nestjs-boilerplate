@@ -1,9 +1,10 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { CacheInterceptor as CacheBaseInterceptor } from '@nestjs/cache-manager';
-import { ExecutionContext, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
-import { Cache } from 'cache-manager';
+import type { Cache } from 'cache-manager';
 
 /**
  * Cache interceptor that namespaces response cache keys with a configured key pattern.
@@ -31,6 +32,6 @@ export class ResponseCacheInterceptor extends CacheBaseInterceptor {
             return undefined;
         }
 
-        return this.keyPattern.replace('{key}', key);
+        return this.keyPattern.replace('{key}', () => key);
     }
 }

@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 
+/**
+ * Raised when an AWS service call cannot be completed.
+ * @public
+ */
 export class AwsServiceUnavailableException extends AppBaseException {
     readonly module = 'aws';
     readonly statusCode = EnumAwsStatusCodeError.serviceUnavailable;

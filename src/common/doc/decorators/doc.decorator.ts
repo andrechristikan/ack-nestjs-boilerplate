@@ -10,21 +10,21 @@ import {
     ApiQuery,
     ApiResponse,
     ApiSecurity,
-    SchemaObject,
 } from '@nestjs/swagger';
+import type { SchemaObject } from '@nestjs/swagger';
 import { createSchema } from 'zod-openapi';
 import { z } from 'zod';
-import {
+import type {
     IDocAuthOptions,
-    IDocDefaultOptions,
     IDocGuardOptions,
-    IDocOfOptions,
     IDocOptions,
     IDocRequestFileOptions,
     IDocRequestOptions,
+    IDocResponseEntry,
+    IDocResponseErrorOptions,
     IDocResponseFileOptions,
     IDocResponseOptions,
-    IDocResponsePagingOptions,
+    IDocResponsePaginationOptions,
 } from '@common/doc/interfaces/doc.interface';
 import { ResponseSchema } from '@common/response/dtos/response.dto';
 import { ResponsePagingSchema } from '@common/response/dtos/response.paging.dto';
@@ -39,116 +39,164 @@ import {
 import {
     DocContentTypeMapping,
     DocFileErrorResponses,
+    DocGlobalErrorResponses,
     DocPaginationCursorErrorResponses,
     DocPaginationCursorQueries,
+    DocPaginationErrorResponses,
     DocPaginationOffsetErrorResponses,
     DocPaginationOffsetQueries,
-    DocPaginationSharedErrorResponses,
-    DocStandardErrorResponse,
+    DocResponseEntryMetaKey,
+    DocSerializationErrorResponses,
 } from '@common/doc/constants/doc.constant';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { faker } from '@faker-js/faker';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
-
-function createEnvelopeSchemaObject(
-    envelope: z.ZodObject,
-    messagePath: string,
-    statusCode: number
-): SchemaObject {
-    const documented = envelope.extend({
-        message: envelope.shape.message.meta({ example: messagePath }),
-        statusCode: envelope.shape.statusCode.meta({ example: statusCode }),
-    });
-
-    return createSchema(documented, { io: 'output' }).schema as SchemaObject;
-}
-
-function createSchemaObject(doc: IDocOfOptions): SchemaObject {
-    return createEnvelopeSchemaObject(
-        doc.schema
-            ? ResponseSchema.extend({ data: doc.schema })
-            : ResponseSchema,
-        doc.messagePath,
-        doc.statusCode ?? HttpStatus.OK
-    );
-}
+import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
+import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
+import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 
 /**
- * Documents a single response with the standard envelope (message, statusCode, optional data).
+ * Accumulates documented response entries on the decorated method and re-emits every entry of
+ * each HTTP status the incoming entries touch, so a later decorator cannot erase an earlier one.
+ * Dedupes by `httpStatus:statusCode:messagePath`. Each entry's envelope is built here:
+ * `entry.envelope` or `ResponseSchema`, with `entry.schema` as `data` when declared.
+ *
+ * One entry at a status emits that envelope as the response schema (field examples set from the
+ * entry). Two or more emit one shared envelope schema plus named OpenAPI `examples` keyed by
+ * `messagePath`; each example value is the full envelope (`statusCode`, `message`, `metadata`).
  */
-export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
-    return applyDecorators(
-        ApiResponse({
-            description: options.httpStatus.toString(),
-            status: options.httpStatus,
-            schema: createSchemaObject(options),
-        })
-    );
-}
-
-/**
- * Documents a response that may match one of several schemas (OpenAPI `oneOf`).
- */
-export function DocOneOf(
-    httpStatus: HttpStatus,
-    ...documents: IDocOfOptions[]
+function accumulateResponseEntries(
+    entries: IDocResponseEntry[]
 ): MethodDecorator {
-    const oneOf: SchemaObject[] = documents.map(doc => createSchemaObject(doc));
+    return (target, propertyKey, descriptor): void => {
+        if (entries.length === 0) {
+            return;
+        }
 
-    return applyDecorators(
-        ApiResponse({
-            description: httpStatus.toString(),
-            status: httpStatus,
-            schema: {
-                oneOf,
-            },
-        })
-    );
+        const method = descriptor.value as object;
+        const stored =
+            (Reflect.getMetadata(DocResponseEntryMetaKey, method) as
+                IDocResponseEntry[] | undefined) ?? [];
+
+        const accumulated: IDocResponseEntry[] = [...stored];
+        const seen = new Set<string>(
+            stored.map(
+                entry =>
+                    `${entry.httpStatus}:${entry.statusCode}:${entry.messagePath}`
+            )
+        );
+
+        for (const entry of entries) {
+            const key = `${entry.httpStatus}:${entry.statusCode}:${entry.messagePath}`;
+
+            if (seen.has(key)) {
+                continue;
+            }
+
+            seen.add(key);
+            accumulated.push(entry);
+        }
+
+        Reflect.defineMetadata(DocResponseEntryMetaKey, accumulated, method);
+
+        const described = new Set<HttpStatus>(
+            stored.map(entry => entry.httpStatus)
+        );
+        const touched = new Set<HttpStatus>(
+            entries.map(entry => entry.httpStatus)
+        );
+
+        for (const httpStatus of touched) {
+            const statusEntries = accumulated.filter(
+                entry => entry.httpStatus === httpStatus
+            );
+
+            if (statusEntries.length > 0) {
+                const schemas: SchemaObject[] = statusEntries.map(entry => {
+                    const envelope: z.ZodObject =
+                        entry.envelope ?? ResponseSchema;
+                    const enveloped: z.ZodObject = entry.schema
+                        ? envelope.extend({ data: entry.schema })
+                        : envelope;
+                    const documented = enveloped.extend({
+                        message: enveloped.shape.message.meta({
+                            example: entry.messagePath,
+                        }),
+                        statusCode: enveloped.shape.statusCode.meta({
+                            example: entry.statusCode ?? HttpStatus.OK,
+                        }),
+                    });
+
+                    return createSchema(documented, { io: 'output' })
+                        .schema as SchemaObject;
+                });
+
+                const schema: SchemaObject =
+                    schemas.length > 1
+                        ? (createSchema(
+                              statusEntries[0]?.envelope ?? ResponseSchema,
+                              { io: 'output' }
+                          ).schema as SchemaObject)
+                        : schemas[0];
+                const description = described.has(httpStatus)
+                    ? ''
+                    : httpStatus.toString();
+                const metadataExample = (
+                    schema.properties as
+                        Record<string, SchemaObject> | undefined
+                )?.metadata?.example;
+                const examples =
+                    schemas.length > 1
+                        ? Object.fromEntries(
+                              statusEntries.map(entry => [
+                                  entry.messagePath,
+                                  {
+                                      summary: `${entry.statusCode ?? httpStatus} — ${entry.messagePath}`,
+                                      value: {
+                                          statusCode:
+                                              entry.statusCode ?? httpStatus,
+                                          message: entry.messagePath,
+                                          metadata: metadataExample,
+                                      },
+                                  },
+                              ])
+                          )
+                        : undefined;
+
+                ApiResponse({
+                    description,
+                    status: httpStatus,
+                    schema,
+                    ...(examples ? { examples } : {}),
+                })(target, propertyKey, descriptor);
+            }
+        }
+    };
 }
 
 /**
- * Documents a response that may match any combination of schemas (OpenAPI `anyOf`).
+ * Documents the error responses a status may return, accumulated with every other entry at that
+ * status: a single entry emits a plain schema with field examples; two or more emit one shared
+ * envelope schema plus named `examples` keyed by `messagePath`, each value the full envelope
+ * (`statusCode`, `message`, `metadata`).
+ * @public
  */
-export function DocAnyOf(
+export function DocResponseError(
     httpStatus: HttpStatus,
-    ...documents: IDocOfOptions[]
+    ...entries: IDocResponseErrorOptions[]
 ): MethodDecorator {
-    const anyOf: SchemaObject[] = documents.map(doc => createSchemaObject(doc));
-
-    return applyDecorators(
-        ApiResponse({
-            description: httpStatus.toString(),
-            status: httpStatus,
-            schema: {
-                anyOf,
-            },
-        })
+    return accumulateResponseEntries(
+        entries.map(entry => ({ ...entry, httpStatus }))
     );
 }
 
 /**
- * Documents a response that must satisfy all provided schemas (OpenAPI `allOf`).
- */
-export function DocAllOf(
-    httpStatus: HttpStatus,
-    ...documents: IDocOfOptions[]
-): MethodDecorator {
-    const allOf: SchemaObject[] = documents.map(doc => createSchemaObject(doc));
-
-    return applyDecorators(
-        ApiResponse({
-            description: httpStatus.toString(),
-            status: httpStatus,
-            schema: {
-                allOf,
-            },
-        })
-    );
-}
-
-/**
- * Base endpoint doc: operation metadata, language/correlation headers, and standard error responses.
+ * Base endpoint doc: operation metadata, language/correlation headers, and the global error
+ * responses every endpoint can return.
+ * @public
  */
 export function Doc(options?: IDocOptions): MethodDecorator {
     return applyDecorators(
@@ -180,16 +228,24 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                 },
             },
         ]),
-        DocStandardErrorResponse.internalServerError,
-        DocStandardErrorResponse.requestTimeout,
-        DocStandardErrorResponse.validationError,
-        DocStandardErrorResponse.envForbidden
+        DocGlobalErrorResponses.internalServerError,
+        DocGlobalErrorResponses.requestTimeout,
+        DocGlobalErrorResponses.validationError,
+        DocGlobalErrorResponses.tooManyRequests,
+        DocGlobalErrorResponses.decryptFailed,
+        DocGlobalErrorResponses.encryptionSecretInvalid,
+        DocGlobalErrorResponses.patternTokenMissing,
+        DocGlobalErrorResponses.schemaMissing,
+        DocGlobalErrorResponses.contextMissing,
+        DocGlobalErrorResponses.uniqueValueGenerationFailed,
+        DocGlobalErrorResponses.serviceUnavailable
     );
 }
 
 /**
  * Documents params and queries. `ApiConsumes` is added only when `bodyType`
  * maps to a known MIME type; `none` or omitted skips it.
+ * @public
  */
 export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
@@ -218,6 +274,7 @@ export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
 
 /**
  * Documents a multipart/form-data file upload request plus file-related error responses.
+ * @public
  */
 export function DocRequestFile(
     options?: IDocRequestFileOptions
@@ -254,15 +311,54 @@ export function DocRequestFile(
 }
 
 /**
- * Documents the 403 responses for each enabled authorization guard (role, policy, term policy).
+ * Documents the responses each enabled authorization guard (user, role, policy, term policy,
+ * workspace, workspace role, feature flag, project, project member, project role) can return.
+ * @public
  */
 export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
-    const oneOfForbidden: IDocOfOptions[] = [];
+    const oneOfUnauthorized: IDocResponseErrorOptions[] = [];
+    const oneOfForbidden: IDocResponseErrorOptions[] = [];
+    const oneOfNotFound: IDocResponseErrorOptions[] = [];
+    const oneOfServerError: IDocResponseErrorOptions[] = [];
+    const oneOfServiceUnavailable: IDocResponseErrorOptions[] = [];
+
+    if (options?.user) {
+        oneOfUnauthorized.push({
+            statusCode: EnumUserStatusCodeError.notAuthenticated,
+            messagePath: 'user.error.notAuthenticated',
+        });
+        oneOfForbidden.push(
+            {
+                statusCode: EnumUserStatusCodeError.notFoundForbidden,
+                messagePath: 'user.error.notFound',
+            },
+            {
+                statusCode: EnumUserStatusCodeError.blockedForbidden,
+                messagePath: 'user.error.blocked',
+            },
+            {
+                statusCode: EnumUserStatusCodeError.inactiveForbidden,
+                messagePath: 'user.error.inactive',
+            },
+            {
+                statusCode: EnumUserStatusCodeError.passwordExpired,
+                messagePath: 'auth.error.passwordExpired',
+            },
+            {
+                statusCode: EnumUserStatusCodeError.emailNotVerified,
+                messagePath: 'user.error.emailNotVerified',
+            }
+        );
+    }
 
     if (options?.role) {
         oneOfForbidden.push({
             statusCode: EnumRoleStatusCodeError.forbidden,
             messagePath: 'role.error.forbidden',
+        });
+        oneOfServerError.push({
+            statusCode: EnumRoleStatusCodeError.predefinedNotFound,
+            messagePath: 'role.error.predefinedNotFound',
         });
     }
 
@@ -270,6 +366,10 @@ export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
         oneOfForbidden.push({
             statusCode: EnumPolicyStatusCodeError.forbidden,
             messagePath: 'policy.error.forbidden',
+        });
+        oneOfServerError.push({
+            statusCode: EnumPolicyStatusCodeError.predefinedNotFound,
+            messagePath: 'policy.error.predefinedNotFound',
         });
     }
 
@@ -280,30 +380,143 @@ export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
         });
     }
 
-    return applyDecorators(DocOneOf(HttpStatus.FORBIDDEN, ...oneOfForbidden));
+    if (options?.workspace) {
+        oneOfNotFound.push({
+            statusCode: EnumWorkspaceStatusCodeError.notFound,
+            messagePath: 'workspace.error.notFound',
+        });
+        oneOfForbidden.push({
+            statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
+            messagePath: 'workspace.error.memberForbidden',
+        });
+    }
+
+    if (options?.workspaceRole) {
+        oneOfForbidden.push({
+            statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
+            messagePath: 'workspace.error.roleForbidden',
+        });
+    }
+
+    if (options?.project) {
+        oneOfNotFound.push(
+            {
+                statusCode: EnumWorkspaceStatusCodeError.notFound,
+                messagePath: 'workspace.error.notFound',
+            },
+            {
+                statusCode: EnumProjectStatusCodeError.notFound,
+                messagePath: 'project.error.notFound',
+            }
+        );
+    }
+
+    if (options?.projectMember) {
+        oneOfNotFound.push({
+            statusCode: EnumProjectStatusCodeError.notFound,
+            messagePath: 'project.error.notFound',
+        });
+        oneOfForbidden.push({
+            statusCode: EnumProjectStatusCodeError.memberForbidden,
+            messagePath: 'project.error.memberForbidden',
+        });
+    }
+
+    if (options?.projectRole) {
+        oneOfNotFound.push({
+            statusCode: EnumProjectStatusCodeError.notFound,
+            messagePath: 'project.error.notFound',
+        });
+        oneOfForbidden.push({
+            statusCode: EnumProjectStatusCodeError.roleForbidden,
+            messagePath: 'project.error.roleForbidden',
+        });
+    }
+
+    if (options?.featureFlag) {
+        oneOfServerError.push(
+            {
+                statusCode:
+                    EnumFeatureFlagStatusCodeError.predefinedKeyNotFound,
+                messagePath: 'featureFlag.error.predefinedKeyNotFound',
+            },
+            {
+                statusCode:
+                    EnumFeatureFlagStatusCodeError.predefinedKeyLengthExceeded,
+                messagePath: 'featureFlag.error.predefinedKeyLengthExceeded',
+            },
+            {
+                statusCode: EnumFeatureFlagStatusCodeError.predefinedKeyEmpty,
+                messagePath: 'featureFlag.error.predefinedKeyEmpty',
+            }
+        );
+        oneOfServiceUnavailable.push({
+            statusCode: EnumFeatureFlagStatusCodeError.serviceUnavailable,
+            messagePath: 'featureFlag.error.serviceUnavailable',
+        });
+    }
+
+    return accumulateResponseEntries([
+        ...oneOfUnauthorized.map(document => ({
+            ...document,
+            httpStatus: HttpStatus.UNAUTHORIZED,
+        })),
+        ...oneOfForbidden.map(document => ({
+            ...document,
+            httpStatus: HttpStatus.FORBIDDEN,
+        })),
+        ...oneOfNotFound.map(document => ({
+            ...document,
+            httpStatus: HttpStatus.NOT_FOUND,
+        })),
+        ...oneOfServerError.map(document => ({
+            ...document,
+            httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+        })),
+        ...oneOfServiceUnavailable.map(document => ({
+            ...document,
+            httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+        })),
+    ]);
 }
 
 /**
- * Documents auth schemes (JWT, social, x-api-key) and their 401 responses per enabled option.
+ * Documents auth schemes (JWT, social, x-api-key) and the 401, 403 and 500 responses each
+ * enabled option can return.
+ * @public
  */
 export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
     const docs: MethodDecorator[] = [];
-    const oneOfUnauthorized: IDocOfOptions[] = [];
+    const oneOfUnauthorized: IDocResponseErrorOptions[] = [];
+    const oneOfForbidden: IDocResponseErrorOptions[] = [];
+    const oneOfServerError: IDocResponseErrorOptions[] = [];
 
     if (options?.jwtRefreshToken) {
         docs.push(ApiBearerAuth('refreshToken'));
-        oneOfUnauthorized.push({
-            messagePath: 'auth.error.refreshTokenUnauthorized',
-            statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-        });
+        oneOfUnauthorized.push(
+            {
+                messagePath: 'auth.error.refreshTokenUnauthorized',
+                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
+            },
+            {
+                messagePath: 'session.error.forbidden',
+                statusCode: EnumSessionStatusCodeError.forbidden,
+            }
+        );
     }
 
     if (options?.jwtAccessToken) {
         docs.push(ApiBearerAuth('accessToken'));
-        oneOfUnauthorized.push({
-            messagePath: 'auth.error.accessTokenUnauthorized',
-            statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-        });
+        oneOfUnauthorized.push(
+            {
+                messagePath: 'auth.error.accessTokenUnauthorized',
+                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
+            },
+            {
+                messagePath: 'session.error.forbidden',
+                statusCode: EnumSessionStatusCodeError.forbidden,
+            }
+        );
     }
 
     if (options?.google) {
@@ -342,34 +555,54 @@ export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
                 messagePath: 'apiKey.error.xApiKey.required',
             },
             {
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyNotFound,
-                messagePath: 'apiKey.error.xApiKey.notFound',
-            },
-            {
                 statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
                 messagePath: 'apiKey.error.xApiKey.invalid',
+            }
+        );
+        oneOfForbidden.push(
+            {
+                statusCode: EnumApiKeyStatusCodeError.xApiKeyNotFound,
+                messagePath: 'apiKey.error.xApiKey.notFound',
             },
             {
                 statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
                 messagePath: 'apiKey.error.xApiKey.forbidden',
             }
         );
+        oneOfServerError.push({
+            statusCode: EnumApiKeyStatusCodeError.xApiKeyPredefinedNotFound,
+            messagePath: 'apiKey.error.xApiKey.predefinedNotFound',
+        });
     }
 
     return applyDecorators(
         ...docs,
-        DocOneOf(HttpStatus.UNAUTHORIZED, ...oneOfUnauthorized)
+        accumulateResponseEntries([
+            ...oneOfUnauthorized.map(document => ({
+                ...document,
+                httpStatus: HttpStatus.UNAUTHORIZED,
+            })),
+            ...oneOfForbidden.map(document => ({
+                ...document,
+                httpStatus: HttpStatus.FORBIDDEN,
+            })),
+            ...oneOfServerError.map(document => ({
+                ...document,
+                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+            })),
+        ])
     );
 }
 
 /**
  * Documents a standard JSON success response with an i18n message and optional data schema.
+ * @public
  */
 export function DocResponse<T = void>(
     messagePath: string,
     options?: IDocResponseOptions<T>
 ): MethodDecorator {
-    const docs: IDocDefaultOptions<T> = {
+    const docs: IDocResponseEntry<T> = {
         httpStatus: options?.httpStatus ?? HttpStatus.OK,
         messagePath,
         statusCode: options?.statusCode ?? options?.httpStatus ?? HttpStatus.OK,
@@ -379,39 +612,45 @@ export function DocResponse<T = void>(
         docs.schema = options.schema;
     }
 
-    return applyDecorators(ApiProduces('application/json'), DocDefault(docs));
+    return applyDecorators(
+        ApiProduces('application/json'),
+        accumulateResponseEntries([docs]),
+        DocSerializationErrorResponses.serialization
+    );
 }
 
 /**
  * Documents a paginated response: data array plus cursor/offset queries, search, and order.
  * Reflects the public HTTP query contract only (`orderBy` as a single field), not richer
  * internal pagination shapes.
+ * @public
  */
-export function DocResponsePaging<T>(
+export function DocResponsePagination<T>(
     messagePath: string,
-    options: IDocResponsePagingOptions<T>
+    options: IDocResponsePaginationOptions<T>
 ): MethodDecorator {
     const docs: MethodDecorator[] = [
         ApiProduces('application/json'),
-        ApiResponse({
-            description:
-                options.httpStatus?.toString() ?? HttpStatus.OK.toString(),
-            status: options.httpStatus ?? HttpStatus.OK,
-            schema: createEnvelopeSchemaObject(
-                ResponsePagingSchema.extend({
-                    data: z.array(options.schema).meta({
-                        description: 'Page of result items',
-                        example: [],
-                    }),
-                }),
+        accumulateResponseEntries([
+            {
+                httpStatus: options.httpStatus ?? HttpStatus.OK,
                 messagePath,
-                options.statusCode ?? options.httpStatus ?? HttpStatus.OK
-            ),
-        }),
-        ...Object.values(DocPaginationSharedErrorResponses),
+                statusCode:
+                    options.statusCode ?? options.httpStatus ?? HttpStatus.OK,
+                envelope: ResponsePagingSchema,
+                schema: z.array(options.schema).meta({
+                    description: 'Page of result items',
+                    example: [],
+                }),
+            },
+        ]),
+        ...Object.values(DocPaginationErrorResponses),
         ...(options.type === EnumPaginationType.cursor
             ? Object.values(DocPaginationCursorErrorResponses)
             : Object.values(DocPaginationOffsetErrorResponses)),
+        DocSerializationErrorResponses.serialization,
+        DocSerializationErrorResponses.paginationShapeInvalid,
+        DocSerializationErrorResponses.paginationTypeInvalid,
     ];
 
     if (options.type === EnumPaginationType.cursor) {
@@ -451,6 +690,7 @@ export function DocResponsePaging<T>(
 
 /**
  * Documents a file download response (non-JSON), defaulting to CSV.
+ * @public
  */
 export function DocResponseFile(
     options?: IDocResponseFileOptions

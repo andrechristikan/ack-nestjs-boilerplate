@@ -1,19 +1,20 @@
-import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
+import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type {
     IPaginationEqual,
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
-import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import {
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
+import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
+import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
+import type {
     IUser,
     IUserContact,
     IUserCreateWithWorkspaceInput,
     IUserExport,
+    IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
 import {
@@ -21,10 +22,10 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
     Prisma,
-    User,
-} from '@generated/prisma-client';
-import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
-import { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
+} from '@generated/prisma-client/client';
+import type { User } from '@generated/prisma-client/client';
+import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IUserRepository {
     findWithPaginationOffset(
@@ -35,7 +36,7 @@ export interface IUserRepository {
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>>;
+    ): Promise<IResponsePagingReturn<IUserList>>;
     findActive(): Promise<IUserContact[]>;
     findOneById(id: string): Promise<User | null>;
     findOneActiveById(id: string): Promise<User | null>;
@@ -66,29 +67,23 @@ export interface IUserRepository {
     updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        { status }: UserUpdateStatusRequestDto,
-        updatedBy: string
+        { status }: UserUpdateStatusRequestDto
     ): Promise<User>;
-    updateProfileInTx(
-        tx: IDatabaseTransactionClient,
+    updateProfile(
         userId: string,
         { countryId, ...data }: UserUpdateProfileRequestDto
     ): Promise<User>;
-    updatePhotoProfileInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        photo: IAwsS3
-    ): Promise<User>;
+    updatePhotoProfile(userId: string, photo: IAwsS3): Promise<User>;
     deleteSelfInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         deletedAt: Date
     ): Promise<User>;
-    claimUsernameInTx(
-        tx: IDatabaseTransactionClient,
+    claimUsername(
         userId: string,
         { username }: UserClaimUsernameRequestDto
     ): Promise<User>;
+    setLastWorkspace(userId: string, workspaceId: string): Promise<void>;
     setLastWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -105,7 +100,8 @@ export interface IUserRepository {
     deactivateForMaxPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<User>;
+    ): Promise<void>;
+    markVerified(userId: string, verifiedAt: Date): Promise<User>;
     markVerifiedInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

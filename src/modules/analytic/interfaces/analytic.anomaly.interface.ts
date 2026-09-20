@@ -15,7 +15,7 @@ export interface IAnalyticAnomalySummary {
     meta?: IAnalyticAnomalySummaryMeta;
 }
 
-export interface IAnalyticImpossibleTravelRow {
+export interface IAnalyticImpossibleTravel {
     userId: string;
     fromSessionId: string;
     toSessionId: string;
@@ -23,20 +23,21 @@ export interface IAnalyticImpossibleTravelRow {
     deltaMs: number;
 }
 
-export interface IAnalyticLoginSpikeIpRow {
+export interface IAnalyticLoginSpikeIp {
     ipAddress: string;
     uniqueUsers: number;
     attempts: number;
 }
 
-export interface IAnalyticNearLockoutRow {
+export interface IAnalyticNearLockout {
     id: string;
     email: string;
     passwordAttempt: number | null;
-    lastLoginAt?: Date | null;
+    lastLoginAt: Date | null;
+    createdAt: Date;
 }
 
-export interface IAnalyticDeviceProliferationRow {
+export interface IAnalyticDeviceProliferation {
     userId: string;
     deviceCount: number;
     zScore: number;
@@ -46,10 +47,10 @@ export interface IAnalyticDeviceProliferationResult {
     count: number;
     avg: number;
     stdDev: number;
-    rows: IAnalyticDeviceProliferationRow[];
+    rows: IAnalyticDeviceProliferation[];
 }
 
-export interface IAnalyticLoginTimeAnomalyRow {
+export interface IAnalyticLoginTimeAnomaly {
     userId: string;
     lastHour: number;
     historicalFrequencyPercent: number;

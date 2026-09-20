@@ -1,12 +1,12 @@
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
-import {
+import type {
     IAnalyticTwoFactorAdoption,
     IAnalyticTwoFactorAttemptSnapshot,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
 import { UserTwoFactorAnalyticRepository } from '@modules/user/repositories/user.two-factor.analytic.repository';
 import { Injectable } from '@nestjs/common';
-import { EnumActivityLogAction } from '@generated/prisma-client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 
 @Injectable()
 export class UserTwoFactorAnalyticDomain {
@@ -44,7 +44,10 @@ export class UserTwoFactorAnalyticDomain {
         );
     }
 
-    backupCodeRegenCount(startDate: Date, endDate: Date): Promise<number> {
+    backupCodeRegenerationCount(
+        startDate: Date,
+        endDate: Date
+    ): Promise<number> {
         return this.activityLogAnalyticDomain.countByActionsInRange(
             [EnumActivityLogAction.userRegenerateTwoFactorBackupCodes],
             startDate,

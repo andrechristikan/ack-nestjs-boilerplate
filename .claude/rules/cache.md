@@ -17,7 +17,7 @@ this one lock".
 
 A feature that caches gets a cache class at
 `src/modules/<feature>/caches/<module>[.<concern>].cache.ts` — `SessionCache`,
-`ApiKeyCache`, `FeatureFlagCache`, `AuthCache`. It holds the cache manager and the
+`ApiKeyCache`, `FeatureFlagCache`, `AuthCache`, `AnalyticCache`. It holds the cache manager and the
 `keyPattern` it reads from config. It is not a service: no `Service` in the class or file
 name, and it has no header interface (`rules/architecture.md`). `<feature>.domain.module.ts` still
 provides it (`rules/nest-wiring.md`). Every get, set and delete for that module goes
@@ -55,11 +55,26 @@ Caching is decorator-driven on the route:
   cacheable.
 - **Never cache a response that carries a credential** (`rules/security.md`).
 
-## Cache is best-effort
+## Cache is best-effort, except where it carries authority
 
-A cache read, write, or delete that fails falls through to the database. Nothing about
-correctness may depend on a cache hit, and a cache entry is never a lock
-(`rules/concurrency.md`).
+A cache read that fails falls through to the database. Nothing about correctness may depend on
+a cache hit, and a cache entry is never a lock (`rules/concurrency.md`).
+
+Writes and deletes are not uniformly best-effort. The Keyv store runs with `throwOnErrors`, so
+a Redis failure rejects instead of passing silently, and each caller decides what that means:
+
+- **It fails the request** when the entry IS the authority for what follows: the session cache
+  write on login and on refresh rotation, and the two-factor challenge write. A token the guards
+  cannot read is worse than a failed login.
+- **It fails the request** when a stale entry would keep a revoked credential working: the API
+  key cache delete runs after the database write, sequentially, so the change is audited and the
+  failure is visible.
+- **It is caught and logged** where the entry expires on its own and the database still holds
+  the truth: every session purge after a commit, the challenge and lock clears, and the API key
+  read-through write.
+
+A whole-user session purge scans the user's key pattern (`SCAN` plus `UNLINK`, batched); a
+partial revoke deletes exactly the ids it revoked (`rules/security.md`).
 
 ## Invalidation is part of the write
 

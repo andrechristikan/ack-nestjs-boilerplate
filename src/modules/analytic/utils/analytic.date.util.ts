@@ -1,37 +1,53 @@
-import { AnalyticInvalidDateRangeException } from '@modules/analytic/exceptions/analytic.invalid-date-range.exception';
-import {
-    IAnalyticDateRange,
-    IAnalyticOptionalDateRange,
-} from '@modules/analytic/interfaces/analytic.interface';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AnalyticDateUtil {
-    requireRange(startDate?: Date, endDate?: Date): IAnalyticDateRange {
-        if (
-            !startDate ||
-            !endDate ||
-            startDate.getTime() >= endDate.getTime()
-        ) {
-            throw new AnalyticInvalidDateRangeException();
-        }
-        return { startDate, endDate };
-    }
+    private readonly windowTokenPattern: string;
+    private readonly workspaceWindowTokenPattern: string;
 
-    optionalRange(
-        startDate?: Date,
-        endDate?: Date
-    ): IAnalyticOptionalDateRange {
-        if (startDate && endDate) {
-            return this.requireRange(startDate, endDate);
-        }
-        if (startDate || endDate) {
-            throw new AnalyticInvalidDateRangeException();
-        }
-        return {};
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly helperStringService: HelperStringService
+    ) {
+        this.windowTokenPattern = this.configService.get<string>(
+            'analytic.cache.windowTokenPattern'
+        )!;
+        this.workspaceWindowTokenPattern = this.configService.get<string>(
+            'analytic.cache.workspaceWindowTokenPattern'
+        )!;
     }
 
     cacheToken(date?: Date): string {
         return date ? date.toISOString() : '_';
+    }
+
+    windowToken(startDate?: Date, endDate?: Date): string {
+        const startToken = this.cacheToken(startDate);
+        const endToken = this.cacheToken(endDate);
+
+        return this.helperStringService.fillPattern(this.windowTokenPattern, {
+            start: startToken,
+            end: endToken,
+        });
+    }
+
+    workspaceWindowToken(
+        workspaceId: string,
+        startDate?: Date,
+        endDate?: Date
+    ): string {
+        const startToken = this.cacheToken(startDate);
+        const endToken = this.cacheToken(endDate);
+
+        return this.helperStringService.fillPattern(
+            this.workspaceWindowTokenPattern,
+            {
+                workspaceId,
+                start: startToken,
+                end: endToken,
+            }
+        );
     }
 }

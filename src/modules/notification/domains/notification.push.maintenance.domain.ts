@@ -1,7 +1,7 @@
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /** Removes the notification tokens Firebase rejected and the ones that went stale. */
 @Injectable()

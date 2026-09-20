@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+/**
+ * Validates the required start and end date query of an analytics route.
+ * @public
+ */
 export const AnalyticDateRangeRequestSchema = z.strictObject({
     startDate: z.coerce.date().meta({
         description: 'Range start (inclusive)',
@@ -11,6 +15,10 @@ export const AnalyticDateRangeRequestSchema = z.strictObject({
     }),
 });
 
+/**
+ * Required analytics date range query.
+ * @public
+ */
 export type AnalyticDateRangeRequestDto = z.infer<
     typeof AnalyticDateRangeRequestSchema
 >;

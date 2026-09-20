@@ -5,12 +5,10 @@ import {
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
-import {
-    UserCheckEmailResponseDto,
-    UserCheckEmailResponseSchema,
-    UserCheckUsernameResponseDto,
-    UserCheckUsernameResponseSchema,
-} from '@modules/user/dtos/response/user.check.response.dto';
+import { UserCheckEmailResponseSchema } from '@modules/user/dtos/response/user.check-email.response.dto';
+import { UserCheckUsernameResponseSchema } from '@modules/user/dtos/response/user.check-username.response.dto';
+import type { UserCheckEmailResponseDto } from '@modules/user/dtos/response/user.check-email.response.dto';
+import type { UserCheckUsernameResponseDto } from '@modules/user/dtos/response/user.check-username.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function UserSystemCheckUsernameDoc(): MethodDecorator {

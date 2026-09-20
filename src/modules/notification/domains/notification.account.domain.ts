@@ -1,18 +1,18 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import {
+import type {
     INotificationEmailSendPayload,
-    INotificationVerificationEmailPayload,
+    INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
-    INotificationWelcomeByAdminPayload,
+    INotificationWelcomeByAdminEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /** Writes and fans out the sign-up, welcome and verification notifications. */
 @Injectable()
@@ -28,7 +28,7 @@ export class NotificationAccountDomain {
     async processWelcomeByAdmin(
         userId: string,
         proceedBy: string,
-        data: INotificationWelcomeByAdminPayload
+        data: INotificationWelcomeByAdminEncryptedPayload
     ): Promise<IQueueResponse> {
         const user = await this.userDomain.getOneActive(userId);
 
@@ -65,7 +65,7 @@ export class NotificationAccountDomain {
 
     async processWelcome(
         userId: string,
-        data: INotificationVerificationEmailPayload
+        data: INotificationVerificationEmailEncryptedPayload
     ): Promise<IQueueResponse> {
         const user = await this.userDomain.getOneActive(userId);
 
@@ -191,7 +191,7 @@ export class NotificationAccountDomain {
 
     async processVerificationEmail(
         userId: string,
-        data: INotificationVerificationEmailPayload
+        data: INotificationVerificationEmailEncryptedPayload
     ): Promise<IQueueResponse> {
         const user = await this.userDomain.getOneActive(userId);
 
@@ -253,6 +253,10 @@ export class NotificationAccountDomain {
             notificationId,
         };
 
+        const censoredMobileNumber = this.helperStringService.censor(
+            data.mobileNumber
+        );
+
         const results = await Promise.allSettled([
             this.notificationRepository.create(
                 EnumNotificationKind.verifiedMobileNumber,
@@ -261,9 +265,7 @@ export class NotificationAccountDomain {
                     userId: user.id,
                     metadata: {
                         username: user.username,
-                        mobileNumber: this.helperStringService.censor(
-                            data.mobileNumber
-                        ),
+                        mobileNumber: censoredMobileNumber,
                     },
                     createdBy: user.id,
                 }

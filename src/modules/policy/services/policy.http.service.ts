@@ -1,8 +1,8 @@
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { PolicyDto } from '@modules/policy/dtos/policy.dto';
-import { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
-import { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
-import { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
+import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
+import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { Injectable } from '@nestjs/common';
 

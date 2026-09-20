@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { TermPolicyContentRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 
+/**
+ * Validates term policy contents, one per language.
+ * @public
+ */
 export const TermPolicyContentsRequestSchema = z.strictObject({
     contents: z
         .array(TermPolicyContentRequestSchema)
@@ -16,6 +20,10 @@ export const TermPolicyContentsRequestSchema = z.strictObject({
         }),
 });
 
+/**
+ * Request body carrying localized term policy contents, one per language.
+ * @public
+ */
 export type TermPolicyContentsRequestDto = z.infer<
     typeof TermPolicyContentsRequestSchema
 >;

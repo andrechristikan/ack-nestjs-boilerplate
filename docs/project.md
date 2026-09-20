@@ -1,6 +1,6 @@
 # Project Documentation
 
-This documentation explains the features and usage of the **Project Module**: Located at `src/modules/project`
+Project lives in `src/modules/project`.
 
 ## Overview
 
@@ -47,10 +47,12 @@ Projects carry their own membership with three roles (`admin`, `member`, `viewer
 | `description` | `String?` | |
 | `createdAt` / `createdBy` | `DateTime` / `String?` | |
 | `updatedAt` / `updatedBy` | `DateTime` / `String?` | |
-| `deletedAt` | `DateTime?` | Soft-delete marker. There is no `deletedBy` on this model |
+| `deletedAt` / `deletedBy` | `DateTime?` / `String?` | Soft-delete marker and the id of the user who deleted the project |
 
 - `@@unique([workspaceId, slug])`
 - `@@index([workspaceId, deletedAt, createdAt desc, id desc])`
+
+`ProjectResponseSchema` declares every audit column, `deletedBy` included, so each project row in a response carries it. The user routes read live rows only, so `deletedBy` is `null` there; the admin routes apply no live filter, so a soft-deleted project shows who deleted it.
 
 ### `ProjectMember` (`ProjectMembers`)
 
@@ -131,11 +133,16 @@ Reads the `projectId` **route parameter** (there is no project header) and resol
 - **No arguments** applies `ProjectMemberGuard` alone, storing the row under `ProjectMemberStoreKey`. No row throws `ProjectMemberForbiddenException` (403, `51701`). This is the form used by `member leave`, which has nothing to remove without a row.
 - **With roles** applies `ProjectRoleGuard` alone. A missing workspace membership, a missing project membership, or a role outside the list throws `ProjectRoleForbiddenException` (403, `51702`).
 
-Because the role form does not bind `ProjectMemberGuard`, `@ProjectMemberCurrent()` is `undefined` on a role-gated route.
+Because the role form does not bind `ProjectMemberGuard`, nothing is stored under `ProjectMemberStoreKey` on a role-gated route, and `@ProjectMemberCurrent()` throws there for every caller, the workspace owner included. That decorator belongs only on a route using the role-less form.
 
 #### `ProjectCurrent()` / `ProjectMemberCurrent()`
 
-**Parameter decorators** that read back the `Project` and `ProjectMember` the guards stored.
+**Parameter decorators** that read back the `Project` and `ProjectMember` the guards stored. Each takes an optional field name typed against its model and returns the whole row without one. Both return a non-null value.
+
+- `ProjectCurrent()` on a route without `@ProjectProtected()` answers `RequestContextMissingException` (500, `50304`).
+- `ProjectMemberCurrent()` is valid only on a route carrying the role-less `@ProjectMemberProtected()`, the form that binds `ProjectMemberGuard`. A role-gated route stores no member row, so the read answers `RequestContextMissingException` (500, `50304`) there. `ProjectMemberDomain.leaveProject` receives the row itself; the caller's missing membership is already refused by the guard with `ProjectMemberForbiddenException` (403, `51701`).
+
+The store readers: [Security and Middleware][ref-doc-security-and-middleware].
 
 ### The `/admin` scope takes none of this
 
@@ -143,11 +150,11 @@ Admin routes carry no project or workspace guard. They take the project id from 
 
 ## Slug
 
-- **Creation always generates the slug.** `ProjectCreateRequestDto` carries no slug field: `ProjectDomain.createProject` draws `project.slugMaxAttempts` (5) candidates of `project.slugPrefix` plus random characters up to `slugMaxLength` and walks them itself. Choosing a slug is what `PATCH /user/project/update/:projectId/slug` is for, and only that path runs `assertSlugAllowed`.
+- **Creation always generates the slug.** `ProjectCreateRequestDto` carries no slug field: `ProjectDomain.createProject` draws `project.slugMaxAttempts` (5) candidates of `project.slugPrefix` plus random characters up to `slugMaxLength` and passes them to `ProjectRepository.create`, which walks them. Choosing a slug is what `PATCH /user/project/update/:projectId/slug` is for, and only that path runs `assertSlugAllowed`.
 - A slug sent to `update/:projectId/slug` is validated by `ProjectDomain.assertSlugAllowed`: over `project.slugMaxLength`, or failing `project.slugRegex`, throws `ProjectSlugInvalidException` (400, `51707`). A slug already held in the workspace throws `ProjectSlugAlreadyExistsException` (400, `51706`), with no retry.
 - **Uniqueness is per workspace**, matching the `@@unique([workspaceId, slug])` index.
 - `existsBySlugInWorkspace`, the check behind slug update, counts holders across **all** rows including soft-deleted ones. The unique index has no `deletedAt` component, so a soft-deleted project still holds its slug, and the check agrees with the index.
-- `createProject` walks its candidates and, for each one, opens a `withTransaction` that calls `ProjectRepository.createInTx` and `ActivityLogDomain.recordInTx` (`projectCreated`). A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
+- `createProject` prepares `projectCreated`, then calls `ProjectRepository.create(workspaceId, dto, slugCandidates)`. The repository runs one `client.project.create` per candidate with no transaction; a unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate. The event is staged once, after the create resolves, so a collision stages nothing. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
 
 ## Membership
 
@@ -164,15 +171,24 @@ A project member must already be a workspace member. `assignMember` resolves the
 
 **There is no last-admin protection on leave.** Nothing counts remaining admins, so the last project `admin` can leave and the project can be left with no members at all. The workspace owner still reaches it through the bypass.
 
-Every membership change writes an activity log entry (`projectMemberAssigned`, `projectMemberRoleUpdated`, `projectMemberRemoved`, `projectMemberLeft`).
+Each membership change is a single write on `ProjectMemberRepository` (`create`, `updateRole`, `removeMember`) with no transaction. Its activity rows are prepared before the write and staged after it. Assign, update role, and remove write an actor row for the caller carrying `targetUserId`, and a target row for the affected member carrying `actorUserId`, with `createdBy` set to the caller:
+
+| Operation | Actor row | Target row |
+|---|---|---|
+| Assign | `projectMemberAssigned` | `projectMemberAssignedByAdmin` |
+| Update role | `projectMemberRoleUpdated` | `projectMemberRoleUpdatedByAdmin` |
+| Remove | `projectMemberRemoved` | `projectMemberRemovedByAdmin` |
+| Leave | `projectMemberLeft` | none |
+
+A caller who assigns themselves or updates their own role gets the actor row only. Both rows of a pair carry the project's `workspaceId`. See [Activity Log][ref-doc-activity-log].
 
 ## Soft Delete
 
-`ProjectDomain.softDeleteProject` opens one `withTransaction` that calls `ProjectRepository.softDeleteInTx` (stamps `deletedAt` and `updatedBy`) and `ActivityLogDomain.recordInTx` (`projectDeleted`). **It cascades to nothing**: `ProjectMember` rows and any invite referencing the project are left as they are, and the slug stays occupied.
+`ProjectDomain.softDeleteProject` prepares `projectDeleted`, calls `ProjectRepository.softDelete`, which runs `client.project.softDelete` with no transaction (it sets `deletedAt` and stamps `deletedBy` and `updatedBy` from the caller), then stages the event. **It cascades to nothing**: `ProjectMember` rows and any invite referencing the project are left as they are, and the slug stays occupied.
 
 After deletion the project disappears from `ProjectGuard` and from the user-scope list, but the admin routes still return it because they apply no active filter. There is no restore and no hard delete.
 
-Deleting the **workspace** soft-deletes its still-active projects in the same transaction. See [Workspace][ref-doc-workspace].
+Deleting the **workspace** soft-deletes its still-active projects in the same transaction; each project gets the workspace's `deletedAt`, and `deletedBy` set to the caller. See [Workspace][ref-doc-workspace].
 
 ## Configuration
 
@@ -187,7 +203,7 @@ Deleting the **workspace** soft-deletes its still-active projects in the same tr
 }
 ```
 
-`ProjectDomain` reads all four: `slugRegex` and `slugMaxLength` for validation, `slugPrefix`, `slugMaxLength`, and `slugMaxAttempts` when it draws the candidates a create walks through.
+`ProjectDomain` reads all four: `slugRegex` and `slugMaxLength` for validation, `slugPrefix`, `slugMaxLength`, and `slugMaxAttempts` when it draws the candidates `ProjectRepository.create` walks through.
 
 ## Status Codes
 
@@ -218,5 +234,7 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for main contributor for this
 [ref-doc-status-codes]: status-codes.md
 [ref-doc-pagination]: pagination.md
 [ref-doc-database-generated-unique-values]: database.md#generated-unique-values
+[ref-doc-activity-log]: activity-log.md
+[ref-doc-security-and-middleware]: security-and-middleware.md
 
 [ref-contributor-gzerox]: https://github.com/Gzerox

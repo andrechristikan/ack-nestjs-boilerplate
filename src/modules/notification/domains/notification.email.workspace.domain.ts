@@ -1,20 +1,21 @@
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
+import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import {
+import type {
     INotificationEmailSendPayload,
     INotificationEmailSendUnregisteredPayload,
-    INotificationWorkspaceInvitePayload,
-    INotificationWorkspaceInviteUnregisteredPayload,
+    INotificationWorkspaceInviteEncryptedPayload,
+    INotificationWorkspaceInviteUnregisteredEncryptedPayload,
     INotificationWorkspaceJoinAcceptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
-    INotificationWorkspaceJoinRequestPayload,
+    INotificationWorkspaceJoinRequestEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /** Renders and sends the workspace invite and join-request emails. */
 @Injectable()
@@ -29,6 +30,8 @@ export class NotificationEmailWorkspaceDomain {
 
     private readonly defaultTemplateData: Record<string, string>;
 
+    private readonly encryptionSecretKey: string;
+
     constructor(
         private readonly awsSESService: AwsSESService,
         private readonly configService: ConfigService,
@@ -41,6 +44,9 @@ export class NotificationEmailWorkspaceDomain {
 
         this.homeName = this.configService.get<string>('home.name')!;
         this.homeUrl = this.configService.get<string>('home.url')!;
+        this.encryptionSecretKey = this.configService.get<string>(
+            'app.encryptionSecretKey'
+        )!;
 
         this.defaultTemplateData = {
             homeName: this.homeName,
@@ -58,15 +64,20 @@ export class NotificationEmailWorkspaceDomain {
             encryptedInviteAcceptLink,
             reference,
             expiredAt,
-        }: INotificationWorkspaceInvitePayload
+        }: INotificationWorkspaceInviteEncryptedPayload
     ): Promise<IQueueResponse> {
         try {
-            const inviteAcceptLink =
-                this.helperEncryptionService.aes256DecryptSimple(
-                    encryptedInviteAcceptLink,
-                    userId
-                );
+            const inviteAcceptLink = this.helperEncryptionService.aes256Decrypt(
+                encryptedInviteAcceptLink,
+                this.encryptionSecretKey,
+                NotificationPayloadEncryptionPurpose,
+                userId
+            );
 
+            const expiredAtDate =
+                this.helperDateService.createFromIso(expiredAt);
+            const expiredAtFormatted =
+                this.helperDateService.formatToRFC2822(expiredAtDate);
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.workspaceInvite,
                 recipients: [email],
@@ -78,9 +89,7 @@ export class NotificationEmailWorkspaceDomain {
                     workspaceMemberRole,
                     inviteAcceptLink,
                     reference,
-                    expiredAt: this.helperDateService.formatToRFC2822(
-                        this.helperDateService.createFromIso(expiredAt)
-                    ),
+                    expiredAt: expiredAtFormatted,
                 },
                 ...(cc?.length && { cc }),
                 ...(bcc?.length && { bcc }),
@@ -102,16 +111,20 @@ export class NotificationEmailWorkspaceDomain {
             encryptedInviteAcceptLink,
             reference,
             expiredAt,
-        }: INotificationWorkspaceInviteUnregisteredPayload
+        }: INotificationWorkspaceInviteUnregisteredEncryptedPayload
     ): Promise<IQueueResponse> {
         try {
-            // Keyed by `reference`: an unregistered invitee has no userId yet.
-            const inviteAcceptLink =
-                this.helperEncryptionService.aes256DecryptSimple(
-                    encryptedInviteAcceptLink,
-                    reference
-                );
+            const inviteAcceptLink = this.helperEncryptionService.aes256Decrypt(
+                encryptedInviteAcceptLink,
+                this.encryptionSecretKey,
+                NotificationPayloadEncryptionPurpose,
+                reference
+            );
 
+            const expiredAtDate =
+                this.helperDateService.createFromIso(expiredAt);
+            const expiredAtFormatted =
+                this.helperDateService.formatToRFC2822(expiredAtDate);
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.workspaceInvite,
                 recipients: [email],
@@ -123,9 +136,7 @@ export class NotificationEmailWorkspaceDomain {
                     workspaceMemberRole,
                     inviteAcceptLink,
                     reference,
-                    expiredAt: this.helperDateService.formatToRFC2822(
-                        this.helperDateService.createFromIso(expiredAt)
-                    ),
+                    expiredAt: expiredAtFormatted,
                 },
             });
 
@@ -148,12 +159,14 @@ export class NotificationEmailWorkspaceDomain {
             workspaceName,
             requesterName,
             encryptedJoinRequestReviewLink,
-        }: INotificationWorkspaceJoinRequestPayload
+        }: INotificationWorkspaceJoinRequestEncryptedPayload
     ): Promise<IQueueResponse> {
         try {
             const joinRequestReviewLink =
-                this.helperEncryptionService.aes256DecryptSimple(
+                this.helperEncryptionService.aes256Decrypt(
                     encryptedJoinRequestReviewLink,
+                    this.encryptionSecretKey,
+                    NotificationPayloadEncryptionPurpose,
                     userId
                 );
 

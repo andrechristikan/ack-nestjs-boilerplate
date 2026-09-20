@@ -22,10 +22,10 @@ import {
 import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/term-policy.acceptance.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import {
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
@@ -34,14 +34,12 @@ import {
     TermPolicySharedAcceptDoc,
     TermPolicySharedListAcceptedDoc,
 } from '@modules/term-policy/docs/term-policy.shared.doc';
-import {
-    TermPolicyAcceptRequestDto,
-    TermPolicyAcceptRequestSchema,
-} from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
+import { TermPolicyAcceptRequestSchema } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
+import type { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
-import { IUser } from '@modules/user/interfaces/user.interface';
-import { Prisma } from '@generated/prisma-client';
+import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
+import type { IUser } from '@modules/user/interfaces/user.interface';
+import { Prisma } from '@generated/prisma-client/client';
 
 @ApiTags('modules.shared.user.termPolicy')
 @Controller({

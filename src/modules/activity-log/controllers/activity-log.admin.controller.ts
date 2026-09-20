@@ -1,16 +1,16 @@
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 import {
     ActivityLogAdminListByUserDoc,
     ActivityLogAdminListByWorkspaceDoc,
 } from '@modules/activity-log/docs/activity-log.admin.doc';
 import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
-import { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
@@ -25,7 +25,7 @@ import {
     EnumPolicySubject,
     EnumRoleType,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.activityLog')
 @Controller({

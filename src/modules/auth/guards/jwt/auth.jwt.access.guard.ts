@@ -1,6 +1,6 @@
 import { AuthGuard } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
-import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import {
     AuthJwtAccessGuardKey,
     AuthPayloadStoreKey,

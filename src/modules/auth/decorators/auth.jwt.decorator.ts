@@ -1,24 +1,44 @@
-import { ExecutionContext, UseGuards, applyDecorators } from '@nestjs/common';
+import { UseGuards, applyDecorators } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
 import { createParamDecorator } from '@nestjs/common';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import type { IRequestApp } from '@common/request/interfaces/request.interface';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { AuthJwtAccessGuard } from '@modules/auth/guards/jwt/auth.jwt.access.guard';
 import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.guard';
-import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 
-/** Extracts the JWT payload (or a single property of it) from the authenticated request. */
-export const AuthJwtPayload = createParamDecorator(
-    <T = IAuthJwtAccessTokenPayload>(
-        data: string,
-        ctx: ExecutionContext
-    ): T | undefined => {
+/**
+ * Reads the JWT payload, or one of its fields, that the authenticating guard wrote to the request; throws when either is absent.
+ * @public
+ */
+export const AuthJwtPayload: <T = IAuthJwtAccessTokenPayload>(
+    field?: Extract<keyof T, string>
+) => ParameterDecorator = createParamDecorator<string | undefined, unknown>(
+    (field: string | undefined, ctx: ExecutionContext): unknown => {
         const { user } = ctx
             .switchToHttp()
-            .getRequest<IRequestApp & { user: T }>();
-        return data ? (user?.[data as keyof T] as T | undefined) : user;
+            .getRequest<IRequestApp<Record<string, unknown>>>();
+        if (user === undefined || user === null) {
+            throw new RequestContextMissingException('request.user');
+        }
+
+        if (field === undefined || field === null) {
+            return user;
+        }
+
+        const value = user[field];
+        if (value === undefined || value === null) {
+            throw new RequestContextMissingException(`request.user.${field}`);
+        }
+
+        return value;
     }
 );
 
-/** Extracts the raw JWT token from the Authorization header, stripping the scheme prefix. */
+/**
+ * Extracts the raw JWT token from the Authorization header, stripping the scheme prefix.
+ * @public
+ */
 export const AuthJwtToken = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): string | undefined => {
         const { headers } = ctx.switchToHttp().getRequest<IRequestApp>();
@@ -29,12 +49,18 @@ export const AuthJwtToken = createParamDecorator(
     }
 );
 
-/** Protects a route with JWT access token authentication. */
+/**
+ * Protects a route with JWT access token authentication.
+ * @public
+ */
 export function AuthJwtAccessProtected(): MethodDecorator {
     return applyDecorators(UseGuards(AuthJwtAccessGuard));
 }
 
-/** Protects a route with JWT refresh token authentication; used by token refresh endpoints. */
+/**
+ * Protects a route with JWT refresh token authentication; used by token refresh endpoints.
+ * @public
+ */
 export function AuthJwtRefreshProtected(): MethodDecorator {
     return applyDecorators(UseGuards(AuthJwtRefreshGuard));
 }

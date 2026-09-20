@@ -1,21 +1,17 @@
 import { Response } from '@common/response/decorators/response.decorator';
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     UserSystemCheckEmailDoc,
     UserSystemCheckUsernameDoc,
 } from '@modules/user/docs/user.system.doc';
-import {
-    UserCheckEmailRequestDto,
-    UserCheckEmailRequestSchema,
-    UserCheckUsernameRequestDto,
-    UserCheckUsernameRequestSchema,
-} from '@modules/user/dtos/request/user.check.request.dto';
-import {
-    UserCheckEmailResponseSchema,
-    UserCheckUsernameResponseSchema,
-} from '@modules/user/dtos/response/user.check.response.dto';
-import {
+import { UserCheckEmailRequestSchema } from '@modules/user/dtos/request/user.check-email.request.dto';
+import { UserCheckUsernameRequestSchema } from '@modules/user/dtos/request/user.check-username.request.dto';
+import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
+import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/user.check-username.request.dto';
+import { UserCheckEmailResponseSchema } from '@modules/user/dtos/response/user.check-email.response.dto';
+import { UserCheckUsernameResponseSchema } from '@modules/user/dtos/response/user.check-username.response.dto';
+import type {
     IUserCheckEmail,
     IUserCheckUsername,
 } from '@modules/user/interfaces/user.interface';

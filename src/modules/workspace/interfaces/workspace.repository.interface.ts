@@ -1,14 +1,15 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type {
     IPaginationCursorReturn,
     IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { Prisma, Workspace } from '@generated/prisma-client';
-import { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
-import { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client/client';
+import type { Workspace } from '@generated/prisma-client/client';
+import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
+import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
 
 export interface IWorkspaceRepository {
     findActiveById(workspaceId: string): Promise<Workspace | null>;
@@ -36,28 +37,15 @@ export interface IWorkspaceRepository {
         slug: string,
         workspaceId: string
     ): Promise<Workspace>;
-    updateDetailsInTx(
-        tx: IDatabaseTransactionClient,
+    updateDetails(
         workspaceId: string,
-        actorId: string,
         { name, description }: WorkspaceUpdateRequestDto
     ): Promise<Workspace>;
-    updateIsPublicInTx(
-        tx: IDatabaseTransactionClient,
-        workspaceId: string,
-        actorId: string,
-        isPublic: boolean
-    ): Promise<Workspace>;
-    updateSlugInTx(
-        tx: IDatabaseTransactionClient,
-        workspaceId: string,
-        actorId: string,
-        slug: string
-    ): Promise<Workspace>;
+    updateIsPublic(workspaceId: string, isPublic: boolean): Promise<Workspace>;
+    updateSlug(workspaceId: string, slug: string): Promise<Workspace>;
     softDeleteInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        actorId: string,
         deletedAt: Date
     ): Promise<void>;
 }

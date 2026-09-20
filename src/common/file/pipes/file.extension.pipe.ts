@@ -1,7 +1,8 @@
-import { Injectable, PipeTransform, Type, mixin } from '@nestjs/common';
-import { IFile, IFileInput } from '@common/file/interfaces/file.interface';
+import { Injectable, mixin } from '@nestjs/common';
+import type { PipeTransform, Type } from '@nestjs/common';
+import type { IFile, IFileInput } from '@common/file/interfaces/file.interface';
 import { EnumFileExtension } from '@common/file/enums/file.enum';
-import { FileExtensionSignatures } from '@common/file/constants/file.constant';
+import { FileExtensionContract } from '@common/file/contracts/file.extension.contract';
 import { FileService } from '@common/file/services/file.service';
 import { FileExtensionInvalidException } from '@common/file/exceptions/file.extension-invalid.exception';
 
@@ -23,9 +24,11 @@ export function FileExtensionPipe(
 
         constructor(private readonly fileService: FileService) {
             this.signedExtensions = new Set(
-                allowedExtensions.flatMap(
-                    extension => this.signaturesOf(extension) ?? []
-                )
+                allowedExtensions.flatMap(extension => {
+                    const signatures = this.signaturesOf(extension);
+
+                    return signatures ?? [];
+                })
             );
             this.signaturelessExtensions = new Set(
                 allowedExtensions.filter(extension => {
@@ -39,17 +42,18 @@ export function FileExtensionPipe(
         private signaturesOf(
             extension: EnumFileExtension
         ): readonly string[] | undefined {
-            if (!(extension in FileExtensionSignatures)) {
+            if (!(extension in FileExtensionContract)) {
                 return undefined;
             }
 
-            return FileExtensionSignatures[
-                extension as keyof typeof FileExtensionSignatures
+            return FileExtensionContract[
+                extension as keyof typeof FileExtensionContract
             ];
         }
 
         private extractFilesToValidate(value: IFileInput): IFile[] {
-            if (this.isEmptyValue(value)) {
+            const isEmpty = this.isEmptyValue(value);
+            if (isEmpty) {
                 return [];
             }
 
@@ -74,7 +78,8 @@ export function FileExtensionPipe(
             const declared = this.fileService.extractExtensionFromFilename(
                 file.originalname
             );
-            if (!this.extensions.has(declared)) {
+            const hasDeclaredExtension = this.extensions.has(declared);
+            if (!hasDeclaredExtension) {
                 throw new FileExtensionInvalidException();
             }
 
@@ -82,14 +87,17 @@ export function FileExtensionPipe(
                 file.buffer
             );
             if (sniffed === null) {
-                if (!this.signaturelessExtensions.has(declared)) {
+                const hasSignaturelessExtension =
+                    this.signaturelessExtensions.has(declared);
+                if (!hasSignaturelessExtension) {
                     throw new FileExtensionInvalidException();
                 }
 
                 return;
             }
 
-            if (!this.signedExtensions.has(sniffed)) {
+            const hasSignedExtension = this.signedExtensions.has(sniffed);
+            if (!hasSignedExtension) {
                 throw new FileExtensionInvalidException();
             }
         }

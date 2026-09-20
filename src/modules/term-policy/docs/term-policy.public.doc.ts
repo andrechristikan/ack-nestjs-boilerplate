@@ -3,14 +3,12 @@ import {
     Doc,
     DocAuth,
     DocRequest,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
-import {
-    TermPolicyResponseDto,
-    TermPolicyResponseSchema,
-} from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { TermPolicyListPublicDocQuery } from '@modules/term-policy/constants/term-policy.doc.constant';
+import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import type { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { TermPolicyDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
+import { TermPolicyListPublicDocQuery } from '@modules/term-policy/constants/term-policy.doc.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 
 export function TermPolicyPublicListDoc(): MethodDecorator {
@@ -24,7 +22,7 @@ export function TermPolicyPublicListDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
         }),
-        DocResponsePaging<TermPolicyResponseDto>('termPolicy.list', {
+        DocResponsePagination<TermPolicyResponseDto>('termPolicy.list', {
             schema: TermPolicyResponseSchema,
             availableOrderBy: TermPolicyDefaultAvailableOrderBy,
             type: EnumPaginationType.cursor,

@@ -1,21 +1,13 @@
 import {
     Doc,
     DocAuth,
-    DocOneOf,
+    DocGuard,
     DocRequest,
     DocResponse,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
-import {
-    WorkspaceInviteDocParamsId,
-    WorkspaceInviteDocQueryList,
-    WorkspaceJoinRequestDocParamsId,
-    WorkspaceJoinRequestDocQueryList,
-    WorkspaceMemberDocParamsId,
-    WorkspaceMemberDocQueryList,
-} from '@modules/workspace/constants/workspace.doc.constant';
 import {
     WorkspaceCursorAvailableOrderBy,
     WorkspaceDefaultAvailableSearch,
@@ -25,44 +17,26 @@ import {
     WorkspaceMemberDefaultAvailableOrderBy,
 } from '@modules/workspace/constants/workspace.list.constant';
 import {
-    WorkspaceInviteResponseDto,
-    WorkspaceInviteResponseSchema,
-} from '@modules/workspace/dtos/response/workspace.invite.response.dto';
-import {
-    WorkspaceJoinRequestResponseDto,
-    WorkspaceJoinRequestResponseSchema,
-} from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
-import {
-    WorkspaceMemberResponseDto,
-    WorkspaceMemberResponseSchema,
-} from '@modules/workspace/dtos/response/workspace.member.response.dto';
-import {
-    WorkspaceResponseDto,
-    WorkspaceResponseSchema,
-} from '@modules/workspace/dtos/response/workspace.response.dto';
-import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
+    WorkspaceInviteDocQueryList,
+    WorkspaceJoinRequestDocQueryList,
+    WorkspaceMemberDocQueryList,
+} from '@modules/workspace/constants/workspace.doc.constant';
+import { WorkspaceInviteResponseSchema } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
+import type { WorkspaceInviteResponseDto } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
+import { WorkspaceJoinRequestResponseSchema } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
+import type { WorkspaceJoinRequestResponseDto } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
+import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
+import type { WorkspaceMemberResponseDto } from '@modules/workspace/dtos/response/workspace.member.response.dto';
+import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
+import type { WorkspaceResponseDto } from '@modules/workspace/dtos/response/workspace.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
-
-const NotFoundDoc = DocOneOf(HttpStatus.NOT_FOUND, {
-    statusCode: EnumWorkspaceStatusCodeError.notFound,
-    messagePath: 'workspace.error.notFound',
-});
-
-const MemberForbiddenDoc = DocOneOf(HttpStatus.FORBIDDEN, {
-    statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
-    messagePath: 'workspace.error.memberForbidden',
-});
-
-const RoleForbiddenDoc = DocOneOf(HttpStatus.FORBIDDEN, {
-    statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
-    messagePath: 'workspace.error.roleForbidden',
-});
 
 export function WorkspaceUserListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'list workspaces the caller is a member of' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocResponsePaging<WorkspaceResponseDto>('workspace.list', {
+        DocGuard({ user: true, termPolicy: true, featureFlag: true }),
+        DocResponsePagination<WorkspaceResponseDto>('workspace.list', {
             schema: WorkspaceResponseSchema,
             type: EnumPaginationType.cursor,
             availableSearch: WorkspaceDefaultAvailableSearch,
@@ -78,10 +52,7 @@ export function WorkspaceUserCreateDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.capReached,
-            messagePath: 'workspace.error.capReached',
-        }),
+        DocGuard({ user: true, termPolicy: true, featureFlag: true }),
         DocResponse<WorkspaceResponseDto>('workspace.create', {
             schema: WorkspaceResponseSchema,
             httpStatus: HttpStatus.CREATED,
@@ -93,8 +64,12 @@ export function WorkspaceUserGetDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'get the current workspace (`x-workspace-id`)' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            featureFlag: true,
+        }),
         DocResponse<WorkspaceResponseDto>('workspace.get', {
             schema: WorkspaceResponseSchema,
         })
@@ -108,9 +83,13 @@ export function WorkspaceUserUpdateDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        RoleForbiddenDoc,
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
+        }),
         DocResponse<WorkspaceResponseDto>('workspace.update', {
             schema: WorkspaceResponseSchema,
         })
@@ -127,9 +106,13 @@ export function WorkspaceUserUpdateIsPublicDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        RoleForbiddenDoc,
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
+        }),
         DocResponse<WorkspaceResponseDto>('workspace.updateIsPublic', {
             schema: WorkspaceResponseSchema,
         })
@@ -143,12 +126,12 @@ export function WorkspaceUserUpdateSlugDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        RoleForbiddenDoc,
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.slugAlreadyExists,
-            messagePath: 'workspace.error.slugAlreadyExists',
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
         }),
         DocResponse<WorkspaceResponseDto>('workspace.updateSlug', {
             schema: WorkspaceResponseSchema,
@@ -166,8 +149,7 @@ export function WorkspaceUserSwitchDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
+        DocGuard({ user: true, termPolicy: true, featureFlag: true }),
         DocResponse('workspace.switch')
     );
 }
@@ -179,12 +161,12 @@ export function WorkspaceUserTransferOwnershipDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        RoleForbiddenDoc,
-        DocOneOf(HttpStatus.NOT_FOUND, {
-            statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-            messagePath: 'workspace.error.memberNotFound',
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
         }),
         DocResponse('workspace.transferOwnership')
     );
@@ -194,11 +176,11 @@ export function WorkspaceUserLeaveDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'leave the current workspace' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.lastOwner,
-            messagePath: 'workspace.error.lastOwner',
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            featureFlag: true,
         }),
         DocResponse('workspace.leave')
     );
@@ -208,9 +190,13 @@ export function WorkspaceUserSoftDeleteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'soft-delete the current workspace' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        RoleForbiddenDoc,
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
+        }),
         DocResponse('workspace.softDelete')
     );
 }
@@ -220,13 +206,20 @@ export function WorkspaceMemberUserListDoc(): MethodDecorator {
         Doc({ summary: 'list members of the current workspace' }),
         DocRequest({ queries: WorkspaceMemberDocQueryList }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        DocResponsePaging<WorkspaceMemberResponseDto>('workspace.member.list', {
-            schema: WorkspaceMemberResponseSchema,
-            type: EnumPaginationType.cursor,
-            availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
-        })
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            featureFlag: true,
+        }),
+        DocResponsePagination<WorkspaceMemberResponseDto>(
+            'workspace.member.list',
+            {
+                schema: WorkspaceMemberResponseSchema,
+                type: EnumPaginationType.cursor,
+                availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
+            }
+        )
     );
 }
 
@@ -234,20 +227,15 @@ export function WorkspaceMemberUserUpdateRoleDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'update a member role in the current workspace' }),
         DocRequest({
-            params: WorkspaceMemberDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        RoleForbiddenDoc,
-        DocOneOf(HttpStatus.NOT_FOUND, {
-            statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-            messagePath: 'workspace.error.memberNotFound',
-        }),
-        DocOneOf(HttpStatus.FORBIDDEN, {
-            statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-            messagePath: 'workspace.error.memberPeerForbidden',
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
         }),
         DocResponse('workspace.member.updateRole')
     );
@@ -256,18 +244,13 @@ export function WorkspaceMemberUserUpdateRoleDoc(): MethodDecorator {
 export function WorkspaceMemberUserRemoveDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'remove a member from the current workspace' }),
-        DocRequest({ params: WorkspaceMemberDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        RoleForbiddenDoc,
-        DocOneOf(HttpStatus.NOT_FOUND, {
-            statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-            messagePath: 'workspace.error.memberNotFound',
-        }),
-        DocOneOf(HttpStatus.FORBIDDEN, {
-            statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-            messagePath: 'workspace.error.memberPeerForbidden',
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
         }),
         DocResponse('workspace.member.remove')
     );
@@ -278,15 +261,22 @@ export function WorkspaceInviteUserListDoc(): MethodDecorator {
         Doc({ summary: 'list invites for the current workspace' }),
         DocRequest({ queries: WorkspaceInviteDocQueryList }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        RoleForbiddenDoc,
-        DocResponsePaging<WorkspaceInviteResponseDto>('workspace.invite.list', {
-            schema: WorkspaceInviteResponseSchema,
-            type: EnumPaginationType.cursor,
-            availableSearch: WorkspaceInviteDefaultAvailableSearch,
-            availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
-        })
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
+        }),
+        DocResponsePagination<WorkspaceInviteResponseDto>(
+            'workspace.invite.list',
+            {
+                schema: WorkspaceInviteResponseSchema,
+                type: EnumPaginationType.cursor,
+                availableSearch: WorkspaceInviteDefaultAvailableSearch,
+                availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
+            }
+        )
     );
 }
 
@@ -300,20 +290,12 @@ export function WorkspaceInviteUserCreateDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        RoleForbiddenDoc,
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.inviteDuplicate,
-            messagePath: 'workspace.error.inviteDuplicate',
-        }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.inviteProjectMismatch,
-            messagePath: 'workspace.error.inviteProjectMismatch',
-        }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.inviteRoleRequired,
-            messagePath: 'workspace.error.inviteRoleRequired',
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
         }),
         DocResponse<WorkspaceInviteResponseDto>('workspace.invite.create', {
             schema: WorkspaceInviteResponseSchema,
@@ -329,20 +311,15 @@ export function WorkspaceInviteUserResendDoc(): MethodDecorator {
                 'rotate the token and expiry of a pending invite and resend it; the old link stops working',
         }),
         DocRequest({
-            params: WorkspaceInviteDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        RoleForbiddenDoc,
-        DocOneOf(HttpStatus.NOT_FOUND, {
-            statusCode: EnumWorkspaceStatusCodeError.inviteNotFound,
-            messagePath: 'workspace.error.inviteNotFound',
-        }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-            messagePath: 'workspace.error.inviteAlreadyProcessed',
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
         }),
         DocResponse<WorkspaceInviteResponseDto>('workspace.invite.resend', {
             schema: WorkspaceInviteResponseSchema,
@@ -353,18 +330,13 @@ export function WorkspaceInviteUserResendDoc(): MethodDecorator {
 export function WorkspaceInviteUserRevokeDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'revoke a pending invite for the current workspace' }),
-        DocRequest({ params: WorkspaceInviteDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        RoleForbiddenDoc,
-        DocOneOf(HttpStatus.NOT_FOUND, {
-            statusCode: EnumWorkspaceStatusCodeError.inviteNotFound,
-            messagePath: 'workspace.error.inviteNotFound',
-        }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-            messagePath: 'workspace.error.inviteAlreadyProcessed',
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
         }),
         DocResponse('workspace.invite.revoke')
     );
@@ -380,10 +352,7 @@ export function WorkspaceInviteUserClaimDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
-            messagePath: 'workspace.error.inviteInvalid',
-        }),
+        DocGuard({ user: true, termPolicy: true, featureFlag: true }),
         DocResponse('workspace.invite.claim')
     );
 }
@@ -398,19 +367,7 @@ export function WorkspaceJoinRequestUserCreateDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.notPublic,
-            messagePath: 'workspace.error.notPublic',
-        }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.joinRequestAlreadyMember,
-            messagePath: 'workspace.error.joinRequestAlreadyMember',
-        }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.joinRequestDuplicate,
-            messagePath: 'workspace.error.joinRequestDuplicate',
-        }),
+        DocGuard({ user: true, termPolicy: true, featureFlag: true }),
         DocResponse<WorkspaceJoinRequestResponseDto>(
             'workspace.joinRequest.create',
             {
@@ -426,10 +383,14 @@ export function WorkspaceJoinRequestUserListDoc(): MethodDecorator {
         Doc({ summary: 'list join requests for the current workspace' }),
         DocRequest({ queries: WorkspaceJoinRequestDocQueryList }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        RoleForbiddenDoc,
-        DocResponsePaging<WorkspaceJoinRequestResponseDto>(
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
+        }),
+        DocResponsePagination<WorkspaceJoinRequestResponseDto>(
             'workspace.joinRequest.list',
             {
                 schema: WorkspaceJoinRequestResponseSchema,
@@ -446,19 +407,13 @@ export function WorkspaceJoinRequestUserAcceptDoc(): MethodDecorator {
             summary:
                 'accept a pending join request; creates the requester as a member',
         }),
-        DocRequest({ params: WorkspaceJoinRequestDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        RoleForbiddenDoc,
-        DocOneOf(HttpStatus.NOT_FOUND, {
-            statusCode: EnumWorkspaceStatusCodeError.joinRequestNotFound,
-            messagePath: 'workspace.error.joinRequestNotFound',
-        }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode:
-                EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
-            messagePath: 'workspace.error.joinRequestAlreadyProcessed',
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
         }),
         DocResponse('workspace.joinRequest.accept')
     );
@@ -468,21 +423,15 @@ export function WorkspaceJoinRequestUserRejectDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'reject a pending join request with a reason code' }),
         DocRequest({
-            params: WorkspaceJoinRequestDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
-        RoleForbiddenDoc,
-        DocOneOf(HttpStatus.NOT_FOUND, {
-            statusCode: EnumWorkspaceStatusCodeError.joinRequestNotFound,
-            messagePath: 'workspace.error.joinRequestNotFound',
-        }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode:
-                EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
-            messagePath: 'workspace.error.joinRequestAlreadyProcessed',
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
         }),
         DocResponse('workspace.joinRequest.reject')
     );

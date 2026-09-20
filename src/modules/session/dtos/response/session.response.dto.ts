@@ -8,6 +8,7 @@ import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.resp
 
 /**
  * Base session shape: the stored session row without the JWT identifier.
+ * @public
  */
 export const SessionResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -129,4 +130,8 @@ export const SessionResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
+/**
+ * Stored session without the JWT identifier.
+ * @public
+ */
 export type SessionResponseDto = z.infer<typeof SessionResponseSchema>;

@@ -6,6 +6,61 @@ One discipline, one place. Whoever touches a `*.spec.ts` in this repo follows th
 **A spec's measure of success is that it fails when the BEHAVIOR changes** — not that it
 passes, and not that it fails when someone merely rearranges the code.
 
+## Kinds of test (HARD)
+
+Three kinds. Each has one subject and one I/O story. A file that mixes them is the wrong
+kind for every assertion it makes.
+
+| Kind | Subject | I/O | What it proves |
+|---|---|---|---|
+| **Unit** | One class: a domain, HTTP or processor service, util, cache, queue, guard, pipe, interceptor, filter, DTO, exception | Collaborators doubled (`mock<T>()` / `mockDeep<T>()`) | The class's behaviour |
+| **Integration** | One adapter: a repository, or another class whose job is a real engine | Prisma and PostgreSQL, or Redis, are real | The query or command against that engine |
+| **E2E** | One transport path: an HTTP route or a consumed job | The running app | Wiring from the edge through guards, pipes, interceptors, domain, and persistence |
+
+This repository's suite is **unit**. `pnpm test` and `pnpm test:cov` collect `test/**/*.spec.ts`
+through `vitest.config.ts`. `coder` and `test-writer` write that kind and no other. Integration
+tests, e2e tests, and load tests are not this suite: they are not authored under `test/`, they
+are not in that `include`, and they have no TDD cycle here.
+
+`reviewer-e2e` is a read-only review agent that traces a flow in source. It is not an e2e
+suite and it writes no test.
+
+### Unit
+
+Every DI collaborator is a double. The subject is the one class that is real
+(`rules/testing-spec-style.md`).
+
+- A domain spec doubles the repository (`mock<UserRepository>()`) and asserts orchestration
+  and typed exceptions. That is how a repository is present in the unit suite.
+- An HTTP or processor service spec doubles the domain. It never reaches a repository.
+- A repository is the double, never the subject. Constructing `UserRepository` and stubbing
+  `databaseService.client` is still a unit spec of the adapter: it freezes a Prisma `where` /
+  `select` shape and does not prove the query against PostgreSQL. Those files sit outside the
+  coverage set.
+- A controller and a processor are route or job delegation. They have no unit spec.
+- A Swagger doc factory (`*.doc.ts`) is `applyDecorators` of the doc kit. It has no unit spec.
+- A contract is a lookup table. The consumer's unit spec exercises it.
+
+TDD is this kind (`coder`). `/ack-spec` covers this kind against code that already exists.
+
+### Integration
+
+The adapter is the subject. Prisma and PostgreSQL are real. Doubling
+`DatabaseService.client` makes the file a unit spec of the repository, which this suite does
+not write.
+
+This kind is how a Prisma `where`, a `groupBy`, a soft-delete filter, or an id mapping is
+proven against the engine. It is not authored under `test/` and it is not collected by
+`vitest.config.ts`.
+
+### E2E
+
+The subject is a request or a job entering the running process. Guards, pipes, interceptors,
+the HTTP or processor service, the domain, and the repository all run for real.
+
+This kind is not authored under `test/` and it is not collected by `vitest.config.ts`. Load
+tests are the same ban.
+
 ## Where specs live (HARD)
 
 Specs mirror `src/` under `test/`, same relative path, filename plus `.spec.ts`:
@@ -21,76 +76,94 @@ src/common/pagination/services/pagination.service.ts
   → test/common/pagination/services/pagination.service.spec.ts
 ```
 
-This is mechanical, not stylistic: `test/jest.json` `testMatch` is
-`<rootDir>/test/**/*.spec.ts`. A spec written anywhere else — colocated in `src/`, or under a
-different root — **is never executed**, while `collectCoverageFrom` still counts its subject as
+This is mechanical, not stylistic: `vitest.config.ts` `test.include` is
+`test/**/*.spec.ts`. A spec written anywhere else — colocated in `src/`, or under a
+different root — **is never executed**, while `coverage.include` still counts its subject as
 uncovered. Never colocate a spec in `src/`.
 
 A pure structural refactor moves the spec with its subject: same mirrored path, green before
 the work is done.
 
-## Local jest facts
+## Local Vitest facts
 
-- **`test/jest.json` is the ONLY jest configuration in this repository, and no second one is
-  ever created (HARD).** A run is `pnpm test`, which is
-  `TZ=UTC jest --config test/jest.json --passWithNoTests --detectOpenHandles`; a scoped run
-  adds `--testPathPatterns`, never `--config`. Do not write a `jest.config.*`, a `jest` key in
-  `package.json`, a per-module or per-suite config file, or a throwaway config under the
-  scratchpad to make one spec run. A spec that will not run under `test/jest.json` is a spec
-  in the wrong place or a transform gap in that file — fix the path or add the entry to
-  `test/jest.json`. A second config silently changes `testMatch`, `setupFilesAfterEnv`, the
-  transform, and `collectCoverageFrom`, so a suite that is green under it proves nothing about
-  the suite the hook and CI actually run.
-- Transform is `@swc/jest`; coverage provider is `v8`; `testTimeout` is 5000ms.
-- `@golevelup/ts-jest` is available for typed mock creation.
-- **`jest.mock()` goes AFTER imports**, never before.
-- Scope a run: `pnpm test --testPathPatterns <path fragment>`. **Jest 30 — the flag is
-  `--testPathPatterns`, plural; the old singular `--testPathPattern` is rejected with a
-  config error.**
-- **`collectCoverage` is `false` in `test/jest.json`.** `pnpm test` does not collect coverage
-  and does not apply the threshold. `pnpm test:cov` is the same command plus `--coverage`,
-  which is when `coverageThreshold` runs. **A scoped `pnpm test` that exits 0 is not a coverage
-  pass.** A scoped `pnpm test:cov` exits 1 while every spec passes, because the threshold is
-  GLOBAL and a scoped run measures a few percent of `src/` — read the `Tests:` line and the
-  per-file rows for the files you touched; the exit code and the global summary mean nothing
-  on a scoped coverage run.
-- **Coverage threshold is 100% global** — branches, functions, lines, statements — when
+- **`vitest.config.ts` is the ONLY test configuration in this repository, and no second one is
+  ever created (HARD).** A run is `pnpm test`, which is `TZ=UTC vitest run --passWithNoTests`;
+  a scoped run appends a path filter, never `--config`. Do not write a `vitest.workspace.*`, a
+  second `vitest.config.*`, a `test` key in `vite.config.*`, or a throwaway config under the
+  scratchpad to make one spec run. A spec that will not run under `vitest.config.ts` is a spec
+  in the wrong place or a transform gap in that file — fix the path or the config. A second
+  config silently changes `include`, the transform, the alias resolution and
+  `coverage.include`, so a suite that is green under it proves nothing about the suite the
+  hook and `.github/workflows/test.yml` actually run.
+- SWC transforms through `unplugin-swc` (`module: nodenext`), so decorator metadata matches the
+  build. `resolve.tsconfigPaths` resolves the `tsconfig.json` aliases, so a spec imports
+  `@modules/…` / `@common/…` exactly as `src/` does. `globals` is on, `environment` is `node`,
+  `testTimeout` is 5000ms.
+- **`isolate` is `false`.** The suite is `environment: 'node'` and every spec resets doubles
+  in `beforeEach`, so Vitest reuses workers across files. `fsModuleCache` is `true`; SWC
+  transforms persist under `node_modules/.vitest-cache`. `pool` is the default `forks`
+  (Prisma and other native modules can segfault under `threads`). Isolation is not split
+  across a second config or a workspace.
+- **`test/setup.ts` is `test.setupFiles`.** It mutes Nest `Logger` by assigning no-ops onto
+  the class (instance and static) and onto `ConsoleLogger.prototype`.
+  `Test.createTestingModule()` installs Nest's `TestingLogger`, whose `error` still prints,
+  so the mute is those no-ops — not `Logger.overrideLogger(false)`, not
+  `vi.mock('@nestjs/common')`, and not a `console` spy. Do not re-mock `Logger` in a spec
+  (`rules/testing-spec-style.md`).
+- Blob reports and JSON output land in `.vitest/`, which is gitignored.
+- Typed doubles come from `vitest-mock-extended` (`mock<T>()`, `mockDeep<T>()`,
+  `MockProxy<T>`, `DeepMockProxy<T>`). The skeleton and its rules are in
+  `testing-spec-style.md`.
+- **`vi.mock()` is written AFTER the imports**, never before. Vitest hoists it either way; the
+  position is the house layout.
+- Scope a run: `pnpm test <path fragment>` — the positional argument filters spec files by
+  path. `pnpm test user.domain` runs every spec whose path contains that fragment.
+- **`coverage.enabled` is `false` in `vitest.config.ts`.** `pnpm test` does not collect
+  coverage. `pnpm test:cov` is the same command plus `--coverage`, which is when coverage is
+  collected and `coverage.thresholds` (100% branches, functions, lines, statements) apply.
+  **A scoped `pnpm test` that exits 0 is not a coverage pass.** A scoped `pnpm test:cov` exits
+  1 while every spec passes, because the threshold is GLOBAL and a scoped run measures a few
+  percent of `src/` — read the `Tests` line and the per-file rows for the files you touched;
+  the exit code and the global summary mean nothing on a scoped coverage run.
+- **Coverage threshold is 100% global** — branches, functions, lines, statements — whenever
   coverage is collected. That number is only meaningful if the branches are real: 100% reached
   with happy paths alone means every guard clause in the file is untested and the threshold is
   lying to you.
-- **A run is SCOPED to the module being worked on, always.** `pnpm test --testPathPatterns
-  '<module>'`, where the module is one the work actually CHANGED — a module you only read is
-  not in scope. No skill except `/ack-spec` runs the full suite; the `pre-commit` hook
-  runs `pnpm test` (no coverage) on every commit, and that is where a broken global mock or
-  shared fixture surfaces. Reporting a scoped run as if it were the whole suite is the one
-  thing that turns this into a lie — name the pattern you passed.
+- **A run is SCOPED to the module being worked on, always.** `pnpm test <module>`, where the
+  module is one the work actually CHANGED — a module you only read is not in scope. No skill
+  except `/ack-spec` runs the full suite; the `pre-commit` hook runs `pnpm test` (no coverage)
+  on every commit, and that is where a broken global mock or shared fixture surfaces.
+  Reporting a scoped run as if it were the whole suite is the one thing that turns this into a
+  lie — name the filter you passed.
+- **GitHub Actions.** `.github/workflows/test.yml` runs `NODE_ENV=test pnpm test` on
+  `workflow_dispatch`. `.github/workflows/linter.yml` runs on `pull_request`.
 
 ## What is covered
 
-`collectCoverageFrom` targets these, under `src/{modules,common}` (plus `src/app` for dtos,
-filters, and middlewares):
+`coverage.include` is every `src/**/*.ts`, minus a denylist in `vitest.config.ts`:
 
-`*.service.ts` · `*.pipe.ts` · `*.guard.ts` · `*.strategy.ts` · `*.interceptor.ts` ·
-`*.dto.ts` · `*.decorator.ts` · `*.exception.ts` · `*.filter.ts` · `*.middleware.ts` ·
-`*.indicator.ts` · `*.factory.ts`
+`*.module.ts` · `*.enum.ts` · `*.interface.ts` · `*.constant.ts` · `*.contract.ts` ·
+`*.controller.ts` · `*.processor.ts` · `*.repository.ts` · `*.doc.ts` · `src/generated/**` ·
+`src/migration/**` · `src/router/**` · `src/configs/**` · `src/languages/**` · the root
+`src/*.ts` files
 
-**Controllers and repositories are not in the coverage set.** A controller is route
-delegation and a repository is a Prisma call shape — specs there would assert the mock, not
-our behavior. **Domain and cache files are also outside `collectCoverageFrom` in
-`test/jest.json`.** Expanding those globs is an owner change to the jest config. If you find
-yourself wanting a controller or repository spec, the logic is probably in the wrong layer.
+Everything else is measured: services, domains, utils, caches, queues, guards, pipes,
+interceptors, filters, middlewares, strategies, indicators, factories, decorators
+(including the doc kit in `src/common/doc/`), validations, exceptions and DTOs.
 
-**`collectCoverageFrom` decides WHAT gets a spec for `/ack-spec`, and an excluded tree gets
-NONE (HARD).**
-`src/migration/**`, `src/router/**`, `src/configs/**`, `src/languages/**`, and the root
-`src/*.ts` files are outside the globs. Wanting coverage on an excluded tree is a request to
-change `test/jest.json`, which is the owner's call, never a spec written around the config.
+**Controllers, processors, repositories, contracts and Swagger doc factories (`*.doc.ts`)
+are not in the coverage set.** A controller and a processor are delegation, a repository is
+a Prisma call shape, a contract is a lookup table, and a `*.doc.ts` factory is
+`applyDecorators` of the doc kit — specs there would assert the mock, restatement, or
+TypeScript already proved. If you find yourself wanting a controller, processor, or
+repository spec, the logic is probably in the wrong layer. A contract is exercised by the
+consumer that reads it (a domain or a pipe), not by a spec of the table. A doc factory is
+wired by the controller; it is not a unit subject.
 
-A file whose suffix is NOT on that list is not measured at all — `*.module.ts`, `*.enum.ts`,
-`*.interface.ts`, `*.constant.ts`, `*.util.ts`, `*.queue.ts`, `*.processor.ts`,
-`*.repository.ts`, `*.controller.ts`, `*.domain.ts`, `*.cache.ts`. Adding a suffix to the list
-adds every existing file carrying it to the
-100% denominator at once.
+**The denylist decides WHAT gets a spec for `/ack-spec`, and an excluded file gets NONE
+(HARD).** Wanting coverage on an excluded path is a request to change `vitest.config.ts`,
+which is the owner's call, never a spec written around the config. Adding a path to the
+denylist, or removing one, changes the 100% denominator at once.
 
 ## TDD (HARD)
 
@@ -98,12 +171,14 @@ New behaviour and a repair go through TDD. Write the failing spec first, watch i
 because the behaviour is absent, then implement. `coder` writes both halves of that cycle.
 The skill is `superpowers:test-driven-development`.
 
-A spec lives at its final path under `test/` and stays as the regression net. When the
-behaviour lives on a domain, the TDD subject is that domain class
-(`rules/architecture.md`). Domain and cache files sit outside `collectCoverageFrom`.
+A spec lives at its final path under `test/` and stays as the regression net. TDD is the
+**unit** cycle. When the behaviour lives on a domain, the TDD subject is that domain class
+(`rules/architecture.md`).
 
-Seeds, controllers, and repositories have no TDD cycle (`collectCoverageFrom` does not
-measure them).
+Seeds, controllers, processors, repositories, contracts and Swagger doc factories
+(`*.doc.ts`) have no TDD cycle (the coverage denylist excludes them). A contract row is the
+`src/` that turns the consumer's unit spec green. A repository's presence in that cycle is
+the double in the domain spec.
 
 ## The code is the specification (`/ack-spec`)
 
@@ -132,12 +207,13 @@ Always:
 - **Do NOT delete, `.skip`, or weaken a failing spec to reach green.** A spec that was
   asserting something real and now fails is either a regression or a contract that changed
   deliberately — decide which and say which.
-- **Do NOT lower the coverage threshold**, exclude a file from `collectCoverageFrom`, or add
-  an ignore comment to reach 100%.
-- **Do NOT write e2e or load tests here.** Unit specs only.
+- **Do NOT lower the coverage threshold**, add a path to the coverage denylist, or add an
+  ignore comment (`/* v8 ignore */`) to reach 100%.
+- **Do NOT write integration, e2e, or load tests in this tree.** The suite is unit specs
+  (`Kinds of test` above).
 - If a file is genuinely untestable as written (a static global, an unmockable import), report
   it as a design defect to fix rather than building an elaborate mock around it. A hard
-  `new Date()` is NOT one of these — `jest.useFakeTimers()` in `beforeAll` covers it.
+  `new Date()` is NOT one of these — `vi.useFakeTimers()` in `beforeAll` covers it.
 
 A spec that passes against a broken implementation is worse than no spec: it converts an
 untested file into a file everyone believes is tested. Before finishing any spec, break the

@@ -5,8 +5,12 @@ import { HelperArrayService } from '@common/helper/services/helper.array.service
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { faker } from '@faker-js/faker';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import { migrationUserData } from '@migration/data/migration.user.data';
-import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import {
+    MigrationUserData,
+    MigrationUserSuperAdminId,
+} from '@migration/data/migration.user.data';
+import type { IMigrationUserData } from '@migration/interfaces/migration.interface';
+import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { Logger } from '@nestjs/common';
@@ -22,10 +26,10 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { Command } from 'nest-commander';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
+import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestUtil } from '@common/request/utils/request.util';
 
 /**
@@ -43,14 +47,8 @@ export class MigrationUserSeed
     private readonly logger = new Logger(MigrationUserSeed.name);
 
     private readonly env: EnumAppEnvironment;
-    private readonly users: {
-        country: string;
-        email: string;
-        username: string;
-        name: string;
-        role: string;
-        password: string;
-    }[] = [];
+    private readonly users: IMigrationUserData[] = [];
+    private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
         private readonly databaseService: DatabaseService,
@@ -66,7 +64,10 @@ export class MigrationUserSeed
         super();
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
-        this.users = migrationUserData[this.env];
+        this.users = MigrationUserData[this.env];
+        this.seedTransactionTimeoutInMs = this.configService.get<number>(
+            'database.seedTransactionTimeoutInMs'
+        )!;
     }
 
     async seed(): Promise<void> {
@@ -145,134 +146,155 @@ export class MigrationUserSeed
             const requestLog: IRequestLog = {
                 userAgent,
                 ipAddress: ip,
+                geoLocation: null,
             };
 
-            await this.databaseService.client.$transaction(
-                this.users.map(user => {
-                    const userId = this.databaseUtil.createId();
-                    const { passwordCreated, passwordExpired, passwordHash } =
-                        this.authPasswordUtil.createPassword(
-                            userId,
-                            user.password
-                        );
-                    const { reference, hashedToken, type } =
-                        this.userVerificationDomain.verificationCreateVerification(
-                            userId,
-                            EnumVerificationType.email
-                        );
-
-                    return this.databaseService.client.user.upsert({
-                        where: {
-                            email: user.email.toLowerCase(),
-                        },
-                        create: {
-                            id: userId,
-                            email: user.email.toLowerCase(),
-                            name: user.name,
-                            countryId: countries.find(
-                                country => country.alpha2Code === user.country
-                            )!.id,
-                            roleId: roles.find(role => role.name === user.role)!
-                                .id,
-                            password: passwordHash,
+            await this.databaseService.withTransaction(
+                async tx => {
+                    for (const user of this.users) {
+                        const userId = user.id ?? this.databaseUtil.createId();
+                        const {
                             passwordCreated,
                             passwordExpired,
-                            passwordAttempt: 0,
-                            signUpAt: today,
-                            isVerified: true,
-                            signUpWith: EnumUserSignUpWith.credential,
-                            signUpFrom: EnumUserSignUpFrom.system,
-                            status: EnumUserStatus.active,
-                            cookiesAccepted: false,
-                            marketingAccepted: false,
-                            privacyAccepted: true,
-                            termsOfServiceAccepted: true,
-                            username: user.username,
-                            deletedAt: null,
-                            passwordHistories: {
-                                create: {
-                                    password: passwordHash,
-                                    type: EnumPasswordHistoryType.admin,
-                                    expiredAt: passwordExpired,
-                                    createdAt: passwordCreated,
-                                    createdBy: userId,
-                                },
+                            passwordHash,
+                        } = this.authPasswordUtil.createPassword(user.password);
+                        const { reference, hashedToken, type } =
+                            this.userVerificationDomain.verificationCreateVerification(
+                                EnumVerificationType.email
+                            );
+
+                        await tx.user.upsert({
+                            where: {
+                                email: user.email.toLowerCase(),
                             },
-                            verifications: {
-                                create: {
-                                    expiredAt: this.helperDateService.create(),
-                                    verifiedAt: this.helperDateService.create(),
-                                    reference,
-                                    token: hashedToken,
-                                    type,
-                                    createdBy: userId,
-                                    to: user.email,
-                                    isUsed: true,
+                            create: {
+                                id: userId,
+                                email: user.email.toLowerCase(),
+                                name: user.name,
+                                countryId: countries.find(
+                                    country =>
+                                        country.alpha2Code === user.country
+                                )!.id,
+                                roleId: roles.find(
+                                    role => role.name === user.role
+                                )!.id,
+                                password: passwordHash,
+                                passwordCreated,
+                                passwordExpired,
+                                passwordAttempt: 0,
+                                signUpAt: today,
+                                isVerified: true,
+                                signUpWith: EnumUserSignUpWith.credential,
+                                signUpFrom: EnumUserSignUpFrom.system,
+                                status: EnumUserStatus.active,
+                                cookiesAccepted: false,
+                                marketingAccepted: false,
+                                privacyAccepted: true,
+                                termsOfServiceAccepted: true,
+                                username: user.username,
+                                deletedAt: null,
+                                createdBy: MigrationUserSuperAdminId,
+                                updatedBy: MigrationUserSuperAdminId,
+                                passwordHistories: {
+                                    create: {
+                                        password: passwordHash,
+                                        type: EnumPasswordHistoryType.admin,
+                                        expiredAt: passwordExpired,
+                                        createdAt: passwordCreated,
+                                        createdBy: MigrationUserSuperAdminId,
+                                    },
                                 },
-                            },
-                            activityLogs: {
-                                createMany: {
-                                    data: [
-                                        this.activityLogUtil.buildCreateManyUserData(
-                                            userId,
-                                            null,
-                                            EnumActivityLogAction.userCreated,
-                                            requestLog
-                                        ),
-                                        this.activityLogUtil.buildCreateManyUserData(
-                                            userId,
-                                            null,
-                                            EnumActivityLogAction.userVerifiedEmail,
-                                            requestLog
-                                        ),
-                                        ...termPolicies.map(termPolicy =>
+                                verifications: {
+                                    create: {
+                                        expiredAt:
+                                            this.helperDateService.create(),
+                                        verifiedAt:
+                                            this.helperDateService.create(),
+                                        reference,
+                                        token: hashedToken,
+                                        type,
+                                        createdBy: MigrationUserSuperAdminId,
+                                        to: user.email,
+                                        isUsed: true,
+                                    },
+                                },
+                                activityLogs: {
+                                    createMany: {
+                                        data: [
                                             this.activityLogUtil.buildCreateManyUserData(
-                                                userId,
+                                                MigrationUserSuperAdminId,
                                                 null,
-                                                EnumActivityLogAction.userAcceptTermPolicy,
-                                                requestLog,
-                                                {
-                                                    termPolicyType:
-                                                        termPolicy.type,
-                                                    termPolicyId: termPolicy.id,
-                                                }
-                                            )
-                                        ),
-                                    ],
+                                                EnumActivityLogAction.userCreated,
+                                                requestLog
+                                            ),
+                                            this.activityLogUtil.buildCreateManyUserData(
+                                                MigrationUserSuperAdminId,
+                                                null,
+                                                EnumActivityLogAction.userVerifiedEmail,
+                                                requestLog
+                                            ),
+                                            ...termPolicies.map(termPolicy =>
+                                                this.activityLogUtil.buildCreateManyUserData(
+                                                    MigrationUserSuperAdminId,
+                                                    null,
+                                                    EnumActivityLogAction.userAcceptTermPolicy,
+                                                    requestLog,
+                                                    {
+                                                        termPolicyType:
+                                                            termPolicy.type,
+                                                        termPolicyId:
+                                                            termPolicy.id,
+                                                    }
+                                                )
+                                            ),
+                                        ],
+                                    },
                                 },
-                            },
-                            acceptances: {
-                                createMany: {
-                                    data: termPolicies.map(termPolicy => ({
-                                        termPolicyId: termPolicy.id,
-                                        createdBy: userId,
-                                    })),
+                                acceptances: {
+                                    createMany: {
+                                        data: termPolicies.map(termPolicy => ({
+                                            termPolicyId: termPolicy.id,
+                                            createdBy:
+                                                MigrationUserSuperAdminId,
+                                        })),
+                                    },
                                 },
-                            },
-                            notificationSettings: {
-                                createMany: {
-                                    data: Object.values(EnumNotificationChannel)
-                                        .map(channel =>
-                                            Object.values(
-                                                EnumNotificationType
-                                            ).map(type => ({
-                                                channel,
-                                                type,
-                                                isActive: true,
-                                            }))
+                                notificationSettings: {
+                                    createMany: {
+                                        data: Object.values(
+                                            EnumNotificationChannel
                                         )
-                                        .flat(),
+                                            .map(channel =>
+                                                Object.values(
+                                                    EnumNotificationType
+                                                ).map(type => ({
+                                                    channel,
+                                                    type,
+                                                    isActive: true,
+                                                    createdBy:
+                                                        MigrationUserSuperAdminId,
+                                                    updatedBy:
+                                                        MigrationUserSuperAdminId,
+                                                }))
+                                            )
+                                            .flat(),
+                                    },
+                                },
+                                twoFactor: {
+                                    create: {
+                                        enabled: false,
+                                        createdBy: MigrationUserSuperAdminId,
+                                        updatedBy: MigrationUserSuperAdminId,
+                                    },
                                 },
                             },
-                            twoFactor: {
-                                create: {
-                                    enabled: false,
-                                },
+                            update: {
+                                updatedBy: MigrationUserSuperAdminId,
                             },
-                        },
-                        update: {},
-                    });
-                })
+                        });
+                    }
+                },
+                { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
             this.logger.error(error, 'Error seeding users');
@@ -288,7 +310,21 @@ export class MigrationUserSeed
         this.logger.log('Removing back Users...');
 
         try {
-            await this.databaseService.client.user.deleteMany({});
+            await this.databaseService.withTransaction(
+                async tx => {
+                    await tx.twoFactor.deleteMany({});
+                    await tx.session.deleteMany({});
+                    await tx.userMobileNumber.deleteMany({});
+                    await tx.verification.deleteMany({});
+                    await tx.passwordHistory.deleteMany({});
+                    await tx.forgotPassword.deleteMany({});
+                    await tx.activityLog.deleteMany({});
+                    await tx.termPolicyUserAcceptance.deleteMany({});
+                    await tx.notificationUserSetting.deleteMany({});
+                    await tx.user.deleteMany({});
+                },
+                { timeout: this.seedTransactionTimeoutInMs }
+            );
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing users');
             throw error;

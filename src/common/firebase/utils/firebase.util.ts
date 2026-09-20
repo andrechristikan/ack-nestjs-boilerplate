@@ -1,13 +1,12 @@
-import { createPrivateKey } from 'crypto';
+import { createPrivateKey } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { FirebasePrivateKeyPemMarker } from '@common/firebase/constants/firebase.constant';
-import { IFirebaseUtil } from '@common/firebase/interfaces/firebase.util.interface';
 
 /**
  * Normalizes the service-account private key into a PEM the Admin SDK accepts.
  */
 @Injectable()
-export class FirebaseUtil implements IFirebaseUtil {
+export class FirebaseUtil {
     normalizePrivateKey(rawKey: string | null): string | null {
         const unescaped = (rawKey ?? '').replace(/\\n/g, '\n');
 

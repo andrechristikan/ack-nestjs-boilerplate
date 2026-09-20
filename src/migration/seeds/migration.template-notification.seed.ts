@@ -1,6 +1,6 @@
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { NotificationTemplateAccountDomain } from '@modules/notification/domains/notification.template.account.domain';
 import { NotificationTemplateSecurityDomain } from '@modules/notification/domains/notification.template.security.domain';
 import { NotificationTemplateTermPolicyDomain } from '@modules/notification/domains/notification.template.term-policy.domain';
@@ -89,151 +89,151 @@ export class MigrationTemplateEmailNotificationSeed
             this.logger.log(
                 'Change Password Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateSecurityDomain.emailImportChangePassword()
-            );
+            const changePasswordEmailImport =
+                this.notificationTemplateSecurityDomain.emailImportChangePassword();
+            promises.push(changePasswordEmailImport);
         }
 
         if (!welcomeSocialEmail) {
             this.logger.log(
                 'Welcome Social Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateAccountDomain.emailImportWelcomeSocial()
-            );
+            const welcomeSocialEmailImport =
+                this.notificationTemplateAccountDomain.emailImportWelcomeSocial();
+            promises.push(welcomeSocialEmailImport);
         }
 
         if (!welcomeByAdminEmail) {
             this.logger.log(
                 'Welcome By Admin Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateAccountDomain.emailImportWelcomeByAdmin()
-            );
+            const welcomeByAdminEmailImport =
+                this.notificationTemplateAccountDomain.emailImportWelcomeByAdmin();
+            promises.push(welcomeByAdminEmailImport);
         }
 
         if (!emailVerifiedEmail) {
             this.logger.log(
                 'Email Verified Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateAccountDomain.emailImportVerifiedEmail()
-            );
+            const emailVerifiedEmailImport =
+                this.notificationTemplateAccountDomain.emailImportVerifiedEmail();
+            promises.push(emailVerifiedEmailImport);
         }
 
         if (!forgotPasswordEmail) {
             this.logger.log(
                 'Forgot Password Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateSecurityDomain.emailImportForgotPassword()
-            );
+            const forgotPasswordEmailImport =
+                this.notificationTemplateSecurityDomain.emailImportForgotPassword();
+            promises.push(forgotPasswordEmailImport);
         }
 
         if (!mobileNumberVerifiedEmail) {
             this.logger.log(
                 'Mobile Number Verified Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateAccountDomain.emailImportVerifiedMobileNumber()
-            );
+            const mobileNumberVerifiedEmailImport =
+                this.notificationTemplateAccountDomain.emailImportVerifiedMobileNumber();
+            promises.push(mobileNumberVerifiedEmailImport);
         }
 
         if (!tempPasswordEmail) {
             this.logger.log(
                 'Temporary Password Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateSecurityDomain.emailImportTemporaryPasswordByAdmin()
-            );
+            const tempPasswordEmailImport =
+                this.notificationTemplateSecurityDomain.emailImportTemporaryPasswordByAdmin();
+            promises.push(tempPasswordEmailImport);
         }
 
         if (!verificationEmail) {
             this.logger.log(
                 'Verification Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateAccountDomain.emailImportVerificationEmail()
-            );
+            const verificationEmailImport =
+                this.notificationTemplateAccountDomain.emailImportVerificationEmail();
+            promises.push(verificationEmailImport);
         }
 
         if (!welcomeEmail) {
             this.logger.log('Welcome Email template missing, importing...');
-            promises.push(
-                this.notificationTemplateAccountDomain.emailImportWelcome()
-            );
+            const welcomeEmailImport =
+                this.notificationTemplateAccountDomain.emailImportWelcome();
+            promises.push(welcomeEmailImport);
         }
 
         if (!resetTwoFactorByAdminEmail) {
             this.logger.log(
                 'Reset Two Factor By Admin Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateSecurityDomain.emailImportResetTwoFactorByAdmin()
-            );
+            const resetTwoFactorByAdminEmailImport =
+                this.notificationTemplateSecurityDomain.emailImportResetTwoFactorByAdmin();
+            promises.push(resetTwoFactorByAdminEmailImport);
         }
 
         if (!newDeviceLoginEmail) {
             this.logger.log(
                 'New Device Login Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateSecurityDomain.emailImportNewDeviceLogin()
-            );
+            const newDeviceLoginEmailImport =
+                this.notificationTemplateSecurityDomain.emailImportNewDeviceLogin();
+            promises.push(newDeviceLoginEmailImport);
         }
 
         if (!publishTermPolicyEmail) {
             this.logger.log(
                 'Publish Term Policy Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateTermPolicyDomain.emailImportPublishTermPolicy()
-            );
+            const publishTermPolicyEmailImport =
+                this.notificationTemplateTermPolicyDomain.emailImportPublishTermPolicy();
+            promises.push(publishTermPolicyEmailImport);
         }
 
         if (!resetPasswordEmail) {
             this.logger.log(
                 'Reset Password Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateSecurityDomain.emailImportResetPassword()
-            );
+            const resetPasswordEmailImport =
+                this.notificationTemplateSecurityDomain.emailImportResetPassword();
+            promises.push(resetPasswordEmailImport);
         }
 
         if (!workspaceInviteEmail) {
             this.logger.log(
                 'Workspace Invite Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateWorkspaceDomain.emailImportWorkspaceInvite()
-            );
+            const workspaceInviteEmailImport =
+                this.notificationTemplateWorkspaceDomain.emailImportWorkspaceInvite();
+            promises.push(workspaceInviteEmailImport);
         }
 
         if (!workspaceJoinRequestEmail) {
             this.logger.log(
                 'Workspace Join Request Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateWorkspaceDomain.emailImportWorkspaceJoinRequest()
-            );
+            const workspaceJoinRequestEmailImport =
+                this.notificationTemplateWorkspaceDomain.emailImportWorkspaceJoinRequest();
+            promises.push(workspaceJoinRequestEmailImport);
         }
 
         if (!workspaceJoinAcceptedEmail) {
             this.logger.log(
                 'Workspace Join Accepted Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateWorkspaceDomain.emailImportWorkspaceJoinAccepted()
-            );
+            const workspaceJoinAcceptedEmailImport =
+                this.notificationTemplateWorkspaceDomain.emailImportWorkspaceJoinAccepted();
+            promises.push(workspaceJoinAcceptedEmailImport);
         }
 
         if (!workspaceJoinRejectedEmail) {
             this.logger.log(
                 'Workspace Join Rejected Email template missing, importing...'
             );
-            promises.push(
-                this.notificationTemplateWorkspaceDomain.emailImportWorkspaceJoinRejected()
-            );
+            const workspaceJoinRejectedEmailImport =
+                this.notificationTemplateWorkspaceDomain.emailImportWorkspaceJoinRejected();
+            promises.push(workspaceJoinRejectedEmailImport);
         }
 
         if (promises.length > 0) {

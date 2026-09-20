@@ -1,13 +1,13 @@
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
-import {
+import type {
     IAnalyticApiKeyActiveExpired,
     IAnalyticApiKeyLifecycle,
     IAnalyticCountBucket,
 } from '@modules/analytic/interfaces/analytic.interface';
-import { IApiKeyAnalyticCreatedRow } from '@modules/api-key/interfaces/api-key.analytic.repository.interface';
+import type { IApiKeyAnalyticCreated } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyAnalyticRepository } from '@modules/api-key/repositories/api-key.analytic.repository';
 import { Injectable } from '@nestjs/common';
-import { EnumActivityLogAction } from '@generated/prisma-client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 
 @Injectable()
 export class ApiKeyAnalyticDomain {
@@ -64,7 +64,7 @@ export class ApiKeyAnalyticDomain {
     findCreatedInRange(
         startDate: Date,
         endDate: Date
-    ): Promise<IApiKeyAnalyticCreatedRow[]> {
+    ): Promise<IApiKeyAnalyticCreated[]> {
         return this.apiKeyAnalyticRepository.findCreatedInRange(
             startDate,
             endDate

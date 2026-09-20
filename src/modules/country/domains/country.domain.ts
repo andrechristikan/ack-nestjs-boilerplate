@@ -1,6 +1,7 @@
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { Country, Prisma } from '@generated/prisma-client';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client/client';
+import type { Country } from '@generated/prisma-client/client';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { CountryRepository } from '@modules/country/repositories/country.repository';
 import { Injectable } from '@nestjs/common';

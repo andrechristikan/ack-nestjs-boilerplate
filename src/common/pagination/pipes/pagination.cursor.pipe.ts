@@ -1,4 +1,5 @@
-import { Injectable, PipeTransform, Type, mixin } from '@nestjs/common';
+import { Injectable, mixin } from '@nestjs/common';
+import type { PipeTransform, Type } from '@nestjs/common';
 import {
     PaginationDefaultCursorField,
     PaginationDefaultMaxPerPage,
@@ -6,7 +7,7 @@ import {
     PaginationMaxCursorLength,
     PaginationStoreKey,
 } from '@common/pagination/constants/pagination.constant';
-import {
+import type {
     IPaginationCursorPipeReturn,
     IPaginationQuery,
     IPaginationSearchPipeReturn,

@@ -8,7 +8,7 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
@@ -25,27 +25,24 @@ import {
     RoleAdminListDoc,
     RoleAdminUpdateDoc,
 } from '@modules/role/docs/role.admin.doc';
-import {
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import {
-    RoleCreateRequestDto,
-    RoleCreateRequestSchema,
-} from '@modules/role/dtos/request/role.create.request.dto';
-import {
-    RoleUpdateRequestDto,
-    RoleUpdateRequestSchema,
-} from '@modules/role/dtos/request/role.update.request.dto';
+import { RoleCreateRequestSchema } from '@modules/role/dtos/request/role.create.request.dto';
+import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
+import { RoleUpdateRequestSchema } from '@modules/role/dtos/request/role.update.request.dto';
+import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { RoleDto, RoleSchema } from '@modules/role/dtos/role.dto';
+import { RoleSchema } from '@modules/role/dtos/role.dto';
+import type { RoleDto } from '@modules/role/dtos/role.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
     PaginationOffsetQuery,
@@ -56,14 +53,12 @@ import {
     RoleDefaultAvailableSearch,
     RoleDefaultType,
 } from '@modules/role/constants/role.list.constant';
-import {
+import type {
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
-    RoleListResponseDto,
-    RoleListResponseSchema,
-} from '@modules/role/dtos/response/role.list.response.dto';
+import { RoleListResponseSchema } from '@modules/role/dtos/response/role.list.response.dto';
+import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 
 @ApiTags('modules.admin.role')
 @Controller({

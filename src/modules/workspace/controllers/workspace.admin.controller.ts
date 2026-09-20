@@ -2,17 +2,17 @@ import {
     PaginationOffsetQuery,
     PaginationQueryFilterEqualBoolean,
 } from '@common/pagination/decorators/pagination.decorator';
-import {
+import type {
     IPaginationEqual,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-import {
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
@@ -21,8 +21,8 @@ import {
     EnumPolicySubject,
     EnumRoleType,
     Prisma,
-    Workspace,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { Workspace } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
@@ -41,7 +41,7 @@ import {
 } from '@modules/workspace/docs/workspace.admin.doc';
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
-import { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
 import { WorkspaceMemberHttpService } from '@modules/workspace/services/workspace.member.http.service';
 import { Controller, Get, Param } from '@nestjs/common';

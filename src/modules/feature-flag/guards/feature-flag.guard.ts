@@ -1,7 +1,8 @@
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { FeatureFlagKeyPathMetaKey } from '@modules/feature-flag/constants/feature-flag.constant';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 
@@ -38,13 +39,18 @@ export class FeatureFlagGuard implements CanActivate {
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
         const rawAnonymousId = request.headers[this.anonymousHeaderName];
-        const anonymousId =
-            typeof rawAnonymousId !== 'string' ||
-            rawAnonymousId.length === 0 ||
-            rawAnonymousId.length > this.anonymousIdMaxLength ||
-            !this.anonymousIdPattern.test(rawAnonymousId)
-                ? null
-                : rawAnonymousId;
+        let anonymousId: string | null = null;
+        if (
+            typeof rawAnonymousId === 'string' &&
+            rawAnonymousId.length > 0 &&
+            rawAnonymousId.length <= this.anonymousIdMaxLength
+        ) {
+            const isAnonymousIdValid =
+                this.anonymousIdPattern.test(rawAnonymousId);
+            if (isAnonymousIdValid) {
+                anonymousId = rawAnonymousId;
+            }
+        }
 
         await this.featureFlagDomain.validateFeatureFlag(
             featureFlagKeyPath,

@@ -1,16 +1,18 @@
 import { AwsS3PresignResponseSchema } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
-import { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
+import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { FileUploadSingle } from '@common/file/decorators/file.decorator';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
-import { IFile } from '@common/file/interfaces/file.interface';
+import type { IFile } from '@common/file/interfaces/file.interface';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import { FileRequiredPipe } from '@common/file/pipes/file.required.pipe';
-import { RequestTimeout } from '@common/request/decorators/request.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import {
+    RequestThrottle,
+    RequestTimeout,
+} from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { Response } from '@common/response/decorators/response.decorator';
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -19,7 +21,7 @@ import {
     AuthJwtToken,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
-import {
+import type {
     IAuthJwtAccessTokenPayload,
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
@@ -48,54 +50,36 @@ import {
     UserSharedUpdateProfileDoc,
     UserSharedUploadPhotoProfileDoc,
 } from '@modules/user/docs/user.shared.doc';
-import {
-    UserChangePasswordRequestDto,
-    UserChangePasswordRequestSchema,
-} from '@modules/user/dtos/request/user.change-password.request.dto';
-import {
-    UserClaimUsernameRequestDto,
-    UserClaimUsernameRequestSchema,
-} from '@modules/user/dtos/request/user.claim-username.request.dto';
-import {
-    UserGeneratePhotoProfileRequestDto,
-    UserGeneratePhotoProfileRequestSchema,
-} from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
-import {
-    UserAddMobileNumberRequestDto,
-    UserAddMobileNumberRequestSchema,
-    UserUpdateMobileNumberRequestDto,
-    UserUpdateMobileNumberRequestSchema,
-} from '@modules/user/dtos/request/user.mobile-number.request.dto';
-import {
-    UserUpdateProfilePhotoRequestDto,
-    UserUpdateProfilePhotoRequestSchema,
-    UserUpdateProfileRequestDto,
-    UserUpdateProfileRequestSchema,
-} from '@modules/user/dtos/request/user.profile.request.dto';
-import {
-    UserTwoFactorDisableRequestDto,
-    UserTwoFactorDisableRequestSchema,
-} from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
-import {
-    UserTwoFactorRegenerateBackupCodeRequestDto,
-    UserTwoFactorRegenerateBackupCodeRequestSchema,
-} from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
-import {
-    UserTwoFactorEnableRequestDto,
-    UserTwoFactorEnableRequestSchema,
-} from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
+import { UserChangePasswordRequestSchema } from '@modules/user/dtos/request/user.change-password.request.dto';
+import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
+import { UserClaimUsernameRequestSchema } from '@modules/user/dtos/request/user.claim-username.request.dto';
+import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
+import { UserGeneratePhotoProfileRequestSchema } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
+import type { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
+import { UserAddMobileNumberRequestSchema } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
+import { UserUpdateMobileNumberRequestSchema } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
+import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
+import type { UserUpdateMobileNumberRequestDto } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
+import { UserUpdateProfilePhotoRequestSchema } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
+import { UserUpdateProfileRequestSchema } from '@modules/user/dtos/request/user.update-profile.request.dto';
+import type { UserUpdateProfilePhotoRequestDto } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
+import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
+import { UserTwoFactorDisableRequestSchema } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
+import type { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
+import { UserTwoFactorRegenerateBackupCodeRequestSchema } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
+import type { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
+import { UserTwoFactorEnableRequestSchema } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
+import type { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
+import { UserTwoFactorSetupRequestSchema } from '@modules/user/dtos/request/user.two-factor-setup.request.dto';
+import type { UserTwoFactorSetupRequestDto } from '@modules/user/dtos/request/user.two-factor-setup.request.dto';
 import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
-import {
-    UserTwoFactorEnableResponseDto,
-    UserTwoFactorEnableResponseSchema,
-} from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import { UserTwoFactorEnableResponseSchema } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserTwoFactorSetupResponseSchema } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
-import {
-    UserTwoFactorStatusResponseDto,
-    UserTwoFactorStatusResponseSchema,
-} from '@modules/user/dtos/response/user.two-factor-status.response.dto';
+import { UserTwoFactorStatusResponseSchema } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
+import type { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserMobileNumberResponseSchema } from '@modules/user/dtos/response/user.mobile-number.response.dto';
-import {
+import type {
     IUser,
     IUserMobileNumber,
     IUserProfile,
@@ -375,9 +359,11 @@ export class UserSharedController {
     @HttpCode(HttpStatus.OK)
     @Post('/2fa/setup')
     async setupTwoFactor(
-        @UserCurrent() user: IUser
+        @UserCurrent() user: IUser,
+        @Body({ schema: UserTwoFactorSetupRequestSchema })
+        body: UserTwoFactorSetupRequestDto
     ): Promise<IResponseReturn<IUserTwoFactorSetup>> {
-        return this.userTwoFactorHttpService.setupTwoFactor(user);
+        return this.userTwoFactorHttpService.setupTwoFactor(user, body);
     }
 
     @UserSharedTwoFactorEnableDoc()

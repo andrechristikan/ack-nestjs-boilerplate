@@ -1,15 +1,16 @@
-import {
+import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma, Project, WorkspaceMember } from '@generated/prisma-client';
-import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
-import { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
-import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
+import { Prisma } from '@generated/prisma-client/client';
+import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
+import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
+import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { Injectable } from '@nestjs/common';
 
@@ -49,9 +50,9 @@ export class ProjectHttpService {
     }
 
     getProject(project: Project): IResponseReturn<Project> {
-        return {
-            data: this.projectDomain.getProject(project),
-        };
+        const current = this.projectDomain.getProject(project);
+
+        return { data: current };
     }
 
     async updateProject(

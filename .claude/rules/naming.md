@@ -6,9 +6,9 @@
 <module>.<noun-or-action>[.<sub>].<role>.ts
 ```
 
-- Every file starts with the `<module>.` prefix. No exception — `user.not-found.exception.ts`, never `not-found.exception.ts`.
+- Every file under `src/` starts with the `<module>.` prefix — `user.not-found.exception.ts`, never `not-found.exception.ts`. The root bootstrap files are the one exception: `src/main.ts`, `src/migration.ts`, `src/instrument.ts` and `src/swagger.ts` carry no prefix and no role suffix, and each has an exact alias (`@main`, `@migration`, `@instrument`, `@swagger`). Generated code under `src/generated/**` is named by its generator. A file under `scripts/` is kebab-case for what it does (`generate-secret.ts`).
 - A dot separates segments. A dash appears ONLY inside one segment, for a compound noun: `user.mobile-number.dto.ts`, `notification.email.processor.ts`, `user.forgot-password-reset.request.dto.ts`.
-- Folders are lowercase kebab-case. A folder that holds a kind of file is plural: `domains/`, `services/`, `caches/`, `queues/`, `factories/`, `utils/`, `repositories/`. Feature folders and kit modules keep the module name (`user/`, `src/common/cache/`).
+- Folders are lowercase kebab-case. A folder that holds a kind of file is plural: `domains/`, `services/`, `caches/`, `queues/`, `factories/`, `utils/`, `repositories/`, `contracts/`. Feature folders and kit modules keep the module name (`user/`, `src/common/cache/`).
 
 ### Role suffix (closed list)
 
@@ -16,7 +16,7 @@
 .domain    .service   .repository   .controller   .guard   .strategy   .decorator
 .interceptor   .filter   .middleware   .pipe   .processor   .indicator
 .factory   .validation   .util   .queue   .cache   .dto   .doc   .module
-.enum   .constant   .interface   .exception
+.enum   .constant   .interface   .exception   .contract
 ```
 
 Four more are valid, but ONLY inside the one tree that owns them — they are not general-purpose suffixes:
@@ -45,7 +45,7 @@ A repository is the persistence port (`rules/architecture.md`):
 
 ```
 <module>[.<concern>].repository.ts            →  <Module>[<Concern>]Repository
-<module>[.<concern>].repository.interface.ts  →  I<Module>[<Concern>]Repository
+<module>.[<concern>-]repository.interface.ts  →  I<Module>[<Concern>]Repository
 ```
 
 Domain is a role of its own, not a `Service`. It lives under `domains/`, and it does not merge
@@ -111,19 +111,13 @@ provide exist:
   `ResponseDto` does not belong there** — it belongs in the folder its
   direction names.
 
-- **One file MAY hold sibling DTOs of ONE concern, and it is named for the concern, not for any
-  one class.** `user.check.request.dto.ts` holds `UserCheckUsernameRequestDto` and
-  `UserCheckEmailRequestDto`; `user.mobile-number.request.dto.ts` holds
-  `UserAddMobileNumberRequestDto` and `UserUpdateMobileNumberRequestDto`;
-  `user.profile.request.dto.ts` holds `UserUpdateProfileRequestDto` and
-  `UserUpdateProfilePhotoRequestDto`. The siblings are normally variants of each other, built
-  with the zod combinators — `.extend()`, `.pick()`, `.omit()`, `.partial()`.
-
-  So a file name that does not match an export name is NOT a violation on its own. **Open the
-  file before calling one:** the question is whether every class in it belongs to the concern
-  the file names, not whether the first class happens to spell it out. Two unrelated concerns
-  in one file is the defect.
+- **One DTO file holds ONE schema and its `Dto` type, and the file is named for that schema.**
+  `user.check-email.request.dto.ts` holds `UserCheckEmailRequestSchema` +
+  `UserCheckEmailRequestDto`; its sibling `user.check-username.request.dto.ts` is its own file
+  and may build on it with the zod combinators — `.extend()`, `.pick()`, `.omit()`,
+  `.partial()` (`rules/dto.md`). A file holding a second schema is the defect.
 - **One exception per file.** `<module>.<kebab-error>.exception.ts` — `user.password-not-match.exception.ts`. Never a barrel of exception classes.
+- **Controllers** are `<module>.<scope>.controller.ts` → `<Module><Scope>Controller` (`user.admin.controller.ts` → `UserAdminController`). One file per scope, with no concern segment: a scope is one controller whatever its size, and the scope is never folded into a hyphenated word — `user-admin` names no scope this project has.
 - **Swagger doc files** are `<module>.<scope>.doc.ts` under `docs/` (`user.admin.doc.ts`), exporting one decorator factory per endpoint.
 
 ## Identifier conventions
@@ -144,18 +138,62 @@ provide exist:
 | Response schema + type | `<Module>...ResponseSchema` / `<Module>...ResponseDto` | `UserProfileResponseSchema`, `UserProfileResponseDto` |
 | Payload interface | `I<Module><Action>Payload` | `INotificationSendPushPayload` |
 | Data shape | `I` + PascalCase | `IUser`, `IRequestLog`, `IActivityLogMetadata` |
+| Narrowed list read | `I<Module>List` | `IUserList`, `ISessionList` |
+| Prisma select constant | `<Module>[<Audience>][<Concern>]Select` | `UserAdminListSelect`, `UserRefSelect` |
+| Contract table + its row | `<Module><Concept>Contract` / `I<Module><Concept>Contract` | `ActivityLogActionContract`, `UserCreateContract` |
+
+**`Row` is not a suffix here.** A type describing one record of a narrowed read is named for
+what the read returns — `IUserList`, `IAnalyticNearLockout` — never `…Row`. The plural sits in
+the method's return type, not in the name of the shape.
+
+**A select constant names its audience only when it has one.** `UserAdminListSelect` serves the
+admin list and says so; a constant several audiences read keeps a neutral name and a JSDoc that
+claims none. A name that promises an audience the code does not enforce is worse than a plain
+one.
+
+A contract is a table the code decides by rather than a value it merely holds: which metadata an
+activity action requires, which channels a notification kind allows, which defaults a create mode
+writes. It lives in `contracts/` of the module that owns the decision, or of the kit module when
+the decision is the kit's (`src/common/file/contracts/`). Its row carries an `I<…>Contract`
+interface when the row is a shape; a table whose rows are plain values needs none.
 
 ## Rules that get broken most often
 
 - **Every type name starts with `I`.** Interfaces, payload shapes, option bags, data shapes. `IUser`, not `User` (the bare name belongs to the Prisma generated model — colliding with it is the exact confusion the prefix prevents). Data-shape interfaces describe DATA, not domain/HTTP/processor behavior. The one behavioral header is `I*Repository` — the persistence port (`rules/architecture.md`).
 - **An `I*` declaration lives under `interfaces/`, not in the class file.** The repository
-  port is `interfaces/<module>[.<concern>].repository.interface.ts` beside
+  port is `interfaces/<module>.[<concern>-]repository.interface.ts` beside
   `repositories/<module>[.<concern>].repository.ts` that `implements` it. Data-shape
-  interfaces for a concern sit in `interfaces/<module>[.<concern>].interface.ts` (or a
-  focused sibling under `interfaces/`). Exporting the interface from the same file as the
+  interfaces for a concern sit in `interfaces/<module>[.<concern>].interface.ts`, the module's
+  collection. Exporting the interface from the same file as the
   `@Injectable()` class that implements or primarily uses it is the defect — the class file
   imports the interface. Config interfaces beside `registerAs` in `src/configs/*.config.ts`
   stay with the config file (`rules/config.md`).
+- **A filename carries at most FOUR dot-separated name parts, an `*.interface.ts` at most
+  THREE.** Extra middle segments collapse with `-`, and the last part before the kind stays the
+  role: `user.password-repository.interface.ts`,
+  `device.ownership-analytic-repository.interface.ts`. A spec mirrors its source name plus
+  `.spec.ts` and is counted before that suffix, so it may carry one part more.
+- **At most three constants files.** `constants/<module>.constant.ts` holds what the module
+  owns — store and metadata keys, Prisma selects, and any other constant of its own;
+  `<module>.doc.constant.ts` holds the Swagger `@ApiParam` / `@ApiQuery` arrays
+  (`rules/http.md`) and exists only when the module has those arrays;
+  `<module>.list.constant.ts` holds the list-endpoint allow-lists and filter defaults
+  (`rules/pagination.md`) and exists only when the module has a list endpoint. An empty
+  constants file is the defect — delete it. A fourth file split by some other concern is the
+  defect — that constant belongs in `<module>.constant.ts`.
+- **One contract per file.** `contracts/<module>.<concept>.contract.ts` exports one table
+  (`rules/code-style.md` tags it `@public`). Two tables in a file means two files.
+- **A data constant never lives in a class file.** A list, a map, a threshold, a set of enum
+  members a class reads — it belongs in one of the module's constants files above,
+  imported by the class. A module-scope `const` inside a domain, service, repository, controller, guard,
+  util, cache or processor file is the defect, whatever its casing. What legitimately sits at
+  module scope in those trees is the class itself; a decorator in a `*.decorator.ts`, a schema
+  in a `*.validation.ts`, and the exported doc factory functions in a `*.doc.ts` are that file's
+  own subject, not data.
+- **One interface per file, except the module's own collection.** A behavioural header — an
+  `I*Repository` port — is alone in its file. Data shapes and type aliases for a concern collect
+  in `interfaces/<module>[.<concern>].interface.ts`, which is what that file is FOR; a shape
+  does not get a file of its own to be symmetric with the port.
 - **Enums are `Enum`-prefixed PascalCase with camelCase keys AND camelCase string values.** `UPPER_SNAKE_CASE` is wrong on both halves. Error-code enums use numeric values instead (`EnumUserStatusCodeError.notFound = 51000`); see `rules/exceptions.md`.
 - **One enum concern per file**, named `<module>.<concern>.enum.ts`. Status-code enums always get their own file: `<module>.status-code.enum.ts`.
 - **Constants are PascalCase for everything** — typed objects, arrays, and lone primitives alike. No `UPPER_SNAKE_CASE`, no `camelCase`.
@@ -213,7 +251,8 @@ constants, not for DI tokens.
 ### Redis keys
 
 A Redis key is a full `keyPattern` string in a config file, with `{placeholder}` tokens the
-consumer fills via `.replace('{token}', value)`. Canonical form:
+consumer fills — `HelperStringService.fillPattern` for two or more, a function-form
+`.replace()` for one (`rules/code-style.md`). Canonical form:
 `'User:{userId}:Session:{sessionId}'`.
 
 - **Every segment is `PascalCase`.** Never `user:...:session:...` and never an inline

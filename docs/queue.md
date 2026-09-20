@@ -1,6 +1,6 @@
 # Queue Documentation
 
-This documentation explains the features and usage of **Queue Module**: Located at `src/queues`
+The BullMQ framework layer lives in `src/queues`. Named queues are registered by the owning feature.
 
 ## Overview
 
@@ -67,7 +67,7 @@ The queue system consists of:
 
 Named queues are registered on the owning feature's domain module with `BullModule.registerQueueAsync({ name, configKey: QueueConfigKey, useClass: <Feature>[<Concern>]QueueFactory })`. The factory lives at `factories/<module>[.<concern>].queue.factory.ts` and sets that queue's job defaults. Processors are not registered inside `src/queues`. Each one is a provider of its own feature's `<feature>.processor.module.ts` (`NotificationProcessorModule`, `WorkspaceProcessorModule`), and `RouterProcessorModule` (`src/router/processor/router.processor.module.ts`) imports every one of them. `RouterModule` imports `RouterProcessorModule` alongside the five HTTP route modules, so booting the API boots the workers in the same process.
 
-Producers and workers do not share one connection. `queue.module.ts` calls `BullModule.forRootAsync` twice: once under `QueueConfigKey` for the producer side (connection name `{APP_NAME}-{APP_ENV}:queue`) and once under `QueueProcessorConfigKey` for the worker side (connection name `{APP_NAME}-{APP_ENV}:processor`). Both use `redis.queue.url` and the queue Redis namespace as prefix. Register a queue with `configKey: QueueConfigKey`; the `@QueueProcessor` decorator already binds `QueueProcessorConfigKey` for you. The constraint when changing this: `rules/queue.md`.
+Producers and workers do not share one connection. `queue.module.ts` calls `BullModule.forRootAsync` twice: once under `QueueConfigKey` for the producer side (connection name `{APP_NAME}-{APP_ENV}:queue`) and once under `QueueProcessorConfigKey` for the worker side (connection name `{APP_NAME}-{APP_ENV}:processor`). Both use `redis.queue.url` and the queue Redis namespace as prefix. A named queue registers with `configKey: QueueConfigKey`; the `@QueueProcessor` decorator binds `QueueProcessorConfigKey` itself. The constraint when changing this: `rules/queue.md`.
 
 ## Available Queues
 
@@ -160,7 +160,7 @@ For example, the `notificationEmail` queue:
 }
 ```
 
-You can override these options when adding jobs to the queue.
+A single `add()` call overrides any of these options for that job.
 
 ## Creating New Queue
 
@@ -223,9 +223,10 @@ export class NotificationPushProcessor extends QueueProcessorBase {
     private readonly logger = new Logger(NotificationPushProcessor.name);
 
     constructor(
-        private readonly notificationPushProcessorService: NotificationPushProcessorService
+        private readonly notificationPushProcessorService: NotificationPushProcessorService,
+        sentryService: SentryService
     ) {
-        super();
+        super(sentryService);
     }
 
     async process(
@@ -287,7 +288,7 @@ A processor module imports whatever its processor services depend on: `Workspace
 
 ## QueueProcessorBase
 
-`QueueProcessorBase` is the base class for all queue processors, extending `WorkerHost` from BullMQ with additional error handling, Sentry integration for monitoring fatal errors, retry logic support, and automatic failed job event handling.
+`QueueProcessorBase` is the base class for all queue processors. It extends `WorkerHost` from BullMQ, takes the global `SentryService` in its constructor, and reports a fatal job failure to Sentry once, from the `failed` worker event.
 
 ### Implementation
 
@@ -295,10 +296,17 @@ Location: `src/queues/bases/queue.processor.base.ts`
 
 ```typescript
 export abstract class QueueProcessorBase extends WorkerHost {
+    constructor(protected readonly sentryService: SentryService) {
+        super();
+    }
+
     @OnWorkerEvent('failed')
     onFailed(job: Job<unknown, null, string>, error: Error): void {
         const maxAttempts = job.opts.attempts ?? 1;
-        const isLastAttempt = job.attemptsMade >= maxAttempts - 1;
+        const isLastAttempt =
+            error instanceof UnrecoverableError ||
+            error.name === 'UnrecoverableError' ||
+            job.attemptsMade >= maxAttempts;
 
         if (isLastAttempt) {
             let isFatal = true;
@@ -308,9 +316,7 @@ export abstract class QueueProcessorBase extends WorkerHost {
             }
 
             if (isFatal) {
-                try {
-                    Sentry.captureException(error);
-                } catch (_) {}
+                this.sentryService.captureException(error);
             }
         }
     }
@@ -321,13 +327,15 @@ export abstract class QueueProcessorBase extends WorkerHost {
 
 ### Behavior
 
-1. **On Job Failure**: The `onFailed` method is automatically triggered
-2. **Retry Check**: Determines if this is the last retry attempt
+1. **On Job Failure**: The `onFailed` method is triggered by the BullMQ `failed` worker event
+2. **Retry Check**: The failure is final when BullMQ will not retry it: `attemptsMade` (which already counts the failed attempt) has reached `attempts`, or the error is an `UnrecoverableError`
 3. **Error Classification**:
    - `QueueException` with `isFatal: true` → Reports to Sentry
    - `QueueException` with `isFatal: false` → Does not report to Sentry
-   - Other exceptions → Reports to Sentry (treated as fatal)
-4. **Sentry Reporting**: Only reports on the final retry attempt to avoid duplicate alerts
+   - Other exceptions, `UnrecoverableError` included → Reports to Sentry (treated as fatal)
+4. **Sentry Reporting**: Reports once per job, on the final failure, through `SentryService.captureException`
+
+A processor throws `UnrecoverableError` for a failure no retry can fix; `NotificationEmailProcessor` does so for a payload that fails to decrypt (see [Notification][ref-doc-notification]).
 
 ## QueueException
 
@@ -336,7 +344,7 @@ export abstract class QueueProcessorBase extends WorkerHost {
 ### Usage
 
 ```typescript
-// Fatal error - will be reported to Sentry on last retry
+// Fatal error - reported to Sentry on the final failure
 throw new QueueException('Critical payment processing failed', true);
 
 // Non-fatal error - will not be reported to Sentry
@@ -355,11 +363,11 @@ throw new QueueException('Minor validation error');
 
 When a job fails:
 1. The `QueueProcessorBase` catches the error
-2. On the last retry attempt:
+2. On the final failure (last attempt, or an `UnrecoverableError`):
    - If error is `QueueException` with `isFatal: true` → Reports to Sentry
    - If error is `QueueException` with `isFatal: false` → Does not report to Sentry
    - If error is any other exception → Reports to Sentry (treated as fatal)
-3. On non-last retry attempts → Never reports to Sentry
+3. On a failure BullMQ will retry → Does not report to Sentry
 
 ## Bull Board Dashboard
 
@@ -401,3 +409,4 @@ redis-bullboard:
 
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
+[ref-doc-notification]: notification.md

@@ -1,13 +1,12 @@
-import {
+import { HttpStatus, Injectable } from '@nestjs/common';
+import type {
     CallHandler,
     ExecutionContext,
-    HttpStatus,
-    Injectable,
     NestInterceptor,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { Response } from 'express';
+import type { Response } from 'express';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { MessageService } from '@common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
@@ -15,10 +14,10 @@ import {
     ResponseMessagePathMetaKey,
     ResponseSchemaMetaKey,
 } from '@common/response/constants/response.constant';
-import { ResponseDto } from '@common/response/dtos/response.dto';
-import { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
-import { IMessageProperties } from '@common/message/interfaces/message.interface';
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { ResponseDto } from '@common/response/dtos/response.dto';
+import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
+import type { IMessageProperties } from '@common/message/interfaces/message.interface';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { ResponseSerializationException } from '@common/response/exceptions/response.serialization.exception';
 
@@ -87,10 +86,11 @@ export class ResponseInterceptor<T> implements NestInterceptor {
                         const { metadata: responseMetadata } = responseData;
 
                         const payload = responseData.data ?? undefined;
-                        data =
-                            payload === undefined
-                                ? undefined
-                                : await this.serialize(schema, payload);
+                        if (payload === undefined) {
+                            data = undefined;
+                        } else {
+                            data = await this.serialize(schema, payload);
+                        }
                         httpStatus = responseMetadata?.httpStatus ?? httpStatus;
                         statusCode = responseMetadata?.statusCode ?? statusCode;
                         messagePath =

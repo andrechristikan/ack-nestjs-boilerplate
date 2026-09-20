@@ -1,5 +1,6 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { Injectable } from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
+import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Reflector } from '@nestjs/core';
 import {
@@ -18,11 +19,11 @@ export class UserGuard implements CanActivate {
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const isVerified =
-            this.reflector.get<boolean>(
-                UserGuardIsVerifiedMetaKey,
-                context.getHandler()
-            ) ?? false;
+        const isVerifiedRequired = this.reflector.get<boolean>(
+            UserGuardIsVerifiedMetaKey,
+            context.getHandler()
+        );
+        const isVerified = isVerifiedRequired ?? false;
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
 

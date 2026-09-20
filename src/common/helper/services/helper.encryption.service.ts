@@ -1,113 +1,137 @@
-import { IHelperEncryptionService } from '@common/helper/interfaces/helper.encryption.service.interface';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
+import {
+    HelperEncryptionAlgorithm,
+    HelperEncryptionAuthTagLengthInBytes,
+    HelperEncryptionIvLengthInBytes,
+    HelperEncryptionKeyDigest,
+    HelperEncryptionKeyLengthInBytes,
+    HelperEncryptionPayloadSeparator,
+    HelperEncryptionSaltLengthInBytes,
+    HelperEncryptionSecretLengthInBytes,
+} from '@common/helper/constants/helper.constant';
+import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
+import { HelperEncryptionSecretInvalidException } from '@common/helper/exceptions/helper.encryption-secret-invalid.exception';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { AES, SHA256, enc, lib, mode, pad } from 'crypto-js';
+import {
+    createCipheriv,
+    createDecipheriv,
+    hkdfSync,
+    randomBytes,
+} from 'node:crypto';
 
+/**
+ * AES-256-GCM with a key derived by HKDF-SHA-256 from a base64url-encoded 48-byte secret, a random per-payload salt and the purpose, and the context bound as authenticated data.
+ */
 @Injectable()
-export class HelperEncryptionService implements IHelperEncryptionService {
-    private readonly encryptionSecretKey: string;
-
-    constructor(
-        private readonly configService: ConfigService,
-        private readonly helperStringService: HelperStringService
-    ) {
-        this.encryptionSecretKey = this.configService.get<string>(
-            'app.encryptionSecretKey'
-        )!;
-    }
-
-    private parseAesIv(iv: string): lib.WordArray {
-        if (!iv) {
-            throw new Error('AES IV parsing failed: missing IV value');
-        } else if (iv.startsWith('hex:')) {
-            const stringIv = iv.slice(4);
-            if (!stringIv) {
-                throw new Error('AES IV parsing failed: missing IV value');
-            }
-
-            return enc.Hex.parse(stringIv);
-        } else if (iv.startsWith('b64:')) {
-            const stringIv = iv.slice(4);
-            if (!stringIv) {
-                throw new Error('AES IV parsing failed: missing IV value');
-            }
-
-            return enc.Base64.parse(stringIv);
+export class HelperEncryptionService {
+    private decodeSecret(secret: string): Buffer {
+        const decoded = Buffer.from(secret, 'base64url');
+        if (
+            decoded.toString('base64url') !== secret ||
+            decoded.length !== HelperEncryptionSecretLengthInBytes
+        ) {
+            throw new HelperEncryptionSecretInvalidException();
         }
 
-        return enc.Utf8.parse(iv);
+        return decoded;
     }
 
-    base64Encrypt(data: string): string {
-        const buff: Buffer = Buffer.from(data, 'utf8');
-        return buff.toString('base64');
+    private deriveKey(secret: Buffer, salt: Buffer, purpose: string): Buffer {
+        return Buffer.from(
+            hkdfSync(
+                HelperEncryptionKeyDigest,
+                secret,
+                salt,
+                purpose,
+                HelperEncryptionKeyLengthInBytes
+            )
+        );
     }
 
-    base64Decrypt(data: string): string {
-        const buff: Buffer = Buffer.from(data, 'base64');
-        return buff.toString('utf8');
+    private decodePart(part: string): Buffer | null {
+        const decoded = Buffer.from(part, 'base64url');
+
+        return decoded.toString('base64url') === part ? decoded : null;
     }
 
-    base64Compare(basicToken1: string, basicToken2: string): boolean {
-        return basicToken1 === basicToken2;
-    }
-
-    aes256Encrypt<T>(data: T, key: string, iv: string): string {
-        const cIv = this.parseAesIv(iv);
-        const cKey = SHA256(key);
-        const cipher = AES.encrypt(JSON.stringify(data), cKey, {
-            mode: mode.CBC,
-            padding: pad.Pkcs7,
-            iv: cIv,
-        });
-
-        return cipher.toString();
-    }
-
-    aes256EncryptSimple(data: string, extendEncryptionKey?: string): string {
-        const randomIv = this.helperStringService.random(16);
-        const encryptionKey = extendEncryptionKey
-            ? `${this.encryptionSecretKey}:${extendEncryptionKey}`
-            : this.encryptionSecretKey;
-        const encrypted = this.aes256Encrypt(data, encryptionKey, randomIv);
-
-        return `${randomIv}:${encrypted}`;
-    }
-
-    aes256Decrypt<T>(encrypted: string, key: string, iv: string): T {
-        const cIv = this.parseAesIv(iv);
-        const cKey = SHA256(key);
-
-        const decrypted = AES.decrypt(encrypted, cKey, {
-            mode: mode.CBC,
-            padding: pad.Pkcs7,
-            iv: cIv,
-        }).toString(enc.Utf8);
-
-        if (!decrypted) {
-            throw new Error('AES-256-CBC decryption failed');
-        }
-
-        return JSON.parse(decrypted);
-    }
-
-    aes256DecryptSimple(
-        encryptedData: string,
-        extendEncryptionKey?: string
+    aes256Encrypt(
+        plaintext: string,
+        secret: string,
+        purpose: string,
+        context: string
     ): string {
-        const [iv, encrypted] = encryptedData.split(':');
-        if (!iv || !encrypted) {
-            throw new Error('Invalid encrypted data format');
-        }
+        const secretKey = this.decodeSecret(secret);
 
-        const encryptionKey = extendEncryptionKey
-            ? `${this.encryptionSecretKey}:${extendEncryptionKey}`
-            : this.encryptionSecretKey;
-        return this.aes256Decrypt(encrypted, encryptionKey, iv);
+        const salt = randomBytes(HelperEncryptionSaltLengthInBytes);
+        const iv = randomBytes(HelperEncryptionIvLengthInBytes);
+        const derivedKey = this.deriveKey(secretKey, salt, purpose);
+        const cipher = createCipheriv(
+            HelperEncryptionAlgorithm,
+            derivedKey,
+            iv,
+            { authTagLength: HelperEncryptionAuthTagLengthInBytes }
+        );
+        cipher.setAAD(Buffer.from(context, 'utf8'));
+        const ciphertext = Buffer.concat([
+            cipher.update(plaintext, 'utf8'),
+            cipher.final(),
+        ]);
+        const authTag = cipher.getAuthTag();
+
+        return [
+            salt.toString('base64url'),
+            iv.toString('base64url'),
+            ciphertext.toString('base64url'),
+            authTag.toString('base64url'),
+        ].join(HelperEncryptionPayloadSeparator);
     }
 
-    aes256Compare(aes1: string, aes2: string): boolean {
-        return aes1 === aes2;
+    aes256Decrypt(
+        payload: string,
+        secret: string,
+        purpose: string,
+        context: string
+    ): string {
+        const secretKey = this.decodeSecret(secret);
+
+        const parts = payload.split(HelperEncryptionPayloadSeparator);
+        if (parts.length !== 4) {
+            throw new HelperDecryptFailedException();
+        }
+
+        const [saltPart, ivPart, ciphertextPart, authTagPart] = parts;
+        const salt = this.decodePart(saltPart);
+        const iv = this.decodePart(ivPart);
+        const ciphertext = this.decodePart(ciphertextPart);
+        const authTag = this.decodePart(authTagPart);
+        if (
+            !salt ||
+            !iv ||
+            !ciphertext ||
+            !authTag ||
+            salt.length !== HelperEncryptionSaltLengthInBytes ||
+            iv.length !== HelperEncryptionIvLengthInBytes ||
+            authTag.length !== HelperEncryptionAuthTagLengthInBytes
+        ) {
+            throw new HelperDecryptFailedException();
+        }
+
+        try {
+            const derivedKey = this.deriveKey(secretKey, salt, purpose);
+            const decipher = createDecipheriv(
+                HelperEncryptionAlgorithm,
+                derivedKey,
+                iv,
+                { authTagLength: HelperEncryptionAuthTagLengthInBytes }
+            );
+            decipher.setAAD(Buffer.from(context, 'utf8'));
+            decipher.setAuthTag(authTag);
+
+            return Buffer.concat([
+                decipher.update(ciphertext),
+                decipher.final(),
+            ]).toString('utf8');
+        } catch (error: unknown) {
+            throw new HelperDecryptFailedException(error);
+        }
     }
 }

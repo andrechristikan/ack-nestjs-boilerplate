@@ -1,6 +1,7 @@
-import { EnumPolicySubject, Policy } from '@generated/prisma-client';
-import { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
-import { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
+import { EnumPolicySubject } from '@generated/prisma-client/client';
+import type { Policy } from '@generated/prisma-client/client';
+import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 
 export interface IPolicyRepository {
     findManyByRoleId(roleId: string): Promise<Policy[]>;

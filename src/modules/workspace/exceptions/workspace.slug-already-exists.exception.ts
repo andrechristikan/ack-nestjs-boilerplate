@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
+/**
+ * Raised when a workspace slug is already taken.
+ * @public
+ */
 export class WorkspaceSlugAlreadyExistsException extends AppBaseException {
     readonly module = 'workspace';
     readonly statusCode = EnumWorkspaceStatusCodeError.slugAlreadyExists;

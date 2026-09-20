@@ -7,7 +7,7 @@ import {
     EnumPaginationOrderDirectionType,
     EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
-import {
+import type {
     IPaginationCursorArgs,
     IPaginationCursorReturn,
     IPaginationCursorValue,
@@ -16,7 +16,6 @@ import {
     IPaginationOrderBy,
     IPaginationRepository,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IPaginationService } from '@common/pagination/interfaces/pagination.service.interface';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { Injectable } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
@@ -27,7 +26,7 @@ import { PaginationFailedToEncodeCursorException } from '@common/pagination/exce
 import { PaginationFailedToDecodeCursorException } from '@common/pagination/exceptions/pagination.failed-to-decode-cursor.exception';
 
 @Injectable()
-export class PaginationService implements IPaginationService {
+export class PaginationService {
     constructor(private readonly helperHashService: HelperHashService) {}
 
     private canonicalize(value: unknown): unknown {
@@ -55,8 +54,10 @@ export class PaginationService implements IPaginationService {
     }
 
     private fingerprint(where: unknown, orderBy: IPaginationOrderBy[]): string {
+        const canonical = this.canonicalize({ where, orderBy });
+
         return this.helperHashService
-            .sha256Hash(JSON.stringify(this.canonicalize({ where, orderBy })))
+            .sha256Hash(JSON.stringify(canonical))
             .slice(0, PaginationCursorFingerprintLength);
     }
 
@@ -82,7 +83,8 @@ export class PaginationService implements IPaginationService {
         }
 
         try {
-            const padded = cursor + '='.repeat((4 - (cursor.length % 4)) % 4);
+            const padding = '='.repeat((4 - (cursor.length % 4)) % 4);
+            const padded = `${cursor}${padding}`;
             const base64 = padded.replaceAll(/-/g, '+').replaceAll(/_/g, '/');
             const decoded = JSON.parse(
                 Buffer.from(base64, 'base64').toString()
@@ -129,28 +131,13 @@ export class PaginationService implements IPaginationService {
         return [...resolved, { [cursorField]: direction }];
     }
 
-    async offset<TReturn, TArgsWhere = unknown>(
-        repository: IPaginationRepository,
-        args: IPaginationOffsetArgs<TArgsWhere>
-    ): Promise<IPaginationOffsetReturn<TReturn>> {
-        const { limit, skip, where, include } = args;
-        const orderBy = this.resolveOrderBy(args.orderBy);
-
+    offsetPage<TReturn>(
+        items: TReturn[],
+        count: number,
+        params: { skip: number; limit: number }
+    ): IPaginationOffsetReturn<TReturn> {
+        const { skip, limit } = params;
         const currentPage = Math.floor(skip / limit) + 1;
-
-        const [count, items] = await Promise.all([
-            repository.count({
-                where,
-            }),
-            repository.findMany({
-                where,
-                skip,
-                take: limit,
-                orderBy,
-                include,
-            }),
-        ]);
-
         const totalPage = Math.ceil(count / limit);
         const hasNext = currentPage < totalPage;
         const hasPrevious = currentPage > 1;
@@ -165,10 +152,34 @@ export class PaginationService implements IPaginationService {
             totalPage,
             hasNext,
             hasPrevious,
-            data: items as TReturn[],
+            data: items,
             ...(nextPage && { nextPage }),
             ...(previousPage && { previousPage }),
         };
+    }
+
+    async offset<TReturn, TArgsWhere = unknown>(
+        repository: IPaginationRepository,
+        args: IPaginationOffsetArgs<TArgsWhere>
+    ): Promise<IPaginationOffsetReturn<TReturn>> {
+        const { limit, skip, where, include, select } = args;
+        const orderBy = this.resolveOrderBy(args.orderBy);
+
+        const [count, items] = await Promise.all([
+            repository.count({
+                where,
+            }),
+            repository.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy,
+                include,
+                select,
+            }),
+        ]);
+
+        return this.offsetPage(items as TReturn[], count, { skip, limit });
     }
 
     async cursor<TReturn, TArgsWhere = unknown>(
@@ -179,6 +190,7 @@ export class PaginationService implements IPaginationService {
             limit,
             where,
             include,
+            select,
             cursor,
             cursorField = PaginationDefaultCursorField,
             includeCount,
@@ -189,11 +201,7 @@ export class PaginationService implements IPaginationService {
         let decodedCursor: IPaginationCursorValue | undefined;
 
         if (cursor) {
-            try {
-                decodedCursor = this.decodeCursor(cursor);
-            } catch {
-                throw new PaginationInvalidCursorFormatException();
-            }
+            decodedCursor = this.decodeCursor(cursor);
 
             if (decodedCursor.fingerprint !== fingerprint) {
                 throw new PaginationInvalidCursorPaginationParamsException();
@@ -211,6 +219,7 @@ export class PaginationService implements IPaginationService {
                 skip: cursor ? 1 : 0,
                 orderBy,
                 include,
+                select,
             }),
         ];
 

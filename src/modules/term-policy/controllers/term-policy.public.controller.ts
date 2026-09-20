@@ -2,12 +2,12 @@ import {
     PaginationCursorQuery,
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
-import {
+import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     TermPolicyDefaultAvailableOrderBy,
@@ -18,11 +18,8 @@ import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/ter
 import { TermPolicyHttpService } from '@modules/term-policy/services/term-policy.http.service';
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import {
-    EnumTermPolicyType,
-    Prisma,
-    TermPolicy,
-} from '@generated/prisma-client';
+import { EnumTermPolicyType, Prisma } from '@generated/prisma-client/client';
+import type { TermPolicy } from '@generated/prisma-client/client';
 
 @ApiTags('modules.public.termPolicy')
 @Controller({

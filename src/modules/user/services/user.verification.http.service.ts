@@ -1,5 +1,5 @@
-import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
-import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
+import type { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
+import type { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { Injectable } from '@nestjs/common';
 

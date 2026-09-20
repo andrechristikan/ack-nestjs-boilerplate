@@ -10,7 +10,8 @@ explorer or planner.
 
 `db:generate` (`prisma generate`) · `db:format` (`prisma format`) · `prisma validate`. All
 three read and write files only. Run `db:generate` after a schema edit so
-`generated/prisma-client` matches what you wrote and the code you hand back typechecks.
+`src/generated/prisma-client/` matches what you wrote and the code you hand back typechecks.
+`pnpm generate` runs it together with `generate:package`.
 
 ## What the owner runs
 

@@ -1,11 +1,11 @@
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
-import {
+import type {
     IAnalyticMetricRate,
     IAnalyticMobileChurn,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { UserMobileNumberAnalyticRepository } from '@modules/user/repositories/user.mobile-number.analytic.repository';
 import { Injectable } from '@nestjs/common';
-import { EnumActivityLogAction } from '@generated/prisma-client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 
 @Injectable()
 export class UserMobileNumberAnalyticDomain {

@@ -1,6 +1,10 @@
 import { faker } from '@faker-js/faker';
-import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
+import type { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 
+/**
+ * Swagger path parameter `sessionId`.
+ * @public
+ */
 export const SessionDocParamsId: ApiParamOptions[] = [
     {
         name: 'sessionId',
@@ -11,6 +15,10 @@ export const SessionDocParamsId: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger query parameters of the admin session list: `isRevoked`.
+ * @public
+ */
 export const SessionDocQueryList: ApiQueryOptions[] = [
     {
         name: 'isRevoked',
@@ -18,5 +26,6 @@ export const SessionDocQueryList: ApiQueryOptions[] = [
         required: false,
         type: 'boolean',
         example: true,
+        description: 'Filter by revoked session. Omit to return both',
     },
 ];

@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { EnumRoleType } from '@generated/prisma-client';
+import { EnumRoleType } from '@generated/prisma-client/client';
 import { PolicySchema } from '@modules/policy/dtos/policy.dto';
 
 /**
  * Base role shape: the stored role row with the policies it grants.
+ * @public
  */
 export const RoleSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -30,4 +31,8 @@ export const RoleSchema = DatabaseResponseSchema.omit({
     }),
 });
 
+/**
+ * Stored role with the policies it grants.
+ * @public
+ */
 export type RoleDto = z.infer<typeof RoleSchema>;

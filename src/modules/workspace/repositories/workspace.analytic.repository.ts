@@ -1,6 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
-import { IWorkspaceAnalyticRepository } from '@modules/workspace/interfaces/workspace.analytic.repository.interface';
+import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import type { IWorkspaceAnalyticRepository } from '@modules/workspace/interfaces/workspace.analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

@@ -1,13 +1,13 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
-import { EnumActivityLogAction } from '@generated/prisma-client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
 import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.mobile-number-invalid.exception';
 import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
-import {
+import type {
     IUserMobileNumber,
     IUserMobileNumberInput,
 } from '@modules/user/interfaces/user.interface';
@@ -48,23 +48,26 @@ export class UserMobileNumberDomain {
         }
 
         try {
-            return await this.databaseService.withTransaction(async tx => {
-                const row = await this.userMobileNumberRepository.addInTx(
-                    tx,
-                    userId,
-                    {
+            const events = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userAddMobileNumber,
+                }),
+            ];
+            const row = await this.databaseService.withTransaction(async tx => {
+                const mobileNumber =
+                    await this.userMobileNumberRepository.addInTx(tx, userId, {
                         number,
                         countryId,
                         phoneCode,
-                    }
-                );
+                    });
                 await this.userDomain.touchUpdatedByInTx(tx, userId);
-                this.activityLogDomain.stage({
-                    action: EnumActivityLogAction.userAddMobileNumber,
-                });
 
-                return row;
+                return mobileNumber;
             });
+
+            this.activityLogDomain.stagePrepared(events);
+
+            return row;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -115,25 +118,31 @@ export class UserMobileNumberDomain {
                 : false;
 
         try {
-            return await this.databaseService.withTransaction(async tx => {
-                const row = await this.userMobileNumberRepository.updateInTx(
-                    tx,
-                    userId,
-                    checkMobileNumberExist.id,
-                    {
-                        number,
-                        countryId,
-                        phoneCode,
-                    },
-                    isVerified
-                );
-                await this.userDomain.touchUpdatedByInTx(tx, userId);
-                this.activityLogDomain.stage({
+            const events = [
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userUpdateMobileNumber,
-                });
+                }),
+            ];
+            const row = await this.databaseService.withTransaction(async tx => {
+                const mobileNumber =
+                    await this.userMobileNumberRepository.updateInTx(
+                        tx,
+                        checkMobileNumberExist.id,
+                        {
+                            number,
+                            countryId,
+                            phoneCode,
+                        },
+                        isVerified
+                    );
+                await this.userDomain.touchUpdatedByInTx(tx, userId);
 
-                return row;
+                return mobileNumber;
             });
+
+            this.activityLogDomain.stagePrepared(events);
+
+            return row;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -157,18 +166,25 @@ export class UserMobileNumberDomain {
         }
 
         try {
-            return await this.databaseService.withTransaction(async tx => {
-                const row = await this.userMobileNumberRepository.deleteInTx(
-                    tx,
-                    mobileNumberId
-                );
-                await this.userDomain.touchUpdatedByInTx(tx, userId);
-                this.activityLogDomain.stage({
+            const events = [
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userDeleteMobileNumber,
-                });
+                }),
+            ];
+            const row = await this.databaseService.withTransaction(async tx => {
+                const mobileNumber =
+                    await this.userMobileNumberRepository.deleteInTx(
+                        tx,
+                        mobileNumberId
+                    );
+                await this.userDomain.touchUpdatedByInTx(tx, userId);
 
-                return row;
+                return mobileNumber;
             });
+
+            this.activityLogDomain.stagePrepared(events);
+
+            return row;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;

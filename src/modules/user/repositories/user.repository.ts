@@ -1,20 +1,20 @@
-import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import {
+import type {
     IPaginationEqual,
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { TwoFactorActiveBackupCodesFilter } from '@modules/user/constants/user.constant';
-import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
-import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import {
+import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
+import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
+import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
+import type {
     IUser,
     IUserContact,
     IUserCreateWithWorkspaceInput,
@@ -22,7 +22,7 @@ import {
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
-import { IUserRepository } from '@modules/user/interfaces/user.repository.interface';
+import type { IUserRepository } from '@modules/user/interfaces/user.repository.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumTermPolicyType,
@@ -30,11 +30,11 @@ import {
     EnumUserLoginWith,
     EnumUserStatus,
     Prisma,
-    User,
-} from '@generated/prisma-client';
-import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+} from '@generated/prisma-client/client';
+import type { User } from '@generated/prisma-client/client';
+import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { TermPolicyAcceptedColumnMap } from '@modules/term-policy/constants/term-policy.constant';
-import { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
+import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
 
 @Injectable()
 export class UserRepository implements IUserRepository {
@@ -313,8 +313,9 @@ export class UserRepository implements IUserRepository {
         tx: IDatabaseTransactionClient,
         input: IUserCreateWithWorkspaceInput
     ): Promise<IUser> {
+        const createData = this.buildUserCreateData(input);
         const user = await tx.user.create({
-            data: this.buildUserCreateData(input),
+            data: createData,
             include: {
                 role: { include: { policies: true } },
             },
@@ -333,43 +334,36 @@ export class UserRepository implements IUserRepository {
     async updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        { status }: UserUpdateStatusRequestDto,
-        updatedBy: string
+        { status }: UserUpdateStatusRequestDto
     ): Promise<User> {
         return tx.user.update({
             where: { id, deletedAt: null },
             data: {
                 status,
-                updatedBy,
             },
         });
     }
 
-    async updateProfileInTx(
-        tx: IDatabaseTransactionClient,
+    async updateProfile(
         userId: string,
         { countryId, ...data }: UserUpdateProfileRequestDto
     ): Promise<User> {
-        return tx.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 ...data,
                 countryId,
-                updatedBy: userId,
             },
         });
     }
 
-    async updatePhotoProfileInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        photo: IAwsS3
-    ): Promise<User> {
-        return tx.user.update({
+    async updatePhotoProfile(userId: string, photo: IAwsS3): Promise<User> {
+        const plainPhoto = this.databaseUtil.toPlainObject(photo);
+
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
-                photo: this.databaseUtil.toPlainObject(photo),
-                updatedBy: userId,
+                photo: plainPhoto,
             },
         });
     }
@@ -388,16 +382,26 @@ export class UserRepository implements IUserRepository {
         }) as Promise<User>;
     }
 
-    async claimUsernameInTx(
-        tx: IDatabaseTransactionClient,
+    async claimUsername(
         userId: string,
         { username }: UserClaimUsernameRequestDto
     ): Promise<User> {
-        return tx.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 username,
-                updatedBy: userId,
+            },
+        });
+    }
+
+    async setLastWorkspace(userId: string, workspaceId: string): Promise<void> {
+        const today = this.helperDateService.create();
+
+        await this.databaseService.client.user.update({
+            where: { id: userId },
+            data: {
+                lastWorkspaceId: workspaceId,
+                lastWorkspaceChangedAt: today,
             },
         });
     }
@@ -414,7 +418,6 @@ export class UserRepository implements IUserRepository {
             data: {
                 lastWorkspaceId: workspaceId,
                 lastWorkspaceChangedAt: today,
-                updatedBy: userId,
             },
         });
     }
@@ -460,11 +463,23 @@ export class UserRepository implements IUserRepository {
     async deactivateForMaxPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<User> {
-        return tx.user.update({
+    ): Promise<void> {
+        await tx.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 status: EnumUserStatus.inactive,
+                updatedBy: userId,
+            },
+        });
+    }
+
+    async markVerified(userId: string, verifiedAt: Date): Promise<User> {
+        return this.databaseService.client.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                isVerified: true,
+                verifiedAt,
+                updatedBy: userId,
             },
         });
     }

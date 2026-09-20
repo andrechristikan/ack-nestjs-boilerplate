@@ -1,11 +1,11 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
@@ -13,12 +13,12 @@ import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/excepti
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyRequiredInvalidException } from '@modules/term-policy/exceptions/term-policy.required-invalid.exception';
 import { TermPolicyAcceptedColumnMap } from '@modules/term-policy/constants/term-policy.constant';
-import { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
+import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
-import { EnumTermPolicyType, Prisma } from '@generated/prisma-client';
+import { EnumTermPolicyType, Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyAcceptanceDomain {
@@ -109,19 +109,24 @@ export class TermPolicyAcceptanceDomain {
         }
 
         try {
+            const events = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userAcceptTermPolicy,
+                }),
+            ];
             await this.databaseService.withTransaction(async tx => {
+                const acceptedAt = this.helperDateService.create();
                 await this.termPolicyRepository.acceptInTx(
                     tx,
                     user.id,
                     policy.id,
                     user.id,
-                    this.helperDateService.create()
+                    acceptedAt
                 );
                 await this.userDomain.acceptTermPolicyInTx(tx, user.id, type);
-                this.activityLogDomain.stage({
-                    action: EnumActivityLogAction.userAcceptTermPolicy,
-                });
             });
+
+            this.activityLogDomain.stagePrepared(events);
 
             await this.notificationQueue.sendUserAcceptTermPolicy(user.id, {
                 termPolicyId: policy.id,

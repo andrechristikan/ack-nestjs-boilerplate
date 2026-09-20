@@ -2,6 +2,7 @@
     "error": {
         "validation": "There are validation errors.",
         "schemaMissing": "The request could not be validated. Please try again later.",
+        "contextMissing": "The request could not be processed. Please try again later.",
         "invalidType": "{property} is not of the expected type.",
         "tooSmall": "{property} is shorter than the minimum allowed.",
         "tooBig": "{property} is longer than the maximum allowed.",

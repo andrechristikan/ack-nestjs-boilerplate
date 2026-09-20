@@ -24,20 +24,49 @@ A notification job payload is a BullMQ `job.data` shape, so its interface follow
 
 ## Templates
 
-- A rendered notification (email body, term-policy document) is a **Handlebars template** (`.hbs`, `EnumFileExtensionTemplate`) rendered through the template service — never string-concatenated in a service.
-- Template content is **seeded initial data** (`rules/seeding.md`): the `migration.template-notification.seed.ts` / `migration.template-term-policy.seed.ts` seeds populate it. Adding a template means adding it to the seed, not hardcoding it in a processor.
-- The template service resolves and renders; the processor-service calls it and hands the result to the channel client (`AwsSESService` / `FirebaseService`). A processor does not build markup.
+- An email body is an **SES template**: a Handlebars file (`.hbs`) under
+  `src/modules/notification/templates/`, uploaded to SES by the
+  `NotificationTemplate<Concern>Domain` classes through `AwsSESService.createTemplate`. A send
+  names the template and passes `templateData`; no service builds markup or concatenates a body.
+- Uploading is seeded initial data (`rules/seeding.md`): `migration.template-notification.seed.ts`
+  and `migration.template-term-policy.seed.ts` call those domains. Adding a template means
+  adding the file and its seed entry, not hardcoding it in a sender.
 
 ## Layering inside the module
 
 The notification module carries more moving parts than most; keep the roles distinct:
 
-- **`*.queue.ts`** builds the typed queue payload from caller inputs and enqueues it — `NotificationQueue`, `NotificationEmailQueue`, `NotificationPushQueue`, one per queue in `queues/`. This is where a caller-facing "send X" entry point lives, and `NotificationDomainModule` exports all three so a caller injects the class directly (`rules/queue.md`).
-- **`*.processor.ts`** is the BullMQ dispatcher — `extends QueueProcessorBase`, switches on `job.name`, returns `IQueueResponse` (`rules/queue.md`). No sending logic inline.
-- **`*.processor.service.ts`** does the real work for one channel: resolve tokens/recipients, render the template, call `AwsSESService` / `FirebaseService`.
-- A recipient with no token/address is a no-op the processor-service handles, not an exception — a missing push token is not a failed job.
+- **`*.queue.ts`** builds the typed queue payload from caller inputs, encrypts its sensitive
+  fields, and enqueues it — `NotificationQueue`, `NotificationEmailQueue`,
+  `NotificationPushQueue`, one per queue in `queues/`. This is where a caller-facing "send X"
+  entry point lives, and `NotificationDomainModule` exports all three so a caller injects the
+  class directly (`rules/queue.md`).
+- **`*.processor.ts`** is the BullMQ dispatcher — `extends QueueProcessorBase`, switches on
+  `job.name`, returns `IQueueResponse` (`rules/queue.md`). No sending logic inline.
+- **`*.processor.service.ts`** translates the job for one queue and calls the domain that owns
+  the work.
+- **Domains** decide and send: `Notification<Concern>Domain` writes the `Notification` row and
+  fans out to the channel queues; `NotificationEmail<Concern>Domain` sends through
+  `AwsSESService`; `NotificationPush<Concern>Domain` sends through `FirebaseService`.
+- A recipient with no token/address is a no-op the sender handles, not an exception — a
+  missing push token is not a failed job.
 
 ## Security
 
-- **A notification never carries a credential in its payload or template** (`rules/security.md`). A temporary password or verification link is the one sanctioned secret-ish value and it rides the typed payload explicitly — never logged, never placed in activity metadata.
-- Push tokens are per-user data resolved at send time from the repository, not passed around in logs. The cleanup path (`INotificationPushCleanupTokenQueuePayload`) prunes dead tokens; it reads failure tokens, it does not emit them to a log.
+- **A secret in a notification payload is encrypted by the queue class** (`rules/queue.md`):
+  a generated password, and a verification, reset, invite-accept, sign-up or join-request
+  review link. The producer passes plaintext to the queue class; the field in the job is named
+  `encrypted<Field>` (`encryptedPassword`, `encryptedLink`, `encryptedInviteAcceptLink`,
+  `encryptedJoinRequestReviewLink`). Encryption uses the app root secret,
+  `NotificationPayloadEncryptionPurpose`, and the recipient user id as context — the invite
+  reference for an invitee with no account (`rules/security.md`).
+- **The main queue forwards ciphertext unchanged**; only the email domain that renders the value
+  decrypts it, immediately before the SES call. The decrypted value goes into `templateData` and
+  nowhere else — never a log, never activity metadata, never a job return value.
+- **A push job carries no secret.** Its payload is built field by field from the non-secret
+  data (dates, names).
+- **A payload that fails to decrypt is unrecoverable**: `NotificationEmailProcessor` rethrows
+  `HelperDecryptFailedException` as BullMQ's `UnrecoverableError`, so it is not retried.
+- Push tokens are per-user data resolved at send time from the repository, not passed around in
+  logs. The cleanup path (`INotificationPushCleanupTokenQueuePayload`) prunes dead tokens; it
+  reads failure tokens, it does not emit them to a log.

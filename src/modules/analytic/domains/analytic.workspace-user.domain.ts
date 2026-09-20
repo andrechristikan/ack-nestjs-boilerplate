@@ -1,6 +1,6 @@
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import {
+import type {
     IAnalyticMetricCount,
     IAnalyticRoleCount,
     IAnalyticStatusCount,
@@ -30,12 +30,11 @@ export class AnalyticWorkspaceUserDomain {
         startDate?: Date,
         endDate?: Date
     ): Promise<IAnalyticWorkspaceSummary> {
-        const key =
-            workspaceId +
-            ':' +
-            this.analyticDateUtil.cacheToken(startDate) +
-            ':' +
-            this.analyticDateUtil.cacheToken(endDate);
+        const key = this.analyticDateUtil.workspaceWindowToken(
+            workspaceId,
+            startDate,
+            endDate
+        );
         const cached =
             await this.analyticCache.getDashboard<IAnalyticWorkspaceSummary>(
                 'workspace.summary',

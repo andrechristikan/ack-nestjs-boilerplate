@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { IApiKeyGenerateCredential } from '@modules/api-key/interfaces/api-key.interface';
+import type { IApiKeyGenerateCredential } from '@modules/api-key/interfaces/api-key.interface';
 
 /** Mints and verifies the API key credential pair. */
 @Injectable()
@@ -41,7 +41,8 @@ export class ApiKeyCredentialUtil {
      * Generates a fresh key/secret pair plus the hash to persist.
      */
     generateCredential(key?: string): IApiKeyGenerateCredential {
-        key = key ?? this.createKey();
+        const generatedKey = this.createKey();
+        key = key ?? generatedKey;
         const secret = this.createSecret();
         const hash: string = this.createHash(key, secret);
 

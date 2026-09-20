@@ -1,15 +1,15 @@
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import {
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type {
     IAnalyticCountBucket,
     IAnalyticMetricRate,
 } from '@modules/analytic/interfaces/analytic.interface';
-import { IAnalyticNearLockoutRow } from '@modules/analytic/interfaces/analytic.anomaly.interface';
-import {
+import type { IAnalyticNearLockout } from '@modules/analytic/interfaces/analytic.anomaly.interface';
+import type {
     IUserAnalyticGroupCount,
     IUserAnalyticRef,
-    IUserAnalyticSignUpRow,
-} from '@modules/user/interfaces/user.analytic.repository.interface';
+    IUserAnalyticSignUp,
+} from '@modules/user/interfaces/user.interface';
 import { UserAnalyticRepository } from '@modules/user/repositories/user.analytic.repository';
 import { Injectable } from '@nestjs/common';
 import {
@@ -17,7 +17,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 
 @Injectable()
 export class UserAnalyticDomain {
@@ -103,7 +103,7 @@ export class UserAnalyticDomain {
         return this.userAnalyticRepository.countActive();
     }
 
-    findNearLockout(minAttempt: number): Promise<IAnalyticNearLockoutRow[]> {
+    findNearLockout(minAttempt: number): Promise<IAnalyticNearLockout[]> {
         return this.userAnalyticRepository.findNearLockout(minAttempt);
     }
 
@@ -118,7 +118,7 @@ export class UserAnalyticDomain {
     listNearLockoutOffset(
         minAttempt: number,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticNearLockoutRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticNearLockout>> {
         return this.userAnalyticRepository.listNearLockoutOffset(
             minAttempt,
             params
@@ -128,7 +128,7 @@ export class UserAnalyticDomain {
     findSignUpsInRange(
         startDate: Date,
         endDate: Date
-    ): Promise<IUserAnalyticSignUpRow[]> {
+    ): Promise<IUserAnalyticSignUp[]> {
         return this.userAnalyticRepository.findSignUpsInRange(
             startDate,
             endDate

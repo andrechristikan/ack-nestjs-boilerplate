@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
 import { v7, validate } from 'uuid';
 
 /**

@@ -1,6 +1,6 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import {
+import type {
     IHelloApp,
     IHelloMessage,
 } from '@modules/hello/interfaces/hello.interface';

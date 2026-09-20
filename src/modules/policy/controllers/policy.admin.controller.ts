@@ -1,12 +1,12 @@
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { Response } from '@common/response/decorators/response.decorator';
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
@@ -16,19 +16,14 @@ import {
     PolicyAdminListDoc,
     PolicyAdminUpdateDoc,
 } from '@modules/policy/docs/policy.admin.doc';
-import { PolicyDto, PolicySchema } from '@modules/policy/dtos/policy.dto';
-import {
-    PolicyRequestDto,
-    PolicyRequestSchema,
-} from '@modules/policy/dtos/request/policy.request.dto';
-import {
-    PolicyUpdateRequestDto,
-    PolicyUpdateRequestSchema,
-} from '@modules/policy/dtos/request/policy.update.request.dto';
-import {
-    PolicyListResponseDto,
-    PolicyListResponseSchema,
-} from '@modules/policy/dtos/response/policy.list.response.dto';
+import { PolicySchema } from '@modules/policy/dtos/policy.dto';
+import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
+import { PolicyRequestSchema } from '@modules/policy/dtos/request/policy.request.dto';
+import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import { PolicyUpdateRequestSchema } from '@modules/policy/dtos/request/policy.update.request.dto';
+import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
+import { PolicyListResponseSchema } from '@modules/policy/dtos/response/policy.list.response.dto';
+import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
 import { PolicyHttpService } from '@modules/policy/services/policy.http.service';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';

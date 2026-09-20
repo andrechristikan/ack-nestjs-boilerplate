@@ -2,11 +2,12 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { EnumPasswordHistoryType } from '@generated/prisma-client';
+import { EnumPasswordHistoryType } from '@generated/prisma-client/client';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
 /**
  * Base password-history shape: one recorded password of a user, without the stored hash.
+ * @public
  */
 export const PasswordHistoryResponseSchema = DatabaseResponseSchema.omit({
     updatedAt: true,
@@ -52,6 +53,10 @@ export const PasswordHistoryResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
+/**
+ * Recorded password of a user without the stored hash.
+ * @public
+ */
 export type PasswordHistoryResponseDto = z.infer<
     typeof PasswordHistoryResponseSchema
 >;

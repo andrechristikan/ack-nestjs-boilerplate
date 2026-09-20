@@ -1,6 +1,6 @@
 import { FileSizeInBytes } from '@common/file/constants/file.constant';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
-import { IRequestThrottlePolicy } from '@common/request/interfaces/request.interface';
+import type { IRequestThrottlePolicy } from '@common/request/interfaces/request.interface';
 import { registerAs } from '@nestjs/config';
 import bytes from 'bytes';
 import ms from 'ms';
@@ -134,8 +134,8 @@ export default registerAs('request', (): IConfigRequest => ({
             },
         },
         headerPrefix: 'X-RateLimit',
-        keyPattern: 'Request:Throttler:{name}:{tracker}',
-        blockKeyPattern: 'Request:Throttler:Block:{name}:{tracker}',
-        sequenceKeyPattern: 'Request:Throttler:Seq:{name}:{tracker}',
+        keyPattern: 'Request:Throttle:{name}:{tracker}',
+        blockKeyPattern: 'Request:Throttle:Block:{name}:{tracker}',
+        sequenceKeyPattern: 'Request:Throttle:Seq:{name}:{tracker}',
     },
 }));

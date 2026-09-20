@@ -3,9 +3,10 @@ import { WorkspaceProcessorService } from '@modules/workspace/services/workspace
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
+import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { EnumQueue } from '@queues/enums/queue.enum';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /**
  * Consumes the workspace queue; currently only the recurring stale-invite expiry sweep.
@@ -15,9 +16,10 @@ export class WorkspaceProcessor extends QueueProcessorBase {
     private readonly logger = new Logger(WorkspaceProcessor.name);
 
     constructor(
-        private readonly workspaceProcessorService: WorkspaceProcessorService
+        private readonly workspaceProcessorService: WorkspaceProcessorService,
+        sentryService: SentryService
     ) {
-        super();
+        super(sentryService);
     }
 
     /** Dispatches each job to its handler by job name. */

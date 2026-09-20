@@ -1,15 +1,15 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import {
+import type {
     IPaginationEqual,
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumRoleType,
@@ -21,17 +21,20 @@ import {
     EnumUserStatus,
     EnumVerificationType,
     Prisma,
-    User,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { User } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
-import { UserCreateModeRules } from '@modules/user/constants/user.create-mode.constant';
+import { SessionDomain } from '@modules/session/domains/session.domain';
+import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
+import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 import { UserBlockedForbiddenException } from '@modules/user/exceptions/user.blocked-forbidden.exception';
 import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
@@ -46,20 +49,20 @@ import { UserPasswordExpiredException } from '@modules/user/exceptions/user.pass
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.username-not-allowed.exception';
-import {
+import type {
     IUser,
     IUserCheckEmail,
     IUserCheckUsername,
     IUserContact,
     IUserCreateByAdmin,
-    IUserCreateWithWorkspaceInput,
+    IUserCreateByAdminPrepared,
     IUserList,
-    IUserOnboardingVerificationRow,
+    IUserOnboardingVerification,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
-import { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
-import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
+import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
@@ -76,29 +79,35 @@ export class UserDomain {
         private readonly userVerificationDomain: UserVerificationDomain,
         private readonly helperHashService: HelperHashService,
         private readonly userOnboardingDomain: UserOnboardingDomain,
-        private readonly userLoginDomain: UserLoginDomain,
+        private readonly deviceDomain: DeviceDomain,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly notificationQueue: NotificationQueue,
         private readonly helperDateService: HelperDateService,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly databaseService: DatabaseService
+        private readonly databaseService: DatabaseService,
+        private readonly sessionDomain: SessionDomain
     ) {}
 
     /** Builds the used-and-verified email verification an admin-created account is verified by. */
-    private buildVerifiedVerificationRow(
+    private buildVerifiedVerification(
         email: string
-    ): IUserOnboardingVerificationRow {
+    ): IUserOnboardingVerification {
         const token = this.userVerificationDomain.verificationCreateToken();
+        const reference =
+            this.userVerificationDomain.verificationCreateReference();
+        const hashedToken = this.helperHashService.sha256Hash(token);
+        const expiredAt =
+            this.userVerificationDomain.verificationSetExpiredDate();
+        const verifiedAt = this.helperDateService.create();
 
         return {
-            reference:
-                this.userVerificationDomain.verificationCreateReference(),
-            token: this.helperHashService.sha256Hash(token),
+            reference,
+            token: hashedToken,
             type: EnumVerificationType.email,
             to: email,
-            expiredAt: this.userVerificationDomain.verificationSetExpiredDate(),
-            verifiedAt: this.helperDateService.create(),
+            expiredAt,
+            verifiedAt,
             isUsed: true,
         };
     }
@@ -159,6 +168,10 @@ export class UserDomain {
         return this.userRepository.findNameById(userId);
     }
 
+    async setLastWorkspace(userId: string, workspaceId: string): Promise<void> {
+        await this.userRepository.setLastWorkspace(userId, workspaceId);
+    }
+
     async setLastWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -193,8 +206,8 @@ export class UserDomain {
     async deactivateForMaxPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<User> {
-        return this.userRepository.deactivateForMaxPasswordAttemptInTx(
+    ): Promise<void> {
+        await this.userRepository.deactivateForMaxPasswordAttemptInTx(
             tx,
             userId
         );
@@ -212,14 +225,6 @@ export class UserDomain {
             password,
             updatedBy
         );
-    }
-
-    async markVerifiedInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        verifiedAt: Date
-    ): Promise<User> {
-        return this.userRepository.markVerifiedInTx(tx, userId, verifiedAt);
     }
 
     async updateLoginInTx(
@@ -263,7 +268,7 @@ export class UserDomain {
     async prepareCreateByAdmin(
         { countryId, email, name, roleId, username }: IUserCreateByAdmin,
         createdBy: string
-    ): Promise<IUserCreateWithWorkspaceInput> {
+    ): Promise<IUserCreateByAdminPrepared> {
         const [checkRole, emailExist, checkCountry] = await Promise.all([
             this.roleDomain.getById(roleId),
             this.userRepository.existsByEmail(email),
@@ -295,7 +300,6 @@ export class UserDomain {
         const userId = this.databaseUtil.createId();
         const passwordString = this.authPasswordUtil.createPasswordRandom();
         const password: IAuthPassword = this.authPasswordUtil.createPassword(
-            userId,
             passwordString,
             {
                 temporary: true,
@@ -306,54 +310,57 @@ export class UserDomain {
                 username,
             ]);
         const isVerified = checkRole.type !== EnumRoleType.user;
+        let verification: IUserOnboardingVerification | null;
+        if (isVerified) {
+            verification = this.buildVerifiedVerification(email);
+        } else {
+            verification = null;
+        }
 
         return {
-            userId,
-            email,
-            name: name ?? null,
-            username,
-            countryId,
-            roleId: checkRole.id,
-            signUpFrom: EnumUserSignUpFrom.admin,
-            signUpWith: EnumUserSignUpWith.credential,
-            isVerified,
-            termPolicy: {
-                [EnumTermPolicyType.cookies]: false,
-                [EnumTermPolicyType.marketing]: false,
-                [EnumTermPolicyType.privacy]: true,
-                [EnumTermPolicyType.termsOfService]: true,
+            input: {
+                userId,
+                email,
+                name: name ?? null,
+                username,
+                countryId,
+                roleId: checkRole.id,
+                signUpFrom: EnumUserSignUpFrom.admin,
+                signUpWith: EnumUserSignUpWith.credential,
+                isVerified,
+                termPolicy: { ...UserTermPolicyContract.defaults },
+                acceptedTermPolicyTypes: [
+                    ...UserTermPolicyContract.requiredTypes,
+                ],
+                password,
+                passwordHistoryType:
+                    UserCreateContract[EnumUserCreateMode.admin]
+                        .passwordHistoryType,
+                verification,
+                workspaceContext,
+                createdBy,
             },
-            acceptedTermPolicyTypes: [
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
-            ],
-            password,
-            passwordHistoryType:
-                UserCreateModeRules[EnumUserCreateMode.admin]
-                    .passwordHistoryType,
-            verification: isVerified
-                ? this.buildVerifiedVerificationRow(email)
-                : null,
-            workspaceContext,
-            createdBy,
+            passwordString,
         };
     }
 
     async notifyWelcomeByAdmin(
         userId: string,
-        passwordEncrypted: string,
+        passwordString: string,
         passwordCreated: Date,
         passwordExpired: Date,
         createdBy: string
     ): Promise<void> {
+        const passwordCreatedAt =
+            this.helperDateService.formatToIso(passwordCreated);
+        const passwordExpiredAt =
+            this.helperDateService.formatToIso(passwordExpired);
         await this.notificationQueue.sendWelcomeByAdmin(
             userId,
             {
-                password: passwordEncrypted,
-                passwordCreatedAt:
-                    this.helperDateService.formatToIso(passwordCreated),
-                passwordExpiredAt:
-                    this.helperDateService.formatToIso(passwordExpired),
+                password: passwordString,
+                passwordCreatedAt,
+                passwordExpiredAt,
             },
             createdBy
         );
@@ -379,29 +386,66 @@ export class UserDomain {
             status === EnumUserStatus.blocked
                 ? EnumActivityLogAction.userBlocked
                 : EnumActivityLogAction.userUpdateStatus;
+        const revokesAccess = status !== EnumUserStatus.active;
+        const now = this.helperDateService.create();
 
         try {
-            const updated = await this.databaseService.withTransaction(
-                async tx => {
-                    return this.userRepository.updateStatusByAdminInTx(
-                        tx,
-                        userId,
-                        { status },
-                        updatedBy
-                    );
-                }
-            );
+            const { statusEvents, revokeAllEvents } =
+                await this.databaseService.withTransaction(async tx => {
+                    const row =
+                        await this.userRepository.updateStatusByAdminInTx(
+                            tx,
+                            userId,
+                            { status }
+                        );
+                    const actorMetadata =
+                        this.userUtil.mapActivityLogActorMetadata(row);
+                    const targetMetadata =
+                        this.userUtil.mapActivityLogTargetMetadata(
+                            row,
+                            updatedBy
+                        );
+                    const prepared = [
+                        this.activityLogDomain.prepare({
+                            action: EnumActivityLogAction.adminUserUpdateStatus,
+                            metadata: actorMetadata,
+                        }),
+                        this.activityLogDomain.prepare({
+                            action,
+                            userId,
+                            createdBy: updatedBy,
+                            metadata: targetMetadata,
+                        }),
+                    ];
+                    let revokeAll: IActivityLogStagedEvent[] = [];
+                    if (revokesAccess) {
+                        const sessions =
+                            await this.sessionDomain.revokeActiveByUserInTx(
+                                tx,
+                                userId,
+                                updatedBy,
+                                now
+                            );
+                        revokeAll = this.sessionDomain.prepareRevokeAllByAdmin(
+                            userId,
+                            updatedBy,
+                            sessions.length
+                        );
+                    }
 
-            const metadata = this.userUtil.mapActivityLogMetadata(updated);
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.adminUserUpdateStatus,
-                metadata,
-            });
-            this.activityLogDomain.stage({
-                action,
-                userId,
-                metadata,
-            });
+                    return {
+                        statusEvents: prepared,
+                        revokeAllEvents: revokeAll,
+                    };
+                });
+            if (revokesAccess) {
+                await this.sessionDomain.finalizeRevokeAll(
+                    userId,
+                    revokeAllEvents
+                );
+            }
+
+            this.activityLogDomain.stagePrepared(statusEvents);
 
             return;
         } catch (err: unknown) {
@@ -441,14 +485,34 @@ export class UserDomain {
 
     async deleteSelf(userId: string): Promise<void> {
         try {
-            await this.userLoginDomain.revokeAllSessions(userId);
-            const deletedAt = this.helperDateService.create();
+            const revokeAllEvents = this.sessionDomain.prepareRevokeAllSelf(
+                userId,
+                false
+            );
+            const deleteSelfEvents = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userDeleteSelf,
+                }),
+            ];
+            const now = this.helperDateService.create();
             await this.databaseService.withTransaction(async tx => {
-                await this.userRepository.deleteSelfInTx(tx, userId, deletedAt);
+                await this.userRepository.deleteSelfInTx(tx, userId, now);
+                await this.sessionDomain.revokeActiveByUserInTx(
+                    tx,
+                    userId,
+                    userId,
+                    now
+                );
+                await this.deviceDomain.revokeAllByUserInTx(
+                    tx,
+                    userId,
+                    userId,
+                    now
+                );
             });
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.userDeleteSelf,
-            });
+            await this.sessionDomain.finalizeRevokeAll(userId, revokeAllEvents);
+
+            this.activityLogDomain.stagePrepared(deleteSelfEvents);
 
             return;
         } catch (err: unknown) {

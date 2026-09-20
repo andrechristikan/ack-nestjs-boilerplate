@@ -14,7 +14,7 @@ An admin console is the only consumer that needs a total, a page number and a ju
 Consequences that are part of the rule, not side effects:
 
 - A non-admin list has **no `count`, no `page`, no `totalPage`**. `includeCount` is a repository-side argument, never a query param; set it only when a concrete screen needs the number.
-- **Every field in a cursor route's `availableOrderBy` must be immutable.** A row whose sort key changes mid-scroll genuinely moves, and no tiebreaker can stabilise it. `updatedAt`, `lastActiveAt`, an `expiredAt` a resend rewrites, and a `name` the owner can edit are all illegal on a cursor route and legal on an offset one. **Split the constant only when a field is legal on one side and illegal on the other** — `<Module>DefaultAvailableOrderBy` for the offset route, `<Module>CursorAvailableOrderBy` for the narrowed cursor one. When every field is immutable, both routes share the one constant; duplicating an identical list is the waste, not the safety.
+- **Every field in a cursor route's `availableOrderBy` must be immutable.** A row whose sort key changes mid-scroll genuinely moves, and no tiebreaker can stabilise it. `updatedAt`, `lastActiveAt`, an `expiredAt` a resend rewrites, and a `name` the owner can edit are all illegal on a cursor route and legal on an offset one. **Split the constant only when a field is legal on one side and illegal on the other** — `<Module>DefaultAvailableOrderBy` for the offset route, `<Module>CursorAvailableOrderBy` for the narrowed cursor one. When every field is immutable, both routes share the one constant; duplicating an identical list is the waste, not the safety. A list whose sortable keys belong to one endpoint alone is named for that endpoint — `<Module><Endpoint>AvailableOrderBy`, as the computed analytic lists are.
 - **The test is whether a WRITE PATH exists, not what the field is called.** Grep every repository for a write to that column before you allow it. `country.name` sits on a cursor route legally because the module is seeded reference data with no write path anywhere; `workspace.name` is illegal because a rename endpoint exists. Where a field passes only because nothing writes it, say so in a comment on the constant — otherwise the next reader reads it as a violation.
 
 ## Where it runs
@@ -22,6 +22,8 @@ Consequences that are part of the rule, not side effects:
 **`PaginationService` is injected in REPOSITORIES.** Not in services, not in controllers. The repository builds the Prisma call, hands it to the pagination service, and returns `IResponsePagingReturn<T>`. The service passes it through; the controller returns it.
 
 **Database-level only.** No `.slice()` over a preloaded array, no in-memory filtering after a `findMany()`. That is a paginated endpoint that loads the whole collection.
+
+The exception is a COMPUTED result — a fraud or anomaly signal assembled from several reads and scored in the domain, where no single Prisma query can express the page. There the domain slices the computed set and builds the envelope with `PaginationService.offsetPage`, so the response still reports the same page arithmetic as every other route. A plain read never qualifies: if Prisma can page it, Prisma pages it.
 
 ## The controller side
 
@@ -43,7 +45,7 @@ Every pagination type takes **one generic — the `Where` type**. `availableOrde
 
 Available decorators: `PaginationOffsetQuery` · `PaginationCursorQuery` · `PaginationQueryFilterInEnum` · `PaginationQueryFilterNinEnum` · `PaginationQueryFilterEqualBoolean` · `PaginationQueryFilterEqualNumber` · `PaginationQueryFilterEqualString` · `PaginationQueryFilterNotEqual` · `PaginationQueryFilterDate`.
 
-`availableSearch` and `availableOrderBy` allow-lists live as PascalCase constants under `<module>/constants/`, in `<module>.list.constant.ts` — the file that holds a module's list-endpoint constants (`UserDefaultAvailableSearch`, `ApiKeyDefaultAvailableSearch`), alongside the enum defaults its filter decorators use (`ApiKeyDefaultType`). A module with no other list constants may keep them in `<module>.constant.ts`, but `.list.constant.ts` is the default and what every existing module does.
+`availableSearch` and `availableOrderBy` allow-lists live as PascalCase constants in `<module>/constants/<module>.list.constant.ts` (`UserDefaultAvailableSearch`, `ApiKeyDefaultAvailableSearch`), beside the enum defaults its filter decorators use (`ApiKeyDefaultType`). That file holds a module's list-endpoint constants and nothing else (`rules/naming.md`).
 
 **Both allow-lists are OPTIONAL.** Absent, `null` and `[]` all mean the same thing, and a bare `@PaginationOffsetQuery()` compiles:
 
@@ -54,9 +56,24 @@ Available decorators: `PaginationOffsetQuery` · `PaginationCursorQuery` · `Pag
 
 **Set one wherever the endpoint has a defensible sort order or a real search column — and leave it out where it does not.** A device list, a join-request list, or a member list whose searchable identity lives on the joined `user` has nothing worth a `contains` search. An allow-list added so a field is non-empty is speculative generality.
 
-**The Swagger doc factory imports the SAME constant the controller does.** `DocResponsePaging` documents the `search` query param only when it receives `availableSearch`, and the `orderBy` param only when it receives `availableOrderBy` — so a route whose doc omits them advertises nothing while the pipe still accepts the value. Both sides use the identical option names and the identical constant; **never inline a literal array into a `*.doc.ts`.** Two copies of one allow-list drift apart silently: the route keeps accepting the value while its doc advertises nothing, and neither `tsc` nor a test sees the gap.
+**The Swagger doc factory imports the SAME constant the controller does.** `DocResponsePagination` documents the `search` query param only when it receives `availableSearch`, and the `orderBy` param only when it receives `availableOrderBy` — so a route whose doc omits them advertises nothing while the pipe still accepts the value. Both sides use the identical option names and the identical constant; **never inline a literal array into a `*.doc.ts`.** Two copies of one allow-list drift apart silently: the route keeps accepting the value while its doc advertises nothing, and neither `tsc` nor a test sees the gap.
 
-**`DocResponsePaging` also requires `type`** — `EnumPaginationType.offset` or `.cursor`, matching the route's query decorator. It is a required field, so a block that omits it does not compile. Every paginated route has a strategy; there is no meaningful default, and a silent fallback would let a route mis-document itself with no compile error and no runtime signal.
+**`DocResponsePagination` documents the pagination kit only** (`search`, `orderBy`, page/cursor/`perPage`). It does not emit module filter query params. Every `@PaginationQueryFilter*` on the handler has a matching `DocRequest({ queries })` entry in the doc factory, from a PascalCase `ApiQueryOptions[]` in `<module>.doc.constant.ts`, with the same field names and a `description` on each (`rules/http.md`). Filter pipes cannot be merged into one zod object with `@Pagination*Query`; that is why those queries stay on `DocRequest`.
+
+**An `availableOrderBy` names keys the returned row carries, and the layer that pages the rows
+applies them.** A key absent from the response schema is not sortable and does not belong in the
+allow-list, and a list assembled in memory sorts before it slices. `PaginationDefaultOrderBy`
+(`createdAt desc`) reaches the pager on every request that omits `orderBy`, whatever the
+allow-list holds, so an in-memory sort applies only the terms whose key the row declares and
+leaves the order it was given when none survives.
+
+**Where the row is a declared interface, the allow-list is typed `(keyof I<Row>)[]`** and the
+sorter takes `sortableKeys: (keyof T)[]`. An untyped list makes a typo compile: the key matches no
+field, the comparison reads `undefined` on both sides, every row ties, and the sort degrades to a
+silent no-op while the document still advertises the misspelled field. Nothing in `tsc`, the
+suite or the emitted document catches that; the type does.
+
+**`DocResponsePagination` also requires `type`** — `EnumPaginationType.offset` or `.cursor`, matching the route's query decorator. It is a required field, so a block that omits it does not compile. Every paginated route has a strategy; there is no meaningful default, and a silent fallback would let a route mis-document itself with no compile error and no runtime signal.
 
 ## Two protections, and only one of them is the allow-lists
 
@@ -78,11 +95,15 @@ The types enforce it structurally, in two tiers:
 | Tier | Type | Carries |
 |---|---|---|
 | controller param, produced by the pipes | `IPaginationQueryOffsetParams<TArgsWhere>` · `IPaginationQueryCursorParams<TArgsWhere>` | `limit`, `orderBy`, `where?`, plus `skip` or `cursor?`/`cursorField?` |
-| service args, produced by the REPOSITORY | `IPaginationOffsetArgs<TArgsWhere>` · `IPaginationCursorArgs<TArgsWhere>` | the above **plus** `include?`, and `includeCount?` on cursor |
+| service args, produced by the REPOSITORY | `IPaginationOffsetArgs<TArgsWhere>` · `IPaginationCursorArgs<TArgsWhere>` | the above **plus** `include?` OR `select?`, and `includeCount?` on cursor |
 
-`include` and `includeCount` are repository-side arguments. They are absent from the pipe-output types on purpose, so a client cannot address them from the query string.
+`include`, `select` and `includeCount` are repository-side arguments. They are absent from the pipe-output types on purpose, so a client cannot address them from the query string.
 
-There is **no `select`** anywhere in the pagination types. Shape a paginated read with `include` and a nested select constant (`include: { user: { select: UserRefSelect } }`) — that is what every repository does.
+**`select` and `include` are mutually exclusive**, through the `IPaginationShape` union the args types intersect: passing both fails `tsc` rather than Prisma at runtime. `select` reaches `findMany` only — never `count`, which needs no shape.
+
+**A paginated read whose row is narrower than the model takes a `select`.** `include` restricts relations and nothing else, so a root scalar the row never declares still leaves the database — a password hash, a session `jti`, an API key hash. The read names the fields its row declares, through a `*Select` constant whose row type is pinned by `Prisma.<Model>GetPayload<{ select: typeof <Const> }>`, so dropping a field from the constant breaks the build rather than the response. A read that genuinely needs the whole model keeps `include`.
+
+`PaginationService.offsetPage(items, count, { skip, limit })` builds the offset envelope for a result the caller already paged — a `groupBy` distribution, say. The page it reports is 1-based, like every other paginated route.
 
 ## Filter shape
 
@@ -107,7 +128,7 @@ Two obligations follow:
 - **Never put a value in the payload.** A `where` carried inside the token publishes the scope IDs, the soft-delete convention and the search field names to anyone holding a cursor, and grows the token with the filter until it passes `PaginationMaxCursorLength`. The payload stays fixed-size regardless of filter complexity.
 - **Canonicalize before hashing.** Object keys are sorted recursively and `Date` is normalised to ISO before the hash. `JSON.stringify` is key-order dependent; without this, a reordered `where` would read as a changed query, and an un-normalised `Date` would hash to `{}` and let a changed date filter slip through the guard.
 
-Renaming a payload field still invalidates every cursor a client holds. **This repo has no consumer**, so that is free here — take the clean shape and change every call site, per `.claude/CLAUDE.md` #7. Nothing about it fails at `tsc`.
+Renaming a payload field still invalidates every cursor a client holds. **This repo has no consumer**, so that is free here — take the clean shape and change every call site (`.claude/CLAUDE.md` → "How to work here"). Nothing about it fails at `tsc`.
 
 ## Cursor ordering always ends with the cursor field
 

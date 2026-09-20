@@ -1,25 +1,28 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
+import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
-import {
+import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { FileService } from '@common/file/services/file.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
 import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
-import {
+import type {
     ITermPolicy,
     ITermPolicyContentCreate,
     ITermPolicyContentUpload,
@@ -33,9 +36,11 @@ import {
     EnumActivityLogAction,
     EnumTermPolicyStatus,
     Prisma,
+} from '@generated/prisma-client/client';
+import type {
     TermPolicy,
     TermPolicyContent,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyDomain {
@@ -47,16 +52,22 @@ export class TermPolicyDomain {
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly fileService: FileService,
         private readonly databaseService: DatabaseService,
-        private readonly userDomain: UserDomain
+        private readonly userDomain: UserDomain,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly helperDateService: HelperDateService
     ) {}
 
-    private stageActivityLog(
+    private prepareActivityLog(
         action: EnumActivityLogAction,
-        termPolicy: TermPolicy
-    ): void {
-        this.activityLogDomain.stage({
+        termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
+        timestamp: Date
+    ): IActivityLogStagedEvent {
+        return this.activityLogDomain.prepare({
             action,
-            metadata: this.termPolicyUtil.mapActivityLogMetadata(termPolicy),
+            metadata: this.termPolicyUtil.mapActivityLogMetadata(
+                termPolicy,
+                timestamp
+            ),
         });
     }
 
@@ -90,10 +101,11 @@ export class TermPolicyDomain {
         return this.termPolicyRepository.findPublished(pagination, type);
     }
 
-    async createByAdmin(
-        { contents, type, version }: ITermPolicyCreate,
-        createdBy: string
-    ): Promise<ITermPolicy> {
+    async createByAdmin({
+        contents,
+        type,
+        version,
+    }: ITermPolicyCreate): Promise<ITermPolicy> {
         const isExist = await this.termPolicyRepository.existsByVersionAndType(
             version,
             type
@@ -123,16 +135,19 @@ export class TermPolicyDomain {
                     ),
                 })
             );
+            const termPolicyId = this.databaseUtil.createId();
+            const event = this.prepareActivityLog(
+                EnumActivityLogAction.adminTermPolicyCreate,
+                { id: termPolicyId, type, version },
+                this.helperDateService.create()
+            );
             const created = await this.termPolicyRepository.create(
+                termPolicyId,
                 { contents, type, version },
-                mappedContents,
-                createdBy
+                mappedContents
             );
 
-            this.stageActivityLog(
-                EnumActivityLogAction.adminTermPolicyCreate,
-                created
-            );
+            this.activityLogDomain.stagePrepared([event]);
 
             return created;
         } catch (err: unknown) {
@@ -155,6 +170,11 @@ export class TermPolicyDomain {
 
         try {
             const contentPath = this.termPolicyUtil.getPath(termPolicy);
+            const event = this.prepareActivityLog(
+                EnumActivityLogAction.adminTermPolicyDelete,
+                termPolicy,
+                this.helperDateService.create()
+            );
             const [deleted] = await Promise.all([
                 this.termPolicyRepository.delete(termPolicyId),
                 this.awsS3Service.deleteDir(contentPath, {
@@ -162,10 +182,7 @@ export class TermPolicyDomain {
                 }),
             ]);
 
-            this.stageActivityLog(
-                EnumActivityLogAction.adminTermPolicyDelete,
-                deleted
-            );
+            this.activityLogDomain.stagePrepared([event]);
 
             return deleted;
         } catch (err: unknown) {
@@ -197,8 +214,14 @@ export class TermPolicyDomain {
                 termPolicy.version
             );
 
+            const privateContents: IAwsS3[] = termPolicy.contents.map(
+                ({ access, ...content }) => ({
+                    ...content,
+                    access: access as EnumAwsS3Accessibility,
+                })
+            );
             const newItems = await this.awsS3Service.copyItems(
-                termPolicy.contents,
+                privateContents,
                 contentPublicPath,
                 { access: EnumAwsS3Accessibility.public }
             );
@@ -208,20 +231,25 @@ export class TermPolicyDomain {
                 termPolicy.contents
             );
 
-            const updated = await this.databaseService.withTransaction(
+            const events = await this.databaseService.withTransaction(
                 async tx => {
                     const row = await this.termPolicyRepository.publishInTx(
                         tx,
                         termPolicyId,
-                        newContents,
-                        updatedBy
+                        newContents
                     );
                     await this.userDomain.resetTermPolicyForActiveUsersInTx(
                         tx,
                         termPolicy.type
                     );
 
-                    return row;
+                    return [
+                        this.prepareActivityLog(
+                            EnumActivityLogAction.adminTermPolicyPublish,
+                            row,
+                            row.updatedAt
+                        ),
+                    ];
                 }
             );
 
@@ -233,10 +261,7 @@ export class TermPolicyDomain {
                 updatedBy
             );
 
-            this.stageActivityLog(
-                EnumActivityLogAction.adminTermPolicyPublish,
-                updated
-            );
+            this.activityLogDomain.stagePrepared(events);
 
             return;
         } catch (err: unknown) {

@@ -1,29 +1,29 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import {
+import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
-import {
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
+import type {
     ITermPolicy,
     ITermPolicyContentCreate,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
-import { ITermPolicyRepository } from '@modules/term-policy/interfaces/term-policy.repository.interface';
+import type { ITermPolicyRepository } from '@modules/term-policy/interfaces/term-policy.repository.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
     Prisma,
-    TermPolicy,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { TermPolicy } from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyRepository implements ITermPolicyRepository {
@@ -218,12 +218,13 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     }
 
     async create(
+        termPolicyId: string,
         { type, version }: TermPolicyCreateRequestDto,
-        contents: ITermPolicyContentCreate[],
-        createdBy: string
+        contents: ITermPolicyContentCreate[]
     ): Promise<ITermPolicy> {
         return this.databaseService.client.termPolicy.create({
             data: {
+                id: termPolicyId,
                 type,
                 version,
                 status: EnumTermPolicyStatus.draft,
@@ -232,7 +233,6 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                         data: contents,
                     },
                 },
-                createdBy,
             },
             include: {
                 contents: true,
@@ -250,8 +250,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
 
     async updateContent(
         termPolicyId: string,
-        content: ITermPolicyContentCreate,
-        updatedBy: string
+        content: ITermPolicyContentCreate
     ): Promise<TermPolicy> {
         const [, termPolicy] = await this.databaseService.client.$transaction([
             this.databaseService.client.termPolicyContent.update({
@@ -267,9 +266,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                 where: {
                     id: termPolicyId,
                 },
-                data: {
-                    updatedBy,
-                },
+                data: {},
             }),
         ]);
 
@@ -278,8 +275,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
 
     async addContent(
         termPolicyId: string,
-        newContent: ITermPolicyContentCreate,
-        updatedBy: string
+        newContent: ITermPolicyContentCreate
     ): Promise<TermPolicy> {
         return this.databaseService.client.termPolicy.update({
             where: {
@@ -289,15 +285,13 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                 contents: {
                     create: newContent,
                 },
-                updatedBy,
             },
         });
     }
 
     async removeContent(
         termPolicyId: string,
-        { language }: TermPolicyRemoveContentRequestDto,
-        updatedBy: string
+        { language }: TermPolicyRemoveContentRequestDto
     ): Promise<TermPolicy> {
         const [, termPolicy] = await this.databaseService.client.$transaction([
             this.databaseService.client.termPolicyContent.delete({
@@ -312,9 +306,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                 where: {
                     id: termPolicyId,
                 },
-                data: {
-                    updatedBy,
-                },
+                data: {},
             }),
         ]);
 
@@ -324,21 +316,21 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     async publishInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
-        contents: ITermPolicyContentCreate[],
-        updatedBy: string
+        contents: ITermPolicyContentCreate[]
     ): Promise<TermPolicy> {
+        const publishedAt = this.helperDateService.create();
+
         return tx.termPolicy.update({
             where: {
                 id: termPolicyId,
             },
             data: {
                 status: EnumTermPolicyStatus.published,
-                publishedAt: this.helperDateService.create(),
+                publishedAt,
                 contents: {
                     deleteMany: {},
                     create: contents,
                 },
-                updatedBy,
             },
         });
     }

@@ -2,23 +2,22 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumActivityLogAction,
     EnumVerificationType,
-    Verification,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { Verification } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import { UserVerificationEmailResendLimitExceededException } from '@modules/user/exceptions/user.verification-email-resend-limit-exceeded.exception';
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
-    IUserOnboardingVerificationRow,
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type {
+    IUserOnboardingVerification,
     IUserVerificationCreate,
     IUserVerificationEmailCreate,
 } from '@modules/user/interfaces/user.interface';
@@ -52,8 +51,7 @@ export class UserVerificationDomain {
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
-        private readonly helperNumberService: HelperNumberService,
-        private readonly helperEncryptionService: HelperEncryptionService
+        private readonly helperNumberService: HelperNumberService
     ) {
         this.homeUrl = this.configService.get<string>('home.url')!;
 
@@ -66,15 +64,17 @@ export class UserVerificationDomain {
         this.verificationOtpLength = this.configService.get<number>(
             'verification.otpLength'
         )!;
-        this.verificationExpiredInMinutes =
-            this.configService.get<number>('verification.expiredInMs')! /
-            ms('1m');
+        const verificationExpiredInMs = this.configService.get<number>(
+            'verification.expiredInMs'
+        )!;
+        this.verificationExpiredInMinutes = verificationExpiredInMs / ms('1m');
         this.verificationTokenLength = this.configService.get<number>(
             'verification.tokenLength'
         )!;
-        this.verificationResendInMinutes =
-            this.configService.get<number>('verification.resendInMs')! /
-            ms('1m');
+        const verificationResendInMs = this.configService.get<number>(
+            'verification.resendInMs'
+        )!;
+        this.verificationResendInMinutes = verificationResendInMs / ms('1m');
         this.verificationLinkPattern = this.configService.get<string>(
             'verification.linkPattern'
         )!;
@@ -109,16 +109,17 @@ export class UserVerificationDomain {
 
     /** Builds an OTP verification for mobile numbers or a tokenized link verification for email. */
     verificationCreateVerification(
-        userId: string,
         type: EnumVerificationType
     ): IUserVerificationCreate {
         if (type === EnumVerificationType.mobileNumber) {
             const token = this.verificationCreateOtp();
             const hashedToken = this.helperHashService.sha256Hash(token);
+            const reference = this.verificationCreateReference();
+            const expiredAt = this.verificationSetExpiredDate();
 
             return {
-                reference: this.verificationCreateReference(),
-                expiredAt: this.verificationSetExpiredDate(),
+                reference,
+                expiredAt,
                 type: EnumVerificationType.mobileNumber,
                 token,
                 hashedToken,
@@ -129,23 +130,22 @@ export class UserVerificationDomain {
 
         const token = this.verificationCreateToken();
         const hashedToken = this.helperHashService.sha256Hash(token);
-        const link = this.verificationLinkPattern
-            .replace('{homeUrl}', this.homeUrl)
-            .replace('{token}', token);
-        const encryptedLink = this.helperEncryptionService.aes256EncryptSimple(
-            link ?? '',
-            userId
+        const link = this.helperStringService.fillPattern(
+            this.verificationLinkPattern,
+            { homeUrl: this.homeUrl, token }
         );
 
+        const reference = this.verificationCreateReference();
+        const expiredAt = this.verificationSetExpiredDate();
+
         return {
-            reference: this.verificationCreateReference(),
-            expiredAt: this.verificationSetExpiredDate(),
+            reference,
+            expiredAt,
             type: EnumVerificationType.email,
             token,
             hashedToken,
             expiredInMinutes: this.verificationExpiredInMinutes,
-            link: link,
-            encryptedLink: encryptedLink,
+            link,
             resendInMinutes: this.verificationResendInMinutes,
         };
     }
@@ -161,6 +161,13 @@ export class UserVerificationDomain {
         }
 
         try {
+            const events = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userVerifiedEmail,
+                    userId: verification.userId,
+                    createdBy: verification.userId,
+                }),
+            ];
             const verifiedAt = this.helperDateService.create();
             await this.databaseService.withTransaction(async tx => {
                 await this.userVerificationRepository.markUsedInTx(
@@ -173,11 +180,9 @@ export class UserVerificationDomain {
                     verification.userId,
                     verifiedAt
                 );
-                this.activityLogDomain.stage({
-                    action: EnumActivityLogAction.userVerifiedEmail,
-                    userId: verification.userId,
-                });
             });
+
+            this.activityLogDomain.stagePrepared(events);
 
             await this.notificationQueue.sendVerifiedEmail(
                 verification.userId,
@@ -218,45 +223,46 @@ export class UserVerificationDomain {
             );
 
             if (today < canResendAt) {
+                const resendDuration = this.helperDateService.diff(
+                    today,
+                    canResendAt
+                );
+
                 throw new UserVerificationEmailResendLimitExceededException(
-                    this.helperDateService.diff(today, canResendAt).minutes
+                    resendDuration.minutes
                 );
             }
         }
 
         try {
             const emailVerification = this.verificationCreateVerification(
-                user.id,
                 EnumVerificationType.email
             ) as IUserVerificationEmailCreate;
 
             const today = this.helperDateService.create();
-            await this.databaseService.withTransaction(async tx => {
-                await this.userVerificationRepository.expireActiveByTypeInTx(
-                    tx,
-                    user.id,
-                    EnumVerificationType.email,
-                    today
-                );
-                await this.userVerificationRepository.createInTx(
-                    tx,
-                    user.id,
-                    user.email,
-                    emailVerification,
-                    today
-                );
-                this.activityLogDomain.stage({
+            const events = [
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userSendVerificationEmail,
                     userId: user.id,
-                });
-            });
+                    createdBy: user.id,
+                }),
+            ];
+            await this.userVerificationRepository.createReplacingActive(
+                user.id,
+                user.email,
+                emailVerification,
+                today
+            );
 
+            this.activityLogDomain.stagePrepared(events);
+
+            const expiredAt = this.helperDateService.formatToIso(
+                emailVerification.expiredAt
+            );
             await this.notificationQueue.sendVerificationEmail(user.id, {
-                expiredAt: this.helperDateService.formatToIso(
-                    emailVerification.expiredAt
-                ),
+                expiredAt,
                 reference: emailVerification.reference,
-                link: emailVerification.encryptedLink,
+                link: emailVerification.link,
                 expiredInMinutes: emailVerification.expiredInMinutes,
             });
 
@@ -272,14 +278,17 @@ export class UserVerificationDomain {
 
     async markVerified(userId: string): Promise<void> {
         const verifiedAt = this.helperDateService.create();
-
-        await this.databaseService.withTransaction(async tx => {
-            await this.userRepository.markVerifiedInTx(tx, userId, verifiedAt);
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userVerifiedEmail,
                 userId: userId,
-            });
-        });
+                createdBy: userId,
+            }),
+        ];
+
+        await this.userRepository.markVerified(userId, verifiedAt);
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async persistVerificationEmail(
@@ -288,32 +297,28 @@ export class UserVerificationDomain {
         verification: IUserVerificationCreate
     ): Promise<void> {
         const today = this.helperDateService.create();
-
-        await this.databaseService.withTransaction(async tx => {
-            await this.userVerificationRepository.expireActiveByTypeInTx(
-                tx,
-                userId,
-                verification.type,
-                today
-            );
-            await this.userVerificationRepository.createInTx(
-                tx,
-                userId,
-                email,
-                verification,
-                today
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userSendVerificationEmail,
                 userId: userId,
-            });
-        });
+                createdBy: userId,
+            }),
+        ];
+
+        await this.userVerificationRepository.createReplacingActive(
+            userId,
+            email,
+            verification,
+            today
+        );
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async createFromOnboardingInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        verification: IUserOnboardingVerificationRow,
+        verification: IUserOnboardingVerification,
         createdBy: string
     ): Promise<Verification> {
         return this.userVerificationRepository.createFromOnboardingInTx(

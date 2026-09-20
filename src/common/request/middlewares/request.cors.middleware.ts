@@ -1,6 +1,8 @@
-import { HttpStatus, Injectable, NestMiddleware } from '@nestjs/common';
-import { NextFunction, Request, Response } from 'express';
-import cors, { CorsOptions } from 'cors';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import type { NestMiddleware } from '@nestjs/common';
+import type { NextFunction, Request, Response } from 'express';
+import cors from 'cors';
+import type { CorsOptions } from 'cors';
 import { ConfigService } from '@nestjs/config';
 
 /**
@@ -29,6 +31,7 @@ export class RequestCorsMiddleware implements NestMiddleware {
     }
 
     use(req: Request, res: Response, next: NextFunction): void {
+        const isCredentialsAllowed = this.shouldAllowCredentials();
         const corsOptions: CorsOptions = {
             origin: (origin, callback) =>
                 this.originValidator(origin, callback),
@@ -36,7 +39,7 @@ export class RequestCorsMiddleware implements NestMiddleware {
             allowedHeaders: this.allowedHeader,
             exposedHeaders: this.exposedHeader,
             preflightContinue: false,
-            credentials: this.shouldAllowCredentials(),
+            credentials: isCredentialsAllowed,
             optionsSuccessStatus: HttpStatus.NO_CONTENT,
             maxAge: 86400,
         };
@@ -66,7 +69,8 @@ export class RequestCorsMiddleware implements NestMiddleware {
         }
 
         if (Array.isArray(this.allowedOrigin)) {
-            if (this.allowedOrigin.includes('*')) {
+            const hasWildcardOrigin = this.allowedOrigin.includes('*');
+            if (hasWildcardOrigin) {
                 return callback(null, true);
             }
 
@@ -85,7 +89,9 @@ export class RequestCorsMiddleware implements NestMiddleware {
             return this.allowedOrigin !== '*';
         }
         if (Array.isArray(this.allowedOrigin)) {
-            return !this.allowedOrigin.includes('*');
+            const hasWildcardOrigin = this.allowedOrigin.includes('*');
+
+            return !hasWildcardOrigin;
         }
         return true;
     }
@@ -94,7 +100,8 @@ export class RequestCorsMiddleware implements NestMiddleware {
      * Matches an origin against patterns by exact hostname/port or wildcard subdomain.
      */
     private isOriginAllowed(origin: string, patterns: string[]): boolean {
-        if (!this.isValidOrigin(origin)) {
+        const isValidOrigin = this.isValidOrigin(origin);
+        if (!isValidOrigin) {
             return false;
         }
 
@@ -176,7 +183,7 @@ export class RequestCorsMiddleware implements NestMiddleware {
             const baseDomain = patternHostname.slice(2);
 
             return (
-                hostname.endsWith('.' + baseDomain) || hostname === baseDomain
+                hostname.endsWith(`.${baseDomain}`) || hostname === baseDomain
             );
         }
 

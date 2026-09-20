@@ -1,13 +1,13 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -19,7 +19,7 @@ import {
     SessionSharedRevokeDoc,
 } from '@modules/session/docs/session.shared.doc';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
-import { ISession } from '@modules/session/interfaces/session.interface';
+import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionHttpService } from '@modules/session/services/session.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -48,7 +48,7 @@ export class SessionSharedController {
         })
         pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponsePagingReturn<ISession>> {
+    ): Promise<IResponsePagingReturn<ISessionList>> {
         return this.sessionHttpService.getListCursor(userId, pagination);
     }
 

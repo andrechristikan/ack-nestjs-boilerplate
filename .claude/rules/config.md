@@ -62,7 +62,7 @@ holds, because a division living in a service hides the unit from the one file t
 **This governs a CONFIG value only.** A duration computed at request time — a
 `HelperDateService.diff` result, a remainder a Redis script returned — has no config key to
 name, so converting it where it is consumed is correct and stays
-(`auth.jwt.service.ts` refresh-token remainder, `request.throttler.service.ts` retry-after).
+(`auth.jwt.domain.ts` refresh-token remainder, `request.throttle-storage.service.ts` retry-after).
 
 ## Size is bytes
 
@@ -97,6 +97,8 @@ relative fragment, because the host is the one the request already arrived on
   file.** `String.prototype.replace` reads its string second argument as a template, so `$&`,
   `` $` ``, `$'`, `$$` and `$1` in a token, an id, an object key or any other value that
   arrived from the wire are expanded instead of inserted. `() => value` is inserted verbatim.
+- **A pattern with two or more placeholders is filled by
+  `HelperStringService.fillPattern(pattern, values)`** (`rules/code-style.md` owns that rule).
 - A `startsWith` prefix test against an INCOMING request URL matches a route rather than
   building one, and this rule does not govern it.
 - The key suffix is `Pattern`, and `rules/naming.md` carries its boundary against `Regex`.
@@ -119,4 +121,15 @@ relative fragment, because the host is the one the request already arrived on
 
 A credential never has a literal default in a config file. It comes from the environment, and
 in a deployed environment from Vault via `pnpm vault:pull` (`docs/vault.md`). A config default
-that happens to be a working secret is a leaked secret (`rules/security.md`).
+that happens to be a working secret is a leaked secret (`rules/security.md`). `.env.example`
+carries every credential key with an empty value.
+
+- **An encryption root secret** (`APP_ENCRYPTION_SECRET_KEY`, `AUTH_TWO_FACTOR_ENCRYPTION_KEY`)
+  is 48 random bytes written as exactly 64 base64url characters. `AppEnvSchema` validates it
+  with `RequestEncryptionSecretSchema`; the config file exposes the env string unchanged
+  (`app.encryptionSecretKey`, `auth.twoFactor.encryption.key`), and `HelperEncryptionService`
+  decodes it and checks the length. A config interface holds no `Buffer`.
+- **Key material is generated, never typed by hand.** `pnpm generate:secret:encryption` writes
+  both encryption secrets to `keys/encryption-secret.env`; `pnpm generate:secret:jwt` writes the
+  JWT key pairs and JWKS files; `pnpm generate:secret` runs both. `--direct-insert` upserts only
+  that target's `.env` variables, which rotates them.

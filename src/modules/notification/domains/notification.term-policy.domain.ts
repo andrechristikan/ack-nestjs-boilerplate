@@ -3,9 +3,9 @@ import { HelperArrayService } from '@common/helper/services/helper.array.service
 import {
     EnumNotificationChannel,
     EnumNotificationType,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import {
+import type {
     INotificationAcceptTermPolicyPayload,
     INotificationCreateEntry,
     INotificationEmailSendPayload,
@@ -17,7 +17,7 @@ import { NotificationEmailQueue } from '@modules/notification/queues/notificatio
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /** Writes and fans out the term-policy publication and acceptance notifications. */
 @Injectable()
@@ -70,12 +70,16 @@ export class NotificationTermPolicyDomain {
 
         for (const chunk of chunks) {
             const emailPayload: INotificationEmailSendPayload[] = chunk.map(
-                user => ({
-                    userId: user.id,
-                    email: user.email,
-                    username: user.username,
-                    notificationId: this.databaseUtil.createId(),
-                })
+                user => {
+                    const notificationId = this.databaseUtil.createId();
+
+                    return {
+                        userId: user.id,
+                        email: user.email,
+                        username: user.username,
+                        notificationId,
+                    };
+                }
             );
 
             const entries: INotificationCreateEntry[] = emailPayload.map(

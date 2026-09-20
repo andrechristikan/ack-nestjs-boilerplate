@@ -5,10 +5,11 @@ import {
     EnumProjectMemberRole,
     EnumWorkspaceInviteStatus,
     EnumWorkspaceMemberRole,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 
 /**
  * Base workspace-invite shape: the stored invite row, without the hashed token.
+ * @public
  */
 export const WorkspaceInviteResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -61,6 +62,10 @@ export const WorkspaceInviteResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
+/**
+ * Stored workspace invite without the hashed token.
+ * @public
+ */
 export type WorkspaceInviteResponseDto = z.infer<
     typeof WorkspaceInviteResponseSchema
 >;

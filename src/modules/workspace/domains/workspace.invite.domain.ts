@@ -1,30 +1,34 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import {
+import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumWorkspaceInviteStatus,
     Prisma,
+} from '@generated/prisma-client/client';
+import type {
+    Project,
+    User,
     Workspace,
     WorkspaceInvite,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
-import { INotificationWorkspaceInvitePayload } from '@modules/notification/interfaces/notification.interface';
+import type { INotificationWorkspaceInvitePayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
-import {
+import type {
     IUserSignUpWorkspaceContext,
     IUserSignUpWorkspaceInvite,
 } from '@modules/user/interfaces/user.interface';
@@ -37,8 +41,9 @@ import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/w
 import { WorkspaceInviteNotFoundException } from '@modules/workspace/exceptions/workspace.invite-not-found.exception';
 import { WorkspaceInviteProjectMismatchException } from '@modules/workspace/exceptions/workspace.invite-project-mismatch.exception';
 import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/exceptions/workspace.invite-role-required.exception';
-import {
+import type {
     IWorkspaceInviteCreate,
+    IWorkspaceInviteList,
     IWorkspaceInvitePreview,
     IWorkspaceInviteTokenData,
 } from '@modules/workspace/interfaces/workspace.interface';
@@ -71,7 +76,7 @@ export class WorkspaceInviteDomain {
         private readonly userOnboardingDomain: UserOnboardingDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
-        private readonly helperEncryptionService: HelperEncryptionService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
         private readonly helperHashService: HelperHashService,
@@ -113,21 +118,25 @@ export class WorkspaceInviteDomain {
     ): IWorkspaceInviteTokenData {
         const token = this.helperStringService.random(this.inviteTokenLength);
         const hashedToken = this.helperHashService.sha256Hash(token);
-        const reference = `${this.inviteReferencePrefix}-${this.helperStringService.random(
+        const referenceRandom = this.helperStringService.random(
             this.inviteReferenceRandomLength
-        )}`;
+        );
+        const reference = `${this.inviteReferencePrefix}-${referenceRandom}`;
+        const now = this.helperDateService.create();
         const expiredAt = this.helperDateService.forward(
-            this.helperDateService.create(),
+            now,
             Duration.fromObject({
                 days: expiryDurationInDays ?? this.inviteExpiredInDays,
             })
         );
-        const claimLink = this.inviteLinkPattern
-            .replace('{homeUrl}', this.homeUrl)
-            .replace('{token}', token);
-        const signUpLink = this.inviteSignUpLinkPattern
-            .replace('{homeUrl}', this.homeUrl)
-            .replace('{token}', token);
+        const claimLink = this.helperStringService.fillPattern(
+            this.inviteLinkPattern,
+            { homeUrl: this.homeUrl, token }
+        );
+        const signUpLink = this.helperStringService.fillPattern(
+            this.inviteSignUpLinkPattern,
+            { homeUrl: this.homeUrl, token }
+        );
 
         return {
             token,
@@ -143,52 +152,39 @@ export class WorkspaceInviteDomain {
         workspace: Workspace,
         invite: WorkspaceInvite,
         tokenData: IWorkspaceInviteTokenData,
-        actorId: string
+        actorId: string,
+        existingUser: User | null
     ): Promise<void> {
-        const [inviter, existingUser] = await Promise.all([
-            this.userDomain.getNameById(actorId),
-            this.userDomain.getOneActiveByEmail(invite.email),
-        ]);
+        const inviter = await this.userDomain.getNameById(actorId);
         const inviterName =
             inviter?.name ?? inviter?.username ?? workspace.name;
 
+        const expiredAt = this.helperDateService.formatToIso(invite.expiredAt);
         const payloadBase: Omit<
             INotificationWorkspaceInvitePayload,
-            'encryptedInviteAcceptLink'
+            'inviteAcceptLink'
         > = {
             workspaceId: invite.workspaceId,
             workspaceName: workspace.name,
             inviterName,
             workspaceMemberRole: invite.workspaceRole,
             reference: invite.reference,
-            expiredAt: this.helperDateService.formatToIso(invite.expiredAt),
+            expiredAt,
         };
 
         if (existingUser) {
-            const encryptedInviteAcceptLink =
-                this.helperEncryptionService.aes256EncryptSimple(
-                    tokenData.claimLink,
-                    existingUser.id
-                );
-
             await this.notificationQueue.sendWorkspaceInvite(
                 existingUser.id,
-                { ...payloadBase, encryptedInviteAcceptLink },
+                { ...payloadBase, inviteAcceptLink: tokenData.claimLink },
                 actorId
             );
 
             return;
         }
 
-        const encryptedInviteAcceptLink =
-            this.helperEncryptionService.aes256EncryptSimple(
-                tokenData.signUpLink,
-                invite.reference
-            );
-
         await this.notificationEmailQueue.sendWorkspaceInviteUnregistered(
             invite.email,
-            { ...payloadBase, encryptedInviteAcceptLink }
+            { ...payloadBase, inviteAcceptLink: tokenData.signUpLink }
         );
     }
 
@@ -226,7 +222,11 @@ export class WorkspaceInviteDomain {
                 hashedToken
             );
 
-        if (!invite || invite.email.toLowerCase() !== email.toLowerCase()) {
+        if (
+            !invite ||
+            !invite.invitedByUserId ||
+            invite.email.toLowerCase() !== email.toLowerCase()
+        ) {
             throw new WorkspaceInviteInvalidException();
         }
 
@@ -234,6 +234,7 @@ export class WorkspaceInviteDomain {
             type: EnumUserSignUpWorkspaceContextType.invite,
             workspaceId: invite.workspaceId,
             workspaceInviteId: invite.id,
+            invitedByUserId: invite.invitedByUserId,
             workspaceMemberRole: invite.workspaceRole,
             projectId: invite.projectId ?? null,
             projectMemberRole: invite.projectRole ?? null,
@@ -248,7 +249,7 @@ export class WorkspaceInviteDomain {
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceInvite>> {
+    ): Promise<IResponsePagingReturn<IWorkspaceInviteList>> {
         await this.assertInvitationAllowed();
 
         return this.workspaceInviteRepository.findWithPaginationCursor(
@@ -271,17 +272,23 @@ export class WorkspaceInviteDomain {
             throw new WorkspaceInviteRoleRequiredException();
         }
 
-        const [project, duplicate] = await Promise.all([
-            create.projectId
-                ? this.projectDomain.getActiveByIdAndWorkspace(
-                      create.projectId,
-                      workspace.id
-                  )
-                : null,
+        let projectLookup: Promise<Project | null> | null;
+        if (create.projectId) {
+            projectLookup = this.projectDomain.getActiveByIdAndWorkspace(
+                create.projectId,
+                workspace.id
+            );
+        } else {
+            projectLookup = null;
+        }
+
+        const [project, duplicate, existingUser] = await Promise.all([
+            projectLookup,
             this.workspaceInviteRepository.existsPendingByWorkspaceAndEmail(
                 workspace.id,
                 create.email
             ),
+            this.userDomain.getOneActiveByEmail(create.email),
         ]);
         if (create.projectId && !project) {
             throw new WorkspaceInviteProjectMismatchException();
@@ -291,33 +298,54 @@ export class WorkspaceInviteDomain {
 
         const tokenData = this.createInviteTokenData(create.expiryDuration);
 
-        const invite = await this.databaseService.withTransaction(async tx => {
-            const created =
-                await this.workspaceInviteRepository.createPendingInTx(tx, {
-                    workspaceId: workspace.id,
-                    email: create.email,
-                    workspaceRole: create.workspaceRole,
-                    projectId: create.projectId,
-                    projectRole: create.projectRole,
-                    hashedToken: tokenData.hashedToken,
-                    reference: tokenData.reference,
-                    expiredAt: tokenData.expiredAt,
-                    invitedByUserId: actorId,
-                });
-            this.activityLogDomain.stage({
+        const workspaceInviteId = this.databaseUtil.createId();
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 userId: actorId,
+                createdBy: actorId,
                 workspaceId: workspace.id,
-            });
+                metadata: existingUser
+                    ? {
+                          workspaceInviteId,
+                          targetUserId: existingUser.id,
+                      }
+                    : { workspaceInviteId },
+            }),
+        ];
+        if (existingUser && existingUser.id !== actorId) {
+            const workspaceInviteCreatedByAdminEvent =
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.workspaceInviteCreatedByAdmin,
+                    userId: existingUser.id,
+                    createdBy: actorId,
+                    workspaceId: workspace.id,
+                    metadata: { actorUserId: actorId },
+                });
+            events.push(workspaceInviteCreatedByAdminEvent);
+        }
 
-            return created;
+        const invite = await this.workspaceInviteRepository.createPending({
+            workspaceInviteId,
+            workspaceId: workspace.id,
+            email: create.email,
+            workspaceRole: create.workspaceRole,
+            projectId: create.projectId,
+            projectRole: create.projectRole,
+            hashedToken: tokenData.hashedToken,
+            reference: tokenData.reference,
+            expiredAt: tokenData.expiredAt,
+            invitedByUserId: actorId,
         });
+
+        this.activityLogDomain.stagePrepared(events);
 
         await this.sendInviteNotification(
             workspace,
             invite,
             tokenData,
-            actorId
+            actorId,
+            existingUser
         );
 
         return invite;
@@ -344,19 +372,22 @@ export class WorkspaceInviteDomain {
 
         const tokenData = this.createInviteTokenData(expiryDuration);
 
-        const invite = await this.workspaceInviteRepository.rotateForResend(
-            workspaceInviteId,
-            actorId,
-            tokenData.hashedToken,
-            tokenData.reference,
-            tokenData.expiredAt
-        );
+        const [invite, existingUser] = await Promise.all([
+            this.workspaceInviteRepository.rotateForResend(
+                workspaceInviteId,
+                tokenData.hashedToken,
+                tokenData.reference,
+                tokenData.expiredAt
+            ),
+            this.userDomain.getOneActiveByEmail(existing.email),
+        ]);
 
         await this.sendInviteNotification(
             workspace,
             invite,
             tokenData,
-            actorId
+            actorId,
+            existingUser
         );
 
         return invite;
@@ -380,18 +411,39 @@ export class WorkspaceInviteDomain {
             throw new WorkspaceInviteAlreadyProcessedException();
         }
 
-        await this.databaseService.withTransaction(async tx => {
-            await this.workspaceInviteRepository.revokeInTx(
-                tx,
-                workspaceInviteId,
-                actorId
-            );
-            this.activityLogDomain.stage({
+        const existingUser = await this.userDomain.getOneActiveByEmail(
+            existing.email
+        );
+
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceInviteRevoked,
                 userId: actorId,
+                createdBy: actorId,
                 workspaceId: workspaceId,
-            });
-        });
+                metadata: existingUser
+                    ? {
+                          workspaceInviteId: workspaceInviteId,
+                          targetUserId: existingUser.id,
+                      }
+                    : { workspaceInviteId: workspaceInviteId },
+            }),
+        ];
+        if (existingUser && existingUser.id !== actorId) {
+            const workspaceInviteRevokedByAdminEvent =
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.workspaceInviteRevokedByAdmin,
+                    userId: existingUser.id,
+                    createdBy: actorId,
+                    workspaceId: workspaceId,
+                    metadata: { actorUserId: actorId },
+                });
+            events.push(workspaceInviteRevokedByAdminEvent);
+        }
+
+        await this.workspaceInviteRepository.revoke(workspaceInviteId);
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async acceptOnSignUpInTx(
@@ -446,7 +498,32 @@ export class WorkspaceInviteDomain {
             throw new WorkspaceInviteInvalidException();
         }
 
+        const invitedByUserId = invite.invitedByUserId;
+        if (!invitedByUserId) {
+            throw new WorkspaceInviteInvalidException();
+        }
+
         const today = this.helperDateService.create();
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceInviteAccepted,
+                userId: userId,
+                createdBy: userId,
+                workspaceId: invite.workspaceId,
+                metadata: { targetUserId: invitedByUserId },
+            }),
+        ];
+        if (invitedByUserId !== userId) {
+            const workspaceInviteAcceptedByInviteeEvent =
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
+                    userId: invitedByUserId,
+                    createdBy: userId,
+                    workspaceId: invite.workspaceId,
+                    metadata: { actorUserId: userId },
+                });
+            events.push(workspaceInviteAcceptedByInviteeEvent);
+        }
 
         await this.databaseService.withTransaction(async tx => {
             await this.workspaceMemberDomain.createInTx(
@@ -476,12 +553,9 @@ export class WorkspaceInviteDomain {
                     userId
                 );
             }
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.workspaceInviteAccepted,
-                userId: userId,
-                workspaceId: invite.workspaceId,
-            });
         });
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async previewInvite(inviteToken: string): Promise<IWorkspaceInvitePreview> {

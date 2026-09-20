@@ -17,7 +17,7 @@ The surface, all on `HelperDateService`
 | move forward / back | `forward(date, duration)` · `backward(date, duration)` |
 | set fields | `set(date, units)` |
 | build / measure a duration | `createDuration(duration)` · `diff(a, b)` |
-| format | `formatToIso` · `formatToIsoDate` · `formatToIsoTime` |
+| format | `formatToIso` · `formatToIsoDate` · `formatToIsoTime` · `formatToRFC2822` |
 | read | `getTimestamp` · `getZone` · `getZoneOffset` |
 | validate | `checkIso` · `checkTimestamp` |
 | age | `calculateAge(dateOfBirth, fromYear?)` |

@@ -136,10 +136,10 @@ SENTRY_DSN=<your_sentry_dsn>
 ```
 
 **Features:**
-- Automatic error tracking
-- Performance monitoring
+- Automatic error tracking through `SentryService` (`src/common/sentry`), used by the exception filters and `QueueProcessorBase`
+- Performance monitoring and profiling
 - Queue job failure tracking (integrated in `QueueProcessorBase`)
-- Request context capture
+- Request context capture, scrubbed in `src/instrument.ts` before it leaves the process (URLs masked, sensitive headers, cookies, and body fields redacted). See [Logger][ref-doc-logger]
 
 Leave `SENTRY_DSN` empty to disable Sentry in development.
 
@@ -171,8 +171,8 @@ For cache implementation, see [Cache][ref-doc-cache]. For queue details, see [Qu
 [PostgreSQL][ref-postgresql] with [Prisma][ref-prisma] as the primary database.
 
 **Packages:**
-- `@prisma/client`
-- `prisma`
+- `@prisma/client` (runtime of the generated client)
+- `prisma` (CLI and the `prisma-client` generator, which writes the client into `src/generated/prisma-client`)
 
 **Environment Variables:**
 ```dotenv
@@ -258,3 +258,4 @@ For authentication flow details, see [Authentication][ref-doc-authentication].
 [ref-doc-database]: database.md
 [ref-doc-notification]: notification.md
 [ref-doc-vault]: vault.md
+[ref-doc-logger]: logger.md

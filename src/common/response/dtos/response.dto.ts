@@ -1,13 +1,12 @@
 import { z } from 'zod';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import {
-    ResponseMetadataDto,
-    ResponseMetadataSchema,
-} from '@common/response/dtos/response.metadata.dto';
+import { ResponseMetadataSchema } from '@common/response/dtos/response.metadata.dto';
+import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 
 /**
  * Standard API response envelope without `data`. A route documenting a payload adds it with
  * `.extend({ data })`.
+ * @public
  */
 export const ResponseSchema = z.object({
     statusCode: z.number().meta({
@@ -34,6 +33,7 @@ export const ResponseSchema = z.object({
 
 /**
  * Standard API response envelope: statusCode, localized message, metadata, and optional data.
+ * @public
  */
 export type ResponseDto<T> = {
     statusCode: number;

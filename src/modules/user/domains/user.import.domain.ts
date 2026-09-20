@@ -1,33 +1,33 @@
 import { FileExceedMaxDataExportException } from '@common/file/exceptions/file.exceed-max-data-export.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import {
+import type {
     IPaginationEqual,
     IPaginationIn,
 } from '@common/pagination/interfaces/pagination.interface';
 import {
     EnumRoleType,
-    EnumTermPolicyType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
-import { UserCreateModeRules } from '@modules/user/constants/user.create-mode.constant';
+import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
+import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
 import { UserImportUsernameExistException } from '@modules/user/exceptions/user.import-username-exist.exception';
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
-import {
+import type {
     IUser,
     IUserCreateWithWorkspaceInput,
     IUserExport,
+    IUserImport,
     IUserImportPrepared,
-    IUserImportRow,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
@@ -63,7 +63,7 @@ export class UserImportDomain {
     }
 
     async prepareImportByAdmin(
-        data: IUserImportRow[],
+        data: IUserImport[],
         createdBy: string
     ): Promise<IUserImportPrepared> {
         const emails = data.map(item => item.email);
@@ -116,8 +116,8 @@ export class UserImportDomain {
         const passwords = Array(totalData)
             .fill(0)
             .map(() => this.authPasswordUtil.createPasswordRandom());
-        const passwordHasheds = userIds.map((e, i) =>
-            this.authPasswordUtil.createPassword(e, passwords[i])
+        const passwordHasheds = passwords.map(password =>
+            this.authPasswordUtil.createPassword(password)
         );
         const workspaceContexts =
             this.userOnboardingDomain.buildPersonalWorkspaceContexts(usernames);
@@ -133,19 +133,13 @@ export class UserImportDomain {
                 signUpFrom: EnumUserSignUpFrom.admin,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified,
-                termPolicy: {
-                    [EnumTermPolicyType.cookies]: false,
-                    [EnumTermPolicyType.marketing]: false,
-                    [EnumTermPolicyType.privacy]: true,
-                    [EnumTermPolicyType.termsOfService]: true,
-                },
+                termPolicy: { ...UserTermPolicyContract.defaults },
                 acceptedTermPolicyTypes: [
-                    EnumTermPolicyType.termsOfService,
-                    EnumTermPolicyType.privacy,
+                    ...UserTermPolicyContract.requiredTypes,
                 ],
                 password: passwordHasheds[index],
                 passwordHistoryType:
-                    UserCreateModeRules[EnumUserCreateMode.admin]
+                    UserCreateContract[EnumUserCreateMode.admin]
                         .passwordHistoryType,
                 verification: null,
                 workspaceContext: workspaceContexts[index],
@@ -153,30 +147,34 @@ export class UserImportDomain {
             })
         );
 
-        return { inputs, passwordHasheds };
+        return { inputs, passwordHasheds, passwordStrings: passwords };
     }
 
     async notifyImported(
         users: IUser[],
         passwordHasheds: IUserImportPrepared['passwordHasheds'],
+        passwordStrings: IUserImportPrepared['passwordStrings'],
         createdBy: string
     ): Promise<void> {
         await Promise.all(
-            users.map((newUser, index) =>
-                this.notificationQueue.sendWelcomeByAdmin(
+            users.map((newUser, index) => {
+                const passwordCreatedAt = this.helperDateService.formatToIso(
+                    passwordHasheds[index].passwordCreated
+                );
+                const passwordExpiredAt = this.helperDateService.formatToIso(
+                    passwordHasheds[index].passwordExpired
+                );
+
+                return this.notificationQueue.sendWelcomeByAdmin(
                     newUser.id,
                     {
-                        password: passwordHasheds[index].passwordEncrypted,
-                        passwordCreatedAt: this.helperDateService.formatToIso(
-                            passwordHasheds[index].passwordCreated
-                        ),
-                        passwordExpiredAt: this.helperDateService.formatToIso(
-                            passwordHasheds[index].passwordExpired
-                        ),
+                        password: passwordStrings[index],
+                        passwordCreatedAt,
+                        passwordExpiredAt,
                     },
                     createdBy
-                )
-            )
+                );
+            })
         );
     }
 

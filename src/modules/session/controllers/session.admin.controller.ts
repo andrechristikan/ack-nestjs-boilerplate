@@ -2,17 +2,17 @@ import {
     PaginationOffsetQuery,
     PaginationQueryFilterEqualBoolean,
 } from '@common/pagination/decorators/pagination.decorator';
-import {
+import type {
     IPaginationEqual,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-import {
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
@@ -26,10 +26,11 @@ import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 import {
     SessionAdminListDoc,
+    SessionAdminRevokeAllDoc,
     SessionAdminRevokeDoc,
 } from '@modules/session/docs/session.admin.doc';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
-import { ISession } from '@modules/session/interfaces/session.interface';
+import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionHttpService } from '@modules/session/services/session.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -40,7 +41,7 @@ import {
     EnumPolicySubject,
     EnumRoleType,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.user.session')
 @Controller({
@@ -78,7 +79,7 @@ export class SessionAdminController {
         userId: string,
         @PaginationQueryFilterEqualBoolean('isRevoked')
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<ISession>> {
+    ): Promise<IResponsePagingReturn<ISessionList>> {
         return this.sessionHttpService.getListOffsetByAdmin(
             userId,
             pagination,
@@ -117,5 +118,32 @@ export class SessionAdminController {
             sessionId,
             revokedBy
         );
+    }
+
+    @SessionAdminRevokeAllDoc()
+    @Response('session.revokeAll')
+    @TermPolicyAcceptanceProtected()
+    @PolicyProtected(
+        {
+            subject: EnumPolicySubject.user,
+            action: [EnumPolicyAction.read],
+        },
+        {
+            subject: EnumPolicySubject.session,
+            action: [EnumPolicyAction.read, EnumPolicyAction.delete],
+        }
+    )
+    @RoleProtected(EnumRoleType.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true })
+    @Delete('/revoke-all')
+    async revokeAll(
+        @Param('userId', { schema: RequestUuidSchema })
+        userId: string,
+        @AuthJwtPayload('userId') revokedBy: string
+    ): Promise<IResponseReturn<void>> {
+        return this.sessionHttpService.revokeAllByAdmin(userId, revokedBy);
     }
 }

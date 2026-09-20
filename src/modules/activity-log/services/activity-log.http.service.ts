@@ -1,10 +1,10 @@
-import {
+import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
-import { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client/client';
+import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { Injectable } from '@nestjs/common';
 

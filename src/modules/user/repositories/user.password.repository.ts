@@ -1,14 +1,15 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { TwoFactorActiveBackupCodesFilter } from '@modules/user/constants/user.constant';
-import { EnumUserStatus, ForgotPassword } from '@generated/prisma-client';
-import {
+import { EnumUserStatus } from '@generated/prisma-client/client';
+import type { ForgotPassword } from '@generated/prisma-client/client';
+import type {
     IUser,
     IUserForgotPasswordCreate,
 } from '@modules/user/interfaces/user.interface';
-import { IUserPasswordRepository } from '@modules/user/interfaces/user.password.repository.interface';
+import type { IUserPasswordRepository } from '@modules/user/interfaces/user.password-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -69,31 +70,27 @@ export class UserPasswordRepository implements IUserPasswordRepository {
         });
     }
 
-    async expireUnusedInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string
-    ): Promise<void> {
-        await tx.forgotPassword.updateMany({
-            where: { userId, isUsed: false },
-            data: { isUsed: true },
-        });
-    }
-
-    async createInTx(
-        tx: IDatabaseTransactionClient,
+    async createReplacingUnused(
         userId: string,
         email: string,
         { expiredAt, reference, hashedToken }: IUserForgotPasswordCreate
     ): Promise<ForgotPassword> {
-        return tx.forgotPassword.create({
-            data: {
-                userId,
-                expiredAt,
-                reference,
-                token: hashedToken,
-                createdBy: userId,
-                to: email,
-            },
+        return this.databaseService.withTransaction(async tx => {
+            await tx.forgotPassword.updateMany({
+                where: { userId, isUsed: false },
+                data: { isUsed: true },
+            });
+
+            return tx.forgotPassword.create({
+                data: {
+                    userId,
+                    expiredAt,
+                    reference,
+                    token: hashedToken,
+                    createdBy: userId,
+                    to: email,
+                },
+            });
         });
     }
 

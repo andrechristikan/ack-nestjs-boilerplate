@@ -10,7 +10,7 @@ multi-workspace, invites, join requests, workspace-scoped projects), and platfor
 
 ## Stack
 
-- NestJS 12 · TypeScript strict · Node >= 24.11 · PNPM >= 10.25, pinned to `pnpm@11.25.0` ·
+- NestJS 12 · TypeScript 6 strict · Node >= 24.15 · PNPM >= 10.25, pinned to `pnpm@11.25.0` ·
   **PNPM only** — `npm` and `yarn` are blocked by `engines` and by a `npx only-allow pnpm`
   preinstall guard
 - Prisma 6 + **PostgreSQL 18** — schema changes use versioned Prisma Migrate files under
@@ -36,12 +36,13 @@ humans: `docs/project-structure.md` — not a standing read.
 src/
 ├── main.ts             # HTTP bootstrap — global prefix, versioning, trusted proxy, Swagger
 ├── migration.ts        # nest-commander entrypoint — boots MigrationModule, runs seeders
-├── instrument.ts       # Sentry init (imported first by main.ts)
+├── instrument.ts       # Sentry init and event scrubbing (node --import, and main.ts's first import)
 ├── swagger.ts          # Swagger/OpenAPI document builder
 ├── app/                # framework layer — app.module + the APP_FILTER chain
 ├── common/             # the shared module — database, cache, redis, pagination, request,
-│                       #   response, logger, message, helper, file, doc, aws, firebase
+│                       #   response, logger, message, helper, file, doc, aws, firebase, sentry
 ├── configs/            # registerAs config files + index.ts barrel
+├── generated/          # prisma-client/ (prisma generate) and package/ (generate:package), gitignored
 ├── languages/          # nestjs-i18n JSON, one file per module prefix
 ├── migration/          # SEEDS — data/, seeds/, bases/, enums/, interfaces/
 ├── modules/            # feature modules (repository pattern)
@@ -54,11 +55,13 @@ src/
 prisma/schema.prisma    # editable; applying it to PostgreSQL is the owner's — see "How work happens here"
 generated/              # prisma client, swagger, vault init, agent reports (gitignored)
 docs/                   # durable project documentation
-test/                   # jest.json + specs mirroring src/
-scripts/ · ci/ · keys/
+test/                   # specs mirroring src/, collected by vitest.config.ts
+scripts/                # generate-secret.ts, generate-package.ts
+ci/ · keys/             # keys/ holds the generated JWT keys and encryption-secret.env (gitignored)
 
-tsconfig.json           # typecheck, jest, ts-prune, editor — src + test + scripts
+tsconfig.json           # typecheck, vitest, knip, editor — src + test + scripts + vitest.config.ts
 tsconfig.build.json     # nest build / nest start — src only; named by nest-cli.json
+knip.json               # pnpm deadcode
 ```
 
 `src/app/app.module.ts` registers the `APP_FILTER` providers in array order general →
@@ -68,16 +71,27 @@ the most specific catch runs first.
 ## Commands
 
 - `pnpm install` · `pnpm start:dev` · `pnpm build` · `pnpm start:prod`
+- `pnpm generate` — `db:generate` (`prisma generate`) then `generate:package`
+  (`src/generated/package/package.ts`). After a fresh checkout and after a `package.json`
+  version bump. CI and both dockerfiles run it
+- `pnpm generate:secret` (both) · `pnpm generate:secret:jwt` · `pnpm generate:secret:encryption`
+  — key material into `keys/`, printed as paths only; `--direct-insert` also upserts that
+  target's `.env` variables and rotates them
 - `pnpm typecheck` — `tsc --noEmit`. `pnpm build` runs it too, but proves nothing on its own
-- `pnpm test` — `TZ=UTC jest --config test/jest.json`; `pnpm test:cov` adds coverage
+- `pnpm test` — `TZ=UTC vitest run --passWithNoTests`; `pnpm test:cov` adds `--coverage`.
+  `vitest.config.ts` sets `isolate: false`, `fsModuleCache: true`, and `test/setup.ts` as
+  `setupFiles`. `.github/workflows/test.yml` is `workflow_dispatch`; `linter.yml` runs on
+  `pull_request`.
 - `pnpm lint` · `pnpm lint:fix` · `pnpm format` · `pnpm deadcode` · `pnpm spell`
 - `pnpm db:generate` · `pnpm db:migrate` · `pnpm db:studio` · `pnpm vault:pull`
 - `docker-compose up -d` — PostgreSQL, Redis, BullBoard, JWKS server, Vault
 - `pre-commit` runs lint-staged → typecheck → deadcode → spell → the test suite.
   `commit-msg` runs commitlint. Both are BLOCKING.
 
-**`deadcode` and `spell` always exit 0.** `spell` ends in `|| true` and `ts-prune` never
-signals. Their exit code means nothing: READ the output and report what it says.
+**`pnpm deadcode` is knip.** `knip.json` sets unused files, exports, types, enum members and
+dependencies to `warn`: they print and exit 0. Unlisted dependencies, unresolved imports,
+unlisted binaries and duplicate exports stay `error` and exit 1. **`spell` always exits 0**
+(it ends in `|| true`). For both, READ the output and report what it says.
 
 ## Skills
 
@@ -92,7 +106,7 @@ Project skills, in `.claude/skills/`. Each is owner-invoked only and dispatches 
 | `ack-code` | `src/` work, test-first — new behaviour, a repair, seeds; offers reviewer, reviewer-e2e, doc-writer |
 | `ack-spec` | write and repair unit specs against code that exists, to 100% coverage; touches no `src/` |
 | `ack-docs` | check and repair `docs/*.md` and the root `README.md` |
-| `ack-claude-config` | rework `.claude/**`, with agents and skills disabled |
+| `ack-claude-config` | rework `.claude/**` and `.github/copilot-instructions.md`, with agents and skills disabled |
 
 The roster prints to the terminal at session start — a `SessionStart` hook derives it from
 `.claude/skills/*/SKILL.md`, so adding a skill needs no second edit anywhere.
@@ -127,18 +141,19 @@ review of their own. A docs-only pass is `/ack-docs`; a docs update after a code
 `doc-writer` offer.
 
 **A test run is always scoped to the module the work actually CHANGED** —
-`pnpm test --testPathPatterns '<module>'`. No skill except `/ack-spec` runs the full
+`pnpm test <module>` (a Vitest path filter). No skill except `/ack-spec` runs the full
 suite; the `pre-commit` hook runs `pnpm test` (no coverage) on every commit.
-`collectCoverage` is `false` in `test/jest.json`, so a scoped `pnpm test` does not apply the
-100% threshold. Coverage is `pnpm test:cov`, and a scoped coverage run exits 1 with every
-spec passing because the threshold is global — read the `Tests:` line and the per-file rows,
+`coverage.enabled` is `false` in `vitest.config.ts`, so a scoped `pnpm test` does not apply
+the 100% threshold. Coverage is `pnpm test:cov`, and a scoped coverage run exits 1 with every
+spec passing because the threshold is global — read the `Tests` line and the per-file rows,
 not the exit code and not the global summary.
 
-**A coverage gap is never closed silently.** `/ack-spec` is the skill that writes specs —
+**A coverage gap is never closed silently.** `/ack-spec` is the skill built for it —
 100% is the bar it exists to reach, so it keeps dispatching `test-writer` until the per-file
 rows say 100 and hands back only the lines that cannot be covered without changing `src/`.
-`ack-code` does not dispatch `test-writer`. `coder` writes the TDD spec for the behaviour
-in its plan; `/ack-spec` writes every other spec.
+`coder` writes the TDD spec for the behaviour in its plan. `/ack-code` dispatches
+`test-writer` too, for specs that cover code the run did not write — the gap a finished run
+leaves behind, or a tree the owner names.
 A commit touching `src/` or `test/` goes through the hooks, and `pre-commit` does not collect
 coverage, so neither is a way past the threshold.
 
@@ -154,8 +169,8 @@ and `general-purpose` is `allow` in `.claude/settings.json`: an external skill s
 skill's flow.** A project skill dispatches the agents in `.claude/agents/` and nothing else;
 reaching for a generic built-in inside one of those flows is drift, not a shortcut.
 `coder` is the only agent holding the `Agent` tool, and it dispatches `seed-writer` when the
-work touches `prisma/*` or `src/migration/**`, and nothing else. `test-writer` is dispatched
-only by `/ack-spec`.
+work touches `prisma/*` or `src/migration/**`, and nothing else. `test-writer` is dispatched by
+`/ack-spec` and by `/ack-code`, never by another agent.
 
 **Every agent is SCOPED to what its dispatch names**, and none of them sweeps the repository
 unless the dispatch asks for that in those words. Anything noticed outside the scope is one
@@ -248,10 +263,11 @@ installs them once:
   fail because the behaviour is absent, then implement. `coder` carries
   `superpowers:test-driven-development` and writes that spec itself. `/ack-spec` is the
   other half: the code already exists and it wins.
-- **This checkout has no `test/**/*.spec.ts`.** While that is true, `/ack-code` may dispatch
-  `coder` with the suite waiver and land `src/` without a red spec. The moment any unit spec
-  exists, TDD is mandatory and that waiver is gone. Seeds, controllers, and repositories
-  never have a TDD cycle.
+- **The suite is unit specs** under `test/**/*.spec.ts` (`rules/testing.md`). A domain spec
+  doubles the repository; a repository is not a unit subject. Integration (adapter plus real
+  engine) and e2e (running app) are other kinds and are not this suite. Seeds, controllers,
+  processors, repositories, contracts and Swagger doc factories (`*.doc.ts`) never have a
+  TDD cycle.
 - **Build the correct shape and change every call site.** No deprecated-but-kept field, no
   `v1`/`v2` pair, no compat flag, no bridging shim. Best practice outranks the incumbent
   pattern.

@@ -1,9 +1,13 @@
 import { z } from 'zod';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { EnumPolicyAction, EnumPolicySubject } from '@generated/prisma-client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
 
 /**
  * Base policy shape: one `(subject, action[])` combination stored in the Policies collection.
+ * @public
  */
 export const PolicySchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -23,4 +27,8 @@ export const PolicySchema = DatabaseResponseSchema.omit({
         }),
 });
 
+/**
+ * Stored policy: one subject with its allowed actions.
+ * @public
+ */
 export type PolicyDto = z.infer<typeof PolicySchema>;

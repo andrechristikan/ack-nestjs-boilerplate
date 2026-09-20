@@ -1,12 +1,12 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-import {
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
@@ -14,11 +14,13 @@ import {
     EnumProjectMemberRole,
     EnumWorkspaceMemberRole,
     Prisma,
+} from '@generated/prisma-client/client';
+import type {
     Project,
     ProjectMember,
     Workspace,
     WorkspaceMember,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
@@ -40,29 +42,19 @@ import {
     ProjectDefaultAvailableSearch,
     ProjectMemberDefaultAvailableOrderBy,
 } from '@modules/project/constants/project.list.constant';
-import {
-    ProjectCreateRequestDto,
-    ProjectCreateRequestSchema,
-} from '@modules/project/dtos/request/project.create.request.dto';
-import {
-    ProjectMemberAssignRequestDto,
-    ProjectMemberAssignRequestSchema,
-} from '@modules/project/dtos/request/project.member-assign.request.dto';
-import {
-    ProjectMemberUpdateRoleRequestDto,
-    ProjectMemberUpdateRoleRequestSchema,
-} from '@modules/project/dtos/request/project.member-update-role.request.dto';
-import {
-    ProjectUpdateSlugRequestDto,
-    ProjectUpdateSlugRequestSchema,
-} from '@modules/project/dtos/request/project.update-slug.request.dto';
-import {
-    ProjectUpdateRequestDto,
-    ProjectUpdateRequestSchema,
-} from '@modules/project/dtos/request/project.update.request.dto';
+import { ProjectCreateRequestSchema } from '@modules/project/dtos/request/project.create.request.dto';
+import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
+import { ProjectMemberAssignRequestSchema } from '@modules/project/dtos/request/project.member-assign.request.dto';
+import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
+import { ProjectMemberUpdateRoleRequestSchema } from '@modules/project/dtos/request/project.member-update-role.request.dto';
+import type { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
+import { ProjectUpdateSlugRequestSchema } from '@modules/project/dtos/request/project.update-slug.request.dto';
+import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
+import { ProjectUpdateRequestSchema } from '@modules/project/dtos/request/project.update.request.dto';
+import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseSchema } from '@modules/project/dtos/response/project.member.response.dto';
 import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
-import { IProjectMember } from '@modules/project/interfaces/project.interface';
+import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import {
     ProjectCurrent,
     ProjectMemberCurrent,

@@ -1,6 +1,6 @@
 # Request Validation Documentation
 
-This documentation explains the features and usage of **Request Module**: Located at `src/common/request`
+Request validation lives in `src/common/request`.
 
 ## Overview
 
@@ -47,7 +47,12 @@ Every request shape is a [zod][ref-zod] schema. Schemas reach the framework thro
 }
 ```
 
-The subclass adds one rule on top of the framework pipe: a `body` argument arriving with no schema attached throws `RequestSchemaMissingException` instead of reaching the handler unchecked. Binding a body is therefore always `@Body({ schema: <Module><Action>RequestSchema })`. The constraint when writing one: `rules/validation.md`.
+The subclass adds two rules on top of the framework pipe:
+
+- **Fail-closed on `body` and `param`.** An argument of either type arriving with no schema attached throws `RequestSchemaMissingException` instead of reaching the handler unchecked, so a body is bound as `@Body({ schema: <Module><Action>RequestSchema })` and a path param as `@Param('userId', { schema: RequestUuidSchema })`. A `query` argument with no schema still passes.
+- **Empty issue paths carry the argument name.** An issue whose Standard Schema `path` is empty is stamped with the bound argument name before `exceptionFactory` runs, so `errors[].property` reads as the parameter rather than as `Unknown`.
+
+The pipe also strips prototype-polluting keys from the value before validating. The constraint when writing a schema: `rules/validation.md`.
 
 **Processing flow**:
 ```
@@ -73,13 +78,17 @@ Standardized error response (HTTP 422)
 The schema is bound on `@Body()`; the parameter is typed with the inferred DTO type:
 
 ```typescript
-@Controller('users')
+@Controller({
+  version: '1',
+  path: '/user',
+})
 export class UserAdminController {
   @Post('/create')
   create(
-    @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto
+    @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto,
+    @AuthJwtPayload('userId') createdBy: string
   ) {
-    return this.userHttpService.create(body);
+    return this.userHttpService.createByAdmin(body, createdBy);
   }
 }
 ```
@@ -87,6 +96,10 @@ export class UserAdminController {
 **Schema example** (`src/modules/user/dtos/request/user.claim-username.request.dto.ts`):
 
 ```typescript
+/**
+ * Validates the body for claiming a username, lower-cased.
+ * @public
+ */
 export const UserClaimUsernameRequestSchema = z.strictObject({
     username: z
         .string()
@@ -107,18 +120,18 @@ export type UserClaimUsernameRequestDto = z.infer<
 >;
 ```
 
-Each request schema lives in `<module>/dtos/request/` and exports the `<Module><Action>RequestSchema` constant next to the `<Module><Action>RequestDto` type inferred from it, so the type and the runtime check can never drift apart.
+Each request schema lives in its own file under `<module>/dtos/request/` and exports the `<Module><Action>RequestSchema` constant next to the `<Module><Action>RequestDto` type inferred from it, so the type and the runtime check cannot drift apart. Both carry a one-line JSDoc summary and `@public`.
 
 ### Path Parameters Validation
 
 A path param is validated by a zod schema bound on `@Param`, the same way a body uses `@Body({ schema })`:
 
 ```typescript
-@Get('/get/:user')
+@Get('/get/:userId')
 findOne(
   @Param('user', { schema: RequestUuidSchema }) user: string
 ) {
-  return this.userHttpService.get(user);
+  return this.userHttpService.getOne(userId);
 }
 ```
 
@@ -224,10 +237,13 @@ email: z
 
 A module-specific check goes in that module's `validations/` folder instead.
 
-Shared param schemas:
+Shared schemas:
 
 - `RequestUuidSchema` — UUID path and query parameters
 - `RequestRequiredStringSchema` — non-empty string
+- `RequestBooleanStringSchema` — `z.stringbool` accepting exactly `'true'` or `'false'`, case-sensitive; used by the boolean environment variables
+- `RequestEncryptionSecretSchema` — exactly 64 base64url characters; used by `APP_ENCRYPTION_SECRET_KEY` and `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
+- `RequestMessageLanguageSchema` — a member of `EnumMessageLanguage`, carrying its own `.meta()` for the OpenAPI document
 
 ```typescript
 @Get(':userId')
@@ -260,7 +276,7 @@ The pipe caps the row count at the `file.maxDataImport` config value (100, overr
 
 ## Environment Variables
 
-`AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) is the zod schema `ConfigModule.forRoot()` validates `process.env` against at boot, so a missing or malformed variable stops the process instead of surfacing later as a runtime error. An env boolean is exactly `'true'` or `'false'`; every other spelling fails the boot. See [Environment][ref-doc-environment].
+`AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) is the zod schema `ConfigModule.forRoot()` validates `process.env` against at boot, so a missing or malformed variable stops the process instead of surfacing later as a runtime error. An env boolean is `RequestBooleanStringSchema`, exactly `'true'` or `'false'`; every other spelling fails the boot. An encryption secret is `RequestEncryptionSecretSchema`, exactly 64 base64url characters. See [Environment][ref-doc-environment].
 
 ## Error Message Mapping
 
@@ -297,7 +313,11 @@ Messages are translated using [nestjs-i18n][ref-nestjs-i18n] through the [Messag
     "tooBig": "{property} is longer than the maximum allowed.",
     "invalidFormat": "{property} does not match the expected format.",
     "invalidValue": "{property} is not one of the allowed values.",
+    "notMultipleOf": "{property} is not a multiple of the required step.",
     "unrecognizedKeys": "The request contains fields that are not allowed.",
+    "invalidUnion": "{property} does not match any of the allowed shapes.",
+    "invalidKey": "{property} contains a key that is not allowed.",
+    "invalidElement": "{property} contains an element that is not allowed.",
     "custom": "{property} failed a validation rule.",
     "isPassword": {
       "strong": "{property} must be a strong password containing uppercase, lowercase, numbers, and special characters."

@@ -1,6 +1,7 @@
-import { Injectable, PipeTransform, Type, mixin } from '@nestjs/common';
+import { Injectable, mixin } from '@nestjs/common';
+import type { PipeTransform, Type } from '@nestjs/common';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
-import {
+import type {
     IPaginationCursorPipeReturn,
     IPaginationOffsetPipeReturn,
     IPaginationOrderBy,
@@ -112,14 +113,18 @@ export function PaginationOrderPipe(
         ): IPaginationOrderBy[] {
             const orderByExtractFromRequest =
                 this.extractOrderByToArray(orderBy);
-            const parsedOrderBy =
+            let parsedOrderBy: IPaginationOrderBy[];
+            if (
                 orderByExtractFromRequest.length === 0 ||
                 defaultAvailableOrder.length === 0
-                    ? [...PaginationDefaultOrderBy]
-                    : this.validateOrderBy(
-                          orderByExtractFromRequest,
-                          defaultAvailableOrder
-                      );
+            ) {
+                parsedOrderBy = [...PaginationDefaultOrderBy];
+            } else {
+                parsedOrderBy = this.validateOrderBy(
+                    orderByExtractFromRequest,
+                    defaultAvailableOrder
+                );
+            }
 
             this.requestStoreService.merge<IPaginationQuery>(
                 PaginationStoreKey,

@@ -1,8 +1,9 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { FeatureFlag, Prisma } from '@generated/prisma-client';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client/client';
+import type { FeatureFlag } from '@generated/prisma-client/client';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     FeatureFlagDefaultAvailableOrderBy,

@@ -1,8 +1,7 @@
-import {
+import { HttpException, Injectable } from '@nestjs/common';
+import type {
     CallHandler,
     ExecutionContext,
-    HttpException,
-    Injectable,
     NestInterceptor,
 } from '@nestjs/common';
 import {
@@ -89,9 +88,8 @@ export class FileUploadErrorInterceptor implements NestInterceptor {
             return err;
         }
 
-        const factory = this.byFrameworkMessage.get(
-            this.extractBaseMessage(err.message)
-        );
+        const baseMessage = this.extractBaseMessage(err.message);
+        const factory = this.byFrameworkMessage.get(baseMessage);
 
         return factory ? factory() : err;
     }

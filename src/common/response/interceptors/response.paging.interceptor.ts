@@ -1,12 +1,12 @@
-import {
+import { Injectable } from '@nestjs/common';
+import type {
     CallHandler,
     ExecutionContext,
-    Injectable,
     NestInterceptor,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { Response } from 'express';
+import type { Response } from 'express';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { MessageService } from '@common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
@@ -14,15 +14,15 @@ import {
     ResponseMessagePathMetaKey,
     ResponseSchemaMetaKey,
 } from '@common/response/constants/response.constant';
-import { ResponsePagingDto } from '@common/response/dtos/response.paging.dto';
-import { ResponsePagingMetadataDto } from '@common/response/dtos/response.paging-metadata.dto';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { IMessageProperties } from '@common/message/interfaces/message.interface';
+import type { ResponsePagingDto } from '@common/response/dtos/response.paging.dto';
+import type { ResponsePagingMetadataDto } from '@common/response/dtos/response.paging-metadata.dto';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IMessageProperties } from '@common/message/interfaces/message.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import {
+import type {
     IPaginationOrderBy,
     IPaginationQuery,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -177,10 +177,12 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         delete rMetadata.messageProperties;
                     }
 
-                    const pagination =
+                    const storedPagination =
                         this.requestStoreService.get<Partial<IPaginationQuery>>(
                             PaginationStoreKey
-                        ) ?? {};
+                        );
+                    const pagination = storedPagination ?? {};
+                    const orderBy = this.mapOrderBy(pagination.orderBy);
                     const finalMetadata: ResponsePagingMetadataDto = {
                         ...metadata,
                         type,
@@ -196,7 +198,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         perPage,
                         search: pagination.search,
                         filters: pagination.filters,
-                        orderBy: this.mapOrderBy(pagination.orderBy),
+                        orderBy,
                         availableSearch: pagination.availableSearch ?? [],
                         availableOrderBy: pagination.availableOrderBy ?? [],
                     };

@@ -36,13 +36,23 @@ export type UserUpdateProfileRequestDto = z.infer<
 >;
 ```
 
+- **One `*.dto.ts` file declares exactly one zod schema const** — the exported one — and its
+  `z.infer` type. No file-local helper schema and no second exported schema beside it. A
+  nested shape is inlined into the parent object. A piece reused across schemas is a custom
+  schema in `src/common/request/validations/request.<name>.validation.ts`
+  (`RequestUuidSchema`, `RequestBooleanStringSchema`). A second top-level schema is its own
+  file.
 - The schema is the source of truth; the type is `z.infer` of it and is never hand-written
   beside it. A hand-written interface mirroring a schema drifts (`rules/code-style.md`).
 - The `Schema` const is what a decorator, a pipe and a doc factory receive. The `Dto` type is
   what a signature is annotated with.
 - **A request schema is `z.strictObject`; a response schema is `z.object`.** An unknown key
   entering is a caller error and is rejected; an undeclared key leaving is stripped, which is
-  what makes the response fail closed.
+  what makes the response fail closed. Neither is ever a top-level `z.array` or `z.record`: an
+  array declares nothing to strip at its root, and a record declares nothing at all. A payload
+  that is a LIST is a paginated route (`@ResponsePaging`, `rules/pagination.md`), whose schema
+  is the row — the one shape that is a whole collection in a single response is the one nothing
+  grows: a fixed enum's members, and even that carries its rows inside a declared object.
 - Compose with the zod combinators rather than restating fields: `.extend()`, `.omit()`,
   `.pick()`, `.partial()`, `.nullable()`. A base shape such as `DatabaseResponseSchema` or a
   module's own base request schema is extended, not copied.
@@ -92,4 +102,4 @@ from the named schema instead (`rules/code-style.md`).
 
 A DTO spec asserts that parsing returns exactly the declared fields, that an undeclared field
 is stripped, and that nothing sensitive rides along. That spec is the executable form of the
-opt-in rule, and DTOs are inside `collectCoverageFrom` (`rules/testing.md`).
+opt-in rule, and DTOs are inside the coverage set (`rules/testing.md`).

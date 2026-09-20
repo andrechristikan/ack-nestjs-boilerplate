@@ -1,33 +1,26 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { PaginationService } from '@common/pagination/services/pagination.service';
-import {
+import type {
     IRequestGeoLocation,
     IRequestUserAgent,
 } from '@common/request/interfaces/request.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
-import {
-    ISessionAnalyticListRow,
-    ISessionAnalyticRepository,
-    ISessionAnalyticSessionRow,
+import { Prisma } from '@generated/prisma-client/client';
+import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import type { ISessionAnalyticRepository } from '@modules/session/interfaces/session.analytic-repository.interface';
+import type {
+    ISessionAnalyticSession,
     ISessionAnalyticUserCount,
-} from '@modules/session/interfaces/session.analytic.repository.interface';
+} from '@modules/session/interfaces/session.interface';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client';
 
 @Injectable()
 export class SessionAnalyticRepository implements ISessionAnalyticRepository {
-    constructor(
-        private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
-    ) {}
+    constructor(private readonly databaseService: DatabaseService) {}
 
     async findActiveWithGeoInRange(
         startDate?: Date,
         endDate?: Date
-    ): Promise<ISessionAnalyticSessionRow[]> {
+    ): Promise<ISessionAnalyticSession[]> {
         const sessions = await this.databaseService.client.session.findMany({
             where: {
                 isRevoked: false,
@@ -90,18 +83,5 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
         return this.databaseService.client.session.count({
             where: { isRevoked: false },
         });
-    }
-
-    async listOffset(
-        params: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>
-    ): Promise<IResponsePagingReturn<ISessionAnalyticListRow>> {
-        const { where, ...rest } = params;
-        return this.paginationService.offset(
-            this.databaseService.client.session,
-            {
-                ...rest,
-                where: where ?? {},
-            }
-        );
     }
 }

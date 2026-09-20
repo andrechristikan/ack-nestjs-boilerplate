@@ -65,7 +65,7 @@ AWS S3 presigned URLs enable secure client-side direct uploads to S3 without exp
 
 **Step 1 - Request schemas:**
 
-Both schemas pick `size` off `AwsS3PresignRequestSchema`, where it is `z.number().int()`.
+Both schemas pick `size` off `AwsS3PresignRequestSchema`, where it is `z.number().int()`. The update schema also reuses its `key` field (non-empty, matching `AwsS3ObjectKeyRegex`) with its own description.
 
 ```typescript
 export const UserGeneratePhotoProfileRequestSchema =
@@ -79,9 +79,9 @@ export const UserGeneratePhotoProfileRequestSchema =
 
 export const UserUpdateProfilePhotoRequestSchema =
     AwsS3PresignRequestSchema.pick({ size: true }).extend({
-        photoKey: z.string().min(1).meta({
-            description: 'photo path key',
-            example: 'user/profile/unique-photo-key.jpg',
+        key: AwsS3PresignRequestSchema.shape.key.meta({
+            description:
+                'Key of the uploaded profile photo, as returned by the presign step',
         }),
     });
 ```
@@ -171,17 +171,22 @@ export class UserProfileDomain {
 
   async updatePhotoProfile(
     userId: string,
-    { photoKey, size }: IUserUpdatePhotoProfile
+    { key, size }: IUserUpdatePhotoProfile
   ): Promise<void> {
-    const requestLog: IRequestLog =
-      this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
     try {
       const aws: IAwsS3 = this.awsS3Service.mapPresign(
-        { key: photoKey, size },
+        { key, size },
         { access: EnumAwsS3Accessibility.public }
       );
-      await this.userRepository.updatePhotoProfile(userId, aws, requestLog);
+
+      const events = [
+        this.activityLogDomain.prepare({
+          action: EnumActivityLogAction.userUpdatePhotoProfile,
+        }),
+      ];
+      await this.userRepository.updatePhotoProfile(userId, aws);
+
+      this.activityLogDomain.stagePrepared(events);
 
       return;
     } catch (err: unknown) {
@@ -195,7 +200,7 @@ export class UserProfileDomain {
 }
 ```
 
-Two things follow from the options actually passed:
+Two things follow from the options passed:
 
 - `presignPutItem` and `mapPresign` both name `EnumAwsS3Accessibility.public`, so the photo is signed against, and stored in, the public bucket. `access` is a required option on both, so the value a call means is always written at the call site.
 - No `expiredInSeconds` is passed, so the signature lives for `aws.s3.presignExpiredInSeconds`, which is 30 minutes.
@@ -246,7 +251,7 @@ async function uploadPhotoSimple(file: File) {
         'x-api-key': apiKey
       },
       body: JSON.stringify({
-        photoKey: presignData.key,
+        key: presignData.key,
         size: file.size
       })
     });
@@ -312,7 +317,7 @@ sequenceDiagram
         S3->>S3: Encrypt file with AES256
         S3-->>Client: 200 OK
         
-        Client->>Backend: PUT /profile/photo/update<br/>{photoKey: key, size}
+        Client->>Backend: PUT /profile/photo/update<br/>{key, size}
         Backend->>AwsS3Service: mapPresign({ key, size }, { access: public })
         AwsS3Service-->>Backend: IAwsS3
         
@@ -349,8 +354,8 @@ sequenceDiagram
 3. **Database Update Stage:**
    - Client notifies backend with S3 key and file size
    - Backend maps presign data to `IAwsS3`
-   - Repository updates user profile with S3 file reference
-   - Transaction logged with IP address and user agent for audit trail; the service reads the request log from the request store (`RequestLogStoreKey`) and threads the `IRequestLog` to the repository as the last parameter
+   - `UserProfileDomain` prepares `userUpdatePhotoProfile`, then `UserRepository.updatePhotoProfile` stores the S3 file reference in one update with no transaction
+   - After the update the event is staged; `ActivityLogInterceptor` writes it with the IP address, user agent, and geolocation from the request store (`RequestLogStoreKey`)
 
 
 ### Term Policy Content Presign
@@ -381,7 +386,7 @@ The second presign endpoint signs a term policy content upload. `TermPolicyAdmin
 async generate(
   @Body({ schema: TermPolicyContentPresignRequestSchema })
   body: TermPolicyContentPresignRequestDto
-): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
+): Promise<IResponseReturn<IAwsS3Presign>> {
   return this.termPolicyContentHttpService.generateContentPresignByAdmin(
     body
   );

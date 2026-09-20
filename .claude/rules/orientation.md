@@ -36,9 +36,9 @@ unfamiliar orientation or the graph looks stale for the surface in hand.
 
 ## A recursive search from the repo root reads other branches (HARD)
 
-`.claude/worktrees/` holds git worktrees of other branches — a full second checkout each, with
-its own `src/`, `docs/` and `.claude/`, and each carrying uncommitted work of its own.
-`git worktree list` names them.
+A git worktree Claude creates lives under `.claude/worktrees/` — a full second checkout of
+another branch, with its own `src/`, `docs/` and `.claude/`, and its own uncommitted work.
+`git worktree list` names the ones that exist.
 
 Two consequences bind every task:
 
@@ -101,8 +101,8 @@ thought to list.
 | i18n message, language JSON | `i18n.md` |
 | config key, env var | `config.md` |
 | cached value | `cache.md` |
-| logging, Sentry | `logging.md` |
-| credential, token, session, activity log | `security.md` |
+| logging, Sentry, a sensitive key | `logging.md` |
+| credential, token, session, activity log, encryption, hashing, randomness, two-factor | `security.md` |
 | `src/migration/` | `seeding.md` |
 | a spec | `testing.md` `testing-spec-style.md` |
 | `docs/*.md`, `.claude/**` | `authoring.md` |

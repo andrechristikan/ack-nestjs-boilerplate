@@ -1,21 +1,19 @@
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import {
+import type {
     IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumActivityLogAction,
-    Prisma,
-    Workspace,
-} from '@generated/prisma-client';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
@@ -25,9 +23,10 @@ import {
     EnumUserCreateMode,
     EnumUserSignUpWorkspaceContextType,
 } from '@modules/user/enums/user.enum';
-import {
+import type {
     IUser,
     IUserCreateWithWorkspaceInput,
+    IUserOnboardingAdminAction,
 } from '@modules/user/interfaces/user.interface';
 import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
@@ -38,7 +37,7 @@ import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/work
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceSlugInvalidException } from '@modules/workspace/exceptions/workspace.slug-invalid.exception';
-import {
+import type {
     IWorkspaceCreate,
     IWorkspaceOwnedUser,
     IWorkspaceUpdate,
@@ -109,7 +108,8 @@ export class WorkspaceDomain {
     }
 
     private assertSlugAllowed(slug: string): void {
-        if (slug.length > this.slugMaxLength || !this.slugRegex.test(slug)) {
+        const isSlugPatternValid = this.slugRegex.test(slug);
+        if (slug.length > this.slugMaxLength || !isSlugPatternValid) {
             throw new WorkspaceSlugInvalidException();
         }
     }
@@ -222,7 +222,7 @@ export class WorkspaceDomain {
         inputs: IUserCreateWithWorkspaceInput[],
         mode: EnumUserCreateMode,
         timeoutInMs: number,
-        adminPayloadAction?: EnumActivityLogAction
+        adminPayloadAction?: IUserOnboardingAdminAction
     ): Promise<IUser[]> {
         const slugAttemptCount = inputs.reduce((min, input) => {
             if (
@@ -285,10 +285,11 @@ export class WorkspaceDomain {
                             rows.push({ ...users[index], twoFactor });
                         }
 
-                        await this.createOwnedForUsersInTx(
-                            tx,
-                            this.buildOwnedUsers(inputs, attempt)
+                        const ownedUsers = this.buildOwnedUsers(
+                            inputs,
+                            attempt
                         );
+                        await this.createOwnedForUsersInTx(tx, ownedUsers);
 
                         for (const input of inputs) {
                             if (
@@ -310,70 +311,80 @@ export class WorkspaceDomain {
                             );
                         }
 
-                        return rows;
+                        const events = this.prepareOnboardingActivities(
+                            inputs,
+                            rows,
+                            mode,
+                            adminPayloadAction
+                        );
+
+                        return { rows, events };
                     },
                     { timeout: timeoutInMs }
                 );
 
-                this.stageOnboardingActivities(
-                    inputs,
-                    mode,
-                    adminPayloadAction
-                );
+                this.activityLogDomain.stagePrepared(onboarded.events);
 
-                return onboarded;
+                return onboarded.rows;
             } catch (error: unknown) {
-                if (this.databaseUtil.isUniqueCollision(error, 'slug')) {
+                const isSlugCollision = this.databaseUtil.isUniqueCollision(
+                    error,
+                    'slug'
+                );
+                if (isSlugCollision) {
                     continue;
                 }
 
-                throw this.userOnboardingUtil.mapCreateCollision(error);
+                const exception =
+                    this.userOnboardingUtil.mapCreateCollision(error);
+                throw exception;
             }
         }
 
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
-    private stageOnboardingActivities(
+    private prepareOnboardingActivities(
         inputs: IUserCreateWithWorkspaceInput[],
+        users: IUser[],
         mode: EnumUserCreateMode,
-        adminPayloadAction?: EnumActivityLogAction
-    ): void {
+        adminPayloadAction?: IUserOnboardingAdminAction
+    ): IActivityLogStagedEvent[] {
+        const events: IActivityLogStagedEvent[] = [];
         if (adminPayloadAction) {
-            this.activityLogDomain.stage({
+            const adminPayloadMetadata =
+                this.userOnboardingDomain.buildAdminPayloadMetadata(
+                    adminPayloadAction,
+                    users
+                );
+            const adminPayloadEvent = this.activityLogDomain.prepare({
                 action: adminPayloadAction,
+                metadata: adminPayloadMetadata,
             });
+            events.push(adminPayloadEvent);
         }
 
-        for (const input of inputs) {
-            for (const activity of this.userOnboardingDomain.buildOnboardingActivities(
-                mode,
-                input.workspaceContext
-            )) {
-                const isSubjectUserAction =
-                    activity.action === EnumActivityLogAction.userSignedUp ||
-                    activity.action === EnumActivityLogAction.userCreated ||
-                    activity.action ===
-                        EnumActivityLogAction.userSendVerificationEmail;
+        for (const [index, input] of inputs.entries()) {
+            const onboardingActivities =
+                this.userOnboardingDomain.buildOnboardingActivities(
+                    mode,
+                    input,
+                    users[index]
+                );
 
-                if (activity.workspaceId) {
-                    this.activityLogDomain.stage({
-                        action: activity.action,
-                        userId: isSubjectUserAction
-                            ? input.userId
-                            : input.createdBy,
-                        workspaceId: activity.workspaceId,
-                    });
-                } else {
-                    this.activityLogDomain.stage({
-                        action: activity.action,
-                        userId: isSubjectUserAction
-                            ? input.userId
-                            : input.createdBy,
-                    });
-                }
+            for (const activity of onboardingActivities) {
+                const activityEvent = this.activityLogDomain.prepare({
+                    action: activity.action,
+                    userId: activity.userId,
+                    createdBy: activity.createdBy,
+                    workspaceId: activity.workspaceId,
+                    metadata: activity.metadata,
+                });
+                events.push(activityEvent);
             }
         }
+
+        return events;
     }
 
     async createWorkspace(
@@ -390,29 +401,35 @@ export class WorkspaceDomain {
 
         for (const slug of slugCandidates) {
             const workspaceId = this.databaseUtil.createId();
+            const events = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.workspaceCreated,
+                    userId: userId,
+                    createdBy: userId,
+                    workspaceId: workspaceId,
+                }),
+            ];
 
+            let workspace: Workspace;
             try {
-                return await this.databaseService.withTransaction(async tx => {
-                    const workspace = await this.createInTx(
-                        tx,
-                        userId,
-                        create,
-                        slug,
-                        workspaceId
-                    );
-                    this.activityLogDomain.stage({
-                        action: EnumActivityLogAction.workspaceCreated,
-                        userId: userId,
-                        workspaceId: workspace.id,
-                    });
-
-                    return workspace;
-                });
+                workspace = await this.databaseService.withTransaction(tx =>
+                    this.createInTx(tx, userId, create, slug, workspaceId)
+                );
             } catch (error: unknown) {
-                if (!this.databaseUtil.isUniqueCollision(error, 'slug')) {
+                const isSlugCollision = this.databaseUtil.isUniqueCollision(
+                    error,
+                    'slug'
+                );
+                if (!isSlugCollision) {
                     throw error;
                 }
+
+                continue;
             }
+
+            this.activityLogDomain.stagePrepared(events);
+
+            return workspace;
         }
 
         throw new DatabaseUniqueValueGenerationFailedException();
@@ -427,21 +444,23 @@ export class WorkspaceDomain {
         actorId: string,
         update: IWorkspaceUpdate
     ): Promise<Workspace> {
-        return this.databaseService.withTransaction(async tx => {
-            const row = await this.workspaceRepository.updateDetailsInTx(
-                tx,
-                workspaceId,
-                actorId,
-                update
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceUpdated,
                 userId: actorId,
+                createdBy: actorId,
                 workspaceId: workspaceId,
-            });
+            }),
+        ];
 
-            return row;
-        });
+        const row = await this.workspaceRepository.updateDetails(
+            workspaceId,
+            update
+        );
+
+        this.activityLogDomain.stagePrepared(events);
+
+        return row;
     }
 
     async updateWorkspaceIsPublic(
@@ -449,21 +468,23 @@ export class WorkspaceDomain {
         actorId: string,
         isPublic: boolean
     ): Promise<Workspace> {
-        return this.databaseService.withTransaction(async tx => {
-            const row = await this.workspaceRepository.updateIsPublicInTx(
-                tx,
-                workspaceId,
-                actorId,
-                isPublic
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceVisibilityUpdated,
                 userId: actorId,
+                createdBy: actorId,
                 workspaceId: workspaceId,
-            });
+            }),
+        ];
 
-            return row;
-        });
+        const row = await this.workspaceRepository.updateIsPublic(
+            workspaceId,
+            isPublic
+        );
+
+        this.activityLogDomain.stagePrepared(events);
+
+        return row;
     }
 
     async updateWorkspaceSlug(
@@ -481,21 +502,23 @@ export class WorkspaceDomain {
             throw new WorkspaceSlugAlreadyExistsException();
         }
 
-        return this.databaseService.withTransaction(async tx => {
-            const row = await this.workspaceRepository.updateSlugInTx(
-                tx,
-                workspaceId,
-                actorId,
-                slug
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceUpdated,
                 userId: actorId,
+                createdBy: actorId,
                 workspaceId: workspaceId,
-            });
+            }),
+        ];
 
-            return row;
-        });
+        const row = await this.workspaceRepository.updateSlug(
+            workspaceId,
+            slug
+        );
+
+        this.activityLogDomain.stagePrepared(events);
+
+        return row;
     }
 
     async switchWorkspace(userId: string, workspaceId: string): Promise<void> {
@@ -505,51 +528,57 @@ export class WorkspaceDomain {
             userId
         );
 
-        await this.databaseService.withTransaction(async tx => {
-            await this.userDomain.setLastWorkspaceInTx(tx, userId, workspaceId);
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceSwitched,
                 userId: userId,
+                createdBy: userId,
                 workspaceId: workspaceId,
-            });
-        });
+            }),
+        ];
+
+        await this.userDomain.setLastWorkspace(userId, workspaceId);
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async softDeleteWorkspace(
         workspaceId: string,
         actorId: string
     ): Promise<void> {
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceDeleted,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId: workspaceId,
+            }),
+        ];
         const deletedAt = this.helperDateService.create();
 
         await this.databaseService.withTransaction(async tx => {
             await this.workspaceRepository.softDeleteInTx(
                 tx,
                 workspaceId,
-                actorId,
                 deletedAt
             );
             await this.projectDomain.softDeleteByWorkspaceInTx(
                 tx,
                 workspaceId,
-                actorId,
-                deletedAt
+                deletedAt,
+                actorId
             );
             await this.workspaceInviteRepository.expirePendingByWorkspaceInTx(
                 tx,
-                workspaceId,
-                actorId
+                workspaceId
             );
             await this.workspaceJoinRequestRepository.cancelPendingByWorkspaceInTx(
                 tx,
-                workspaceId,
-                actorId
+                workspaceId
             );
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.workspaceDeleted,
-                userId: actorId,
-                workspaceId: workspaceId,
-            });
         });
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async getListForAdmin(

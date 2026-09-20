@@ -1,10 +1,10 @@
 # Authorization Documentation
 
-This documentation explains the features and usage of: 
-- **UserProtected**: Located at `src/modules/user/decorators`
-- **RoleProtected**: Located at `src/modules/role/decorators`
-- **PolicyProtected**: Located at `src/modules/policy/decorators`
-- **TermPolicyAcceptanceProtected**: Located at `src/modules/term-policy/decorators`
+Decorator locations:
+- **UserProtected**: `src/modules/user/decorators`
+- **RoleProtected**: `src/modules/role/decorators`
+- **PolicyProtected**: `src/modules/policy/decorators`
+- **TermPolicyAcceptanceProtected**: `src/modules/term-policy/decorators`
 
 The workspace and project decorators (`WorkspaceProtected`, `WorkspaceMemberProtected`, `ProjectProtected`, `ProjectMemberProtected`) are summarised here and documented in full by [Workspace][ref-doc-workspace] and [Project][ref-doc-project].
 
@@ -16,7 +16,7 @@ Guards stack as: user, role, policy, term-policy acceptance. NestJS applies each
 
 - [Configuration Documentation][ref-doc-configuration] - For Redis configuration settings
 - [Environment Documentation][ref-doc-environment] - For Redis environment variables
-- [Authentication Documentation][ref-doc-authentication] - For understand authentication system
+- [Authentication Documentation][ref-doc-authentication] - JWT, sessions, and API keys
 - [Activity Log Documentation][ref-doc-activity-log] - For tracking authorization-related user activities
 - [Term Policy Document][ref-doc-term-policy] - For managing user acceptance of terms and policies
 - [Device Documentation][ref-doc-device] - For device management and session invalidation
@@ -64,7 +64,7 @@ Guards stack as: user, role, policy, term-policy acceptance. NestJS applies each
 
 ## Decorator Order
 
-NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method executes FIRST. The order encodes which gate rejects first, so reshuffling it changes the error a caller sees even when the application still boots. Keep this exact order, top to bottom in source:
+NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method executes FIRST. The order encodes which gate rejects first, so a reshuffle changes the error a caller sees even when the application still boots. Every route uses this order, top to bottom in source (the constraint when changing it: `.claude/rules/http.md`):
 
 ```typescript
 @ExampleDoc()                              // 1.  Swagger doc factory
@@ -76,27 +76,26 @@ NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method e
 @ProjectProtected()                        // 7.  Project resolution from :projectId
 @WorkspaceMemberProtected(...)             // 8.  Workspace member role
 @WorkspaceProtected()                      // 9.  Workspace resolution from x-workspace-id
-@ActivityLog(EnumActivityLogAction.adminUserUpdateStatus) // 10. Activity log
-@UserProtected()                           // 11. User status
-@FeatureFlagProtected('exampleKey')        // 12. Feature flag
-@AuthJwtAccessProtected()                  // 13. JWT access or refresh
-@ApiKeyProtected()                         // 14. API key
-@HttpCode(HttpStatus.OK)                   // 15. HTTP status, only when it differs from the default
-@Get('/endpoint')                          // 16. HTTP method, always last
+@UserProtected()                           // 10. User status
+@FeatureFlagProtected('exampleKey')        // 11. Feature flag
+@AuthJwtAccessProtected()                  // 12. JWT access or refresh
+@ApiKeyProtected()                         // 13. API key
+@HttpCode(HttpStatus.OK)                   // 14. HTTP status, only when it differs from the default
+@Get('/endpoint')                          // 15. HTTP method, always last
 ```
 
 A route takes only the slots it needs; the relative order of the ones it takes never changes. Guard execution therefore runs `@ApiKeyProtected()` → `@AuthJwtAccessProtected()` → `@FeatureFlagProtected()` → `@UserProtected()` → `@WorkspaceProtected()` → `@WorkspaceMemberProtected()` → `@ProjectProtected()` → `@ProjectMemberProtected()` → `@RoleProtected()` → `@PolicyProtected()` → `@TermPolicyAcceptanceProtected()`.
 
 - A social-login guard (`@AuthSocialGoogleProtected()`) takes the JWT slot for that route.
 - `@RequestThrottle({ ... })` sits outside this order. It mounts an interceptor, so it runs after every guard whatever its position in the stack. Routes declare it below `@ApiKeyProtected()`, so the rate limit reads next to the guards protecting the same route. See [Security and Middleware][ref-doc-security-and-middleware].
-- `@ActivityLog()` binds an interceptor, not a guard, so it runs after every guard has passed. It still occupies its source slot and requires `@AuthJwtAccessProtected()`.
-- A guard that depends on state an earlier guard sets must sit ABOVE that guard in source, so it runs after it.
+- Activity logging takes no slot. Domains build events with `ActivityLogDomain.prepare` and queue them with `ActivityLogDomain.stagePrepared`, and the global `ActivityLogInterceptor` writes them after the handler settles. See [Activity Log][ref-doc-activity-log].
+- A guard that depends on state an earlier guard sets sits ABOVE that guard in source, so it runs after it.
 - `@FeatureFlagProtected()` sits ABOVE `@AuthJwtAccessProtected()` so the flag guard sees `request.user`. Below it the guard always takes its anonymous branch, which makes `targetUserIds` and any rollout below 100% inert on that route.
 - The workspace and project slots are used by the `/user` scope. The `/admin` scope reaches the same resources through `@RoleProtected()` + `@PolicyProtected()` instead, and takes the workspace or project id from the path.
 
 ## User Protected
 
-`UserProtected` applies `UserGuard`. The caller must be authenticated. Email verification is optional (on by default).
+`UserProtected` applies `UserGuard`, which reads the JWT `userId` and loads the user. Email verification defaults to on.
 
 ### Decorators
 
@@ -109,41 +108,39 @@ A route takes only the slots it needs; the relative order of the ones it takes n
 
 **Usage:**
 
+`@UserProtected()` requires email verification. `@UserProtected(false)` skips that check. The default is `true`. Shared profile:
+
 ```typescript
+@TermPolicyAcceptanceProtected()
 @UserProtected()
 @AuthJwtAccessProtected()
-@Get('profile')
-getProfile(@UserCurrent() user: IUser) {
-  return user;
-}
-
-// Allow unverified users
-@UserProtected(false)
-@AuthJwtAccessProtected()
-@Get('dashboard')
-getDashboard(@UserCurrent() user: IUser) {
-  return { user };
+@Get('/profile/get')
+async profile(
+  @AuthJwtPayload('userId') userId: string
+): Promise<IResponseReturn<IUserProfile>> {
+  return this.userProfileHttpService.getProfile(userId);
 }
 ```
 
 #### UserCurrent Parameter Decorator
 
-Extracts the authenticated user object from the request context.
+Reads back the authenticated user `UserGuard` stored, or one of its fields when a field name is passed.
 
-**Returns:** `IUser | undefined`
+**Returns:** `IUser`, or the named field of it. Both are non-null: an empty store key, or a field holding `null`, throws `RequestContextMissingException` (500, `50304`).
 
 **Usage:**
 
+Refresh is a call site:
+
 ```typescript
 @UserProtected()
-@AuthJwtAccessProtected()
-@Get('me')
-getCurrentUser(@UserCurrent() user: IUser) {
-  return {
-    id: user.id,
-    email: user.email,
-    role: user.role
-  };
+@AuthJwtRefreshProtected()
+@Post('/refresh')
+async refresh(
+  @UserCurrent() user: IUser,
+  @AuthJwtToken() refreshToken: string
+): Promise<IResponseReturn<IAuthToken>> {
+  return this.userAuthHttpService.refresh(user, refreshToken);
 }
 ```
 
@@ -206,7 +203,7 @@ flowchart TD
 
 ## Role Protected
 
-`RoleProtected` is RBAC: the caller's role type must be one of the types listed on the decorator.
+`RoleProtected` is RBAC: `RoleGuard` accepts only a role type listed on the decorator.
 
 ### Decorators
 
@@ -225,44 +222,30 @@ flowchart TD
 **Usage:**
 
 ```typescript
-// Single role requirement
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
-@Get('admin/dashboard')
-getAdminDashboard(@UserCurrent() user: IUser) {
-  return this.dashboardService.getAdminData();
-}
-
-// Multiple role requirements (user must have one of the specified roles)
-@RoleProtected(EnumRoleType.admin, EnumRoleType.user)
-@UserProtected()
-@AuthJwtAccessProtected()
-@Delete('users/:id')
-deleteUser(@Param('id') id: string) {
-  return this.userService.delete(id);
+@Get('/list')
+async list(
+  @PaginationOffsetQuery({
+    availableSearch: UserDefaultAvailableSearch,
+    availableOrderBy: UserDefaultAvailableOrderBy,
+  })
+  pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
+): Promise<IResponsePagingReturn<UserListResponseDto>> {
+  return this.userHttpService.getListOffsetByAdmin(pagination);
 }
 ```
 
-**Never list `superAdmin` in `@RoleProtected()`.** The guard returns before the required-role list is read for a `superAdmin`, so adding it grants nothing and misleads the next reader into thinking the route is gated by an enumeration that is never reached.
+The decorator accepts more than one type (`@RoleProtected(EnumRoleType.admin, EnumRoleType.user)`). The caller needs one of the listed types. Admin user routes in this checkout pass `EnumRoleType.admin` alone.
+
+**`superAdmin` is absent from every `@RoleProtected()` list.** The guard returns before the required-role list is read for a `superAdmin`, so listing it would grant nothing.
 
 ### Getting Current Role
 
 To access the current user's role, use the `@UserCurrent()` decorator and access the `role` property:
 
-```typescript
-@RoleProtected(EnumRoleType.admin)
-@UserProtected()
-@AuthJwtAccessProtected()
-@Get('role-info')
-getRoleInfo(@UserCurrent() user: IUser) {
-  return {
-    roleType: user.role.type,
-    roleName: user.role.name,
-    policies: user.role.policies
-  };
-}
-```
+`@UserCurrent()` returns the stored `IUser`. The role on that object is what `UserGuard` loaded: `user.role.type`, `user.role.name`, and `user.role.policies`.
 
 ### Guards
 
@@ -308,16 +291,16 @@ flowchart TD
 
 ### Important Notes
 
-- `@RoleProtected()` **requires** `@AuthJwtAccessProtected()` and `@UserProtected()` to be applied
-- Decorators must be stacked in this order from top to bottom: `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
+- `@RoleProtected()` reads the user `@UserProtected()` stored, which in turn depends on `@AuthJwtAccessProtected()`
+- The stack reads top to bottom `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
 - This decorator stores the role's policies via `RequestStoreService.set(PolicyStoreKey, policies)` (read back with `RequestStoreService.get(PolicyStoreKey)`), which is what `PolicyGuard` evaluates
-- Incorrect ordering will result in runtime errors
+- Without a stored user the guard throws `AuthJwtAccessTokenInvalidException` (401)
 - Users with `superAdmin` role type have unrestricted access to all `@RoleProtected` routes, regardless of the specified required roles. The guard returns an empty policy array for super admins, as they bypass the policy check.
 
 
 ## Policy Protected
 
-`PolicyProtected` is CASL. A policy names an action (`read`, `create`, `update`, `delete`, `manage`) on a subject (user, role, setting, and so on).
+`PolicyProtected` is CASL. A policy names an action (`read`, `create`, `update`, `delete`, `manage`) on a subject (`user`, `role`, `session`, and the rest of `EnumPolicySubject`).
 
 ### Decorators
 
@@ -353,7 +336,6 @@ flowchart TD
 **Usage:**
 
 ```typescript
-// Single ability requirement
 @PolicyProtected({
   subject: EnumPolicySubject.user,
   action: [EnumPolicyAction.read]
@@ -361,47 +343,53 @@ flowchart TD
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
-@Get('users')
-getUsers() {
-  return this.userService.findAll();
+@Get('/list')
+async list(
+  @PaginationOffsetQuery({
+    availableSearch: UserDefaultAvailableSearch,
+    availableOrderBy: UserDefaultAvailableOrderBy,
+  })
+  pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
+): Promise<IResponsePagingReturn<UserListResponseDto>> {
+  return this.userHttpService.getListOffsetByAdmin(pagination);
 }
 
-// Multiple actions on single subject
 @PolicyProtected({
   subject: EnumPolicySubject.user,
-  action: [EnumPolicyAction.update, EnumPolicyAction.delete]
+  action: [EnumPolicyAction.read, EnumPolicyAction.update]
 })
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
-@Put('users/:id')
-updateUser(
-  @Param('id') id: string,
-  @Body({ schema: UpdateUserRequestSchema }) body: UpdateUserRequestDto
-) {
-  return this.userHttpService.update(id, body);
+@Patch('/update/:userId/status')
+async updateStatus(
+  @Param('userId', { schema: RequestUuidSchema }) userId: string,
+  @AuthJwtPayload('userId') updatedBy: string,
+  @Body({ schema: UserUpdateStatusRequestSchema }) body: UserUpdateStatusRequestDto
+): Promise<IResponseReturn<void>> {
+  return this.userHttpService.updateStatusByAdmin(userId, body, updatedBy);
 }
 
-// Multiple ability requirements (different subjects)
 @PolicyProtected(
   {
-    subject: EnumPolicySubject.role,
+    subject: EnumPolicySubject.user,
     action: [EnumPolicyAction.read]
   },
   {
-    subject: EnumPolicySubject.user,
-    action: [EnumPolicyAction.manage]
+    subject: EnumPolicySubject.session,
+    action: [EnumPolicyAction.read, EnumPolicyAction.delete]
   }
 )
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
-@Post('users/:id/assign-role')
-assignRole(
-  @Param('id') id: string,
-  @Body({ schema: AssignRoleRequestSchema }) body: AssignRoleRequestDto
-) {
-  return this.userHttpService.assignRole(id, body.roleId);
+@Delete('/revoke/:sessionId')
+async revoke(
+  @Param('userId', { schema: RequestUuidSchema }) userId: string,
+  @Param('sessionId', { schema: RequestUuidSchema }) sessionId: string,
+  @AuthJwtPayload('userId') revokedBy: string
+): Promise<IResponseReturn<void>> {
+  return this.sessionHttpService.revokeByAdmin(userId, sessionId, revokedBy);
 }
 ```
 
@@ -453,22 +441,18 @@ flowchart TD
 
 ### CASL Integration
 
-The system uses [CASL][casl] (Code Access Security Library) to handle complex permission logic:
+The project uses [CASL][casl] for permission checks:
 
 **PolicyAbilityFactory:**
 
 - `createForUser(policies)`: Builds CASL ability rules from the role's stored policies
 - `handlerPolicies(userPolicies, policies)`: Returns true only when every required action on each subject is allowed, using CASL's `can()`
 
-**How it works:**
-
-The factory creates a CASL ability instance that can check if a user can perform specific actions on specific subjects. Every required ability must be satisfied for access to be granted.
-
 ### Important Notes
 
-- `@PolicyProtected()` **requires** `@AuthJwtAccessProtected()`, `@RoleProtected()`, and `@UserProtected()` to be applied
-- Decorators must be stacked in this order from top to bottom: `@PolicyProtected()` → `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
-- Incorrect ordering will result in runtime errors
+- `@PolicyProtected()` reads the policies `@RoleProtected()` stored and the user `@UserProtected()` stored, both of which depend on `@AuthJwtAccessProtected()`
+- The stack reads top to bottom `@PolicyProtected()` → `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
+- Without a stored user the guard throws `AuthJwtAccessTokenInvalidException` (401)
 - Users with `superAdmin` role type have unrestricted access to all `@PolicyProtected` routes, bypassing all ability checks.
 - Every action of a required policy has to be present in the user's policies. Requiring `[EnumPolicyAction.update, EnumPolicyAction.delete]` on the `EnumPolicySubject.user` subject grants access only when the user holds both actions, not just one.
 
@@ -496,41 +480,25 @@ For more detailed information about term policies, see [Term Policy Document][re
 **Usage:**
 
 ```typescript
-// Default: requires termsOfService and privacy acceptance
 @TermPolicyAcceptanceProtected()
 @UserProtected()
 @AuthJwtAccessProtected()
-@Get('premium-features')
-getPremiumFeatures() {
-  return this.featureService.getPremiumFeatures();
-}
-
-// Single term policy requirement
-@TermPolicyAcceptanceProtected(EnumTermPolicyType.marketing)
-@UserProtected()
-@AuthJwtAccessProtected()
-@Post('subscribe-newsletter')
-subscribeNewsletter(
-  @Body({ schema: SubscribeRequestSchema }) body: SubscribeRequestDto
-) {
-  return this.newsletterHttpService.subscribe(body);
-}
-
-// Multiple term policy requirements
-@TermPolicyAcceptanceProtected(
-  EnumTermPolicyType.termsOfService,
-  EnumTermPolicyType.privacy,
-  EnumTermPolicyType.cookies
-)
-@UserProtected()
-@AuthJwtAccessProtected()
-@Post('data-processing')
-processUserData(
-  @Body({ schema: ProcessDataRequestSchema }) body: ProcessDataRequestDto
-) {
-  return this.dataHttpService.process(body);
+@Get('/acceptance/list')
+async listAccepted(
+  @PaginationCursorQuery({
+    availableOrderBy: TermPolicyAcceptanceDefaultAvailableOrderBy,
+  })
+  pagination: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>,
+  @AuthJwtPayload('userId') userId: string
+): Promise<IResponsePagingReturn<ITermPolicyUserAcceptance>> {
+  return this.termPolicyAcceptanceHttpService.getListUserAccepted(
+    userId,
+    pagination
+  );
 }
 ```
+
+The decorator takes optional `EnumTermPolicyType` arguments. With none, it requires `termsOfService` and `privacy`. Shared and admin routes in this checkout pass no arguments.
 
 ### Guards
 
@@ -576,13 +544,12 @@ flowchart TD
 
 ### Important Notes
 
-- `@TermPolicyAcceptanceProtected()` **requires** `@UserProtected()` and `@AuthJwtAccessProtected()` to be applied
+- `@TermPolicyAcceptanceProtected()` reads the user `@UserProtected()` stored, which depends on `@AuthJwtAccessProtected()`
 - Decorator order from top to bottom: `@TermPolicyAcceptanceProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`
 - For more details about `@AuthJwtAccessProtected()`, see [Authentication Documentation][ref-doc-authentication]
 - Without the required decorators the stored user is never populated, so the guard throws `AuthJwtAccessTokenInvalidException` (401 Unauthorized)
 - If no term policies are specified, it defaults to requiring `termsOfService` and `privacy` acceptance
-- All specified term policies must be accepted by the user for access to be granted
-- Incorrect decorator ordering will result in runtime errors
+- Access is granted only when the user has accepted every specified term policy
 
 ## Workspace and Project Protected
 
@@ -685,8 +652,8 @@ flowchart LR
 
 ### Important Notes
 
-- **Role names must be unique** - You cannot create two roles with the same name
-- **Roles cannot be deleted if in use** - You must first reassign users to different roles before deleting
+- **Role names are unique**: creating a second role with an existing name is rejected
+- **A role in use cannot be deleted**: deletion is rejected (`RoleUsedException`) while any user holds the role
 
 
 <!-- REFERENCES -->

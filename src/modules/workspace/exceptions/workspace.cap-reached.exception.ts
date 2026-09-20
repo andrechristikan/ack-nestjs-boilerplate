@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
+/**
+ * Raised when the user already owns the maximum number of workspaces.
+ * @public
+ */
 export class WorkspaceCapReachedException extends AppBaseException {
     readonly module = 'workspace';
     readonly statusCode = EnumWorkspaceStatusCodeError.capReached;

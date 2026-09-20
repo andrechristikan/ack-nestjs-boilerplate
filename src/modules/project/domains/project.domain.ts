@@ -1,25 +1,18 @@
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import {
+import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumActivityLogAction,
-    Prisma,
-    Project,
-    WorkspaceMember,
-} from '@generated/prisma-client';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectSlugAlreadyExistsException } from '@modules/project/exceptions/project.slug-already-exists.exception';
 import { ProjectSlugInvalidException } from '@modules/project/exceptions/project.slug-invalid.exception';
-import {
+import type {
     IProjectCreate,
     IProjectUpdate,
 } from '@modules/project/interfaces/project.interface';
@@ -40,8 +33,6 @@ export class ProjectDomain {
         private readonly projectRepository: ProjectRepository,
         private readonly projectUtil: ProjectUtil,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
@@ -66,7 +57,8 @@ export class ProjectDomain {
     }
 
     private assertSlugAllowed(slug: string): void {
-        if (slug.length > this.slugMaxLength || !this.slugRegex.test(slug)) {
+        const isSlugPatternValid = this.slugRegex.test(slug);
+        if (slug.length > this.slugMaxLength || !isSlugPatternValid) {
             throw new ProjectSlugInvalidException();
         }
     }
@@ -108,9 +100,9 @@ export class ProjectDomain {
         workspaceMember: WorkspaceMember,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
     ): Promise<IResponsePagingReturn<Project>> {
-        const memberUserId = this.projectUtil.isWorkspaceOwner(workspaceMember)
-            ? null
-            : workspaceMember.userId;
+        const isWorkspaceOwner =
+            this.projectUtil.isWorkspaceOwner(workspaceMember);
+        const memberUserId = isWorkspaceOwner ? null : workspaceMember.userId;
 
         return this.projectRepository.findWithPaginationCursorForWorkspace(
             workspaceId,
@@ -124,34 +116,25 @@ export class ProjectDomain {
         actorId: string,
         create: IProjectCreate
     ): Promise<Project> {
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.projectCreated,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId: workspaceId,
+            }),
+        ];
+
         const slugCandidates = this.drawSlugCandidates();
+        const project = await this.projectRepository.create(
+            workspaceId,
+            create,
+            slugCandidates
+        );
 
-        for (const slug of slugCandidates) {
-            try {
-                return await this.databaseService.withTransaction(async tx => {
-                    const project = await this.projectRepository.createInTx(
-                        tx,
-                        workspaceId,
-                        actorId,
-                        create,
-                        slug
-                    );
-                    this.activityLogDomain.stage({
-                        action: EnumActivityLogAction.projectCreated,
-                        userId: actorId,
-                        workspaceId: workspaceId,
-                    });
+        this.activityLogDomain.stagePrepared(events);
 
-                    return project;
-                });
-            } catch (error: unknown) {
-                if (!this.databaseUtil.isUniqueCollision(error, 'slug')) {
-                    throw error;
-                }
-            }
-        }
-
-        throw new DatabaseUniqueValueGenerationFailedException();
+        return project;
     }
 
     getProject(project: Project): Project {
@@ -163,21 +146,23 @@ export class ProjectDomain {
         actorId: string,
         update: IProjectUpdate
     ): Promise<Project> {
-        return this.databaseService.withTransaction(async tx => {
-            const row = await this.projectRepository.updateDetailsInTx(
-                tx,
-                project.id,
-                actorId,
-                update
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectUpdated,
                 userId: actorId,
+                createdBy: actorId,
                 workspaceId: project.workspaceId,
-            });
+            }),
+        ];
 
-            return row;
-        });
+        const row = await this.projectRepository.updateDetails(
+            project.id,
+            update
+        );
+
+        this.activityLogDomain.stagePrepared(events);
+
+        return row;
     }
 
     async updateProjectSlug(
@@ -196,52 +181,49 @@ export class ProjectDomain {
             throw new ProjectSlugAlreadyExistsException();
         }
 
-        return this.databaseService.withTransaction(async tx => {
-            const row = await this.projectRepository.updateSlugInTx(
-                tx,
-                project.id,
-                actorId,
-                slug
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectUpdated,
                 userId: actorId,
+                createdBy: actorId,
                 workspaceId: project.workspaceId,
-            });
+            }),
+        ];
 
-            return row;
-        });
+        const row = await this.projectRepository.updateSlug(project.id, slug);
+
+        this.activityLogDomain.stagePrepared(events);
+
+        return row;
     }
 
     async softDeleteProject(project: Project, actorId: string): Promise<void> {
-        const deletedAt = this.helperDateService.create();
-
-        await this.databaseService.withTransaction(async tx => {
-            await this.projectRepository.softDeleteInTx(
-                tx,
-                project.id,
-                actorId,
-                deletedAt
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectDeleted,
                 userId: actorId,
+                createdBy: actorId,
                 workspaceId: project.workspaceId,
-            });
-        });
+            }),
+        ];
+        const deletedAt = this.helperDateService.create();
+
+        await this.projectRepository.softDelete(project.id, deletedAt);
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async softDeleteByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        actorId: string,
-        deletedAt: Date
+        deletedAt: Date,
+        deletedBy: string
     ): Promise<void> {
         await this.projectRepository.softDeleteByWorkspaceInTx(
             tx,
             workspaceId,
-            actorId,
-            deletedAt
+            deletedAt,
+            deletedBy
         );
     }
 

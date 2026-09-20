@@ -1,16 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
+import type {
     IAuthPassword,
     IAuthPasswordOptions,
 } from '@modules/auth/interfaces/auth.interface';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { PasswordHistory, User } from '@generated/prisma-client';
+import type { PasswordHistory, User } from '@generated/prisma-client/client';
 
-/** Hashes, encrypts and evaluates password dates. See docs/authentication.md. */
+/** Hashes passwords and evaluates password dates. See docs/authentication.md. */
 @Injectable()
 export class AuthPasswordUtil {
     private readonly passwordExpiredInMs: number;
@@ -21,7 +20,6 @@ export class AuthPasswordUtil {
     private readonly passwordMaxAttempt: number;
 
     constructor(
-        private readonly helperEncryptionService: HelperEncryptionService,
         private readonly helperHashService: HelperHashService,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
@@ -61,9 +59,8 @@ export class AuthPasswordUtil {
             : false;
     }
 
-    /** Builds the bcrypt hash plus expiry, period, and reversibly encrypted copy; temporary uses a shorter expiry. */
+    /** Builds the bcrypt hash plus expiry and period dates; temporary uses a shorter expiry. */
     createPassword(
-        userId: string,
         password: string,
         options?: IAuthPasswordOptions
     ): IAuthPassword {
@@ -71,24 +68,22 @@ export class AuthPasswordUtil {
         const salt: string = this.helperHashService.bcryptGenerateSalt(
             this.passwordSaltLength
         );
+        const passwordExpiredDuration = this.helperDateService.createDuration({
+            milliseconds: options?.temporary
+                ? this.passwordExpiredTemporaryInMs
+                : this.passwordExpiredInMs,
+        });
         const passwordExpired: Date = this.helperDateService.forward(
             today,
-            this.helperDateService.createDuration({
-                milliseconds: options?.temporary
-                    ? this.passwordExpiredTemporaryInMs
-                    : this.passwordExpiredInMs,
-            })
+            passwordExpiredDuration
         );
         const passwordHash = this.helperHashService.bcryptHash(password, salt);
+        const passwordPeriodDuration = this.helperDateService.createDuration({
+            days: this.passwordPeriodInDays,
+        });
         const passwordPeriodExpired: Date = this.helperDateService.forward(
             today,
-            this.helperDateService.createDuration({
-                days: this.passwordPeriodInDays,
-            })
-        );
-        const passwordEncrypted: string = this.encryptPassword(
-            userId,
-            password
+            passwordPeriodDuration
         );
 
         return {
@@ -96,23 +91,7 @@ export class AuthPasswordUtil {
             passwordExpired,
             passwordCreated: today,
             passwordPeriodExpired,
-            passwordEncrypted,
         };
-    }
-
-    /** Reversibly encrypts the password with AES-256 keyed by user ID. */
-    encryptPassword(userId: string, password: string): string {
-        return this.helperEncryptionService.aes256EncryptSimple(
-            password,
-            userId
-        );
-    }
-
-    decryptPassword(userId: string, encrypted: string): string {
-        return this.helperEncryptionService.aes256DecryptSimple(
-            encrypted,
-            userId
-        );
     }
 
     createPasswordRandom(): string {
@@ -135,9 +114,11 @@ export class AuthPasswordUtil {
         password: string
     ): PasswordHistory | null {
         for (const history of histories) {
-            if (
-                this.helperHashService.bcryptCompare(password, history.password)
-            ) {
+            const isPasswordMatch = this.helperHashService.bcryptCompare(
+                password,
+                history.password
+            );
+            if (isPasswordMatch) {
                 return history;
             }
         }

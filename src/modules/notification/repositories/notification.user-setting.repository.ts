@@ -1,13 +1,13 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
-import { INotificationUserSettingRepository } from '@modules/notification/interfaces/notification.user-setting.repository.interface';
+import type { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
+import type { INotificationUserSettingRepository } from '@modules/notification/interfaces/notification.user-setting-repository.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumNotificationChannel,
     EnumNotificationType,
-    NotificationUserSetting,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { NotificationUserSetting } from '@generated/prisma-client/client';
 
 @Injectable()
 export class NotificationUserSettingRepository implements INotificationUserSettingRepository {
@@ -67,7 +67,6 @@ export class NotificationUserSettingRepository implements INotificationUserSetti
             },
             data: {
                 isActive,
-                updatedBy: userId,
             },
         });
     }

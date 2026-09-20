@@ -4,8 +4,8 @@ export interface IAnalyticDateRange {
 }
 
 export interface IAnalyticOptionalDateRange {
-    startDate?: Date;
-    endDate?: Date;
+    startDate: Date | null;
+    endDate: Date | null;
 }
 
 export interface IAnalyticCountBucket {
@@ -25,11 +25,6 @@ export interface IAnalyticMetricRate {
     count: number;
     total: number;
     rate: number;
-}
-
-export interface IAnalyticMetricPair {
-    count: number;
-    total: number;
 }
 
 export interface IAnalyticBlockedUsers {
@@ -137,6 +132,14 @@ export interface IAnalyticRoleCount {
 export interface IAnalyticStatusCount {
     status: string;
     count: number;
+}
+
+export interface IAnalyticStatusCountList {
+    statuses: IAnalyticStatusCount[];
+}
+
+export interface IAnalyticRoleCountList {
+    roles: IAnalyticRoleCount[];
 }
 
 export interface IAnalyticWorkspaceSummary {

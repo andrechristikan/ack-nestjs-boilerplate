@@ -1,16 +1,17 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-import {
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Notification, Prisma } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
+import type { Notification } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -24,15 +25,11 @@ import {
     NotificationSharedUpdateUserSettingDoc,
 } from '@modules/notification/docs/notification.shared.doc';
 import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
-import {
-    NotificationUserSettingRequestDto,
-    NotificationUserSettingRequestSchema,
-} from '@modules/notification/dtos/request/notification.user-setting.request.dto';
+import { NotificationUserSettingRequestSchema } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
+import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationResponseSchema } from '@modules/notification/dtos/response/notification.response.dto';
-import {
-    NotificationUserSettingResponseDto,
-    NotificationUserSettingResponseSchema,
-} from '@modules/notification/dtos/response/notification.user-setting.response.dto';
+import { NotificationUserSettingResponseSchema } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
+import type { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
 import { NotificationHttpService } from '@modules/notification/services/notification.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';

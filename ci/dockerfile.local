@@ -12,7 +12,7 @@ RUN touch .env
 
 COPY . .
 
-RUN pnpm db:generate
+RUN pnpm generate
 
 EXPOSE 3000
 

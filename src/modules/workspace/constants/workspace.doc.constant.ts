@@ -1,11 +1,15 @@
-import { faker } from '@faker-js/faker';
 import {
     EnumWorkspaceInviteStatus,
     EnumWorkspaceJoinRequestStatus,
     EnumWorkspaceMemberRole,
-} from '@generated/prisma-client';
-import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
+} from '@generated/prisma-client/client';
+import { faker } from '@faker-js/faker';
+import type { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 
+/**
+ * Swagger path parameter `workspaceId`.
+ * @public
+ */
 export const WorkspaceDocParamsId: ApiParamOptions[] = [
     {
         name: 'workspaceId',
@@ -16,6 +20,10 @@ export const WorkspaceDocParamsId: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger path parameter `slug`.
+ * @public
+ */
 export const WorkspaceDocParamsSlug: ApiParamOptions[] = [
     {
         name: 'slug',
@@ -26,6 +34,10 @@ export const WorkspaceDocParamsSlug: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger path parameter `workspaceMemberId`.
+ * @public
+ */
 export const WorkspaceMemberDocParamsId: ApiParamOptions[] = [
     {
         name: 'workspaceMemberId',
@@ -36,6 +48,10 @@ export const WorkspaceMemberDocParamsId: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger path parameter `workspaceInviteId`.
+ * @public
+ */
 export const WorkspaceInviteDocParamsId: ApiParamOptions[] = [
     {
         name: 'workspaceInviteId',
@@ -46,6 +62,10 @@ export const WorkspaceInviteDocParamsId: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger path parameter `inviteToken`.
+ * @public
+ */
 export const WorkspaceInviteTokenDocParamsId: ApiParamOptions[] = [
     {
         name: 'inviteToken',
@@ -56,6 +76,10 @@ export const WorkspaceInviteTokenDocParamsId: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger path parameter `workspaceJoinRequestId`.
+ * @public
+ */
 export const WorkspaceJoinRequestDocParamsId: ApiParamOptions[] = [
     {
         name: 'workspaceJoinRequestId',
@@ -66,6 +90,10 @@ export const WorkspaceJoinRequestDocParamsId: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger query parameters of the admin workspace list: `isPublic`.
+ * @public
+ */
 export const WorkspaceDocQueryList: ApiQueryOptions[] = [
     {
         name: 'isPublic',
@@ -78,6 +106,10 @@ export const WorkspaceDocQueryList: ApiQueryOptions[] = [
     },
 ];
 
+/**
+ * Swagger query parameters of the workspace member list: `role`.
+ * @public
+ */
 export const WorkspaceMemberDocQueryList: ApiQueryOptions[] = [
     {
         name: 'role',
@@ -89,6 +121,10 @@ export const WorkspaceMemberDocQueryList: ApiQueryOptions[] = [
     },
 ];
 
+/**
+ * Swagger query parameters of the workspace invite list: `status`.
+ * @public
+ */
 export const WorkspaceInviteDocQueryList: ApiQueryOptions[] = [
     {
         name: 'status',
@@ -100,6 +136,10 @@ export const WorkspaceInviteDocQueryList: ApiQueryOptions[] = [
     },
 ];
 
+/**
+ * Swagger query parameters of the workspace join-request list: `status`.
+ * @public
+ */
 export const WorkspaceJoinRequestDocQueryList: ApiQueryOptions[] = [
     {
         name: 'status',

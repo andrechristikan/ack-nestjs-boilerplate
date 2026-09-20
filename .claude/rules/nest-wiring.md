@@ -22,11 +22,15 @@ There are exactly three, and no fourth is invented:
 
 ## Global modules are imported once
 
-`RedisCacheModule`, `CacheMainModule`, `DatabaseModule`, `MessageModule`,
-`LoggerModule`, `RequestModule`, `ResponseModule`, `HelperModule`, `PaginationModule`,
-`FileModule`, `FirebaseModule` are composed inside `common.module.ts` through their `forRoot()`
-/ `forRootAsync()` and are `global: true`. `QueueModule.forRoot()` is composed there too;
-`BullModule.forRootAsync` is already global, so `QueueModule` itself is not.
+`RedisCacheModule`, `CacheMainModule`, `DatabaseModule`, `MessageModule`, `SentryModule`,
+`RequestModule`, `ResponseModule`, `HelperModule`, `PaginationModule`, `FileModule`,
+`FirebaseModule` are composed inside `common.module.ts` through their `forRoot()` /
+`forRootAsync()` and are `global: true`. Two more are composed there without being global
+themselves: `LoggerModule.forRoot()` wraps nestjs-pino's `LoggerModule.forRootAsync`, which is
+global, and provides `LoggerOptionService` and `LoggerUtil` to it only; `QueueModule.forRoot()`
+holds `BullModule.forRootAsync`, which is already global. `SentryModule.forRoot()` also
+imports the Sentry SDK's own `SentryModule.forRoot()` (its tracing interceptor) — that call
+happens there and nowhere else.
 
 **A feature module never imports one of them**, and it never imports `QueueModule`. Injecting `DatabaseService` or
 `PaginationService` needs no `imports:` entry, and adding one is drift that reads as if the
@@ -54,6 +58,7 @@ src/modules/<feature>/
 ├── domains/                         domain classes (`rules/architecture.md`)
 ├── services/                        HTTP and processor service files
 ├── caches/                          cache classes (`rules/cache.md`)
+├── contracts/                       the module's rule tables (`rules/naming.md`)
 ├── factories/                       factory classes
 └── queues/                          queue classes
 ```
@@ -152,7 +157,7 @@ header interface (`rules/architecture.md`).
 
 ## Wiring defects surface only at boot
 
-`tsc` and jest both pass with a broken `imports:` array in place. Two failures live there and
+`tsc` and Vitest both pass with a broken `imports:` array in place. Two failures live there and
 neither has a compile-time symptom:
 
 - a **cycle** — a runtime `ReferenceError` or `Cannot access '…' before initialization` during
@@ -164,3 +169,8 @@ neither has a compile-time symptom:
 
 **Any change to an `imports:`, `providers:`, or `exports:` array is verified by BOOTING the
 app**, not by a green type-check.
+
+A third boot-only failure comes from `verbatimModuleSyntax`: a constructor parameter whose
+class is imported with `import type` compiles, but its `design:paramtypes` entry is erased, and
+Nest cannot resolve it at boot. An injected class is always a value import
+(`rules/code-style.md`).

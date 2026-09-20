@@ -14,7 +14,7 @@ import {
     PaginationQueryFilterEqualBoolean,
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
@@ -25,22 +25,14 @@ import {
     ApiKeyDefaultAvailableSearch,
     ApiKeyDefaultType,
 } from '@modules/api-key/constants/api-key.list.constant';
-import {
-    ApiKeyCreateRequestDto,
-    ApiKeyCreateRequestSchema,
-} from '@modules/api-key/dtos/request/api-key.create.request.dto';
-import {
-    ApiKeyUpdateDateRequestDto,
-    ApiKeyUpdateDateRequestSchema,
-} from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
-import {
-    ApiKeyUpdateRequestDto,
-    ApiKeyUpdateRequestSchema,
-} from '@modules/api-key/dtos/request/api-key.update.request.dto';
-import {
-    ApiKeyCreateResponseDto,
-    ApiKeyCreateResponseSchema,
-} from '@modules/api-key/dtos/response/api-key.create.response.dto';
+import { ApiKeyCreateRequestSchema } from '@modules/api-key/dtos/request/api-key.create.request.dto';
+import type { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
+import { ApiKeyUpdateDateRequestSchema } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
+import type { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
+import { ApiKeyUpdateRequestSchema } from '@modules/api-key/dtos/request/api-key.update.request.dto';
+import type { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
+import { ApiKeyCreateResponseSchema } from '@modules/api-key/dtos/response/api-key.create.response.dto';
+import type { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import { ApiKeyHttpService } from '@modules/api-key/services/api-key.http.service';
 import {
     ApiKeyAdminCreateDoc,
@@ -51,12 +43,12 @@ import {
     ApiKeyAdminUpdateDoc,
     ApiKeyAdminUpdateStatusDoc,
 } from '@modules/api-key/docs/api-key.admin.doc';
-import {
+import type {
     IPaginationEqual,
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
@@ -64,19 +56,18 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
-    ApiKey,
     EnumApiKeyType,
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { ApiKey } from '@generated/prisma-client/client';
+import type { IApiKeyList } from '@modules/api-key/interfaces/api-key.interface';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
-import {
-    ApiKeyUpdateStatusRequestDto,
-    ApiKeyUpdateStatusRequestSchema,
-} from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
+import { ApiKeyUpdateStatusRequestSchema } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
+import type { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { ApiKeyResponseSchema } from '@modules/api-key/dtos/response/api-key.response.dto';
 
@@ -113,7 +104,7 @@ export class ApiKeyAdminController {
         isActive?: Record<string, IPaginationEqual>,
         @PaginationQueryFilterInEnum<EnumApiKeyType>('type', ApiKeyDefaultType)
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<ApiKey>> {
+    ): Promise<IResponsePagingReturn<IApiKeyList>> {
         return this.apiKeyHttpService.getListByAdmin(
             pagination,
             isActive,

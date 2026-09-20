@@ -1,4 +1,4 @@
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { Response } from '@common/response/decorators/response.decorator';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -13,7 +13,7 @@ import { UserUserDeleteSelfDoc } from '@modules/user/docs/user.user.doc';
 import { UserHttpService } from '@modules/user/services/user.http.service';
 import { Controller, Delete } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumRoleType } from '@generated/prisma-client';
+import { EnumRoleType } from '@generated/prisma-client/client';
 
 @ApiTags('modules.user.user')
 @Controller({

@@ -1,22 +1,22 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import {
+import type {
     IPaginationCursorReturn,
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumWorkspaceMemberRole,
     Prisma,
-    WorkspaceMember,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
-import { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
-import { IWorkspaceMemberRepository } from '@modules/workspace/interfaces/workspace.member.repository.interface';
+import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import type { IWorkspaceMemberRepository } from '@modules/workspace/interfaces/workspace.member-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -106,12 +106,18 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
         role?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
+        const scopedWhere = this.buildWorkspaceScopedWhere(
+            workspaceId,
+            where,
+            role
+        );
+
         return this.paginationService.offset<
             IWorkspaceMember,
             Prisma.WorkspaceMemberWhereInput
         >(this.databaseService.client.workspaceMember, {
             ...others,
-            where: this.buildWorkspaceScopedWhere(workspaceId, where, role),
+            where: scopedWhere,
             include: {
                 user: {
                     select: UserRefSelect,
@@ -128,12 +134,18 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         }: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
         role?: Record<string, IPaginationIn>
     ): Promise<IPaginationCursorReturn<IWorkspaceMember>> {
+        const scopedWhere = this.buildWorkspaceScopedWhere(
+            workspaceId,
+            where,
+            role
+        );
+
         return this.paginationService.cursor<
             IWorkspaceMember,
             Prisma.WorkspaceMemberWhereInput
         >(this.databaseService.client.workspaceMember, {
             ...others,
-            where: this.buildWorkspaceScopedWhere(workspaceId, where, role),
+            where: scopedWhere,
             include: {
                 user: {
                     select: UserRefSelect,
@@ -153,6 +165,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
                 userId,
                 role: EnumWorkspaceMemberRole.owner,
                 createdBy: userId,
+                updatedBy: userId,
             },
         });
     }
@@ -162,61 +175,54 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         workspaceId: string,
         userId: string,
         role: EnumWorkspaceMemberRole,
-        createdBy: string
+        actorId: string
     ): Promise<WorkspaceMember> {
         return tx.workspaceMember.create({
             data: {
                 workspaceId,
                 userId,
                 role,
-                createdBy,
+                createdBy: actorId,
+                updatedBy: actorId,
             },
         });
     }
 
-    async updateRoleInTx(
-        tx: IDatabaseTransactionClient,
-        actorId: string,
+    async updateRole(
         targetMemberId: string,
         newRole: EnumWorkspaceMemberRole
     ): Promise<void> {
-        await tx.workspaceMember.update({
+        await this.databaseService.client.workspaceMember.update({
             where: { id: targetMemberId },
             data: {
                 role: newRole,
-                updatedBy: actorId,
             },
         });
     }
 
-    async removeMemberInTx(
-        tx: IDatabaseTransactionClient,
-        targetMemberId: string
-    ): Promise<void> {
-        await tx.workspaceMember.delete({
+    async removeMember(targetMemberId: string): Promise<void> {
+        await this.databaseService.client.workspaceMember.delete({
             where: { id: targetMemberId },
         });
     }
 
-    async transferOwnershipInTx(
-        tx: IDatabaseTransactionClient,
+    async transferOwnership(
         fromMemberId: string,
-        toMemberId: string,
-        actorId: string
+        toMemberId: string
     ): Promise<void> {
-        await tx.workspaceMember.update({
-            where: { id: fromMemberId },
-            data: {
-                role: EnumWorkspaceMemberRole.admin,
-                updatedBy: actorId,
-            },
-        });
-        await tx.workspaceMember.update({
-            where: { id: toMemberId },
-            data: {
-                role: EnumWorkspaceMemberRole.owner,
-                updatedBy: actorId,
-            },
+        await this.databaseService.withTransaction(async tx => {
+            await tx.workspaceMember.update({
+                where: { id: fromMemberId },
+                data: {
+                    role: EnumWorkspaceMemberRole.admin,
+                },
+            });
+            await tx.workspaceMember.update({
+                where: { id: toMemberId },
+                data: {
+                    role: EnumWorkspaceMemberRole.owner,
+                },
+            });
         });
     }
 }

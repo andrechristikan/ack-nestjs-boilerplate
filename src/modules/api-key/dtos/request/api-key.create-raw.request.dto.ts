@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiKeyCreateBaseRequestSchema } from '@modules/api-key/dtos/request/api-key.create.request.dto';
+import { ApiKeyCreateBaseRequestSchema } from '@modules/api-key/dtos/request/api-key.create-base.request.dto';
 
 /**
  * An api-key row carrying its own key and secret, with no validity window.
+ * @public
  */
 export const ApiKeyCreateRawRequestSchema = ApiKeyCreateBaseRequestSchema.omit({
     startAt: true,
@@ -27,6 +28,10 @@ export const ApiKeyCreateRawRequestSchema = ApiKeyCreateBaseRequestSchema.omit({
         }),
 });
 
+/**
+ * API key row with its own key and secret, used by seeds.
+ * @public
+ */
 export type ApiKeyCreateRawRequestDto = z.infer<
     typeof ApiKeyCreateRawRequestSchema
 >;

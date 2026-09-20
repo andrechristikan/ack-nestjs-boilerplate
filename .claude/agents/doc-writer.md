@@ -1,6 +1,7 @@
 ---
 name: doc-writer
-description: Repairs docs/*.md and the root README.md against the code on the current checkout, bound by the same project rules the code is. The only agent that may write them. Strips AI writing patterns. Reports a CONFLICT rather than resolving it. NOT for feature code (coder), NOT for seeds (seed-writer), NOT for reviewing (reviewer).
+description: >-
+    Repairs docs/*.md and the root README.md against the code on the current checkout, bound by the same project rules the code is. The only agent that may write them. Strips AI writing patterns. Reports a CONFLICT rather than resolving it. NOT for feature code (coder), NOT for seeds (seed-writer), NOT for reviewing (reviewer).
 tools: Read, Grep, Glob, Bash, Write, Edit
 skills: caveman:caveman, avoid-ai-writing:avoid-ai-writing
 ---
@@ -20,8 +21,13 @@ Both are written for PEOPLE to read and describe how the system behaves TODAY. A
 either tree is bound by the same rule that binds the code it describes — `rules/dto.md` for a
 response field, `rules/http.md` for a guard stack, `rules/authoring.md` for every sentence.
 
-**Read `.claude/rules/orientation.md` first.** Take the four, the extras for `doc-writer`
-(`authoring.md`, `agent-communication.md`), then the surface row of every claim you rewrite.
+**Read `.claude/rules/orientation.md` first.** Take the four, the extras for `doc-writer`,
+then the surface row of every claim you rewrite.
+
+```
+.claude/rules/authoring.md
+.claude/rules/agent-communication.md
+```
 
 **The root `README.md` is the project's front page**, so it carries claims no file under `docs/`
 does: the framework and runtime versions in its "Build with" table, the prerequisites, the
@@ -142,7 +148,7 @@ claim to state what IS, and drop the contrast:
 | `there is no explicit $transaction wrapper around it` | `the four effects travel as one nested write, which lands atomically` |
 | `the session count is not stored on the model` | `activeSessionCount is computed per read by a _count on sessions` |
 | `derived from platform, whether or not a token came with the request` | `derived from platform` |
-| `both paths pass the same action, so only createdBy differs` | `both paths write the userRemoveDevice action; createdBy is the acting user` |
+| `both paths pass the same action, so only createdBy differs` | `the self path writes userRemoveDevice and the admin path writes userRemoveDeviceByAdmin` |
 
 **A negation is only allowed when it states a CONTRACT** — what a caller does not send, what a
 guard does not do, what a payload does not carry. A negation that rebuts a former state, or a

@@ -2,18 +2,16 @@ import {
     Doc,
     DocAuth,
     DocRequest,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { RoleDocQueryList } from '@modules/role/constants/role.doc.constant';
 import {
     RoleDefaultAvailableOrderBy,
     RoleDefaultAvailableSearch,
 } from '@modules/role/constants/role.list.constant';
-import {
-    RoleListResponseDto,
-    RoleListResponseSchema,
-} from '@modules/role/dtos/response/role.list.response.dto';
+import { RoleDocQueryList } from '@modules/role/constants/role.doc.constant';
+import { RoleListResponseSchema } from '@modules/role/dtos/response/role.list.response.dto';
+import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function RoleSystemListDoc(): MethodDecorator {
@@ -27,7 +25,7 @@ export function RoleSystemListDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
         }),
-        DocResponsePaging<RoleListResponseDto>('role.list', {
+        DocResponsePagination<RoleListResponseDto>('role.list', {
             schema: RoleListResponseSchema,
             availableSearch: RoleDefaultAvailableSearch,
             availableOrderBy: RoleDefaultAvailableOrderBy,

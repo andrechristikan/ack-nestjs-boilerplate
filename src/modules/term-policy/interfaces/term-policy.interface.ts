@@ -1,12 +1,12 @@
-import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
+import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import {
-    EnumTermPolicyType,
+import { EnumTermPolicyType } from '@generated/prisma-client/client';
+import type {
     TermPolicy,
     TermPolicyContent,
     TermPolicyUserAcceptance,
-} from '@generated/prisma-client';
-import { IUserRef } from '@modules/user/interfaces/user.interface';
+} from '@generated/prisma-client/client';
+import type { IUserRef } from '@modules/user/interfaces/user.interface';
 
 export interface ITermPolicy extends TermPolicy {
     contents: TermPolicyContent[];
@@ -39,4 +39,12 @@ export interface ITermPolicyContentPresign {
     version: number;
     language: EnumMessageLanguage;
     size: number;
+}
+
+export interface ITermPolicyAcceptanceAnalytic {
+    id: string;
+    userId: string;
+    termPolicyId: string;
+    acceptedAt: Date;
+    createdAt: Date;
 }

@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 
+/**
+ * Validates the body for answering a two-factor login challenge.
+ * @public
+ */
 export const UserLoginVerifyTwoFactorRequestSchema = z.strictObject({
     challengeToken: z.string().min(1).meta({
         description:
@@ -35,6 +39,10 @@ export const UserLoginVerifyTwoFactorRequestSchema = z.strictObject({
         }),
 });
 
+/**
+ * Body for answering a two-factor login challenge.
+ * @public
+ */
 export type UserLoginVerifyTwoFactorRequestDto = z.infer<
     typeof UserLoginVerifyTwoFactorRequestSchema
 >;

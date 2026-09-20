@@ -1,25 +1,14 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
+import type {
     IPaginationCursorReturn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import {
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type {
     IActivityLog,
-    IActivityLogMetadata,
+    IActivityLogCreate,
 } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client';
-
-export interface IActivityLogCreateManyRow {
-    userId: string;
-    workspaceId: string | null;
-    action: EnumActivityLogAction;
-    description: string;
-    requestLog: IRequestLog;
-    metadata: IActivityLogMetadata;
-}
+import { Prisma } from '@generated/prisma-client/client';
 
 export interface IActivityLogRepository {
     findUserScopedWithPaginationOffset(
@@ -52,8 +41,5 @@ export interface IActivityLogRepository {
             ...params
         }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
     ): Promise<IPaginationCursorReturn<IActivityLog>>;
-    createManyInTx(
-        tx: IDatabaseTransactionClient,
-        rows: IActivityLogCreateManyRow[]
-    ): Promise<Prisma.BatchPayload>;
+    createMany(rows: IActivityLogCreate[]): Promise<Prisma.BatchPayload>;
 }

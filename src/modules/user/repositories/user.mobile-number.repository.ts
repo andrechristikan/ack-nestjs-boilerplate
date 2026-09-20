@@ -1,8 +1,11 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { Country, UserMobileNumber } from '@generated/prisma-client';
-import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
-import { IUserMobileNumberRepository } from '@modules/user/interfaces/user.mobile-number.repository.interface';
+import type {
+    Country,
+    UserMobileNumber,
+} from '@generated/prisma-client/client';
+import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
+import type { IUserMobileNumberRepository } from '@modules/user/interfaces/user.mobile-number-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -69,7 +72,6 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
                 countryId,
                 number,
                 phoneCode,
-                createdBy: userId,
             },
             include: {
                 country: true,
@@ -79,7 +81,6 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
 
     async updateInTx(
         tx: IDatabaseTransactionClient,
-        userId: string,
         mobileNumberId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         isVerified: boolean
@@ -90,7 +91,6 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
                 countryId,
                 number,
                 phoneCode,
-                updatedBy: userId,
                 isVerified,
             },
             include: {

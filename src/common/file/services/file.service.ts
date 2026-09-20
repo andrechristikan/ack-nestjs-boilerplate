@@ -1,13 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { IFileService } from '@common/file/interfaces/file.service.interface';
-import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
+import type { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import Mime from 'mime';
 import Papa from 'papaparse';
 import { fileTypeFromBuffer } from 'file-type';
 
 @Injectable()
-export class FileService implements IFileService {
+export class FileService {
     constructor(private readonly helperStringService: HelperStringService) {}
 
     writeCsv<T = Record<string, string | number | Date>>(rows: T[]): string {

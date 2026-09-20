@@ -1,17 +1,16 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import {
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IActivityLogAnalyticRepository } from '@modules/activity-log/interfaces/activity-log.analytic-repository.interface';
+import type {
     IActivityLogAnalyticActionCount,
-    IActivityLogAnalyticEventRow,
-    IActivityLogAnalyticListRow,
-    IActivityLogAnalyticRepository,
-} from '@modules/activity-log/interfaces/activity-log.analytic.repository.interface';
-import { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
+    IActivityLogAnalyticEvent,
+} from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class ActivityLogAnalyticRepository implements IActivityLogAnalyticRepository {
@@ -57,7 +56,7 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date
-    ): Promise<IActivityLogAnalyticEventRow[]> {
+    ): Promise<IActivityLogAnalyticEvent[]> {
         return this.databaseService.client.activityLog.findMany({
             where: {
                 action: { in: actions },
@@ -77,6 +76,7 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
     }
 
     async countByWorkspaceInRange(
+        excludedActions: EnumActivityLogAction[],
         workspaceId: string,
         startDate: Date,
         endDate: Date
@@ -84,57 +84,57 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
         return this.databaseService.client.activityLog.count({
             where: {
                 workspaceId,
+                action: { notIn: excludedActions },
                 createdAt: { gte: startDate, lt: endDate },
             },
         });
     }
 
-    async groupActivityByWorkspaceInRange(
+    async groupActivityByWorkspaceOffset(
+        excludedActions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date,
-        take = 20
-    ): Promise<IAnalyticWorkspaceCount[]> {
-        const rows = await this.databaseService.client.activityLog.groupBy({
-            by: ['workspaceId'],
-            where: {
-                workspaceId: { not: null },
-                createdAt: { gte: startDate, lt: endDate },
-            },
-            _count: { _all: true },
-            orderBy: {
-                _count: { workspaceId: EnumPaginationOrderDirectionType.desc },
-            },
-            take,
-        });
-        return rows
-            .filter(r => r.workspaceId)
-            .map(r => ({
-                workspaceId: r.workspaceId as string,
-                count: r._count._all,
-            }));
-    }
-
-    async listOffsetByActions(
-        actions: EnumActivityLogAction[],
-        startDate: Date | undefined,
-        endDate: Date | undefined,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IActivityLogAnalyticListRow>> {
-        const { where, ...rest } = params;
-        return this.paginationService.offset(
-            this.databaseService.client.activityLog,
-            {
-                ...rest,
-                where: {
-                    AND: [
-                        ...(where ? [where] : []),
-                        { action: { in: actions } },
-                        ...(startDate && endDate
-                            ? [{ createdAt: { gte: startDate, lt: endDate } }]
-                            : []),
-                    ],
-                },
-            }
-        );
+    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
+        const { skip, limit } = params;
+        const scopedWhere: Prisma.ActivityLogWhereInput = {
+            workspaceId: { not: null },
+            action: { notIn: excludedActions },
+            createdAt: { gte: startDate, lt: endDate },
+        };
+
+        const [rows, groups] = await Promise.all([
+            this.databaseService.client.activityLog.groupBy({
+                by: ['workspaceId'],
+                where: scopedWhere,
+                _count: { _all: true },
+                orderBy: [
+                    {
+                        _count: {
+                            workspaceId: EnumPaginationOrderDirectionType.desc,
+                        },
+                    },
+                    { workspaceId: EnumPaginationOrderDirectionType.asc },
+                ],
+                skip,
+                take: limit,
+            }),
+            this.databaseService.client.activityLog.groupBy({
+                by: ['workspaceId'],
+                where: scopedWhere,
+            }),
+        ]);
+
+        const data = rows
+            .filter(row => row.workspaceId)
+            .map(row => ({
+                workspaceId: row.workspaceId as string,
+                count: row._count._all,
+            }));
+
+        return this.paginationService.offsetPage(data, groups.length, {
+            skip,
+            limit,
+        });
     }
 }

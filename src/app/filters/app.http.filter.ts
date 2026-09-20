@@ -1,18 +1,12 @@
-import {
-    ArgumentsHost,
-    Catch,
-    ExceptionFilter,
-    HttpException,
-    HttpStatus,
-    Logger,
-} from '@nestjs/common';
-import { Response } from 'express';
+import { Catch, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
+import type { Response } from 'express';
 import Case from 'case';
 import { MessageService } from '@common/message/services/message.service';
-import { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
-import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
+import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
+import type { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
-import * as Sentry from '@sentry/nestjs';
+import { SentryService } from '@common/sentry/services/sentry.service';
 
 /**
  * Handles framework `HttpException`: builds the standard error envelope from the HTTP status
@@ -24,8 +18,18 @@ export class AppHttpFilter implements ExceptionFilter {
 
     constructor(
         private readonly messageService: MessageService,
-        private readonly responseMetadataService: ResponseMetadataService
+        private readonly responseMetadataService: ResponseMetadataService,
+        private readonly sentryService: SentryService
     ) {}
+
+    private sendToSentry(exception: HttpException): void {
+        if (exception.getStatus() < 500) {
+            return;
+        }
+
+        this.logger.error(exception, 'An unhandled exception occurred');
+        this.sentryService.captureException(exception);
+    }
 
     async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
         const ctx = host.switchToHttp();
@@ -64,21 +68,6 @@ export class AppHttpFilter implements ExceptionFilter {
 
         this.responseMetadataService.setHeaders(response, metadata);
         response.status(statusHttp).json(responseBody);
-
-        return;
-    }
-
-    sendToSentry(exception: HttpException): void {
-        if (exception.getStatus() < 500) {
-            return;
-        }
-
-        try {
-            this.logger.error(exception, 'An unhandled exception occurred');
-            Sentry.captureException(exception);
-        } catch (error: unknown) {
-            this.logger.error(error, 'Failed to send exception to Sentry');
-        }
 
         return;
     }

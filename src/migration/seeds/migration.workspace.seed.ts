@@ -2,9 +2,16 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import { migrationUserData } from '@migration/data/migration.user.data';
-import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { Prisma } from '@generated/prisma-client';
+import {
+    MigrationUserData,
+    MigrationUserSuperAdminId,
+} from '@migration/data/migration.user.data';
+import type { IMigrationUserData } from '@migration/interfaces/migration.interface';
+import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import {
+    EnumWorkspaceMemberRole,
+    Prisma,
+} from '@generated/prisma-client/client';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -28,13 +35,8 @@ export class MigrationWorkspaceSeed
     private readonly slugPrefix: string;
     private readonly slugMaxLength: number;
     private readonly slugMaxAttempts: number;
-    private readonly users: {
-        country: string;
-        email: string;
-        name: string;
-        role: string;
-        password: string;
-    }[] = [];
+    private readonly seedTransactionTimeoutInMs: number;
+    private readonly users: IMigrationUserData[] = [];
 
     constructor(
         private readonly databaseService: DatabaseService,
@@ -45,7 +47,7 @@ export class MigrationWorkspaceSeed
         super();
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
-        this.users = migrationUserData[this.env];
+        this.users = MigrationUserData[this.env];
 
         this.slugPrefix = this.configService.get<string>(
             'workspace.slugPrefix'
@@ -55,6 +57,9 @@ export class MigrationWorkspaceSeed
         )!;
         this.slugMaxAttempts = this.configService.get<number>(
             'workspace.slugMaxAttempts'
+        )!;
+        this.seedTransactionTimeoutInMs = this.configService.get<number>(
+            'database.seedTransactionTimeoutInMs'
         )!;
     }
 
@@ -103,20 +108,27 @@ export class MigrationWorkspaceSeed
                         return;
                     }
 
-                    await this.databaseService.client.$transaction(async tx => {
-                        const workspace = await tx.workspace.create({
-                            data: {
-                                name: `${user.username}'s Workspace`,
-                                slug: this.drawSlugCandidates()[0],
-                                createdBy: user.id,
-                            },
-                        });
-                        await this.workspaceMemberRepository.createOwnerInTx(
-                            tx,
-                            workspace.id,
-                            user.id
-                        );
-                    });
+                    await this.databaseService.withTransaction(
+                        async tx => {
+                            const slugCandidates = this.drawSlugCandidates();
+                            const workspace = await tx.workspace.create({
+                                data: {
+                                    name: `${user.username}'s Workspace`,
+                                    slug: slugCandidates[0],
+                                    createdBy: MigrationUserSuperAdminId,
+                                    updatedBy: MigrationUserSuperAdminId,
+                                },
+                            });
+                            await this.workspaceMemberRepository.createInTx(
+                                tx,
+                                workspace.id,
+                                user.id,
+                                EnumWorkspaceMemberRole.owner,
+                                MigrationUserSuperAdminId
+                            );
+                        },
+                        { timeout: this.seedTransactionTimeoutInMs }
+                    );
                 })
             );
         } catch (error: unknown) {
@@ -158,8 +170,13 @@ export class MigrationWorkspaceSeed
                     where: {
                         OR: seededUsers.map<Prisma.WorkspaceWhereInput>(
                             user => ({
-                                createdBy: user.id,
                                 name: `${user.username}'s Workspace`,
+                                members: {
+                                    some: {
+                                        userId: user.id,
+                                        role: EnumWorkspaceMemberRole.owner,
+                                    },
+                                },
                             })
                         ),
                     },

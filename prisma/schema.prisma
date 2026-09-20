@@ -4,8 +4,10 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/prisma-client"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma-client"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
 }
 
 model ApiKey {
@@ -169,6 +171,9 @@ model User {
   revokedDeviceOwnerships  DeviceOwnership[]          @relation("DeviceOwnershipRevokedByUser")
   workspaceMembers         WorkspaceMember[]          @relation("UserWorkspaceMembers")
   workspaceJoinRequests    WorkspaceJoinRequest[]     @relation("UserWorkspaceJoinRequests")
+  reviewedWorkspaceRequests WorkspaceJoinRequest[]    @relation("WorkspaceJoinRequestReviewedBy")
+  sentWorkspaceInvites      WorkspaceInvite[]         @relation("WorkspaceInviteInvitedBy")
+  acceptedWorkspaceInvites  WorkspaceInvite[]         @relation("WorkspaceInviteAcceptedBy")
   projectMembers           ProjectMember[]            @relation("UserProjectMembers")
   lastWorkspace            Workspace?                 @relation("UserLastWorkspace", fields: [lastWorkspaceId], references: [id], onDelete: SetNull)
 
@@ -358,7 +363,7 @@ model TwoFactor {
   id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
   userId        String    @db.Uuid
   secret        String?
-  iv            String?
+  pendingSecret String?
   enabled       Boolean   @default(false)
   requiredSetup Boolean   @default(false)
   confirmedAt   DateTime?
@@ -584,6 +589,7 @@ model Workspace {
   updatedAt DateTime  @updatedAt
   updatedBy String?   @db.Uuid
   deletedAt DateTime?
+  deletedBy String?   @db.Uuid
 
   @@unique(fields: [slug])
   @@index(fields: [isPublic, deletedAt, createdAt(sort: Desc)])
@@ -691,6 +697,7 @@ model Project {
   updatedAt DateTime  @updatedAt
   updatedBy String?   @db.Uuid
   deletedAt DateTime?
+  deletedBy String?   @db.Uuid
 
   @@unique(fields: [workspaceId, slug])
   @@index(fields: [workspaceId, deletedAt, createdAt(sort: Desc), id(sort: Desc)])
@@ -862,6 +869,8 @@ enum EnumActivityLogAction {
   userRegenerateTwoFactorBackupCodes
   userDeviceRefresh
   userLogout
+  userCreatedByAdmin
+  userRemoveDeviceByAdmin
 
   adminSessionRevoke
   adminApiKeyCreate
@@ -888,6 +897,7 @@ enum EnumActivityLogAction {
   adminUserResetTwoFactor
   adminUserImport
   adminDeviceRemove
+  adminSessionRevokeAll
 
   workspaceCreated
   workspaceUpdated
@@ -904,6 +914,15 @@ enum EnumActivityLogAction {
   workspaceJoinRequested
   workspaceJoinAccepted
   workspaceJoinRejected
+  workspaceCreatedByAdmin
+  workspaceMemberRoleUpdatedByAdmin
+  workspaceMemberRemovedByAdmin
+  workspaceOwnershipTransferredByOwner
+  workspaceInviteCreatedByAdmin
+  workspaceInviteAcceptedByInvitee
+  workspaceInviteRevokedByAdmin
+  workspaceJoinAcceptedByAdmin
+  workspaceJoinRejectedByAdmin
 
   projectCreated
   projectUpdated
@@ -912,6 +931,9 @@ enum EnumActivityLogAction {
   projectMemberRoleUpdated
   projectMemberRemoved
   projectMemberLeft
+  projectMemberAssignedByAdmin
+  projectMemberRoleUpdatedByAdmin
+  projectMemberRemovedByAdmin
 }
 
 enum EnumDevicePlatform {

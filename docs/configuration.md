@@ -1,6 +1,6 @@
 # Configuration Documentation
 
-This documentation explains the features and usage of **Config Module**: Located at `src/configs`
+Config lives in `src/configs`.
 
 ## Overview
 
@@ -17,6 +17,7 @@ NestJS `ConfigModule` loads one `registerAs` file per concern from `src/configs`
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Configuration Structure](#configuration-structure)
+  - [Patterns and their placeholders](#patterns-and-their-placeholders)
 - [App Configuration](#app-configuration)
 - [Auth Configuration](#auth-configuration)
 - [Database Configuration](#database-configuration)
@@ -67,6 +68,13 @@ The configuration modules are imported and registered in `src/configs/index.ts` 
 export class CommonModule {}
 ```
 
+### Patterns and their placeholders
+
+A config value whose name ends in `Pattern` or `Path` is a template carrying `{token}` placeholders: cache and Redis keys, S3 object paths and URLs, email links, and the export filename. The consumer fills it at the point of use, and the number of placeholders decides how:
+
+- One placeholder is filled by `String.prototype.replace('{name}', () => value)`. The function form of the replacement stops a value containing `$&` or `$1` from being read as a replacement pattern.
+- Two or more go through `HelperStringService.fillPattern(pattern, values)`, which scans the pattern once so a substituted value is never re-read as a token. A `{token}` the caller supplied no value for raises `HelperPatternTokenMissingException` (`52202`, 500) naming that token, rather than leaving the literal `{token}` in the key or the link.
+
 ### App Configuration
 
 **File**: `src/configs/app.config.ts`
@@ -93,12 +101,12 @@ env: EnumAppEnvironment
 timezone: string
 ```
 
-**`version`** - Application version from package.json
+**`version`** - Application version, read from `src/generated/package/package.ts`
 ```typescript
 version: string
 ```
 
-**`author`** - Author information from package.json
+**`author`** - Author information, read from `src/generated/package/package.ts`
 ```typescript
 author: {
   name: string;                   // Author name
@@ -106,7 +114,7 @@ author: {
 }
 ```
 
-**`url`** - Repository URL from package.json
+**`url`** - Repository URL, read from `src/generated/package/package.ts`
 ```typescript
 url: string
 ```
@@ -136,10 +144,12 @@ urlVersion: {
 }
 ```
 
-**`encryptionSecretKey`** - AES-256 encryption secret key
+**`encryptionSecretKey`** - Root secret for application-level encryption
 ```typescript
-encryptionSecretKey: string     // Secret key used to derive AES-256 encryption key for sensitive data
+encryptionSecretKey: string     // From APP_ENCRYPTION_SECRET_KEY: 64 base64url characters (48 random bytes)
 ```
+
+> `src/generated/package/package.ts` is written by `pnpm generate:package` (part of `pnpm generate`) from the `version`, `author`, and `repository` fields of `package.json`. `encryptionSecretKey` is the HKDF key material `HelperEncryptionService` uses for the notification job payloads; the notification queue classes and email domains read it. See [Notification](notification.md).
 
 ### Auth Configuration
 
@@ -210,7 +220,7 @@ twoFactor: {
   maxAttempt: number;             // Maximum failed two-factor attempts before lock
   lockAttemptDurationInMs: number; // Lock duration after max failed attempts (milliseconds)
   encryption: {
-    key: string;                  // Encryption key for TOTP secrets
+    key: string;                  // Root secret for TOTP secrets, from AUTH_TWO_FACTOR_ENCRYPTION_KEY (64 base64url characters)
   };
 }
 ```
@@ -262,6 +272,11 @@ url: string                     // PostgreSQL connection URL
 **`debug`** - Database debug mode
 ```typescript
 debug: boolean                  // Enable/disable database query logging
+```
+
+**`seedTransactionTimeoutInMs`** - `withTransaction` timeout for the seed commands
+```typescript
+seedTransactionTimeoutInMs: number  // Timeout every seed passes to withTransaction, in seed() and remove() (ms('60s')); no env var
 ```
 
 ### AWS Configuration
@@ -434,10 +449,10 @@ cors: {
 > - `allowedOrigin` is populated from `CORS_ALLOWED_ORIGIN` environment variable or configuration
 > - Multiple origins can be specified using comma separation (converted to array)
 > - **Subdomain wildcards** are supported (e.g., `*.example.com` matches `api.example.com` and `example.com`)
-> - **Exact port matching** is supported (e.g., `api.example.com:3000`) — port wildcards are NOT supported
-> - **Protocol-agnostic** — both HTTP and HTTPS are allowed for the same hostname
+> - **Exact port matching** is supported (e.g., `api.example.com:3000`); port wildcards are not supported
+> - **Protocol-agnostic**: both HTTP and HTTPS are allowed for the same hostname
 > - **Credentials** are automatically allowed only for specific origins; wildcard (`*`) disables credentials
-> - `allowedHeader` is a fixed list in `request.config.ts`, not environment-driven: standard CORS/HTTP headers plus the custom headers `x-custom-lang`, `x-timestamp`, `x-api-key`, `x-timezone`, `x-workspace-id`, `x-anonymous-id`, `x-request-id`, `x-correlation-id`, `x-version`, `x-repo-version`, and `X-Response-Time`
+> - `allowedHeader` is a fixed list in `request.config.ts`, not environment-driven: standard CORS/HTTP headers (including `user-agent`) plus the custom headers `x-custom-lang`, `x-timestamp`, `x-api-key`, `x-timezone`, `x-workspace-id`, `x-anonymous-id`, `x-request-id`, `x-correlation-id`, `x-version`, `x-repo-version`, and `X-Response-Time`
 > - `exposedHeader` is likewise fixed in `request.config.ts`: `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and the `-route` and `-user` suffixed variants of the three. A response header that is not in this list is invisible to a cross-origin browser client
 
 **`helmet`** - Strict-Transport-Security parameters for the Helmet profile
@@ -458,9 +473,9 @@ throttle: {
   user: IRequestThrottlePolicy;                                 // Per-userId limiter, opt-in (100 / 60s, block 60s)
   route: Record<EnumRequestThrottleRoute, IRequestThrottlePolicy>; // Per-IP-per-handler tiers, opt-in
   headerPrefix: string;           // Prefix for the suffixed rate-limit headers (default: 'X-RateLimit')
-  keyPattern: string;             // Window log key (default: 'Request:Throttler:{name}:{tracker}')
-  blockKeyPattern: string;        // Block key (default: 'Request:Throttler:Block:{name}:{tracker}')
-  sequenceKeyPattern: string;     // Sequence counter key (default: 'Request:Throttler:Seq:{name}:{tracker}')
+  keyPattern: string;             // Window log key (default: 'Request:Throttle:{name}:{tracker}')
+  blockKeyPattern: string;        // Block key (default: 'Request:Throttle:Block:{name}:{tracker}')
+  sequenceKeyPattern: string;     // Sequence counter key (default: 'Request:Throttle:Seq:{name}:{tracker}')
 }
 
 interface IRequestThrottlePolicy {
@@ -530,6 +545,11 @@ uploadPhotoProfilePath: string  // Path template for user profile photo uploads
 **`maxDataImport`** - User CSV import row cap
 ```typescript
 maxDataImport: number           // Maximum rows accepted in a user CSV import (default: 50)
+```
+
+**`maxDataExport`** - User CSV export row cap
+```typescript
+maxDataExport: number           // Maximum users `UserImportDomain.exportByAdmin` returns (default: 500); one row more raises FileExceedMaxDataExportException
 ```
 
 **`default`** - Default role and country assigned to new users
@@ -745,7 +765,7 @@ This configuration manages user session key patterns for Redis storage.
 
 **`keyPattern`** - Session key pattern
 ```typescript
-keyPattern: string              // Redis key pattern for user sessions
+keyPattern: string              // Redis key pattern for user sessions ('User:{userId}:Session:{sessionId}')
 ```
 
 ### Term Policy Configuration
@@ -927,13 +947,23 @@ push: {
 **File**: `src/configs/file.config.ts`
 **Interface**: `IConfigFile`
 
-This configuration holds file-import limits consumed by `FileCsvValidationPipe`.
+This configuration holds the file import and export limits.
 
 #### Configuration Keys:
 
 **`maxDataImport`** - CSV import row cap
 ```typescript
-maxDataImport: number           // Maximum rows accepted in a CSV import (default: 100)
+maxDataImport: number           // Maximum rows accepted in a CSV import (default: 100); read by `FileCsvValidationPipe`
+```
+
+**`maxDataExport`** - CSV export row cap
+```typescript
+maxDataExport: number           // Default export row cap (default: 1000)
+```
+
+**`maxSizeExportInBytes`** - Export file size cap
+```typescript
+maxSizeExportInBytes: number    // Largest file `ResponseFileInterceptor` sends (bytes('2mb')); a larger buffer raises FileExceedMaxSizeExportException
 ```
 
 ### Workspace Configuration
@@ -1056,8 +1086,12 @@ cache: {
     fraud: string;                // Analytic:fraud:{signal}:{window}
     riskScore: string;            // Analytic:fraud:risk:{userId}
   };
+  windowTokenPattern: string;          // '{start}:{end}'
+  workspaceWindowTokenPattern: string; // '{workspaceId}:{start}:{end}'
 }
 ```
+
+`AnalyticDateUtil` fills the two token patterns and `AnalyticCache` fills the four key patterns. A paginated dashboard metric appends `page=<n>:perPage=<n>` to its metric token, so one page of a list caches under its own key.
 
 **`anomaly`** - Impossible-travel, login-spike, failed-login, device-proliferation, and login-time thresholds used by `AnalyticAnomalyDomain`
 

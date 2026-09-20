@@ -5,19 +5,13 @@ import {
     DocGuard,
     DocRequest,
     DocResponse,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
-import {
-    DeviceOwnershipResponseDto,
-    DeviceOwnershipResponseSchema,
-} from '@modules/device/dtos/response/device.ownership.response.dto';
-import {
-    DeviceOwnershipDocParamsId,
-    DeviceOwnershipDocQueryList,
-} from '@modules/device/constants/device.doc.constant';
+import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
+import type { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
+import { DeviceOwnershipDocQueryList } from '@modules/device/constants/device.doc.constant';
 
 export function DeviceAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -25,15 +19,14 @@ export function DeviceAdminListDoc(): MethodDecorator {
             summary: 'admin get all user Devices',
         }),
         DocRequest({
-            params: UserDocParamsId,
             queries: DeviceOwnershipDocQueryList,
         }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<DeviceOwnershipResponseDto>('device.list', {
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
+        DocResponsePagination<DeviceOwnershipResponseDto>('device.list', {
             schema: DeviceOwnershipResponseSchema,
             availableOrderBy: DeviceDefaultAvailableOrderBy,
             type: EnumPaginationType.offset,
@@ -46,14 +39,11 @@ export function DeviceAdminRemoveDoc(): MethodDecorator {
         Doc({
             summary: 'admin remove user Device',
         }),
-        DocRequest({
-            params: [...UserDocParamsId, ...DeviceOwnershipDocParamsId],
-        }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse('device.remove')
     );
 }

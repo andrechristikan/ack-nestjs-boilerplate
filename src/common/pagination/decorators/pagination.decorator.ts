@@ -1,7 +1,7 @@
 import { Query } from '@nestjs/common';
 import { PaginationOrderPipe } from '@common/pagination/pipes/pagination.order.pipe';
 import { PaginationSearchPipe } from '@common/pagination/pipes/pagination.search.pipe';
-import {
+import type {
     IPaginationQueryCursorOptions,
     IPaginationQueryFilterDateOptions,
     IPaginationQueryFilterEnumOptions,
@@ -21,6 +21,7 @@ import { PaginationCursorPipe } from '@common/pagination/pipes/pagination.cursor
 
 /**
  * Binds offset pagination query params (search, page/perPage, order) via their pipes.
+ * @public
  */
 export function PaginationOffsetQuery(
     options?: IPaginationQueryOffsetOptions
@@ -34,6 +35,7 @@ export function PaginationOffsetQuery(
 
 /**
  * Binds cursor pagination query params (search, cursor/perPage, order) via their pipes.
+ * @public
  */
 export function PaginationCursorQuery(
     options?: IPaginationQueryCursorOptions
@@ -47,6 +49,7 @@ export function PaginationCursorQuery(
 
 /**
  * Filters a field by enum membership (`in`).
+ * @public
  */
 export function PaginationQueryFilterInEnum<T>(
     field: string,
@@ -58,6 +61,7 @@ export function PaginationQueryFilterInEnum<T>(
 
 /**
  * Filters a field by enum exclusion (`not in`).
+ * @public
  */
 export function PaginationQueryFilterNinEnum<T>(
     field: string,
@@ -69,6 +73,7 @@ export function PaginationQueryFilterNinEnum<T>(
 
 /**
  * Filters a field by boolean equality.
+ * @public
  */
 export function PaginationQueryFilterEqualBoolean(
     field: string,
@@ -85,6 +90,7 @@ export function PaginationQueryFilterEqualBoolean(
 
 /**
  * Filters a field by number equality.
+ * @public
  */
 export function PaginationQueryFilterEqualNumber(
     field: string,
@@ -101,6 +107,7 @@ export function PaginationQueryFilterEqualNumber(
 
 /**
  * Filters a field by string equality.
+ * @public
  */
 export function PaginationQueryFilterEqualString(
     field: string,
@@ -111,6 +118,7 @@ export function PaginationQueryFilterEqualString(
 
 /**
  * Filters a field by inequality (`not`).
+ * @public
  */
 export function PaginationQueryFilterNotEqual(
     field: string,
@@ -121,6 +129,7 @@ export function PaginationQueryFilterNotEqual(
 
 /**
  * Filters a field by date, optionally as a range bound (`gte`/`lte`).
+ * @public
  */
 export function PaginationQueryFilterDate(
     field: string,

@@ -28,9 +28,12 @@ import {
     EnumRoleType,
     EnumUserStatus,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { IUser, IUserProfile } from '@modules/user/interfaces/user.interface';
+import type {
+    IUserList,
+    IUserProfile,
+} from '@modules/user/interfaces/user.interface';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
@@ -46,12 +49,12 @@ import {
     UserDefaultAvailableSearch,
     UserDefaultStatus,
 } from '@modules/user/constants/user.list.constant';
-import {
+import type {
     IPaginationEqual,
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
+import type {
     IResponseFileReturn,
     IResponsePagingReturn,
     IResponseReturn,
@@ -69,20 +72,16 @@ import {
     UserAdminUpdatePasswordDoc,
     UserAdminUpdateStatusDoc,
 } from '@modules/user/docs/user.admin.doc';
+import { UserCreateRequestSchema } from '@modules/user/dtos/request/user.create.request.dto';
+import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import { DatabaseIdResponseSchema } from '@common/database/dtos/response/database.id.response.dto';
+import type { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import {
-    UserCreateRequestDto,
-    UserCreateRequestSchema,
-} from '@modules/user/dtos/request/user.create.request.dto';
-import {
-    DatabaseIdResponseDto,
-    DatabaseIdResponseSchema,
-} from '@common/database/dtos/response/database.id.response.dto';
-import { RequestTimeout } from '@common/request/decorators/request.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import {
-    UserUpdateStatusRequestDto,
-    UserUpdateStatusRequestSchema,
-} from '@modules/user/dtos/request/user.update-status.request.dto';
+    RequestThrottle,
+    RequestTimeout,
+} from '@common/request/decorators/request.decorator';
+import { UserUpdateStatusRequestSchema } from '@modules/user/dtos/request/user.update-status.request.dto';
+import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { FileUploadSingle } from '@common/file/decorators/file.decorator';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
@@ -90,10 +89,8 @@ import { FileRequiredPipe } from '@common/file/pipes/file.required.pipe';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileCsvParsePipe } from '@common/file/pipes/file.csv-parse.pipe';
 import { FileCsvValidationPipe } from '@common/file/pipes/file.csv-validation.pipe';
-import {
-    UserImportRequestDto,
-    UserImportRequestSchema,
-} from '@modules/user/dtos/request/user.import.request.dto';
+import { UserImportRequestSchema } from '@modules/user/dtos/request/user.import.request.dto';
+import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -136,7 +133,7 @@ export class UserAdminController {
         roleId?: Record<string, IPaginationEqual>,
         @PaginationQueryFilterEqualString('countryId')
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>> {
+    ): Promise<IResponsePagingReturn<IUserList>> {
         return this.userHttpService.getListOffsetByAdmin(
             pagination,
             status,

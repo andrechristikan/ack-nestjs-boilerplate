@@ -1,10 +1,10 @@
 # Feature Flag Documentation
 
-This documentation explains the features and usage of **Feature Flag Module**: Located at `src/modules/feature-flag`
+Feature Flag lives in `src/modules/feature-flag`.
 
 ## Overview
 
-Flags gate routes and code paths. Targeting: rollout percentage, per-user, metadata, and A/B testing. Results are cached.
+Flags gate routes and code paths. Targeting uses rollout percentage, a per-user allow-list (`targetUserIds`), and metadata sub-keys. Results are cached.
 
 ## Related Documents
 
@@ -18,7 +18,7 @@ Flags gate routes and code paths. Targeting: rollout percentage, per-user, metad
 - [Flow](#flow)
 - [Usage](#usage)
   - [With Decorators](#with-decorators)
-  - [With Service](#with-service)
+  - [With FeatureFlagCache](#with-featureflagcache)
 - [Metadata](#metadata)
 - [Targeting](#targeting)
 - [Rollout Percentage](#rollout-percentage)
@@ -58,13 +58,13 @@ flowchart TD
     L -->|Yes| S{User exists in request?}
     S -->|Yes| S1{userId in targetUsers relation?}
     S1 -->|Yes| T[Allow access]
-    S1 -->|No| U[Hash 'key:userId' with MD5]
+    S1 -->|No| U[Hash 'key:userId' with SHA-256]
     S -->|No| N1{rolloutPercent >= 100?}
     N1 -->|Yes| T
     N1 -->|No| N2[Read x-anonymous-id header]
     N2 --> N3{Present and well formed?}
     N3 -->|No| K
-    N3 -->|Yes| U2[Hash 'key:anonymousId' with MD5]
+    N3 -->|Yes| U2[Hash 'key:anonymousId' with SHA-256]
     U --> V[Calculate percentage from hash]
     U2 --> V
     V --> W{Percentage < rolloutPercent?}
@@ -81,53 +81,58 @@ flowchart TD
 
 ## With Decorators
 
-**Important:** `@FeatureFlagProtected()` does NOT provide authentication. Apply authentication guards separately if required. A flag is never an authorization boundary.
+`@FeatureFlagProtected()` provides no authentication; authentication comes from the guards stacked with it. A flag is never an authorization boundary.
 
-`@FeatureFlagProtected()` takes a **bare flag key**. A key containing a dot is rejected with `predefinedKeyLengthExceeded` (500), and an empty segment is rejected with `predefinedKeyEmpty` (500). Metadata sub-keys are asserted in the service, not by the decorator (see [Metadata](#metadata)).
+`@FeatureFlagProtected()` takes a **bare flag key**. A key containing a dot is rejected with `predefinedKeyLengthExceeded` (500), and an empty segment is rejected with `predefinedKeyEmpty` (500). Metadata sub-keys are asserted in the owning domain, not by the decorator (see [Metadata](#metadata)).
 
 ```typescript
-@Controller('auth')
-export class AuthController {
-  // Feature check
-  @FeatureFlagProtected('loginWithGoogle')
-  @Post('google')
-  async loginWithGoogle() {
-    // Route accessible only if loginWithGoogle is enabled
-  }
+@Response('user.loginWithSocialGoogle', { schema: UserLoginResponseSchema })
+@AuthSocialGoogleProtected()
+@FeatureFlagProtected('loginWithGoogle')
+@ApiKeyProtected()
+@Post('/login/social/google')
+async loginWithGoogle(
+  @AuthJwtPayload<IAuthSocialPayload>('email') email: string,
+  @Body({ schema: UserCreateSocialRequestSchema }) body: UserCreateSocialRequestDto
+): Promise<IResponseReturn<IUserLoginOutcome>> {
+  return this.userAuthHttpService.loginWithSocial(
+    email,
+    EnumUserLoginWith.socialGoogle,
+    body
+  );
+}
 
-  @FeatureFlagProtected('changePassword')
-  @Post('forgot-password')
-  async forgotPassword() {
-    // Route accessible only if changePassword is enabled.
-    // The forgotAllowed metadata sub-key is asserted inside the service.
-  }
+@Response('user.forgotPassword')
+@FeatureFlagProtected('changePassword')
+@ApiKeyProtected()
+@Post('/password/forgot')
+async forgotPassword(
+  @Body({ schema: UserForgotPasswordRequestSchema }) body: UserForgotPasswordRequestDto
+): Promise<void> {
+  await this.userPasswordHttpService.forgotPassword(body);
 }
 ```
 
 `@FeatureFlagProtected()` must sit **above** `@AuthJwtAccessProtected()` in the decorator stack. NestJS evaluates stacked decorators bottom-up, so the decorator nearest the HTTP method runs first; sitting above the JWT decorator is what makes the flag guard run *after* the JWT strategy has populated `request.user`. Without that ordering the guard never sees a user and always takes the anonymous branch, making target-user allow-listing and any rollout below 100% inert. See [Authorization Documentation][ref-doc-authorization] for the full stack.
 
-### With Service
+`@FeatureFlagProtected()` sits **above** `@AuthJwtAccessProtected()` in the decorator stack. NestJS evaluates stacked decorators bottom-up, so the decorator nearest the HTTP method runs first; sitting above the JWT decorator is what makes the flag guard run *after* the JWT strategy has populated `request.user`. Without that ordering the guard never sees a user and always takes the anonymous branch, making `targetUserIds` and any rollout below 100% inert. See [Authorization Documentation][ref-doc-authorization] for the full stack.
 
-`FeatureFlagCache` is the cache-through reader, exported by `FeatureFlagDomainModule`:
+### With FeatureFlagCache
+
+`FeatureFlagCache` is the cache-through reader, exported by `FeatureFlagDomainModule`. `UserAuthDomain` reads social sign-up metadata through it:
 
 ```typescript
-@Injectable()
-export class YourService {
-  constructor(
-    private readonly featureFlagCache: FeatureFlagCache
-  ) {}
-
-  async example() {
-    // Get feature flag with cache
-    const flag =
-      await this.featureFlagCache.getByKeyAndCache('loginWithGoogle');
-
-    // Get metadata only
-    const metadata =
-      await this.featureFlagCache.getMetadataByKeyAndCache('changePassword');
-  }
-}
+const featureFlag =
+  await this.featureFlagCache.getMetadataByKeyAndCache<{
+    signUpAllowed: boolean;
+  }>(
+    loginWith === EnumUserLoginWith.socialGoogle
+      ? 'loginWithGoogle'
+      : 'loginWithApple'
+  );
 ```
+
+`FeatureFlagDomain` is the other reader: `getByKeyAndCache` on evaluation, `deleteCacheByKey` after an admin update.
 
 `FeatureFlagUtil` sits beside it and holds the metadata shape checks (`checkMetadataKey`) the domain applies on update.
 
@@ -141,27 +146,26 @@ Metadata on a single flag:
   key: 'changePassword',
   isEnable: true,
   metadata: {
-    forgotAllowed: true,  // Can be toggled independently
-    resetAllowed: false
+    forgotAllowed: true
   }
 }
 ```
 
 **Constraints:**
-- No nested objects allowed
+- No nested objects
 - Supported value types: `boolean`, `number`, `string`, and homogeneous `string[]` or `number[]`
-- Arrays must be homogeneous. A mixed array (`[1, 'a']`), a nested array, and `boolean[]` are rejected
-- An array value is data only, never a gate value. A nested-key gate (below) must resolve to a boolean
-- Metadata keys must be camelCase, matching `/^[a-z][a-zA-Z0-9]*$/`
+- Arrays are homogeneous. A mixed array (`[1, 'a']`), a nested array, and `boolean[]` are rejected
+- An array value is data only, never a gate value. A nested-key gate (below) resolves to a boolean
+- Metadata keys are camelCase, matching `/^[a-z][a-zA-Z0-9]*$/`
 - Metadata keys cannot be added/removed (schema consistency)
 - Only values can be modified. On update, an array value cannot change element type (`string[]` to `number[]` is rejected), and an empty array counts as an empty value and is rejected
 
 **Metadata sub-key gating:**
 
-A metadata sub-key is asserted in the service, not by the route decorator. Call `FeatureFlagService.validateFeatureFlagMetadata(key, metadataKey)` at the point in the flow where the sub-key actually governs the behaviour:
+A metadata sub-key is asserted in the owning domain, not by the route decorator. The domain calls `FeatureFlagDomain.validateFeatureFlagMetadata(key, metadataKey)` at the point in the flow where the sub-key governs the behaviour:
 
 ```typescript
-await this.featureFlagService.validateFeatureFlagMetadata(
+await this.featureFlagDomain.validateFeatureFlagMetadata(
   'changePassword',
   'forgotAllowed'
 );
@@ -183,7 +187,6 @@ Metadata is per-feature config (small on/off and typed values). Per-user targeti
 }
 ```
 
-**How it works:**
 1. Only evaluated when the request has an authenticated user.
 2. The relation rows are converted to user IDs during evaluation. If `userId` matches one, access is granted and rollout is skipped.
 3. Otherwise the user falls back to rollout percentage.
@@ -206,12 +209,7 @@ Controls gradual feature deployment using deterministic hashing:
 }
 ```
 
-**How it works:**
-1. The flag key and the caller identifier are combined then hashed using MD5 (`key:identifier`)
-2. Hash converted to percentage (0-99)
-3. Compared against `rolloutPercent`
-4. The same identifier always gets the same result per flag (deterministic)
-5. Salting by flag key keeps each flag independent (a user in flag A's 30% is not automatically in flag B's 30%)
+The flag key and the caller identifier are combined and hashed with SHA-256 (`HelperHashService.sha256Hash('key:identifier')`). The first 8 hex characters of the digest, read as an integer, modulo 100 give the percentage (0-99), then compared against `rolloutPercent`. The same identifier always gets the same result per flag. Salting by flag key keeps each flag independent (a user in flag A's 30% is not automatically in flag B's 30%).
 
 **Authenticated callers** use `userId` as the identifier. Rollout runs only when the user is not represented in `targetUsers`.
 
@@ -219,16 +217,15 @@ Controls gradual feature deployment using deterministic hashing:
 
 - `rolloutPercent >= 100` passes without any identifier.
 - Below 100, the identifier comes from the `x-anonymous-id` request header. Its name, max length (100) and allowed charset (`/^[a-zA-Z0-9-_]+$/`) live in `src/configs/feature-flag.config.ts`.
-- The evaluation **fails closed** with 503 when that header is absent, empty, over length, or does not match the pattern. An anonymous caller that wants a stable bucket must send a stable `x-anonymous-id`.
+- The evaluation **fails closed** with 503 when that header is absent, empty, over length, or does not match the pattern. An anonymous caller lands in the same bucket only while it sends the same `x-anonymous-id`.
 
 **Use cases:**
-- A/B testing
 - Gradual rollouts
 - Canary deployments
 
 ## Caching
 
-Feature flags are cached for performance. Configuration in `src/configs/feature-flag.config.ts`:
+Feature flags are cached. Configuration in `src/configs/feature-flag.config.ts`:
 ```typescript
 {
   keyPattern: 'FeatureFlag:{key}',
@@ -242,7 +239,7 @@ Feature flags are cached for performance. Configuration in `src/configs/feature-
 ```
 
 **Cache operations:**
-- Automatic cache on first read
+- Cache on first read
 - Cache invalidation on updates
 - Key format: `FeatureFlag:{key}`
 - Best-effort: cache read/write/delete failures are logged and fall through to the database, so a cache outage never breaks evaluation. There is no fail-open: an unknown flag key still returns 500 (`predefinedKeyNotFound`) and a disabled flag still returns 503 (`serviceUnavailable`).

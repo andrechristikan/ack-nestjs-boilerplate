@@ -46,8 +46,9 @@ a `never`-returning handler otherwise gives.
 Two forms are NOT this rule, because neither has an `await` to attach a `try` to:
 
 - **The process entrypoint.** `bootstrap().catch(...)` in `src/main.ts` and `src/migration.ts` runs
-  at module level, where there is no enclosing async function and — this package is CommonJS —
-  no top-level `await`.
+  at module level, outside any async function; its handler writes the failure to stderr and
+  exits the process, which a failed boot needs because the registered shutdown hooks keep the
+  event loop alive.
 - **A promise that is deliberately never awaited.** Fire-and-forget work whose failure must not
   reach the caller still needs a `.catch()` so the rejection does not become unhandled. The
   activity-log interceptor is not this case: it **awaits** flush inside `concatMap` (or an
@@ -68,9 +69,9 @@ Inside `withTransaction`, every collaborator is an `*InTx(tx, ...)` method that 
 statements on `tx`. Reaching back to `databaseService.client` silently escapes the
 transaction. A single-row delete that must stay atomic with other writes is
 `tx.<model>.softDelete(...)`. A multi-row delete on this repository's own model is one
-`updateMany`, with `updatedBy` stamped by hand and the rows filtered to those still live —
-an unfiltered `updateMany` rewrites `deletedAt` on rows deleted earlier and destroys their
-real deletion time.
+`updateMany` filtered to the rows still live — an unfiltered `updateMany` rewrites
+`deletedAt` on rows deleted earlier and destroys their real deletion time. Audit fields follow
+`rules/database.md`: the hook stamps `updatedBy`, and `deletedBy` is set explicitly.
 
 ## A generated unique value retries, then throws
 
@@ -99,8 +100,9 @@ guard clause holds.
 
 ## Cache is best-effort, never a lock
 
-A cache read, write, or delete that fails falls through to the database. **A cache entry is
-never the thing that enforces an invariant** — no cache-based mutual exclusion, no "if the key
-is absent, nobody else is running". Where exclusion is genuinely needed, it is a database
+A cache read that fails falls through to the database. **A cache entry is never the thing that
+enforces an invariant** — no cache-based mutual exclusion, no "if the key is absent, nobody else
+is running". A write or delete whose failure the request must not survive propagates instead of
+being swallowed; `rules/cache.md` holds the list. Where exclusion is genuinely needed, it is a database
 constraint or an explicit lock key with a TTL, and the TTL lives in config
 (`rules/cache.md`, `rules/config.md`).

@@ -1,7 +1,8 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 /**

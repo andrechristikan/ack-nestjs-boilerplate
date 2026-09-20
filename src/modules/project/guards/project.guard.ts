@@ -1,10 +1,11 @@
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { Workspace } from '@generated/prisma-client';
+import type { Workspace } from '@generated/prisma-client/client';
 import { ProjectStoreKey } from '@modules/project/constants/project.constant';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
 /**
  * Resolves the active, non-deleted project — scoped to the workspace resolved by `WorkspaceGuard`

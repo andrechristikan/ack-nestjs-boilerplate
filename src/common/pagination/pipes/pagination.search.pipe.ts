@@ -1,10 +1,11 @@
-import { Injectable, PipeTransform, Type, mixin } from '@nestjs/common';
-import {
+import { Injectable, mixin } from '@nestjs/common';
+import type { PipeTransform, Type } from '@nestjs/common';
+import type {
     IPaginationQuery,
     IPaginationQueryRaw,
     IPaginationSearchPipeReturn,
 } from '@common/pagination/interfaces/pagination.interface';
-import { Prisma } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 
@@ -56,10 +57,10 @@ export function PaginationSearchPipe(
                 return this.carryForward(value);
             }
 
-            return {
-                ...this.carryForward(value),
-                where: this.buildSearchObject(search, availableSearch),
-            };
+            const carriedQuery = this.carryForward(value);
+            const where = this.buildSearchObject(search, availableSearch);
+
+            return { ...carriedQuery, where };
         }
     }
 

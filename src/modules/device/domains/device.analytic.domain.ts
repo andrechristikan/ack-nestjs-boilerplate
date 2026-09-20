@@ -1,38 +1,40 @@
-import { IAnalyticDeviceProliferationResult } from '@modules/analytic/interfaces/analytic.anomaly.interface';
-import { IAnalyticSharedFingerprintRow } from '@modules/analytic/interfaces/analytic.fraud.interface';
-import {
+import type { IAnalyticDeviceProliferationResult } from '@modules/analytic/interfaces/analytic.anomaly.interface';
+import type { IAnalyticSharedFingerprint } from '@modules/analytic/interfaces/analytic.fraud.interface';
+import type {
     IAnalyticCountBucket,
     IAnalyticMetricRate,
 } from '@modules/analytic/interfaces/analytic.interface';
-import {
-    IDeviceOwnershipAnalyticCreatedRow,
-    IDeviceOwnershipAnalyticInactiveRow,
+import type {
+    IDeviceOwnershipAnalyticCreated,
+    IDeviceOwnershipAnalyticInactive,
     IDeviceOwnershipAnalyticUserCount,
-} from '@modules/device/interfaces/device.ownership.analytic.repository.interface';
+} from '@modules/device/interfaces/device.interface';
+import { DeviceAnalyticRepository } from '@modules/device/repositories/device.analytic.repository';
 import { DeviceOwnershipAnalyticRepository } from '@modules/device/repositories/device.ownership.analytic.repository';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DeviceAnalyticDomain {
     constructor(
-        private readonly deviceOwnershipAnalyticRepository: DeviceOwnershipAnalyticRepository
+        private readonly deviceOwnershipAnalyticRepository: DeviceOwnershipAnalyticRepository,
+        private readonly deviceAnalyticRepository: DeviceAnalyticRepository
     ) {}
 
     countRegistrations(startDate: Date, endDate: Date): Promise<number> {
-        return this.deviceOwnershipAnalyticRepository.countRegistrations(
+        return this.deviceAnalyticRepository.countRegistrations(
             startDate,
             endDate
         );
     }
 
     groupByPlatform(): Promise<IAnalyticCountBucket[]> {
-        return this.deviceOwnershipAnalyticRepository.groupByPlatform();
+        return this.deviceAnalyticRepository.groupByPlatform();
     }
 
     async pushTokenRate(): Promise<IAnalyticMetricRate> {
         const [withToken, total] = await Promise.all([
-            this.deviceOwnershipAnalyticRepository.countWithPushToken(),
-            this.deviceOwnershipAnalyticRepository.countDevices(),
+            this.deviceAnalyticRepository.countWithPushToken(),
+            this.deviceAnalyticRepository.countDevices(),
         ]);
         return {
             count: withToken,
@@ -46,21 +48,21 @@ export class DeviceAnalyticDomain {
     }
 
     countDevices(): Promise<number> {
-        return this.deviceOwnershipAnalyticRepository.countDevices();
+        return this.deviceAnalyticRepository.countDevices();
     }
 
     countPerUser(): Promise<IDeviceOwnershipAnalyticUserCount[]> {
         return this.deviceOwnershipAnalyticRepository.countPerUser();
     }
 
-    findInactive(before: Date): Promise<IDeviceOwnershipAnalyticInactiveRow[]> {
+    findInactive(before: Date): Promise<IDeviceOwnershipAnalyticInactive[]> {
         return this.deviceOwnershipAnalyticRepository.findInactive(before);
     }
 
     findCreatedInRange(
         startDate: Date,
         endDate: Date
-    ): Promise<IDeviceOwnershipAnalyticCreatedRow[]> {
+    ): Promise<IDeviceOwnershipAnalyticCreated[]> {
         return this.deviceOwnershipAnalyticRepository.findCreatedInRange(
             startDate,
             endDate
@@ -69,7 +71,7 @@ export class DeviceAnalyticDomain {
 
     sharedFingerprints(
         minUsers: number
-    ): Promise<IAnalyticSharedFingerprintRow[]> {
+    ): Promise<IAnalyticSharedFingerprint[]> {
         return this.deviceOwnershipAnalyticRepository.sharedFingerprints(
             minUsers
         );

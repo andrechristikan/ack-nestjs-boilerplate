@@ -1,9 +1,10 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import { migrationCountryData } from '@migration/data/migration.country.data';
-import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { CountryRequestDto } from '@modules/country/dtos/request/country.request.dto';
+import { MigrationCountryData } from '@migration/data/migration.country.data';
+import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
+import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import type { CountryRequestDto } from '@modules/country/dtos/request/country.request.dto';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
@@ -24,6 +25,7 @@ export class MigrationCountrySeed
 
     private readonly env: EnumAppEnvironment;
     private readonly countries: CountryRequestDto[] = [];
+    private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
         private readonly databaseService: DatabaseService,
@@ -32,7 +34,10 @@ export class MigrationCountrySeed
         super();
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
-        this.countries = migrationCountryData[this.env];
+        this.countries = MigrationCountryData[this.env];
+        this.seedTransactionTimeoutInMs = this.configService.get<number>(
+            'database.seedTransactionTimeoutInMs'
+        )!;
     }
 
     async seed(): Promise<void> {
@@ -40,16 +45,26 @@ export class MigrationCountrySeed
         this.logger.log(`Found ${this.countries.length} Countries to seed.`);
 
         try {
-            await this.databaseService.client.$transaction(
-                this.countries.map(country =>
-                    this.databaseService.client.country.upsert({
-                        where: {
-                            alpha2Code: country.alpha2Code,
-                        },
-                        create: country,
-                        update: country,
-                    })
-                )
+            await this.databaseService.withTransaction(
+                async tx => {
+                    for (const country of this.countries) {
+                        await tx.country.upsert({
+                            where: {
+                                alpha2Code: country.alpha2Code,
+                            },
+                            create: {
+                                ...country,
+                                createdBy: MigrationUserSuperAdminId,
+                                updatedBy: MigrationUserSuperAdminId,
+                            },
+                            update: {
+                                ...country,
+                                updatedBy: MigrationUserSuperAdminId,
+                            },
+                        });
+                    }
+                },
+                { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
             this.logger.error(error, 'Error seeding countries');

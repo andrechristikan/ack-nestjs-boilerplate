@@ -4,6 +4,7 @@ import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
 
 /**
  * Guards a route behind a feature flag; `keyPath` is a bare flag key.
+ * @public
  */
 export function FeatureFlagProtected(keyPath: string): MethodDecorator {
     return applyDecorators(

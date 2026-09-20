@@ -55,7 +55,7 @@ Four policy types are available via `EnumTermPolicyType`:
 | `marketing` | Marketing consent |
 | `cookies` | Cookie Policy |
 
-Each type can have multiple versions. Users must accept the latest published version to access protected endpoints.
+Each type can have multiple versions. A user reaches protected endpoints only after accepting the latest published version.
 
 ## Policy Status
 
@@ -74,7 +74,7 @@ Term policies follow a two-stage status:
 - Cannot be edited or deleted
 - Visible to all users
 - **Invalidates all existing user acceptances** for that policy type
-- All active users must re-accept the new version
+- Every active user re-accepts the new version before reaching protected endpoints again
 - Key: `term-policies/{type}/v{version}/{language}.hbs` (from `termPolicy.contentPublicPath`)
 
 Both paths resolve to the same key, so the two copies differ by bucket alone. The record's `contents` point at the public copy, each entry carrying the `access` of the bucket it names.
@@ -119,7 +119,7 @@ sequenceDiagram
     API->>Users: Queue publishTermPolicy notification
     API->>Admin: Policy published
     
-    Note over Users: Users must now re-accept
+    Note over Users: Users re-accept before the next protected call
 ```
 
 Publishing is the one admin action that fans out to every user: after the transaction commits it queues a `publishTermPolicy` job, which emails every active user who still has the `transactional` + `email` notification setting enabled, in batches of `email.batchSize`.
@@ -187,7 +187,7 @@ POST /shared/user/term-policy/accept
 }
 ```
 
-The request names only the type; the server resolves it to the **latest published version** of that type and records the acceptance against that record. The duplicate check is per policy record, not per type, so a user who accepted version 1 can and must accept version 2 once it is published. Accepting the same version twice returns `409` (`alreadyAccepted`). When no published policy exists for the type, it returns `404` (`notFound`).
+The request names only the type; the server resolves it to the **latest published version** of that type and records the acceptance against that record. The duplicate check is per policy record, not per type, so a user who accepted version 1 accepts version 2 again once it is published. Accepting the same version twice returns `409` (`alreadyAccepted`). When no published policy exists for the type, it returns `404` (`notFound`).
 
 ### View Acceptance History
 
@@ -293,7 +293,7 @@ Only draft policies can be deleted; anything else returns `400` (`statusInvalid`
 
 The `@TermPolicyAcceptanceProtected()` decorator protects endpoints by requiring users to accept specific policies before accessing them.
 
-**Important**: This decorator **requires** both `@UserProtected()` and `@AuthJwtAccessProtected()` to be applied. They are what put the user into the request store; without them the guard resolves no user and throws `401 Unauthorized` (`jwtAccessTokenInvalid`).
+The guard reads the user out of the request store, which `@UserProtected()` fills and `@AuthJwtAccessProtected()` feeds. Without both, it resolves no user and throws `401 Unauthorized` (`jwtAccessTokenInvalid`).
 
 **Decorator order** (from top to bottom):
 
@@ -306,49 +306,42 @@ The `@TermPolicyAcceptanceProtected()` decorator protects endpoints by requiring
 ### Basic Usage
 
 ```typescript
-@Controller('user')
-export class UserController {
-  
-  // Requires termsOfService acceptance
-  @TermPolicyAcceptanceProtected(EnumTermPolicyType.termsOfService)
-  @UserProtected()
-  @AuthJwtAccessProtected()
-  @Get('/profile')
-  async getProfile() {
-    return { message: 'Profile data' };
-  }
-  
-  // Requires both termsOfService and privacy acceptance
-  @TermPolicyAcceptanceProtected(
-    EnumTermPolicyType.termsOfService,
-    EnumTermPolicyType.privacy
-  )
-  @UserProtected()
-  @AuthJwtAccessProtected()
-  @Get('/settings')
-  async getSettings() {
-    return { message: 'Settings data' };
-  }
-  
-  // Requires marketing consent
-  @TermPolicyAcceptanceProtected(EnumTermPolicyType.marketing)
-  @UserProtected()
-  @AuthJwtAccessProtected()
-  @Get('/newsletter')
-  async getNewsletter() {
-    return { message: 'Newsletter content' };
-  }
-  
-  // Default: requires termsOfService and privacy
+@Controller({
+  version: '1',
+  path: '/user/term-policy',
+})
+export class TermPolicySharedController {
   @TermPolicyAcceptanceProtected()
   @UserProtected()
   @AuthJwtAccessProtected()
-  @Get('/dashboard')
-  async getDashboard() {
-    return { message: 'Dashboard data' };
+  @Get('/acceptance/list')
+  async listAccepted(
+    @PaginationCursorQuery({
+      availableOrderBy: TermPolicyAcceptanceDefaultAvailableOrderBy,
+    })
+    pagination: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>,
+    @AuthJwtPayload('userId') userId: string
+  ): Promise<IResponsePagingReturn<ITermPolicyUserAcceptance>> {
+    return this.termPolicyAcceptanceHttpService.getListUserAccepted(
+      userId,
+      pagination
+    );
+  }
+
+  @TermPolicyAcceptanceProtected()
+  @UserProtected()
+  @AuthJwtAccessProtected()
+  @Post('/accept')
+  async accept(
+    @UserCurrent() user: IUser,
+    @Body({ schema: TermPolicyAcceptRequestSchema }) body: TermPolicyAcceptRequestDto
+  ): Promise<IResponseReturn<void>> {
+    return this.termPolicyAcceptanceHttpService.userAccept(user, body);
   }
 }
 ```
+
+The decorator takes optional `EnumTermPolicyType` arguments. With none, it requires `termsOfService` and `privacy`. Shared and admin routes in this checkout pass no arguments.
 
 ### How It Works
 
@@ -384,13 +377,13 @@ flowchart TD
 
 ### Important Notes
 
-- `@TermPolicyAcceptanceProtected()` **requires** `@UserProtected()` and `@AuthJwtAccessProtected()` to be applied
+- `@TermPolicyAcceptanceProtected()` reads the user `@UserProtected()` stored, which depends on `@AuthJwtAccessProtected()`
 - Decorator order from top to bottom: `@TermPolicyAcceptanceProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`
 - For more details about `@AuthJwtAccessProtected()`, see [Authentication Documentation][ref-doc-authentication]
 - For more details about `@UserProtected()`, see [Authorization Documentation][ref-doc-authorization]
 - Without the required decorators, the guard finds no user and throws `401 Unauthorized` (`jwtAccessTokenInvalid`)
 - If no term policies are specified, it defaults to requiring `termsOfService` and `privacy` acceptance
-- All specified term policies must be accepted by the user for access to be granted
+- Access is granted only when the user has accepted every specified term policy
 - A user missing any required acceptance gets `403 Forbidden` (`requiredInvalid`)
 - Incorrect decorator ordering fails the same way as a missing decorator: the guard runs before the user is in the store, so the request is rejected with `401`
 

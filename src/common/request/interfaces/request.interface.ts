@@ -1,5 +1,5 @@
-import { Request } from 'express';
-import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import type { Request } from 'express';
+import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 
 export interface IRequestGeoLocation {
@@ -56,8 +56,8 @@ export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Omit<
 
 export interface IRequestLog {
     userAgent: IRequestUserAgent;
-    ipAddress?: string | null;
-    geoLocation?: IRequestGeoLocation | null;
+    ipAddress: string | null;
+    geoLocation: IRequestGeoLocation | null;
 }
 
 export interface IRequestThrottlePolicy {

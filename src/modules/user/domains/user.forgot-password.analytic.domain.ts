@@ -1,8 +1,8 @@
-import { IAnalyticForgotPasswordConversion } from '@modules/analytic/interfaces/analytic.interface';
-import {
-    IUserForgotPasswordAnalyticRow,
+import type { IAnalyticForgotPasswordConversion } from '@modules/analytic/interfaces/analytic.interface';
+import type {
+    IUserForgotPasswordAnalytic,
     IUserForgotPasswordAnalyticUserCount,
-} from '@modules/user/interfaces/user.forgot-password.analytic.repository.interface';
+} from '@modules/user/interfaces/user.interface';
 import { UserForgotPasswordAnalyticRepository } from '@modules/user/repositories/user.forgot-password.analytic.repository';
 import { Injectable } from '@nestjs/common';
 
@@ -36,7 +36,7 @@ export class UserForgotPasswordAnalyticDomain {
     findCreatedInRange(
         startDate: Date,
         endDate: Date
-    ): Promise<IUserForgotPasswordAnalyticRow[]> {
+    ): Promise<IUserForgotPasswordAnalytic[]> {
         return this.userForgotPasswordAnalyticRepository.findCreatedInRange(
             startDate,
             endDate

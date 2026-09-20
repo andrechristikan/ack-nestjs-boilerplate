@@ -1,6 +1,6 @@
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
-import { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
+import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
 import { UserMobileNumberDomain } from '@modules/user/domains/user.mobile-number.domain';
 import { Injectable } from '@nestjs/common';
 

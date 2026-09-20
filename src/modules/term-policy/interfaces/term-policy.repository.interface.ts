@@ -1,13 +1,13 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
-import {
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
+import type {
     ITermPolicyContentCreate,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
@@ -15,8 +15,8 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
     Prisma,
-    TermPolicy,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { TermPolicy } from '@generated/prisma-client/client';
 
 export interface ITermPolicyRepository {
     find(
@@ -71,30 +71,26 @@ export interface ITermPolicyRepository {
         acceptedAt: Date
     ): Promise<ITermPolicyUserAcceptance>;
     create(
+        termPolicyId: string,
         { type, version }: TermPolicyCreateRequestDto,
-        contents: ITermPolicyContentCreate[],
-        createdBy: string
+        contents: ITermPolicyContentCreate[]
     ): Promise<TermPolicy>;
     delete(termPolicyId: string): Promise<TermPolicy>;
     updateContent(
         termPolicyId: string,
-        content: ITermPolicyContentCreate,
-        updatedBy: string
+        content: ITermPolicyContentCreate
     ): Promise<TermPolicy>;
     addContent(
         termPolicyId: string,
-        newContent: ITermPolicyContentCreate,
-        updatedBy: string
+        newContent: ITermPolicyContentCreate
     ): Promise<TermPolicy>;
     removeContent(
         termPolicyId: string,
-        { language }: TermPolicyRemoveContentRequestDto,
-        updatedBy: string
+        { language }: TermPolicyRemoveContentRequestDto
     ): Promise<TermPolicy>;
     publishInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
-        contents: ITermPolicyContentCreate[],
-        updatedBy: string
+        contents: ITermPolicyContentCreate[]
     ): Promise<TermPolicy>;
 }

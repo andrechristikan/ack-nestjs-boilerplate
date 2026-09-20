@@ -1,6 +1,7 @@
 ---
 name: planner
-description: Writes the two artifacts a build runs from, under .superpowers/ — a SPEC of the settled behaviour, and a PLAN of the ordered steps, files and verification that deliver it. The dispatch names the mode. Runs after explorer. Use before coder. NOT for locating or brainstorming (explorer), NOT for writing the code (coder), NOT for reviewing (reviewer, reviewer-e2e), NOT for docs/*.md.
+description: >-
+    Writes the two artifacts a build runs from, under .superpowers/ — a SPEC of the settled behaviour, and a PLAN of the ordered steps, files and verification that deliver it. The dispatch names the mode. Runs after explorer. Use before coder. NOT for locating or brainstorming (explorer), NOT for writing the code (coder), NOT for reviewing (reviewer, reviewer-e2e), NOT for docs/*.md.
 tools: Read, Grep, Glob, Bash, Write
 skills: caveman:caveman, superpowers:writing-plans
 ---
@@ -66,14 +67,14 @@ or `prisma/`.
 
 **A plan step that changes `src/` is red-green.** It names the TDD spec `coder` will write,
 the command that watches it fail, the implementation files, and the command that watches it
-pass. `test-writer` is not in this pipeline. A PLAN dispatch may name the suite waiver from
-`CLAUDE.md`; then a `src/` step is implementation plus `pnpm typecheck` / `pnpm lint`, and
-no spec file. A seed step has no TDD cycle.
+pass. `test-writer` is not in this pipeline: a spec covering code the plan does not write is
+the skill's dispatch, not a plan step. A seed step has no TDD cycle.
 
 **A plan step that touches `prisma/*` or `src/migration/**` names `seed-writer` as the agent
 that writes that tree.** `coder` does not write `src/migration/**`. The schema EDIT is still a
-step — `coder` edits `prisma/schema.prisma` and runs `pnpm db:generate`; the PUSH is the
-owner's (`pnpm db:migrate`).
+step — `coder` edits `prisma/schema.prisma` (or hands that repair to `seed-writer` with the seed
+work) and runs `pnpm db:generate`; the PUSH is the owner's (`pnpm db:migrate`). A relation
+change also names the `DatabaseModelRelations` edit (`rules/database.md`).
 
 ## What a SPEC contains
 

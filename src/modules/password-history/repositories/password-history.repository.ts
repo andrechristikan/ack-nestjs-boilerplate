@@ -1,21 +1,21 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import {
+import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
-import { UserRefSelect } from '@modules/user/constants/user.constant';
-import { IPasswordHistoryRepository } from '@modules/password-history/interfaces/password-history.repository.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { PasswordHistoryListSelect } from '@modules/password-history/constants/password-history.constant';
+import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
+import type { IPasswordHistoryRepository } from '@modules/password-history/interfaces/password-history.repository.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumPasswordHistoryType,
-    PasswordHistory,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { PasswordHistory } from '@generated/prisma-client/client';
 
 @Injectable()
 export class PasswordHistoryRepository implements IPasswordHistoryRepository {
@@ -31,9 +31,9 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
-    ): Promise<IResponsePagingReturn<IPasswordHistory>> {
+    ): Promise<IResponsePagingReturn<IPasswordHistoryList>> {
         return this.paginationService.offset<
-            IPasswordHistory,
+            IPasswordHistoryList,
             Prisma.PasswordHistoryWhereInput
         >(this.databaseService.client.passwordHistory, {
             ...others,
@@ -41,11 +41,7 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
                 ...where,
                 userId,
             },
-            include: {
-                user: {
-                    select: UserRefSelect,
-                },
-            },
+            select: PasswordHistoryListSelect,
         });
     }
 
@@ -55,9 +51,9 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
-    ): Promise<IResponsePagingReturn<IPasswordHistory>> {
+    ): Promise<IResponsePagingReturn<IPasswordHistoryList>> {
         return this.paginationService.cursor<
-            IPasswordHistory,
+            IPasswordHistoryList,
             Prisma.PasswordHistoryWhereInput
         >(this.databaseService.client.passwordHistory, {
             ...others,
@@ -65,11 +61,7 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
                 ...where,
                 userId,
             },
-            include: {
-                user: {
-                    select: UserRefSelect,
-                },
-            },
+            select: PasswordHistoryListSelect,
         });
     }
 

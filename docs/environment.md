@@ -1,6 +1,6 @@
 # Environment Documentation
 
-This documentation explains **Environment**: Located at `.env.example`
+Environment variables are listed in `.env.example`.
 
 ## Overview
 
@@ -52,7 +52,7 @@ ConfigModule.forRoot({
 }),
 ```
 
-`AppEnvSchema` is located at `src/app/dtos/app.env.dto.ts`. An env boolean is `z.stringbool` accepting exactly `'true'` or `'false'`, a port is `z.coerce.number().int()`, and an enum-valued variable is `z.enum` over the matching `Enum*`, so a typo is caught by name rather than surfacing later as a runtime error.
+`AppEnvSchema` is located at `src/app/dtos/app.env.dto.ts`. An env boolean is `RequestBooleanStringSchema` (a case-sensitive `z.stringbool` accepting exactly `'true'` or `'false'`), an encryption secret is `RequestEncryptionSecretSchema` (exactly 64 base64url characters), a port is `z.coerce.number().int()`, and an enum-valued variable is `z.enum` over the matching `Enum*`, so a typo is caught by name rather than surfacing later as a runtime error.
 
 If validation fails, the application does not start and reports which environment variables are missing or invalid. The error reaches the `bootstrap().catch()` handler in `src/main.ts`, which writes the stack to `stderr` and calls `process.exit(1)`.
 
@@ -61,7 +61,7 @@ If validation fails, the application does not start and reports which environmen
 Below is an example `.env` file based on the current `.env.example`:
 
 > [!WARNING]
-> **Security**: All secret and key values below (`*_ENCRYPTION_SECRET_KEY`, `*_ENCRYPTION_KEY`, `AUTH_JWT_*_KEY`) are placeholders for illustration only. They are intentionally left empty in `.env.example` so startup validation fails until you set them. Generate a unique random value per environment; never copy these examples as-is. For a 32+ character secret: `openssl rand -base64 32`.
+> **Security**: All secret and key values below (`*_ENCRYPTION_SECRET_KEY`, `*_ENCRYPTION_KEY`, `AUTH_JWT_*_KEY`) are placeholders for illustration only. They are empty in `.env.example`, so startup validation fails until they are set. `pnpm generate:secret` generates a unique set: the JWT keys and KIDs under `keys/`, and both encryption secrets in `keys/encryption-secret.env`. With `--direct-insert` it also writes them into `.env`. See [Installation][ref-doc-installation].
 
 ```bash
 # Application Settings
@@ -191,7 +191,7 @@ APP_TIMEZONE=Asia/Jakarta
 ```
 
 **`APP_ENCRYPTION_SECRET_KEY`** *(required)*  
-Secret key used to derive an AES-256 encryption key for encrypting sensitive data. Must be 32-64 characters (`z.string().min(32).max(64)`). Empty by default; startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.
+Root secret `HelperEncryptionService` derives AES-256-GCM keys from (HKDF-SHA256). It encrypts the sensitive fields of notification job payloads. Exactly 64 base64url characters, the encoding of 48 random bytes (`RequestEncryptionSecretSchema`). Empty by default; startup validation rejects an unset or malformed value. `pnpm generate:secret:encryption` generates a unique value per environment. Rotating it makes queued notification jobs that were encrypted under the old value fail to decrypt.
 ```bash
 APP_ENCRYPTION_SECRET_KEY=<your_app_encryption_secret_key>
 ```
@@ -233,7 +233,7 @@ HTTP_PORT=3000
 **`HTTP_TRUSTED_PROXY`** *(optional)*  
 Comma-separated list of proxy NETWORKS whose forwarding headers Express may trust, passed straight to `trust proxy`. Accepts the `proxy-addr` preset names (`loopback`, `linklocal`, `uniquelocal`) and explicit CIDRs. It is never a hop count and never `true`.
 
-Leave it empty to trust no proxy: `req.ip` is then the direct socket peer and a client cannot forge it through `X-Forwarded-For`. A deployment behind a CDN or edge proxy that connects from a public address must list that provider's CIDRs, or every client behind it shares one rate-limit bucket.
+Empty trusts no proxy: `req.ip` is then the direct socket peer and a client cannot forge it through `X-Forwarded-For`. Behind a CDN or edge proxy that connects from a public address, a value without that provider's CIDRs puts every client behind it in one rate-limit bucket.
 ```bash
 # no proxy trusted
 HTTP_TRUSTED_PROXY=
@@ -333,7 +333,7 @@ CORS_ALLOWED_ORIGIN=api.example.com       # Matches: http://api.example.com, htt
 ### URL Versioning Settings
 
 **`URL_VERSIONING_ENABLE`** *(required)*  
-Enable URL versioning for your API (e.g., `/api/v1/users`).
+Enable URL versioning for your API (e.g., `/api/v1/shared/user/profile/get`).
 ```bash
 URL_VERSIONING_ENABLE=true
 ```
@@ -385,7 +385,7 @@ AUTH_JWT_ACCESS_TOKEN_JWKS_URI=http://localhost:3011/.well-known/access-jwks.jso
 ```
 
 **`AUTH_JWT_ACCESS_TOKEN_KID`** *(required)*  
-Key ID for access token. Generated automatically by `pnpm generate:keys`.
+Key ID for access token. `pnpm generate:secret:jwt` prints it and, with `--direct-insert`, writes it into `.env`.
 ```bash
 AUTH_JWT_ACCESS_TOKEN_KID=<your_jwt_access_token_kid>
 ```
@@ -417,7 +417,7 @@ AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://localhost:3011/.well-known/refresh-jwks.j
 ```
 
 **`AUTH_JWT_REFRESH_TOKEN_KID`** *(required)*  
-Key ID for refresh token. Generated automatically by `pnpm generate:keys`.
+Key ID for refresh token. `pnpm generate:secret:jwt` prints it and, with `--direct-insert`, writes it into `.env`.
 ```bash
 AUTH_JWT_REFRESH_TOKEN_KID=<your_jwt_refresh_token_kid>
 ```
@@ -478,7 +478,7 @@ AUTH_TWO_FACTOR_ISSUER=ACKNestJsTwoFactor
 ```
 
 **`AUTH_TWO_FACTOR_ENCRYPTION_KEY`** *(required)*  
-Secret used to derive an AES-256 key for encrypting TOTP secrets (recommended 32+ chars). Empty by default; startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.  
+Root secret `HelperEncryptionService` derives the AES-256-GCM keys for stored TOTP secrets from. Exactly 64 base64url characters, the encoding of 48 random bytes (`RequestEncryptionSecretSchema`). Empty by default; startup validation rejects an unset or malformed value. `pnpm generate:secret:encryption` generates a unique value per environment. Rotating it leaves every stored TOTP secret undecryptable, and an authenticator code check then returns `409 twoFactorSecretUnavailable` (see [Two-Factor][ref-doc-two-factor]).
 ```bash
 AUTH_TWO_FACTOR_ENCRYPTION_KEY=<your_two_factor_encryption_key>
 ```

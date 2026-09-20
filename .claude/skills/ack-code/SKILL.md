@@ -1,6 +1,7 @@
 ---
 name: ack-code
-description: Build or repair src/ behaviour test-first, write seeds, and run the mechanical checks — explorer, planner, coder (seed-writer when migration), then offer reviewer, reviewer-e2e, and doc-writer. Use when the owner wants application code, a seed, or the work judged. NOT for covering existing code (ack-spec), NOT for a docs-only pass (ack-docs), NOT for .claude/** (ack-claude-config).
+description: >-
+    Build or repair src/ behaviour test-first, write seeds, and run the mechanical checks — explorer, planner, coder (seed-writer when migration), then offer reviewer, reviewer-e2e, and doc-writer. Use when the owner wants application code, a seed, or the work judged. NOT for covering existing code (ack-spec), NOT for a docs-only pass (ack-docs), NOT for .claude/** (ack-claude-config).
 disable-model-invocation: true
 ---
 
@@ -10,13 +11,11 @@ You orchestrate. The agents do the work. `coder` writes `src/`, test-first.
 ## TDD (HARD)
 
 `coder` carries `superpowers:test-driven-development`. A behaviour lands as a failing spec,
-watched fail, then the minimum `src/` that turns it green. `coder` writes that spec. This
-skill does not dispatch `test-writer`.
+watched fail, then the minimum `src/` that turns it green. `coder` writes that spec.
 
-**Suite waiver.** Read `CLAUDE.md` → How to work here. While this checkout has no
-`test/**/*.spec.ts`, a `coder` dispatch may name the suite waiver and land `src/` without a
-red spec. Name that in the hand-back. The moment any unit spec exists, the waiver is gone
-and TDD is mandatory.
+**A spec that covers code this run did not write is `test-writer`'s**, dispatched from here
+with the paths and the 100% bar (`rules/testing.md`). Name in the hand-back which specs came
+from which agent.
 
 A seed-only run and a judge-only run have no TDD cycle.
 
@@ -90,12 +89,10 @@ that writes that tree.
 
 ## 5 — Build, through `coder` (HARD)
 
-Dispatch `coder` with the plan. Name the suite waiver in that dispatch when `CLAUDE.md`
-says it is in force. `coder` writes `src/` test-first against the rules.
+Dispatch `coder` with the plan. `coder` writes `src/` test-first against the rules.
 
 **When the plan touches `prisma/*` or `src/migration/**`, `coder` dispatches `seed-writer`
 itself.** Do not dispatch `seed-writer` from here unless `coder` handed that back undone.
-Do not dispatch `test-writer`.
 
 A schema delta is `coder`'s edit and the OWNER'S push. `coder` edits `prisma/schema.prisma`
 and runs `db:generate`. Relay the push — the model, the field, the index, the data
@@ -136,22 +133,23 @@ pnpm typecheck
 pnpm lint
 pnpm deadcode
 pnpm spell
-pnpm test --testPathPatterns '<module>'
+pnpm test <module>
 ```
 
 **The test run is SCOPED to the modules the work actually CHANGED.** Name each one. A module
 you only read is not in scope. A full `pnpm test` belongs to `/ack-spec` and to `pre-commit`.
 
-`collectCoverage` is `false`. Coverage is `pnpm test:cov`. A scoped coverage run exits 1
-while every spec passes because the threshold is GLOBAL — read the `Tests:` line and the
-per-file rows.
+`coverage.enabled` is `false` in `vitest.config.ts`. Coverage is `pnpm test:cov`. A scoped
+coverage run exits 1 while every spec passes because the threshold is GLOBAL — read the
+`Tests` line and the per-file rows.
 
-`deadcode` and `spell` ALWAYS exit 0. READ the output. `ts-prune` reports the whole kit
-surface by design — its entries are not findings (`rules/architecture.md`).
+`spell` ALWAYS exits 0. `deadcode` (knip) exits 1 only on an `error`-level finding; unused
+files and exports print as warnings — they are not findings (`rules/architecture.md`). READ
+both outputs and report them.
 
-A coverage gap beyond the TDD specs `coder` wrote is the owner's call. Name the file and
-the uncovered lines. `/ack-spec` writes those specs. This skill does not dispatch
-`test-writer`.
+A coverage gap beyond the TDD specs `coder` wrote is named with its file and its uncovered
+lines. Closing it here is a `test-writer` dispatch carrying those paths and the 100% bar; a
+sweep of a whole tree is `/ack-spec`.
 
 **`--no-verify` is never yours to choose.**
 

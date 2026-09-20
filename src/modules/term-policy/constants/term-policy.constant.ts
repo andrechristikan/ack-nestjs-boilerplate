@@ -1,4 +1,5 @@
-import { EnumTermPolicyType, User } from '@generated/prisma-client';
+import { EnumTermPolicyType } from '@generated/prisma-client/client';
+import type { User } from '@generated/prisma-client/client';
 
 export const TermPolicyRequiredGuardMetaKey = 'TermPolicyRequiredMetaKey';
 

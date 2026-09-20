@@ -7,36 +7,35 @@ not settled here. No other agent reads those docs as a standing step.
 
 ## Decorator order (HARD — exact, never reorder)
 
-NestJS evaluates stacked decorators bottom-up, so the HTTP method is always last in source order. Guards run in that same direction: the decorator NEAREST the method executes FIRST, the one farthest executes last. In the list below a higher number runs earlier — execution flows #16 → #1. A guard that depends on state an earlier guard sets (e.g. one needing `request.user`, which `@AuthJwtAccessProtected` populates) must sit ABOVE that guard in source, so it runs after it.
+NestJS evaluates stacked decorators bottom-up, so the HTTP method is always last in source order. Guards run in that same direction: the decorator NEAREST the method executes FIRST, the one farthest executes last. In the list below a higher number runs earlier — execution flows #15 → #1. A guard that depends on state an earlier guard sets (e.g. one needing `request.user`, which `@AuthJwtAccessProtected` populates) must sit ABOVE that guard in source, so it runs after it.
 
-`@FeatureFlagProtected` (#12) therefore sits ABOVE `@AuthJwtAccessProtected` (#13), not below it: the flag guard reads `request.user` to apply a flag's `targetUserIds` and `rolloutPercent`, and Passport writes `request.user` inside the JWT guard. Written below the JWT guard it would run first, see `undefined`, and silently skip targeting and rollout on every route — the flag would degrade to a plain on/off switch with no signal that anything was lost.
+`@FeatureFlagProtected` (#11) therefore sits ABOVE `@AuthJwtAccessProtected` (#12), not below it: the flag guard reads `request.user` to apply a flag's `targetUserIds` and `rolloutPercent`, and Passport writes `request.user` inside the JWT guard. Written below the JWT guard it would run first, see `undefined`, and silently skip targeting and rollout on every route — the flag would degrade to a plain on/off switch with no signal that anything was lost.
 
 ```typescript
 @ExampleDoc()                          // 1.  Swagger doc factory
 @Response('example.action')            // 2.  @Response / @ResponsePaging / @ResponseFile
 @TermPolicyAcceptanceProtected(...)    // 3.  Term policy
-@PolicyProtected({...})         // 4.  CASL policy         — admin routes
+@PolicyProtected({...})                // 4.  CASL policy         — admin routes
 @RoleProtected(...)                    // 5.  Role                — admin routes
 @ProjectMemberProtected()              // 6.  Project membership
 @ProjectProtected()                    // 7.  Project exists
 @WorkspaceMemberProtected(...)         // 8.  Workspace membership — pass roles to also gate by role
 @WorkspaceProtected()                  // 9.  Workspace exists
-@ActivityLog(...)                      // 10. Activity log
-@UserProtected()                       // 11. User status
-@FeatureFlagProtected(...)             // 12. Feature flag        — any route the flagged feature owns
-@AuthJwtAccessProtected()              // 13. JWT (access or refresh)
-@ApiKeyProtected()                     // 14. API key
-@HttpCode(HttpStatus.OK)               // 15. HTTP status — only when it differs from the default
-@Get('/endpoint')                      // 16. HTTP method — always last
+@UserProtected()                       // 10. User status
+@FeatureFlagProtected(...)             // 11. Feature flag        — any route the flagged feature owns
+@AuthJwtAccessProtected()              // 12. JWT (access or refresh)
+@ApiKeyProtected()                     // 13. API key
+@HttpCode(HttpStatus.OK)               // 14. HTTP status — only when it differs from the default
+@Get('/endpoint')                      // 15. HTTP method — always last
 ```
 
-Reordering is a defect even when the app still boots: the order encodes which gate rejects first — and because guards run bottom-up, the gate NEAREST the method rejects first (API key before JWT before user status before activity log before workspace before project before role before policy before term policy). A reshuffle changes which error a caller sees.
+Reordering is a defect even when the app still boots: the order encodes which gate rejects first — and because guards run bottom-up, the gate NEAREST the method rejects first (API key before JWT before user status before workspace before project before role before policy before term policy). A reshuffle changes which error a caller sees.
 
 - **`@HttpCode` belongs ONLY on `@Post`.** Nest defaults POST to `201 Created` and every other method to `200 OK`, so `@HttpCode(HttpStatus.OK)` above a `@Get` / `@Put` / `@Patch` / `@Delete` is a no-op that reads as if the route were doing something unusual. Delete it — and delete the `HttpCode` / `HttpStatus` imports when the file has no `@Post` left that needs them.
 - **`@RequestThrottle({...})` sits OUTSIDE this order.** It mounts an interceptor, not a guard, and interceptors run after every guard regardless of declaration order or class-versus-method placement. Place it consistently and move on — no position silently degrades it.
 - A social-login guard (`@AuthSocialGoogleProtected()`) takes the JWT slot for that route.
-- `@ActivityLog` requires `@AuthJwtAccessProtected` — it logs both success and failure against a user. Metadata is set through `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`, never returned in the response shape, and never carries a secret.
-- `@Workspace*Protected()` / `@Project*Protected()` are composable decorators each wrapping one or two guards — stack the ones a route needs, do not assume one implies another. `@WorkspaceMemberProtected(...roles)` is ONE decorator: with no `roles` it stacks only `WorkspaceMemberGuard`; with `roles` it also stacks `WorkspaceRoleGuard` — there is no separate `@WorkspaceRoleProtected`. `WorkspaceMemberGuard`/`WorkspaceRoleGuard` read the loaded user from CLS, so the whole Workspace* family sits above `@UserProtected()`. `@Project*Protected()` sits above the whole Workspace* family — `ProjectGuard` reads the already-validated workspace from CLS to scope the project lookup (cross-workspace IDOR check). `@ProjectMemberProtected(...roles)` takes project roles the same way, but **stacks differently from its workspace twin**: with no roles it uses `ProjectMemberGuard` (a `ProjectMember` row is required), with roles it uses `ProjectRoleGuard` ALONE. It must not stack both — a workspace `owner` legitimately has no `ProjectMember` row, and the strict membership guard would reject them before the owner bypass inside `ProjectRoleGuard` could run. Never on admin routes — admin read-only endpoints use `@RoleProtected` (+ `@PolicyProtected` once a route needs it) with no workspace/project scoping at all, since admin reads across every workspace.
+- **Activity is not a decorator.** A domain prepares an event with `ActivityLogDomain.prepare(...)` before the write and stages it with `stagePrepared(...)` after, and the global `ActivityLogInterceptor` flushes it; metadata is validated by the action's contract, returned through a typed response schema, and never carries a secret (`rules/security.md`).
+- `@Workspace*Protected()` / `@Project*Protected()` are composable decorators each wrapping one or two guards — stack the ones a route needs, do not assume one implies another. `@WorkspaceMemberProtected(...roles)` is ONE decorator: with no `roles` it stacks only `WorkspaceMemberGuard`; with `roles` it also stacks `WorkspaceRoleGuard` — there is no separate `@WorkspaceRoleProtected`. `WorkspaceMemberGuard`/`WorkspaceRoleGuard` read the loaded user from CLS, so the whole Workspace* family sits above `@UserProtected()`. `@Project*Protected()` sits above the whole Workspace* family — `ProjectGuard` reads the already-validated workspace from CLS to scope the project lookup (cross-workspace IDOR check). `@ProjectMemberProtected(...roles)` takes project roles the same way, but **stacks differently from its workspace twin**: with no roles it uses `ProjectMemberGuard` (a `ProjectMember` row is required), with roles it uses `ProjectRoleGuard` ALONE. `@ProjectMemberCurrent()` therefore belongs only on the role-less form: the role form stores no member row, and the decorator answers 500 when it finds none (`rules/security.md`). It must not stack both — a workspace `owner` legitimately has no `ProjectMember` row, and the strict membership guard would reject them before the owner bypass inside `ProjectRoleGuard` could run. Never on admin routes — admin read-only endpoints use `@RoleProtected` (+ `@PolicyProtected` once a route needs it) with no workspace/project scoping at all, since admin reads across every workspace.
 - A new `@<X>Protected()` follows the stack in this file. Flow narrative for the existing
   guards: `docs/authorization.md` — explorer or planner.
 
@@ -74,7 +73,7 @@ Write the roles that are actually checked — for a platform admin route that is
 - **Security preconditions belong in the domain, not the controller and not the HTTP service.** A 2FA check, an account-state check, or a "must own this resource" rule written inline in a controller is business logic in the wrong layer; written in the HTTP service it is a rule the queue path never applies.
 - **Never build pagination metadata by hand.** The repository produces it through `PaginationService`; the HTTP service wraps it in the response envelope and the controller passes that through.
 - Prefer passing the whole request DTO; normalize `undefined → null` only when a service param is `T | null` (`rules/null-safety.md`).
-- One controller per scope, named for it: `<module>.<scope>.controller.ts` with `<scope>` ∈ `admin` · `public` · `user` · `system` · `shared`. The matching `src/router/http/router.http.<scope>.module.ts` registers it.
+- **One controller per scope**, named for it: `<module>.<scope>.controller.ts` with `<scope>` ∈ `admin` · `public` · `user` · `system` · `shared`. The matching `src/router/http/router.http.<scope>.module.ts` registers it. A scope with many endpoints stays one file; the concerns separate in the HTTP services and the doc factories behind it, not in a second controller.
 - **`@RequestThrottle` is a METHOD decorator. Class-level use does not compile (HARD).** It returns `MethodDecorator`, so putting it above a `@Controller` fails with `TS1238` / `TS1270`. It is declared per endpoint so the rate limit is read where the route is, next to the guards that protect it — a class-level throttle would silently govern every handler the controller ever grows, including ones added years later by someone who never saw it.
 - **Every JWT-protected handler carries `@RequestThrottle({ user: true })` (HARD).** `@AuthJwtAccessProtected()` or `@AuthJwtRefreshProtected()` on a handler with no `RequestThrottle` beside it is a defect. `public` and `system` scopes carry no `req.user`, so the switch is a silent no-op there and must NOT be added. **A handler that omits it keeps only the global per-IP limit: nothing fails, nothing logs, no test catches it** — this rule is the only thing standing between a new endpoint and a lost per-user limit.
 - **One `@RequestThrottle` per handler, never two.** A sensitive endpoint takes its tier in the SAME call — `@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.<tier> })`. Two calls on one handler make the second `SetMetadata` overwrite the first and drop a switch, with nothing failing. Every limit value lives in `request.config.ts`; a decorator never carries a number.
@@ -85,7 +84,7 @@ Write the roles that are actually checked — for a platform admin route that is
 ## Route params
 
 - Route params are camelCase and EXPLICIT: `@Get('/get/:userId')` with `@Param('userId')`. Never a bare `:id` — it goes ambiguous the moment a route nests two of them, and the ambiguity is invisible until someone reads the wrong one.
-- **Three places must agree or it fails at RUNTIME with `tsc` green:** the route template, the `@Param('…')` key, and the `name` in the Swagger param constant. A mismatch between the first two makes the param silently `undefined`.
+- **The route template and the `@Param('…')` key must agree or it fails at RUNTIME with `tsc` green** — a mismatch makes the param silently `undefined`. Where a Swagger param constant documents a placeholder no handler binds, its `name` is the third place that must agree.
 - A body field MUST NOT duplicate a path param. The path is authoritative.
 ### UUID params use request schemas (HARD)
 
@@ -136,7 +135,8 @@ That line is mechanical on purpose. "Is a session really a sub-resource of a use
 
 The second grammar closes on the action because the action is the only segment that never narrows: everything before it is addressing, so putting it anywhere but last splits the address in two.
 
-- **The action is ONE word, and it is a VERB.** `accept` · `add` · `assign` · `change` · `check` · `claim` · `create` · `delete` · `disable` · `enable` · `export` · `forgot` · `generate` · `get` · `import` · `leave` · `list` · `login` · `logout` · `preview` · `publish` · `refresh` · `regenerate` · `reject` · `remove` · `resend` · `reset` · `revoke` · `send` · `setup` · `sign-up` · `switch` · `transfer` · `update` · `upload` · `verify`. Extend this list when a genuinely new verb is needed — a path whose last segment is a NOUN is usually the defect, not a missing entry. The two exceptions are named below: health probes, and an action qualified by HOW it is performed.
+- **The action is ONE word, and it is a VERB.** `accept` · `add` · `assign` · `change` · `check` · `claim` · `create` · `delete` · `disable` · `enable` · `export` · `forgot` · `generate` · `get` · `import` · `leave` · `list` · `login` · `logout` · `preview` · `publish` · `refresh` · `regenerate` · `reject` · `remove` · `resend` · `reset` · `revoke` · `revoke-all` · `send` · `setup` · `sign-up` · `switch` · `transfer` · `update` · `upload` · `verify`. Extend this list when a genuinely new verb is needed — a path whose last segment is a NOUN is usually the defect, not a missing entry. The two exceptions are named below: health probes, and an action qualified by HOW it is performed.
+- **`<verb>-all` is one action: `<verb>` applied to every row the path addresses.** It is allowed only when `<verb>` is on the list above and the path carries no row id — `@Delete('/revoke-all')` beside `@Delete('/revoke/:sessionId')`. It is a scope on the verb, not a target folded into it, so `read-all` stays wrong: `read` is the target of `update`, and the path is `/update/:notificationId/read`.
 - **Health probes are exempt.** `/health/aws`, `/health/database`, `/health/instance` are noun-only by convention and carry no action. Do not "fix" them.
 - **Never fold the target into the action with a dash.** `update-role`, `update-slug`, `soft-delete`, `update-status`, `read-all`, `change-password`, `generate-presign`, `regenerate-backup-codes` are wrong. The target is its own segment, because that is the only position that scales: a second attribute adds a sibling segment instead of inventing a second compound verb. A dash inside a single lexical word is NOT that: `sign-up` is one verb, and it is the kebab spelling of the `signUp` used everywhere in code — the same mapping as `mobile-number` ↔ `mobileNumber`. Never collapse it to `signup`; that breaks the mapping the whole repo relies on.
 - **An action MAY end on a noun when that noun names HOW the action is performed, not WHAT it acts on.** `/login/credential`, `/login/social/google` — the trailing segment is the credential type, and the flow's own sub-steps nest under the same namespace (`/login/2fa/verify`). This is the only place a path may close on a noun. It does NOT license `/list/user-setting`, where the trailing noun is a different resource being listed.
@@ -162,6 +162,7 @@ GOOD  @Delete('/member/:projectId/:projectMemberId/remove')   scope id, then row
 GOOD  @Delete('/revoke/:sessionId')                           own resource — the controller mounts at
                                                               path: '/user/:userId/session', so `session`
                                                               is ITS resource and the action leads
+GOOD  @Delete('/revoke-all')                                  own resource, every row — `<verb>-all`
 GOOD  @Post('/login/credential')                              action qualified by HOW — see the noun rule
 GOOD  @Post('/sign-up')                                       one lexical verb, kebab of `signUp`
 
@@ -191,7 +192,7 @@ BAD   @Post('/get/:termPolicyId/content/:language')           -> @Get('/content/
 
 A new `x-*` request header is not live until it is registered. Adding the middleware, the config entry, and the guard that reads it is only half the job.
 
-- **Register the name in `request.config.ts` → `cors.allowedHeader`.** Without it the browser preflight rejects the header, the request never reaches Nest, and the feature is dead from every browser client while still working from curl and Postman. `tsc`, lint, and jest all stay green — nothing but a real cross-origin request catches this.
+- **Register the name in `request.config.ts` → `cors.allowedHeader`.** Without it the browser preflight rejects the header, the request never reaches Nest, and the feature is dead from every browser client while still working from curl and Postman. `tsc`, lint, and Vitest all stay green — nothing but a real cross-origin request catches this.
 - **The header name lives in a config file, never as a literal in the middleware or guard** (`x-workspace-id` → `workspace.headerName`, `x-anonymous-id` → `featureFlag.anonymous.headerName`). The CORS entry is the one place the raw string is repeated, because `cors.allowedHeader` is a flat transport allow-list.
 - **A header the server READS must be in `allowedHeader`; a header the server SETS and the client must read needs `exposedHeaders` instead.** They are different lists solving different halves of CORS.
 
@@ -222,20 +223,79 @@ the decorator stack, above `@Response`. The doc file mirrors the controller: one
 endpoint, same order.
 
 Use the primitives (`Doc`, `DocAuth`, `DocGuard`, `DocRequest`, `DocRequestFile`,
-`DocResponse`, `DocResponsePaging`, `DocResponseFile`, `DocDefault`, `DocOneOf`, `DocAnyOf`,
-`DocAllOf`). A bare `@ApiOperation` / `@ApiResponse` bypasses the shared shape.
+`DocResponse`, `DocResponsePagination`, `DocResponseFile`). A bare `@ApiOperation` /
+`@ApiResponse` bypasses the shared shape.
 
-`@ApiQuery` / `@ApiParam` arrays live as PascalCase constants in
-`<module>/constants/<module>.doc.constant.ts`. Never an inline array, never generated from
-the request DTO.
+**`DocResponseError(httpStatus, ...entries)` is the kit emitter for non-success responses of one
+status**, each entry a `statusCode` plus its i18n `messagePath`. One entry at a status emits a
+plain schema with field examples. Two or more emit one shared response-envelope schema plus
+named OpenAPI `examples` keyed by `messagePath`, each value the full envelope (`statusCode`,
+`message`, `metadata`). A `oneOf` of full envelopes is not used. Every primitive that documents
+errors goes through `accumulateResponseEntries` on the decorated method and re-emits that status
+in full, so entries from different primitives at one status compose instead of replacing each
+other; order inside `applyDecorators` does not change what the endpoint documents. Module
+`*.doc.ts` factories do not call `DocResponseError`.
 
-The route template, the `@Param('…')` key, and the `name` in the Swagger param constant must
-agree. A mismatch between the first two makes the param silently `undefined`.
+**An endpoint factory publishes the kit error set only.** The OpenAPI error responses come from
+`Doc()`, `DocAuth`, `DocGuard`, and — when the route uses them — `DocResponsePagination`,
+`DocRequestFile`, and `DocResponseFile`. Module-flow exceptions (domain or HTTP throws that are
+not behind a `DocGuard` / `DocAuth` flag) are not listed on the factory. **One error has one
+source**, and which source it is follows from where the exception LIVES:
 
-`DocResponsePaging` takes the SAME allow-list constants the controller's `@Pagination*Query`
+| The exception lives in | Its entry belongs to |
+|---|---|
+| `src/common/` or `src/app/`, and any request can reach it | `Doc()` — every endpoint carries it |
+| `src/common/`, behind one primitive | that primitive: the pagination set on `DocResponsePagination`, the upload set on `DocRequestFile`, the download set on `DocResponseFile` |
+| a module, raised by a guard or an auth strategy | a `DocGuard` or `DocAuth` flag |
+
+The kit's errors are declared once, in the primitive, for everyone it decorates — a paginated
+route publishes the whole pagination set whether or not a given request could trip each member.
+That breadth is the contract of a shared primitive, not an oversight.
+
+A module marked `@Global()` changes nothing about this. Its errors reach the kit only through a
+guard or auth strategy that gates them.
+
+**`auth.error.accessTokenUnauthorized` belongs to `DocAuth({ jwtAccessToken })`.** A `DocGuard`
+flag whose domain also throws `AuthJwtAccessTokenInvalidException` when the principal is missing
+does not publish that 401 again.
+
+**A `DocGuard` flag mirrors one guard class, one for one, and emits exactly that guard's throw
+set** — `IDocGuardOptions` in `src/common/doc/interfaces/doc.interface.ts` is the list. A flag
+raised without its guard advertises an error the endpoint cannot return; a guard without its flag
+hides one it can. Where a decorator installs a DIFFERENT guard class depending on its arguments,
+each class takes its own flag: two flags that are mutually exclusive by construction are honest,
+one flag covering both is not.
+
+**A guard used by a handful of endpoints takes no flag.** Its throws stay off the OpenAPI
+document with the rest of module-flow errors. A flag exists to stop a repetition, and a flag that
+is `false` on almost every endpoint is a field the writer must remember for no return.
+
+**Kit `DocResponseError` calls live in `src/common/doc/constants/doc.constant.ts`**
+(`DocGlobalErrorResponses`, `DocPaginationErrorResponses`, `DocFileErrorResponses`, …).
+
+**`DocRequest` documents request shape the other primitives do not.** Path and query inputs
+follow one of four bindings; which binding decides whether `DocRequest` appears:
+
+| Binding on the controller | OpenAPI source | `DocRequest`? |
+|---|---|---|
+| `@Param('…', { schema })` or `@Query({ schema })` / `@Query('…', { schema })` | zod via `standardSchemaConverter` in `src/swagger.ts` (pattern, description, required from `.meta`) | **No.** A `*.doc.constant.ts` entry beside it documents twice and loses. |
+| Path placeholder the route declares and a **guard** reads; the handler has no `@Param` | nothing else emits it | **Yes** — `DocRequest({ params })` with a PascalCase `ApiParamOptions[]` in `<module>.doc.constant.ts` (e.g. `projectId` on `/user/project` routes). |
+| `@PaginationQueryFilter*` field (`EqualString`, `InEnum`, `EqualBoolean`, …) next to `@PaginationOffsetQuery` / `@PaginationCursorQuery` | nothing — filter pipes do not emit `@ApiQuery`, and they cannot be folded into one zod query object with the pagination kit | **Yes** — `DocRequest({ queries })` with a PascalCase `ApiQueryOptions[]` in `<module>.doc.constant.ts`. Every filter field name on the controller has a matching entry; each entry carries `description`. |
+| `@PaginationOffsetQuery` / `@PaginationCursorQuery` kit alone (`search`, `orderBy`, page/cursor) | `DocResponsePagination` from the same allow-list constants | **No** for those kit keys — `DocResponsePagination` owns them (`rules/pagination.md`). |
+
+`DocResponsePagination` never documents module filter fields. A list that uses both
+`@Pagination*Query` and `@PaginationQueryFilter*` therefore carries **both**
+`DocResponsePagination` (kit) and `DocRequest({ queries })` (filters). `bodyType` on
+`DocRequest` still sets `ApiConsumes` when the endpoint has a body.
+
+`@ApiQuery` / `@ApiParam` arrays live only as those PascalCase constants in
+`<module>/constants/<module>.doc.constant.ts`. Never an inline array in a `*.doc.ts`, never
+generated from a request DTO.
+
+`DocResponsePagination` takes the SAME allow-list constants the controller's `@Pagination*Query`
 decorator takes, and `type` is required (`EnumPaginationType.offset` or `.cursor`).
 
-`DocResponse<T>` / `DocResponsePaging<T>` take the response SCHEMA in `options.schema`. A
+`DocResponse<T>` / `DocResponsePagination<T>` take the response SCHEMA in `options.schema`. A
 hand-written schema object beside a zod schema is a mirror. Every field carries
 `.meta({ description, example })` on the zod schema. Do not call `faker.seed()`.
 

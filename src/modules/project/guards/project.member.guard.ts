@@ -1,13 +1,14 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { Project } from '@generated/prisma-client';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import type { Project } from '@generated/prisma-client/client';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import {
     ProjectMemberStoreKey,
     ProjectStoreKey,
 } from '@modules/project/constants/project.constant';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
 /**
  * Confirms the already-authenticated user (loaded by `UserGuard`) is a member of the project

@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 
+/**
+ * Raised when CSV validation receives no extracted rows.
+ * @public
+ */
 export class FileRequiredExtractFirstException extends AppBaseException {
     readonly module = 'file';
     readonly statusCode = EnumFileStatusCodeError.requiredExtractFirst;

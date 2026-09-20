@@ -1,6 +1,6 @@
 # Database Documentation
 
-This documentation explains the features and usage of **Database Module**: Located at `src/common/database`
+The Database Module lives in `src/common/database`.
 
 ## Overview
 
@@ -68,7 +68,7 @@ For details, see the official Prisma documentation: [Prisma Migrate][ref-prisma-
 
 ## Generate Database Client
 
-Prisma uses a generated client to provide type-safe database access and query building. You must generate the Prisma Client every time you change your Prisma schema (`prisma/schema.prisma`).
+Prisma uses a generated client for type-safe queries. A schema edit in `prisma/schema.prisma` takes `pnpm db:generate` to write the client into `src/generated/prisma-client`.
 
 **When to Generate Prisma client?**
 - After any change to your Prisma schema (e.g., adding, removing, or updating models/fields).
@@ -79,7 +79,7 @@ Prisma uses a generated client to provide type-safe database access and query bu
 pnpm db:generate
 ```
 
-This command will read your Prisma schema and generate the client code in `generated/prisma-client`. The generated client is required for your application to interact with the database using Prisma.
+This command reads `prisma/schema.prisma` and writes the client into `src/generated/prisma-client` (gitignored). The `prisma-client` generator emits ESM with `.js` import extensions; application code imports it from `@generated/prisma-client/client`, and ESLint rejects an import from its `internal/` folder. `pnpm generate` runs this command together with `pnpm generate:package`.
 
 
 ## Seeding
@@ -96,12 +96,20 @@ Seeding in ACK NestJS Boilerplate is handled using nest-commander. All seed comm
 - `pnpm migration:remove` — removes all seeded data from the database.
 - `pnpm migration:fresh` — resets the PostgreSQL schema with Prisma Migrate, then immediately re-seeds all data. Useful during development when you need a clean slate.
 
-**Order matters, and it lives in the `package.json` scripts, not in `migration.module.ts`:**
+**The order lives in the `package.json` scripts:**
 
 - `migration:seed` runs `apiKey` → `country` → `featureFlag` → `role` → `policy` → `termPolicy` → `user` → `workspace`. A seed that references another's rows runs after it: `policy` needs `role`, `user` needs both `role` and `country`, and `workspace` needs the seeded users.
 - `migration:remove` runs `workspace` → `user` → `apiKey` → `featureFlag` → `country` → `policy` → `role` → `termPolicy`, removing the referrer before anything it references.
 - Neither script runs the template seeds or the AWS S3 configuration seed. Those are invoked on their own.
 - Every seed is idempotent: re-running `migration:seed` against a database that already holds the rows is safe.
+
+**Seed transactions.** A seed that writes several rows opens one `DatabaseService.withTransaction` in callback form, issues every statement on `tx` one after another, and passes `{ timeout }` read from `database.seedTransactionTimeoutInMs` (60 seconds). The same timeout applies to the transactions the `user` and `workspace` seeds open in `remove()`. Work that does not touch the database runs before the transaction: key and hash derivation in the `apiKey` seed, and ids, bcrypt password hashes, and verification tokens in the `user` seed. Every other `remove()` that deletes rows runs its delete on `client` with no transaction. The `template-email-notification` and `aws-s3-config` seeds write no database row.
+
+**The seed actor.** `MigrationUserSuperAdminId` (`src/migration/data/migration.user.data.ts`) is a fixed UUID. The `user` seed creates the superadmin row with that `id`, and every seed that writes rows uses it as the actor:
+
+- An upsert's `create` branch writes `createdBy` and `updatedBy` as `MigrationUserSuperAdminId`; its `update` branch writes `updatedBy`, plus `contents` in the term policy template seed. A re-run therefore sets `updatedBy` and moves `updatedAt` forward on every seeded row that has those columns, and leaves `createdBy` and `id` untouched.
+- The `workspace` seed writes the same actor on each workspace and passes it to `WorkspaceMemberRepository.createInTx` for the owner membership, which stores it as both `createdBy` and `updatedBy`.
+- `createdBy` does not mark a row as seeded. A row the superadmin later creates through the admin API carries the same id, so no `remove()` filters on it. The `workspace` seed's `remove()` finds its rows by the name `<username>'s Workspace` together with an owner membership of that user.
 
 **How to Seed/Remove a Specific Module:**
 Run the command:
@@ -155,7 +163,7 @@ The migration script is a special seed command that configures AWS S3 bucket pol
 
 **What It Does:**
 
-This script automatically configures essential S3 bucket settings in the correct order:
+The seed applies these S3 bucket settings, in this order:
 
 1. **Block Public Access Configuration** - Controls public access restrictions
 2. **Disable ACL Configuration** - Enforces bucket owner ownership controls
@@ -165,8 +173,7 @@ This script automatically configures essential S3 bucket settings in the correct
 
 **Why Sequential Configuration Matters:**
 
-The configuration must be applied in a specific order because AWS S3 policies have dependencies. 
-For example, you must configure public access blocks before setting bucket policies.
+The seed applies the steps in this order because AWS S3 policies depend on each other: the public access block is configured before the bucket policy.
 
 **How to Run:**
 
@@ -198,12 +205,12 @@ For **Private Buckets**:
 
 ## Initial Seeded Data
 
-When you run `pnpm migration:seed`, the following initial data will be created in your database. This data is essential for testing and development purposes.
+`pnpm migration:seed` creates the data below, which local development and testing run against.
 
 ### API Keys
 
 > [!WARNING]
-> These are development keys. Always regenerate API keys for production environments.
+> These keys and their secret are published in this repository. They are seeded in `local` only.
 
 Two API keys are created for authentication and service access. They are seeded in the `local` environment only; `development`, `staging`, and `production` seed no api key.
 
@@ -245,9 +252,9 @@ Three user roles are created with different permission levels:
 ### Users
 
 > [!WARNING]
-> These are test accounts with default passwords. Change or remove these accounts in production environments.
+> These accounts use a password published in this repository, and the superadmin and admin accounts are seeded in every environment.
 
-The seeded users differ per environment. This is controlled by `migrationUserData` in `src/migration/data/migration.user.data.ts`:
+The seeded users differ per environment. This is controlled by `MigrationUserData` in `src/migration/data/migration.user.data.ts`:
 
 | Environment | Seeded Users |
 |---|---|
@@ -263,6 +270,23 @@ The seeded users differ per environment. This is controlled by `migrationUserDat
 | superadmin@mail.com | superadmin | Super Admin | superadmin | `aaAA@123` | ID (Indonesia) | all |
 | admin@mail.com | admin | Admin | admin | `aaAA@123` | ID (Indonesia) | all |
 | user@mail.com | user | User | user | `aaAA@123` | ID (Indonesia) | `local` only |
+
+The superadmin row carries the fixed id `MigrationUserSuperAdminId`; the other rows get an id drawn before the transaction. Every created user row, and its nested two-factor, notification-setting, password-history, verification, and term-policy acceptance rows, name the superadmin as `createdBy` (and as `updatedBy` where the model has the column).
+
+Each created user also gets its activity rows in the same transaction:
+
+| Row | Belongs to | `createdBy` | Metadata |
+|---|---|---|---|
+| `userCreated` | The superadmin | The superadmin | Empty |
+| `userCreatedByAdmin` | The admin and the user | The superadmin | `actorUserId`, `timestamp` |
+| `adminUserCreate`, one per admin or user row the run creates | The superadmin | The superadmin | `targetUserId`, `targetUsername`, `timestamp` |
+| `userVerifiedEmail` | Each created user | The superadmin | Empty |
+| `userAcceptTermPolicy`, one per accepted policy (terms of service, privacy) | Each created user | The user itself, as for every `user = payload` action | Empty |
+
+A user whose email already exists is left as it is apart from `updatedBy`, and gets no new nested or activity row.
+
+> [!WARNING]
+> The `user` seed checks the superadmin email before writing. When that email already exists under an id other than `MigrationUserSuperAdminId`, the seed logs an error naming the email, the id found, and the id expected, and returns without writing anything. The bundled `migration:seed` script carries on with the next command. Realigning such a database means running `pnpm migration:remove`, then `pnpm migration:seed` (or `pnpm migration:fresh`). **Both paths are destructive:** the `user` seed's `remove()` deletes every user, session, activity log, and related row in the database, seeded or not, so neither belongs on an environment holding real data.
 
 ### Feature Flags
 
@@ -503,19 +527,19 @@ One content row per language per term policy: `@@unique([termPolicyId, language]
 
 ## Audit Fields and Soft Delete
 
-Audit fields are stamped automatically by a Prisma Client Extension named `audit-actor`. `DatabaseExtensionUtil.build()` (`src/common/database/utils/database.extension.util.ts`) defines it with `Prisma.defineExtension`, closing over the actor getter, the clock, and the stampers; `DatabaseClientFactory.create()` applies it with `$extends`. Repositories do not set `createdBy` / `updatedBy` by hand; the extension fills them from the authenticated request actor.
+Audit fields are stamped automatically by a Prisma Client Extension named `audit-actor`. `DatabaseExtensionUtil.build()` (`src/common/database/utils/database.extension.util.ts`) defines it with `Prisma.defineExtension`, closing over the actor getter, the clock, and the stampers; `DatabaseClientFactory.create()` applies it with `$extends`. A repository write reached only from an authenticated HTTP request leaves `createdBy` / `updatedBy` to the extension, which fills them from the request actor. A write that also runs with no actor (a queue processor, a seed, a public route) passes the audit value explicitly.
 
 ### Client Access Surface
 
 Three roles, wired together in `src/common/database/database.module.ts`:
 
-- `DatabaseClientFactory` (`factories/database.client.factory.ts`) extends `PrismaClient`, holds the connection options (event-emitting `log` levels and `errorFormat`), and returns the extended client from `create()`.
-- `DatabaseExtensionUtil` (`utils/database.extension.util.ts`) holds the DMMF `modelFields` / `modelRelations` maps and the stamping methods, and builds the extension in `build()`.
-- `DatabaseService` (`services/database.service.ts`) owns the Prisma event log handlers and the connect/disconnect lifecycle, and exposes one public member: `client`.
+- `DatabaseClientFactory` (`factories/database.client.factory.ts`) extends `PrismaClient<IDatabaseClientOptions, ...>`, holds the connection options (event-emitting `log` levels and `errorFormat`), and returns the extended client from `create()`. `IDatabaseClientOptions` (`interfaces/database.client.interface.ts`) is `Prisma.PrismaClientOptions` with a required `log: Prisma.LogDefinition[]`.
+- `DatabaseExtensionUtil` (`utils/database.extension.util.ts`) holds the per-model audit field set (built from `Prisma.ModelName` and `Prisma.<Model>ScalarFieldEnum`) and the stamping methods, and builds the extension in `build()`. Nested writes are walked through `DatabaseModelRelations` (`constants/database.constant.ts`), a relation-field to related-model map per model, typed by `IDatabaseModelRelations` against `Prisma.TypeMap` so a schema change that adds, removes, or retargets a relation fails `pnpm typecheck` until the map matches.
+- `DatabaseService` (`services/database.service.ts`) owns the Prisma event log handlers and the connect/disconnect lifecycle, and exposes two public members: `client` and `withTransaction(fn, options?)`, which runs `fn` inside `client.$transaction` with the `tx` client.
 
 The extension carries the `create` / `createMany` / `update` / `updateMany` / `upsert` query hooks and the `softDelete` / `restore` model methods, all registered against `$allModels`. `IDatabaseClient` (`interfaces/database.client.interface.ts`) is the `ReturnType` of `DatabaseClientFactory['create']`, so the client type follows the extension automatically; the leaf types the extension needs (`IDatabaseRow`, `IDatabaseSoftDeleteArgs`, `IDatabaseRestoreArgs`, and their data shapes) live in `interfaces/database.extension.interface.ts`.
 
-`DatabaseClientToken` (`constants/database.constant.ts`) is a Symbol bound to a `useFactory` provider that calls `DatabaseClientFactory.create()` once, so the extended client is a singleton. The token, the factory, and the extension util stay unexported; `DatabaseModule` exports only `DatabaseService` and `DatabaseUtil`.
+`DatabaseClientToken` (`constants/database.constant.ts`) is a Symbol bound to a `useFactory` provider that calls `DatabaseClientFactory.create()` once, so the extended client is a singleton. The token and the factory stay unexported; `DatabaseModule` exports `DatabaseService`, `DatabaseUtil`, and `DatabaseExtensionUtil`.
 
 The same interface file exports `IDatabaseTransactionClient`, the `tx` type for the callback form of `$transaction`; `Prisma.TransactionClient` does not match the extended client, so derive from this instead. The module also owns one shared error: `EnumDatabaseStatusCodeError.uniqueValueGenerationFailed` (`51800`, `enums/database.status-code.enum.ts`) with `DatabaseUniqueValueGenerationFailedException` (`exceptions/database.unique-value-generation-failed.exception.ts`, HTTP 500, message `database.error.uniqueValueGenerationFailed`), thrown directly by a repository when a generated unique value cannot be settled. See [Generated Unique Values](#generated-unique-values).
 
@@ -535,15 +559,15 @@ What that means for callers:
 - A field is filled only when the model actually has that column and the caller left it null. An explicit value the caller passes always wins.
 - `createdBy`, `updatedBy`, and `deletedBy` are `String? @db.Uuid`; they store the actor's user id.
 
-**Stamping recurses into nested writes.** `DatabaseExtensionUtil.stampRelations` walks the payload's relation fields, and `stampNestedWrite` stamps every write verb a relation container can hold: `create`, `createMany`, `connectOrCreate`, `update`, `updateMany`, and `upsert`. Each nested write is stamped against the **related** model, resolved from the Prisma DMMF rather than the parent's field set, and the recursion continues to any deeper level.
+**Stamping recurses into nested writes.** `DatabaseExtensionUtil.stampRelations` walks the payload's relation fields, and `stampNestedWrite` stamps every write verb a relation container can hold: `create`, `createMany`, `connectOrCreate`, `update`, `updateMany`, and `upsert`. Each nested write is stamped against the **related** model, resolved through `DatabaseModelRelations`, and the recursion continues to any deeper level.
 
-For a caller this means a nested write needs no hand-written `createdBy` / `updatedBy`. Keep one only where the value is deliberately not the acting user.
+For a caller this means a nested write on an authenticated request needs no hand-written `createdBy` / `updatedBy`. An explicit one appears only where the value is not the acting user or no actor exists.
 
 ### Soft Delete and Restore
 
-The extension adds two methods to every model. They are meaningful only on models that carry both soft-delete columns `deletedAt` and `deletedBy`; `User` is currently the only such model. `Workspace` and `Project` carry `deletedAt` alone. `WorkspaceRepository.softDeleteInTx` and `ProjectRepository.softDeleteInTx` stamp that column through a plain `update` on the model they own. `WorkspaceDomain.softDeleteWorkspace` opens `withTransaction` that also soft-deletes still-active projects (`ProjectDomain.softDeleteByWorkspaceInTx`), expires pending invites, cancels pending join requests, and records `workspaceDeleted` through `ActivityLogDomain.recordInTx`.
+The extension adds two methods to every model. They are meaningful only on models that carry both soft-delete columns `deletedAt` and `deletedBy`: `User`, `Workspace`, and `Project`. `ProjectRepository.softDelete` calls `client.project.softDelete` with no transaction. `WorkspaceDomain.softDeleteWorkspace` prepares `workspaceDeleted`, then opens `withTransaction`: `WorkspaceRepository.softDeleteInTx` calls `tx.workspace.softDelete` with the shared `deletedAt`, `ProjectDomain.softDeleteByWorkspaceInTx` soft-deletes the still-active projects through `updateMany` with the same `deletedAt` and an explicit `deletedBy` (the `updateMany` hook stamps no `deletedBy`), pending invites are expired, and pending join requests are cancelled. After the commit it stages the prepared event.
 
-- `softDelete({ where, data? })` sets `deletedAt` (defaults to now), `deletedBy` and `updatedBy` (default to the actor), and merges caller `data` (business fields and nested writes) into the same update. `data` may carry an explicit `deletedAt`, `deletedBy`, or `updatedBy` alongside the business fields, and that value wins over the default. `UserDomain.deleteSelf` revokes the live sessions, then opens a `withTransaction` that calls `UserRepository.deleteSelfInTx` (soft-delete plus `status: inactive`) and `ActivityLogDomain.recordInTx` (`userDeleteSelf`).
+- `softDelete({ where, data? })` sets `deletedAt` (defaults to now), `deletedBy` and `updatedBy` (default to the actor), and merges caller `data` (business fields and nested writes) into the same update. `data` may carry an explicit `deletedAt`, `deletedBy`, or `updatedBy` alongside the business fields, and that value wins over the default. `UserDomain.deleteSelf` prepares `userRevokeAllSessions` (a `user = target` row, with the user passed as `userId` and `createdBy`) and `userDeleteSelf`, then opens one `withTransaction` that calls `UserRepository.deleteSelfInTx` (soft-delete plus `status: inactive`), revokes every live session of the user, and revokes every live device ownership of the user with its device's push token cleared. After the commit it purges every session cache entry of the user, stages `userRevokeAllSessions`, then stages `userDeleteSelf`.
 - `restore({ where, data? })` clears `deletedAt` and `deletedBy` back to null, sets `updatedBy` from the actor, and merges caller `data`. An explicit `updatedBy` in `data` wins.
 - A hard delete (`delete` / `deleteMany`) writes no audit fields.
 
@@ -568,15 +592,15 @@ Some columns carry a server-generated value that must be unique: workspace and p
 The shape is the same in all three places:
 
 1. The caller draws the whole candidate list up front, `slugMaxAttempts` entries of `HelperStringService.generateSlug(prefix, maxLength)` (`5` for both `workspace` and `project`), and passes the list down.
-2. The consumer writes with one candidate at a time. A unique collision on that column rolls the write back and the next candidate is tried.
+2. The consumer writes with one candidate at a time. A unique collision on that column fails that write (rolling back its transaction where there is one) and the next candidate is tried.
 3. When the list runs out, it throws `DatabaseUniqueValueGenerationFailedException` (`51800`, HTTP 500).
 
 The collision is recognised by `DatabaseUtil.isUniqueCollision(error, field)`: true for a `Prisma.PrismaClientKnownRequestError` with code `P2002` whose `meta.target` names `field`, case-insensitively.
 
 | Candidate source | Consumer | Retry unit |
 |---|---|---|
-| `WorkspaceDomain.drawSlugCandidates()` | `WorkspaceDomain.createWorkspace` | the `withTransaction`: `createInTx` (workspace plus owner membership) and `recordInTx` |
-| `ProjectDomain.drawSlugCandidates()` | `ProjectDomain.createProject` | the `withTransaction`: `ProjectRepository.createInTx` and `recordInTx` |
+| `WorkspaceDomain.drawSlugCandidates()` | `WorkspaceDomain.createWorkspace` | the `withTransaction`: `createInTx` (workspace plus owner membership) |
+| `ProjectDomain.drawSlugCandidates()` | `ProjectRepository.create` | one `client.project.create` per candidate, with no transaction |
 | `UserOnboardingDomain.buildPersonalWorkspaceContexts()` | `WorkspaceDomain.commitOnboarding` | the whole onboarding `withTransaction` |
 
 Three rules hold across all of them:
@@ -668,3 +692,4 @@ pnpm migration:seed
 [ref-doc-environment]: environment.md
 [ref-doc-configuration]: configuration.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-activity-log]: activity-log.md

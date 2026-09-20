@@ -2,13 +2,13 @@ import {
     PaginationCursorQuery,
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
-import {
+import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { EnumRoleType, Prisma } from '@generated/prisma-client';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     RoleDefaultAvailableOrderBy,
@@ -16,10 +16,8 @@ import {
     RoleDefaultType,
 } from '@modules/role/constants/role.list.constant';
 import { RoleSystemListDoc } from '@modules/role/docs/role.system.doc';
-import {
-    RoleListResponseDto,
-    RoleListResponseSchema,
-} from '@modules/role/dtos/response/role.list.response.dto';
+import { RoleListResponseSchema } from '@modules/role/dtos/response/role.list.response.dto';
+import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleHttpService } from '@modules/role/services/role.http.service';
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';

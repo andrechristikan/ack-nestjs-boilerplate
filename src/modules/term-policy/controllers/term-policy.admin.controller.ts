@@ -1,22 +1,22 @@
 import { AwsS3PresignResponseSchema } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
-import { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
+import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     PaginationOffsetQuery,
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
-import {
+import type {
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestMessageLanguageSchema } from '@common/request/validations/request.message-language.validation';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-import {
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
@@ -44,22 +44,14 @@ import {
     TermPolicyAdminRemoveContentDoc,
     TermPolicyAdminUpdateContentDoc,
 } from '@modules/term-policy/docs/term-policy.admin.doc';
-import {
-    TermPolicyContentPresignRequestDto,
-    TermPolicyContentPresignRequestSchema,
-} from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
-import {
-    TermPolicyContentRequestDto,
-    TermPolicyContentRequestSchema,
-} from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
-import {
-    TermPolicyCreateRequestDto,
-    TermPolicyCreateRequestSchema,
-} from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import {
-    TermPolicyRemoveContentRequestDto,
-    TermPolicyRemoveContentRequestSchema,
-} from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
+import { TermPolicyContentPresignRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
+import type { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
+import { TermPolicyContentRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
+import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
+import { TermPolicyCreateRequestSchema } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import { TermPolicyRemoveContentRequestSchema } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
+import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { TermPolicyContentHttpService } from '@modules/term-policy/services/term-policy.content.http.service';
 import { TermPolicyHttpService } from '@modules/term-policy/services/term-policy.http.service';
@@ -84,8 +76,8 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
     Prisma,
-    TermPolicy,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { TermPolicy } from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.termPolicy')
 @Controller({
@@ -153,10 +145,9 @@ export class TermPolicyAdminController {
     @Post('/create')
     async create(
         @Body({ schema: TermPolicyCreateRequestSchema })
-        body: TermPolicyCreateRequestDto,
-        @AuthJwtPayload('userId') createdBy: string
+        body: TermPolicyCreateRequestDto
     ): Promise<IResponseReturn<TermPolicy>> {
-        return this.termPolicyHttpService.createByAdmin(body, createdBy);
+        return this.termPolicyHttpService.createByAdmin(body);
     }
 
     @TermPolicyAdminDeleteDoc()
@@ -227,13 +218,11 @@ export class TermPolicyAdminController {
         @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
-        body: TermPolicyContentRequestDto,
-        @AuthJwtPayload('userId') updatedBy: string
+        body: TermPolicyContentRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyContentHttpService.updateContentByAdmin(
             termPolicyId,
-            body,
-            updatedBy
+            body
         );
     }
 
@@ -254,13 +243,11 @@ export class TermPolicyAdminController {
         @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
-        body: TermPolicyContentRequestDto,
-        @AuthJwtPayload('userId') updatedBy: string
+        body: TermPolicyContentRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyContentHttpService.addContentByAdmin(
             termPolicyId,
-            body,
-            updatedBy
+            body
         );
     }
 
@@ -281,13 +268,11 @@ export class TermPolicyAdminController {
         @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string,
         @Body({ schema: TermPolicyRemoveContentRequestSchema })
-        body: TermPolicyRemoveContentRequestDto,
-        @AuthJwtPayload('userId') updatedBy: string
+        body: TermPolicyRemoveContentRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyContentHttpService.removeContentByAdmin(
             termPolicyId,
-            body,
-            updatedBy
+            body
         );
     }
 

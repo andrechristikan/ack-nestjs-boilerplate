@@ -1,5 +1,4 @@
-import { IRequestContextService } from '@common/request/interfaces/request.context.service.interface';
-import {
+import type {
     IRequestGeoLocation,
     IRequestUserAgent,
 } from '@common/request/interfaces/request.interface';
@@ -7,12 +6,12 @@ import { Injectable } from '@nestjs/common';
 import { hostname } from 'os';
 
 @Injectable()
-export class RequestContextService implements IRequestContextService {
+export class RequestContextService {
     getHostname(): string {
         return hostname();
     }
 
-    resolveCity(geoLocation?: IRequestGeoLocation | null): string {
+    resolveCity(geoLocation: IRequestGeoLocation | null): string {
         return geoLocation?.city ?? 'Unknown Location';
     }
 

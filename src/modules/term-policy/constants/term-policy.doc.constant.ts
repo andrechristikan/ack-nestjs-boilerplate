@@ -1,11 +1,15 @@
-import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
-import { faker } from '@faker-js/faker';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
-} from '@generated/prisma-client';
-import { EnumMessageLanguage } from '@common/message/enums/message.enum';
+} from '@generated/prisma-client/client';
+import { faker } from '@faker-js/faker';
+import type { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 
+/**
+ * Swagger path parameter `termPolicyId`.
+ * @public
+ */
 export const TermPolicyDocParamsId: ApiParamOptions[] = [
     {
         name: 'termPolicyId',
@@ -16,6 +20,10 @@ export const TermPolicyDocParamsId: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger path parameters `termPolicyId` and `language` of the term-policy content read.
+ * @public
+ */
 export const TermPolicyDocParamsGetContent: ApiParamOptions[] = [
     ...TermPolicyDocParamsId,
     {
@@ -28,6 +36,10 @@ export const TermPolicyDocParamsGetContent: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger query parameters of the public term-policy list: `type`.
+ * @public
+ */
 export const TermPolicyListPublicDocQuery: ApiQueryOptions[] = [
     {
         name: 'type',
@@ -39,6 +51,10 @@ export const TermPolicyListPublicDocQuery: ApiQueryOptions[] = [
     },
 ];
 
+/**
+ * Swagger query parameters of the admin term-policy list: `type` and `status`.
+ * @public
+ */
 export const TermPolicyListAdminDocQuery: ApiQueryOptions[] = [
     ...TermPolicyListPublicDocQuery,
     {

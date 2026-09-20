@@ -1,9 +1,9 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
-import { IFeatureFlagWithTargetUsers } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Cache } from 'cache-manager';
+import type { IFeatureFlagWithTargetUsers } from '@modules/feature-flag/interfaces/feature-flag.interface';
+import type { Cache } from 'cache-manager';
 
 /** Read-through cache over the feature flag record. */
 @Injectable()
@@ -28,7 +28,7 @@ export class FeatureFlagCache {
     async getCacheByKey(
         key: string
     ): Promise<IFeatureFlagWithTargetUsers | null> {
-        const cacheKey = this.keyPattern.replace('{key}', key);
+        const cacheKey = this.keyPattern.replace('{key}', () => key);
         try {
             const cachedFeatureFlag =
                 await this.cacheManager.get<IFeatureFlagWithTargetUsers>(
@@ -45,7 +45,7 @@ export class FeatureFlagCache {
         key: string,
         featureFlag: IFeatureFlagWithTargetUsers
     ): Promise<void> {
-        const cacheKey = this.keyPattern.replace('{key}', key);
+        const cacheKey = this.keyPattern.replace('{key}', () => key);
         try {
             await this.cacheManager.set(
                 cacheKey,
@@ -58,7 +58,7 @@ export class FeatureFlagCache {
     }
 
     async deleteCacheByKey(key: string): Promise<void> {
-        const cacheKey = this.keyPattern.replace('{key}', key);
+        const cacheKey = this.keyPattern.replace('{key}', () => key);
         try {
             await this.cacheManager.del(cacheKey);
         } catch (error: unknown) {

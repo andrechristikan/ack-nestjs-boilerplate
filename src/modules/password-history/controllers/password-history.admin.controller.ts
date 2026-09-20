@@ -1,15 +1,15 @@
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PasswordHistoryDefaultAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistoryAdminListDoc } from '@modules/password-history/docs/password-history.admin.doc';
 import { PasswordHistoryResponseSchema } from '@modules/password-history/dtos/response/password-history.response.dto';
-import { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
+import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryHttpService } from '@modules/password-history/services/password-history.http.service';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
@@ -22,7 +22,7 @@ import {
     EnumPolicySubject,
     EnumRoleType,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.user.passwordHistory')
 @Controller({
@@ -62,7 +62,7 @@ export class PasswordHistoryAdminController {
         pagination: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>,
         @Param('userId', { schema: RequestUuidSchema })
         userId: string
-    ): Promise<IResponsePagingReturn<IPasswordHistory>> {
+    ): Promise<IResponsePagingReturn<IPasswordHistoryList>> {
         return this.passwordHistoryHttpService.getListOffsetByAdmin(
             userId,
             pagination

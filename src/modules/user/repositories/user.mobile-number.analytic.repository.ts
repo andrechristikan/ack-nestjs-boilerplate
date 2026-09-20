@@ -1,5 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { IUserMobileNumberAnalyticRepository } from '@modules/user/interfaces/user.mobile-number.analytic.repository.interface';
+import type { IUserMobileNumberAnalyticRepository } from '@modules/user/interfaces/user.mobile-number-analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

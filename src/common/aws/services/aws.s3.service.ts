@@ -1,72 +1,74 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import type { OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     AbortMultipartUploadCommand,
-    AbortMultipartUploadCommandInput,
-    AbortMultipartUploadCommandOutput,
     CompleteMultipartUploadCommand,
-    CompleteMultipartUploadCommandInput,
-    CompleteMultipartUploadCommandOutput,
     CopyObjectCommand,
-    CopyObjectCommandInput,
-    CopyObjectCommandOutput,
     CreateMultipartUploadCommand,
-    CreateMultipartUploadCommandInput,
-    CreateMultipartUploadCommandOutput,
     DeleteBucketPolicyCommand,
-    DeleteBucketPolicyCommandInput,
-    DeleteBucketPolicyCommandOutput,
     DeleteObjectCommand,
-    DeleteObjectCommandInput,
-    DeleteObjectCommandOutput,
     DeleteObjectsCommand,
-    DeleteObjectsCommandInput,
-    DeleteObjectsCommandOutput,
     ExpirationStatus,
     GetObjectCommand,
+    HeadBucketCommand,
+    HeadObjectCommand,
+    ListBucketsCommand,
+    ListObjectsV2Command,
+    NotFound,
+    ObjectOwnership,
+    PutBucketCorsCommand,
+    PutBucketLifecycleConfigurationCommand,
+    PutBucketOwnershipControlsCommand,
+    PutBucketPolicyCommand,
+    PutObjectCommand,
+    PutPublicAccessBlockCommand,
+    S3Client,
+    UploadPartCommand,
+} from '@aws-sdk/client-s3';
+import type {
+    AbortMultipartUploadCommandInput,
+    AbortMultipartUploadCommandOutput,
+    CompleteMultipartUploadCommandInput,
+    CompleteMultipartUploadCommandOutput,
+    CopyObjectCommandInput,
+    CopyObjectCommandOutput,
+    CreateMultipartUploadCommandInput,
+    CreateMultipartUploadCommandOutput,
+    DeleteBucketPolicyCommandInput,
+    DeleteBucketPolicyCommandOutput,
+    DeleteObjectCommandInput,
+    DeleteObjectCommandOutput,
+    DeleteObjectsCommandInput,
+    DeleteObjectsCommandOutput,
     GetObjectCommandInput,
     GetObjectCommandOutput,
     GetObjectOutput,
-    HeadBucketCommand,
     HeadBucketCommandInput,
     HeadBucketCommandOutput,
-    HeadObjectCommand,
     HeadObjectCommandInput,
     HeadObjectCommandOutput,
-    ListBucketsCommand,
-    ListObjectsV2Command,
     ListObjectsV2CommandInput,
     ListObjectsV2CommandOutput,
     ListObjectsV2Output,
-    NotFound,
     ObjectIdentifier,
-    ObjectOwnership,
-    PutBucketCorsCommand,
     PutBucketCorsCommandInput,
     PutBucketCorsCommandOutput,
-    PutBucketLifecycleConfigurationCommand,
     PutBucketLifecycleConfigurationCommandInput,
     PutBucketLifecycleConfigurationCommandOutput,
-    PutBucketOwnershipControlsCommand,
     PutBucketOwnershipControlsCommandInput,
     PutBucketOwnershipControlsCommandOutput,
-    PutBucketPolicyCommand,
     PutBucketPolicyCommandInput,
     PutBucketPolicyCommandOutput,
-    PutObjectCommand,
     PutObjectCommandInput,
     PutObjectCommandOutput,
-    PutPublicAccessBlockCommand,
     PutPublicAccessBlockCommandInput,
     PutPublicAccessBlockCommandOutput,
-    S3Client,
-    UploadPartCommand,
     UploadPartCommandInput,
     UploadPartCommandOutput,
     _Object,
 } from '@aws-sdk/client-s3';
-import { IAwsS3Service } from '@common/aws/interfaces/aws.s3-service.interface';
-import {
+import type {
     IAwsS3,
     IAwsS3ConfigBucket,
     IAwsS3CopyItemOptions,
@@ -91,12 +93,13 @@ import {
 } from '@common/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import { AwsS3PresignPartRequestDto } from '@common/aws/dtos/request/aws.s3-presign-part.request.dto';
-import { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
+import type { AwsS3PresignPartRequestDto } from '@common/aws/dtos/request/aws.s3-presign-part.request.dto';
+import type { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 import { FileService } from '@common/file/services/file.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 
 @Injectable()
-export class AwsS3Service implements IAwsS3Service, OnModuleInit {
+export class AwsS3Service implements OnModuleInit {
     private readonly logger: Logger = new Logger(AwsS3Service.name);
 
     private readonly accessKeyId: string | null;
@@ -123,7 +126,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly fileService: FileService
+        private readonly fileService: FileService,
+        private readonly helperStringService: HelperStringService
     ) {
         this.accessKeyId = this.configService.get<string | null>(
             'aws.s3.iam.key'
@@ -137,17 +141,19 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         this.timeoutInMs =
             this.configService.get<number>('aws.s3.timeoutInMs')!;
 
+        const publicBucketConfig = this.configService.get<IAwsS3ConfigBucket>(
+            'aws.s3.config.public'
+        )!;
         this.config.set(EnumAwsS3Accessibility.public, {
-            ...this.configService.get<IAwsS3ConfigBucket>(
-                'aws.s3.config.public'
-            )!,
+            ...publicBucketConfig,
             access: EnumAwsS3Accessibility.public,
         } as IAwsS3ConfigBucket);
 
+        const privateBucketConfig = this.configService.get<IAwsS3ConfigBucket>(
+            'aws.s3.config.private'
+        )!;
         this.config.set(EnumAwsS3Accessibility.private, {
-            ...this.configService.get<IAwsS3ConfigBucket>(
-                'aws.s3.config.private'
-            )!,
+            ...privateBucketConfig,
             access: EnumAwsS3Accessibility.private,
         } as IAwsS3ConfigBucket);
 
@@ -186,9 +192,9 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
 
         const extension: string =
             this.fileService.extractExtensionFromFilename(filename);
-        const mime =
-            this.fileService.extractMimeFromFilename(filename) ??
-            'application/octet-stream';
+        const mimeFromFilename =
+            this.fileService.extractMimeFromFilename(filename);
+        const mime = mimeFromFilename ?? 'application/octet-stream';
 
         return { pathWithFilename, filename, extension, mime };
     }
@@ -236,24 +242,29 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         key: string
     ): { completedUrl: string; cdnUrl: string | null } {
         const { baseUrl, cdnUrl } = config;
-        const completedUrl = this.objectUrlPattern
-            .replace('{baseUrl}', baseUrl)
-            .replace('{key}', key);
+        const completedUrl = this.helperStringService.fillPattern(
+            this.objectUrlPattern,
+            { baseUrl, key }
+        );
 
         if (!cdnUrl) {
             return { completedUrl, cdnUrl: null };
         }
 
+        const cdnObjectUrl = this.helperStringService.fillPattern(
+            this.cdnUrlPattern,
+            { cdnUrl, key }
+        );
+
         return {
             completedUrl,
-            cdnUrl: this.cdnUrlPattern
-                .replace('{cdnUrl}', cdnUrl)
-                .replace('{key}', key),
+            cdnUrl: cdnObjectUrl,
         };
     }
 
     async checkConnection(): Promise<boolean> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -270,7 +281,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     }
 
     async checkBucket(options: IAwsS3Options): Promise<boolean> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -295,7 +307,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         key: string,
         options: IAwsS3Options
     ): Promise<IAwsS3 | null> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -337,7 +350,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         path: string,
         options: IAwsS3GetItemsOptions
     ): Promise<IAwsS3[]> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -405,7 +419,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     }
 
     async getItem(key: string, options: IAwsS3Options): Promise<IAwsS3 | null> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -447,7 +462,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         file: IAwsS3PutItem,
         options: IAwsS3PutItemOptions
     ): Promise<IAwsS3 | null> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -519,7 +535,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     }
 
     async deleteItem(key: string, options: IAwsS3Options): Promise<void> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -544,7 +561,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     }
 
     async deleteItems(keys: string[], options: IAwsS3Options): Promise<void> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -575,7 +593,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         path: string,
         options: IAwsS3DeleteDirOptions
     ): Promise<void | _Object[]> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -640,7 +659,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         maxPartNumber: number,
         options: IAwsS3PutItemOptions
     ): Promise<IAwsS3Multipart | null> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -719,7 +739,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         file: Buffer,
         options: IAwsS3Options
     ): Promise<IAwsS3Multipart> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -760,7 +781,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         parts: IAwsS3MultipartPart[],
         options: IAwsS3Options
     ): Promise<void> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -798,7 +820,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         uploadId: string,
         options: IAwsS3Options
     ): Promise<void> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -827,7 +850,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         key: string,
         options: IAwsS3PresignGetItemOptions
     ): Promise<IAwsS3Presign | null> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -882,7 +906,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         { key, size }: AwsS3PresignRequestDto,
         options: IAwsS3PresignPutItemOptions
     ): Promise<IAwsS3Presign | null> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -946,7 +971,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         { key, size, uploadId, partNumber }: AwsS3PresignPartRequestDto,
         options: IAwsS3PresignPutItemPartOptions
     ): Promise<IAwsS3PresignPart | null> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -1019,7 +1045,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         destination: string,
         options: IAwsS3CopyItemOptions
     ): Promise<IAwsS3 | null> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -1075,7 +1102,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         destination: string,
         options: IAwsS3Options
     ): Promise<IAwsS3[]> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -1095,12 +1123,11 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
 
         const accessibility = options.access;
         for (const source of sources) {
-            promises.push(
-                this.copyItem(source, destination, {
-                    accessTo: accessibility,
-                    accessFrom: source.access,
-                })
-            );
+            const copiedItem = this.copyItem(source, destination, {
+                accessTo: accessibility,
+                accessFrom: source.access,
+            });
+            promises.push(copiedItem);
         }
 
         const copiedItems = await Promise.allSettled(promises);
@@ -1112,7 +1139,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     async settingBucketExpiredObjectLifecycle(
         options: IAwsS3Options
     ): Promise<void> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -1152,7 +1180,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     }
 
     async settingBucketPolicy(options: IAwsS3Options): Promise<void> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -1213,7 +1242,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     }
 
     async settingCorsConfiguration(options: IAwsS3Options): Promise<void> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -1299,7 +1329,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     async settingDisableAclConfiguration(
         options: IAwsS3Options
     ): Promise<void> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -1332,7 +1363,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     async settingBlockPublicAccessConfiguration(
         options: IAwsS3Options
     ): Promise<void> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );

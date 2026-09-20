@@ -1,4 +1,4 @@
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 import { WorkspaceAnalyticRepository } from '@modules/workspace/repositories/workspace.analytic.repository';
 import { Injectable } from '@nestjs/common';
 

@@ -1,6 +1,7 @@
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { Country, Prisma } from '@generated/prisma-client';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client/client';
+import type { Country } from '@generated/prisma-client/client';
 
 export interface ICountryRepository {
     findWithPaginationCursor(

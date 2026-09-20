@@ -1,6 +1,6 @@
 # Message Documentation
 
-This documentation explains the features and usage of **Message Module**: Located at `src/common/message`
+i18n lives in `src/common/message`. Message files live in `src/languages/`.
 
 ## Overview
 
@@ -69,6 +69,7 @@ Message files use JSON format with nested structure. Key paths follow the patter
 | File | Description |
 |------|-------------|
 | `activityLog.json` | Activity log messages |
+| `analytic.json` | Analytic messages |
 | `apiKey.json` | API key messages |
 | `auth.json` | Authentication messages |
 | `aws.json` | AWS service messages |
@@ -80,6 +81,7 @@ Message files use JSON format with nested structure. Key paths follow the patter
 | `file.json` | File upload messages |
 | `health.json` | Health check messages |
 | `hello.json` | Hello endpoint messages |
+| `helper.json` | Helper kit errors (encryption) |
 | `http.json` | HTTP error messages |
 | `notification.json` | Notification messages |
 | `pagination.json` | Pagination messages |
@@ -193,12 +195,8 @@ const message = this.messageService.setMessage('user.updateProfile', {
 
 Request-specific language can be set via the `x-custom-lang` header:
 
-```typescript
-await axios.get('http://localhost:3000/api/users', {
-    headers: {
-        'x-custom-lang': 'id'
-    }
-});
+```bash
+curl -H "x-custom-lang: id" http://localhost:3000/api/v1/shared/user/profile/get
 ```
 
 `RequestCustomLanguageMiddleware` validates the header against the supported languages and writes the resolved value to the request store under `RequestLanguageStoreKey` (falling back to config `message.language`). Response interceptors and exception filters read it from there to localize messages and set `x-custom-lang`. See [Security and Middleware Documentation][ref-doc-security-and-middleware].
@@ -250,7 +248,7 @@ async markAllAsRead(
 
 // notification.http.service.ts
 async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
-    const count = await this.notificationService.markAllAsRead(userId);
+    const count = await this.notificationDomain.markAllAsRead(userId);
 
     return {
         metadata: {

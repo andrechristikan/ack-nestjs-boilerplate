@@ -1,22 +1,24 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { UserAdminNearLockoutSelect } from '@modules/user/constants/user.constant';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
-import { IAnalyticNearLockoutRow } from '@modules/analytic/interfaces/analytic.anomaly.interface';
-import {
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticNearLockout } from '@modules/analytic/interfaces/analytic.anomaly.interface';
+import type { IUserAnalyticRepository } from '@modules/user/interfaces/user.analytic-repository.interface';
+import type {
     IUserAnalyticGroupCount,
     IUserAnalyticRef,
-    IUserAnalyticRepository,
-    IUserAnalyticSignUpRow,
-} from '@modules/user/interfaces/user.analytic.repository.interface';
+    IUserAnalyticSignUp,
+    IUserNearLockout,
+} from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 
 @Injectable()
 export class UserAnalyticRepository implements IUserAnalyticRepository {
@@ -134,20 +136,13 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
         });
     }
 
-    async findNearLockout(
-        minAttempt: number
-    ): Promise<IAnalyticNearLockoutRow[]> {
+    async findNearLockout(minAttempt: number): Promise<IAnalyticNearLockout[]> {
         return this.databaseService.client.user.findMany({
             where: {
                 deletedAt: null,
                 passwordAttempt: { gte: minAttempt },
             },
-            select: {
-                id: true,
-                email: true,
-                passwordAttempt: true,
-                lastLoginAt: true,
-            },
+            select: UserAdminNearLockoutSelect,
         });
     }
 
@@ -174,9 +169,12 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
     async listNearLockoutOffset(
         minAttempt: number,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticNearLockoutRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticNearLockout>> {
         const { where, ...rest } = params;
-        return this.paginationService.offset(this.databaseService.client.user, {
+        return this.paginationService.offset<
+            IUserNearLockout,
+            Prisma.UserWhereInput
+        >(this.databaseService.client.user, {
             ...rest,
             where: {
                 AND: [
@@ -185,13 +183,14 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
                     { passwordAttempt: { gte: minAttempt } },
                 ],
             },
+            select: UserAdminNearLockoutSelect,
         });
     }
 
     async findSignUpsInRange(
         startDate: Date,
         endDate: Date
-    ): Promise<IUserAnalyticSignUpRow[]> {
+    ): Promise<IUserAnalyticSignUp[]> {
         return this.databaseService.client.user.findMany({
             where: {
                 deletedAt: null,

@@ -1,7 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
-import { IMessageProperties } from '@common/message/interfaces/message.interface';
-import {
+import type { IMessageProperties } from '@common/message/interfaces/message.interface';
+import type {
     IPaginationCursorReturn,
     IPaginationOffsetReturn,
 } from '@common/pagination/interfaces/pagination.interface';

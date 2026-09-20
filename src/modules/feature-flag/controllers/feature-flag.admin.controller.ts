@@ -1,12 +1,12 @@
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-import {
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
@@ -21,14 +21,10 @@ import {
     FeatureFlagAdminUpdateMetadataDoc,
     FeatureFlagAdminUpdateStatusDoc,
 } from '@modules/feature-flag/docs/feature-flag.admin.doc';
-import {
-    FeatureFlagUpdateMetadataRequestDto,
-    FeatureFlagUpdateMetadataRequestSchema,
-} from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
-import {
-    FeatureFlagUpdateStatusRequestDto,
-    FeatureFlagUpdateStatusRequestSchema,
-} from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
+import { FeatureFlagUpdateMetadataRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
+import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
+import { FeatureFlagUpdateStatusRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
+import type { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import { FeatureFlagResponseSchema } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
 import { FeatureFlagHttpService } from '@modules/feature-flag/services/feature-flag.http.service';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
@@ -41,9 +37,9 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
-    FeatureFlag,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { FeatureFlag } from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.featureFlag')
 @Controller({

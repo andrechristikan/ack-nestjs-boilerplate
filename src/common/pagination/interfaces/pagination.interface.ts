@@ -99,18 +99,17 @@ export interface IPaginationQueryCursorParams<
     cursorField?: string;
 }
 
-export interface IPaginationOffsetArgs<
-    TArgsWhere = unknown,
-> extends IPaginationQueryOffsetParams<TArgsWhere> {
-    include?: unknown;
-}
+export type IPaginationShape =
+    | { include?: unknown; select?: never }
+    | { select?: unknown; include?: never };
 
-export interface IPaginationCursorArgs<
-    TArgsWhere = unknown,
-> extends IPaginationQueryCursorParams<TArgsWhere> {
-    include?: unknown;
-    includeCount?: boolean;
-}
+export type IPaginationOffsetArgs<TArgsWhere = unknown> =
+    IPaginationQueryOffsetParams<TArgsWhere> & IPaginationShape;
+
+export type IPaginationCursorArgs<TArgsWhere = unknown> =
+    IPaginationQueryCursorParams<TArgsWhere> & {
+        includeCount?: boolean;
+    } & IPaginationShape;
 
 export interface IPaginationQueryFilterOptions {
     customField?: string;

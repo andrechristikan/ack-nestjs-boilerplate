@@ -1,7 +1,5 @@
-import {
-    AwsS3PresignResponseDto,
-    AwsS3PresignResponseSchema,
-} from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import { AwsS3PresignResponseSchema } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import type { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import {
     Doc,
     DocAuth,
@@ -12,31 +10,18 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { FileUploadSingleRequestSchema } from '@common/file/dtos/request/file.upload-single.request.dto';
-import {
-    AuthTokenResponseDto,
-    AuthTokenResponseSchema,
-} from '@modules/auth/dtos/response/auth.token.response.dto';
-import { UserDocParamsMobileNumberId } from '@modules/user/constants/user.doc.constant';
-import {
-    UserProfileResponseDto,
-    UserProfileResponseSchema,
-} from '@modules/user/dtos/response/user.profile.response.dto';
-import {
-    UserTwoFactorEnableResponseDto,
-    UserTwoFactorEnableResponseSchema,
-} from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import {
-    UserTwoFactorSetupResponseDto,
-    UserTwoFactorSetupResponseSchema,
-} from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
-import {
-    UserTwoFactorStatusResponseDto,
-    UserTwoFactorStatusResponseSchema,
-} from '@modules/user/dtos/response/user.two-factor-status.response.dto';
-import {
-    UserMobileNumberResponseDto,
-    UserMobileNumberResponseSchema,
-} from '@modules/user/dtos/response/user.mobile-number.response.dto';
+import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
+import type { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
+import type { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { UserTwoFactorEnableResponseSchema } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import { UserTwoFactorSetupResponseSchema } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
+import type { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
+import { UserTwoFactorStatusResponseSchema } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
+import type { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
+import { UserMobileNumberResponseSchema } from '@modules/user/dtos/response/user.mobile-number.response.dto';
+import type { UserMobileNumberResponseDto } from '@modules/user/dtos/response/user.mobile-number.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function UserSharedRefreshDoc(): MethodDecorator {
@@ -48,9 +33,7 @@ export function UserSharedRefreshDoc(): MethodDecorator {
             xApiKey: true,
             jwtRefreshToken: true,
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocResponse<AuthTokenResponseDto>('user.response', {
             schema: AuthTokenResponseSchema,
         })
@@ -62,9 +45,7 @@ export function UserSharedProfileDoc(): MethodDecorator {
         Doc({
             summary: 'get profile',
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
@@ -83,9 +64,7 @@ export function UserSharedUpdateProfileDoc(): MethodDecorator {
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
@@ -99,9 +78,7 @@ export function UserSharedGeneratePhotoProfilePresignDoc(): MethodDecorator {
         Doc({
             summary: 'generate upload photo profile presign',
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
@@ -123,9 +100,7 @@ export function UserSharedUpdatePhotoProfileDoc(): MethodDecorator {
         Doc({
             summary: 'update photo profile',
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
@@ -142,9 +117,7 @@ export function UserSharedUploadPhotoProfileDoc(): MethodDecorator {
         Doc({
             summary: 'upload photo profile',
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
@@ -161,9 +134,7 @@ export function UserSharedChangePasswordDoc(): MethodDecorator {
         Doc({
             summary: 'change password',
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true, featureFlag: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
@@ -183,9 +154,7 @@ export function UserSharedAddMobileNumberDoc(): MethodDecorator {
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
@@ -204,11 +173,8 @@ export function UserSharedUpdateMobileNumberDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            params: UserDocParamsMobileNumberId,
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
@@ -224,12 +190,7 @@ export function UserSharedDeleteMobileNumberDoc(): MethodDecorator {
         Doc({
             summary: 'user delete mobile number',
         }),
-        DocRequest({
-            params: UserDocParamsMobileNumberId,
-        }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
@@ -248,9 +209,7 @@ export function UserSharedClaimUsernameDoc(): MethodDecorator {
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
@@ -259,32 +218,12 @@ export function UserSharedClaimUsernameDoc(): MethodDecorator {
     );
 }
 
-export function UserSharedTwoFactorSetupDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'Start two-factor setup and receive secret',
-        }),
-        DocGuard({
-            termPolicy: true,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocResponse<UserTwoFactorSetupResponseDto>('user.twoFactor.setup', {
-            schema: UserTwoFactorSetupResponseSchema,
-        })
-    );
-}
-
 export function UserSharedTwoFactorStatusDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'Get current two-factor authentication status',
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
@@ -295,14 +234,32 @@ export function UserSharedTwoFactorStatusDoc(): MethodDecorator {
     );
 }
 
+export function UserSharedTwoFactorSetupDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary:
+                'Start two-factor setup and receive secret; requires an unused backup code while two-factor is enabled',
+        }),
+        DocGuard({ termPolicy: true, user: true }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocRequest({
+            bodyType: EnumDocRequestBodyType.json,
+        }),
+        DocResponse<UserTwoFactorSetupResponseDto>('user.twoFactor.setup', {
+            schema: UserTwoFactorSetupResponseSchema,
+        })
+    );
+}
+
 export function UserSharedTwoFactorEnableDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'Enable two-factor authentication',
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
@@ -321,9 +278,7 @@ export function UserSharedTwoFactorDisableDoc(): MethodDecorator {
         Doc({
             summary: 'Disable two-factor authentication',
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
@@ -340,9 +295,7 @@ export function UserSharedTwoFactorRegenerateBackupDoc(): MethodDecorator {
         Doc({
             summary: 'Regenerate two-factor backup codes',
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
@@ -365,9 +318,7 @@ export function UserSharedLogoutDoc(): MethodDecorator {
             summary:
                 'Logout from current session, invalidating the access token and deleting the session.',
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,

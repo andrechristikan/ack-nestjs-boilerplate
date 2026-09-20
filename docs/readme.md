@@ -35,13 +35,15 @@ This project aligns with the [Twelve-Factor App][ref-12factor] methodology.
 | JWT Refresh Token | ES512; ECDSA + SHA-512 ([RFC 7518][ref-rfc-7518], [RFC 7519][ref-rfc-7519]) |
 | Two-Factor Auth | TOTP; SHA-1, 6 digits, 30s period ([RFC 6238][ref-rfc-6238]) |
 | Password Hashing | bcrypt; 12 salt rounds |
-| Encryption at Rest | AES-256-CBC; PKCS7 padding, SHA-256 derived key; 2FA secrets keyed by `AUTH_TWO_FACTOR_ENCRYPTION_KEY`, everything else by `APP_ENCRYPTION_SECRET_KEY` |
+| Encryption | AES-256-GCM through `node:crypto`; per-payload key derived with HKDF-SHA-256 from a 48-byte root secret, a random 16-byte salt, and a purpose string; 12-byte IV, 16-byte tag, caller context bound as authenticated data. Stored 2FA secrets use `AUTH_TWO_FACTOR_ENCRYPTION_KEY`; notification job payloads use `APP_ENCRYPTION_SECRET_KEY` |
+| Token Hashing | SHA-256 through `node:crypto` for stored tokens, backup codes, and API key hashes; compared with `timingSafeEqual` |
+| Randomness | `node:crypto` (`randomInt`, `randomBytes`) for every generated code, token, and secret |
 | HTTP Security Headers | [Helmet][ref-helmet] v8, non-documents profile; Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Cross-Origin-Resource-Policy, X-Download-Options, X-Permitted-Cross-Domain-Policies |
 | CORS | Configurable allowlist with wildcard subdomain support, preflight max-age 24h |
 | Rate Limiting | Redis-backed sliding window via [@nestjs/throttler][ref-throttler]; global 300 req / 60s per IP, plus opt-in 100 req / 60s per user and per-route tiers (5 / 20 / 60 req per 60s) |
 | Authorization | [CASL][ref-casl]; fine-grained ability-based access control (subject + action) |
 | API Key Auth | Machine-to-machine via `x-api-key` header |
-| Sensitive Data | Auto-redacted in logs (password, token, apiKey) via the Pino `redact` option |
+| Sensitive Data | Redacted from logs and Sentry payloads by key (`LoggerSensitiveFields`: passwords, tokens, API keys, 2FA material, sealed notification fields, cookies) through the Pino `redact` option, `LoggerUtil`, and the `instrument.ts` scrubbers; URL paths masked |
 | Threat Coverage | [OWASP Top 10][ref-owasp]; input validation, injection prevention, auth hardening |
 
 
@@ -78,8 +80,8 @@ Install and configure the project.
 20. [Pagination][ref-doc-pagination]; Offset-based, cursor-based pagination, advanced filtering
 21. [Notification][ref-doc-notification]; Multi-channel notifications (email, push, inApp, silent) via BullMQ
 22. [Two Factor][ref-doc-two-factor]; TOTP 2FA with authenticator apps and backup codes
-23. [Feature Flag][ref-doc-feature-flag]; Dynamic feature management, gradual rollouts, A/B testing
-24. [Activity Log][ref-doc-activity-log]; Recording successful user activities with `@ActivityLog`
+23. [Feature Flag][ref-doc-feature-flag]; Dynamic feature management and percentage rollouts
+24. [Activity Log][ref-doc-activity-log]; Recording user activities staged by domains and flushed by `ActivityLogInterceptor`
 25. [Analytic][ref-doc-analytic]; Live admin dashboard metrics, anomaly and fraud reports, current-workspace user metrics
 26. [Term Policy][ref-doc-term-policy]; Legal agreements, versioning, and user consent enforcement
 27. [File Upload][ref-doc-file-upload]; Single/multiple file uploads, CSV processing, upload decorators

@@ -1,7 +1,8 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Cache } from 'cache-manager';
+import type { Cache } from 'cache-manager';
 
 @Injectable()
 export class AnalyticCache {
@@ -17,7 +18,8 @@ export class AnalyticCache {
 
     constructor(
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly helperStringService: HelperStringService
     ) {
         this.dashboardKeyPattern = this.configService.get<string>(
             'analytic.cache.keyPatterns.dashboard'
@@ -46,11 +48,7 @@ export class AnalyticCache {
     }
 
     private buildKey(pattern: string, tokens: Record<string, string>): string {
-        let key = pattern;
-        for (const [name, value] of Object.entries(tokens)) {
-            key = key.replace('{' + name + '}', value);
-        }
-        return key;
+        return this.helperStringService.fillPattern(pattern, tokens);
     }
 
     private async get<T>(cacheKey: string): Promise<T | null> {
@@ -80,9 +78,13 @@ export class AnalyticCache {
         start: string,
         end: string
     ): Promise<T | null> {
-        return this.get<T>(
-            this.buildKey(this.dashboardKeyPattern, { metric, start, end })
-        );
+        const key = this.buildKey(this.dashboardKeyPattern, {
+            metric,
+            start,
+            end,
+        });
+
+        return this.get<T>(key);
     }
 
     async setDashboard<T>(
@@ -91,20 +93,21 @@ export class AnalyticCache {
         end: string,
         value: T
     ): Promise<void> {
-        await this.set(
-            this.buildKey(this.dashboardKeyPattern, { metric, start, end }),
-            value,
-            this.dashboardTtlInMs
-        );
+        const key = this.buildKey(this.dashboardKeyPattern, {
+            metric,
+            start,
+            end,
+        });
+        await this.set(key, value, this.dashboardTtlInMs);
     }
 
     async getAnomalySummary<T>(
         signal: string,
         window: string
     ): Promise<T | null> {
-        return this.get<T>(
-            this.buildKey(this.anomalyKeyPattern, { signal, window })
-        );
+        const key = this.buildKey(this.anomalyKeyPattern, { signal, window });
+
+        return this.get<T>(key);
     }
 
     async setAnomalySummary<T>(
@@ -112,20 +115,17 @@ export class AnalyticCache {
         window: string,
         value: T
     ): Promise<void> {
-        await this.set(
-            this.buildKey(this.anomalyKeyPattern, { signal, window }),
-            value,
-            this.anomalySummaryTtlInMs
-        );
+        const key = this.buildKey(this.anomalyKeyPattern, { signal, window });
+        await this.set(key, value, this.anomalySummaryTtlInMs);
     }
 
     async getFraudSummary<T>(
         signal: string,
         window: string
     ): Promise<T | null> {
-        return this.get<T>(
-            this.buildKey(this.fraudKeyPattern, { signal, window })
-        );
+        const key = this.buildKey(this.fraudKeyPattern, { signal, window });
+
+        return this.get<T>(key);
     }
 
     async setFraudSummary<T>(
@@ -133,22 +133,18 @@ export class AnalyticCache {
         window: string,
         value: T
     ): Promise<void> {
-        await this.set(
-            this.buildKey(this.fraudKeyPattern, { signal, window }),
-            value,
-            this.fraudSummaryTtlInMs
-        );
+        const key = this.buildKey(this.fraudKeyPattern, { signal, window });
+        await this.set(key, value, this.fraudSummaryTtlInMs);
     }
 
     async getRiskScore<T>(userId: string): Promise<T | null> {
-        return this.get<T>(this.buildKey(this.riskScoreKeyPattern, { userId }));
+        const key = this.buildKey(this.riskScoreKeyPattern, { userId });
+
+        return this.get<T>(key);
     }
 
     async setRiskScore<T>(userId: string, value: T): Promise<void> {
-        await this.set(
-            this.buildKey(this.riskScoreKeyPattern, { userId }),
-            value,
-            this.riskScoreTtlInMs
-        );
+        const key = this.buildKey(this.riskScoreKeyPattern, { userId });
+        await this.set(key, value, this.riskScoreTtlInMs);
     }
 }

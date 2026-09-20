@@ -3,6 +3,7 @@ import { faker } from '@faker-js/faker';
 
 /**
  * Base response shape with the audit fields (id, timestamps, soft-delete) on every document.
+ * @public
  */
 export const DatabaseResponseSchema = z.object({
     id: z.string().meta({
@@ -35,4 +36,8 @@ export const DatabaseResponseSchema = z.object({
     }),
 });
 
+/**
+ * Audit fields shared by every stored document.
+ * @public
+ */
 export type DatabaseResponseDto = z.infer<typeof DatabaseResponseSchema>;

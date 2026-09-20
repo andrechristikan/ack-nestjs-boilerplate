@@ -13,6 +13,8 @@ export interface IConfigAnalytic {
             fraud: string;
             riskScore: string;
         };
+        windowTokenPattern: string;
+        workspaceWindowTokenPattern: string;
     };
     anomaly: {
         impossibleTravel: {
@@ -106,6 +108,8 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
             fraud: 'Analytic:fraud:{signal}:{window}',
             riskScore: 'Analytic:fraud:risk:{userId}',
         },
+        windowTokenPattern: '{start}:{end}',
+        workspaceWindowTokenPattern: '{workspaceId}:{start}:{end}',
     },
     anomaly: {
         impossibleTravel: {

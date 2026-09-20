@@ -1,12 +1,27 @@
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { AnalyticMetricCountResponseSchema } from '@modules/analytic/dtos/response/analytic.metric-count.response.dto';
+import { AnalyticRoleCountResponseSchema } from '@modules/analytic/dtos/response/analytic.role-count.response.dto';
+import { AnalyticStatusCountResponseSchema } from '@modules/analytic/dtos/response/analytic.status-count.response.dto';
 import { Response } from '@common/response/decorators/response.decorator';
-import { AnalyticUserSummaryDoc } from '@modules/analytic/docs/analytic.user.doc';
 import {
-    AnalyticOptionalDateRangeRequestDto,
-    AnalyticOptionalDateRangeRequestSchema,
-} from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
-import { AnalyticWorkspaceSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.metric.response.dto';
-import { IAnalyticWorkspaceSummary } from '@modules/analytic/interfaces/analytic.interface';
+    AnalyticUserWorkspaceActivityDoc,
+    AnalyticUserWorkspaceInviteFunnelDoc,
+    AnalyticUserWorkspaceJoinOutcomesDoc,
+    AnalyticUserWorkspaceMemberRolesDoc,
+    AnalyticUserWorkspaceSummaryDoc,
+} from '@modules/analytic/docs/analytic.user.doc';
+import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
+import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
+import { AnalyticOptionalDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
+import type { AnalyticOptionalDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
+import { AnalyticWorkspaceSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.workspace-summary.response.dto';
+import type {
+    IAnalyticMetricCount,
+    IAnalyticRoleCountList,
+    IAnalyticStatusCountList,
+    IAnalyticWorkspaceSummary,
+} from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticWorkspaceUserHttpService } from '@modules/analytic/services/analytic.workspace-user.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
@@ -20,7 +35,8 @@ import {
 } from '@modules/workspace/decorators/workspace.decorator';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Workspace } from '@generated/prisma-client';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import type { Workspace } from '@generated/prisma-client/client';
 
 @ApiTags('modules.user.analytic')
 @Controller({
@@ -32,7 +48,7 @@ export class AnalyticUserController {
         private readonly analyticWorkspaceUserHttpService: AnalyticWorkspaceUserHttpService
     ) {}
 
-    @AnalyticUserSummaryDoc()
+    @AnalyticUserWorkspaceSummaryDoc()
     @Response('analytic.workspaceSummary', {
         schema: AnalyticWorkspaceSummaryResponseSchema,
     })
@@ -49,8 +65,102 @@ export class AnalyticUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
-    ): Promise<IAnalyticWorkspaceSummary> {
+    ): Promise<IResponseReturn<IAnalyticWorkspaceSummary>> {
         return this.analyticWorkspaceUserHttpService.summary(
+            workspace.id,
+            query.startDate,
+            query.endDate
+        );
+    }
+
+    @AnalyticUserWorkspaceInviteFunnelDoc()
+    @Response('analytic.workspaceInviteFunnel', {
+        schema: AnalyticStatusCountResponseSchema,
+    })
+    @TermPolicyAcceptanceProtected()
+    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @WorkspaceProtected()
+    @UserProtected()
+    @FeatureFlagProtected('workspace')
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true })
+    @Get('/workspace/invite-funnel')
+    async inviteFunnel(
+        @WorkspaceCurrent() workspace: Workspace,
+        @Query({ schema: AnalyticDateRangeRequestSchema })
+        query: AnalyticDateRangeRequestDto
+    ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
+        return this.analyticWorkspaceUserHttpService.inviteFunnel(
+            workspace.id,
+            query.startDate,
+            query.endDate
+        );
+    }
+
+    @AnalyticUserWorkspaceJoinOutcomesDoc()
+    @Response('analytic.workspaceJoinOutcomes', {
+        schema: AnalyticStatusCountResponseSchema,
+    })
+    @TermPolicyAcceptanceProtected()
+    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @WorkspaceProtected()
+    @UserProtected()
+    @FeatureFlagProtected('workspace')
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true })
+    @Get('/workspace/join-outcomes')
+    async joinOutcomes(
+        @WorkspaceCurrent() workspace: Workspace,
+        @Query({ schema: AnalyticDateRangeRequestSchema })
+        query: AnalyticDateRangeRequestDto
+    ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
+        return this.analyticWorkspaceUserHttpService.joinOutcomes(
+            workspace.id,
+            query.startDate,
+            query.endDate
+        );
+    }
+
+    @AnalyticUserWorkspaceMemberRolesDoc()
+    @Response('analytic.workspaceMemberRoles', {
+        schema: AnalyticRoleCountResponseSchema,
+    })
+    @TermPolicyAcceptanceProtected()
+    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @WorkspaceProtected()
+    @UserProtected()
+    @FeatureFlagProtected('workspace')
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true })
+    @Get('/workspace/member-roles')
+    async memberRoles(
+        @WorkspaceCurrent() workspace: Workspace
+    ): Promise<IResponseReturn<IAnalyticRoleCountList>> {
+        return this.analyticWorkspaceUserHttpService.memberRoles(workspace.id);
+    }
+
+    @AnalyticUserWorkspaceActivityDoc()
+    @Response('analytic.workspaceActivity', {
+        schema: AnalyticMetricCountResponseSchema,
+    })
+    @TermPolicyAcceptanceProtected()
+    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @WorkspaceProtected()
+    @UserProtected()
+    @FeatureFlagProtected('workspace')
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true })
+    @Get('/workspace/activity')
+    async activity(
+        @WorkspaceCurrent() workspace: Workspace,
+        @Query({ schema: AnalyticDateRangeRequestSchema })
+        query: AnalyticDateRangeRequestDto
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
+        return this.analyticWorkspaceUserHttpService.activity(
             workspace.id,
             query.startDate,
             query.endDate

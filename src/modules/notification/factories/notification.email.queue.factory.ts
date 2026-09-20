@@ -1,4 +1,4 @@
-import {
+import type {
     RegisterQueueOptions,
     RegisterQueueOptionsFactory,
 } from '@nestjs/bullmq';
@@ -10,24 +10,29 @@ export class NotificationEmailQueueFactory implements RegisterQueueOptionsFactor
     constructor(private readonly configService: ConfigService) {}
 
     createRegisterQueueOptions(): RegisterQueueOptions {
+        const attempts = this.configService.get<number>('queue.job.attempts');
+        const backoffDelayInMs = this.configService.get<number>(
+            'queue.job.emailBackoffDelayInMs'
+        );
+        const removeOnCompleteAgeInSeconds = this.configService.get<number>(
+            'queue.job.removeOnCompleteAgeInSeconds'
+        )!;
+        const removeOnFailAgeInSeconds = this.configService.get<number>(
+            'queue.job.removeOnFailAgeInSeconds'
+        )!;
+
         return {
             defaultJobOptions: {
-                attempts: this.configService.get<number>('queue.job.attempts'),
+                attempts,
                 backoff: {
                     type: 'exponential',
-                    delay: this.configService.get<number>(
-                        'queue.job.emailBackoffDelayInMs'
-                    ),
+                    delay: backoffDelayInMs,
                 },
                 removeOnComplete: {
-                    age: this.configService.get<number>(
-                        'queue.job.removeOnCompleteAgeInSeconds'
-                    )!,
+                    age: removeOnCompleteAgeInSeconds,
                 },
                 removeOnFail: {
-                    age: this.configService.get<number>(
-                        'queue.job.removeOnFailAgeInSeconds'
-                    )!,
+                    age: removeOnFailAgeInSeconds,
                 },
             },
         };

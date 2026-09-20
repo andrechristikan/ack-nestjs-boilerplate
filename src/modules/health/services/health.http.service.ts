@@ -1,13 +1,13 @@
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
-import { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
-import { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
-import { HealthResponseDto } from '@modules/health/dtos/response/health.response.dto';
-import { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.third-party.response.dto';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
+import type { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
+import type { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
+import type { HealthResponseDto } from '@modules/health/dtos/response/health.response.dto';
+import type { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.third-party.response.dto';
 import { HealthDomain } from '@modules/health/domains/health.domain';
 import { HealthUtil } from '@modules/health/utils/health.util';
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { HealthCheckResult } from '@nestjs/terminus';
+import type { HealthCheckResult } from '@nestjs/terminus';
 
 @Injectable()
 export class HealthHttpService {
@@ -31,7 +31,9 @@ export class HealthHttpService {
             if (error instanceof ServiceUnavailableException) {
                 const response = error.getResponse();
 
-                if (this.healthUtil.isHealthCheckResult(response)) {
+                const isHealthCheckResult =
+                    this.healthUtil.isHealthCheckResult(response);
+                if (isHealthCheckResult) {
                     return this.mapResponse(response);
                 }
             }
@@ -41,8 +43,10 @@ export class HealthHttpService {
     }
 
     private mapResponse(result: HealthCheckResult): HealthResponseDto {
+        const status = this.healthUtil.mapStatus(result.status);
+
         return {
-            status: this.healthUtil.mapStatus(result.status),
+            status,
             info: result.info,
             error: result.error,
             details: result.details,
@@ -50,15 +54,15 @@ export class HealthHttpService {
     }
 
     async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
-        const data = await this.resolveResponse(this.healthDomain.checkAws());
+        const check = this.healthDomain.checkAws();
+        const data = await this.resolveResponse(check);
 
         return { data };
     }
 
     async checkDatabase(): Promise<IResponseReturn<HealthDatabaseResponseDto>> {
-        const data = await this.resolveResponse(
-            this.healthDomain.checkDatabase()
-        );
+        const check = this.healthDomain.checkDatabase();
+        const data = await this.resolveResponse(check);
 
         return { data };
     }
@@ -66,17 +70,15 @@ export class HealthHttpService {
     async checkThirdParty(): Promise<
         IResponseReturn<HealthThirdPartyResponseDto>
     > {
-        const data = await this.resolveResponse(
-            this.healthDomain.checkThirdParty()
-        );
+        const check = this.healthDomain.checkThirdParty();
+        const data = await this.resolveResponse(check);
 
         return { data };
     }
 
     async checkInstance(): Promise<IResponseReturn<HealthInstanceResponseDto>> {
-        const data = await this.resolveResponse(
-            this.healthDomain.checkInstance()
-        );
+        const check = this.healthDomain.checkInstance();
+        const data = await this.resolveResponse(check);
 
         return { data };
     }

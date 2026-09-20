@@ -3,7 +3,7 @@ import { MessageModule } from '@common/message/message.module';
 import { HelperModule } from '@common/helper/helper.module';
 import { RequestModule } from '@common/request/request.module';
 import { ResponseModule } from '@common/response/response.module';
-import configs from '@config';
+import configs from '@configs/index';
 import { FileModule } from '@common/file/file.module';
 import { AuthDomainModule } from '@modules/auth/auth.domain.module';
 import { DatabaseModule } from '@common/database/database.module';
@@ -23,14 +23,15 @@ import { SessionDomainModule } from '@modules/session/session.domain.module';
 import { PolicyDomainModule } from '@modules/policy/policy.domain.module';
 import { RoleDomainModule } from '@modules/role/role.domain.module';
 import { FeatureFlagDomainModule } from '@modules/feature-flag/feature-flag.domain.module';
+import { SentryModule } from '@common/sentry/sentry.module';
 
 /**
  * Composes kit `forRoot()` modules and the app-wide `@Global()` feature domains.
  *
  * Bootstraps the following in order:
- * - Config, logger, Redis cache, BullMQ connections, cache, database, and request pipeline
+ * - Config, message, logger, Sentry, Redis cache, BullMQ connections, cache, database, request, response
  * - Shared utilities: helper, pagination, file, Firebase
- * - Feature modules: activity log, API key, auth, term policy, notification
+ * - Feature modules: activity log, API key, auth, feature flag, role, policy, term policy, session, notification
  */
 @Module({
     controllers: [],
@@ -46,6 +47,7 @@ import { FeatureFlagDomainModule } from '@modules/feature-flag/feature-flag.doma
         }),
         MessageModule.forRoot(),
         LoggerModule.forRoot(),
+        SentryModule.forRoot(),
         RedisCacheModule.forRoot(),
         QueueModule.forRoot(),
         CacheMainModule.forRoot(),

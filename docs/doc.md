@@ -1,19 +1,21 @@
 # Doc Documentation
 
-This documentation explains the features and usage of **Doc Module**: Located at `src/common/doc`
+Swagger decorators live in `src/common/doc`.
 
 ## Overview
 
 Decorators that build the [Swagger/OpenAPI][ref-nestjs-swagger] document from route metadata and the same zod schemas used for request validation.
 
+A feature Swagger factory lives at `src/modules/<feature>/docs/<feature>.<scope>.doc.ts` and is `applyDecorators` of this kit. It sits outside the coverage set and has no unit spec. The kit in `src/common/doc/` is in the coverage set.
+
 Features:
-- Standardized API documentation structure
-- Automatic error response documentation
-- Built-in pagination support
-- File upload/download documentation
-- Multiple authentication method support
-- Request validation documentation
-- Custom language header support
+- `Doc` stamps operation metadata, shared headers, and the global kit error responses
+- `DocRequest` documents params and queries the other primitives do not emit, and the request Content-Type; `DocRequestFile` documents multipart uploads and file error responses
+- `DocResponse` / `DocResponsePagination` / `DocResponseFile` document the success envelope, pagination kit queries, and file downloads
+- `DocAuth` documents JWT, social, and `x-api-key` schemes and their auth error responses; `DocGuard` documents the throw set of each enabled guard flag
+- `DocResponseError` is the kit emitter for non-success responses of one HTTP status; module `*.doc.ts` factories do not call it
+
+Constraint when changing this surface: `rules/http.md` (Swagger section).
 
 ## Related Documents
 
@@ -21,6 +23,7 @@ Features:
 - [Response Documentation][ref-doc-response] - For response structure and formatting
 - [Authentication Documentation][ref-doc-authentication] - For authentication decorator usage
 - [Authorization Documentation][ref-doc-authorization] - For authorization guard documentation
+- [Pagination Documentation][ref-doc-pagination] - For offset and cursor list contracts
 
 ## Table of Contents
 
@@ -31,15 +34,14 @@ Features:
   - [DocRequest](#docrequest)
   - [DocRequestFile](#docrequestfile)
   - [DocResponse](#docresponse)
-  - [DocResponsePaging](#docresponsepaging)
+  - [DocResponsePagination](#docresponsepagination)
   - [DocResponseFile](#docresponsefile)
   - [DocAuth](#docauth)
   - [DocGuard](#docguard)
-- [Advanced Decorators](#advanced-decorators)
-  - [DocDefault](#docdefault)
-  - [DocOneOf](#doconeof)
-  - [DocAnyOf](#docanyof)
-  - [DocAllOf](#docallof)
+- [Published errors](#published-errors)
+  - [DocResponseError](#docresponseerror)
+  - [Accumulation shape](#accumulation-shape)
+- [Swagger JSON](#swagger-json)
 - [Schema Documentation](#schema-documentation)
   - [.meta()](#meta)
 - [Usage](#usage)
@@ -53,7 +55,7 @@ Features:
 
 ### Doc
 
-Basic API documentation decorator that sets up common operation metadata.
+Basic operation metadata for an endpoint.
 
 **Parameters:**
 
@@ -66,38 +68,52 @@ Basic API documentation decorator that sets up common operation metadata.
 **Auto-includes:**
 
 - Custom headers:
-  - `x-custom-lang` - **Customizable by frontend** - Custom language header (default: EN)
-  - `x-correlation-id` - **Customizable by frontend** - Correlation identifier for tracking requests across services
-- Standard error responses:
+  - `x-custom-lang` - Custom language header (default: EN)
+  - `x-correlation-id` - Correlation identifier for tracking requests across services
+- Global kit error responses from `DocGlobalErrorResponses` in `src/common/doc/constants/doc.constant.ts`:
   - Internal server error (500)
   - Request timeout (408)
   - Validation error (422)
-  - Environment forbidden error
-  - Parameter required error
+  - Too many requests (429)
+  - Helper decrypt / encryption-secret / pattern-token failures (500)
+  - Missing request schema or request context (500)
+  - Unique-value generation failure (500)
+  - AWS service unavailable (503)
 
 **Usage:**
 
 ```typescript
 @Doc({
-    summary: 'Get user profile',
-    operation: 'getUserProfile',
-    description: 'Retrieve authenticated user profile information'
+    summary: 'get profile',
 })
-@Get('/profile')
-async getProfile() {
-    // implementation
+@Get('/profile/get')
+async profile(
+    @AuthJwtPayload('userId') userId: string
+): Promise<IResponseReturn<IUserProfile>> {
+    return this.userProfileHttpService.getProfile(userId);
 }
 ```
 
 ### DocRequest
 
-Documents request specifications including body, parameters, and queries.
+Documents request shape the other primitives do not. Path and query inputs follow one of four bindings; which binding decides whether `DocRequest` appears:
+
+| Binding on the controller | OpenAPI source | `DocRequest`? |
+|---|---|---|
+| `@Param('…', { schema })` or `@Query({ schema })` / `@Query('…', { schema })` | zod via `standardSchemaConverter` in `src/swagger.ts` | No. A `*.doc.constant.ts` entry beside it documents twice. |
+| Path placeholder the route declares and a **guard** reads; the handler has no `@Param` | nothing else emits it | Yes: `DocRequest({ params })` with a PascalCase `ApiParamOptions[]` in `<module>.doc.constant.ts` (for example `projectId` on `/user/project` routes). |
+| `@PaginationQueryFilter*` field next to `@PaginationOffsetQuery` / `@PaginationCursorQuery` | nothing (filter pipes do not emit `@ApiQuery`) | Yes: `DocRequest({ queries })` with a PascalCase `ApiQueryOptions[]` in `<module>.doc.constant.ts`. Every filter field name on the controller has a matching entry; each entry carries `description`. |
+| `@PaginationOffsetQuery` / `@PaginationCursorQuery` kit alone (`search`, `orderBy`, page/cursor) | `DocResponsePagination` from the same allow-list constants | No for those kit keys. |
+
+`DocResponsePagination` never documents module filter fields. A list that uses both `@Pagination*Query` and `@PaginationQueryFilter*` therefore carries both `DocResponsePagination` (kit) and `DocRequest({ queries })` (filters). `bodyType` on `DocRequest` still sets `ApiConsumes` when the endpoint has a body.
+
+`@ApiQuery` / `@ApiParam` arrays live only as those PascalCase constants in `<module>/constants/<module>.doc.constant.ts`. Never an inline array in a `*.doc.ts`. The file exists only when it holds those arrays; an empty constant file is deleted.
 
 **Parameters:**
 
 - `options?: IDocRequestOptions`
-  - `params?: ApiParamOptions[]` - URL parameters
-  - `queries?: ApiQueryOptions[]` - Query parameters
+  - `params?: ApiParamOptions[]` - URL parameters (guard-read path placeholders only)
+  - `queries?: ApiQueryOptions[]` - Query parameters (pagination filter fields)
   - `bodyType?: EnumDocRequestBodyType` - Request body content type
 
 **Body Types:**
@@ -120,23 +136,10 @@ enum EnumDocRequestBodyType {
 
 ```typescript
 @DocRequest({
-    params: [
-        {
-            name: 'id',
-            required: true,
-            type: 'string'
-        }
-    ],
-    queries: [
-        {
-            name: 'include',
-            required: false,
-            type: 'string'
-        }
-    ],
-    bodyType: EnumDocRequestBodyType.json
+    queries: UserDocQueryList,
+    bodyType: EnumDocRequestBodyType.json,
 })
-@Put('/:id')
+@Put('/update')
 async updateUser() {
     // implementation
 }
@@ -153,23 +156,20 @@ Documents file upload endpoints with multipart/form-data.
 **Auto-includes:**
 
 - Content-Type: multipart/form-data
-- File-related error responses:
+- File-related error responses (`DocFileErrorResponses`):
   - File extension invalid error
   - File required error
   - File required extract first error
+  - File exceeds the upload size cap
+  - Too many files
+  - Unexpected file field
+  - Malformed multipart body
 
 **Usage:**
 
 ```typescript
 @DocRequestFile({
-    params: [
-        {
-            name: 'id',
-            required: true,
-            type: 'string'
-        }
-    ],
-    schema: FileUploadSingleRequestSchema
+    schema: FileUploadSingleRequestSchema,
 })
 @Post('/upload')
 async uploadFile() {
@@ -193,6 +193,7 @@ Documents standard response with message and optional data.
 
 - Content-Type: application/json
 - Standard response schema with message, statusCode, and data
+- Serialization failure response (`DocSerializationErrorResponses.serialization`)
 
 **Usage:**
 
@@ -200,7 +201,7 @@ Documents standard response with message and optional data.
 @DocResponse<UserProfileResponseDto>('user.get', {
     schema: UserProfileResponseSchema
 })
-@Get('/:id')
+@Get('/get/:userId')
 async getUser() {
     // implementation
 }
@@ -208,20 +209,20 @@ async getUser() {
 @DocResponse('user.delete', {
     httpStatus: HttpStatus.NO_CONTENT
 })
-@Delete('/:id')
+@Delete('/delete/:userId')
 async deleteUser() {
     // implementation
 }
 ```
 
-### DocResponsePaging
+### DocResponsePagination
 
 Documents paginated response with automatic pagination parameters.
 
 **Parameters:**
 
 - `messagePath: string` - i18n message path
-- `options: IDocResponsePagingOptions<T>`
+- `options: IDocResponsePaginationOptions<T>`
   - `schema: z.ZodType<T>` - The zod schema of ONE item of the page (required)
   - `type: EnumPaginationType` - Pagination type: `offset` or `cursor` (required, no default)
   - `statusCode?: number` - Custom status code
@@ -242,11 +243,12 @@ Documents paginated response with automatic pagination parameters.
 - Optional ordering query when `availableOrderBy` provided:
     - `orderBy` - Field and direction in `field:direction` format (e.g., `name:asc`, `createdAt:desc`). Repeat to sort by multiple fields.
 - Shared error responses (422) for both types:
-    - `orderByNotAllowed` (50200), `orderDirectionNotAllowed` (50215), `filterInvalidValue` (50201)
+    - `orderByNotAllowed`, `orderDirectionNotAllowed`, `filterInvalidValue`
     - `invalidPerPage`, `perPageExceedsMaximum`, `perPageCannotBeLessThanOne`
 - Type-specific error responses (422):
     - **Offset**: `invalidOffsetPaginationParams`, `invalidPage`, `pageExceedsMaximum`, `pageCannotBeLessThanOne`
-    - **Cursor**: `invalidCursorPaginationParams`, `cursorTooLong`, `invalidCursorFormat`, `invalidCursorData`, `failedToEncodeCursor`, `failedToDecodeCursor`, `paginationConditionsChanged`
+    - **Cursor**: `invalidCursorPaginationParams`, `cursorTooLong`, `invalidCursorFormat`, `invalidCursorData`, `failedToEncodeCursor`, `failedToDecodeCursor`
+- Serialization and pagination-shape failures (500) from `DocSerializationErrorResponses`
 
 **Usage:**
 
@@ -254,7 +256,7 @@ Documents paginated response with automatic pagination parameters.
 
 ```typescript
 // Offset pagination
-@DocResponsePaging<UserListResponseDto>('user.list', {
+@DocResponsePagination<UserListResponseDto>('user.list', {
     schema: UserListResponseSchema,
     availableSearch: UserDefaultAvailableSearch,
     availableOrderBy: UserDefaultAvailableOrderBy,
@@ -266,7 +268,7 @@ async getUsers() {
 }
 
 // Cursor pagination
-@DocResponsePaging<SessionResponseDto>('session.list', {
+@DocResponsePagination<SessionResponseDto>('session.list', {
     schema: SessionResponseSchema,
     type: EnumPaginationType.cursor,
     availableOrderBy: SessionCursorAvailableOrderBy,
@@ -277,7 +279,7 @@ async getSessions() {
 }
 ```
 
-A cursor route that allows no searchable field simply omits `availableSearch`, and the `search` query parameter is then absent from its Swagger entry.
+A cursor route that allows no searchable field omits `availableSearch`, and the `search` query parameter is then absent from its Swagger entry.
 
 ### DocResponseFile
 
@@ -288,6 +290,11 @@ Documents file download/response endpoints.
 - `options?: IDocResponseFileOptions`
   - `httpStatus?: HttpStatus` - HTTP status (default: 200)
   - `extension?: EnumFileExtensionDocument` - File extension (default: CSV)
+
+**Auto-includes:**
+
+- Produces: the MIME of `extension`
+- Export error responses: row cap exceeded (`exceedMaxDataExport`) and file size cap exceeded (`exceedMaxSizeExport`)
 
 **Usage:**
 
@@ -317,7 +324,8 @@ Documents authentication requirements and error responses.
 **Auto-includes:**
 
 - Bearer auth or security scheme based on options
-- Unauthorized error responses (401) for each auth method
+- Unauthorized (401), and where applicable forbidden (403) and server (500), responses for each enabled auth method
+- `auth.error.accessTokenUnauthorized` belongs to `DocAuth({ jwtAccessToken: true })` only. A `DocGuard` flag whose domain also throws when the principal is missing does not republish that 401.
 
 **Usage:**
 
@@ -343,29 +351,34 @@ async googleLogin() {
 
 ### DocGuard
 
-Documents authorization guards and forbidden responses.
+Documents authorization guards and the responses each enabled flag can return. Each flag mirrors one guard class, one for one, and emits exactly that guard's throw set (`IDocGuardOptions` in `src/common/doc/interfaces/doc.interface.ts`).
 
 **Parameters:**
 
 - `options?: IDocGuardOptions`
+    - `user?: boolean` - User status guard
     - `role?: boolean` - Role-based guard
     - `policy?: boolean` - Policy-based guard
     - `termPolicy?: boolean` - Term policy acceptance guard
+    - `workspace?: boolean` - Workspace exists / membership gate
+    - `workspaceRole?: boolean` - Workspace role gate
+    - `featureFlag?: boolean` - Feature flag gate
+    - `project?: boolean` - Project exists gate
+    - `projectMember?: boolean` - Project membership gate
+    - `projectRole?: boolean` - Project role gate
 
 **Auto-includes:**
 
-- Forbidden error responses (403) based on guard types:
-    - If `role` is true, documents forbidden response for role-based access control.
-    - If `policy` is true, documents forbidden response for policy-based access control.
-    - If `termPolicy` is true, documents forbidden response for term policy acceptance.
+- Responses based on the enabled flags (401, 403, 404, 500, or 503 depending on the flag). A flag raised without its guard advertises an error the endpoint cannot return; a guard without its flag hides one it can.
 
 **Usage:**
 
 ```typescript
 @DocGuard({
-        role: true,
-        policy: true,
-        termPolicy: true
+    user: true,
+    role: true,
+    policy: true,
+    termPolicy: true,
 })
 @Post('/admin/users')
 async createUser() {
@@ -373,137 +386,56 @@ async createUser() {
 }
 ```
 
-## Advanced Decorators
+## Published errors
 
-### DocDefault
+An endpoint factory publishes the **kit error set only**. The OpenAPI error responses come from `Doc()`, `DocAuth`, `DocGuard`, and when the route uses them `DocResponsePagination`, `DocRequestFile`, and `DocResponseFile`. Module-flow exceptions (domain or HTTP throws that are not behind a `DocGuard` / `DocAuth` flag) are not listed on the factory.
 
-Creates standard response schema with message, statusCode, and optional data.
-
-**Parameters:**
-
-- `options: IDocDefaultOptions<T>`
-  - `httpStatus: HttpStatus` - HTTP status (required)
-  - `messagePath: string` - i18n message path (required)
-  - `statusCode: number` - Custom status code (required)
-  - `schema?: z.ZodType<T>` - The zod schema the `data` field is documented from
-
-**Usage:**
-
-```typescript
-@DocDefault({
-    httpStatus: HttpStatus.CREATED,
-    messagePath: 'resource.created',
-    statusCode: HttpStatus.CREATED,
-    schema: DatabaseIdResponseSchema
-})
-@Post('/resource')
-async createResource() {
-    // implementation
-}
+```mermaid
+flowchart TB
+    Factory["Module *.doc.ts factory"]
+    Factory --> DocPrim["Doc()"]
+    Factory --> Auth["DocAuth"]
+    Factory --> Guard["DocGuard"]
+    Factory --> Pag["DocResponsePagination"]
+    Factory --> FileUp["DocRequestFile"]
+    Factory --> FileDown["DocResponseFile"]
+    DocPrim --> Kit["DocResponseError in doc.constant.ts"]
+    Auth --> Kit
+    Guard --> Kit
+    Pag --> Kit
+    FileUp --> Kit
+    FileDown --> Kit
 ```
 
-### DocOneOf
+| The exception lives in | Its entry belongs to |
+|---|---|
+| `src/common/` or `src/app/`, and any request can reach it | `Doc()` |
+| `src/common/`, behind one primitive | that primitive: pagination on `DocResponsePagination`, upload on `DocRequestFile`, download on `DocResponseFile` |
+| a module, raised by a guard or an auth strategy | a `DocGuard` or `DocAuth` flag |
 
-Documents endpoint that returns **one of** several possible response types using OpenAPI's `oneOf`. Useful for documenting endpoints that can return different error types with the same HTTP status.
+A module marked `@Global()` changes nothing about this. Its errors reach the kit only through a guard or auth strategy that gates them. Module `*.doc.ts` factories do not call `DocResponseError`.
 
-**Parameters:**
+### DocResponseError
 
-- `httpStatus: HttpStatus` - HTTP status code
-- `...documents: IDocOfOptions[]` - One or more possible response schemas
-  - `statusCode: number` - Status code
-  - `messagePath: string` - Message path for i18n
-  - `schema?: z.ZodType<T>` - Optional zod schema for the `data` field
+`DocResponseError(httpStatus, ...entries)` is the kit emitter for non-success responses of one status. Each entry is a `statusCode` plus its i18n `messagePath` (and optional `schema`). Kit `DocResponseError` calls live in `src/common/doc/constants/doc.constant.ts` (`DocGlobalErrorResponses`, `DocPaginationErrorResponses`, `DocFileErrorResponses`, and related groups).
 
-**Basic Usage:**
+### Accumulation shape
 
-```typescript
-DocOneOf(
-    HttpStatus.BAD_REQUEST,
-    {
-        statusCode: EnumUserStatusCodeError.emailExist,
-        messagePath: 'user.error.emailExist',
-    },
-    {
-        statusCode: EnumUserStatusCodeError.usernameExist,
-        messagePath: 'user.error.usernameExist',
-    }
-)
-```
+Every primitive that documents errors goes through `accumulateResponseEntries` on the decorated method and re-emits that status in full, so entries from different primitives at one status compose instead of replacing each other. Order inside `applyDecorators` does not change what the endpoint documents. Deduping key is `httpStatus:statusCode:messagePath`.
 
-**Detailed Examples:**
-
-For complete examples of `DocOneOf` usage in combination with other decorators, see:
-- [ApiKey Admin Documentation](../src/modules/api-key/docs/api-key.admin.doc.ts)
-
-### DocAnyOf
-
-Documents endpoint that can match **any combination** of provided schemas using OpenAPI's `anyOf`. Useful when response can satisfy one or more schemas simultaneously.
-
-**Parameters:**
-
-- `httpStatus: HttpStatus` - HTTP status code
-- `...documents: IDocOfOptions[]` - Possible response schemas
-  - `statusCode: number` - Status code
-  - `messagePath: string` - Message path for i18n
-  - `schema?: z.ZodType<T>` - Optional zod schema for the `data` field
-
-**Basic Usage:**
-
-```typescript
-DocAnyOf(
-    HttpStatus.OK,
-    {
-        statusCode: HttpStatus.OK,
-        messagePath: 'user.partial',
-        schema: UserPartialSchema,
-    },
-    {
-        statusCode: HttpStatus.OK,
-        messagePath: 'user.full',
-        schema: UserFullSchema,
-    }
-)
-```
-
-### DocAllOf
-
-Documents endpoint that must satisfy **all** provided schema definitions using OpenAPI's `allOf`. Useful for documenting responses that combine multiple schemas.
-
-**Parameters:**
-
-- `httpStatus: HttpStatus` - HTTP status code
-- `...documents: IDocOfOptions[]` - Required response schemas (all must be satisfied)
-  - `statusCode: number` - Status code
-  - `messagePath: string` - Message path for i18n
-  - `schema?: z.ZodType<T>` - Optional zod schema for the `data` field
-
-**Basic Usage:**
-
-```typescript
-DocAllOf(
-    HttpStatus.OK,
-    {
-        statusCode: HttpStatus.OK,
-        messagePath: 'user.base',
-        schema: UserBaseSchema,
-    },
-    {
-        statusCode: HttpStatus.OK,
-        messagePath: 'user.extended',
-        schema: UserExtendedSchema,
-    }
-)
-```
+- One entry at a status emits a plain schema with field examples.
+- Two or more emit one shared response-envelope schema plus named OpenAPI `examples` keyed by `messagePath`, each value the full envelope (`statusCode`, `message`, `metadata`).
+- A `oneOf` of full envelopes is not used.
 
 ## Swagger JSON
 
-The ACK NestJS Boilerplate automatically generates the OpenAPI Swagger JSON documentation for your API. This file describes all endpoints, schemas, and metadata for integration, testing, or external documentation tools.
+The OpenAPI document describes endpoints, schemas, and metadata for integration and external tools.
 
 The Swagger document is built only when `app.env` is not `production`. In a production environment neither the `/docs` UI, the JSON endpoint, nor `generated/swagger.json` is produced.
 
 ### How to Get swagger.json
 
-There are two ways to obtain the Swagger JSON file, both available outside production only:
+Two ways, both outside production only:
 
 1. **Via URL (API Docs Endpoint):**
     - After starting the server, access: `/docs/json`
@@ -512,15 +444,17 @@ There are two ways to obtain the Swagger JSON file, both available outside produ
     - This endpoint serves the latest Swagger spec for the running app.
 
 2. **Via Generated File:**
-    - The file is auto-generated at: `generated/swagger.json`
-    - This file is written every time the app starts in a non-production environment.
-    - You can use this file for CI/CD, external tools, or static documentation.
+    - The file is written at: `generated/swagger.json`
+    - Written every time the app starts in a non-production environment.
+    - Use for CI/CD, external tools, or static documentation.
 
-Both methods provide the same OpenAPI spec. Use whichever fits your workflow (dynamic via URL or static via file).
+Both methods provide the same OpenAPI spec: one served live, one written to disk.
 
 ## Schema Documentation
 
 A DTO here is a zod schema plus the type inferred from it, and the OpenAPI schema object is produced from that same schema by [zod-openapi][ref-zod-openapi]. There is no separate annotation layer: the doc decorators call `createSchema(schema)` and hand the result to `@nestjs/swagger`.
+
+Each `*.dto.ts` file declares one schema and its inferred type. Both carry a one-line JSDoc summary followed by `@public`; the same convention covers decorators, enums, exceptions, and constants.
 
 ### .meta()
 
@@ -536,6 +470,10 @@ Everything else the OpenAPI schema carries comes from the zod type itself: `.min
 **Usage:**
 
 ```typescript
+/**
+ * Validates the body for changing the signed-in user password.
+ * @public
+ */
 export const UserChangePasswordRequestSchema =
     UserLoginVerifyTwoFactorRequestSchema.omit({ challengeToken: true })
         .partial()
@@ -558,6 +496,10 @@ export const UserChangePasswordRequestSchema =
             }),
         });
 
+/**
+ * Body for changing the signed-in user password.
+ * @public
+ */
 export type UserChangePasswordRequestDto = z.infer<
     typeof UserChangePasswordRequestSchema
 >;
@@ -565,22 +507,19 @@ export type UserChangePasswordRequestDto = z.infer<
 
 **With Composition:**
 
-A derived schema inherits the `.meta()` of every field it keeps, so only the new field needs annotating:
+A derived schema inherits the `.meta()` of every field it keeps, so only the new field carries its own:
 
 ```typescript
 export const UserForgotPasswordResetRequestSchema =
-    UserChangePasswordRequestSchema.pick({ newPassword: true })
-        .extend(
-            UserLoginVerifyTwoFactorRequestSchema.omit({
-                challengeToken: true,
-            }).partial().shape
-        )
-        .extend({
-            token: z.string().min(1).meta({
-                description: 'Forgot password token',
-                example: faker.string.alphanumeric(20),
-            }),
-        });
+    UserChangePasswordRequestSchema.pick({ newPassword: true }).extend({
+        method: UserLoginVerifyTwoFactorRequestSchema.shape.method.optional(),
+        code: UserLoginVerifyTwoFactorRequestSchema.shape.code,
+        backupCode: UserLoginVerifyTwoFactorRequestSchema.shape.backupCode,
+        token: z.string().min(1).meta({
+            description: 'Forgot password token',
+            example: faker.string.alphanumeric(20),
+        }),
+    });
 
 export type UserForgotPasswordResetRequestDto = z.infer<
     typeof UserForgotPasswordResetRequestSchema
@@ -591,20 +530,19 @@ export type UserForgotPasswordResetRequestDto = z.infer<
 
 ### Complete Admin Endpoint
 
+Zod-bound path params reach OpenAPI from the schema on `@Param`; the factory does not repeat them with `DocRequest`.
+
 ```typescript
 export function UserAdminGetDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'get detail an user',
         }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse<UserProfileResponseDto>('user.get', {
             schema: UserProfileResponseSchema,
         })
@@ -613,7 +551,9 @@ export function UserAdminGetDoc(): MethodDecorator {
 
 @UserAdminGetDoc()
 @Get('/get/:userId')
-async getUser(@Param('userId') userId: string) {
+async getUser(
+    @Param('userId', { schema: RequestUuidSchema }) userId: string
+) {
     // implementation
 }
 ```
@@ -649,6 +589,8 @@ async signUp(
 
 ### Paginated List Endpoint
 
+Filter fields use `DocRequest({ queries })`; pagination kit keys come from `DocResponsePagination` only.
+
 ```typescript
 export function UserAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -662,8 +604,8 @@ export function UserAdminListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<UserListResponseDto>('user.list', {
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
+        DocResponsePagination<UserListResponseDto>('user.list', {
             schema: UserListResponseSchema,
             availableSearch: UserDefaultAvailableSearch,
             availableOrderBy: UserDefaultAvailableOrderBy,
@@ -695,7 +637,7 @@ export function UserSharedUploadPhotoProfileDoc(): MethodDecorator {
         Doc({
             summary: 'upload photo profile',
         }),
-        DocGuard({ termPolicy: true }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
@@ -725,7 +667,7 @@ async uploadPhotoProfile(
 }
 ```
 
-For more information about NestJS Swagger integration, see the [official NestJS documentation][ref-nestjs-swagger].
+See the [NestJS OpenAPI documentation][ref-nestjs-swagger].
 
 
 <!-- REFERENCES -->
@@ -737,3 +679,4 @@ For more information about NestJS Swagger integration, see the [official NestJS 
 [ref-doc-response]: response.md
 [ref-doc-authentication]: authentication.md
 [ref-doc-authorization]: authorization.md
+[ref-doc-pagination]: pagination.md

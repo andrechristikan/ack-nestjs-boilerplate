@@ -1,41 +1,16 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { IAnalyticSharedFingerprintRow } from '@modules/analytic/interfaces/analytic.fraud.interface';
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
-import {
-    IDeviceOwnershipAnalyticCreatedRow,
-    IDeviceOwnershipAnalyticInactiveRow,
-    IDeviceOwnershipAnalyticRepository,
+import type { IAnalyticSharedFingerprint } from '@modules/analytic/interfaces/analytic.fraud.interface';
+import type {
+    IDeviceOwnershipAnalyticCreated,
+    IDeviceOwnershipAnalyticInactive,
     IDeviceOwnershipAnalyticUserCount,
-} from '@modules/device/interfaces/device.ownership.analytic.repository.interface';
+} from '@modules/device/interfaces/device.interface';
+import type { IDeviceOwnershipAnalyticRepository } from '@modules/device/interfaces/device.ownership-analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DeviceOwnershipAnalyticRepository implements IDeviceOwnershipAnalyticRepository {
     constructor(private readonly databaseService: DatabaseService) {}
-
-    async countRegistrations(startDate: Date, endDate: Date): Promise<number> {
-        return this.databaseService.client.device.count({
-            where: { createdAt: { gte: startDate, lt: endDate } },
-        });
-    }
-
-    async groupByPlatform(): Promise<IAnalyticCountBucket[]> {
-        const rows = await this.databaseService.client.device.groupBy({
-            by: ['platform'],
-            _count: { _all: true },
-        });
-        return rows.map(r => ({ key: r.platform, count: r._count._all }));
-    }
-
-    async countWithPushToken(): Promise<number> {
-        return this.databaseService.client.device.count({
-            where: { notificationToken: { not: null } },
-        });
-    }
-
-    async countDevices(): Promise<number> {
-        return this.databaseService.client.device.count();
-    }
 
     async countOwnerships(): Promise<number> {
         return this.databaseService.client.deviceOwnership.count({
@@ -54,7 +29,7 @@ export class DeviceOwnershipAnalyticRepository implements IDeviceOwnershipAnalyt
 
     async findInactive(
         before: Date
-    ): Promise<IDeviceOwnershipAnalyticInactiveRow[]> {
+    ): Promise<IDeviceOwnershipAnalyticInactive[]> {
         return this.databaseService.client.deviceOwnership.findMany({
             where: {
                 isRevoked: false,
@@ -72,7 +47,7 @@ export class DeviceOwnershipAnalyticRepository implements IDeviceOwnershipAnalyt
     async findCreatedInRange(
         startDate: Date,
         endDate: Date
-    ): Promise<IDeviceOwnershipAnalyticCreatedRow[]> {
+    ): Promise<IDeviceOwnershipAnalyticCreated[]> {
         return this.databaseService.client.deviceOwnership.findMany({
             where: {
                 createdAt: { gte: startDate, lt: endDate },
@@ -88,7 +63,7 @@ export class DeviceOwnershipAnalyticRepository implements IDeviceOwnershipAnalyt
 
     async sharedFingerprints(
         minUsers: number
-    ): Promise<IAnalyticSharedFingerprintRow[]> {
+    ): Promise<IAnalyticSharedFingerprint[]> {
         const ownerships =
             await this.databaseService.client.deviceOwnership.findMany({
                 where: { isRevoked: false },

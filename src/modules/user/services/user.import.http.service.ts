@@ -1,13 +1,13 @@
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
-import {
+import type {
     IPaginationEqual,
     IPaginationIn,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client';
-import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
-import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
+import type { IResponseFileReturn } from '@common/response/interfaces/response.interface';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import type { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 import { UserImportDomain } from '@modules/user/domains/user.import.domain';
 import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
@@ -27,7 +27,7 @@ export class UserImportHttpService {
         data: UserImportRequestDto[],
         createdBy: string
     ): Promise<void> {
-        const { inputs, passwordHasheds } =
+        const { inputs, passwordHasheds, passwordStrings } =
             await this.userImportDomain.prepareImportByAdmin(
                 data.map(({ email, name, username }) => ({
                     email,
@@ -36,15 +36,18 @@ export class UserImportHttpService {
                 })),
                 createdBy
             );
+        const createBulkTimeoutInMs =
+            this.userOnboardingDomain.getCreateBulkTimeoutInMs();
         const users = await this.workspaceDomain.commitOnboarding(
             inputs,
             EnumUserCreateMode.admin,
-            this.userOnboardingDomain.getCreateBulkTimeoutInMs(),
+            createBulkTimeoutInMs,
             EnumActivityLogAction.adminUserImport
         );
         await this.userImportDomain.notifyImported(
             users,
             passwordHasheds,
+            passwordStrings,
             createdBy
         );
     }
@@ -84,8 +87,10 @@ export class UserImportHttpService {
             role: user.role.name,
         }));
 
+        const csv = this.fileService.writeCsv<UserExportResponseDto>(users);
+
         return {
-            data: this.fileService.writeCsv<UserExportResponseDto>(users),
+            data: csv,
             extension: EnumFileExtensionDocument.csv,
         };
     }

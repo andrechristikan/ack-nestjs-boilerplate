@@ -1,15 +1,17 @@
-import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
+import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
+import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { TermPolicyTemplateDomain } from '@modules/term-policy/domains/term-policy.template.domain';
 import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
 
 /**
@@ -25,13 +27,19 @@ export class MigrationTemplateTermPolicySeed
     implements IMigrationSeed
 {
     private readonly logger = new Logger(MigrationTemplateTermPolicySeed.name);
+    private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
         private readonly termPolicyTemplateDomain: TermPolicyTemplateDomain,
         private readonly databaseService: DatabaseService,
-        private readonly awsS3Service: AwsS3Service
+        private readonly awsS3Service: AwsS3Service,
+        private readonly configService: ConfigService
     ) {
         super();
+
+        this.seedTransactionTimeoutInMs = this.configService.get<number>(
+            'database.seedTransactionTimeoutInMs'
+        )!;
     }
 
     private mapContent(asset: IAwsS3): Omit<IAwsS3, 'data'> & {
@@ -84,101 +92,52 @@ export class MigrationTemplateTermPolicySeed
                 return;
             }
 
-            const termsOfServiceContent = this.mapContent(termsOfServiceAsset);
-            const privacyContent = this.mapContent(privacyAsset);
-            const cookieContent = this.mapContent(cookieAsset);
-            const marketingContent = this.mapContent(marketingAsset);
+            const policies = [
+                {
+                    type: EnumTermPolicyType.termsOfService,
+                    content: this.mapContent(termsOfServiceAsset),
+                },
+                {
+                    type: EnumTermPolicyType.privacy,
+                    content: this.mapContent(privacyAsset),
+                },
+                {
+                    type: EnumTermPolicyType.cookies,
+                    content: this.mapContent(cookieAsset),
+                },
+                {
+                    type: EnumTermPolicyType.marketing,
+                    content: this.mapContent(marketingAsset),
+                },
+            ];
 
-            await this.databaseService.client.$transaction([
-                this.databaseService.client.termPolicy.upsert({
-                    where: {
-                        type_version: {
-                            type: EnumTermPolicyType.termsOfService,
-                            version: 1,
-                        },
-                    },
-                    create: {
-                        type: EnumTermPolicyType.termsOfService,
-                        version: 1,
-                        status: EnumTermPolicyStatus.published,
-                        contents: {
-                            create: termsOfServiceContent,
-                        },
-                    },
-                    update: {
-                        contents: {
-                            deleteMany: {},
-                            create: termsOfServiceContent,
-                        },
-                    },
-                }),
-                this.databaseService.client.termPolicy.upsert({
-                    where: {
-                        type_version: {
-                            type: EnumTermPolicyType.privacy,
-                            version: 1,
-                        },
-                    },
-                    create: {
-                        type: EnumTermPolicyType.privacy,
-                        version: 1,
-                        status: EnumTermPolicyStatus.published,
-                        contents: {
-                            create: privacyContent,
-                        },
-                    },
-                    update: {
-                        contents: {
-                            deleteMany: {},
-                            create: privacyContent,
-                        },
-                    },
-                }),
-                this.databaseService.client.termPolicy.upsert({
-                    where: {
-                        type_version: {
-                            type: EnumTermPolicyType.cookies,
-                            version: 1,
-                        },
-                    },
-                    create: {
-                        type: EnumTermPolicyType.cookies,
-                        version: 1,
-                        status: EnumTermPolicyStatus.published,
-                        contents: {
-                            create: cookieContent,
-                        },
-                    },
-                    update: {
-                        contents: {
-                            deleteMany: {},
-                            create: cookieContent,
-                        },
-                    },
-                }),
-                this.databaseService.client.termPolicy.upsert({
-                    where: {
-                        type_version: {
-                            type: EnumTermPolicyType.marketing,
-                            version: 1,
-                        },
-                    },
-                    create: {
-                        type: EnumTermPolicyType.marketing,
-                        version: 1,
-                        status: EnumTermPolicyStatus.published,
-                        contents: {
-                            create: marketingContent,
-                        },
-                    },
-                    update: {
-                        contents: {
-                            deleteMany: {},
-                            create: marketingContent,
-                        },
-                    },
-                }),
-            ]);
+            await this.databaseService.withTransaction(
+                async tx => {
+                    for (const { type, content } of policies) {
+                        await tx.termPolicy.upsert({
+                            where: {
+                                type_version: { type, version: 1 },
+                            },
+                            create: {
+                                type,
+                                version: 1,
+                                status: EnumTermPolicyStatus.published,
+                                contents: { create: content },
+                                createdBy: MigrationUserSuperAdminId,
+                                updatedBy: MigrationUserSuperAdminId,
+                            },
+                            update: {
+                                contents: {
+                                    deleteMany: {},
+                                    create: content,
+                                },
+                                updatedBy: MigrationUserSuperAdminId,
+                            },
+                        });
+                    }
+                },
+                { timeout: this.seedTransactionTimeoutInMs }
+            );
         } catch (error: unknown) {
             this.logger.error(error, 'Error seeding term policies');
             throw error;

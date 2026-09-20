@@ -3,11 +3,12 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { TermPolicyContentSchema } from '@modules/term-policy/dtos/term-policy.content.dto';
 
 /**
  * Base term-policy shape: the stored terms or policy row with its localized contents.
+ * @public
  */
 export const TermPolicyResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -35,4 +36,8 @@ export const TermPolicyResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
+/**
+ * Stored term policy with its localized contents.
+ * @public
+ */
 export type TermPolicyResponseDto = z.infer<typeof TermPolicyResponseSchema>;

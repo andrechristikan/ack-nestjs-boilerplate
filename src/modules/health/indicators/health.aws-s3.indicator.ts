@@ -1,10 +1,8 @@
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { Injectable } from '@nestjs/common';
-import {
-    HealthIndicatorResult,
-    HealthIndicatorService,
-} from '@nestjs/terminus';
+import { HealthIndicatorService } from '@nestjs/terminus';
+import type { HealthIndicatorResult } from '@nestjs/terminus';
 
 /**
  * Reports AWS S3 bucket reachability as a Terminus health indicator.

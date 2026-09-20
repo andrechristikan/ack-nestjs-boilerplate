@@ -1,8 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import {
-    ITermPolicyAcceptanceAnalyticRepository,
-    ITermPolicyAcceptanceAnalyticRow,
-} from '@modules/term-policy/interfaces/term-policy.acceptance.analytic.repository.interface';
+import type { ITermPolicyAcceptanceAnalyticRepository } from '@modules/term-policy/interfaces/term-policy.acceptance-analytic-repository.interface';
+import type { ITermPolicyAcceptanceAnalytic } from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -24,7 +22,7 @@ export class TermPolicyAcceptanceAnalyticRepository implements ITermPolicyAccept
     async findAcceptances(
         startDate: Date | null,
         endDate: Date | null
-    ): Promise<ITermPolicyAcceptanceAnalyticRow[]> {
+    ): Promise<ITermPolicyAcceptanceAnalytic[]> {
         return this.databaseService.client.termPolicyUserAcceptance.findMany({
             where:
                 startDate && endDate

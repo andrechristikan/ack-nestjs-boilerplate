@@ -1,15 +1,15 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumPasswordHistoryType,
-    PasswordHistory,
     Prisma,
-} from '@generated/prisma-client';
-import { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
+} from '@generated/prisma-client/client';
+import type { PasswordHistory } from '@generated/prisma-client/client';
+import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
 import { Injectable } from '@nestjs/common';
 
@@ -22,7 +22,7 @@ export class PasswordHistoryDomain {
     async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
-    ): Promise<IResponsePagingReturn<IPasswordHistory>> {
+    ): Promise<IResponsePagingReturn<IPasswordHistoryList>> {
         return this.passwordHistoryRepository.findWithPaginationOffsetByAdmin(
             userId,
             pagination
@@ -32,7 +32,7 @@ export class PasswordHistoryDomain {
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
-    ): Promise<IResponsePagingReturn<IPasswordHistory>> {
+    ): Promise<IResponsePagingReturn<IPasswordHistoryList>> {
         return this.passwordHistoryRepository.findWithPaginationCursor(
             userId,
             pagination

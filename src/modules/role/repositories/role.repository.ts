@@ -1,21 +1,22 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import {
+import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import {
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type {
     IRole,
     IRoleCreate,
     IRoleUpdate,
     IRoleWithPolicies,
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
-import { IRoleRepository } from '@modules/role/interfaces/role.repository.interface';
+import type { IRoleRepository } from '@modules/role/interfaces/role.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { Prisma, Role } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
+import type { Role } from '@generated/prisma-client/client';
 
 @Injectable()
 export class RoleRepository implements IRoleRepository {
@@ -117,9 +118,15 @@ export class RoleRepository implements IRoleRepository {
         return count > 0;
     }
 
-    async create(data: IRoleCreate): Promise<IRoleWithPolicies> {
+    async create(
+        roleId: string,
+        data: IRoleCreate
+    ): Promise<IRoleWithPolicies> {
         return this.databaseService.client.role.create({
-            data,
+            data: {
+                ...data,
+                id: roleId,
+            },
             include: { policies: true },
         });
     }

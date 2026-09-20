@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { RoleUpdateRequestSchema } from '@modules/role/dtos/request/role.update.request.dto';
 
+/**
+ * Validates the body for creating a role.
+ * @public
+ */
 export const RoleCreateRequestSchema = RoleUpdateRequestSchema.extend({
     name: z
         .string()
@@ -17,4 +21,8 @@ export const RoleCreateRequestSchema = RoleUpdateRequestSchema.extend({
         .transform(value => value as Lowercase<string>),
 });
 
+/**
+ * Body for creating a role.
+ * @public
+ */
 export type RoleCreateRequestDto = z.infer<typeof RoleCreateRequestSchema>;

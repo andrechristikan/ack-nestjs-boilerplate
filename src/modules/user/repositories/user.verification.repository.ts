@@ -1,17 +1,17 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
     EnumUserStatus,
     EnumVerificationType,
-    Verification,
-} from '@generated/prisma-client';
-import {
-    IUserOnboardingVerificationRow,
+} from '@generated/prisma-client/client';
+import type { Verification } from '@generated/prisma-client/client';
+import type {
+    IUserOnboardingVerification,
     IUserVerificationCreate,
 } from '@modules/user/interfaces/user.interface';
-import { IUserVerificationRepository } from '@modules/user/interfaces/user.verification.repository.interface';
+import type { IUserVerificationRepository } from '@modules/user/interfaces/user.verification-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -74,27 +74,6 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         });
     }
 
-    async expireActiveByTypeInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        type: EnumVerificationType,
-        expiredAt: Date
-    ): Promise<void> {
-        await tx.verification.updateMany({
-            where: {
-                userId,
-                type,
-                isUsed: false,
-                expiredAt: {
-                    gt: expiredAt,
-                },
-            },
-            data: {
-                expiredAt,
-            },
-        });
-    }
-
     async createFromOnboardingInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -106,7 +85,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
             expiredAt,
             verifiedAt,
             isUsed,
-        }: IUserOnboardingVerificationRow,
+        }: IUserOnboardingVerification,
         createdBy: string
     ): Promise<Verification> {
         return tx.verification.create({
@@ -124,24 +103,39 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         });
     }
 
-    async createInTx(
-        tx: IDatabaseTransactionClient,
+    async createReplacingActive(
         userId: string,
         userEmail: string,
         { expiredAt, reference, hashedToken, type }: IUserVerificationCreate,
         createdAt: Date
     ): Promise<Verification> {
-        return tx.verification.create({
-            data: {
-                userId,
-                expiredAt,
-                reference,
-                token: hashedToken,
-                type,
-                to: userEmail,
-                createdBy: userId,
-                createdAt,
-            },
+        return this.databaseService.withTransaction(async tx => {
+            await tx.verification.updateMany({
+                where: {
+                    userId,
+                    type,
+                    isUsed: false,
+                    expiredAt: {
+                        gt: createdAt,
+                    },
+                },
+                data: {
+                    expiredAt: createdAt,
+                },
+            });
+
+            return tx.verification.create({
+                data: {
+                    userId,
+                    expiredAt,
+                    reference,
+                    token: hashedToken,
+                    type,
+                    to: userEmail,
+                    createdBy: userId,
+                    createdAt,
+                },
+            });
         });
     }
 }

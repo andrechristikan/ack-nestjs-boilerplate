@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
+import type { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
 
 /**
  * Base feature-flag shape: the stored feature-flag row.
+ * @public
  */
 export const FeatureFlagResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -27,4 +28,8 @@ export const FeatureFlagResponseSchema = DatabaseResponseSchema.omit({
         .nullable(),
 });
 
+/**
+ * Stored feature flag.
+ * @public
+ */
 export type FeatureFlagResponseDto = z.infer<typeof FeatureFlagResponseSchema>;

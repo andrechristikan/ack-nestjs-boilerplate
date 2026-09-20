@@ -1,24 +1,36 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { PaginationService } from '@common/pagination/services/pagination.service';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import {
-    IAnalyticAccountTakeoverRow,
-    IAnalyticApiKeyBurstRow,
-    IAnalyticBackupCodeNewDeviceRow,
-    IAnalyticCredentialStuffingRow,
-    IAnalyticForgotPasswordAbuseRow,
+    AnalyticAccountTakeoverAvailableOrderBy,
+    AnalyticBackupCodeNewDeviceAvailableOrderBy,
+    AnalyticCredentialStuffingAvailableOrderBy,
+    AnalyticForgotPasswordAbuseAvailableOrderBy,
+    AnalyticFraudRiskScoreAvailableOrderBy,
+    AnalyticKeyCountAvailableOrderBy,
+    AnalyticSessionAfterAdminAvailableOrderBy,
+    AnalyticSharedFingerprintAvailableOrderBy,
+    AnalyticUserCountAvailableOrderBy,
+} from '@modules/analytic/constants/analytic.list.constant';
+import type {
+    IAnalyticAccountTakeover,
+    IAnalyticApiKeyBurst,
+    IAnalyticBackupCodeNewDevice,
+    IAnalyticCredentialStuffing,
+    IAnalyticForgotPasswordAbuse,
     IAnalyticFraudRiskScore,
     IAnalyticFraudSummary,
-    IAnalyticMassRegistrationRow,
-    IAnalyticPasswordResetEnumerationRow,
-    IAnalyticRefreshSpikeRow,
-    IAnalyticSessionAfterAdminRow,
-    IAnalyticSharedFingerprintRow,
+    IAnalyticMassRegistration,
+    IAnalyticPasswordResetEnumeration,
+    IAnalyticRefreshSpike,
+    IAnalyticSessionAfterAdmin,
+    IAnalyticSharedFingerprint,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
+import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
 import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
 import { UserForgotPasswordAnalyticDomain } from '@modules/user/domains/user.forgot-password.analytic.domain';
@@ -27,7 +39,7 @@ import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.e
 import { UserPasswordAnalyticDomain } from '@modules/user/domains/user.password.analytic.domain';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import { Duration } from 'luxon';
 
 @Injectable()
@@ -35,6 +47,8 @@ export class AnalyticFraudDomain {
     constructor(
         private readonly analyticCache: AnalyticCache,
         private readonly analyticDateUtil: AnalyticDateUtil,
+        private readonly analyticSortUtil: AnalyticSortUtil,
+        private readonly paginationService: PaginationService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
         private readonly activityLogAnalyticDomain: ActivityLogAnalyticDomain,
@@ -82,33 +96,9 @@ export class AnalyticFraudDomain {
         )!;
     }
 
-    private pageRows<T>(
-        rows: T[],
-        skip: number,
-        limit: number
-    ): IResponsePagingReturn<T> {
-        const page = limit > 0 ? Math.floor(skip / limit) : 0;
-        const perPage = limit;
-        const totalPage = Math.ceil(rows.length / perPage) || 1;
-        const hasNext = page + 1 < totalPage;
-        const hasPrevious = page > 0;
-        return {
-            type: EnumPaginationType.offset,
-            count: rows.length,
-            perPage,
-            page,
-            totalPage,
-            hasNext,
-            hasPrevious,
-            data: rows.slice(skip, skip + perPage),
-            ...(hasNext ? { nextPage: page + 1 } : {}),
-            ...(hasPrevious ? { previousPage: page - 1 } : {}),
-        };
-    }
-
     private async computeCredentialStuffing(
         windowMs: number
-    ): Promise<IAnalyticCredentialStuffingRow[]> {
+    ): Promise<IAnalyticCredentialStuffing[]> {
         const end = this.helperDateService.create();
         const start = this.helperDateService.backward(
             end,
@@ -146,7 +136,7 @@ export class AnalyticFraudDomain {
     private async computeAccountTakeover(
         startDate: Date,
         endDate: Date
-    ): Promise<IAnalyticAccountTakeoverRow[]> {
+    ): Promise<IAnalyticAccountTakeover[]> {
         const changes =
             await this.userPasswordAnalyticDomain.findProfileChanges(
                 startDate,
@@ -155,14 +145,15 @@ export class AnalyticFraudDomain {
         const windowMs = this.configService.get<number>(
             'analytic.fraud.accountTakeover.newDeviceAfterPasswordChangeInMs'
         )!;
-        const flagged: IAnalyticAccountTakeoverRow[] = [];
+        const flagged: IAnalyticAccountTakeover[] = [];
         for (const change of changes) {
+            const windowEnd = this.helperDateService.forward(
+                change.createdAt,
+                Duration.fromMillis(windowMs)
+            );
             const devices = await this.deviceAnalyticDomain.findCreatedInRange(
                 change.createdAt,
-                this.helperDateService.forward(
-                    change.createdAt,
-                    Duration.fromMillis(windowMs)
-                )
+                windowEnd
             );
             const forUser = devices.filter(d => d.userId === change.userId);
             if (forUser.length > 0) {
@@ -178,7 +169,7 @@ export class AnalyticFraudDomain {
 
     private async computeMassRegistration(
         windowMs: number
-    ): Promise<IAnalyticMassRegistrationRow[]> {
+    ): Promise<IAnalyticMassRegistration[]> {
         const end = this.helperDateService.create();
         const start = this.helperDateService.backward(
             end,
@@ -203,7 +194,7 @@ export class AnalyticFraudDomain {
 
     private async computePasswordResetEnumeration(
         windowMs: number
-    ): Promise<IAnalyticPasswordResetEnumerationRow[]> {
+    ): Promise<IAnalyticPasswordResetEnumeration[]> {
         const end = this.helperDateService.create();
         const start = this.helperDateService.backward(
             end,
@@ -230,11 +221,10 @@ export class AnalyticFraudDomain {
     private async computeSessionAfterAdmin(
         startDate: Date,
         endDate: Date
-    ): Promise<IAnalyticSessionAfterAdminRow[]> {
+    ): Promise<IAnalyticSessionAfterAdmin[]> {
         const revokes =
             await this.activityLogAnalyticDomain.findManyByActionsInRange(
                 [
-                    EnumActivityLogAction.adminSessionRevoke,
                     EnumActivityLogAction.userRevokeSessionByAdmin,
                     EnumActivityLogAction.userRevokeAllSessionsByAdmin,
                 ],
@@ -244,14 +234,15 @@ export class AnalyticFraudDomain {
         const delta = this.configService.get<number>(
             'analytic.fraud.sessionAfterAdmin.sessionAfterAdminRevokeInMs'
         )!;
-        const flagged: IAnalyticSessionAfterAdminRow[] = [];
+        const flagged: IAnalyticSessionAfterAdmin[] = [];
         for (const revoke of revokes) {
+            const windowEnd = this.helperDateService.forward(
+                revoke.createdAt,
+                Duration.fromMillis(delta)
+            );
             const logins = await this.userLoginAnalyticDomain.findLoginEvents(
                 revoke.createdAt,
-                this.helperDateService.forward(
-                    revoke.createdAt,
-                    Duration.fromMillis(delta)
-                )
+                windowEnd
             );
             const hit = logins.find(l => l.userId === revoke.userId);
             if (hit) {
@@ -267,7 +258,7 @@ export class AnalyticFraudDomain {
 
     private async computeForgotPasswordAbuse(
         windowMs: number
-    ): Promise<IAnalyticForgotPasswordAbuseRow[]> {
+    ): Promise<IAnalyticForgotPasswordAbuse[]> {
         const end = this.helperDateService.create();
         const start = this.helperDateService.backward(
             end,
@@ -288,7 +279,7 @@ export class AnalyticFraudDomain {
 
     private async computeRefreshSpike(
         windowMs: number
-    ): Promise<IAnalyticRefreshSpikeRow[]> {
+    ): Promise<IAnalyticRefreshSpike[]> {
         const end = this.helperDateService.create();
         const start = this.helperDateService.backward(
             end,
@@ -314,31 +305,32 @@ export class AnalyticFraudDomain {
 
     private async computeBackupCodeNewDevice(
         windowMs: number
-    ): Promise<IAnalyticBackupCodeNewDeviceRow[]> {
+    ): Promise<IAnalyticBackupCodeNewDevice[]> {
         const end = this.helperDateService.create();
         const start = this.helperDateService.backward(
             end,
             Duration.fromMillis(windowMs)
         );
-        const regens =
+        const regenerations =
             await this.activityLogAnalyticDomain.findManyByActionsInRange(
                 [EnumActivityLogAction.userRegenerateTwoFactorBackupCodes],
                 start,
                 end
             );
-        const flagged: IAnalyticBackupCodeNewDeviceRow[] = [];
-        for (const regen of regens) {
-            const devices = await this.deviceAnalyticDomain.findCreatedInRange(
-                regen.createdAt,
-                this.helperDateService.forward(
-                    regen.createdAt,
-                    Duration.fromMillis(windowMs)
-                )
+        const flagged: IAnalyticBackupCodeNewDevice[] = [];
+        for (const regeneration of regenerations) {
+            const windowEnd = this.helperDateService.forward(
+                regeneration.createdAt,
+                Duration.fromMillis(windowMs)
             );
-            if (devices.some(d => d.userId === regen.userId)) {
+            const devices = await this.deviceAnalyticDomain.findCreatedInRange(
+                regeneration.createdAt,
+                windowEnd
+            );
+            if (devices.some(d => d.userId === regeneration.userId)) {
                 flagged.push({
-                    userId: regen.userId,
-                    regeneratedAt: regen.createdAt,
+                    userId: regeneration.userId,
+                    regeneratedAt: regeneration.createdAt,
                 });
             }
         }
@@ -347,7 +339,7 @@ export class AnalyticFraudDomain {
 
     private async computeApiKeyBurst(
         windowMs: number
-    ): Promise<IAnalyticApiKeyBurstRow[]> {
+    ): Promise<IAnalyticApiKeyBurst[]> {
         const end = this.helperDateService.create();
         const start = this.helperDateService.backward(
             end,
@@ -390,13 +382,14 @@ export class AnalyticFraudDomain {
             return cached;
         }
         const rows = await this.computeCredentialStuffing(window);
+        const minUniqueAccounts = this.configService.get<number>(
+            'analytic.fraud.credentialStuffing.minUniqueAccounts'
+        )!;
         const summary: IAnalyticFraudSummary = {
             count: rows.length,
             window: String(window),
             meta: {
-                minUniqueAccounts: this.configService.get<number>(
-                    'analytic.fraud.credentialStuffing.minUniqueAccounts'
-                )!,
+                minUniqueAccounts,
             },
         };
         await this.analyticCache.setFraudSummary(
@@ -410,26 +403,32 @@ export class AnalyticFraudDomain {
     async credentialStuffingList(
         windowMs: number | null,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticCredentialStuffingRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticCredentialStuffing>> {
         const window = this.resolveWindow(
             windowMs,
             'analytic.fraud.credentialStuffing.windowInMs'
         );
-        return this.pageRows(
-            await this.computeCredentialStuffing(window),
-            params.skip,
-            params.limit
+        const rows = await this.computeCredentialStuffing(window);
+
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticCredentialStuffingAvailableOrderBy
         );
+        const data = sorted.slice(skip, skip + limit);
+
+        return this.paginationService.offsetPage(data, sorted.length, {
+            skip,
+            limit,
+        });
     }
 
     async accountTakeoverSummary(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticFraudSummary> {
-        const window =
-            this.analyticDateUtil.cacheToken(startDate) +
-            ':' +
-            this.analyticDateUtil.cacheToken(endDate);
+        const window = this.analyticDateUtil.windowToken(startDate, endDate);
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
                 'account-takeover',
@@ -455,12 +454,21 @@ export class AnalyticFraudDomain {
         startDate: Date,
         endDate: Date,
         params: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticAccountTakeoverRow>> {
-        return this.pageRows(
-            await this.computeAccountTakeover(startDate, endDate),
-            params.skip,
-            params.limit
+    ): Promise<IResponsePagingReturn<IAnalyticAccountTakeover>> {
+        const rows = await this.computeAccountTakeover(startDate, endDate);
+
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticAccountTakeoverAvailableOrderBy
         );
+        const data = sorted.slice(skip, skip + limit);
+
+        return this.paginationService.offsetPage(data, sorted.length, {
+            skip,
+            limit,
+        });
     }
 
     async massRegistrationSummary(
@@ -494,16 +502,25 @@ export class AnalyticFraudDomain {
     async massRegistrationList(
         windowMs: number | null,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticMassRegistrationRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticMassRegistration>> {
         const window = this.resolveWindow(
             windowMs,
             'analytic.fraud.massRegistration.windowInMs'
         );
-        return this.pageRows(
-            await this.computeMassRegistration(window),
-            params.skip,
-            params.limit
+        const rows = await this.computeMassRegistration(window);
+
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticKeyCountAvailableOrderBy
         );
+        const data = sorted.slice(skip, skip + limit);
+
+        return this.paginationService.offsetPage(data, sorted.length, {
+            skip,
+            limit,
+        });
     }
 
     async passwordResetEnumerationSummary(
@@ -537,16 +554,25 @@ export class AnalyticFraudDomain {
     async passwordResetEnumerationList(
         windowMs: number | null,
         params: IPaginationQueryOffsetParams<Prisma.ForgotPasswordWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticPasswordResetEnumerationRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticPasswordResetEnumeration>> {
         const window = this.resolveWindow(
             windowMs,
             'analytic.fraud.passwordResetEnumeration.windowInMs'
         );
-        return this.pageRows(
-            await this.computePasswordResetEnumeration(window),
-            params.skip,
-            params.limit
+        const rows = await this.computePasswordResetEnumeration(window);
+
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticKeyCountAvailableOrderBy
         );
+        const data = sorted.slice(skip, skip + limit);
+
+        return this.paginationService.offsetPage(data, sorted.length, {
+            skip,
+            limit,
+        });
     }
 
     async sharedFingerprintSummary(): Promise<IAnalyticFraudSummary> {
@@ -574,23 +600,31 @@ export class AnalyticFraudDomain {
 
     async sharedFingerprintList(
         params: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticSharedFingerprintRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticSharedFingerprint>> {
         const minUsers = this.configService.get<number>(
             'analytic.fraud.sharedFingerprint.minUsersPerFingerprint'
         )!;
         const rows =
             await this.deviceAnalyticDomain.sharedFingerprints(minUsers);
-        return this.pageRows(rows, params.skip, params.limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticSharedFingerprintAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
+
+        return this.paginationService.offsetPage(data, sorted.length, {
+            skip,
+            limit,
+        });
     }
 
     async sessionAfterAdminSummary(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticFraudSummary> {
-        const window =
-            this.analyticDateUtil.cacheToken(startDate) +
-            ':' +
-            this.analyticDateUtil.cacheToken(endDate);
+        const window = this.analyticDateUtil.windowToken(startDate, endDate);
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
                 'session-after-admin',
@@ -616,12 +650,21 @@ export class AnalyticFraudDomain {
         startDate: Date,
         endDate: Date,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticSessionAfterAdminRow>> {
-        return this.pageRows(
-            await this.computeSessionAfterAdmin(startDate, endDate),
-            params.skip,
-            params.limit
+    ): Promise<IResponsePagingReturn<IAnalyticSessionAfterAdmin>> {
+        const rows = await this.computeSessionAfterAdmin(startDate, endDate);
+
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticSessionAfterAdminAvailableOrderBy
         );
+        const data = sorted.slice(skip, skip + limit);
+
+        return this.paginationService.offsetPage(data, sorted.length, {
+            skip,
+            limit,
+        });
     }
 
     async forgotPasswordTokenAbuseSummary(
@@ -655,16 +698,25 @@ export class AnalyticFraudDomain {
     async forgotPasswordTokenAbuseList(
         windowMs: number | null,
         params: IPaginationQueryOffsetParams<Prisma.ForgotPasswordWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticForgotPasswordAbuseRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticForgotPasswordAbuse>> {
         const window = this.resolveWindow(
             windowMs,
             'analytic.fraud.forgotPasswordTokenAbuse.windowInMs'
         );
-        return this.pageRows(
-            await this.computeForgotPasswordAbuse(window),
-            params.skip,
-            params.limit
+        const rows = await this.computeForgotPasswordAbuse(window);
+
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticForgotPasswordAbuseAvailableOrderBy
         );
+        const data = sorted.slice(skip, skip + limit);
+
+        return this.paginationService.offsetPage(data, sorted.length, {
+            skip,
+            limit,
+        });
     }
 
     async refreshSpikeSummary(
@@ -698,16 +750,25 @@ export class AnalyticFraudDomain {
     async refreshSpikeList(
         windowMs: number | null,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticRefreshSpikeRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticRefreshSpike>> {
         const window = this.resolveWindow(
             windowMs,
             'analytic.fraud.refreshSpike.windowInMs'
         );
-        return this.pageRows(
-            await this.computeRefreshSpike(window),
-            params.skip,
-            params.limit
+        const rows = await this.computeRefreshSpike(window);
+
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticUserCountAvailableOrderBy
         );
+        const data = sorted.slice(skip, skip + limit);
+
+        return this.paginationService.offsetPage(data, sorted.length, {
+            skip,
+            limit,
+        });
     }
 
     async backupCodeNewDeviceSummary(
@@ -741,16 +802,25 @@ export class AnalyticFraudDomain {
     async backupCodeNewDeviceList(
         windowMs: number | null,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticBackupCodeNewDeviceRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticBackupCodeNewDevice>> {
         const window = this.resolveWindow(
             windowMs,
             'analytic.fraud.backupCodeNewDevice.windowInMs'
         );
-        return this.pageRows(
-            await this.computeBackupCodeNewDevice(window),
-            params.skip,
-            params.limit
+        const rows = await this.computeBackupCodeNewDevice(window);
+
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticBackupCodeNewDeviceAvailableOrderBy
         );
+        const data = sorted.slice(skip, skip + limit);
+
+        return this.paginationService.offsetPage(data, sorted.length, {
+            skip,
+            limit,
+        });
     }
 
     async apiKeyBurstSummary(
@@ -784,16 +854,25 @@ export class AnalyticFraudDomain {
     async apiKeyBurstList(
         windowMs: number | null,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticApiKeyBurstRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticApiKeyBurst>> {
         const window = this.resolveWindow(
             windowMs,
             'analytic.fraud.apiKeyBurst.windowInMs'
         );
-        return this.pageRows(
-            await this.computeApiKeyBurst(window),
-            params.skip,
-            params.limit
+        const rows = await this.computeApiKeyBurst(window);
+
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticUserCountAvailableOrderBy
         );
+        const data = sorted.slice(skip, skip + limit);
+
+        return this.paginationService.offsetPage(data, sorted.length, {
+            skip,
+            limit,
+        });
     }
 
     async riskScore(userId: string): Promise<IAnalyticFraudRiskScore> {
@@ -810,31 +889,40 @@ export class AnalyticFraudDomain {
             throw new UserNotFoundException();
         }
 
-        const weights = {
-            sessionAfterAdmin: this.configService.get<number>(
-                'analytic.fraud.weights.sessionAfterAdmin'
-            )!,
-            impossibleTravel: this.configService.get<number>(
-                'analytic.fraud.weights.impossibleTravel'
-            )!,
-            newDeviceAfterPasswordChange: this.configService.get<number>(
+        const sessionAfterAdminWeight = this.configService.get<number>(
+            'analytic.fraud.weights.sessionAfterAdmin'
+        )!;
+        const impossibleTravelWeight = this.configService.get<number>(
+            'analytic.fraud.weights.impossibleTravel'
+        )!;
+        const newDeviceAfterPasswordChangeWeight =
+            this.configService.get<number>(
                 'analytic.fraud.weights.newDeviceAfterPasswordChange'
-            )!,
-            credentialStuffingIp: this.configService.get<number>(
-                'analytic.fraud.weights.credentialStuffingIp'
-            )!,
-            sharedFingerprint: this.configService.get<number>(
-                'analytic.fraud.weights.sharedFingerprint'
-            )!,
-            nearLockout: this.configService.get<number>(
-                'analytic.fraud.weights.nearLockout'
-            )!,
-            massRegistrationIp: this.configService.get<number>(
-                'analytic.fraud.weights.massRegistrationIp'
-            )!,
-            forgotPasswordAbuse: this.configService.get<number>(
-                'analytic.fraud.weights.forgotPasswordAbuse'
-            )!,
+            )!;
+        const credentialStuffingIpWeight = this.configService.get<number>(
+            'analytic.fraud.weights.credentialStuffingIp'
+        )!;
+        const sharedFingerprintWeight = this.configService.get<number>(
+            'analytic.fraud.weights.sharedFingerprint'
+        )!;
+        const nearLockoutWeight = this.configService.get<number>(
+            'analytic.fraud.weights.nearLockout'
+        )!;
+        const massRegistrationIpWeight = this.configService.get<number>(
+            'analytic.fraud.weights.massRegistrationIp'
+        )!;
+        const forgotPasswordAbuseWeight = this.configService.get<number>(
+            'analytic.fraud.weights.forgotPasswordAbuse'
+        )!;
+        const weights = {
+            sessionAfterAdmin: sessionAfterAdminWeight,
+            impossibleTravel: impossibleTravelWeight,
+            newDeviceAfterPasswordChange: newDeviceAfterPasswordChangeWeight,
+            credentialStuffingIp: credentialStuffingIpWeight,
+            sharedFingerprint: sharedFingerprintWeight,
+            nearLockout: nearLockoutWeight,
+            massRegistrationIp: massRegistrationIpWeight,
+            forgotPasswordAbuse: forgotPasswordAbuseWeight,
         };
 
         const contributingSignalCodes: string[] = [];
@@ -863,10 +951,11 @@ export class AnalyticFraudDomain {
             contributingSignalCodes.push('sharedFingerprint');
         }
 
+        const band = this.resolveBand(score);
         const result: IAnalyticFraudRiskScore = {
             userId,
             score,
-            band: this.resolveBand(score),
+            band,
             contributingSignalCodes,
         };
         await this.analyticCache.setRiskScore(userId, result);
@@ -886,6 +975,17 @@ export class AnalyticFraudDomain {
             }
         }
         scored.sort((a, b) => b.score - a.score);
-        return this.pageRows(scored, params.skip, params.limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            scored,
+            orderBy,
+            AnalyticFraudRiskScoreAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
+
+        return this.paginationService.offsetPage(data, sorted.length, {
+            skip,
+            limit,
+        });
     }
 }

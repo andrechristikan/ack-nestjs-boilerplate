@@ -1,22 +1,24 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumNotificationChannel,
     EnumNotificationType,
+    Prisma,
+} from '@generated/prisma-client/client';
+import type {
     Notification,
     NotificationUserSetting,
-    Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { NotificationSettingUpdateAllowedCombinations } from '@modules/notification/constants/notification.constant';
+import { NotificationSettingContract } from '@modules/notification/contracts/notification.setting.contract';
 import { NotificationAlreadyReadException } from '@modules/notification/exceptions/notification.already-read.exception';
 import { NotificationInvalidChannelException } from '@modules/notification/exceptions/notification.invalid-channel.exception';
 import { NotificationInvalidTypeException } from '@modules/notification/exceptions/notification.invalid-type.exception';
 import { NotificationNotFoundException } from '@modules/notification/exceptions/notification.not-found.exception';
-import { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
+import type { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
 import { UserDomain } from '@modules/user/domains/user.domain';
@@ -75,6 +77,16 @@ export class NotificationDomain {
     ): Promise<void> {
         this.validateUserSetting(data.type, data.channel);
 
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userUpdateNotificationSetting,
+                metadata: {
+                    channel: data.channel,
+                    type: data.type,
+                    isActive: data.isActive,
+                },
+            }),
+        ];
         await this.databaseService.withTransaction(async tx => {
             await this.notificationUserSettingRepository.updateUserSettingInTx(
                 tx,
@@ -84,14 +96,7 @@ export class NotificationDomain {
             await this.userDomain.touchUpdatedByInTx(tx, userId);
         });
 
-        this.activityLogDomain.stage({
-            action: EnumActivityLogAction.userUpdateNotificationSetting,
-            metadata: {
-                channel: data.channel,
-                type: data.type,
-                isActive: data.isActive,
-            },
-        });
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async createDefaultsInTx(
@@ -109,7 +114,7 @@ export class NotificationDomain {
         type: EnumNotificationType,
         channel: EnumNotificationChannel
     ): void {
-        const validType = NotificationSettingUpdateAllowedCombinations.find(
+        const validType = NotificationSettingContract.find(
             e => e.type === type
         );
 

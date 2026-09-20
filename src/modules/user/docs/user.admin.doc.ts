@@ -7,30 +7,21 @@ import {
     DocRequestFile,
     DocResponse,
     DocResponseFile,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
-import {
-    UserListResponseDto,
-    UserListResponseSchema,
-} from '@modules/user/dtos/response/user.list.response.dto';
-import {
-    UserProfileResponseDto,
-    UserProfileResponseSchema,
-} from '@modules/user/dtos/response/user.profile.response.dto';
-import {
-    UserDocParamsId,
-    UserDocQueryList,
-} from '@modules/user/constants/user.doc.constant';
+import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.response.dto';
+import type { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
+import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
+import type { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import {
     UserDefaultAvailableOrderBy,
     UserDefaultAvailableSearch,
 } from '@modules/user/constants/user.list.constant';
+import { UserDocQueryList } from '@modules/user/constants/user.doc.constant';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import {
-    DatabaseIdResponseDto,
-    DatabaseIdResponseSchema,
-} from '@common/database/dtos/response/database.id.response.dto';
+import { DatabaseIdResponseSchema } from '@common/database/dtos/response/database.id.response.dto';
+import type { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import { FileUploadSingleRequestSchema } from '@common/file/dtos/request/file.upload-single.request.dto';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 
@@ -46,8 +37,8 @@ export function UserAdminListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<UserListResponseDto>('user.list', {
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
+        DocResponsePagination<UserListResponseDto>('user.list', {
             schema: UserListResponseSchema,
             availableSearch: UserDefaultAvailableSearch,
             availableOrderBy: UserDefaultAvailableOrderBy,
@@ -61,14 +52,11 @@ export function UserAdminGetDoc(): MethodDecorator {
         Doc({
             summary: 'get detail an user',
         }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse<UserProfileResponseDto>('user.get', {
             schema: UserProfileResponseSchema,
         })
@@ -87,7 +75,7 @@ export function UserAdminCreateDoc(): MethodDecorator {
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse<DatabaseIdResponseDto>('user.create', {
             httpStatus: HttpStatus.CREATED,
             schema: DatabaseIdResponseSchema,
@@ -101,14 +89,13 @@ export function UserAdminUpdateStatusDoc(): MethodDecorator {
             summary: 'update status of user',
         }),
         DocRequest({
-            params: UserDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse('user.updateStatus')
     );
 }
@@ -118,14 +105,11 @@ export function UserAdminUpdatePasswordDoc(): MethodDecorator {
         Doc({
             summary: 'update password of user',
         }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse('user.updatePassword')
     );
 }
@@ -135,14 +119,11 @@ export function UserAdminResetTwoFactorDoc(): MethodDecorator {
         Doc({
             summary: "Reset user's two-factor authentication",
         }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse('user.twoFactor.reset')
     );
 }
@@ -159,7 +140,7 @@ export function UserAdminImportDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse('user.import', {
             httpStatus: HttpStatus.CREATED,
         })
@@ -178,7 +159,7 @@ export function UserAdminExportDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponseFile({
             extension: EnumFileExtensionDocument.csv,
         })

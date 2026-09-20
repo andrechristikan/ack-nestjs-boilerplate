@@ -1,6 +1,7 @@
-import { ActivityLog } from '@generated/prisma-client';
-import { EnumActivityLogAction } from '@generated/prisma-client';
-import { IUserRef } from '@modules/user/interfaces/user.interface';
+import type { ActivityLog, Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import type { IUserRef } from '@modules/user/interfaces/user.interface';
 import {
     EnumActivityLogUser,
     EnumActivityLogWorkspace,
@@ -21,10 +22,11 @@ export interface IActivityLogStagedEvent {
     metadata: IActivityLogMetadata;
     onError: boolean;
     userId?: string;
+    createdBy?: string;
     workspaceId?: string | null;
 }
 
-export interface IActivityLogContract {
+export interface IActivityLogActionContract {
     user: EnumActivityLogUser;
     workspace: EnumActivityLogWorkspace;
     metadata: z.ZodType<IActivityLogMetadata>;
@@ -35,34 +37,36 @@ export interface IActivityLogFlushOptions {
     isError: boolean;
 }
 
-type StageUserFields<U extends EnumActivityLogUser> =
-    U extends EnumActivityLogUser.target
-        ? { userId: string }
-        : { userId?: never };
-
-type StageWorkspaceFields<W extends EnumActivityLogWorkspace> =
-    W extends EnumActivityLogWorkspace.target
-        ? { workspaceId: string }
-        : W extends EnumActivityLogWorkspace.none
-          ? { workspaceId?: null }
-          : { workspaceId?: never };
-
-export type IActivityLogStageInputForContract<C extends IActivityLogContract> =
-    {
-        action: EnumActivityLogAction;
-        metadata?: IActivityLogMetadata;
-        /**
-         * When true, one stage covers both success and error: the interceptor
-         * flushes this event on either path. Default false = success path only.
-         */
-        onError?: boolean;
-    } & StageUserFields<C['user']> &
-        StageWorkspaceFields<C['workspace']>;
-
 export type IActivityLogStageInput<A extends EnumActivityLogAction> = {
     action: A;
     metadata?: IActivityLogMetadata;
     onError?: boolean;
     userId?: string;
+    createdBy?: string;
     workspaceId?: string | null;
 };
+
+export interface IActivityLogCreate {
+    userId: string;
+    createdBy: string;
+    workspaceId: string | null;
+    action: EnumActivityLogAction;
+    description: string;
+    requestLog: IRequestLog;
+    metadata: IActivityLogMetadata;
+}
+
+export interface IActivityLogAnalyticActionCount {
+    action: EnumActivityLogAction;
+    count: number;
+}
+
+export interface IActivityLogAnalyticEvent {
+    id: string;
+    userId: string;
+    action: EnumActivityLogAction;
+    ipAddress: string | null;
+    createdAt: Date;
+    userAgent?: Prisma.JsonValue;
+    workspaceId?: string | null;
+}

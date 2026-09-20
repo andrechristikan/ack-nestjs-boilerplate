@@ -1,5 +1,5 @@
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import {
+import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import type {
     IUserTwoFactor,
     IUserTwoFactorStatus,
 } from '@modules/user/interfaces/user.interface';
@@ -8,8 +8,8 @@ import { ConfigService } from '@nestjs/config';
 import {
     EnumActivityLogAction,
     EnumUserLoginWith,
-    User,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { User } from '@generated/prisma-client/client';
 import { Profanity } from '@2toad/profanity';
 
 /** Username checks, two-factor mapping, and activity-log mapping. */
@@ -48,11 +48,7 @@ export class UserUtil {
     mapTwoFactor(twoFactor: IUserTwoFactor): IUserTwoFactorStatus {
         return {
             isEnabled: twoFactor.enabled,
-            isPendingConfirmation:
-                !twoFactor.enabled &&
-                !!twoFactor.secret &&
-                !!twoFactor.iv &&
-                !twoFactor.confirmedAt,
+            isPendingConfirmation: !!twoFactor.pendingSecret,
             backupCodesRemaining: twoFactor.backupCodes.length,
             confirmedAt: twoFactor.confirmedAt,
             lastUsedAt: twoFactor.lastUsedAt,
@@ -78,10 +74,20 @@ export class UserUtil {
         }
     }
 
-    mapActivityLogMetadata(user: User): IActivityLogMetadata {
+    mapActivityLogActorMetadata(user: User): IActivityLogMetadata {
         return {
-            userId: user.id,
-            userUsername: user.username,
+            targetUserId: user.id,
+            targetUsername: user.username,
+            timestamp: user.updatedAt ?? user.createdAt,
+        };
+    }
+
+    mapActivityLogTargetMetadata(
+        user: User,
+        actorUserId: string
+    ): IActivityLogMetadata {
+        return {
+            actorUserId,
             timestamp: user.updatedAt ?? user.createdAt,
         };
     }

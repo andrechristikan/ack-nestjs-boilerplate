@@ -1,7 +1,8 @@
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceQueue } from '@modules/workspace/queues/workspace.queue';
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { Injectable } from '@nestjs/common';
+import type { OnModuleInit } from '@nestjs/common';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 @Injectable()
 export class WorkspaceProcessorService implements OnModuleInit {

@@ -1,18 +1,18 @@
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import {
+import type {
     INotificationEmailSendPayload,
-    INotificationForgotPasswordPayload,
+    INotificationForgotPasswordEncryptedPayload,
     INotificationNewDeviceLoginPayload,
-    INotificationTemporaryPasswordPayload,
+    INotificationTemporaryPasswordEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { flatten } from 'flat';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /** Renders and sends the password, two-factor and new-device login emails. */
 @Injectable()
@@ -27,18 +27,22 @@ export class NotificationEmailSecurityDomain {
 
     private readonly defaultTemplateData: Record<string, string>;
 
+    private readonly encryptionSecretKey: string;
+
     constructor(
         private readonly awsSESService: AwsSESService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
-        private readonly helperEncryptionService: HelperEncryptionService,
-        private readonly authPasswordUtil: AuthPasswordUtil
+        private readonly helperEncryptionService: HelperEncryptionService
     ) {
         this.noreplyEmail = this.configService.get<string>('email.noreply')!;
         this.supportEmail = this.configService.get<string>('email.support')!;
 
         this.homeName = this.configService.get<string>('home.name')!;
         this.homeUrl = this.configService.get<string>('home.url')!;
+        this.encryptionSecretKey = this.configService.get<string>(
+            'app.encryptionSecretKey'
+        )!;
 
         this.defaultTemplateData = {
             homeName: this.homeName,
@@ -50,17 +54,27 @@ export class NotificationEmailSecurityDomain {
     async processTemporaryPasswordByAdmin(
         { email, username, cc, bcc, userId }: INotificationEmailSendPayload,
         {
-            password: encryptedPasswordString,
+            encryptedPassword,
             passwordExpiredAt,
             passwordCreatedAt,
-        }: INotificationTemporaryPasswordPayload
+        }: INotificationTemporaryPasswordEncryptedPayload
     ): Promise<IQueueResponse> {
         try {
-            const passwordString = this.authPasswordUtil.decryptPassword(
-                userId,
-                encryptedPasswordString
+            const password = this.helperEncryptionService.aes256Decrypt(
+                encryptedPassword,
+                this.encryptionSecretKey,
+                NotificationPayloadEncryptionPurpose,
+                userId
             );
 
+            const passwordExpiredAtDate =
+                this.helperDateService.createFromIso(passwordExpiredAt);
+            const passwordExpiredAtFormatted =
+                this.helperDateService.formatToRFC2822(passwordExpiredAtDate);
+            const passwordCreatedAtDate =
+                this.helperDateService.createFromIso(passwordCreatedAt);
+            const passwordCreatedAtFormatted =
+                this.helperDateService.formatToRFC2822(passwordCreatedAtDate);
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.temporaryPasswordByAdmin,
                 recipients: [email],
@@ -68,13 +82,9 @@ export class NotificationEmailSecurityDomain {
                 templateData: {
                     ...this.defaultTemplateData,
                     username,
-                    password: passwordString,
-                    passwordExpiredAt: this.helperDateService.formatToRFC2822(
-                        this.helperDateService.createFromIso(passwordExpiredAt)
-                    ),
-                    passwordCreatedAt: this.helperDateService.formatToRFC2822(
-                        this.helperDateService.createFromIso(passwordCreatedAt)
-                    ),
+                    password,
+                    passwordExpiredAt: passwordExpiredAtFormatted,
+                    passwordCreatedAt: passwordCreatedAtFormatted,
                 },
                 ...(cc?.length && { cc }),
                 ...(bcc?.length && { bcc }),
@@ -146,17 +156,23 @@ export class NotificationEmailSecurityDomain {
         { email, username, cc, bcc, userId }: INotificationEmailSendPayload,
         {
             expiredAt,
-            link: encryptedLink,
+            encryptedLink,
             reference,
             expiredInMinutes,
-        }: INotificationForgotPasswordPayload
+        }: INotificationForgotPasswordEncryptedPayload
     ): Promise<IQueueResponse> {
         try {
-            const link = this.helperEncryptionService.aes256DecryptSimple(
+            const link = this.helperEncryptionService.aes256Decrypt(
                 encryptedLink,
+                this.encryptionSecretKey,
+                NotificationPayloadEncryptionPurpose,
                 userId
             );
 
+            const expiredAtDate =
+                this.helperDateService.createFromIso(expiredAt);
+            const expiredAtFormatted =
+                this.helperDateService.formatToRFC2822(expiredAtDate);
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.forgotPassword,
                 recipients: [email],
@@ -165,9 +181,7 @@ export class NotificationEmailSecurityDomain {
                     ...this.defaultTemplateData,
                     username,
                     link,
-                    expiredAt: this.helperDateService.formatToRFC2822(
-                        this.helperDateService.createFromIso(expiredAt)
-                    ),
+                    expiredAt: expiredAtFormatted,
                     reference,
                     expiredInMinutes: String(expiredInMinutes),
                 },
@@ -224,6 +238,9 @@ export class NotificationEmailSecurityDomain {
         }: INotificationNewDeviceLoginPayload
     ): Promise<IQueueResponse> {
         try {
+            const loginAtDate = this.helperDateService.createFromIso(loginAt);
+            const loginAtFormatted =
+                this.helperDateService.formatToRFC2822(loginAtDate);
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.newDeviceLogin,
                 recipients: [email],
@@ -233,9 +250,7 @@ export class NotificationEmailSecurityDomain {
                     username,
                     loginFrom,
                     loginWith,
-                    loginAt: this.helperDateService.formatToRFC2822(
-                        this.helperDateService.createFromIso(loginAt)
-                    ),
+                    loginAt: loginAtFormatted,
                     userAgent: flatten(userAgent),
                     ipAddress: ipAddress ?? '',
                 },

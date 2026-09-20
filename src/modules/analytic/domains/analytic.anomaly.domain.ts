@@ -1,25 +1,32 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { PaginationService } from '@common/pagination/services/pagination.service';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import {
+    AnalyticDeviceProliferationAvailableOrderBy,
+    AnalyticImpossibleTravelAvailableOrderBy,
+    AnalyticLoginSpikeIpAvailableOrderBy,
+    AnalyticLoginTimeAnomalyAvailableOrderBy,
+} from '@modules/analytic/constants/analytic.list.constant';
+import type {
     IAnalyticAnomalySummary,
-    IAnalyticDeviceProliferationRow,
-    IAnalyticImpossibleTravelRow,
-    IAnalyticLoginSpikeIpRow,
-    IAnalyticLoginTimeAnomalyRow,
-    IAnalyticNearLockoutRow,
+    IAnalyticDeviceProliferation,
+    IAnalyticImpossibleTravel,
+    IAnalyticLoginSpikeIp,
+    IAnalyticLoginTimeAnomaly,
+    IAnalyticNearLockout,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticGeoUtil } from '@modules/analytic/utils/analytic.geo.util';
+import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
 import { SessionAnalyticDomain } from '@modules/session/domains/session.analytic.domain';
 import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
 import { UserLoginAnalyticDomain } from '@modules/user/domains/user.login.analytic.domain';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
 import { Duration } from 'luxon';
 
 @Injectable()
@@ -28,6 +35,8 @@ export class AnalyticAnomalyDomain {
         private readonly analyticCache: AnalyticCache,
         private readonly analyticDateUtil: AnalyticDateUtil,
         private readonly analyticGeoUtil: AnalyticGeoUtil,
+        private readonly analyticSortUtil: AnalyticSortUtil,
+        private readonly paginationService: PaginationService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
         private readonly sessionAnalyticDomain: SessionAnalyticDomain,
@@ -44,41 +53,16 @@ export class AnalyticAnomalyDomain {
         if (windowMs) {
             return String(windowMs);
         }
-        return (
-            this.analyticDateUtil.cacheToken(start ?? undefined) +
-            ':' +
-            this.analyticDateUtil.cacheToken(end ?? undefined)
+        return this.analyticDateUtil.windowToken(
+            start ?? undefined,
+            end ?? undefined
         );
-    }
-
-    private pageRows<T>(
-        rows: T[],
-        skip: number,
-        limit: number
-    ): IResponsePagingReturn<T> {
-        const page = limit > 0 ? Math.floor(skip / limit) : 0;
-        const perPage = limit;
-        const totalPage = Math.ceil(rows.length / perPage) || 1;
-        const hasNext = page + 1 < totalPage;
-        const hasPrevious = page > 0;
-        return {
-            type: EnumPaginationType.offset,
-            count: rows.length,
-            perPage,
-            page,
-            totalPage,
-            hasNext,
-            hasPrevious,
-            data: rows.slice(skip, skip + perPage),
-            ...(hasNext ? { nextPage: page + 1 } : {}),
-            ...(hasPrevious ? { previousPage: page - 1 } : {}),
-        };
     }
 
     private async computeImpossibleTravel(
         startDate: Date | null,
         endDate: Date | null
-    ): Promise<IAnalyticImpossibleTravelRow[]> {
+    ): Promise<IAnalyticImpossibleTravel[]> {
         const sessions =
             await this.sessionAnalyticDomain.findActiveWithGeoInRange(
                 startDate ?? undefined,
@@ -97,7 +81,7 @@ export class AnalyticAnomalyDomain {
             }
             byUser.get(s.userId)!.push(s);
         }
-        const flagged: IAnalyticImpossibleTravelRow[] = [];
+        const flagged: IAnalyticImpossibleTravel[] = [];
         for (const [userId, list] of byUser) {
             for (let i = 1; i < list.length; i++) {
                 const prev = list[i - 1];
@@ -129,7 +113,7 @@ export class AnalyticAnomalyDomain {
 
     private async computeLoginSpikeIp(
         windowMs: number
-    ): Promise<IAnalyticLoginSpikeIpRow[]> {
+    ): Promise<IAnalyticLoginSpikeIp[]> {
         const end = this.helperDateService.create();
         const start = this.helperDateService.backward(
             end,
@@ -157,7 +141,7 @@ export class AnalyticAnomalyDomain {
             .map(([ipAddress, users]) => ({
                 ipAddress,
                 uniqueUsers: users.size,
-                attempts: attempts.get(ipAddress) ?? 0,
+                attempts: attempts.get(ipAddress)!,
             }))
             .sort((a, b) => b.uniqueUsers - a.uniqueUsers);
     }
@@ -165,14 +149,14 @@ export class AnalyticAnomalyDomain {
     private async computeLoginTimeAnomalies(
         startDate: Date | null,
         endDate: Date | null
-    ): Promise<IAnalyticLoginTimeAnomalyRow[]> {
-        const end = endDate ?? this.helperDateService.create();
-        const start =
-            startDate ??
-            this.helperDateService.backward(
-                end,
-                Duration.fromObject({ days: 30 })
-            );
+    ): Promise<IAnalyticLoginTimeAnomaly[]> {
+        const now = this.helperDateService.create();
+        const end = endDate ?? now;
+        const defaultStart = this.helperDateService.backward(
+            end,
+            Duration.fromObject({ days: 30 })
+        );
+        const start = startDate ?? defaultStart;
         const events = await this.userLoginAnalyticDomain.findLoginEvents(
             start,
             end
@@ -188,7 +172,7 @@ export class AnalyticAnomalyDomain {
             }
             byUser.get(e.userId)!.push(hour);
         }
-        const anomalous: IAnalyticLoginTimeAnomalyRow[] = [];
+        const anomalous: IAnalyticLoginTimeAnomaly[] = [];
         for (const [userId, hours] of byUser) {
             if (hours.length < 5) {
                 continue;
@@ -248,9 +232,20 @@ export class AnalyticAnomalyDomain {
         startDate: Date | null,
         endDate: Date | null,
         params: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticImpossibleTravelRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticImpossibleTravel>> {
         const rows = await this.computeImpossibleTravel(startDate, endDate);
-        return this.pageRows(rows, params.skip, params.limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticImpossibleTravelAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
+
+        return this.paginationService.offsetPage(data, sorted.length, {
+            skip,
+            limit,
+        });
     }
 
     async loginSpikeIpSummary(
@@ -270,13 +265,14 @@ export class AnalyticAnomalyDomain {
         }
 
         const rows = await this.computeLoginSpikeIp(window);
+        const minUniqueAccounts = this.configService.get<number>(
+            'analytic.anomaly.loginSpikeIp.minUniqueAccounts'
+        )!;
         const summary: IAnalyticAnomalySummary = {
             count: rows.length,
             window: String(window),
             meta: {
-                minUniqueAccounts: this.configService.get<number>(
-                    'analytic.anomaly.loginSpikeIp.minUniqueAccounts'
-                )!,
+                minUniqueAccounts,
             },
         };
         await this.analyticCache.setAnomalySummary(
@@ -290,13 +286,24 @@ export class AnalyticAnomalyDomain {
     async loginSpikeIpList(
         windowMs: number | null,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticLoginSpikeIpRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticLoginSpikeIp>> {
         const configured = this.configService.get<number>(
             'analytic.anomaly.loginSpikeIp.windowInMs'
         )!;
         const window = windowMs ?? configured;
         const rows = await this.computeLoginSpikeIp(window);
-        return this.pageRows(rows, params.skip, params.limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticLoginSpikeIpAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
+
+        return this.paginationService.offsetPage(data, sorted.length, {
+            skip,
+            limit,
+        });
     }
 
     async failedLoginSpikeSummary(): Promise<IAnalyticAnomalySummary> {
@@ -337,7 +344,7 @@ export class AnalyticAnomalyDomain {
 
     async failedLoginSpikeList(
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticNearLockoutRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticNearLockout>> {
         const maxAttempt = this.configService.get<number>(
             'auth.password.maxAttempt'
         )!;
@@ -382,12 +389,23 @@ export class AnalyticAnomalyDomain {
 
     async deviceProliferationList(
         params: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticDeviceProliferationRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticDeviceProliferation>> {
         const z = this.configService.get<number>(
             'analytic.anomaly.deviceProliferation.zScoreThreshold'
         )!;
         const result = await this.deviceAnalyticDomain.proliferationOutliers(z);
-        return this.pageRows(result.rows, params.skip, params.limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            result.rows,
+            orderBy,
+            AnalyticDeviceProliferationAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
+
+        return this.paginationService.offsetPage(data, sorted.length, {
+            skip,
+            limit,
+        });
     }
 
     async loginTimeSummary(
@@ -421,8 +439,19 @@ export class AnalyticAnomalyDomain {
         startDate: Date | null,
         endDate: Date | null,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticLoginTimeAnomalyRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticLoginTimeAnomaly>> {
         const rows = await this.computeLoginTimeAnomalies(startDate, endDate);
-        return this.pageRows(rows, params.skip, params.limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticLoginTimeAnomalyAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
+
+        return this.paginationService.offsetPage(data, sorted.length, {
+            skip,
+            limit,
+        });
     }
 }

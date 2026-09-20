@@ -1,7 +1,11 @@
+import { EnumApiKeyType } from '@generated/prisma-client/client';
 import { faker } from '@faker-js/faker';
-import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
-import { EnumApiKeyType } from '@generated/prisma-client';
+import type { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 
+/**
+ * Swagger path parameter `apiKeyId`.
+ * @public
+ */
 export const ApiKeyDocParamsId: ApiParamOptions[] = [
     {
         name: 'apiKeyId',
@@ -12,6 +16,10 @@ export const ApiKeyDocParamsId: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger query parameters of the admin API key list: `isActive` and `type`.
+ * @public
+ */
 export const ApiKeyDocQueryList: ApiQueryOptions[] = [
     {
         name: 'isActive',

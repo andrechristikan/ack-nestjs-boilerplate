@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+/**
+ * Validates the body for enabling two-factor authentication.
+ * @public
+ */
 export const UserTwoFactorEnableRequestSchema = z.strictObject({
     code: z
         .string()
@@ -13,6 +17,10 @@ export const UserTwoFactorEnableRequestSchema = z.strictObject({
         }),
 });
 
+/**
+ * Body for enabling two-factor authentication.
+ * @public
+ */
 export type UserTwoFactorEnableRequestDto = z.infer<
     typeof UserTwoFactorEnableRequestSchema
 >;

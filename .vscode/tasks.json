@@ -61,9 +61,23 @@
             "problemMatcher": []
         },
         {
-            "label": "Generate Keys",
+            "label": "Generate All Secrets",
             "type": "shell",
-            "command": "pnpm generate:keys",
+            "command": "pnpm generate:secret",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Generate JWT Secret",
+            "type": "shell",
+            "command": "pnpm generate:secret:jwt",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Generate Encryption Secret",
+            "type": "shell",
+            "command": "pnpm generate:secret:encryption",
             "group": "none",
             "problemMatcher": []
         },

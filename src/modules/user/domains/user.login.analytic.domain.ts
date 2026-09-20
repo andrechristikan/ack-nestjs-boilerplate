@@ -1,17 +1,12 @@
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
-import {
+import type {
     IActivityLogAnalyticActionCount,
-    IActivityLogAnalyticEventRow,
-} from '@modules/activity-log/interfaces/activity-log.analytic.repository.interface';
-import { IAnalyticLockoutMetrics } from '@modules/analytic/interfaces/analytic.interface';
+    IActivityLogAnalyticEvent,
+} from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IAnalyticLockoutMetrics } from '@modules/analytic/interfaces/analytic.interface';
+import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
 import { Injectable } from '@nestjs/common';
-import { EnumActivityLogAction } from '@generated/prisma-client';
-
-const LOGIN_ACTIONS = [
-    EnumActivityLogAction.userLoginCredential,
-    EnumActivityLogAction.userLoginGoogle,
-    EnumActivityLogAction.userLoginApple,
-];
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 
 @Injectable()
 export class UserLoginAnalyticDomain {
@@ -21,7 +16,7 @@ export class UserLoginAnalyticDomain {
 
     loginFrequency(startDate: Date, endDate: Date): Promise<number> {
         return this.activityLogAnalyticDomain.countByActionsInRange(
-            LOGIN_ACTIONS,
+            UserLoginAnalyticActions,
             startDate,
             endDate
         );
@@ -32,7 +27,7 @@ export class UserLoginAnalyticDomain {
         endDate: Date | null
     ): Promise<IActivityLogAnalyticActionCount[]> {
         return this.activityLogAnalyticDomain.groupByActionInRange(
-            LOGIN_ACTIONS,
+            UserLoginAnalyticActions,
             startDate ?? undefined,
             endDate ?? undefined
         );
@@ -60,9 +55,9 @@ export class UserLoginAnalyticDomain {
     findLoginEvents(
         startDate: Date,
         endDate: Date
-    ): Promise<IActivityLogAnalyticEventRow[]> {
+    ): Promise<IActivityLogAnalyticEvent[]> {
         return this.activityLogAnalyticDomain.findManyByActionsInRange(
-            LOGIN_ACTIONS,
+            UserLoginAnalyticActions,
             startDate,
             endDate
         );
@@ -71,7 +66,7 @@ export class UserLoginAnalyticDomain {
     findFailedLoginEvents(
         startDate: Date,
         endDate: Date
-    ): Promise<IActivityLogAnalyticEventRow[]> {
+    ): Promise<IActivityLogAnalyticEvent[]> {
         return this.activityLogAnalyticDomain.findManyByActionsInRange(
             [
                 EnumActivityLogAction.userLoginFailed,

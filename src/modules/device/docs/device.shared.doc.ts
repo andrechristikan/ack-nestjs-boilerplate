@@ -4,16 +4,13 @@ import {
     DocGuard,
     DocRequest,
     DocResponse,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { DeviceOwnershipDocParamsId } from '@modules/device/constants/device.doc.constant';
 import { DeviceCursorAvailableOrderBy } from '@modules/device/constants/device.list.constant';
-import {
-    DeviceOwnershipResponseDto,
-    DeviceOwnershipResponseSchema,
-} from '@modules/device/dtos/response/device.ownership.response.dto';
+import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
+import type { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function DeviceSharedListDoc(): MethodDecorator {
@@ -25,8 +22,8 @@ export function DeviceSharedListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ termPolicy: true }),
-        DocResponsePaging<DeviceOwnershipResponseDto>('device.list', {
+        DocGuard({ termPolicy: true, user: true }),
+        DocResponsePagination<DeviceOwnershipResponseDto>('device.list', {
             schema: DeviceOwnershipResponseSchema,
             availableOrderBy: DeviceCursorAvailableOrderBy,
             type: EnumPaginationType.cursor,
@@ -43,9 +40,7 @@ export function DeviceSharedRefreshDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
         }),
@@ -58,16 +53,11 @@ export function DeviceSharedRemoveDoc(): MethodDecorator {
         Doc({
             summary: 'remove a user device',
         }),
-        DocRequest({
-            params: DeviceOwnershipDocParamsId,
-        }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocResponse('device.remove')
     );
 }

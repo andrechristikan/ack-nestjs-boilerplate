@@ -1,11 +1,12 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RoleDomain } from '@modules/role/domains/role.domain';
-import { EnumRoleType } from '@generated/prisma-client';
+import { EnumRoleType } from '@generated/prisma-client/client';
 import { RoleRequiredMetaKey } from '@modules/role/constants/role.constant';
 import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 
 /**
@@ -21,11 +22,11 @@ export class RoleGuard implements CanActivate {
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const requiredRoles =
-            this.reflector.get<EnumRoleType[]>(
-                RoleRequiredMetaKey,
-                context.getHandler()
-            ) ?? [];
+        const roleMetadata = this.reflector.get<EnumRoleType[]>(
+            RoleRequiredMetaKey,
+            context.getHandler()
+        );
+        const requiredRoles = roleMetadata ?? [];
 
         const user = this.requestStoreService.get<IUser>(UserStoreKey);
         const policies = await this.roleDomain.validateRoleGuard(

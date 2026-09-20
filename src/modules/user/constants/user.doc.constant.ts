@@ -1,7 +1,11 @@
 import { faker } from '@faker-js/faker';
-import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
-import { EnumUserStatus } from '@generated/prisma-client';
+import type { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
+import { EnumUserStatus } from '@generated/prisma-client/client';
 
+/**
+ * Swagger path parameter `userId`.
+ * @public
+ */
 export const UserDocParamsId: ApiParamOptions[] = [
     {
         name: 'userId',
@@ -12,6 +16,10 @@ export const UserDocParamsId: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger path parameter `mobileNumberId`.
+ * @public
+ */
 export const UserDocParamsMobileNumberId: ApiParamOptions[] = [
     {
         name: 'mobileNumberId',
@@ -22,6 +30,10 @@ export const UserDocParamsMobileNumberId: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger query parameters of the admin user list: `roleId`, `countryId` and `status`.
+ * @public
+ */
 export const UserDocQueryList: ApiQueryOptions[] = [
     {
         name: 'roleId',

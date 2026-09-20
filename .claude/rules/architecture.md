@@ -30,7 +30,7 @@ its definition (`rules/nest-wiring.md`).
 - **A multi-step write on this repository's own model may open a transaction here** through `this.databaseService.withTransaction` (`rules/database.md`). A write that also touches another repository's model is not opened here; the domain composes those repositories inside `this.databaseService.withTransaction`.
 - **A repository never injects or calls another repository.** Same-feature siblings are composed by the domain.
 - **It is the persistence port.** The class `implements I<Feature>[<Concern>]Repository` at
-  `interfaces/<module>[.<concern>].repository.interface.ts`. The interface file and the
+  `interfaces/<module>.[<concern>-]repository.interface.ts`. The interface file and the
   class file are separate (`rules/naming.md`). Callers inject the class (`UserRepository`);
   Nest cannot inject an interface without a token. Domain and HTTP see `string` IDs.
   UUID and Prisma `where` shapes stay in this class, not in a domain signature. Public
@@ -43,7 +43,7 @@ its definition (`rules/nest-wiring.md`).
 - **A `ResponseDto` never appears in a domain signature**, as a parameter or a return. Return values are `I<Module>*` interfaces, Prisma models, and primitives; assembling a response is the HTTP service's job, and the domain answers to the queue as well.
 - **A request DTO may travel through unchanged.** When the method takes the caller's input and hands it on without deriving anything from it, the DTO is the parameter type and no parallel interface is invented for it. When the method derives — merges two inputs, computes a value, resolves a reference, validates into a narrower shape — what it produces and passes on is an `I<Module>*` interface. The rule is about what the method DOES to the shape, not about which layer it sits in.
 - It knows nothing about HTTP or the queue: no `IRequestApp`, no `Job`, no response envelope, no pagination response assembly.
-- Injects the repositories of its OWN feature as classes — **one or many**. Another feature's data comes from that feature's domain, never from its repository (`rules/cross-module.md`). Injects other domains, utils and queue classes by the tier table below.
+- Injects the repositories of its OWN feature as classes — **one or many, or none**. A domain whose work is pure rule validation reads no state and injects nothing; it still belongs here, because a rejection that RAISES is domain work wherever it rests (`rules/exceptions.md`). Another feature's data comes from that feature's domain, never from its repository (`rules/cross-module.md`). Injects other domains, utils and queue classes by the tier table below.
 - **Injects `DatabaseService` only to call `withTransaction`.** It never issues a model query on `client`. Feature data access still goes through a repository. This is the single hardest rule in the file.
 - **Opens a transaction when the work spans more than one repository.** It calls `this.databaseService.withTransaction` and passes the `tx` into each `*InTx` repository or domain method (`rules/database.md`). A single-repository write does not open one here.
 - Provided by `<feature>.domain.module.ts`, and it is the only layer another feature's domain, HTTP, or processor module ever consumes.
@@ -73,7 +73,7 @@ its definition (`rules/nest-wiring.md`).
 
 - **A util SHAPES data and nothing else.** Mappers, predicates, format checks, pure transforms:
   arguments in, a value out. `UserUtil.checkUsernamePattern`, `ApiKeyUtil.isExpired`,
-  `WorkspaceUtil.mapInvitePreview`, `SessionUtil.mapActivityLogMetadata`.
+  `WorkspaceUtil.mapInvitePreview`, `SessionUtil.mapActivityLogActorMetadata`.
 - **It never DECIDES a business rule and it never does IO.** A domain enforces token lifetime, password expiry and reuse, the forgot-password and verification lifecycles, credential rejection, attempt lockout, two-factor challenge and backup-code consumption, and rollout percentage. **The test is what the code DOES**, not what it injects: a method that reads state it was not handed, writes anywhere, throws a typed exception, or picks an outcome the caller could not have computed from its own arguments belongs in the domain. Hashing, encrypting, comparing, and computing dates from config that the caller still acts on are a util (`AuthPasswordUtil.createPassword`, `ApiKeyCredentialUtil.validateCredential`).
 - **What it MAY inject:** `ConfigService`, and the part of `src/common/` that computes in memory
   — the `Helper*` services, `MessageService`, `DatabaseUtil`.
@@ -87,9 +87,9 @@ its definition (`rules/nest-wiring.md`).
   module's domain, HTTP, or processor layer injects it. No header interface.
 - **A util left with no members is deleted, together with its provider and export entries.** An
   empty class kept as a home for future helpers is structure nobody asked for.
-- `src/common/` carries utils of its own. Those are kit plumbing on tier 1 and their import
-  direction is `rules/common.md`; the injection list above governs a util under
-  `src/modules/<feature>/utils/`.
+- `src/common/` carries utils of its own (`DatabaseUtil`, `LoggerUtil`). Those are kit
+  plumbing on tier 1 and their import direction is `rules/common.md`; the injection list above
+  governs a util under `src/modules/<feature>/utils/`.
 
 ## Queue class — `<module>[.<concern>].queue.ts`
 
@@ -104,7 +104,9 @@ its definition (`rules/nest-wiring.md`).
   `EnumQueue` also names the queue a processor consumes, in that processor's own
   `@QueueProcessor(EnumQueue.<member>)` (`rules/queue.md`).
 - Injects the BullMQ `Queue` and `ConfigService` for the mechanics of the job itself — a cron
-  pattern, a timezone, a deduplication TTL.
+  pattern, a timezone, a deduplication TTL, the secret that seals a payload field — and the
+  in-memory tier 1 kit that shapes the payload: `HelperEncryptionService` encrypts every
+  sensitive payload field before `add` (`rules/notification.md`).
 - **It owns no business rule and reaches no repository.** Whether to notify is the domain's
   decision; the queue class carries out the enqueue that decision produced.
 - Provided AND exported by `<feature>.domain.module.ts`. That module registers each owned queue
@@ -164,7 +166,7 @@ YAGNI never had jurisdiction over breadth. A flat, fully-implemented sibling add
 An export sits on the breadth axis — legitimate, present or future — when ALL hold:
 
 1. It is **exported** from its module: public surface a consumer reaches for, not a private helper nothing can call.
-2. It **belongs to a family that exists and has at least one used member**. `PaginationQueryFilterNotEqual` beside a used `PaginationQueryFilterEqualString`; `DocAllOf` beside a used `DocAnyOf`; `FileUploadMultiple` beside the used single-file upload.
+2. It **belongs to a family that exists and has at least one used member**. `PaginationQueryFilterNotEqual` beside a used `PaginationQueryFilterEqualString`; `FileUploadMultiple` beside the used single-file upload.
 3. It is **complete and correct on its own terms** — real implementation, real tests where the layer is covered (`rules/testing.md`), same rules as any shipped code. Not a stub, not a sketch.
 
 It falls back onto the complexity axis, where YAGNI DOES reject it, when any of these is true:
@@ -176,7 +178,7 @@ It falls back onto the complexity axis, where YAGNI DOES reject it, when any of 
 
 **Consequences, so this is not re-litigated:**
 
-- `pnpm deadcode` (`ts-prune`) reports the whole kit surface by design. Its output is **not** a defect list, and the pre-commit chain does not block on it. Do not delete an export to quiet it, and do not report its entries as findings.
+- `pnpm deadcode` is knip. `knip.json` sets unused files, exports, types, enum members and dependencies to `warn`, so kit surface prints and the pre-commit chain does not block on it; unlisted or unresolved imports stay `error`. A warning is **not** a defect list. Do not delete an export to quiet it, and do not report its entries as findings. Kit surface carries the `@public` tag (`rules/code-style.md`), which keeps unused exports out of the report; an unimported FILE still prints, because knip never reads an unreachable file.
 - Do not raise "unused / dead code / YAGNI violation" against an export meeting the three conditions — in a review, a PR description, an audit, or a plan. If it fails one, name WHICH one and argue that. "It has no call sites" is not a finding, and neither is "it is new".
 - When the two axes genuinely both apply, **complexity wins**: reject the structure, keep the breadth. The answer is a flatter sibling, never a dropped one.
 
@@ -187,9 +189,10 @@ It falls back onto the complexity axis, where YAGNI DOES reject it, when any of 
 This is the persistence port: UUID handling and Prisma `where` shapes stay
 behind it. Callers inject the **class** (`userRepository: UserRepository`).
 
-**A domain, HTTP service, and processor service MUST NOT get a header interface.** Inject the
-class. One implementor, no token — an `IUserDomain` / `IUserHttpService` beside it is a twin
-that no constructor types against.
+**A domain, HTTP service, processor service, and every `src/common/` service or util MUST NOT
+get a header interface.** Inject the class. One implementor, no token — an `IUserDomain` /
+`IUserHttpService` / `IHelperStringService` beside it is a twin that no constructor types
+against.
 
 Do not confuse `I*Repository` with data-shape ports such as `IPaginationRepository` in
 `pagination.interface.ts` — those describe a duck type shared by many repositories, not one

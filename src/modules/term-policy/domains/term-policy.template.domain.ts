@@ -1,11 +1,11 @@
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
+import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable, Logger } from '@nestjs/common';
-import { EnumTermPolicyType } from '@generated/prisma-client';
+import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 

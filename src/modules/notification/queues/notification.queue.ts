@@ -1,19 +1,27 @@
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import {
+import type {
     INotificationAcceptTermPolicyPayload,
     INotificationBulkQueuePayload,
+    INotificationForgotPasswordEncryptedPayload,
     INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationQueuePayload,
+    INotificationTemporaryPasswordEncryptedPayload,
     INotificationTemporaryPasswordPayload,
+    INotificationVerificationEmailEncryptedPayload,
     INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
+    INotificationWelcomeByAdminEncryptedPayload,
     INotificationWelcomeByAdminPayload,
+    INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceInvitePayload,
     INotificationWorkspaceJoinAcceptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
+    INotificationWorkspaceJoinRequestEncryptedPayload,
     INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -28,15 +36,29 @@ import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 @Injectable()
 export class NotificationQueue {
     private readonly dedupTtlInMs: number;
+    private readonly encryptionSecretKey: string;
 
     constructor(
         @InjectQueue(EnumQueue.notification)
         private readonly notificationQueue: Queue,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly helperEncryptionService: HelperEncryptionService
     ) {
         this.dedupTtlInMs = this.configService.get<number>(
             'notification.dedupTtlInMs'
         )!;
+        this.encryptionSecretKey = this.configService.get<string>(
+            'app.encryptionSecretKey'
+        )!;
+    }
+
+    private encryptValue(plaintext: string, recipientId: string): string {
+        return this.helperEncryptionService.aes256Encrypt(
+            plaintext,
+            this.encryptionSecretKey,
+            NotificationPayloadEncryptionPurpose,
+            recipientId
+        );
     }
 
     async sendWelcomeByAdmin(
@@ -48,17 +70,21 @@ export class NotificationQueue {
         }: INotificationWelcomeByAdminPayload,
         createdBy: string
     ): Promise<void> {
-        await this.notificationQueue.add(
-            EnumNotificationProcess.welcomeByAdmin,
+        const encryptedPassword = this.encryptValue(password, userId);
+        const payload: INotificationQueuePayload<INotificationWelcomeByAdminEncryptedPayload> =
             {
                 userId,
                 proceedBy: createdBy,
                 data: {
-                    password,
+                    encryptedPassword,
                     passwordCreatedAt,
                     passwordExpiredAt,
                 },
-            } as INotificationQueuePayload<INotificationWelcomeByAdminPayload>,
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.welcomeByAdmin,
+            payload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -78,18 +104,22 @@ export class NotificationQueue {
             reference,
         }: INotificationVerificationEmailPayload
     ): Promise<void> {
-        await this.notificationQueue.add(
-            EnumNotificationProcess.welcome,
+        const encryptedLink = this.encryptValue(link, userId);
+        const payload: INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload> =
             {
                 userId,
+                proceedBy: userId,
                 data: {
-                    link,
+                    encryptedLink,
                     expiredAt,
                     expiredInMinutes,
                     reference,
                 },
-                proceedBy: userId,
-            } as INotificationQueuePayload<INotificationVerificationEmailPayload>,
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.welcome,
+            payload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -126,17 +156,21 @@ export class NotificationQueue {
         }: INotificationTemporaryPasswordPayload,
         createdBy: string
     ): Promise<void> {
-        await this.notificationQueue.add(
-            EnumNotificationProcess.temporaryPasswordByAdmin,
+        const encryptedPassword = this.encryptValue(password, userId);
+        const payload: INotificationQueuePayload<INotificationTemporaryPasswordEncryptedPayload> =
             {
                 userId,
+                proceedBy: createdBy,
                 data: {
-                    password,
+                    encryptedPassword,
                     passwordCreatedAt,
                     passwordExpiredAt,
                 },
-                proceedBy: createdBy,
-            } as INotificationQueuePayload,
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.temporaryPasswordByAdmin,
+            payload,
             {
                 priority: EnumQueuePriority.high,
                 deduplication: {
@@ -194,18 +228,22 @@ export class NotificationQueue {
             reference,
         }: INotificationVerificationEmailPayload
     ): Promise<void> {
-        await this.notificationQueue.add(
-            EnumNotificationProcess.verificationEmail,
+        const encryptedLink = this.encryptValue(link, userId);
+        const payload: INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload> =
             {
                 userId,
+                proceedBy: userId,
                 data: {
-                    link,
+                    encryptedLink,
                     expiredAt,
                     expiredInMinutes,
                     reference,
                 },
-                proceedBy: userId,
-            } as INotificationQueuePayload<INotificationVerificationEmailPayload>,
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.verificationEmail,
+            payload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -226,19 +264,23 @@ export class NotificationQueue {
             resendInMinutes,
         }: INotificationForgotPasswordPayload
     ): Promise<void> {
-        await this.notificationQueue.add(
-            EnumNotificationProcess.forgotPassword,
+        const encryptedLink = this.encryptValue(link, userId);
+        const payload: INotificationQueuePayload<INotificationForgotPasswordEncryptedPayload> =
             {
                 userId,
+                proceedBy: userId,
                 data: {
-                    link,
+                    encryptedLink,
                     expiredAt,
                     expiredInMinutes,
                     reference,
                     resendInMinutes,
                 },
-                proceedBy: userId,
-            } as INotificationQueuePayload<INotificationForgotPasswordPayload>,
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.forgotPassword,
+            payload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -372,20 +414,30 @@ export class NotificationQueue {
     /** Queues the workspace invite notification for a registered invitee (has `userId`); creates a `Notification` row plus email and push. */
     async sendWorkspaceInvite(
         userId: string,
-        payload: INotificationWorkspaceInvitePayload,
+        { inviteAcceptLink, ...invite }: INotificationWorkspaceInvitePayload,
         invitedByUserId: string
     ): Promise<void> {
-        await this.notificationQueue.add(
-            EnumNotificationProcess.workspaceInvite,
+        const encryptedInviteAcceptLink = this.encryptValue(
+            inviteAcceptLink,
+            userId
+        );
+        const payload: INotificationQueuePayload<INotificationWorkspaceInviteEncryptedPayload> =
             {
                 userId,
-                data: payload,
                 proceedBy: invitedByUserId,
-            } as INotificationQueuePayload<INotificationWorkspaceInvitePayload>,
+                data: {
+                    ...invite,
+                    encryptedInviteAcceptLink,
+                },
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.workspaceInvite,
+            payload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
-                    id: `${EnumNotificationProcess.workspaceInvite}-${payload.reference}`,
+                    id: `${EnumNotificationProcess.workspaceInvite}-${invite.reference}`,
                     ttl: this.dedupTtlInMs,
                 },
             }
@@ -395,20 +447,33 @@ export class NotificationQueue {
     /** Queues the workspace join-request notification for one reviewer (workspace owner/admin); call once per reviewer `userId`. */
     async sendWorkspaceJoinRequest(
         userId: string,
-        payload: INotificationWorkspaceJoinRequestPayload,
+        {
+            joinRequestReviewLink,
+            ...joinRequest
+        }: INotificationWorkspaceJoinRequestPayload,
         requestedByUserId: string
     ): Promise<void> {
-        await this.notificationQueue.add(
-            EnumNotificationProcess.workspaceJoinRequest,
+        const encryptedJoinRequestReviewLink = this.encryptValue(
+            joinRequestReviewLink,
+            userId
+        );
+        const payload: INotificationQueuePayload<INotificationWorkspaceJoinRequestEncryptedPayload> =
             {
                 userId,
-                data: payload,
                 proceedBy: requestedByUserId,
-            } as INotificationQueuePayload<INotificationWorkspaceJoinRequestPayload>,
+                data: {
+                    ...joinRequest,
+                    encryptedJoinRequestReviewLink,
+                },
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.workspaceJoinRequest,
+            payload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
-                    id: `${EnumNotificationProcess.workspaceJoinRequest}-${payload.workspaceId}-${userId}`,
+                    id: `${EnumNotificationProcess.workspaceJoinRequest}-${joinRequest.workspaceId}-${userId}`,
                     ttl: this.dedupTtlInMs,
                 },
             }

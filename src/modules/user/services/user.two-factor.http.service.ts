@@ -1,13 +1,14 @@
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { IAuthToken } from '@modules/auth/interfaces/auth.interface';
-import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
-import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
-import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
-import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
-import { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
-import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
-import {
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
+import type { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
+import type { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
+import type { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
+import type { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
+import type { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
+import type { UserTwoFactorSetupRequestDto } from '@modules/user/dtos/request/user.two-factor-setup.request.dto';
+import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import type { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
+import type {
     IUser,
     IUserTwoFactorSetup,
 } from '@modules/user/interfaces/user.interface';
@@ -55,17 +56,21 @@ export class UserTwoFactorHttpService {
     getTwoFactorStatus(
         user: IUser
     ): IResponseReturn<UserTwoFactorStatusResponseDto> {
-        return {
-            data: this.userUtil.mapTwoFactor(
-                this.userTwoFactorDomain.getTwoFactorStatus(user)
-            ),
-        };
+        const twoFactorStatus =
+            this.userTwoFactorDomain.getTwoFactorStatus(user);
+        const twoFactor = this.userUtil.mapTwoFactor(twoFactorStatus);
+
+        return { data: twoFactor };
     }
 
     async setupTwoFactor(
-        user: IUser
+        user: IUser,
+        { backupCode }: UserTwoFactorSetupRequestDto
     ): Promise<IResponseReturn<IUserTwoFactorSetup>> {
-        const setup = await this.userTwoFactorDomain.setupTwoFactor(user);
+        const setup = await this.userTwoFactorDomain.setupTwoFactor(
+            user,
+            backupCode ?? null
+        );
 
         return { data: setup };
     }

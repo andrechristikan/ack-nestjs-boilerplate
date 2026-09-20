@@ -1,17 +1,18 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { EnumActivityLogAction } from '@generated/prisma-client';
-import { UserCreateModeRules } from '@modules/user/constants/user.create-mode.constant';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import {
     EnumUserCreateMode,
     EnumUserSignUpWorkspaceContextType,
 } from '@modules/user/enums/user.enum';
-import {
+import type {
     IUser,
     IUserCreateWithWorkspaceInput,
     IUserOnboardingActivity,
-    IUserSignUpWorkspaceContext,
+    IUserOnboardingAdminAction,
     IUserSignUpWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -74,44 +75,109 @@ export class UserOnboardingDomain {
     buildPersonalWorkspaceContexts(
         usernames: string[]
     ): IUserSignUpWorkspacePersonal[] {
-        return usernames.map(username => ({
-            type: EnumUserSignUpWorkspaceContextType.personal,
-            workspaceId: this.databaseUtil.createId(),
-            slugCandidates: this.drawWorkspaceSlugCandidates(),
-            name: this.personalWorkspaceNamePattern.replace(
+        return usernames.map(username => {
+            const workspaceId = this.databaseUtil.createId();
+            const slugCandidates = this.drawWorkspaceSlugCandidates();
+            const name = this.personalWorkspaceNamePattern.replace(
                 '{username}',
-                username
-            ),
-        }));
+                () => username
+            );
+
+            return {
+                type: EnumUserSignUpWorkspaceContextType.personal,
+                workspaceId,
+                slugCandidates,
+                name,
+            };
+        });
     }
 
     buildOnboardingActivities(
         mode: EnumUserCreateMode,
-        workspaceContext: IUserSignUpWorkspaceContext
+        input: IUserCreateWithWorkspaceInput,
+        user: IUser
     ): IUserOnboardingActivity[] {
-        const { createdAction, logsVerificationEmailRequest } =
-            UserCreateModeRules[mode];
-        const workspaceAction =
-            workspaceContext.type ===
-            EnumUserSignUpWorkspaceContextType.personal
-                ? EnumActivityLogAction.workspaceCreated
-                : EnumActivityLogAction.workspaceInviteAccepted;
-
-        return [
-            { action: createdAction, workspaceId: null },
-            ...(logsVerificationEmailRequest
-                ? [
-                      {
-                          action: EnumActivityLogAction.userSendVerificationEmail,
-                          workspaceId: null,
-                      },
-                  ]
-                : []),
+        const {
+            createdAction,
+            logsVerificationEmailRequest,
+            personalWorkspaceAction,
+            logsActingAdmin,
+        } = UserCreateContract[mode];
+        const { userId, createdBy, workspaceContext } = input;
+        const activities: IUserOnboardingActivity[] = [
             {
-                action: workspaceAction,
-                workspaceId: workspaceContext.workspaceId,
+                action: createdAction,
+                userId,
+                workspaceId: null,
+                createdBy,
+                metadata: logsActingAdmin
+                    ? { actorUserId: createdBy, timestamp: user.createdAt }
+                    : {},
             },
         ];
+
+        if (logsVerificationEmailRequest) {
+            activities.push({
+                action: EnumActivityLogAction.userSendVerificationEmail,
+                userId,
+                workspaceId: null,
+                createdBy,
+                metadata: {},
+            });
+        }
+
+        if (
+            workspaceContext.type ===
+            EnumUserSignUpWorkspaceContextType.personal
+        ) {
+            activities.push({
+                action: personalWorkspaceAction,
+                userId,
+                workspaceId: workspaceContext.workspaceId,
+                createdBy,
+                metadata: logsActingAdmin ? { actorUserId: createdBy } : {},
+            });
+
+            return activities;
+        }
+
+        activities.push({
+            action: EnumActivityLogAction.workspaceInviteAccepted,
+            userId,
+            workspaceId: workspaceContext.workspaceId,
+            createdBy,
+            metadata: { targetUserId: workspaceContext.invitedByUserId },
+        });
+        if (workspaceContext.invitedByUserId !== userId) {
+            activities.push({
+                action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
+                userId: workspaceContext.invitedByUserId,
+                workspaceId: workspaceContext.workspaceId,
+                createdBy: userId,
+                metadata: { actorUserId: userId },
+            });
+        }
+
+        return activities;
+    }
+
+    buildAdminPayloadMetadata(
+        action: IUserOnboardingAdminAction,
+        users: IUser[]
+    ): IActivityLogMetadata {
+        switch (action) {
+            case EnumActivityLogAction.adminUserCreate: {
+                const [user] = users;
+
+                return {
+                    targetUserId: user.id,
+                    targetUsername: user.username,
+                    timestamp: user.createdAt,
+                };
+            }
+            case EnumActivityLogAction.adminUserImport:
+                return { userCount: users.length };
+        }
     }
 
     async createManyInTx(

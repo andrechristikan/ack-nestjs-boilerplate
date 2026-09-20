@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { CountryResponseSchema } from '@modules/country/dtos/response/country.response.dto';
 
+/**
+ * Validates a country row, with upper-cased ISO codes.
+ * @public
+ */
 export const CountryRequestSchema = CountryResponseSchema.pick({
     name: true,
     continent: true,
@@ -34,4 +38,8 @@ export const CountryRequestSchema = CountryResponseSchema.pick({
     })
     .strict();
 
+/**
+ * Country row accepted by the country seed.
+ * @public
+ */
 export type CountryRequestDto = z.infer<typeof CountryRequestSchema>;

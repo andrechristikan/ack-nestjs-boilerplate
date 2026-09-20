@@ -5,10 +5,14 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
+/**
+ * Shapes a term policy acceptance of a user with the accepted policy.
+ * @public
+ */
 export const TermPolicyUserAcceptanceResponseSchema =
     DatabaseResponseSchema.omit({
         updatedAt: true,
@@ -70,6 +74,10 @@ export const TermPolicyUserAcceptanceResponseSchema =
         }),
     });
 
+/**
+ * Term policy acceptance of a user.
+ * @public
+ */
 export type TermPolicyUserAcceptanceResponseDto = z.infer<
     typeof TermPolicyUserAcceptanceResponseSchema
 >;

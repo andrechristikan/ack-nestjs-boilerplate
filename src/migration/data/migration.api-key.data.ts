@@ -1,8 +1,8 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { ApiKeyCreateRawRequestDto } from '@modules/api-key/dtos/request/api-key.create-raw.request.dto';
-import { EnumApiKeyType } from '@generated/prisma-client';
+import type { ApiKeyCreateRawRequestDto } from '@modules/api-key/dtos/request/api-key.create-raw.request.dto';
+import { EnumApiKeyType } from '@generated/prisma-client/client';
 
-export const migrationApiKeyData: Record<
+export const MigrationApiKeyData: Record<
     EnumAppEnvironment,
     ApiKeyCreateRawRequestDto[]
 > = {

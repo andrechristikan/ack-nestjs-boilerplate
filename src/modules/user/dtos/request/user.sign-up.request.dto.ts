@@ -1,9 +1,13 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { RequestPasswordStrengthRegex } from '@common/request/constants/request.constant';
-import { EnumUserSignUpFrom } from '@generated/prisma-client';
+import { EnumUserSignUpFrom } from '@generated/prisma-client/client';
 import { UserCreateRequestSchema } from '@modules/user/dtos/request/user.create.request.dto';
 
+/**
+ * Validates the body for signing up with email and password.
+ * @public
+ */
 export const UserSignUpRequestSchema = UserCreateRequestSchema.omit({
     roleId: true,
 }).extend({
@@ -43,4 +47,8 @@ export const UserSignUpRequestSchema = UserCreateRequestSchema.omit({
         }),
 });
 
+/**
+ * Body for signing up with email and password.
+ * @public
+ */
 export type UserSignUpRequestDto = z.infer<typeof UserSignUpRequestSchema>;
