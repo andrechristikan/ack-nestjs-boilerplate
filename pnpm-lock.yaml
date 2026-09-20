@@ -368,9 +368,6 @@ importers:
       '@commitlint/config-conventional':
         specifier: ^21.2.3
         version: 21.2.3
-      '@golevelup/ts-vitest':
-        specifier: ^4.0.0
-        version: 4.0.0
       '@nestjs/cli':
         specifier: ^12.0.3
         version: 12.0.3(@swc/cli@0.8.1(@swc/core@1.16.2)(chokidar@5.0.0)(supports-color@10.2.2))(@swc/core@1.16.2)(@types/node@26.6.2)(fork-ts-checker-webpack-plugin@9.1.0(typescript@6.0.3)(webpack@5.106.2(@swc/core@1.16.2)(uglify-js@3.19.3)))(prettier@3.9.8)(tsconfig-paths-webpack-plugin@4.2.0)(webpack-node-externals@3.0.0)(webpack@5.106.2(@swc/core@1.16.2)(uglify-js@3.19.3))
@@ -1056,9 +1053,6 @@ packages:
     peerDependencies:
       '@nestjs/common': ^11.1.21
       '@nestjs/core': ^11.1.21
-
-  '@golevelup/ts-vitest@4.0.0':
-    resolution: {integrity: sha512-TNIhtox9zWfxlww0ql91l/k2zDthN4owg5qDieRHtjIwIvuoUlXLiwqAb/ifkRr8K+jZLRIC9QrKN/J7TBghlQ==}
 
   '@google-cloud/firestore-api@0.2.0':
     resolution: {integrity: sha512-wfHJPZmLqzpy6FN6U+7HkkP/AKhGsbHSpEy/qL2TyI3/pKRAvpamQxZ2qvps5hMRgAjfuHCim+oeJj9RveCaqg==}
@@ -6830,8 +6824,6 @@ snapshots:
     dependencies:
       '@nestjs/common': 12.0.3(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@10.2.2)
       '@nestjs/core': 12.0.3(@nestjs/common@12.0.3(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@10.2.2))(@nestjs/platform-express@12.0.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-
-  '@golevelup/ts-vitest@4.0.0': {}
 
   '@google-cloud/firestore-api@0.2.0(supports-color@10.2.2)':
     dependencies:
