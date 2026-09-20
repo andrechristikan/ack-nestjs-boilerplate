@@ -6,7 +6,13 @@ Project lives in `src/modules/project`.
 
 A project is a unit of work inside a workspace. Every project belongs to exactly one workspace, and every project route is reached through that workspace: the caller sends `x-workspace-id` to select the workspace and carries `:projectId` in the path to select the project. **There is no project header.**
 
-Projects carry their own membership with three roles (`admin`, `member`, `viewer`), independent of the caller's workspace role, with one deliberate exception: a workspace `owner` reaches every project in the workspace without holding a `ProjectMember` row.
+Projects carry their own membership with three roles, independent of the caller's workspace role:
+
+- `admin`
+- `member`
+- `viewer`
+
+One deliberate exception: a workspace `owner` reaches every project in the workspace without holding a `ProjectMember` row.
 
 ## Related Documents
 

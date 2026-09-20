@@ -6,8 +6,8 @@ Only the latest minor release line receives security updates. Please upgrade bef
 
 | Version | Supported |
 |---------|-----------|
-| 8.4.x   | ✅        |
-| < 8.4   | ❌        |
+| 9.0.x   | ✅        |
+| < 9.0   | ❌        |
 
 ## Reporting a Vulnerability
 
@@ -30,7 +30,10 @@ Please include:
 
 ## What to Expect
 
-- A fix or mitigation plan communicated once the report is validated.
-- Public disclosure coordinated with you after a patch is released.
+- A fix or mitigation plan communicated once the report is validated
+- Public disclosure coordinated with you after a patch is released
 
-Please act in good faith — give us reasonable time to fix the issue before any public disclosure, and avoid privacy violations, data destruction, or service disruption during testing.
+Please act in good faith:
+
+- Give us reasonable time to fix the issue before any public disclosure
+- Avoid privacy violations, data destruction, or service disruption during testing

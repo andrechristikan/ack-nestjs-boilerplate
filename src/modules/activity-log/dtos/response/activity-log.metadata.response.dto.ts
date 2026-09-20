@@ -15,7 +15,7 @@ import {
 export const ActivityLogMetadataResponseSchema = z.object({
     targetUserId: z.string().optional().meta({
         description: 'Identifier of the user the action was performed on',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     targetUsername: z.string().optional().meta({
         description: 'Username of the user the action was performed on',
@@ -23,7 +23,7 @@ export const ActivityLogMetadataResponseSchema = z.object({
     }),
     actorUserId: z.string().optional().meta({
         description: 'Identifier of the user who performed the action',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     timestamp: z.string().optional().meta({
         description: 'Time of the affected record when the action was recorded',
@@ -31,7 +31,7 @@ export const ActivityLogMetadataResponseSchema = z.object({
     }),
     sessionId: z.string().optional().meta({
         description: 'Identifier of the affected session',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     sessionCount: z.number().optional().meta({
         description: 'Number of sessions revoked by the action',
@@ -39,15 +39,15 @@ export const ActivityLogMetadataResponseSchema = z.object({
     }),
     deviceOwnershipId: z.string().optional().meta({
         description: 'Identifier of the affected device ownership',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     deviceId: z.string().optional().meta({
         description: 'Identifier of the affected device',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     workspaceInviteId: z.string().optional().meta({
         description: 'Identifier of the affected workspace invite',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     userCount: z.number().optional().meta({
         description: 'Number of users created by an import',
@@ -55,7 +55,7 @@ export const ActivityLogMetadataResponseSchema = z.object({
     }),
     apiKeyId: z.string().optional().meta({
         description: 'Identifier of the affected API key',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     apiKeyName: z.string().optional().meta({
         description: 'Name of the affected API key',
@@ -67,7 +67,7 @@ export const ActivityLogMetadataResponseSchema = z.object({
     }),
     roleId: z.string().optional().meta({
         description: 'Identifier of the affected role',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     roleName: z.string().optional().meta({
         description: 'Name of the affected role',
@@ -79,7 +79,7 @@ export const ActivityLogMetadataResponseSchema = z.object({
     }),
     termPolicyId: z.string().optional().meta({
         description: 'Identifier of the affected term policy',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     termPolicyType: z.string().optional().meta({
         description: 'Type of the affected term policy',

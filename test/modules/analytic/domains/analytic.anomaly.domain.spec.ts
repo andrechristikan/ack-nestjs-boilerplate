@@ -12,10 +12,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { Duration } from 'luxon';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type {
-    IRequestGeoLocation as GeoLocation,
-    IRequestUserAgent as UserAgent,
-} from '@common/request/interfaces/request.interface';
+import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import {
     AnalyticDeviceProliferationAvailableOrderBy,

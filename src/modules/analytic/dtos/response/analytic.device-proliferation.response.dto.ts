@@ -8,7 +8,7 @@ import { faker } from '@faker-js/faker';
 export const AnalyticDeviceProliferationResponseSchema = z.object({
     userId: z.string().meta({
         description: 'Identifier of the user holding the devices',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     deviceCount: z.number().meta({
         description: 'Number of devices owned by the user',

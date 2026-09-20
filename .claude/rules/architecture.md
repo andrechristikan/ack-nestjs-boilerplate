@@ -33,9 +33,9 @@ its definition (`rules/nest-wiring.md`).
   `interfaces/<module>.[<concern>-]repository.interface.ts`. The interface file and the
   class file are separate (`rules/naming.md`). Callers inject the class (`UserRepository`);
   Nest cannot inject an interface without a token. Domain and HTTP see `string` IDs.
-  UUID and Prisma `where` shapes stay in this class, not in a domain signature. Public
-  repository methods return named `I*` shapes, Prisma models, or primitives — not `unknown`
-  or `Record<string, unknown>` (`rules/null-safety.md`).
+  ObjectId versus UUID is mapped in this class, not by leaking a Prisma engine type into a
+  domain signature. Public repository methods return named `I*` shapes, Prisma models, or
+  primitives — not `unknown` or `Record<string, unknown>` (`rules/null-safety.md`).
 
 ## Domain — `<module>[.<concern>].domain.ts`
 
@@ -166,7 +166,7 @@ YAGNI never had jurisdiction over breadth. A flat, fully-implemented sibling add
 An export sits on the breadth axis — legitimate, present or future — when ALL hold:
 
 1. It is **exported** from its module: public surface a consumer reaches for, not a private helper nothing can call.
-2. It **belongs to a family that exists and has at least one used member**. `PaginationQueryFilterNotEqual` beside a used `PaginationQueryFilterEqualString`; `FileUploadMultiple` beside the used single-file upload.
+2. It **belongs to a family that exists and has at least one used member**. `PaginationQueryUtil.notEqual` beside a used `equalString`; `FileUploadMultiple` beside the used single-file upload.
 3. It is **complete and correct on its own terms** — real implementation, real tests where the layer is covered (`rules/testing.md`), same rules as any shipped code. Not a stub, not a sketch.
 
 It falls back onto the complexity axis, where YAGNI DOES reject it, when any of these is true:
@@ -185,8 +185,8 @@ It falls back onto the complexity axis, where YAGNI DOES reject it, when any of 
 ## Header interfaces (HARD)
 
 **A repository MUST have a header interface** — `I<Feature>[<Concern>]Repository` at
-`interfaces/<module>[.<concern>].repository.interface.ts` — and the class `implements` it.
-This is the persistence port: UUID handling and Prisma `where` shapes stay
+`interfaces/<module>.[<concern>-]repository.interface.ts` — and the class `implements` it.
+This is the persistence port: ID dialect (ObjectId versus UUID) and Prisma `where` shapes stay
 behind it. Callers inject the **class** (`userRepository: UserRepository`).
 
 **A domain, HTTP service, processor service, and every `src/common/` service or util MUST NOT
@@ -230,3 +230,10 @@ Build the correct shape and change every call site.
   NestJS, Prisma, and TypeScript.
 - Use existing code as a divergence check: when best practice clashes HARD with an established
   pattern here, WARN the owner before applying. Minor local divergence: just proceed.
+- **The run surface is a call site.** A command, engine, port, path, generate step, or script
+  name this change moves also moves in `package.json` (`scripts`, `engines`, `packageManager`),
+  `scripts/`, `ci/` (both dockerfiles and compose helpers), `docker-compose.yml`,
+  `.github/workflows/`, `.github/dependabot.yml`, and the config those commands read
+  (`nest-cli.json`, `vitest.config.ts`, `knip.json`, `tsconfig.json`, `tsconfig.build.json`,
+  `eslint.config.mjs`, `.husky/`). A change that does not move those facts does not sweep
+  those files. `keys/` is not this surface.

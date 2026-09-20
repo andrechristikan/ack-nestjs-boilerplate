@@ -39,15 +39,16 @@ exists to catch.
 ## Params and queries
 
 - A path or query param is validated by a zod schema on the binding itself —
-  `@Param('userId', { schema: RequestUuidSchema })`,
-  `@Query('userId', { schema: RequestUuidSchema.optional() })`,
+  `@Param('userId', { schema: RequestMongoIdSchema })`,
+  `@Query('userId', { schema: RequestMongoIdSchema.optional() })`,
   `@Param('inviteToken', { schema: RequestRequiredStringSchema })` — the same
   `RequestSchemaValidationPipe` that validates bodies (`rules/http.md`). Shared schemas live
   in `src/common/request/validations/`.
-- Pagination and filtering come from the `@Pagination*` decorators in
-  `src/common/pagination/` (`rules/pagination.md`), not from hand-rolled `@Query` parsing.
-  Reach for a query schema when an endpoint has its own non-pagination filter set; otherwise
-  use the existing decorators.
+- **List endpoints** bind one `@Query({ schema })` that `.extend`s
+  `PaginationOffsetQuerySchema` / `PaginationCursorQuerySchema` with `search` /
+  `orderBy` (when allow-lists are non-empty) and filters. The HTTP service derives
+  `IPaginationQuery*Params` with `PaginationQueryUtil` (`rules/pagination.md`).
+  There are no pagination query pipes.
 - File upload presence and type stay on the file pipes in `src/common/file/pipes/`
   (`rules/file.md`), not on a request schema.
 

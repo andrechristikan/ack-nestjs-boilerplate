@@ -1,3 +1,5 @@
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -12,6 +14,10 @@ describe('AnalyticAnomalyHttpService', () => {
         mock<AnalyticAnomalyDomain>();
     const analyticDateDomain: MockProxy<AnalyticDateDomain> =
         mock<AnalyticDateDomain>();
+    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
+        mock<PaginationQueryUtil>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
@@ -35,6 +41,10 @@ describe('AnalyticAnomalyHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        paginationQueryUtil.offset.mockReturnValue({
+            params: pagination,
+            storePatch: {},
+        } as never);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -44,6 +54,14 @@ describe('AnalyticAnomalyHttpService', () => {
                     useValue: analyticAnomalyDomain,
                 },
                 { provide: AnalyticDateDomain, useValue: analyticDateDomain },
+                {
+                    provide: PaginationQueryUtil,
+                    useValue: paginationQueryUtil,
+                },
+                {
+                    provide: RequestStoreService,
+                    useValue: requestStoreService,
+                },
             ],
         }).compile();
 
@@ -112,11 +130,12 @@ describe('AnalyticAnomalyHttpService', () => {
             };
             analyticAnomalyDomain.impossibleTravelList.mockResolvedValue(page);
 
-            const result = await service.impossibleTravelList(
+            const result = await service.impossibleTravelList({
                 startDate,
                 endDate,
-                pagination
-            );
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(
@@ -143,11 +162,7 @@ describe('AnalyticAnomalyHttpService', () => {
             };
             analyticAnomalyDomain.impossibleTravelList.mockResolvedValue(page);
 
-            await service.impossibleTravelList(
-                undefined,
-                undefined,
-                pagination
-            );
+            await service.impossibleTravelList({ page: 1, perPage: 20 });
 
             expect(
                 analyticAnomalyDomain.impossibleTravelList
@@ -200,7 +215,11 @@ describe('AnalyticAnomalyHttpService', () => {
             };
             analyticAnomalyDomain.loginSpikeIpList.mockResolvedValue(page);
 
-            const result = await service.loginSpikeIpList(windowMs, pagination);
+            const result = await service.loginSpikeIpList({
+                windowMs,
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(analyticAnomalyDomain.loginSpikeIpList).toHaveBeenCalledWith(
@@ -222,7 +241,7 @@ describe('AnalyticAnomalyHttpService', () => {
             };
             analyticAnomalyDomain.loginSpikeIpList.mockResolvedValue(page);
 
-            await service.loginSpikeIpList(undefined, pagination);
+            await service.loginSpikeIpList({ page: 1, perPage: 20 });
 
             expect(analyticAnomalyDomain.loginSpikeIpList).toHaveBeenCalledWith(
                 null,
@@ -266,7 +285,10 @@ describe('AnalyticAnomalyHttpService', () => {
             };
             analyticAnomalyDomain.failedLoginSpikeList.mockResolvedValue(page);
 
-            const result = await service.failedLoginSpikeList(pagination);
+            const result = await service.failedLoginSpikeList({
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(
@@ -310,7 +332,10 @@ describe('AnalyticAnomalyHttpService', () => {
                 page
             );
 
-            const result = await service.deviceProliferationList(pagination);
+            const result = await service.deviceProliferationList({
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(
@@ -378,11 +403,12 @@ describe('AnalyticAnomalyHttpService', () => {
             };
             analyticAnomalyDomain.loginTimeList.mockResolvedValue(page);
 
-            const result = await service.loginTimeList(
+            const result = await service.loginTimeList({
                 startDate,
                 endDate,
-                pagination
-            );
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(analyticAnomalyDomain.loginTimeList).toHaveBeenCalledWith(
@@ -409,7 +435,7 @@ describe('AnalyticAnomalyHttpService', () => {
             };
             analyticAnomalyDomain.loginTimeList.mockResolvedValue(page);
 
-            await service.loginTimeList(undefined, undefined, pagination);
+            await service.loginTimeList({ page: 1, perPage: 20 });
 
             expect(analyticAnomalyDomain.loginTimeList).toHaveBeenCalledWith(
                 null,

@@ -25,7 +25,7 @@ export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
     userId: z.string().meta({
         description:
             'Identifier of the user this entry belongs to: the actor for payload actions, the affected user for target actions',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     user: UserRefResponseSchema.meta({
         description:
@@ -106,7 +106,7 @@ export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
         description:
             'Metadata recorded with the entry; the keys present depend on the action',
         example: {
-            targetUserId: faker.string.uuid(),
+            targetUserId: faker.database.mongodbObjectId(),
             targetUsername: faker.internet.username().toLowerCase(),
             timestamp: faker.date.recent().toISOString(),
         },

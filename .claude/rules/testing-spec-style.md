@@ -332,10 +332,10 @@ is what produces slow, brittle specs that test the mock instead of the code.
   (`rules/database.md`) — `mockDeep<DatabaseService>()` there, not a repository.
 
 Do not spec framework wiring, Prisma itself, a `@Module` decorator, a controller, a
-processor, a repository, a contract table, or a Swagger doc factory (`*.doc.ts`). There is
+processor, a repository, or a contract table. There is
 no behavior of ours in the first three, and the last five are outside the coverage set
 (`rules/testing.md`). A unit spec doubles the repository from the domain. A repository as
-subject with Prisma and PostgreSQL real is an integration test, and that kind is not this suite.
+subject with Prisma and Mongo real is an integration test, and that kind is not this suite.
 
 ## Writing the spec
 

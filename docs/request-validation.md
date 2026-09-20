@@ -8,11 +8,11 @@ Every request shape is a [zod][ref-zod] schema. Schemas reach the framework thro
 
 ## Related Documents
 
-- [Message Documentation][ref-doc-message] - For internationalization and error message translation
-- [Handling Error Documentation][ref-doc-handling-error] - For exception handling and response formatting
-- [Doc Documentation][ref-doc-doc] - For API documentation generated from the same schemas
-- [Response Documentation][ref-doc-response] - For the outbound half, where a response schema serializes the payload
-- [File Upload Documentation][ref-doc-file-upload] - For file validation pipes
+- [Language Message Documentation][ref-doc-message] - Validation and error message i18n
+- [Handling Error Documentation][ref-doc-handling-error] - `RequestValidationException` filter path
+- [Doc Documentation][ref-doc-doc] - OpenAPI built from the same schemas
+- [Response Documentation][ref-doc-response] - Outbound schemas that serialize the payload
+- [File Upload Documentation][ref-doc-file-upload] - File validation pipes
 
 ## Table of Contents
 
@@ -49,10 +49,10 @@ Every request shape is a [zod][ref-zod] schema. Schemas reach the framework thro
 
 The subclass adds two rules on top of the framework pipe:
 
-- **Fail-closed on `body` and `param`.** An argument of either type arriving with no schema attached throws `RequestSchemaMissingException` instead of reaching the handler unchecked, so a body is bound as `@Body({ schema: <Module><Action>RequestSchema })` and a path param as `@Param('userId', { schema: RequestUuidSchema })`. A `query` argument with no schema still passes.
+- **Fail-closed on `body` and `param`.** An argument of either type arriving with no schema attached throws `RequestSchemaMissingException` instead of reaching the handler unchecked, so a body is bound as `@Body({ schema: <Module><Action>RequestSchema })` and a path param as `@Param('userId', { schema: RequestMongoIdSchema })`. A `query` argument with no schema still passes.
 - **Empty issue paths carry the argument name.** An issue whose Standard Schema `path` is empty is stamped with the bound argument name before `exceptionFactory` runs, so `errors[].property` reads as the parameter rather than as `Unknown`.
 
-The pipe also strips prototype-polluting keys from the value before validating. The constraint when writing a schema: `rules/validation.md`.
+The pipe also strips prototype-polluting keys from the value before validating.
 
 **Processing flow**:
 ```
@@ -129,30 +129,22 @@ A path param is validated by a zod schema bound on `@Param`, the same way a body
 ```typescript
 @Get('/get/:userId')
 findOne(
-  @Param('user', { schema: RequestUuidSchema }) user: string
+  @Param('userId', { schema: RequestMongoIdSchema }) userId: string
 ) {
   return this.userHttpService.getOne(userId);
 }
 ```
 
-### Query Parameters
-
-Pagination, search, and filtering arrive through the `@Pagination*` decorators of `src/common/pagination/` (see [Pagination][ref-doc-pagination]). A single extra filter is read with `@Query()` and validated by a schema:
+`RequestMongoIdSchema` (`src/common/request/validations/request.mongo-id.validation.ts`) requires a 24-character hex ObjectId. A required non-empty string uses `RequestRequiredStringSchema`. An optional query uses `.optional()` on the schema:
 
 ```typescript
-@Get('/list')
-async list(
-  @PaginationOffsetQuery({
-    availableSearch: ProjectDefaultAvailableSearch,
-    availableOrderBy: ProjectDefaultAvailableOrderBy,
-  })
-  pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-  @Query('workspaceId', { schema: RequestUuidSchema.optional() })
-  workspaceId?: string
-) {
-  return this.projectHttpService.getListForAdmin(pagination, workspaceId);
-}
+@Query('userId', { schema: RequestMongoIdSchema.optional() })
+userId?: string
 ```
+
+### Query Parameters
+
+Pagination, search, and filtering arrive through list request schemas on `@Query({ schema })` plus `PaginationQueryUtil` in the HTTP service (see [Pagination][ref-doc-pagination]). A single extra filter is read with `@Query()` and validated by a schema on the query parameter, as above.
 
 ## Schema Shape
 
@@ -239,18 +231,11 @@ A module-specific check goes in that module's `validations/` folder instead.
 
 Shared schemas:
 
-- `RequestUuidSchema` — UUID path and query parameters
+- `RequestMongoIdSchema` — 24-character hex MongoDB ObjectId
 - `RequestRequiredStringSchema` — non-empty string
 - `RequestBooleanStringSchema` — `z.stringbool` accepting exactly `'true'` or `'false'`, case-sensitive; used by the boolean environment variables
 - `RequestEncryptionSecretSchema` — exactly 64 base64url characters; used by `APP_ENCRYPTION_SECRET_KEY` and `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
 - `RequestMessageLanguageSchema` — a member of `EnumMessageLanguage`, carrying its own `.meta()` for the OpenAPI document
-
-```typescript
-@Get(':userId')
-findOne(@Param('userId', { schema: RequestUuidSchema }) userId: string) {
-  return this.userService.findById(userId);
-}
-```
 
 ## File Validation Pipes
 
@@ -272,11 +257,22 @@ A CSV import composes pipes in order: `FileRequiredPipe()`, `FileExtensionPipe`,
 data: UserImportRequestDto[]
 ```
 
-The pipe caps the row count at the `file.maxDataImport` config value (100, overridable per pipe through `maxDataImportConfigKey`) by throwing `FileExceedMaxDataImportException`, rejects an empty file with `FileRequiredExtractFirstException`, and collects every per-row failure, keyed by row index, into one `FileImportException` handled by `AppValidationImportFilter`. See [File Upload][ref-doc-file-upload].
+The pipe:
+
+- caps the row count at the `file.maxDataImport` config value (100, overridable per pipe through `maxDataImportConfigKey`) by throwing `FileExceedMaxDataImportException`
+- rejects an empty file with `FileRequiredExtractFirstException`
+- collects every per-row failure, keyed by row index, into one `FileImportException` handled by `AppValidationImportFilter`
+
+See [File Upload][ref-doc-file-upload].
 
 ## Environment Variables
 
-`AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) is the zod schema `ConfigModule.forRoot()` validates `process.env` against at boot, so a missing or malformed variable stops the process instead of surfacing later as a runtime error. An env boolean is `RequestBooleanStringSchema`, exactly `'true'` or `'false'`; every other spelling fails the boot. An encryption secret is `RequestEncryptionSecretSchema`, exactly 64 base64url characters. See [Environment][ref-doc-environment].
+`AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) is the zod schema `ConfigModule.forRoot()` validates `process.env` against at boot, so a missing or malformed variable stops the process instead of surfacing later as a runtime error.
+
+- An env boolean is `RequestBooleanStringSchema`, exactly `'true'` or `'false'`; every other spelling fails the boot
+- An encryption secret is `RequestEncryptionSecretSchema`, exactly 64 base64url characters
+
+See [Environment][ref-doc-environment].
 
 ## Error Message Mapping
 
@@ -370,7 +366,7 @@ See [Handling Error][ref-doc-handling-error] for the complete error handling flo
 [ref-standard-schema]: https://standardschema.dev
 [ref-nestjs-i18n]: https://nestjs-i18n.com
 
-[ref-doc-message]: message.md
+[ref-doc-message]: language-message.md
 [ref-doc-handling-error]: handling-error.md
 [ref-doc-doc]: doc.md
 [ref-doc-file-upload]: file-upload.md

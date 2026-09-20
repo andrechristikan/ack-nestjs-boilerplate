@@ -1,10 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
-import type {
-    IRequestGeoLocation,
-    IRequestUserAgent,
-} from '@common/request/interfaces/request.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 import type { ISessionAnalyticRepository } from '@modules/session/interfaces/session.analytic-repository.interface';
 import type {
@@ -21,10 +16,10 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
         startDate?: Date,
         endDate?: Date
     ): Promise<ISessionAnalyticSession[]> {
-        const sessions = await this.databaseService.client.session.findMany({
+        return this.databaseService.client.session.findMany({
             where: {
                 isRevoked: false,
-                geoLocation: { not: Prisma.JsonNullValueFilter.AnyNull },
+                geoLocation: { isSet: true },
                 ...(startDate && endDate
                     ? { createdAt: { gte: startDate, lt: endDate } }
                     : {}),
@@ -42,12 +37,6 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
                 { createdAt: EnumPaginationOrderDirectionType.asc },
             ],
         });
-
-        return sessions.map(session => ({
-            ...session,
-            geoLocation: session.geoLocation as IRequestGeoLocation | null,
-            userAgent: session.userAgent as IRequestUserAgent,
-        }));
     }
 
     async countActiveByUser(): Promise<ISessionAnalyticUserCount[]> {

@@ -1,9 +1,8 @@
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import type {
-    IPaginationIn,
-    IPaginationQueryCursorParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import type {
-    IResponsePagingReturn,
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
@@ -11,6 +10,12 @@ import type {
     Workspace,
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
+import {
+    WorkspaceInviteDefaultAvailableOrderBy,
+    WorkspaceInviteDefaultAvailableSearch,
+    WorkspaceInviteDefaultStatus,
+} from '@modules/workspace/constants/workspace.list.constant';
+import type { WorkspaceInviteListRequestDto } from '@modules/workspace/dtos/request/workspace.invite-list.request.dto';
 import type { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
 import type { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
@@ -24,19 +29,41 @@ import { Injectable } from '@nestjs/common';
 export class WorkspaceInviteHttpService {
     constructor(
         private readonly workspaceInviteDomain: WorkspaceInviteDomain,
-        private readonly workspaceUtil: WorkspaceUtil
+        private readonly workspaceUtil: WorkspaceUtil,
+        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async getInvitesList(
         workspaceId: string,
-        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
-        status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IWorkspaceInviteList>> {
+        query: WorkspaceInviteListRequestDto
+    ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.cursor<Prisma.WorkspaceInviteWhereInput>(
+                query,
+                {
+                    availableSearch: WorkspaceInviteDefaultAvailableSearch,
+                    availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
+                }
+            );
+        const status = this.paginationQueryUtil.inEnum(
+            Prisma.WorkspaceInviteScalarFieldEnum.status,
+            query.status,
+            WorkspaceInviteDefaultStatus
+        );
+        this.requestStoreService.merge(PaginationStoreKey, {
+            ...storePatch,
+            filters: {
+                ...storePatch.filters,
+                ...(status?.storeFilter ?? {}),
+            },
+        });
+
         const { data, ...others } =
             await this.workspaceInviteDomain.getInvitesList(
                 workspaceId,
-                pagination,
-                status
+                params,
+                status?.where
             );
 
         return {

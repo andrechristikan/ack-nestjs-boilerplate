@@ -8,7 +8,7 @@ import { faker } from '@faker-js/faker';
 export const AnalyticNearLockoutResponseSchema = z.object({
     id: z.string().meta({
         description: 'Identifier of the user near lockout',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     email: z.string().meta({
         description: 'Email address of the user near lockout',

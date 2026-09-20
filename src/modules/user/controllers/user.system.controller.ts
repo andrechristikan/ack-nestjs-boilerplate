@@ -1,10 +1,7 @@
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
-import {
-    UserSystemCheckEmailDoc,
-    UserSystemCheckUsernameDoc,
-} from '@modules/user/docs/user.system.doc';
 import { UserCheckEmailRequestSchema } from '@modules/user/dtos/request/user.check-email.request.dto';
 import { UserCheckUsernameRequestSchema } from '@modules/user/dtos/request/user.check-username.request.dto';
 import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
@@ -27,7 +24,7 @@ import { ApiTags } from '@nestjs/swagger';
 export class UserSystemController {
     constructor(private readonly userHttpService: UserHttpService) {}
 
-    @UserSystemCheckUsernameDoc()
+    @Doc({ summary: 'check user exist by username' })
     @Response('user.checkUsername', {
         schema: UserCheckUsernameResponseSchema,
     })
@@ -41,7 +38,7 @@ export class UserSystemController {
         return this.userHttpService.checkUsername(body);
     }
 
-    @UserSystemCheckEmailDoc()
+    @Doc({ summary: 'check user exist by email' })
     @Response('user.checkEmail', { schema: UserCheckEmailResponseSchema })
     @ApiKeySystemProtected()
     @HttpCode(HttpStatus.OK)

@@ -23,7 +23,7 @@ export interface ITermPolicyContentUpload {
     key: string;
 }
 
-/** The stored columns of one localized content document — the create/update input shape. */
+/** The persistable columns of one localized content document — the create/update input shape. */
 export interface ITermPolicyContentCreate extends Omit<IAwsS3, 'data'> {
     language: EnumMessageLanguage;
 }

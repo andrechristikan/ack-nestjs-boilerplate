@@ -2,7 +2,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type {
     IAnalyticProjectCount,
@@ -20,7 +20,7 @@ export class ProjectMemberAnalyticRepository implements IProjectMemberAnalyticRe
 
     async membershipDistributionOffset(
         params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticProjectCount>> {
+    ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
         const { where, skip, limit } = params;
         const scopedWhere = where ?? {};
 

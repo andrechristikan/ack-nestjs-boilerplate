@@ -1,14 +1,20 @@
-import { EnumTermPolicyType } from '@generated/prisma-client/client';
-import type { User } from '@generated/prisma-client/client';
+import { HttpStatus } from '@nestjs/common';
+import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 
+/**
+ * Route metadata key holding the term-policy types `@TermPolicyAcceptanceProtected` requires.
+ * @public
+ */
 export const TermPolicyRequiredGuardMetaKey = 'TermPolicyRequiredMetaKey';
 
-export const TermPolicyAcceptedColumnMap: Record<
-    EnumTermPolicyType,
-    keyof User
-> = {
-    [EnumTermPolicyType.termsOfService]: 'termsOfServiceAccepted',
-    [EnumTermPolicyType.privacy]: 'privacyAccepted',
-    [EnumTermPolicyType.cookies]: 'cookiesAccepted',
-    [EnumTermPolicyType.marketing]: 'marketingAccepted',
-};
+/**
+ * Term-policy acceptance guard error kit for `@TermPolicyAcceptanceProtected`.
+ * @public
+ */
+export const DocTermPolicyErrorResponses = {
+    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
+        statusCode: EnumTermPolicyStatusCodeError.requiredInvalid,
+        messagePath: 'termPolicy.error.requiredInvalid',
+    }),
+} as const;

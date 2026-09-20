@@ -12,7 +12,7 @@ import { Command } from 'nest-commander';
  * Imports email notification templates into AWS SES, skipping any already present. Throws if SES is uninitialized.
  */
 @Command({
-    name: 'template-email-notification',
+    name: 'templateEmailNotification',
     description: 'Seed/Remove Emails',
     allowUnknownOptions: false,
 })

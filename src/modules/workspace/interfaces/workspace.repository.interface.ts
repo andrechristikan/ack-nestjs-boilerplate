@@ -5,7 +5,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
@@ -29,7 +29,7 @@ export interface IWorkspaceRepository {
             ...others
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
         isPublic?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<Workspace>>;
+    ): Promise<IResponsePaginationReturn<Workspace>>;
     createInTx(
         tx: IDatabaseTransactionClient,
         ownerId: string,

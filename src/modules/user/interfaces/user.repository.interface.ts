@@ -5,7 +5,7 @@ import type {
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
@@ -13,7 +13,6 @@ import type {
     IUser,
     IUserContact,
     IUserCreateWithWorkspaceInput,
-    IUserExport,
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
@@ -36,7 +35,7 @@ export interface IUserRepository {
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUserList>>;
+    ): Promise<IResponsePaginationReturn<IUserList>>;
     findActive(): Promise<IUserContact[]>;
     findOneById(id: string): Promise<User | null>;
     findOneActiveById(id: string): Promise<User | null>;
@@ -53,7 +52,7 @@ export interface IUserRepository {
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null,
         take: number
-    ): Promise<IUserExport[]>;
+    ): Promise<IUser[]>;
     existsByEmail(email: string): Promise<boolean>;
     existsByUsername(username: string): Promise<boolean>;
     createInTx(

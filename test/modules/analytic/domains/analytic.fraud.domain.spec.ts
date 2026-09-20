@@ -1342,14 +1342,14 @@ describe('AnalyticFraudDomain', () => {
             activityLogAnalyticDomain.findManyByActionsInRange.mockResolvedValue(
                 [
                     {
-                        id: 'regeneration-1',
+                        id: 'regen-1',
                         userId: 'user-1',
                         action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
                         ipAddress: null,
                         createdAt: startDate,
                     },
                     {
-                        id: 'regeneration-2',
+                        id: 'regen-2',
                         userId: 'user-2',
                         action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
                         ipAddress: null,

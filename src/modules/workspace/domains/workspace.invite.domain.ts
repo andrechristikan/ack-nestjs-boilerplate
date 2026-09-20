@@ -8,7 +8,7 @@ import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumWorkspaceInviteStatus,
@@ -222,11 +222,7 @@ export class WorkspaceInviteDomain {
                 hashedToken
             );
 
-        if (
-            !invite ||
-            !invite.invitedByUserId ||
-            invite.email.toLowerCase() !== email.toLowerCase()
-        ) {
+        if (!invite || invite.email.toLowerCase() !== email.toLowerCase()) {
             throw new WorkspaceInviteInvalidException();
         }
 
@@ -249,7 +245,7 @@ export class WorkspaceInviteDomain {
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IWorkspaceInviteList>> {
+    ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
         await this.assertInvitationAllowed();
 
         return this.workspaceInviteRepository.findWithPaginationCursor(
@@ -498,11 +494,6 @@ export class WorkspaceInviteDomain {
             throw new WorkspaceInviteInvalidException();
         }
 
-        const invitedByUserId = invite.invitedByUserId;
-        if (!invitedByUserId) {
-            throw new WorkspaceInviteInvalidException();
-        }
-
         const today = this.helperDateService.create();
         const events = [
             this.activityLogDomain.prepare({
@@ -510,14 +501,14 @@ export class WorkspaceInviteDomain {
                 userId: userId,
                 createdBy: userId,
                 workspaceId: invite.workspaceId,
-                metadata: { targetUserId: invitedByUserId },
+                metadata: { targetUserId: invite.invitedByUserId },
             }),
         ];
-        if (invitedByUserId !== userId) {
+        if (invite.invitedByUserId !== userId) {
             const workspaceInviteAcceptedByInviteeEvent =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
-                    userId: invitedByUserId,
+                    userId: invite.invitedByUserId,
                     createdBy: userId,
                     workspaceId: invite.workspaceId,
                     metadata: { actorUserId: userId },

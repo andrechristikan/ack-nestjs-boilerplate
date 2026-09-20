@@ -1,23 +1,28 @@
-# File Upload Documentation
+# File Upload and Presign Documentation
 
 File upload lives in `src/common/file`. S3 lives in `src/common/aws`.
 
 ## Overview
 
-Decorators, pipes, and services for single and multiple uploads, file validation, and CSV processing. Direct upload is multipart form-data through the API. Time-limited object access is [Presign][ref-doc-presign].
+Two upload transports:
 
+- Multipart through the API: decorators, pipes, and services for single and multiple uploads, file validation, and CSV processing. Bytes travel as `multipart/form-data` to the Nest controller, then the domain writes to S3 with `AwsS3Service.putItem`.
+- Presign: the client uploads or downloads with a time-limited S3 URL. The API issues the URL and, for uploads, later records the object key. Bytes never pass through the Nest process on the PUT/GET to S3.
 
-## Related Documentation
+## Related Documents
 
-- [Request Validation Documentation][ref-doc-request-validation]
-- [Handling Error Documentation][ref-doc-handling-error]
-- [Message Documentation][ref-doc-message]
-- [Presign Documentation][ref-doc-presign]
+- [Request Validation Documentation][ref-doc-request-validation] - Request schemas and pipes
+- [Handling Error Documentation][ref-doc-handling-error] - Upload exceptions
+- [Language Message Documentation][ref-doc-message] - i18n for upload errors
+- [Doc Documentation][ref-doc-doc] - OpenAPI for multipart and presign routes
+- [Third Party Integration][ref-doc-third-party] - S3 credentials, no-op mode, bucket setup
+- [Environment Documentation][ref-doc-environment] - `AWS_S3_*` variables
+- [Term Policy Documentation][ref-doc-term-policy] - Admin content GET and content upload that use presign
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Related Documentation](#related-documentation)
+- [Related Documents](#related-documents)
 - [Decorators](#decorators)
   - [FileUploadSingle](#fileuploadsingle)
   - [FileUploadMultiple](#fileuploadmultiple)
@@ -35,6 +40,15 @@ Decorators, pipes, and services for single and multiple uploads, file validation
   - [Multiple Field Upload](#multiple-field-upload)
 - [Error Handling](#error-handling)
 - [Message Translation](#message-translation)
+- [Presign GET](#presign-get)
+- [Presign upload](#presign-upload)
+  - [How It Works](#how-it-works)
+  - [Implementation](#implementation)
+  - [Configuration Options](#configuration-options)
+  - [Response Structure](#response-structure)
+  - [Flow Diagram](#flow-diagram)
+  - [Term Policy Content Presign](#term-policy-content-presign)
+  - [Multipart Part Presign](#multipart-part-presign)
 
 ## Decorators
 
@@ -44,6 +58,8 @@ The defaults come from `src/common/file/constants/file.constant.ts`:
 - `FileMaxMultiple` is `3`
 
 The `options` argument on every decorator is itself optional, but `IFileUploadSingle` and `IFileUploadMultiple` declare their fields as required. Pass the whole object or none of it.
+
+Each decorator also emits multipart OpenAPI (`ApiConsumes('multipart/form-data')` plus a binary `ApiBody` from the field name(s)) and the upload error kit from `DocFileErrorResponses` in `src/common/doc/constants/doc.constant.ts`. Flow: [Doc Documentation][ref-doc-doc].
 
 ### FileUploadSingle
 
@@ -308,11 +324,22 @@ const aws: IAwsS3 | null = await this.awsS3Service.putItem(
 );
 ```
 
-`options.access` is a required argument on every `AwsS3Service` method that reaches a bucket, and a profile photo is served by URL, so this call names `public`. `putItem` returns `null` when S3 credentials are not configured, and the domain skips the database write in that case. Otherwise the domain prepares `userUpdatePhotoProfile`, stores the S3 reference with one `UserRepository.updatePhotoProfile` update (no transaction), and then stages the event.
+`options.access` is a required argument on every `AwsS3Service` method that reaches a bucket, and a profile photo is served by URL, so this call names `public`.
+
+`putItem` behaviour:
+
+- returns `null` when S3 credentials are not configured, and the domain skips the database write in that case
+- otherwise the domain prepares `userUpdatePhotoProfile`, stores the S3 reference with one `UserRepository.updatePhotoProfile` update (no transaction), and then stages the event
 
 **Multiple Files Upload:**
 
-`@FileUploadMultiple` wires `FilesInterceptor` for an array of files under one field. Default field is `files`, default max count is `FileMaxMultiple` (`3`), and default size is `FileSizeInBytes` (`10mb`). `FileExtensionPipe` takes that array: it validates every element, and one rejected file rejects the request.
+`@FileUploadMultiple` wires `FilesInterceptor` for an array of files under one field. Defaults:
+
+- field: `files`
+- max count: `FileMaxMultiple` (`3`)
+- size: `FileSizeInBytes` (`10mb`)
+
+`FileExtensionPipe` takes that array: it validates every element, and one rejected file rejects the request.
 
 ```typescript
 @FileUploadMultiple({ field: 'files', maxFiles: 3, fileSize: bytes('5mb') })
@@ -507,12 +534,405 @@ Add messages in `src/languages/<lang>/request.json`, one entry per zod issue cod
 
 `{property}` is substituted with the last segment of the issue path.
 
-See [Message Documentation][ref-doc-message] for complete language configuration details.
+See [Language Message Documentation][ref-doc-message] for i18n paths.
+
+## Presign GET
+
+S3 presigned URLs let a client upload or download an object for a limited time without AWS credentials.
+
+`AwsS3Service.presignGetItem` produces a time-limited GET URL for an object that already exists in S3. Its only caller is `TermPolicyContentDomain.getContentByAdmin`, reached through `TermPolicyContentHttpService` and exposed as `GET /admin/term-policy/content/:termPolicyId/:language/get` on `TermPolicyAdminController` under the message key `termPolicy.getContent`. That call passes the `access` recorded on the stored content itself, so each content entry is signed against the bucket it lives in. There is no request DTO: `termPolicyId` and `language` are path params.
+
+### Signature
+
+```typescript
+async presignGetItem(
+  key: string,
+  options: IAwsS3PresignGetItemOptions
+): Promise<IAwsS3Presign | null>
+```
+
+### Parameters
+
+- `key`: the S3 object key. A key that starts with `/` causes the method to throw.
+- `options.access`: `EnumAwsS3Accessibility.public` or `EnumAwsS3Accessibility.private`, required. It selects which configured bucket is signed against, and the compiler refuses a call that leaves it out.
+- `options.expiredInSeconds`: signature lifetime in seconds. When omitted it falls back to `aws.s3.presignExpiredInSeconds`, defined in `aws.config.ts` as `ms('30m') / 1000` and handed to the signer as it stands.
+
+### Behaviour
+
+- Returns `null` when S3 credentials are not configured, and logs a warning. A caller that needs a URL treats `null` as the S3 service being unavailable.
+- Sends a `HeadObjectCommand` before signing. A `NotFound` is swallowed; any other S3 error propagates.
+- Derives `extension` and `mime` from the key itself.
+- The returned `IAwsS3Presign` carries `key`, `mime`, `extension`, `presignUrl`, and `expiredInSeconds`, where `expiredInSeconds` is the same lifetime that was used to sign.
+
+---
+
+## Presign upload
+
+The client uploads directly to S3 with a time-limited PUT URL. The API never sees the file bytes.
+
+### How It Works
+
+1. Client requests a presigned URL from the backend with file metadata (extension, size)
+2. Backend generates a unique S3 key and time-limited presigned URL
+3. Client uploads the file **directly to S3** using the presigned URL via HTTP PUT
+4. Client notifies the backend of successful upload with the S3 key
+5. Backend saves file reference to database with audit trail
+
+> [!NOTE]
+> **Default expiration:** 30 minutes (`presignExpiredInSeconds: ms('30m') / 1000` in `aws.config.ts`, which is the unit the signer takes). Override per-call via the `expiredInSeconds` option.
+
+### Implementation
+
+**Step 1 - Request schemas:**
+
+Both schemas pick `size` off `AwsS3PresignRequestSchema`, where it is `z.number().int()`. The update schema also reuses its `key` field (non-empty, matching `AwsS3ObjectKeyRegex`) with its own description.
+
+```typescript
+export const UserGeneratePhotoProfileRequestSchema =
+    AwsS3PresignRequestSchema.pick({ size: true }).extend({
+        extension: z.enum(EnumFileExtensionImage).meta({
+            description: 'Image file extension of the profile photo',
+            default: EnumFileExtensionImage.jpg,
+            example: EnumFileExtensionImage.jpg,
+        }),
+    });
+
+export const UserUpdateProfilePhotoRequestSchema =
+    AwsS3PresignRequestSchema.pick({ size: true }).extend({
+        key: AwsS3PresignRequestSchema.shape.key.meta({
+            description:
+                'Key of the uploaded profile photo, as returned by the presign step',
+        }),
+    });
+```
+
+**Step 2 - Controller Endpoints:**
+
+`UserSharedController` is registered by `RouterHttpSharedModule`, which the router mounts under `/shared`. The endpoints below are therefore `POST /shared/user/profile/photo/presign/generate` and `PUT /shared/user/profile/photo/update`, under the configured global prefix and the `v1` version prefix.
+
+```typescript
+@ApiTags('modules.shared.user')
+@Controller({
+  version: '1',
+  path: '/user',
+})
+export class UserSharedController {
+  constructor(
+    private readonly userProfileHttpService: UserProfileHttpService,
+    // ... the other HTTP services this controller dispatches to
+  ) {}
+
+  @UserSharedGeneratePhotoProfilePresignDoc()
+  @Response('user.generatePhotoProfilePresign', {
+    schema: AwsS3PresignResponseSchema,
+  })
+  @TermPolicyAcceptanceProtected()
+  @UserProtected()
+  @AuthJwtAccessProtected()
+  @ApiKeyProtected()
+  @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
+  @HttpCode(HttpStatus.OK)
+  @Post('/profile/photo/presign/generate')
+  async generatePhotoProfilePresign(
+    @AuthJwtPayload('userId') userId: string,
+    @Body({ schema: UserGeneratePhotoProfileRequestSchema })
+    body: UserGeneratePhotoProfileRequestDto
+  ): Promise<IResponseReturn<IAwsS3Presign>> {
+    return this.userProfileHttpService.generatePhotoProfilePresign(
+      userId,
+      body
+    );
+  }
+
+  @UserSharedUpdatePhotoProfileDoc()
+  @Response('user.updatePhotoProfile')
+  @TermPolicyAcceptanceProtected()
+  @UserProtected()
+  @AuthJwtAccessProtected()
+  @ApiKeyProtected()
+  @RequestThrottle({ user: true })
+  @Put('/profile/photo/update')
+  async updatePhotoProfile(
+    @AuthJwtPayload('userId') userId: string,
+    @Body({ schema: UserUpdateProfilePhotoRequestSchema })
+    body: UserUpdateProfilePhotoRequestDto
+  ): Promise<void> {
+    await this.userProfileHttpService.updatePhotoProfile(userId, body);
+  }
+}
+```
+
+**Step 3 - Service Implementation:**
+
+`UserProfileHttpService` is a thin hop: it awaits the domain and wraps the presign in `{ data: presign }` for the response interceptor. The S3 work lives in `UserProfileDomain`.
+
+```typescript
+@Injectable()
+export class UserProfileDomain {
+  async generatePhotoProfilePresign(
+    userId: string,
+    { extension, size }: IUserGeneratePhotoProfile
+  ): Promise<IAwsS3Presign> {
+    const key: string = this.createRandomFilenamePhotoProfileWithPath(userId, {
+      extension,
+    });
+
+    const aws: IAwsS3Presign | null = await this.awsS3Service.presignPutItem(
+      { key, size },
+      { forceUpdate: true, access: EnumAwsS3Accessibility.public }
+    );
+
+    if (!aws) {
+      throw new AwsServiceUnavailableException();
+    }
+
+    return aws;
+  }
+
+  async updatePhotoProfile(
+    userId: string,
+    { key, size }: IUserUpdatePhotoProfile
+  ): Promise<void> {
+    try {
+      const aws: IAwsS3 = this.awsS3Service.mapPresign(
+        { key, size },
+        { access: EnumAwsS3Accessibility.public }
+      );
+
+      const events = [
+        this.activityLogDomain.prepare({
+          action: EnumActivityLogAction.userUpdatePhotoProfile,
+        }),
+      ];
+      await this.userRepository.updatePhotoProfile(userId, aws);
+
+      this.activityLogDomain.stagePrepared(events);
+
+      return;
+    } catch (err: unknown) {
+      if (err instanceof AppBaseException) {
+        throw err;
+      }
+
+      throw new AppUnknownException(err);
+    }
+  }
+}
+```
+
+Two things follow from the options passed:
+
+- `presignPutItem` and `mapPresign` both name `EnumAwsS3Accessibility.public`, so the photo is signed against, and stored in, the public bucket. `access` is a required option on both, so the value a call means is always written at the call site.
+- No `expiredInSeconds` is passed, so the signature lives for `aws.s3.presignExpiredInSeconds`, which is 30 minutes.
+
+`presignPutItem` returns `null` when S3 credentials are not configured, and the service converts that into `AwsServiceUnavailableException`.
+
+`createRandomFilenamePhotoProfileWithPath` is a method on `UserProfileDomain`. It substitutes `{userId}` into `user.uploadPhotoProfilePath` and delegates to `FileService.createRandomFilename` with a 20-character random segment.
+
+**Step 4 - Client-Side Upload:**
+```typescript
+async function uploadPhotoSimple(file: File) {
+  try {
+    // Step 1: Request presigned URL
+    const response = await fetch('/api/v1/shared/user/profile/photo/presign/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+        'x-api-key': apiKey
+      },
+      body: JSON.stringify({
+        extension: file.name.split('.').pop(),
+        size: file.size
+      })
+    });
+
+    const { data: presignData } = await response.json();
+
+    // Step 2: Upload to S3 (simple PUT request)
+    const uploadResponse = await fetch(presignData.presignUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': presignData.mime,
+      },
+      body: file
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error('S3 upload failed');
+    }
+
+    // Step 3: Notify backend
+    await fetch('/api/v1/shared/user/profile/photo/update', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+        'x-api-key': apiKey
+      },
+      body: JSON.stringify({
+        key: presignData.key,
+        size: file.size
+      })
+    });
+
+    console.log('Upload complete!');
+  } catch (error) {
+    console.error('Upload failed:', error);
+    throw error;
+  }
+}
+```
+
+### Configuration Options
+```typescript
+interface IAwsS3PresignPutItemOptions {
+  access: EnumAwsS3Accessibility; // public or private, required
+  expiredInSeconds?: number; // Expiration time in seconds (default from config)
+  forceUpdate?: boolean; // Allow overwriting existing files
+}
+```
+
+### Response Structure
+
+`AwsS3PresignResponseSchema` declares exactly five fields, and the response interceptor strips anything else:
+
+```typescript
+export const AwsS3PresignResponseSchema = z.object({
+  key: z.string(),          // S3 object key (save this for later reference)
+  mime: z.string(),         // MIME type (use this as Content-Type header)
+  extension: z.string(),    // File extension
+  presignUrl: z.string(),   // The presigned URL for upload
+  expiredInSeconds: z.number(), // URL lifetime in seconds
+});
+```
+
+`AwsS3PresignPartResponseSchema` extends it with `partNumber` and `size`.
+
+### Flow Diagram
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Backend
+    participant UserProfileDomain
+    participant AwsS3Service
+    participant S3 as AWS S3
+    participant Repository as Database
+
+    Client->>Backend: POST /profile/photo/presign/generate<br/>{extension, size}
+    Backend->>UserProfileDomain: createRandomFilenamePhotoProfileWithPath()
+    UserProfileDomain-->>Backend: unique S3 key
+    
+    Backend->>AwsS3Service: presignPutItem({key, size}, {forceUpdate: true, access: public})
+    Note over AwsS3Service: ServerSideEncryption AES256,<br/>ChecksumAlgorithm SHA256,<br/>ContentDisposition inline
+    AwsS3Service->>S3: Request presigned URL
+    S3-->>AwsS3Service: Presigned URL (expires per config, default 30 min)
+    AwsS3Service-->>Backend: IAwsS3Presign
+    Backend-->>Client: {presignUrl, key, mime, expiredInSeconds}
+    
+    Note over Client,S3: Direct Upload (Bypass Backend)
+    Client->>S3: PUT file to presignUrl<br/>Header: Content-Type only
+    
+    alt Upload success
+        S3->>S3: Encrypt file with AES256
+        S3-->>Client: 200 OK
+        
+        Client->>Backend: PUT /profile/photo/update<br/>{key, size}
+        Backend->>AwsS3Service: mapPresign({ key, size }, { access: public })
+        AwsS3Service-->>Backend: IAwsS3
+        
+        Backend->>Repository: updatePhotoProfile(userId, aws)
+        Repository->>Repository: Save S3 reference + audit trail (request log read from store)
+        Repository-->>Backend: Success
+        Backend-->>Client: 200 OK
+        
+        Note over Client,Repository: Upload Complete
+    else Upload failed
+        S3-->>Client: Error (4xx/5xx)
+        Note over Client: Retry or show error
+    else URL expired
+        S3-->>Client: 403 Forbidden
+        Note over Client: Request new presign URL
+    end
+```
+
+**Flow Explanation:**
+
+1. **Generate Presigned URL Stage:**
+   - Client requests presigned URL with file metadata (extension, size)
+   - Backend generates a unique S3 key through `UserProfileDomain.createRandomFilenamePhotoProfileWithPath`, which delegates to `FileService.createRandomFilename`
+   - `AwsS3Service` creates time-limited presigned URL with encryption enabled
+   - Backend returns presigned URL data to client
+
+2. **Direct Upload Stage:**
+   - Client uploads file **directly to S3** using presigned URL
+   - Only `Content-Type` header needed (encryption is automatic)
+   - No backend involvement during actual file transfer
+   - S3 encrypts file at rest with AES-256
+   - Reduces server bandwidth and improves performance
+
+3. **Database Update Stage:**
+   - Client notifies backend with S3 key and file size
+   - Backend maps presign data to `IAwsS3`
+   - `UserProfileDomain` prepares `userUpdatePhotoProfile`, then `UserRepository.updatePhotoProfile` stores the S3 file reference in one update with no transaction
+   - After the update the event is staged; `ActivityLogInterceptor` writes it with the IP address, user agent, and geolocation from the request store (`RequestLogStoreKey`)
+
+
+### Term Policy Content Presign
+
+The second presign endpoint signs a term policy content upload. `TermPolicyAdminController` is registered by `RouterHttpAdminModule`, so the route is `POST /admin/term-policy/content/presign/generate`.
+
+```typescript
+@TermPolicyAdminGenerateContentPresignDoc()
+@Response('termPolicy.generateContentPresign', {
+  schema: AwsS3PresignResponseSchema,
+})
+@TermPolicyAcceptanceProtected()
+@PolicyProtected({
+  subject: EnumPolicySubject.termPolicy,
+  action: [
+    EnumPolicyAction.read,
+    EnumPolicyAction.create,
+    EnumPolicyAction.update,
+  ],
+})
+@RoleProtected(EnumRoleType.admin)
+@UserProtected()
+@AuthJwtAccessProtected()
+@ApiKeyProtected()
+@RequestThrottle({ user: true })
+@HttpCode(HttpStatus.OK)
+@Post('/content/presign/generate')
+async generate(
+  @Body({ schema: TermPolicyContentPresignRequestSchema })
+  body: TermPolicyContentPresignRequestDto
+): Promise<IResponseReturn<IAwsS3Presign>> {
+  return this.termPolicyContentHttpService.generateContentPresignByAdmin(
+    body
+  );
+}
+```
+
+- `TermPolicyContentPresignRequestSchema` carries `type` (from `TermPolicyAcceptRequestSchema`), `size` (picked from `AwsS3PresignRequestSchema`), `language` (`EnumMessageLanguage`), and `version` (integer).
+- `TermPolicyContentDomain.generateContentPresignByAdmin` rejects the request with `TermPolicyStatusInvalidException` when a policy of that version and type is already `published`.
+- The key is built by `TermPolicyUtil.createRandomFilenameContentWithPath` from `termPolicy.uploadContentPath` (`term-policies/{type}/v{version}`) plus `<language>.hbs`, so the same type, version and language always resolve to the same key.
+- `presignPutItem` is called with `{ forceUpdate: true, access: EnumAwsS3Accessibility.private }`, so term policy content is signed against the private bucket. Expiry is the 30 minute config default.
+
+### Multipart Part Presign
+
+`AwsS3Service.presignPutItemPart({ key, size, uploadId, partNumber }, options)` signs a single `UploadPart` request for an existing multipart upload and returns `IAwsS3PresignPart` (`IAwsS3Presign` plus `partNumber` and `size`).
+
+- Takes the same required `access` and optional `expiredInSeconds` as the other presign methods
+- Returns `null` when S3 credentials are not configured
+- No controller exposes it, so there is no multipart presign route
 
 
 <!-- REFERENCES -->
 
 [ref-doc-request-validation]: request-validation.md
 [ref-doc-handling-error]: handling-error.md
-[ref-doc-message]: message.md
-[ref-doc-presign]: presign.md
+[ref-doc-message]: language-message.md
+[ref-doc-doc]: doc.md
+[ref-doc-third-party]: third-party-integration.md
+[ref-doc-environment]: environment.md
+[ref-doc-term-policy]: term-policy.md

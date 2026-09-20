@@ -4,13 +4,16 @@ The Database Module lives in `src/common/database`.
 
 ## Overview
 
-Prisma + PostgreSQL, transactions, seeds, and the Database Module.
+Prisma + MongoDB replica set, transactions, seeds, and the Database Module.
 
 ## Related Documents
 
-- [Installation Documentation][ref-doc-installation] - For complete project setup and dependencies
-- [Environment Documentation][ref-doc-environment] - For database connection and environment variables
-- [Configuration Documentation][ref-doc-configuration] - For understanding the config module structure
+- [Installation Documentation][ref-doc-installation] - Project setup (Docker recommended)
+- [Environment Documentation][ref-doc-environment] - Database connection and other env vars
+- [Configuration Documentation][ref-doc-configuration] - Config module structure
+- [Email Documentation][ref-doc-email] - SES templates and `templateEmailNotification`
+- [Term Policy Documentation][ref-doc-term-policy] - Term policy rows and `templateTermPolicy`
+- [Third Party Integration][ref-doc-third-party-s3] - S3 bucket setup (`awsS3Config`)
 
 ## Table of Contents
 
@@ -21,18 +24,17 @@ Prisma + PostgreSQL, transactions, seeds, and the Database Module.
 - [Generate Database Client](#generate-database-client)
 - [Seeding](#seeding)
 	- [Database Seeds](#database-seeds)
-	- [Template Seeds](#template-seeds)
-	- [AWS S3 Configuration Seed](#aws-s3-configuration-seed)
 - [Initial Seeded Data](#initial-seeded-data)
 	- [API Keys](#api-keys)
 	- [Roles](#roles)
 	- [Users](#users)
 	- [Feature Flags](#feature-flags)
 	- [Term Policies](#term-policies)
-- [Relational and JSON Data Shapes](#relational-and-json-data-shapes)
+- [Models](#models)
+- [Composite Types](#composite-types)
 	- [GeoLocation](#geolocation)
 	- [UserAgent](#useragent)
-	- [User Term Policy Acceptance](#user-term-policy-acceptance)
+	- [UserTermPolicy](#usertermpolicy)
 	- [UserPhoto](#userphoto)
 	- [TermPolicyContent](#termpolicycontent)
 - [Audit Fields and Soft Delete](#audit-fields-and-soft-delete)
@@ -41,166 +43,103 @@ Prisma + PostgreSQL, transactions, seeds, and the Database Module.
 	- [Soft Delete and Restore](#soft-delete-and-restore)
 	- [Delete Behaviour of Foreign Keys](#delete-behaviour-of-foreign-keys)
 - [Generated Unique Values](#generated-unique-values)
-- [Docker](#docker)
 - [Database Tools](#database-tools)
 	- [Prisma ORM](#prisma-orm)
-	- [Why Prisma for Repository Design Pattern?](#why-prisma-for-repository-design-pattern)
 	- [Database provider](#database-provider)
 
 
 ## Prerequisites
 
-> **💡 Tip:** Use the Docker setup from the installation guide for a ready-to-use PostgreSQL and Redis development stack.
+**Docker is the recommended way to run MongoDB locally.** Compose starts a replica set for you. Step-by-step: [Installation Documentation][ref-doc-installation].
 
-**PostgreSQL 18.x** with the project database created and reachable through `DATABASE_URL`.
+Without Docker, use a [MongoDB Atlas][ref-mongodb-atlas] cluster (or any MongoDB 8+ **replica set**). Prisma transactions need a replica set; a standalone local MongoDB will not work.
+
+Local Compose uses `mongo:latest`. Redis for cache and queues is covered in the same installation guide (Compose or [Amazon ElastiCache][ref-elasticache]).
 
 ## Migration
 
-ACK NestJS Boilerplate uses Prisma Migrate for PostgreSQL schema changes. Migration files live under `prisma/migrations/*` and are applied through the project database scripts.
+Prisma has no migration history for MongoDB. Schema sync is `prisma db push`.
 
-For local development, use:
+In this project that is:
 
 ```bash
 pnpm db:migrate
 ```
 
-For details, see the official Prisma documentation: [Prisma Migrate][ref-prisma-migrate]
+Official reference: [Prisma for MongoDB][ref-prisma-mongodb]
+
 
 ## Generate Database Client
 
-Prisma uses a generated client for type-safe queries. A schema edit in `prisma/schema.prisma` takes `pnpm db:generate` to write the client into `src/generated/prisma-client`.
+After you edit `prisma/schema.prisma`:
 
-**When to Generate Prisma client?**
-- After any change to your Prisma schema (e.g., adding, removing, or updating models/fields).
-- After pulling schema changes from version control.
-
-**How to Generate Prisma Client:**
 ```bash
 pnpm db:generate
 ```
 
-This command reads `prisma/schema.prisma` and writes the client into `src/generated/prisma-client` (gitignored). The `prisma-client` generator emits ESM with `.js` import extensions; application code imports it from `@generated/prisma-client/client`, and ESLint rejects an import from its `internal/` folder. `pnpm generate` runs this command together with `pnpm generate:package`.
+That writes the ESM client into `src/generated/prisma-client` (gitignored). App code imports `@generated/prisma-client/client`. `pnpm generate` also runs `generate:package`. First-time setup: [Installation][ref-doc-installation].
 
 
 ## Seeding
 
-Seeding in ACK NestJS Boilerplate is handled using nest-commander. All seed commands are implemented in `src/migration/seeds/*`.
+Seeds run through nest-commander (`src/migration/seeds/*`, data in `src/migration/data/*`).
+
+Commands that are **not** database seeds (run separately; not in `migration:seed`):
+
+- SES email templates: [Email][ref-doc-email] (`templateEmailNotification`)
+- Term policy HTML on S3: [Term Policy][ref-doc-term-policy] (`templateTermPolicy`)
+- S3 bucket policy/CORS: [Third Party Integration][ref-doc-third-party-s3] (`awsS3Config`)
 
 ### Database Seeds
 
-**Seed Data Location:**
-- All seed data is stored in `src/migration/data/*`.
+**Run all database seeds:**
+- `pnpm migration:seed` runs every database seed command
+- `pnpm migration:remove` runs every seed's removal (deletes more than the seeded rows; see the warning under [Users](#users))
+- `pnpm migration:fresh` force-resets the schema (`prisma db push --force-reset`) then re-seeds. Handy for a clean local slate
 
-**How to Run All Seeds:**
-- `pnpm migration:seed` — runs all seed commands to populate initial data.
-- `pnpm migration:remove` — removes all seeded data from the database.
-- `pnpm migration:fresh` — resets the PostgreSQL schema with Prisma Migrate, then immediately re-seeds all data. Useful during development when you need a clean slate.
+**Order in `package.json`:**
 
-**The order lives in the `package.json` scripts:**
+- `migration:seed`: `apiKey` → `country` → `featureFlag` → `role` → `policy` → `termPolicy` → `user` → `workspace`. A seed that needs another seed's rows runs after it (`policy` needs `role`, `user` needs `role` and `country`, `workspace` needs users).
+- `migration:remove`: `workspace` → `user` → `apiKey` → `featureFlag` → `country` → `policy` → `role` → `termPolicy` (referrer before referenced).
+- Every database seed is idempotent: re-running `migration:seed` on a DB that already has the rows is safe.
 
-- `migration:seed` runs `apiKey` → `country` → `featureFlag` → `role` → `policy` → `termPolicy` → `user` → `workspace`. A seed that references another's rows runs after it: `policy` needs `role`, `user` needs both `role` and `country`, and `workspace` needs the seeded users.
-- `migration:remove` runs `workspace` → `user` → `apiKey` → `featureFlag` → `country` → `policy` → `role` → `termPolicy`, removing the referrer before anything it references.
-- Neither script runs the template seeds or the AWS S3 configuration seed. Those are invoked on their own.
-- Every seed is idempotent: re-running `migration:seed` against a database that already holds the rows is safe.
+**Seed transactions.** A seed that writes several rows:
 
-**Seed transactions.** A seed that writes several rows opens one `DatabaseService.withTransaction` in callback form, issues every statement on `tx` one after another, and passes `{ timeout }` read from `database.seedTransactionTimeoutInMs` (60 seconds). The same timeout applies to the transactions the `user` and `workspace` seeds open in `remove()`. Work that does not touch the database runs before the transaction: key and hash derivation in the `apiKey` seed, and ids, bcrypt password hashes, and verification tokens in the `user` seed. Every other `remove()` that deletes rows runs its delete on `client` with no transaction. The `template-email-notification` and `aws-s3-config` seeds write no database row.
+1. opens one `DatabaseService.withTransaction` in callback form
+2. issues every statement on `tx` one after another
+3. passes `{ timeout }` from `database.seedTransactionTimeoutInMs` (60 seconds)
 
-**The seed actor.** `MigrationUserSuperAdminId` (`src/migration/data/migration.user.data.ts`) is a fixed UUID. The `user` seed creates the superadmin row with that `id`, and every seed that writes rows uses it as the actor:
+The same timeout applies to the transactions the `user` and `workspace` seeds open in `remove()`.
 
-- An upsert's `create` branch writes `createdBy` and `updatedBy` as `MigrationUserSuperAdminId`; its `update` branch writes `updatedBy`, plus `contents` in the term policy template seed. A re-run therefore sets `updatedBy` and moves `updatedAt` forward on every seeded row that has those columns, and leaves `createdBy` and `id` untouched.
-- The `workspace` seed writes the same actor on each workspace and passes it to `WorkspaceMemberRepository.createInTx` for the owner membership, which stores it as both `createdBy` and `updatedBy`.
+Work that does not touch the database runs before the transaction:
+
+- key and hash derivation in the `apiKey` seed
+- ids, bcrypt password hashes, and verification tokens in the `user` seed
+
+Every other `remove()` that deletes rows runs its delete on `client` with no transaction.
+
+**The seed actor.** `MigrationUserSuperAdminId` (`src/migration/data/migration.user.data.ts`) is a fixed ObjectId. The `user` seed creates the superadmin with that `_id`, and every seed that writes rows uses it as the actor:
+
+- An upsert's `create` branch writes `createdBy` and `updatedBy` as `MigrationUserSuperAdminId`; its `update` branch writes `updatedBy`. A re-run therefore updates `updatedBy` / `updatedAt` on seeded rows that have those columns, and leaves `createdBy` and `_id` untouched.
+- The `workspace` seed writes the same actor on each workspace and passes it to `WorkspaceMemberRepository.createInTx` for the owner membership (`createdBy` and `updatedBy`).
 - `createdBy` does not mark a row as seeded. A row the superadmin later creates through the admin API carries the same id, so no `remove()` filters on it. The `workspace` seed's `remove()` finds its rows by the name `<username>'s Workspace` together with an owner membership of that user.
 
-**How to Seed/Remove a Specific Module:**
-Run the command:
-   - Seed: `pnpm migration {module} --type seed`
-   - Remove: `pnpm migration {module} --type remove`
+**One module at a time:**
+- Seed: `pnpm migration {module} --type seed`
+- Remove: `pnpm migration {module} --type remove`
 
-**Available Types:**
-- `seed` (add data)
-- `remove` (delete data)
+**Types:** `seed` (add) and `remove` (delete).
 
-**Available Modules:**
+**Database modules:**
 
-- `apiKey`: Inserts default and system API keys for authentication and service access.
-- `country`: Inserts country data (name, codes, phone codes, continent, timezone).
-- `featureFlag`: Inserts feature flags to enable/disable features (e.g., login methods, sign up, change password).
-- `role`: Inserts user roles (superadmin, admin, user).
-- `policy`: Inserts the policy rows attached to each seeded role.
-- `termPolicy`: Inserts term policy documents (cookies, marketing, privacy, terms of service) with version and content.
-- `user`: Inserts initial user accounts (Super Admin, Admin, User) with country, role, and credentials.
-- `workspace`: Inserts one default personal workspace per seeded user, with that user as owner member. Requires the `user` seed to have run first, and skips any user who already owns a workspace.
-
-
-### Template Seeds
-
-Template seeding uses the same script and commands as Database Seeds, but is specifically for template files like email and term policies.
-
-**Available Types:**
-- `seed` (add template data)
-- `remove` (delete template data)
-
-#### Email Templates
-
-The email template seed imports the templates into AWS SES, checking each one first and importing only the ones SES does not already hold. It requires SES to be initialized and throws when it is not.
-
-**How to Run Email Template Seeds:**
-- Seed: `pnpm migration template-email-notification --type seed`
-- Remove: `pnpm migration template-email-notification --type remove`
-
-#### Term Policy Templates
-
-The term policy template seed uploads each policy document to S3 and writes it onto the matching database record. It requires S3 to be initialized and throws when it is not.
-
-**How to Run Term Policy Template Seeds:**
-- Seed: `pnpm migration template-termPolicy --type seed`
-- Remove: `pnpm migration template-termPolicy --type remove` *(no-op; term policy removal is intentionally skipped)*
-
-
-### AWS S3 Configuration Seed
-
-The migration script is a special seed command that configures AWS S3 bucket policies and settings for both public and private buckets. Unlike other seed commands, this migration doesn't populate database data but instead configures your AWS infrastructure.
-
-**What It Does:**
-
-The seed applies these S3 bucket settings, in this order:
-
-1. **Block Public Access Configuration** - Controls public access restrictions
-2. **Disable ACL Configuration** - Enforces bucket owner ownership controls
-3. **Bucket Policy** - Sets read/write permissions based on bucket accessibility
-4. **CORS Configuration** - Configures Cross-Origin Resource Sharing rules
-5. **Lifecycle Configuration** - Automatically deletes incomplete multipart uploads
-
-**Why Sequential Configuration Matters:**
-
-The seed applies the steps in this order because AWS S3 policies depend on each other: the public access block is configured before the bucket policy.
-
-**How to Run:**
-
-```bash
-# Configure both public and private buckets
-pnpm migration aws-s3-config --type seed
-```
-
-**Important Notes:**
-
-- This migration runs configurations for **both public and private buckets** simultaneously
-- The `--type remove` option is intentionally skipped (no removal operation)
-- Requires valid AWS credentials and appropriate IAM permissions
-- Bucket names and ARNs must be properly configured in your environment variables
-
-**Configuration Applied:**
-
-For **Public Buckets**:
-- Public read access (`s3:GetObject`) for all objects
-- Full IAM user access for management operations
-- CORS rules allowing GET/HEAD from any origin
-- CORS rules allowing PUT/POST/DELETE from whitelisted origins
-
-For **Private Buckets**:
-- Blocks all public access
-- CORS rules only allow whitelisted origins for all methods
-- Full IAM user access required for all operations
+- `apiKey`: Default and system API keys
+- `country`: Country data (name, codes, phone code, continent, timezone)
+- `featureFlag`: Feature flags (login methods, sign up, change password, and similar)
+- `role`: Roles (superadmin, admin, user)
+- `policy`: Policy rows attached to each seeded role
+- `termPolicy`: Term policy documents (cookies, marketing, privacy, terms of service)
+- `user`: Initial accounts (Super Admin, Admin, User) with country, role, and credentials
+- `workspace`: One default personal workspace per seeded user as owner. Needs `user` first; skips users who already own a workspace
 
 
 ## Initial Seeded Data
@@ -314,26 +253,57 @@ Four term policy documents are created:
 | `privacy` | 1 | EN | Privacy policy document |
 | `termsOfService` | 1 | EN | Terms of Service document |
 
-The `termPolicy` seed creates each record with an empty `contents` array and `status: published`. The document bodies are Handlebars templates in `src/modules/term-policy/templates/*.hbs`, one per type. They are linked by the term policy template seed, which uploads them to S3 and upserts the resulting `TermPolicyContent` entry (`language: en`) onto the version-1 record of each type.
-
-For more details on how seeding works, see: [Template Seeds](#template-seeds)
+The `termPolicy` seed creates each record with an empty `contents` array and `status: published`. The document bodies are Handlebars templates in `src/modules/term-policy/templates/*.hbs`, one per type. Linking them onto S3 is `templateTermPolicy`: [Term Policy][ref-doc-term-policy].
 
 
-## Relational and JSON Data Shapes
+## Models
 
-PostgreSQL uses relational child tables for repeatable domain data and JSON columns for request snapshots. IDs are UUIDv7 strings (`String @db.Uuid`) generated by the database through `uuidv7()`.
+Every model in `prisma/schema.prisma` maps to a MongoDB collection through `@@map`. The Prisma name is what repositories address on `databaseService.client.<model>`; the collection name is what you see in MongoDB.
+
+| Model | Collection | Purpose |
+|---|---|---|
+| `ApiKey` | `ApiKeys` | API key credentials for machine access |
+| `Role` | `Roles` | Roles |
+| `Policy` | `Policies` | The `(subject, action[])` rows a role grants, evaluated through CASL |
+| `Country` | `Countries` | Country reference data |
+| `UserMobileNumber` | `UserMobiles` | A user's mobile numbers and their verification state |
+| `User` | `Users` | User accounts |
+| `Verification` | `Verifications` | Email and mobile verification tokens |
+| `PasswordHistory` | `PasswordHistories` | Previous password hashes for reuse checks |
+| `ActivityLog` | `ActivityLogs` | Audit trail of user actions |
+| `Session` | `Sessions` | Issued refresh sessions per device |
+| `Device` | `Devices` | Devices identified by fingerprint |
+| `DeviceOwnership` | `DeviceOwnerships` | Link between a user and a device |
+| `TwoFactor` | `TwoFactors` | Two-factor secret, attempt counter, and backup codes |
+| `TermPolicy` | `TermPolicies` | Term policy documents and versions |
+| `TermPolicyUserAcceptance` | `TermPolicyUserAcceptances` | A user's acceptance of one policy version |
+| `FeatureFlag` | `FeatureFlags` | Feature toggles with rollout percent and metadata |
+| `ForgotPassword` | `ForgotPasswords` | Password reset tokens |
+| `Notification` | `Notifications` | Notification records |
+| `NotificationDelivery` | `NotificationDeliveries` | Per-channel delivery outcome of a notification |
+| `NotificationUserSetting` | `NotificationUserSettings` | Per-user channel and type preferences |
+| `Workspace` | `Workspaces` | Workspaces |
+| `WorkspaceMember` | `WorkspaceMembers` | Workspace membership and role |
+| `WorkspaceInvite` | `WorkspaceInvites` | Outstanding workspace invitations |
+| `WorkspaceJoinRequest` | `WorkspaceJoinRequests` | Requests to join a public workspace |
+| `Project` | `Projects` | Projects inside a workspace |
+| `ProjectMember` | `ProjectMembers` | Project membership and role |
+
+## Composite Types
+
+Prisma composite types are embedded sub-documents in MongoDB (not separate collections). They are defined with the `type` keyword in `prisma/schema.prisma` and stored inline within the parent document rather than in separate collections.
 
 ### GeoLocation
 
 Represents the geographic location derived from a client's IP address using `geoip-lite`.
 
 ```prisma
-model ActivityLog {
-  geoLocation Json?
-}
-
-model Session {
-  geoLocation Json?
+type GeoLocation {
+  latitude  Float
+  longitude Float
+  country   String
+  region    String
+  city      String
 }
 ```
 
@@ -346,8 +316,8 @@ model Session {
 | `city` | `String` | City name (e.g. `"Jakarta"`) |
 
 **Used in:**
-- `Session.geoLocation` — location at login time
-- `ActivityLog.geoLocation` — location when the action was performed
+- `Session.geoLocation`: location at login time
+- `ActivityLog.geoLocation`: location when the action was performed
 
 Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). Feature domains read it from the store and pass `IRequestLog` to their repositories as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
 
@@ -358,12 +328,40 @@ Resolved once per request into the request store (`RequestLogStoreKey`, as part 
 Represents parsed user-agent information from the client's `User-Agent` HTTP header using `ua-parser-js`. `UserAgent` is the top-level type that embeds four sub-types.
 
 ```prisma
-model ActivityLog {
-  userAgent Json
+type UserAgent {
+  ua      String?
+  browser UserAgentBrowser?
+  cpu     UserAgentCpu?
+  device  UserAgentDevice?
+  engine  UserAgentEngine?
+  os      UserAgentOs?
 }
 
-model Session {
-  userAgent Json
+type UserAgentBrowser {
+  name    String?
+  version String?
+  major   String?
+  type    String?
+}
+
+type UserAgentCpu {
+  architecture String?
+}
+
+type UserAgentDevice {
+  type   String?
+  vendor String?
+  model  String?
+}
+
+type UserAgentEngine {
+  name    String?
+  version String?
+}
+
+type UserAgentOs {
+  name    String?
+  version String?
 }
 ```
 
@@ -379,8 +377,8 @@ model Session {
 | `os` | `UserAgentOs?` | Operating system details |
 
 **Used in:**
-- `Session.userAgent` — client info at login time
-- `ActivityLog.userAgent` — client info when the action was performed
+- `Session.userAgent`: client info at login time
+- `ActivityLog.userAgent`: client info when the action was performed
 
 `RequestUtil.parseUserAgent(raw)` builds the composite from the `ua-parser-js` result: each field falls back to `null`, and a sub-type whose every field came back `null` is stored as `null` rather than as an object of nulls.
 
@@ -388,39 +386,28 @@ Resolved once per request into the request store (`RequestLogStoreKey`, as part 
 
 ---
 
-### User Term Policy Acceptance
+### UserTermPolicy
 
-The current acceptance state is stored directly on `User`, with one boolean column for each term policy type. Publishing a new policy version resets the corresponding column for every active, non-deleted user.
+Represents the user's acceptance flags for each term policy type. Stored inline on the `User` document.
 
 ```prisma
-model User {
-  termsOfServiceAccepted Boolean @default(false)
-  privacyAccepted        Boolean @default(false)
-  cookiesAccepted        Boolean @default(false)
-  marketingAccepted      Boolean @default(false)
-
-  acceptances TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
-}
-
-model TermPolicyUserAcceptance {
-  id           String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  userId       String   @db.Uuid
-  termPolicyId String   @db.Uuid
-  acceptedAt   DateTime @default(now())
-
-  user       User       @relation("TermPolicyUserAcceptanceUser", fields: [userId], references: [id])
-  termPolicy TermPolicy @relation("TermPolicyUserAcceptanceTermPolicy", fields: [termPolicyId], references: [id])
-
-  createdAt DateTime @default(now())
-  createdBy String?  @db.Uuid
-
-  @@unique(fields: [userId, termPolicyId])
-  @@index(fields: [termPolicyId, acceptedAt(sort: Desc)])
-  @@map("term_policy_user_acceptances")
+type UserTermPolicy {
+  termsOfService Boolean
+  privacy        Boolean
+  marketing      Boolean
+  cookies        Boolean
 }
 ```
 
-The boolean columns are used for access checks. `TermPolicyUserAcceptance` records which policy version the user accepted and when, preserving acceptance history through `User.acceptances`.
+| Field | Type | Description |
+|---|---|---|
+| `termsOfService` | `Boolean` | Has accepted Terms of Service |
+| `privacy` | `Boolean` | Has accepted Privacy Policy |
+| `marketing` | `Boolean` | Has accepted Marketing terms |
+| `cookies` | `Boolean` | Has accepted Cookie policy |
+
+**Used in:**
+- `User.termPolicy`
 
 ---
 
@@ -429,9 +416,7 @@ The boolean columns are used for access checks. `TermPolicyUserAcceptance` recor
 Represents the user's profile photo stored in AWS S3.
 
 ```prisma
-model UserPhoto {
-  id           String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  userId       String  @unique @db.Uuid
+type UserPhoto {
   bucket       String
   key          String
   cdnUrl       String?
@@ -455,34 +440,6 @@ model UserPhoto {
 **Used in:**
 - `User.photo`
 
-### Policy
-
-Represents the CASL ability grant for a `Role` on one policy subject. One row covers every allowed action for that subject.
-
-```prisma
-model Policy {
-  id      String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  roleId  String             @db.Uuid
-  subject EnumPolicySubject
-  action  EnumPolicyAction[]
-}
-```
-
-| Field | Type | Description |
-|---|---|---|
-| `roleId` | `String` | Owning role |
-| `subject` | `EnumPolicySubject` | Policy subject (e.g. `user`, `apiKey`, `workspace`) |
-| `action` | `EnumPolicyAction[]` | Allowed actions on the subject (`manage`, `read`, `create`, `update`, `delete`) |
-
-The `[roleId, subject]` pair is unique, so a role holds at most one policy row per subject.
-
-**Used in:**
-- `Role.policies` (relation `RolePolicy`)
-
-`migration.policy.seed.ts` seeds one `Policy` row per `EnumPolicySubject` value for the `admin` role, granting every `EnumPolicyAction`. `superadmin` and `user` seed with no policy rows.
-
-See [Authorization Documentation][ref-doc-authorization] for how policies are evaluated at runtime.
-
 ---
 
 ### TermPolicyContent
@@ -490,35 +447,29 @@ See [Authorization Documentation][ref-doc-authorization] for how policies are ev
 Represents a localized content file for a term policy document, stored in AWS S3.
 
 ```prisma
-model TermPolicyContent {
-  id           String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  termPolicyId String                 @db.Uuid
-  language     EnumMessageLanguage
+type TermPolicyContent {
+  language     String
   bucket       String
   key          String
   cdnUrl       String?
   completedUrl String
   mime         String
   extension    String
-  access       EnumAwsS3Accessibility
+  access       String
   size         Int
-
-  @@unique(fields: [termPolicyId, language])
 }
 ```
 
-One content row per language per term policy: `@@unique([termPolicyId, language])`.
-
 | Field | Type | Description |
 |---|---|---|
-| `language` | `EnumMessageLanguage` | Language code (e.g. `en`) |
+| `language` | `String` | Language code (e.g. `"en"`) |
 | `bucket` | `String` | S3 bucket name |
 | `key` | `String` | S3 object key |
 | `cdnUrl` | `String?` | Full CDN URL of the object, `null` for a bucket with no CDN configured |
 | `completedUrl` | `String` | Full S3 URL of the object |
 | `mime` | `String` | MIME type (e.g. `application/pdf`) |
 | `extension` | `String` | File extension (e.g. `pdf`) |
-| `access` | `EnumAwsS3Accessibility` | Access level (`public` or `private`) |
+| `access` | `String` | Access level (`public` or `private`) |
 | `size` | `Int` | File size in bytes |
 
 **Used in:**
@@ -533,31 +484,49 @@ Audit fields are stamped automatically by a Prisma Client Extension named `audit
 
 Three roles, wired together in `src/common/database/database.module.ts`:
 
-- `DatabaseClientFactory` (`factories/database.client.factory.ts`) extends `PrismaClient<IDatabaseClientOptions, ...>`, holds the connection options (event-emitting `log` levels and `errorFormat`), and returns the extended client from `create()`. `IDatabaseClientOptions` (`interfaces/database.client.interface.ts`) is `Prisma.PrismaClientOptions` with a required `log: Prisma.LogDefinition[]`.
-- `DatabaseExtensionUtil` (`utils/database.extension.util.ts`) holds the per-model audit field set (built from `Prisma.ModelName` and `Prisma.<Model>ScalarFieldEnum`) and the stamping methods, and builds the extension in `build()`. Nested writes are walked through `DatabaseModelRelations` (`constants/database.constant.ts`), a relation-field to related-model map per model, typed by `IDatabaseModelRelations` against `Prisma.TypeMap` so a schema change that adds, removes, or retargets a relation fails `pnpm typecheck` until the map matches.
-- `DatabaseService` (`services/database.service.ts`) owns the Prisma event log handlers and the connect/disconnect lifecycle, and exposes two public members: `client` and `withTransaction(fn, options?)`, which runs `fn` inside `client.$transaction` with the `tx` client.
+- **`DatabaseClientFactory`** (`factories/database.client.factory.ts`): extends `PrismaClient<IDatabaseClientOptions, ...>`, holds the connection options (event-emitting `log` levels and `errorFormat`), and returns the extended client from `create()`. `IDatabaseClientOptions` (`interfaces/database.client.interface.ts`) is `Prisma.PrismaClientOptions` with a required `log: Prisma.LogDefinition[]`.
+- **`DatabaseExtensionUtil`** (`utils/database.extension.util.ts`): holds the per-model audit field set (built from `Prisma.ModelName` and `Prisma.<Model>ScalarFieldEnum`) and the stamping methods, and builds the extension in `build()`. Nested writes are walked through `DatabaseModelRelations` (`constants/database.constant.ts`), a relation-field to related-model map per model, typed by `IDatabaseModelRelations` against `Prisma.TypeMap` so a schema change that adds, removes, or retargets a relation fails `pnpm typecheck` until the map matches.
+- **`DatabaseService`** (`services/database.service.ts`): owns the Prisma event log handlers and the connect/disconnect lifecycle, and exposes two public members: `client` and `withTransaction(fn, options?)`, which runs `fn` inside `client.$transaction` with the `tx` client.
 
-The extension carries the `create` / `createMany` / `update` / `updateMany` / `upsert` query hooks and the `softDelete` / `restore` model methods, all registered against `$allModels`. `IDatabaseClient` (`interfaces/database.client.interface.ts`) is the `ReturnType` of `DatabaseClientFactory['create']`, so the client type follows the extension automatically; the leaf types the extension needs (`IDatabaseRow`, `IDatabaseSoftDeleteArgs`, `IDatabaseRestoreArgs`, and their data shapes) live in `interfaces/database.extension.interface.ts`.
+The extension carries these hooks and methods, all registered against `$allModels`:
 
-`DatabaseClientToken` (`constants/database.constant.ts`) is a Symbol bound to a `useFactory` provider that calls `DatabaseClientFactory.create()` once, so the extended client is a singleton. The token and the factory stay unexported; `DatabaseModule` exports `DatabaseService`, `DatabaseUtil`, and `DatabaseExtensionUtil`.
+- query hooks: `create`, `createMany`, `update`, `updateMany`, `upsert`
+- model methods: `softDelete`, `restore`
+
+`IDatabaseClient` (`interfaces/database.client.interface.ts`) is the `ReturnType` of `DatabaseClientFactory['create']`, so the client type follows the extension automatically. Leaf types the extension needs live in `interfaces/database.extension.interface.ts`:
+
+- `IDatabaseRow`
+- `IDatabaseSoftDeleteArgs`
+- `IDatabaseRestoreArgs`
+- and their data shapes
+
+`DatabaseClientToken` (`constants/database.constant.ts`) is a Symbol bound to a `useFactory` provider that calls `DatabaseClientFactory.create()` once, so the extended client is a singleton. The token and the factory stay unexported; `DatabaseModule` exports:
+
+- `DatabaseService`
+- `DatabaseUtil`
+- `DatabaseExtensionUtil`
 
 The same interface file exports `IDatabaseTransactionClient`, the `tx` type for the callback form of `$transaction`; `Prisma.TransactionClient` does not match the extended client, so derive from this instead. The module also owns one shared error: `EnumDatabaseStatusCodeError.uniqueValueGenerationFailed` (`51800`, `enums/database.status-code.enum.ts`) with `DatabaseUniqueValueGenerationFailedException` (`exceptions/database.unique-value-generation-failed.exception.ts`, HTTP 500, message `database.error.uniqueValueGenerationFailed`), thrown directly by a repository when a generated unique value cannot be settled. See [Generated Unique Values](#generated-unique-values).
 
 What that means for callers:
 
 - Repositories and migration seeds read and write through `databaseService.client.<model>`. There is no alternative: `DatabaseService` does not extend `PrismaClient` and exposes no model delegate. Every query through `client` participates in actor stamping and gains the `softDelete` / `restore` methods.
-- A Prisma extended client does not expose `$on`, so the event log handlers are registered against the raw `DatabaseClientFactory` instance. `$connect`, `$disconnect`, `$transaction`, `$queryRaw`, and `$executeRaw` all work on `client`.
-- `$transaction` accepts both Prisma forms: the array form for a sequential batch with no branching, and the callback form when the work needs a read between writes, must branch on an intermediate result, or spans more than one repository. Both run on `client`, so audit stamping still fires inside them. In the callback form every statement uses the `tx` client; a call back to `databaseService.client` escapes the transaction.
-- A repository issues statements only against the model it owns, plus satellite models that have no repository of their own (`DeviceOwnershipRepository` owns `DeviceOwnership` and `Device`). Another model's row is reached through that model's repository, composed by a domain. `ActivityLog` is written by `ActivityLogRepository.create` and `createInTx`. Feature domains record a log inside a caller-owned transaction through `ActivityLogDomain.recordInTx`.
-- When a write spans more than one repository, the domain calls `this.databaseService.withTransaction` and each collaborator is an `*InTx(tx, ...)` method with required `tx: IDatabaseTransactionClient`. A method that does not join a caller-owned transaction takes no `tx`. `WorkspaceDomain.commitOnboarding` opens the onboarding `withTransaction` (`UserHttpModule` imports `WorkspaceDomainModule`; `UserDomainModule` does not). The constraint when changing this: `rules/database.md`.
-- The PostgreSQL health check lives in `HealthDatabaseIndicator.isHealthy()` (`src/modules/health/indicators/health.database.indicator.ts`), which calls `databaseService.client.$queryRaw\`SELECT 1\``. `DatabaseService` carries no health method.
+- A Prisma extended client does not expose `$on`, so the event log handlers are registered against the raw `DatabaseClientFactory` instance. `$connect`, `$disconnect`, `$transaction`, and `$runCommandRaw` all work on `client`.
+- In `src/modules`, every transaction opens through `DatabaseService.withTransaction`, which is Prisma's callback form of `$transaction` on `client`, so audit stamping still fires inside it. Every statement in the callback uses the `tx` client; a call back to `databaseService.client` escapes the transaction.
+- A repository issues statements only against the model it owns, plus satellite models that have no repository of their own (`NotificationRepository` writes `NotificationDelivery` rows through a nested `createMany`). `DeviceRepository` owns `Device` and `DeviceOwnershipRepository` owns `DeviceOwnership`; `DeviceDomain` composes the two. Another model's row is reached through that model's repository, composed by a domain. `ActivityLog` is written only by `ActivityLogRepository.createMany`: feature domains prepare events with `ActivityLogDomain.prepare`, stage them with `ActivityLogDomain.stagePrepared` after the audited write, and `ActivityLogInterceptor` flushes them after the handler settles. See [Activity Log][ref-doc-activity-log].
+- Who opens the transaction depends on how many statements and repositories the write spans:
+  - A single-statement write against one document runs on `databaseService.client` with no transaction. MongoDB applies a single-document write atomically.
+  - More than one statement, or a multi-document write, on one repository's own models: the repository method calls `this.databaseService.withTransaction` itself and takes no `tx`. `SessionRepository.revokeActiveByUser`, `ActivityLogRepository.createMany`, and `NotificationRepository.createMany` are examples.
+  - A write that spans more than one repository: the domain calls `this.databaseService.withTransaction` and each collaborator is an `*InTx(tx, ...)` method with required `tx: IDatabaseTransactionClient`. A method that does not join a caller-owned transaction takes no `tx`. `DeviceDomain.refresh` opens the transaction around `DeviceOwnershipRepository.touchInTx` and `DeviceRepository.refreshInTx`. `WorkspaceDomain.commitOnboarding` opens the onboarding `withTransaction` (`UserHttpModule` imports `WorkspaceDomainModule`; `UserDomainModule` does not).
+- `withTransaction(fn, options?)` takes `IDatabaseTransactionOptions` (`interfaces/database.client.interface.ts`), Prisma's `transactionOptions` shape. Omitted options keep Prisma's defaults (`maxWait` 2 s, `timeout` 5 s). A caller passes options only from its own `*TimeoutInMs` config key: `WorkspaceDomain.commitOnboarding` receives `user.onboarding.createTimeoutInMs` or `createBulkTimeoutInMs`, and the seeds read `database.seedTransactionTimeoutInMs`.
+- The MongoDB ping lives in `HealthDatabaseIndicator.isHealthy()` (`src/modules/health/indicators/health.database.indicator.ts`), which calls `databaseService.client.$runCommandRaw({ ping: 1 })`. `DatabaseService` carries no health method.
 
 ### Automatic Actor Stamping
 
 - On `create`, `createMany`, `update`, `updateMany`, and `upsert`, the extension fills `createdBy` and `updatedBy` from the current request actor.
-- The actor is the authenticated `request.user.userId`, written into the request store under `RequestActorStoreKey` by the global `RequestActorInterceptor` after JWT authentication. A request with no authenticated user carries no actor, and nothing is stamped.
-- A field is filled only when the model actually has that column and the caller left it null. An explicit value the caller passes always wins.
-- `createdBy`, `updatedBy`, and `deletedBy` are `String? @db.Uuid`; they store the actor's user id.
+- The actor is the authenticated `request.user.userId`, written into the request store under `RequestActorStoreKey` by the global `RequestActorInterceptor` after JWT authentication. A request with no authenticated user, a queue processor, and a seed carry no actor, and nothing is stamped.
+- A field is filled only when the model has that column and the caller left it null. An explicit value the caller passes always wins.
+- `createdBy`, `updatedBy`, and `deletedBy` are `String? @db.ObjectId`; they store the actor's user id.
 
 **Stamping recurses into nested writes.** `DatabaseExtensionUtil.stampRelations` walks the payload's relation fields, and `stampNestedWrite` stamps every write verb a relation container can hold: `create`, `createMany`, `connectOrCreate`, `update`, `updateMany`, and `upsert`. Each nested write is stamped against the **related** model, resolved through `DatabaseModelRelations`, and the recursion continues to any deeper level.
 
@@ -609,87 +578,37 @@ Three rules hold across all of them:
 - **The candidate list is an argument, never a client field.** `WorkspaceCreateRequestDto` and `ProjectCreateRequestDto` carry no slug, and the personal-workspace sign-up context carries `slugCandidates: string[]` that the onboarding repository indexes by attempt number.
 - **A batch retries as a batch.** `WorkspaceDomain.commitOnboarding` substitutes the same candidate index into every personal workspace in the batch and re-runs the whole `withTransaction`, so its attempt budget is the smallest candidate list in the batch. Admin CSV import is the caller that uses it.
 
-## Docker
-
-Running database commands inside Docker containers from your host machine:
-
-**Generate Prisma Client inside container:**
-```bash
-docker-compose exec apis pnpm db:generate
-```
-
-**Run database migration inside container:**
-```bash
-docker-compose exec apis pnpm db:migrate
-```
-
-**Run all seeds inside container:**
-```bash
-docker-compose exec apis pnpm migration:seed
-```
-
-**Remove all seeded data inside container:**
-```bash
-docker-compose exec apis pnpm migration:remove
-```
-
-These commands execute directly in the running Docker container without needing to enter the container shell. Ensure Docker Compose is running with `docker-compose up -d` before executing these commands.
-
 ## Database Tools
 
-### **Prisma ORM**
+### Prisma ORM
 
-The database client is **[Prisma][ref-prisma] v6.19.x**.
+The database client is **[Prisma][ref-prisma] v6.19.x**. Repositories talk to Prisma only: generated types, `PrismaClient` as the boundary, shared query API and transactions. Schema sync is `pnpm db:migrate` (`prisma db push`).
 
-### **Why Prisma for Repository Design Pattern?**
+### Database provider
 
-Repositories talk to Prisma:
+This boilerplate uses **MongoDB** (`provider = "mongodb"`). ObjectId helpers, replica-set transactions, and seed commands assume MongoDB. There is no `prisma migrate` history; shape changes go through `db push`.
 
-- Generated TypeScript types on repository queries
-- `PrismaClient` is the database boundary
-- Shared query API and transactions
-- `prisma/schema.prisma` uses `provider = "postgresql"`; schema changes use Prisma Migrate
-
-### PostgreSQL Design
-
-Prisma, combined with the Repository Pattern, keeps database logic inside repositories. Services and controllers should consume module interfaces, DTOs, and repository methods rather than building Prisma queries directly.
-
-#### Current Database
-
-| Database | Best For | Transaction Support |
-|----------|----------|---------------------|
-| **PostgreSQL** | Relational Database, reliability | ✅ Yes |
-
-**Environment** (`.env`):
-```bash
-DATABASE_URL=postgresql://ack:ack_password@localhost:5432/ACKNestJs?schema=public
-```
-
-**Schema and client:**
-```bash
-pnpm db:migrate
-pnpm db:generate
-```
-
-**Seeds:**
-```bash
-pnpm migration:seed
-```
+PostgreSQL is on the project TODO. Setup and seeding for the current MongoDB path are in the sections above.
 
 #### Learn More
 
-- [Prisma Migrate][ref-prisma-migrate]
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [Prisma MongoDB Documentation][ref-prisma-mongodb]
+- [nest-commander][ref-nest-commander]
 
 
 <!-- REFERENCES -->
 
 [ref-prisma]: https://www.prisma.io
-[ref-prisma-migrate]: https://www.prisma.io/docs/orm/prisma-migrate
-[ref-commander]: https://nest-commander.jaymcdoniel.dev
+[ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
+[ref-nest-commander]: https://nest-commander.jaymcdoniel.dev
+[ref-mongodb-atlas]: https://www.mongodb.com/products/platform/atlas-database
+[ref-elasticache]: https://aws.amazon.com/elasticache/
 
 [ref-doc-installation]: installation.md
 [ref-doc-environment]: environment.md
 [ref-doc-configuration]: configuration.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
 [ref-doc-activity-log]: activity-log.md
+[ref-doc-email]: email.md
+[ref-doc-third-party-s3]: third-party-integration.md#bucket-setup
+[ref-doc-term-policy]: term-policy.md#migration--seeding

@@ -1,76 +1,43 @@
-import {
-    PaginationCursorQuery,
-    PaginationQueryFilterInEnum,
-} from '@common/pagination/decorators/pagination.decorator';
-import type {
-    IPaginationIn,
-    IPaginationQueryCursorParams,
-} from '@common/pagination/interfaces/pagination.interface';
+import type { WorkspaceJoinRequestListRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-list.request.dto';
+import { WorkspaceJoinRequestListRequestSchema } from '@modules/workspace/dtos/request/workspace.join-request-list.request.dto';
+import type { WorkspaceInviteListRequestDto } from '@modules/workspace/dtos/request/workspace.invite-list.request.dto';
+import { WorkspaceInviteListRequestSchema } from '@modules/workspace/dtos/request/workspace.invite-list.request.dto';
+import type { WorkspaceMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.member-list.request.dto';
+import { WorkspaceMemberListRequestSchema } from '@modules/workspace/dtos/request/workspace.member-list.request.dto';
+import type { WorkspaceUserListRequestDto } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
+import { WorkspaceUserListRequestSchema } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
-    ResponsePaging,
+    ResponsePagination,
 } from '@common/response/decorators/response.decorator';
+
 import type {
-    IResponsePagingReturn,
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import {
-    EnumWorkspaceInviteStatus,
-    EnumWorkspaceJoinRequestStatus,
-    EnumWorkspaceMemberRole,
-    Prisma,
-} from '@generated/prisma-client/client';
+
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+
 import type {
     Workspace,
     WorkspaceInvite,
     WorkspaceJoinRequest,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
+
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
+
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import {
-    WorkspaceCursorAvailableOrderBy,
-    WorkspaceDefaultAvailableSearch,
-    WorkspaceInviteDefaultAvailableOrderBy,
-    WorkspaceInviteDefaultAvailableSearch,
-    WorkspaceInviteDefaultStatus,
-    WorkspaceJoinRequestDefaultAvailableOrderBy,
-    WorkspaceJoinRequestDefaultStatus,
-    WorkspaceMemberDefaultAvailableOrderBy,
-    WorkspaceMemberDefaultRole,
-} from '@modules/workspace/constants/workspace.list.constant';
-import {
-    WorkspaceInviteUserClaimDoc,
-    WorkspaceInviteUserCreateDoc,
-    WorkspaceInviteUserListDoc,
-    WorkspaceInviteUserResendDoc,
-    WorkspaceInviteUserRevokeDoc,
-    WorkspaceJoinRequestUserAcceptDoc,
-    WorkspaceJoinRequestUserCreateDoc,
-    WorkspaceJoinRequestUserListDoc,
-    WorkspaceJoinRequestUserRejectDoc,
-    WorkspaceMemberUserListDoc,
-    WorkspaceMemberUserRemoveDoc,
-    WorkspaceMemberUserUpdateRoleDoc,
-    WorkspaceUserCreateDoc,
-    WorkspaceUserGetDoc,
-    WorkspaceUserLeaveDoc,
-    WorkspaceUserListDoc,
-    WorkspaceUserSoftDeleteDoc,
-    WorkspaceUserSwitchDoc,
-    WorkspaceUserTransferOwnershipDoc,
-    WorkspaceUserUpdateDoc,
-    WorkspaceUserUpdateIsPublicDoc,
-    WorkspaceUserUpdateSlugDoc,
-} from '@modules/workspace/docs/workspace.user.doc';
+
 import { WorkspaceCreateRequestSchema } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import { WorkspaceInviteClaimRequestSchema } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
@@ -103,12 +70,14 @@ import type {
     IWorkspaceInviteList,
     IWorkspaceMember,
 } from '@modules/workspace/interfaces/workspace.interface';
+
 import {
     WorkspaceCurrent,
     WorkspaceMemberCurrent,
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
+
 import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
 import { WorkspaceInviteHttpService } from '@modules/workspace/services/workspace.invite.http.service';
 import { WorkspaceJoinRequestHttpService } from '@modules/workspace/services/workspace.join-request.http.service';
@@ -124,7 +93,9 @@ import {
     Patch,
     Post,
     Put,
+    Query,
 } from '@nestjs/common';
+
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.user.workspace')
@@ -140,8 +111,8 @@ export class WorkspaceUserController {
         private readonly workspaceJoinRequestHttpService: WorkspaceJoinRequestHttpService
     ) {}
 
-    @WorkspaceUserListDoc()
-    @ResponsePaging('workspace.list', {
+    @Doc({ summary: 'list workspaces the caller is a member of' })
+    @ResponsePagination('workspace.list', {
         schema: WorkspaceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -152,20 +123,15 @@ export class WorkspaceUserController {
     @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationCursorQuery({
-            availableSearch: WorkspaceDefaultAvailableSearch,
-            availableOrderBy: WorkspaceCursorAvailableOrderBy,
-        })
-        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>,
+        @Query({ schema: WorkspaceUserListRequestSchema })
+        query: WorkspaceUserListRequestDto,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponsePagingReturn<Workspace>> {
-        return this.workspaceHttpService.getListForMember(userId, pagination);
+    ): Promise<IResponsePaginationReturn<Workspace>> {
+        return this.workspaceHttpService.getListForMember(userId, query);
     }
 
-    @WorkspaceUserCreateDoc()
-    @Response('workspace.create', {
-        schema: WorkspaceResponseSchema,
-    })
+    @Doc({ summary: 'create a new workspace; caller becomes owner' })
+    @Response('workspace.create', { schema: WorkspaceResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
@@ -181,7 +147,7 @@ export class WorkspaceUserController {
         return this.workspaceHttpService.createWorkspace(userId, body);
     }
 
-    @WorkspaceUserGetDoc()
+    @Doc({ summary: 'get the current workspace (`x-workspace-id`)' })
     @Response('workspace.get', {
         schema: WorkspaceResponseSchema,
     })
@@ -200,7 +166,7 @@ export class WorkspaceUserController {
         return this.workspaceHttpService.getCurrentWorkspace(workspace);
     }
 
-    @WorkspaceUserUpdateDoc()
+    @Doc({ summary: 'update the current workspace name/description' })
     @Response('workspace.update', {
         schema: WorkspaceResponseSchema,
     })
@@ -226,7 +192,10 @@ export class WorkspaceUserController {
         );
     }
 
-    @WorkspaceUserUpdateIsPublicDoc()
+    @Doc({
+        summary:
+            'update the current workspace public visibility; a public workspace is discoverable and accepts join requests',
+    })
     @Response('workspace.updateIsPublic', {
         schema: WorkspaceResponseSchema,
     })
@@ -252,7 +221,7 @@ export class WorkspaceUserController {
         );
     }
 
-    @WorkspaceUserUpdateSlugDoc()
+    @Doc({ summary: 'update the current workspace slug' })
     @Response('workspace.updateSlug', {
         schema: WorkspaceResponseSchema,
     })
@@ -278,7 +247,10 @@ export class WorkspaceUserController {
         );
     }
 
-    @WorkspaceUserSwitchDoc()
+    @Doc({
+        summary:
+            'switch active workspace; persists lastWorkspaceId, client must then send the new x-workspace-id header',
+    })
     @Response('workspace.switch')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -296,7 +268,7 @@ export class WorkspaceUserController {
         await this.workspaceHttpService.switchWorkspace(userId, body);
     }
 
-    @WorkspaceUserTransferOwnershipDoc()
+    @Doc({ summary: 'transfer workspace ownership to another member' })
     @Response('workspace.transferOwnership')
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.owner)
@@ -321,7 +293,7 @@ export class WorkspaceUserController {
         );
     }
 
-    @WorkspaceUserLeaveDoc()
+    @Doc({ summary: 'leave the current workspace' })
     @Response('workspace.leave')
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected()
@@ -343,7 +315,7 @@ export class WorkspaceUserController {
         );
     }
 
-    @WorkspaceUserSoftDeleteDoc()
+    @Doc({ summary: 'soft-delete the current workspace' })
     @Response('workspace.softDelete')
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.owner)
@@ -364,8 +336,8 @@ export class WorkspaceUserController {
         );
     }
 
-    @WorkspaceMemberUserListDoc()
-    @ResponsePaging('workspace.member.list', {
+    @Doc({ summary: 'list members of the current workspace' })
+    @ResponsePagination('workspace.member.list', {
         schema: WorkspaceMemberResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -378,25 +350,17 @@ export class WorkspaceUserController {
     @RequestThrottle({ user: true })
     @Get('/member/list')
     async memberList(
-        @PaginationCursorQuery({
-            availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
-        })
-        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
-        @WorkspaceCurrent() workspace: Workspace,
-        @PaginationQueryFilterInEnum<EnumWorkspaceMemberRole>(
-            'role',
-            WorkspaceMemberDefaultRole
-        )
-        role?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
+        @Query({ schema: WorkspaceMemberListRequestSchema })
+        query: WorkspaceMemberListRequestDto,
+        @WorkspaceCurrent() workspace: Workspace
+    ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         return this.workspaceMemberHttpService.getMembersList(
             workspace.id,
-            pagination,
-            role
+            query
         );
     }
 
-    @WorkspaceMemberUserUpdateRoleDoc()
+    @Doc({ summary: 'update a member role in the current workspace' })
     @Response('workspace.member.updateRole')
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
@@ -410,7 +374,7 @@ export class WorkspaceUserController {
     async memberUpdateRole(
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() actorMember: WorkspaceMember,
-        @Param('workspaceMemberId', { schema: RequestUuidSchema })
+        @Param('workspaceMemberId', { schema: RequestMongoIdSchema })
         workspaceMemberId: string,
         @Body({ schema: WorkspaceMemberUpdateRoleRequestSchema })
         body: WorkspaceMemberUpdateRoleRequestDto
@@ -423,7 +387,7 @@ export class WorkspaceUserController {
         );
     }
 
-    @WorkspaceMemberUserRemoveDoc()
+    @Doc({ summary: 'remove a member from the current workspace' })
     @Response('workspace.member.remove')
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
@@ -437,7 +401,7 @@ export class WorkspaceUserController {
     async memberRemove(
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() actorMember: WorkspaceMember,
-        @Param('workspaceMemberId', { schema: RequestUuidSchema })
+        @Param('workspaceMemberId', { schema: RequestMongoIdSchema })
         workspaceMemberId: string
     ): Promise<void> {
         await this.workspaceMemberHttpService.removeMember(
@@ -447,8 +411,8 @@ export class WorkspaceUserController {
         );
     }
 
-    @WorkspaceInviteUserListDoc()
-    @ResponsePaging('workspace.invite.list', {
+    @Doc({ summary: 'list invites for the current workspace' })
+    @ResponsePagination('workspace.invite.list', {
         schema: WorkspaceInviteResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -461,26 +425,20 @@ export class WorkspaceUserController {
     @RequestThrottle({ user: true })
     @Get('/invite/list')
     async inviteList(
-        @PaginationCursorQuery({
-            availableSearch: WorkspaceInviteDefaultAvailableSearch,
-            availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
-        })
-        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
-        @WorkspaceCurrent() workspace: Workspace,
-        @PaginationQueryFilterInEnum<EnumWorkspaceInviteStatus>(
-            'status',
-            WorkspaceInviteDefaultStatus
-        )
-        status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IWorkspaceInviteList>> {
+        @Query({ schema: WorkspaceInviteListRequestSchema })
+        query: WorkspaceInviteListRequestDto,
+        @WorkspaceCurrent() workspace: Workspace
+    ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
         return this.workspaceInviteHttpService.getInvitesList(
             workspace.id,
-            pagination,
-            status
+            query
         );
     }
 
-    @WorkspaceInviteUserCreateDoc()
+    @Doc({
+        summary:
+            'invite a member to the current workspace by email; token is hashed at rest',
+    })
     @Response('workspace.invite.create', {
         schema: WorkspaceInviteResponseSchema,
     })
@@ -506,7 +464,10 @@ export class WorkspaceUserController {
         );
     }
 
-    @WorkspaceInviteUserResendDoc()
+    @Doc({
+        summary:
+            'rotate the token and expiry of a pending invite and resend it; the old link stops working',
+    })
     @Response('workspace.invite.resend', {
         schema: WorkspaceInviteResponseSchema,
     })
@@ -523,7 +484,7 @@ export class WorkspaceUserController {
     async inviteResend(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
-        @Param('workspaceInviteId', { schema: RequestUuidSchema })
+        @Param('workspaceInviteId', { schema: RequestMongoIdSchema })
         workspaceInviteId: string,
         @Body({ schema: WorkspaceInviteResendRequestSchema })
         body: WorkspaceInviteResendRequestDto
@@ -536,7 +497,7 @@ export class WorkspaceUserController {
         );
     }
 
-    @WorkspaceInviteUserRevokeDoc()
+    @Doc({ summary: 'revoke a pending invite for the current workspace' })
     @Response('workspace.invite.revoke')
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
@@ -550,7 +511,7 @@ export class WorkspaceUserController {
     async inviteRevoke(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
-        @Param('workspaceInviteId', { schema: RequestUuidSchema })
+        @Param('workspaceInviteId', { schema: RequestMongoIdSchema })
         workspaceInviteId: string
     ): Promise<void> {
         await this.workspaceInviteHttpService.revokeInvite(
@@ -560,7 +521,10 @@ export class WorkspaceUserController {
         );
     }
 
-    @WorkspaceInviteUserClaimDoc()
+    @Doc({
+        summary:
+            'claim a workspace invite as the already-authenticated caller; joins the invited workspace (and project, if any)',
+    })
     @Response('workspace.invite.claim')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -579,7 +543,10 @@ export class WorkspaceUserController {
         await this.workspaceInviteHttpService.claimInvite(userId, email, body);
     }
 
-    @WorkspaceJoinRequestUserCreateDoc()
+    @Doc({
+        summary:
+            'request to join a public workspace the caller is not yet a member of',
+    })
     @Response('workspace.joinRequest.create', {
         schema: WorkspaceJoinRequestResponseSchema,
     })
@@ -601,8 +568,8 @@ export class WorkspaceUserController {
         );
     }
 
-    @WorkspaceJoinRequestUserListDoc()
-    @ResponsePaging('workspace.joinRequest.list', {
+    @Doc({ summary: 'list join requests for the current workspace' })
+    @ResponsePagination('workspace.joinRequest.list', {
         schema: WorkspaceJoinRequestResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -615,25 +582,20 @@ export class WorkspaceUserController {
     @RequestThrottle({ user: true })
     @Get('/join-request/list')
     async joinRequestList(
-        @PaginationCursorQuery({
-            availableOrderBy: WorkspaceJoinRequestDefaultAvailableOrderBy,
-        })
-        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
-        @WorkspaceCurrent() workspace: Workspace,
-        @PaginationQueryFilterInEnum<EnumWorkspaceJoinRequestStatus>(
-            'status',
-            WorkspaceJoinRequestDefaultStatus
-        )
-        status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceJoinRequest>> {
+        @Query({ schema: WorkspaceJoinRequestListRequestSchema })
+        query: WorkspaceJoinRequestListRequestDto,
+        @WorkspaceCurrent() workspace: Workspace
+    ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
         return this.workspaceJoinRequestHttpService.getJoinRequestsList(
             workspace.id,
-            pagination,
-            status
+            query
         );
     }
 
-    @WorkspaceJoinRequestUserAcceptDoc()
+    @Doc({
+        summary:
+            'accept a pending join request; creates the requester as a member',
+    })
     @Response('workspace.joinRequest.accept')
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
@@ -648,7 +610,7 @@ export class WorkspaceUserController {
     async joinRequestAccept(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
-        @Param('workspaceJoinRequestId', { schema: RequestUuidSchema })
+        @Param('workspaceJoinRequestId', { schema: RequestMongoIdSchema })
         workspaceJoinRequestId: string
     ): Promise<void> {
         await this.workspaceJoinRequestHttpService.acceptJoinRequest(
@@ -658,7 +620,7 @@ export class WorkspaceUserController {
         );
     }
 
-    @WorkspaceJoinRequestUserRejectDoc()
+    @Doc({ summary: 'reject a pending join request with a reason code' })
     @Response('workspace.joinRequest.reject')
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
@@ -673,7 +635,7 @@ export class WorkspaceUserController {
     async joinRequestReject(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
-        @Param('workspaceJoinRequestId', { schema: RequestUuidSchema })
+        @Param('workspaceJoinRequestId', { schema: RequestMongoIdSchema })
         workspaceJoinRequestId: string,
         @Body({ schema: WorkspaceJoinRequestRejectRequestSchema })
         body: WorkspaceJoinRequestRejectRequestDto

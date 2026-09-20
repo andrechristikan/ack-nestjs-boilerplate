@@ -8,7 +8,7 @@ import { faker } from '@faker-js/faker';
 export const AnalyticWorkspaceCountResponseSchema = z.object({
     workspaceId: z.string().meta({
         description: 'Identifier of the counted workspace',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     count: z.number().meta({
         description: 'Number of rows belonging to the workspace',

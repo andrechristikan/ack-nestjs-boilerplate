@@ -1,5 +1,5 @@
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -39,7 +39,7 @@ export interface IUserAnalyticRepository {
     listNearLockoutOffset(
         minAttempt: number,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticNearLockout>>;
+    ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>>;
     findSignUpsInRange(
         startDate: Date,
         endDate: Date

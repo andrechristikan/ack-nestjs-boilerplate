@@ -6,15 +6,25 @@ Device lives in `src/modules/device`.
 
 Devices are the clients users log in from. Each device is identified by a `fingerprint` and can be owned by multiple users through `DeviceOwnership`.
 
-When a device ownership is removed, all active sessions for that device-user pair are revoked in the database, and the revoked session keys are purged from Redis after the commit, which logs the client out. Account self-deletion and the credential lockout each revoke every live ownership of the user and clear the push token of each of those devices.
+When a device ownership is removed:
 
-`DeviceRepository` is the only class that writes `Device` rows, and `DeviceAnalyticRepository` is the only class that reads them directly. `DeviceOwnershipRepository` and `DeviceOwnershipAnalyticRepository` issue statements only against `DeviceOwnership`, and reach `Device` fields through a relation `include`, `select`, or filter. `DeviceDomain` composes the two repositories and opens the transaction for every write that touches both models.
+- all active sessions for that device-user pair are revoked in the database
+- the revoked session keys are purged from Redis after the commit, which logs the client out
+
+Account self-deletion and the credential lockout each revoke every live ownership of the user and clear the push token of each of those devices.
+
+Repository boundary:
+
+- `DeviceRepository` is the only class that writes `Device` rows
+- `DeviceAnalyticRepository` is the only class that reads them directly
+- `DeviceOwnershipRepository` and `DeviceOwnershipAnalyticRepository` issue statements only against `DeviceOwnership`, and reach `Device` fields through a relation `include`, `select`, or filter
+- `DeviceDomain` composes the two repositories and opens the transaction for every write that touches both models
 
 ## Related Documents
 
-- [Authentication Documentation][ref-doc-authentication] - For understanding session management and JWT
-- [Authorization Documentation][ref-doc-authorization] - For policy-based access control on device endpoints
-- [Notification Documentation][ref-doc-notification] - For push notification token management tied to devices
+- [Authentication Documentation][ref-doc-authentication] - Sessions and JWT
+- [Authorization Documentation][ref-doc-authorization] - Policy on device endpoints
+- [Notification Documentation][ref-doc-notification] - Push tokens on devices
 
 ## Table of Contents
 
@@ -107,7 +117,22 @@ Removing a device ownership (device per user) is composed by `DeviceDomain.remov
 | Admin (`removeByAdmin`), another user's device | `adminDeviceRemove` on the admin, plus `userRemoveDeviceByAdmin` on the device owner with `createdBy` set to the admin |
 | Admin (`removeByAdmin`), the admin's own device | `adminDeviceRemove` only |
 
-`userRemoveDevice` carries `deviceOwnershipId`, `deviceId`, and `sessionCount`. `adminDeviceRemove` carries `targetUserId`, `targetUsername`, `deviceOwnershipId`, `deviceId`, `timestamp`, and `sessionCount`; `userRemoveDeviceByAdmin` carries `actorUserId` in place of the two target keys. See [Activity Log][ref-doc-activity-log].
+`userRemoveDevice` carries:
+
+- `deviceOwnershipId`
+- `deviceId`
+- `sessionCount`
+
+`adminDeviceRemove` carries:
+
+- `targetUserId`
+- `targetUsername`
+- `deviceOwnershipId`
+- `deviceId`
+- `timestamp`
+- `sessionCount`
+
+`userRemoveDeviceByAdmin` carries `actorUserId` in place of the two target keys. See [Activity Log][ref-doc-activity-log].
 
 ```mermaid
 sequenceDiagram

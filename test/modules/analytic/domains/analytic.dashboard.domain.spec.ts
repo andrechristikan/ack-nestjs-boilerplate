@@ -12,7 +12,7 @@ import {
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
-import type { IRequestUserAgent as UserAgent } from '@common/request/interfaces/request.interface';
+import type { UserAgent } from '@generated/prisma-client/client';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import { AnalyticDashboardDomain } from '@modules/analytic/domains/analytic.dashboard.domain';

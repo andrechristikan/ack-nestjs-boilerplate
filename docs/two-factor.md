@@ -15,10 +15,11 @@ Login can require a TOTP (RFC 6238) from an authenticator app, plus one-time bac
 
 ## Related Documents
 
-- [Authentication Documentation][ref-doc-authentication] - JWT token management and login flows
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Rate limiting and security headers
-- [Cache Documentation][ref-doc-cache] - Redis implementation for challenge tokens
-- [Activity Log Documentation][ref-doc-activity-log] - Events tracking
+- [Authentication Documentation][ref-doc-authentication] - JWT, login, and sessions
+- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Rate limiting and headers
+- [Cache Documentation][ref-doc-cache] - Challenge tokens in Redis
+- [Activity Log Documentation][ref-doc-activity-log] - Security events
+- [Environment Documentation][ref-doc-environment] - `AUTH_TWO_FACTOR_*`
 
 ## Table of Contents
 
@@ -78,7 +79,13 @@ Located in `src/configs/auth.config.ts`:
 
 ### Secret Storage
 
-`AuthTwoFactorDomain` seals every TOTP secret with `HelperEncryptionService.aes256Encrypt`, using `auth.twoFactor.encryption.key`, the purpose `auth.twoFactor.secret`, and the user ID as authenticated data, so a secret copied onto another user's row fails to decrypt. `TwoFactor` holds two sealed values:
+`AuthTwoFactorDomain` seals every TOTP secret with `HelperEncryptionService.aes256Encrypt`, using:
+
+- `auth.twoFactor.encryption.key`
+- the purpose `auth.twoFactor.secret`
+- the user ID as authenticated data
+
+A secret copied onto another user's row fails to decrypt. `TwoFactor` holds two sealed values:
 
 - `pendingSecret`: written by every setup, never used to verify a login
 - `secret`: the confirmed authenticator; enable moves `pendingSecret` here and clears `pendingSecret`
@@ -582,7 +589,7 @@ sequenceDiagram
 
 ## Contribution
 
-Special thanks to [ak2g][ref-contributor-ak2g] for main contributor for this feature.
+Thanks to [ak2g][ref-contributor-ak2g] for this feature.
 
 <!-- REFERENCES -->
 
@@ -591,5 +598,6 @@ Special thanks to [ak2g][ref-contributor-ak2g] for main contributor for this fea
 [ref-doc-cache]: cache.md
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-installation]: installation.md
+[ref-doc-environment]: environment.md
 
 [ref-contributor-ak2g]: https://github.com/ak2g

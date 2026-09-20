@@ -4,11 +4,14 @@ import {
     applyDecorators,
     createParamDecorator,
 } from '@nestjs/common';
+import { ApiSecurity } from '@nestjs/swagger';
 import { ClsServiceManager } from 'nestjs-cls';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import {
+    ApiKeyDocSecurityName,
     ApiKeyStoreKey,
     ApiKeyXTypeMetaKey,
+    DocApiKeyErrorResponses,
 } from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyXApiKeyGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { ApiKeyXApiKeyTypeGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.type.guard';
@@ -55,7 +58,11 @@ export const ApiKeyPayload = createParamDecorator<
 export function ApiKeySystemProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(ApiKeyXApiKeyGuard, ApiKeyXApiKeyTypeGuard),
-        SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.system])
+        SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.system]),
+        ApiSecurity(ApiKeyDocSecurityName),
+        DocApiKeyErrorResponses.unauthorized,
+        DocApiKeyErrorResponses.forbidden,
+        DocApiKeyErrorResponses.predefinedNotFound
     );
 }
 
@@ -66,6 +73,10 @@ export function ApiKeySystemProtected(): MethodDecorator {
 export function ApiKeyProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(ApiKeyXApiKeyGuard, ApiKeyXApiKeyTypeGuard),
-        SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.default])
+        SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.default]),
+        ApiSecurity(ApiKeyDocSecurityName),
+        DocApiKeyErrorResponses.unauthorized,
+        DocApiKeyErrorResponses.forbidden,
+        DocApiKeyErrorResponses.predefinedNotFound
     );
 }

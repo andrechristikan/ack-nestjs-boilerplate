@@ -12,8 +12,8 @@ NestJS evaluates stacked decorators bottom-up, so the HTTP method is always last
 `@FeatureFlagProtected` (#11) therefore sits ABOVE `@AuthJwtAccessProtected` (#12), not below it: the flag guard reads `request.user` to apply a flag's `targetUserIds` and `rolloutPercent`, and Passport writes `request.user` inside the JWT guard. Written below the JWT guard it would run first, see `undefined`, and silently skip targeting and rollout on every route — the flag would degrade to a plain on/off switch with no signal that anything was lost.
 
 ```typescript
-@ExampleDoc()                          // 1.  Swagger doc factory
-@Response('example.action')            // 2.  @Response / @ResponsePaging / @ResponseFile
+@Doc({ summary: '…' })                 // 1.  OpenAPI operation + global error kit
+@Response('example.action')            // 2.  @Response / @ResponsePagination / @ResponseFile
 @TermPolicyAcceptanceProtected(...)    // 3.  Term policy
 @PolicyProtected({...})                // 4.  CASL policy         — admin routes
 @RoleProtected(...)                    // 5.  Role                — admin routes
@@ -48,7 +48,7 @@ Admin reads and writes ACROSS every workspace — that is what the scope means. 
 Worse, it opens an IDOR the guard cannot see: when an admin route ALSO takes a `:workspaceId` (or `:projectId`) path param, the guard validates the header value while the query reads the path value. Two sources of truth for one request — the caller passes a workspace they belong to in the header and any other workspace's id in the path.
 
 - Admin scoping is `@RoleProtected(...)` plus `@PolicyProtected({...})`, and nothing else.
-- An admin route that must be narrowed to one workspace or project takes it as an EXPLICIT `:workspaceId` / `:projectId` **path param**, validated with `RequestUuidSchema` — never from the header.
+- An admin route that must be narrowed to one workspace or project takes it as an EXPLICIT `:workspaceId` / `:projectId` **path param**, validated with `{ schema: RequestMongoIdSchema }` — never from the header.
 - The header (`x-workspace-id`) belongs to the `user` and `shared` scopes only, where `@WorkspaceProtected()` + `@WorkspaceMemberProtected()` are the correct gate and the only source of truth for the request.
 
 ### `@RoleProtected` never lists `superAdmin` (HARD)
@@ -78,7 +78,7 @@ Write the roles that are actually checked — for a platform admin route that is
 - **Every JWT-protected handler carries `@RequestThrottle({ user: true })` (HARD).** `@AuthJwtAccessProtected()` or `@AuthJwtRefreshProtected()` on a handler with no `RequestThrottle` beside it is a defect. `public` and `system` scopes carry no `req.user`, so the switch is a silent no-op there and must NOT be added. **A handler that omits it keeps only the global per-IP limit: nothing fails, nothing logs, no test catches it** — this rule is the only thing standing between a new endpoint and a lost per-user limit.
 - **One `@RequestThrottle` per handler, never two.** A sensitive endpoint takes its tier in the SAME call — `@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.<tier> })`. Two calls on one handler make the second `SetMetadata` overwrite the first and drop a switch, with nothing failing. Every limit value lives in `request.config.ts`; a decorator never carries a number.
 - **Every handler is `async`, without exception** — including one that only reads from the request store and returns immediately. A handler that is sync today becomes async the first time its service call grows an `await`, and that edit silently changes the method signature every caller and decorator sees. Uniformity here costs nothing and removes a whole class of diff noise.
-- **A handler that returns data returns an envelope type** — `IResponseReturn<T>`, `IResponsePagingReturn<T>`, or `IResponseFileReturn`. **Never a bare DTO**: the interceptor reads `metadata` off the returned object, and a bare DTO has none.
+- **A handler that returns data returns an envelope type** — `IResponseReturn<T>`, `IResponsePaginationReturn<T>`, or `IResponseFileReturn`. **Never a bare DTO**: the interceptor reads `metadata` off the returned object, and a bare DTO has none.
 - **A handler with nothing to return is `Promise<void>`.** Do not manufacture an envelope for it — `ResponseInterceptor` guards with `if (responseData)` and fills the message and status itself, so `return { data: undefined }` is ceremony that buys nothing. Both shapes exist in the repo (32 `void`, 13 `IResponseReturn<void>` where the SERVICE already returns the envelope); either is fine. Reach for `IResponseReturn<void>` only when the handler actually needs the `metadata` escape hatch (`httpStatus`, `statusCode`, `messagePath`, `messageProperties`) to override its own status or message.
 
 ## Route params
@@ -86,26 +86,28 @@ Write the roles that are actually checked — for a platform admin route that is
 - Route params are camelCase and EXPLICIT: `@Get('/get/:userId')` with `@Param('userId')`. Never a bare `:id` — it goes ambiguous the moment a route nests two of them, and the ambiguity is invisible until someone reads the wrong one.
 - **The route template and the `@Param('…')` key must agree or it fails at RUNTIME with `tsc` green** — a mismatch makes the param silently `undefined`. Where a Swagger param constant documents a placeholder no handler binds, its `name` is the third place that must agree.
 - A body field MUST NOT duplicate a path param. The path is authoritative.
-### UUID params use request schemas (HARD)
+### Path and query params bind a zod schema (HARD)
 
-A route or query parameter carrying a persisted row id uses `RequestUuidSchema` in the binding:
+A path or query value is validated by the same `RequestSchemaValidationPipe` as a body. Bind the
+schema on the decorator; do not add a custom pipe for ObjectId or presence checks.
 
 ```typescript
-@Param('workspaceId', { schema: RequestUuidSchema })
+@Param('workspaceId', { schema: RequestMongoIdSchema })
 workspaceId: string
-```
 
-Optional UUID filters use `.optional()` on the same schema:
-
-```typescript
-@Query('workspaceId', { schema: RequestUuidSchema.optional() })
+@Query('workspaceId', { schema: RequestMongoIdSchema.optional() })
 workspaceId?: string
 
 @Param('inviteToken', { schema: RequestRequiredStringSchema })
 inviteToken: string
 ```
 
-A param that is not a UUID, such as a token or language code, uses the schema for its own shape.
+- **Required ObjectId** — `RequestMongoIdSchema` (`src/common/request/validations/request.mongo-id.validation.ts`).
+- **Optional ObjectId query** — `RequestMongoIdSchema.optional()`. An optional ObjectId with no
+  schema is a defect: the raw string reaches Prisma and a malformed value returns 500 instead of
+  400.
+- **Required non-ObjectId string** (token, slug) — `RequestRequiredStringSchema`.
+- **Language code** — `RequestMessageLanguageSchema` where that is the contract.
 - Shared schemas live under `src/common/request/validations/`. Module-specific ones live under
   `<module>/validations/` (`rules/validation.md`).
 - File upload presence stays on `FileRequiredPipe()` and the other file pipes (`rules/file.md`).
@@ -207,97 +209,105 @@ A guard is a transport gate. It reads transport inputs (JWT payload, params, ref
 ## Responses
 
 ```typescript
-@Response('user.profile')            // single object → IResponseReturn<T>
-@ResponsePaging('user.list')         // paginated     → IResponsePagingReturn<T>
-@ResponseFile()                      // CSV / PDF     → IResponseFileReturn
+@Response('user.profile')                 // single object → IResponseReturn<T>
+@ResponsePagination('user.list', {        // paginated     → IResponsePaginationReturn<T>
+    schema: UserListResponseSchema,
+})
+@ResponseFile()                           // CSV / PDF     → IResponseFileReturn
 ```
 
 The argument is the i18n message path, not a literal message. The handler's return type must match the decorator — a `@Response` route returning a bare DTO instead of `IResponseReturn<T>` breaks the interceptor contract. A route with nothing to return is `Promise<void>` (see "Controllers" above).
 
-## Swagger docs
+`@Response` / `@ResponsePagination` / `@ResponseFile` also emit their OpenAPI success envelope and the error kits that belong to that response kind (`rules/dto.md`). `@Response` / `@ResponseFile` take success HTTP status **and** body `statusCode` from `@HttpCode` when present, otherwise Nest method defaults (`POST` → 201, else 200). `IResponseOptions` carries only `schema` and `cache` — not `httpStatus` or `statusCode`. Override either status at runtime via `metadata` on the handler return. `@ResponsePagination` documents 200 and passes `baseSchema: ResponsePaginationSchema` on its success entry. It does **not** emit list `ApiQuery`s; those come from the zod query schema (`rules/pagination.md`). The interceptor reads pagination strategy from the handler return via `EnumPaginationType`.
 
-Every endpoint has a matching decorator factory in `<module>/docs/<module>.<scope>.doc.ts`,
-named `<Module><Scope><Action>Doc`, composed with `applyDecorators` from the `Doc*`
-primitives in `src/common/doc/decorators/doc.decorator.ts`. The factory sits at the TOP of
-the decorator stack, above `@Response`. The doc file mirrors the controller: one factory per
-endpoint, same order.
+**A `*.decorator.ts` file has no file-local helper functions.** Status resolution, cache option
+wiring, and OpenAPI entry mapping live **inside** the exported decorator factory — not in a
+sibling `function resolve…` / `function apply…` in the same file.
 
-Use the primitives (`Doc`, `DocAuth`, `DocGuard`, `DocRequest`, `DocRequestFile`,
-`DocResponse`, `DocResponsePagination`, `DocResponseFile`). A bare `@ApiOperation` /
-`@ApiResponse` bypasses the shared shape.
+## OpenAPI — co-located on the runtime stack
 
-**`DocResponseError(httpStatus, ...entries)` is the kit emitter for non-success responses of one
-status**, each entry a `statusCode` plus its i18n `messagePath`. One entry at a status emits a
-plain schema with field examples. Two or more emit one shared response-envelope schema plus
-named OpenAPI `examples` keyed by `messagePath`, each value the full envelope (`statusCode`,
-`message`, `metadata`). A `oneOf` of full envelopes is not used. Every primitive that documents
-errors goes through `accumulateResponseEntries` on the decorated method and re-emits that status
-in full, so entries from different primitives at one status compose instead of replacing each
-other; order inside `applyDecorators` does not change what the endpoint documents. Module
-`*.doc.ts` factories do not call `DocResponseError`.
+OpenAPI rides on the same decorators that own the HTTP contract. There is no module
+`<module>/docs/*.doc.ts` factory and no dual stack of `DocAuth` / `DocGuard` / `DocRequest` /
+`DocResponse*` beside the controller. A bare `@ApiOperation` / `@ApiResponse` bypasses the
+shared shape.
 
-**An endpoint factory publishes the kit error set only.** The OpenAPI error responses come from
-`Doc()`, `DocAuth`, `DocGuard`, and — when the route uses them — `DocResponsePagination`,
-`DocRequestFile`, and `DocResponseFile`. Module-flow exceptions (domain or HTTP throws that are
-not behind a `DocGuard` / `DocAuth` flag) are not listed on the factory. **One error has one
-source**, and which source it is follows from where the exception LIVES:
+Every endpoint carries `@Doc({ summary })` at the top of the stack (operation metadata,
+language/correlation headers, **global** error kit). Endpoint-specific module-flow errors that
+must appear in OpenAPI use the public escape hatch `@DocErrors(httpStatus, ...entries)`.
+Controllers do not call `DocResponseError` directly — use `@DocErrors` for endpoint-specific
+module-flow errors.
+
+**`DocResponseError` is the internal kit emitter** for responses of one status: each entry a
+`statusCode` plus its i18n `messagePath` (and optional `schema` for `data`, optional
+`baseSchema` defaulting to `ResponseSchema` — paginated success uses
+`ResponsePaginationSchema`). One entry at a status emits a plain schema with field examples.
+Two or more emit one shared base schema plus named OpenAPI `examples` keyed by `messagePath`.
+It is a `MethodDecorator` that merges entries onto the handler under
+`DocResponseEntryMetaKey` and re-emits `ApiResponse` for that status, so entries from different
+primitives at one status compose instead of replacing each other. Dedupe key:
+`httpStatus:statusCode:messagePath`.
+
+**One error has one source**, from where the exception LIVES:
 
 | The exception lives in | Its entry belongs to |
 |---|---|
-| `src/common/` or `src/app/`, and any request can reach it | `Doc()` — every endpoint carries it |
-| `src/common/`, behind one primitive | that primitive: the pagination set on `DocResponsePagination`, the upload set on `DocRequestFile`, the download set on `DocResponseFile` |
-| a module, raised by a guard or an auth strategy | a `DocGuard` or `DocAuth` flag |
+| `src/common/` or `src/app/`, and any request can reach it | `@Doc()` — every endpoint |
+| `src/common/`, behind one runtime primitive | that primitive: pagination kits on `@ResponsePagination`, upload kits on `FileUpload*`, download kits on `@ResponseFile` |
+| a module, raised by a guard or an auth strategy | the matching `*Protected` / auth decorator |
+| a module, raised by a specific endpoint's flow and required in OpenAPI | `@DocErrors` on that handler |
 
-The kit's errors are declared once, in the primitive, for everyone it decorates — a paginated
-route publishes the whole pagination set whether or not a given request could trip each member.
-That breadth is the contract of a shared primitive, not an oversight.
+Kit errors are declared once, in the primitive, for everyone it decorates — a paginated route
+publishes the whole pagination error set (offset **and** cursor kits) whether or not a given
+request could trip each member. That breadth is the contract of a shared primitive.
 
-A module marked `@Global()` changes nothing about this. Its errors reach the kit only through a
-guard or auth strategy that gates them.
+**`auth.error.accessTokenUnauthorized` belongs to `AuthJwtAccessProtected`.** A Protected
+decorator whose domain also throws `AuthJwtAccessTokenInvalidException` when the principal is
+missing does not publish that 401 again — never on `UserProtected`.
 
-**`auth.error.accessTokenUnauthorized` belongs to `DocAuth({ jwtAccessToken })`.** A `DocGuard`
-flag whose domain also throws `AuthJwtAccessTokenInvalidException` when the principal is missing
-does not publish that 401 again.
+**Each `*Protected` / auth decorator emits exactly the throw set of the guard class it
+installs**, plus any security scheme (`ApiBearerAuth`, `ApiSecurity`). Where a decorator
+installs a DIFFERENT guard class depending on its arguments, each class takes its own kit:
+two kits that are mutually exclusive by construction are honest; one kit covering both is not.
+A guard used by a handful of endpoints and not worth a kit leaves its throws off the OpenAPI
+document unless an endpoint opts in with `@DocErrors`.
 
-**A `DocGuard` flag mirrors one guard class, one for one, and emits exactly that guard's throw
-set** — `IDocGuardOptions` in `src/common/doc/interfaces/doc.interface.ts` is the list. A flag
-raised without its guard advertises an error the endpoint cannot return; a guard without its flag
-hides one it can. Where a decorator installs a DIFFERENT guard class depending on its arguments,
-each class takes its own flag: two flags that are mutually exclusive by construction are honest,
-one flag covering both is not.
+### OpenAPI security scheme names (HARD)
 
-**A guard used by a handful of endpoints takes no flag.** Its throws stay off the OpenAPI
-document with the rest of module-flow errors. A flag exists to stop a repetition, and a flag that
-is `false` on almost every endpoint is a field the writer must remember for no return.
+OpenAPI scheme names are **module constants**, never magic strings at `ApiBearerAuth`,
+`ApiSecurity`, `DocumentBuilder.addBearerAuth`, or `DocumentBuilder.addApiKey`.
 
-**Kit `DocResponseError` calls live in `src/common/doc/constants/doc.constant.ts`**
-(`DocGlobalErrorResponses`, `DocPaginationErrorResponses`, `DocFileErrorResponses`, …).
+- **Scheme VALUES are camelCase:** `'accessToken'`, `'refreshToken'`, `'google'`, `'apple'`,
+  `'xApiKey'`.
+- **Const identifiers are PascalCase** on the owning module's constant file, parallel to
+  `AuthJwtAccessGuardKey`: `AuthJwtAccessDocSecurityName`, `AuthJwtRefreshDocSecurityName`,
+  `AuthSocialGoogleDocSecurityName`, `AuthSocialAppleDocSecurityName`, `ApiKeyDocSecurityName`
+  (`rules/naming.md`).
+- Registration in `src/swagger.ts` and emission on `*Protected` / auth decorators both import
+  those consts. The header name `'x-api-key'` is the apiKey `in: 'header'` transport name and is
+  not this rule's subject.
 
-**`DocRequest` documents request shape the other primitives do not.** Path and query inputs
-follow one of four bindings; which binding decides whether `DocRequest` appears:
+**Kit `DocResponseError` calls live in constants — not inline in `*.decorator.ts`.**
+Common kits (`DocGlobalErrorResponses`, `DocPaginationErrorResponses`, `DocFileErrorResponses`,
+…) live in `src/common/doc/constants/doc.constant.ts` and are consumed by `@Doc`,
+`@Response*`, and `FileUpload*`. Module `*Protected` / auth kits live as `Doc<Module>ErrorResponses`
+in that module's `constants/<module>.constant.ts` and are spread into the decorator's
+`applyDecorators(...)`. Each entry is a `DocResponseError(...)` MethodDecorator — never a
+pre-composed `applyDecorators` blob.
 
-| Binding on the controller | OpenAPI source | `DocRequest`? |
-|---|---|---|
-| `@Param('…', { schema })` or `@Query({ schema })` / `@Query('…', { schema })` | zod via `standardSchemaConverter` in `src/swagger.ts` (pattern, description, required from `.meta`) | **No.** A `*.doc.constant.ts` entry beside it documents twice and loses. |
-| Path placeholder the route declares and a **guard** reads; the handler has no `@Param` | nothing else emits it | **Yes** — `DocRequest({ params })` with a PascalCase `ApiParamOptions[]` in `<module>.doc.constant.ts` (e.g. `projectId` on `/user/project` routes). |
-| `@PaginationQueryFilter*` field (`EqualString`, `InEnum`, `EqualBoolean`, …) next to `@PaginationOffsetQuery` / `@PaginationCursorQuery` | nothing — filter pipes do not emit `@ApiQuery`, and they cannot be folded into one zod query object with the pagination kit | **Yes** — `DocRequest({ queries })` with a PascalCase `ApiQueryOptions[]` in `<module>.doc.constant.ts`. Every filter field name on the controller has a matching entry; each entry carries `description`. |
-| `@PaginationOffsetQuery` / `@PaginationCursorQuery` kit alone (`search`, `orderBy`, page/cursor) | `DocResponsePagination` from the same allow-list constants | **No** for those kit keys — `DocResponsePagination` owns them (`rules/pagination.md`). |
+### Who documents request shape
 
-`DocResponsePagination` never documents module filter fields. A list that uses both
-`@Pagination*Query` and `@PaginationQueryFilter*` therefore carries **both**
-`DocResponsePagination` (kit) and `DocRequest({ queries })` (filters). `bodyType` on
-`DocRequest` still sets `ApiConsumes` when the endpoint has a body.
+| Binding | OpenAPI source |
+|---|---|
+| `@Param('…', { schema })` / `@Query({ schema })` / `@Query('…', { schema })` / `@Body({ schema })` | zod via `standardSchemaConverter` in `src/swagger.ts` (`.meta` for description, example, required) |
+| Path placeholder a **guard** reads; the handler has no `@Param` | the owning Protected decorator — e.g. `ProjectProtected` emits `ApiParam('projectId')`. No unused `@Param` on the handler. |
+| Multipart upload | `FileUploadSingle` / `FileUploadMultiple` / `FileUploadMultipleFields` — `ApiConsumes('multipart/form-data')` + binary `ApiBody` from field name(s) + upload error kit (`rules/file.md`) |
+| List query (page/cursor/`perPage`/`search`/`orderBy` + filters) | the list zod schema on `@Query({ schema })` from kit factories + `.extend` (`rules/pagination.md`) |
 
-`@ApiQuery` / `@ApiParam` arrays live only as those PascalCase constants in
-`<module>/constants/<module>.doc.constant.ts`. Never an inline array in a `*.doc.ts`, never
-generated from a request DTO.
-
-`DocResponsePagination` takes the SAME allow-list constants the controller's `@Pagination*Query`
-decorator takes, and `type` is required (`EnumPaginationType.offset` or `.cursor`).
-
-`DocResponse<T>` / `DocResponsePagination<T>` take the response SCHEMA in `options.schema`. A
-hand-written schema object beside a zod schema is a mirror. Every field carries
+A hand-written schema object beside a zod schema is a mirror. Every field carries
 `.meta({ description, example })` on the zod schema. Do not call `faker.seed()`.
 
-Doc factories carry no method JSDoc. Flow narrative: `docs/doc.md` — explorer or planner
-opens it when the annotation question is not settled by this section.
+Controller-facing Doc surface that exists: `@Doc`, `@DocErrors`. Everything else is absorbed
+into runtime decorators or is internal kit plumbing under `src/common/doc/`.
+
+Flow narrative: `docs/doc.md` — explorer or planner opens it when the annotation question is
+not settled by this section.

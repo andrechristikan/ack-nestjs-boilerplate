@@ -2,7 +2,7 @@
 
 `FileService`, the file pipes, and `AwsS3Service` are the shared kit in `src/common/file/`
 and `src/common/aws/`; a feature never re-implements them. Flow narrative:
-`docs/file-upload.md`, `docs/presign.md` — explorer or planner.
+`docs/file-upload.md` — explorer or planner.
 
 ## Upload validation is a pipe, never inline
 
@@ -17,6 +17,8 @@ An uploaded file is validated by a `src/common/file/pipes/` pipe, composed on th
 ## Transport limits are the framework's, the exceptions are ours
 
 `FileUploadSingle`, `FileUploadMultiple` and `FileUploadMultipleFields` compose `FileUploadErrorInterceptor` outermost, ahead of the multer interceptor it wraps. It maps every multer and busboy limit failure onto a typed file exception — `FileExceedMaxSizeUploadException` (`413`), `FileExceedMaxFilesException`, `FileFieldUnexpectedException`, `FileMultipartInvalidException` — so a client reads the same envelope, status code and i18n message as it does for any other file error.
+
+**OpenAPI for multipart lives on these decorators.** Each emits `ApiConsumes('multipart/form-data')`, a binary `ApiBody` built from the declared field name(s), and the upload error kit. There is no separate request-doc decorator for uploads (`rules/http.md`).
 
 - The mapping matches the message strings Nest already put on the `HttpException` (`multerExceptions` / `busboyExceptions` from `@nestjs/platform-express`). It does not invent a second message catalog. The client message is the typed exception's own path (`file.error.exceedMaxSizeUpload`, …). `transformException` appends ` - <field>` to several of those framework messages, so the match is the segment before the first ` - `.
 - `FileSizeInBytes` is the default per-file cap; `FileMaxMultiple` is the default file count for `FileUploadMultiple`. `FileUploadMultipleFields` takes its counts from the fields it declares.

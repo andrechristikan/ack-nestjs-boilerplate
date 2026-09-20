@@ -1,6 +1,9 @@
 import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import type { Project, ProjectMember } from '@generated/prisma-client/client';
 import {
+    DocProjectErrorResponses,
+    DocProjectMemberErrorResponses,
+    DocProjectRoleErrorResponses,
     ProjectMemberStoreKey,
     ProjectRoleMetaKey,
     ProjectStoreKey,
@@ -14,15 +17,26 @@ import {
     applyDecorators,
     createParamDecorator,
 } from '@nestjs/common';
+import { ApiParam } from '@nestjs/swagger';
 import { ClsServiceManager } from 'nestjs-cls';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 
 /**
  * Requires the `projectId` route param to resolve to an existing, non-deleted project in the current workspace.
+ * Documents `projectId` and project kits.
  * @public
  */
 export function ProjectProtected(): MethodDecorator {
-    return applyDecorators(UseGuards(ProjectGuard));
+    return applyDecorators(
+        UseGuards(ProjectGuard),
+        ApiParam({
+            name: 'projectId',
+            required: true,
+            type: 'string',
+            description: 'Project identifier',
+        }),
+        DocProjectErrorResponses.notFound
+    );
 }
 
 /**
@@ -69,12 +83,18 @@ export function ProjectMemberProtected(
     ...roles: EnumProjectMemberRole[]
 ): MethodDecorator {
     if (roles.length === 0) {
-        return applyDecorators(UseGuards(ProjectMemberGuard));
+        return applyDecorators(
+            UseGuards(ProjectMemberGuard),
+            DocProjectMemberErrorResponses.notFound,
+            DocProjectMemberErrorResponses.forbidden
+        );
     }
 
     return applyDecorators(
         UseGuards(ProjectRoleGuard),
-        SetMetadata(ProjectRoleMetaKey, roles)
+        SetMetadata(ProjectRoleMetaKey, roles),
+        DocProjectRoleErrorResponses.notFound,
+        DocProjectRoleErrorResponses.forbidden
     );
 }
 

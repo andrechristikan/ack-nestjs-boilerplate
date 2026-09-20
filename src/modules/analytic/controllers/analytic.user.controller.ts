@@ -1,16 +1,10 @@
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticMetricCountResponseSchema } from '@modules/analytic/dtos/response/analytic.metric-count.response.dto';
 import { AnalyticRoleCountResponseSchema } from '@modules/analytic/dtos/response/analytic.role-count.response.dto';
 import { AnalyticStatusCountResponseSchema } from '@modules/analytic/dtos/response/analytic.status-count.response.dto';
 import { Response } from '@common/response/decorators/response.decorator';
-import {
-    AnalyticUserWorkspaceActivityDoc,
-    AnalyticUserWorkspaceInviteFunnelDoc,
-    AnalyticUserWorkspaceJoinOutcomesDoc,
-    AnalyticUserWorkspaceMemberRolesDoc,
-    AnalyticUserWorkspaceSummaryDoc,
-} from '@modules/analytic/docs/analytic.user.doc';
 import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
 import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
 import { AnalyticOptionalDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
@@ -48,7 +42,7 @@ export class AnalyticUserController {
         private readonly analyticWorkspaceUserHttpService: AnalyticWorkspaceUserHttpService
     ) {}
 
-    @AnalyticUserWorkspaceSummaryDoc()
+    @Doc({ summary: 'get current workspace analytic summary' })
     @Response('analytic.workspaceSummary', {
         schema: AnalyticWorkspaceSummaryResponseSchema,
     })
@@ -73,7 +67,7 @@ export class AnalyticUserController {
         );
     }
 
-    @AnalyticUserWorkspaceInviteFunnelDoc()
+    @Doc({ summary: 'get current workspace invite funnel by date range' })
     @Response('analytic.workspaceInviteFunnel', {
         schema: AnalyticStatusCountResponseSchema,
     })
@@ -98,7 +92,9 @@ export class AnalyticUserController {
         );
     }
 
-    @AnalyticUserWorkspaceJoinOutcomesDoc()
+    @Doc({
+        summary: 'get current workspace join request outcomes by date range',
+    })
     @Response('analytic.workspaceJoinOutcomes', {
         schema: AnalyticStatusCountResponseSchema,
     })
@@ -123,7 +119,7 @@ export class AnalyticUserController {
         );
     }
 
-    @AnalyticUserWorkspaceMemberRolesDoc()
+    @Doc({ summary: 'get current workspace member role distribution' })
     @Response('analytic.workspaceMemberRoles', {
         schema: AnalyticRoleCountResponseSchema,
     })
@@ -142,7 +138,7 @@ export class AnalyticUserController {
         return this.analyticWorkspaceUserHttpService.memberRoles(workspace.id);
     }
 
-    @AnalyticUserWorkspaceActivityDoc()
+    @Doc({ summary: 'get current workspace activity count by date range' })
     @Response('analytic.workspaceActivity', {
         schema: AnalyticMetricCountResponseSchema,
     })

@@ -9,7 +9,7 @@ import type {
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumRoleType,
@@ -147,7 +147,7 @@ export class UserDomain {
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUserList>> {
+    ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.userRepository.findWithPaginationOffset(
             pagination,
             status,

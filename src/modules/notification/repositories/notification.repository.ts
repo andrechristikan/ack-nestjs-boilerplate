@@ -2,7 +2,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type {
@@ -70,7 +70,7 @@ export class NotificationRepository implements INotificationRepository {
             where,
             ...params
         }: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
-    ): Promise<IResponsePagingReturn<Notification>> {
+    ): Promise<IResponsePaginationReturn<Notification>> {
         return this.paginationService.cursor<
             Notification,
             Prisma.NotificationWhereInput

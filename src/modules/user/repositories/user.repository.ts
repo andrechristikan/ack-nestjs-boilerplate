@@ -9,16 +9,15 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { TwoFactorActiveBackupCodesFilter } from '@modules/user/constants/user.constant';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
+import { UserAdminListSelect } from '@modules/user/constants/user.constant';
 import type {
     IUser,
     IUserContact,
     IUserCreateWithWorkspaceInput,
-    IUserExport,
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
@@ -33,7 +32,6 @@ import {
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
-import { TermPolicyAcceptedColumnMap } from '@modules/term-policy/constants/term-policy.constant';
 import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
 
 @Injectable()
@@ -48,12 +46,7 @@ export class UserRepository implements IUserRepository {
     private buildUserCreateData(
         input: IUserCreateWithWorkspaceInput
     ): Prisma.UserUncheckedCreateInput {
-        const termPolicyAcceptedData = Object.fromEntries(
-            Object.entries(input.termPolicy).map(([type, accepted]) => [
-                TermPolicyAcceptedColumnMap[type as EnumTermPolicyType],
-                accepted,
-            ])
-        );
+        const lastWorkspaceChangedAt = this.helperDateService.create();
 
         return {
             id: input.userId,
@@ -67,8 +60,8 @@ export class UserRepository implements IUserRepository {
             isVerified: input.isVerified,
             status: EnumUserStatus.active,
             lastWorkspaceId: input.workspaceContext.workspaceId,
-            lastWorkspaceChangedAt: this.helperDateService.create(),
-            ...termPolicyAcceptedData,
+            lastWorkspaceChangedAt,
+            termPolicy: input.termPolicy,
             createdBy: input.createdBy,
             deletedAt: null,
             ...(input.password
@@ -90,7 +83,7 @@ export class UserRepository implements IUserRepository {
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUserList>> {
+    ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.paginationService.offset<IUserList, Prisma.UserWhereInput>(
             this.databaseService.client.user,
             {
@@ -102,17 +95,7 @@ export class UserRepository implements IUserRepository {
                     ...roleId,
                     deletedAt: null,
                 },
-                include: {
-                    role: { include: { policies: true } },
-                    twoFactor: {
-                        include: {
-                            backupCodes: {
-                                where: TwoFactorActiveBackupCodesFilter,
-                            },
-                        },
-                    },
-                    photo: true,
-                },
+                select: UserAdminListSelect,
             }
         );
     }
@@ -163,13 +146,7 @@ export class UserRepository implements IUserRepository {
             where: { email, deletedAt: null },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: {
-                    include: {
-                        backupCodes: {
-                            where: TwoFactorActiveBackupCodesFilter,
-                        },
-                    },
-                },
+                twoFactor: true,
             },
         });
     }
@@ -180,14 +157,7 @@ export class UserRepository implements IUserRepository {
             include: {
                 role: { include: { policies: true } },
                 country: true,
-                twoFactor: {
-                    include: {
-                        backupCodes: {
-                            where: TwoFactorActiveBackupCodesFilter,
-                        },
-                    },
-                },
-                photo: true,
+                twoFactor: true,
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -203,14 +173,7 @@ export class UserRepository implements IUserRepository {
             include: {
                 role: { include: { policies: true } },
                 country: true,
-                twoFactor: {
-                    include: {
-                        backupCodes: {
-                            where: TwoFactorActiveBackupCodesFilter,
-                        },
-                    },
-                },
-                photo: true,
+                twoFactor: true,
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -225,13 +188,7 @@ export class UserRepository implements IUserRepository {
             where: { id, deletedAt: null },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: {
-                    include: {
-                        backupCodes: {
-                            where: TwoFactorActiveBackupCodesFilter,
-                        },
-                    },
-                },
+                twoFactor: true,
             },
         });
     }
@@ -243,13 +200,7 @@ export class UserRepository implements IUserRepository {
             },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: {
-                    include: {
-                        backupCodes: {
-                            where: TwoFactorActiveBackupCodesFilter,
-                        },
-                    },
-                },
+                twoFactor: true,
             },
         });
     }
@@ -261,13 +212,7 @@ export class UserRepository implements IUserRepository {
             },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: {
-                    include: {
-                        backupCodes: {
-                            where: TwoFactorActiveBackupCodesFilter,
-                        },
-                    },
-                },
+                twoFactor: true,
             },
         });
     }
@@ -277,7 +222,7 @@ export class UserRepository implements IUserRepository {
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null,
         take: number
-    ): Promise<IUserExport[]> {
+    ): Promise<IUser[]> {
         return this.databaseService.client.user.findMany({
             where: {
                 ...status,
@@ -287,7 +232,7 @@ export class UserRepository implements IUserRepository {
             },
             include: {
                 role: { include: { policies: true } },
-                photo: true,
+                twoFactor: true,
             },
             take,
         });
@@ -531,7 +476,9 @@ export class UserRepository implements IUserRepository {
                 status: EnumUserStatus.active,
             },
             data: {
-                [TermPolicyAcceptedColumnMap[type]]: true,
+                termPolicy: {
+                    [type]: true,
+                },
             },
         });
     }
@@ -546,7 +493,9 @@ export class UserRepository implements IUserRepository {
                 status: EnumUserStatus.active,
             },
             data: {
-                [TermPolicyAcceptedColumnMap[type]]: false,
+                termPolicy: {
+                    [type]: false,
+                },
             },
         });
     }

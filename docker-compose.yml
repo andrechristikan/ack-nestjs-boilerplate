@@ -44,7 +44,7 @@ services:
                     memory: 1G
 
     jwks-server:
-        image: nginx:alpine
+        image: nginx:latest
         hostname: jwks-server
         ports:
             - '3011:80'

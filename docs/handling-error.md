@@ -8,12 +8,12 @@ Exception filters turn thrown errors into the same HTTP error body, with i18n me
 
 ## Related Documents
 
-- [Response Documentation][ref-doc-response] - For standardized response structure
-- [Request Validation Documentation][ref-doc-request-validation] - For validation error handling
-- [Status Codes Documentation][ref-doc-status-codes] - Full catalog of application `statusCode` values by module
-- [Message Documentation][ref-doc-message] - For error message internationalization
-- [Logger Documentation][ref-doc-logger] - For error logging and monitoring
-- [Doc Documentation][ref-doc-doc] - OpenAPI publishes kit errors only (`Doc`, `DocAuth`, `DocGuard`, and when used `DocResponsePagination` / `DocRequestFile` / `DocResponseFile`); module-flow domain exceptions are not listed on `*.doc.ts` factories
+- [Response Documentation][ref-doc-response] - Error envelope shape
+- [Request Validation Documentation][ref-doc-request-validation] - Validation error path
+- [Status Codes Documentation][ref-doc-status-codes] - Application `statusCode` catalog by module
+- [Language Message Documentation][ref-doc-message] - Error message i18n
+- [Logger Documentation][ref-doc-logger] - Error logging and Sentry
+- [Doc Documentation][ref-doc-doc] - OpenAPI kit errors from `@Doc`, `*Protected` / auth kits, and when used `@ResponsePagination` / `FileUpload*` / `@ResponseFile`; module-flow domain exceptions appear only when an endpoint opts in with `@DocErrors`
 
 ## Table of Contents
 
@@ -311,7 +311,14 @@ See [Request Validation][ref-doc-request-validation] for details.
 
 ## Usage
 
-Application code throws a dedicated exception class per error, each extending `AppBaseException`. Each class fixes its own `module`, `statusCode`, `statusCodeKey`, and `httpStatus`, and lives in the `exceptions/` folder of the module that owns its status-code enum.
+Application code throws a dedicated exception class per error, each extending `AppBaseException`. Each class fixes:
+
+- its own `module`
+- `statusCode`
+- `statusCodeKey`
+- `httpStatus`
+
+Each class lives in the `exceptions/` folder of the module that owns its status-code enum.
 
 ### Throwing an error
 
@@ -383,7 +390,7 @@ export class ExampleSomethingException extends AppBaseException {
 [ref-doc-response]: response.md
 [ref-doc-request-validation]: request-validation.md
 [ref-doc-status-codes]: status-codes.md
-[ref-doc-message]: message.md
+[ref-doc-message]: language-message.md
 [ref-doc-logger]: logger.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
 [ref-doc-doc]: doc.md

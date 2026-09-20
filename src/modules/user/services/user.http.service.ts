@@ -1,11 +1,15 @@
 import type { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import {
+    UserDefaultAvailableOrderBy,
+    UserDefaultAvailableSearch,
+    UserDefaultStatus,
+} from '@modules/user/constants/user.list.constant';
+import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.request.dto';
 import type {
-    IPaginationEqual,
-    IPaginationIn,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import type {
-    IResponsePagingReturn,
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
@@ -30,20 +34,47 @@ export class UserHttpService {
     constructor(
         private readonly userDomain: UserDomain,
         private readonly userOnboardingDomain: UserOnboardingDomain,
-        private readonly workspaceDomain: WorkspaceDomain
+        private readonly workspaceDomain: WorkspaceDomain,
+        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async getListOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUserList>> {
+        query: UserListRequestDto
+    ): Promise<IResponsePaginationReturn<IUserList>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query, {
+                availableSearch: UserDefaultAvailableSearch,
+                availableOrderBy: UserDefaultAvailableOrderBy,
+            });
+        const status = this.paginationQueryUtil.inEnum(
+            Prisma.UserScalarFieldEnum.status,
+            query.status,
+            UserDefaultStatus
+        );
+        const roleId = this.paginationQueryUtil.equalString(
+            Prisma.UserScalarFieldEnum.roleId,
+            query.roleId
+        );
+        const countryId = this.paginationQueryUtil.equalString(
+            Prisma.UserScalarFieldEnum.countryId,
+            query.countryId
+        );
+        this.requestStoreService.merge(PaginationStoreKey, {
+            ...storePatch,
+            filters: {
+                ...storePatch.filters,
+                ...(status?.storeFilter ?? {}),
+                ...(roleId?.storeFilter ?? {}),
+                ...(countryId?.storeFilter ?? {}),
+            },
+        });
+
         return this.userDomain.getListOffsetByAdmin(
-            pagination,
-            status,
-            roleId,
-            countryId
+            params,
+            status?.where,
+            roleId?.where,
+            countryId?.where
         );
     }
 

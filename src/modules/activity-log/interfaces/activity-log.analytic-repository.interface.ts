@@ -1,5 +1,5 @@
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type {
     IActivityLogAnalyticActionCount,
@@ -35,5 +35,5 @@ export interface IActivityLogAnalyticRepository {
         startDate: Date,
         endDate: Date,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>>;
+    ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>>;
 }

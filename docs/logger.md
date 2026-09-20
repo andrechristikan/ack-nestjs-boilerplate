@@ -10,10 +10,10 @@ Pino logs, with file rotation, redaction of sensitive fields, request/response s
 
 ## Related Documents
 
-- [Configuration Documentation][ref-doc-configuration] - For logger configuration settings
-- [Environment Documentation][ref-doc-environment] - For logger environment variables
-- [Handling Error Documentation][ref-doc-handling-error] - For error logging integration
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Logger middleware, security features, and request ID tracking 
+- [Configuration Documentation][ref-doc-configuration] - Logger config keys
+- [Environment Documentation][ref-doc-environment] - Logger env vars
+- [Handling Error Documentation][ref-doc-handling-error] - Filters that report to Sentry
+- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Request ID and logger middleware 
 
 ## Table of Contents
 
@@ -102,7 +102,7 @@ SENTRY_DSN=<your_sentry_dsn>
 
 ## Usage
 
-Use [NestJS][ref-nestjs] Logger throughout the application:
+Use [NestJS][ref-nestjs] Logger in application code:
 
 ```typescript
 import { Logger } from '@nestjs/common';
@@ -630,17 +630,30 @@ Sentry is initialized at bootstrap by `src/instrument.ts` using `loggerConfigs.s
 
 Error-level logs are forwarded to Sentry Logs only; they are NOT duplicated as Sentry Issues.
 
-**`SentryService`.** `src/common/sentry` holds the Sentry kit: `SentryModule.forRoot()` is global, imports `@sentry/nestjs/setup`, and exports `SentryService`. Its three methods, `captureException(exception)`, `captureMessage(message, level)`, and `log(level, message, attributes?)`, never throw: a Sentry SDK failure is logged and swallowed. `log` writes to Sentry Logs directly; its `attributes` bypass the pino redaction and are scrubbed only by `beforeSendLog`, so they carry no credential. The constraint when changing this: `.claude/rules/logging.md`.
+**`SentryService`.** `src/common/sentry` holds the Sentry kit:
+
+- `SentryModule.forRoot()` is global, imports `@sentry/nestjs/setup`, and exports `SentryService`
+- Methods: `captureException(exception)`, `captureMessage(message, level)`, `log(level, message, attributes?)`, and `withScope(callback)`
+- Methods never throw: a Sentry SDK failure is logged and swallowed
+- `log` writes to Sentry Logs directly; its `attributes` bypass the pino redaction and are scrubbed only by `beforeSendLog`, so they carry no credential
+- `withScope` runs a callback against a fresh Sentry scope (used by `QueueProcessorBase.onFailed` to attach job attributes before `captureException`)
 
 **Exceptions (Sentry Issues).** Exception reporting goes through `SentryService.captureException`:
 
-- `AppBaseExceptionFilter`: reports `rawError ?? exception` for any `AppBaseException` with HTTP status >= 500.
-- `AppHttpFilter`: reports the `HttpException` for framework errors with HTTP status >= 500.
-- `AppGeneralFilter`: reports all unhandled exceptions (catch-all 500).
-- `QueueProcessorBase`: reports a failed job once, when BullMQ will not retry it: on the final attempt, or immediately for an `UnrecoverableError`. A `QueueException` is reported only when `isFatal` is set.
-- `AuthTwoFactorDomain`: reports a stored TOTP secret that fails to decrypt, before answering `409 twoFactorSecretUnavailable`.
+- `AppBaseExceptionFilter`: reports `rawError ?? exception` for any `AppBaseException` with HTTP status >= 500
+- `AppHttpFilter`: reports the `HttpException` for framework errors with HTTP status >= 500
+- `AppGeneralFilter`: reports all unhandled exceptions (catch-all 500)
+- `QueueProcessorBase`: in `process`, writes BullMQ `job.log` lines (start, metadata-only input, finish or failure) and on catch calls Nest `Logger.error` once then rethrows; in `onFailed`, reports a failed job once when BullMQ will not retry it (final attempt, or immediately for an `UnrecoverableError`), and only when the error is fatal. Before `captureException`, `withScope` sets `job.id`, `job.name`, `job.attemptsMade`, and `job.maxAttempts`. A `QueueException` is reported only when `isFatal` is set
+- `AuthTwoFactorDomain`: reports a stored TOTP secret that fails to decrypt, before answering `409 twoFactorSecretUnavailable`
 
-`beforeSend` is the last filter every Issue passes through, and it drops four kinds of event: a non-fatal `QueueException`, an event whose `request.url` matches `LoggerExcludedRoutes`, an event whose response status code is below 500, and an event at `info` or `debug` level. Outside production it also attaches the original exception under `event.extra`. `tracesSampler` applies the same excluded-route match to transactions, checked against both the request URL and the span name with its HTTP method prefix removed, returning a `0` sample rate for them.
+`beforeSend` is the last filter every Issue passes through. It drops:
+
+- a non-fatal `QueueException`
+- an event whose `request.url` matches `LoggerExcludedRoutes`
+- an event whose response status code is below 500
+- an event at `info` or `debug` level
+
+Outside production it also attaches the original exception under `event.extra`. `tracesSampler` applies the same excluded-route match to transactions, checked against both the request URL and the span name with its HTTP method prefix removed, returning a `0` sample rate for them.
 
 **Scrubbing.** `instrument.ts` scrubs every payload before it leaves the process, with the same `LoggerSensitiveFields` list (case-insensitive) and the same URL masking as the logger:
 

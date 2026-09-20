@@ -1,9 +1,4 @@
-import type {
-    FeatureFlag,
-    FeatureFlagUser,
-} from '@generated/prisma-client/client';
-
-export type { FeatureFlagUpdateStatusRequestDto as IFeatureFlagUpdateStatus } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
+import { FeatureFlag, FeatureFlagUser } from '@generated/prisma-client';
 
 export type IFeatureFlagMetadataValue =
     string | number | boolean | string[] | number[];

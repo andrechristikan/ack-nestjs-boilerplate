@@ -15,7 +15,7 @@
 ```
 .domain    .service   .repository   .controller   .guard   .strategy   .decorator
 .interceptor   .filter   .middleware   .pipe   .processor   .indicator
-.factory   .validation   .util   .queue   .cache   .dto   .doc   .module
+.factory   .validation   .util   .queue   .cache   .dto   .module
 .enum   .constant   .interface   .exception   .contract
 ```
 
@@ -91,8 +91,9 @@ provide exist:
   ```
 
   **A DTO file exports a zod schema and the type inferred from it** — the `Schema` const and
-  the `Dto` type, named alike (`rules/dto.md`). The const is what a decorator or a doc factory
-  receives; the type is what a signature carries.
+  the `Dto` type, named alike (`rules/dto.md`). The const is what a decorator or OpenAPI
+  composition receives (`@Body({ schema })`, `@Response(…, { schema })`, `@Query({ schema })`);
+  the type is what a signature is annotated with.
 
   **`<concern>` is OPTIONAL and it is not necessarily a verb.** It is an action
   (`user.create.request.dto.ts`), a noun (`policy.update.request.dto.ts`,
@@ -118,7 +119,7 @@ provide exist:
   `.partial()` (`rules/dto.md`). A file holding a second schema is the defect.
 - **One exception per file.** `<module>.<kebab-error>.exception.ts` — `user.password-not-match.exception.ts`. Never a barrel of exception classes.
 - **Controllers** are `<module>.<scope>.controller.ts` → `<Module><Scope>Controller` (`user.admin.controller.ts` → `UserAdminController`). One file per scope, with no concern segment: a scope is one controller whatever its size, and the scope is never folded into a hyphenated word — `user-admin` names no scope this project has.
-- **Swagger doc files** are `<module>.<scope>.doc.ts` under `docs/` (`user.admin.doc.ts`), exporting one decorator factory per endpoint.
+- **List query request DTOs** are under `dtos/request/`, named for the shared shape or the endpoint when shapes differ (`UserListQuerySchema` vs `UserAdminListQuerySchema`), built from pagination kit factories (`rules/pagination.md`, `rules/dto.md`).
 
 ## Identifier conventions
 
@@ -130,7 +131,7 @@ provide exist:
 | Interface | `I` + PascalCase | `IUser`, `IUserRepository`, `IPaginationQuery` |
 | Enum type | `Enum` + PascalCase | `EnumQueue`, `EnumUserStatusCodeError`, `EnumPolicyAction` |
 | Enum key AND value | camelCase | `notFound`, `notificationEmail`, `superAdmin` |
-| Constant (object, array, primitive) | PascalCase | `AuthJwtAccessGuardKey`, `UserDefaultAvailableSearch` |
+| Constant (object, array, primitive) | PascalCase | `AuthJwtAccessGuardKey`, `AuthJwtAccessDocSecurityName`, `UserDefaultAvailableSearch` |
 | Method / variable / field | camelCase | `findById`, `perPage` |
 | Injected field / constructor param | camelCase of the class | `authDomain: AuthDomain`, `sessionCache: SessionCache` |
 | Exception class | `<Module><Descriptor>Exception` | `UserNotFoundException` |
@@ -173,13 +174,11 @@ interface when the row is a shape; a table whose rows are plain values needs non
   role: `user.password-repository.interface.ts`,
   `device.ownership-analytic-repository.interface.ts`. A spec mirrors its source name plus
   `.spec.ts` and is counted before that suffix, so it may carry one part more.
-- **At most three constants files.** `constants/<module>.constant.ts` holds what the module
+- **At most two constants files.** `constants/<module>.constant.ts` holds what the module
   owns — store and metadata keys, Prisma selects, and any other constant of its own;
-  `<module>.doc.constant.ts` holds the Swagger `@ApiParam` / `@ApiQuery` arrays
-  (`rules/http.md`) and exists only when the module has those arrays;
   `<module>.list.constant.ts` holds the list-endpoint allow-lists and filter defaults
   (`rules/pagination.md`) and exists only when the module has a list endpoint. An empty
-  constants file is the defect — delete it. A fourth file split by some other concern is the
+  constants file is the defect — delete it. A third file split by some other concern is the
   defect — that constant belongs in `<module>.constant.ts`.
 - **One contract per file.** `contracts/<module>.<concept>.contract.ts` exports one table
   (`rules/code-style.md` tags it `@public`). Two tables in a file means two files.
@@ -187,9 +186,8 @@ interface when the row is a shape; a table whose rows are plain values needs non
   members a class reads — it belongs in one of the module's constants files above,
   imported by the class. A module-scope `const` inside a domain, service, repository, controller, guard,
   util, cache or processor file is the defect, whatever its casing. What legitimately sits at
-  module scope in those trees is the class itself; a decorator in a `*.decorator.ts`, a schema
-  in a `*.validation.ts`, and the exported doc factory functions in a `*.doc.ts` are that file's
-  own subject, not data.
+  module scope in those trees is the class itself; a decorator in a `*.decorator.ts` and a schema
+  in a `*.validation.ts` or `*.dto.ts` are that file's own subject, not data.
 - **One interface per file, except the module's own collection.** A behavioural header — an
   `I*Repository` port — is alone in its file. Data shapes and type aliases for a concern collect
   in `interfaces/<module>[.<concern>].interface.ts`, which is what that file is FOR; a shape
@@ -197,6 +195,8 @@ interface when the row is a shape; a table whose rows are plain values needs non
 - **Enums are `Enum`-prefixed PascalCase with camelCase keys AND camelCase string values.** `UPPER_SNAKE_CASE` is wrong on both halves. Error-code enums use numeric values instead (`EnumUserStatusCodeError.notFound = 51000`); see `rules/exceptions.md`.
 - **One enum concern per file**, named `<module>.<concern>.enum.ts`. Status-code enums always get their own file: `<module>.status-code.enum.ts`.
 - **Constants are PascalCase for everything** — typed objects, arrays, and lone primitives alike. No `UPPER_SNAKE_CASE`, no `camelCase`.
+- **OpenAPI security scheme names are PascalCase consts whose VALUE is the camelCase scheme string** — `AuthJwtAccessDocSecurityName = 'accessToken'`, `AuthJwtRefreshDocSecurityName`, `AuthSocialGoogleDocSecurityName`, `AuthSocialAppleDocSecurityName`, `ApiKeyDocSecurityName = 'xApiKey'`, parallel to `AuthJwtAccessGuardKey`. They live in the owning module's `<module>.constant.ts`. Never a magic string at `ApiBearerAuth` / `ApiSecurity` / `addBearerAuth` / `addApiKey` (`rules/http.md`).
+- **Prisma-backed list allow-lists use `Prisma.<Model>ScalarFieldEnum` members** in `<module>.list.constant.ts`, typed `as const satisfies ReadonlyArray<Prisma.<Model>ScalarFieldEnum>` (or equivalent). Computed / analytic lists keep `(keyof I*)[]` (`rules/pagination.md`).
 - **DI tokens are rare.** Prefer direct class injection (a repository is injected as a class, never behind `@Inject`). When a token genuinely IS needed, name it PascalCase and wrap the value in `Symbol()`.
 - **An injected field is the class name with the first letter lowercased.** Dropping a layer word is wrong: `authService: AuthDomain` is not the field; `authDomain` is. Same for every injectable — `UserHttpService` → `userHttpService`, `ActivityLogRepository` → `activityLogRepository`, `AuthPasswordUtil` → `authPasswordUtil`, `SessionCache` → `sessionCache`, `NotificationEmailQueue` → `notificationEmailQueue`.
 - **A DTO file exports a `Schema` const and a `Dto` type, and the file name carries `.dto.ts`.** A DTO is the module's request/response transport shape (`rules/dto.md`).

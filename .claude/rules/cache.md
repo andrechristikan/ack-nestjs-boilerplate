@@ -35,7 +35,7 @@ Caching is decorator-driven on the route:
 @Response('user.profile', { cache: { key: '…', ttl: … } })
 ```
 
-`@Response` / `@ResponsePaging` push `CacheKey` and `CacheTTL` and mount
+`@Response` / `@ResponsePagination` push `CacheKey` and `CacheTTL` and mount
 `ResponseCacheInterceptor` when `options.cache` is present. A hand-mounted
 `@UseInterceptors(CacheInterceptor)` on a route is the wrong path.
 

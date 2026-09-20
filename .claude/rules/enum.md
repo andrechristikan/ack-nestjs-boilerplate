@@ -66,10 +66,11 @@ place a raw string is correct.
 
 ## Enum-typed query filters
 
-A query param filtered against an enum uses `@PaginationQueryFilterInEnum<TEnum>('field',
-<Module>Default<Concern>)`, with the default set as a PascalCase constant under
-`<module>/constants/` (`rules/pagination.md`). Never a hand-parsed `@Query` plus a manual
-`includes` check.
+A query param filtered against an enum is a field on the list zod schema; the HTTP service
+applies `PaginationQueryUtil.inEnum` / `.ninEnum` with the default set as a PascalCase constant
+under `<module>/constants/` (`rules/pagination.md`). Never a hand-parsed `@Query` plus a manual
+`includes` check. Enum members in code always use `Enum…` — never string literals
+(`EnumPaginationType.offset`, `EnumPaginationFilterDateBetweenType.start`).
 
 ## Adding a member
 

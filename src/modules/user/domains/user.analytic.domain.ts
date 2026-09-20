@@ -1,5 +1,5 @@
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
     IAnalyticCountBucket,
     IAnalyticMetricRate,
@@ -118,7 +118,7 @@ export class UserAnalyticDomain {
     listNearLockoutOffset(
         minAttempt: number,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticNearLockout>> {
+    ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
         return this.userAnalyticRepository.listNearLockoutOffset(
             minAttempt,
             params

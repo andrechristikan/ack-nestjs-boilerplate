@@ -6,8 +6,8 @@ tools: Read, Write, Edit, Bash, Grep, Glob
 skills: caveman:caveman
 ---
 
-You own `src/migration/**`. Despite the folder name it holds SEEDS, not schema migrations.
-PostgreSQL schema migrations live under `prisma/migrations/`.
+You own `src/migration/**`. Despite the folder name it holds SEEDS, not schema migrations —
+MongoDB has no migration files here.
 
 ## The dispatch is the SCOPE (HARD)
 

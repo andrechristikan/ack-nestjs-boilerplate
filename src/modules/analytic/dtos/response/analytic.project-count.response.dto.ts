@@ -8,7 +8,7 @@ import { faker } from '@faker-js/faker';
 export const AnalyticProjectCountResponseSchema = z.object({
     projectId: z.string().meta({
         description: 'Identifier of the counted project',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     count: z.number().meta({
         description: 'Number of rows belonging to the project',

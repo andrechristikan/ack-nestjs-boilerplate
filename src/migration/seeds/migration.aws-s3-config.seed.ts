@@ -9,7 +9,7 @@ import { Command } from 'nest-commander';
  * Applies access/CORS/lifecycle policies to the public and private S3 buckets; removal is a no-op.
  */
 @Command({
-    name: 'aws-s3-config',
+    name: 'awsS3Config',
     description: 'Setting AWS S3 Configurations',
     allowUnknownOptions: false,
 })

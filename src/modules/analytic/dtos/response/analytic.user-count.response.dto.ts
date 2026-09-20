@@ -8,7 +8,7 @@ import { faker } from '@faker-js/faker';
 export const AnalyticUserCountResponseSchema = z.object({
     userId: z.string().meta({
         description: 'Identifier of the counted user',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     count: z.number().meta({
         description: 'Number of rows recorded for the user in the window',

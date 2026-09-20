@@ -16,7 +16,10 @@ export const AnalyticSharedFingerprintResponseSchema = z.object({
     }),
     userIds: z.array(z.string()).meta({
         description: 'Identifiers of the users sharing the fingerprint',
-        example: [faker.string.uuid(), faker.string.uuid()],
+        example: [
+            faker.database.mongodbObjectId(),
+            faker.database.mongodbObjectId(),
+        ],
     }),
 });
 

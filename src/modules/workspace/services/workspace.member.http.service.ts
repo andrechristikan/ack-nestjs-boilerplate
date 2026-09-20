@@ -1,11 +1,15 @@
-import type {
-    IPaginationIn,
-    IPaginationQueryCursorParams,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
+import {
+    WorkspaceMemberDefaultAvailableOrderBy,
+    WorkspaceMemberDefaultRole,
+} from '@modules/workspace/constants/workspace.list.constant';
+import type { WorkspaceAdminMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-member-list.request.dto';
+import type { WorkspaceMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.member-list.request.dto';
 import type { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
 import type { WorkspaceTransferOwnershipRequestDto } from '@modules/workspace/dtos/request/workspace.transfer-ownership.request.dto';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
@@ -15,7 +19,9 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class WorkspaceMemberHttpService {
     constructor(
-        private readonly workspaceMemberDomain: WorkspaceMemberDomain
+        private readonly workspaceMemberDomain: WorkspaceMemberDomain,
+        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async transferOwnership(
@@ -39,14 +45,33 @@ export class WorkspaceMemberHttpService {
 
     async getMembersList(
         workspaceId: string,
-        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
+        query: WorkspaceMemberListRequestDto
+    ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.cursor<Prisma.WorkspaceMemberWhereInput>(
+                query,
+                {
+                    availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
+                }
+            );
+        const role = this.paginationQueryUtil.inEnum(
+            Prisma.WorkspaceMemberScalarFieldEnum.role,
+            query.role,
+            WorkspaceMemberDefaultRole
+        );
+        this.requestStoreService.merge(PaginationStoreKey, {
+            ...storePatch,
+            filters: {
+                ...storePatch.filters,
+                ...(role?.storeFilter ?? {}),
+            },
+        });
+
         const { data, ...others } =
             await this.workspaceMemberDomain.getMembersList(
                 workspaceId,
-                pagination,
-                role
+                params,
+                role?.where
             );
 
         return {
@@ -83,12 +108,21 @@ export class WorkspaceMemberHttpService {
 
     async getMembersListForAdmin(
         workspaceId: string,
-        pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
-    ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
+        query: WorkspaceAdminMemberListRequestDto
+    ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.WorkspaceMemberWhereInput>(
+                query,
+                {
+                    availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
+                }
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
         const { data, ...others } =
             await this.workspaceMemberDomain.getMembersListForAdmin(
                 workspaceId,
-                pagination
+                params
             );
 
         return {

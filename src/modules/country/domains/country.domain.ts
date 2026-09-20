@@ -1,5 +1,5 @@
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Country } from '@generated/prisma-client/client';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
@@ -12,7 +12,7 @@ export class CountryDomain {
 
     async getListCursor(
         pagination: IPaginationQueryCursorParams<Prisma.CountryWhereInput>
-    ): Promise<IResponsePagingReturn<Country>> {
+    ): Promise<IResponsePaginationReturn<Country>> {
         return this.countryRepository.findWithPaginationCursor(pagination);
     }
 

@@ -2,7 +2,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumProjectMemberRole, Prisma } from '@generated/prisma-client/client';
 import type { ProjectMember } from '@generated/prisma-client/client';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
@@ -47,7 +47,7 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
-    ): Promise<IResponsePagingReturn<IProjectMember>> {
+    ): Promise<IResponsePaginationReturn<IProjectMember>> {
         return this.paginationService.cursor<
             IProjectMember,
             Prisma.ProjectMemberWhereInput

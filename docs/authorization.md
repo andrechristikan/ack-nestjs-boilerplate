@@ -1,6 +1,7 @@
 # Authorization Documentation
 
 Decorator locations:
+
 - **UserProtected**: `src/modules/user/decorators`
 - **RoleProtected**: `src/modules/role/decorators`
 - **PolicyProtected**: `src/modules/policy/decorators`
@@ -10,18 +11,25 @@ The workspace and project decorators (`WorkspaceProtected`, `WorkspaceMemberProt
 
 ## Overview
 
-Guards stack as: user, role, policy, term-policy acceptance. NestJS applies each layer on the route handler.
+Guards stack as:
+
+- user
+- role
+- policy
+- term-policy acceptance
+
+NestJS applies each layer on the route handler.
 
 ## Related Documents
 
-- [Configuration Documentation][ref-doc-configuration] - For Redis configuration settings
-- [Environment Documentation][ref-doc-environment] - For Redis environment variables
 - [Authentication Documentation][ref-doc-authentication] - JWT, sessions, and API keys
-- [Activity Log Documentation][ref-doc-activity-log] - For tracking authorization-related user activities
-- [Term Policy Document][ref-doc-term-policy] - For managing user acceptance of terms and policies
-- [Device Documentation][ref-doc-device] - For device management and session invalidation
-- [Workspace Documentation][ref-doc-workspace] - For the workspace guards, their exceptions, and `x-workspace-id`
-- [Project Documentation][ref-doc-project] - For the project guards and the workspace-owner bypass
+- [Activity Log Documentation][ref-doc-activity-log] - Authz-related activity rows
+- [Term Policy Documentation][ref-doc-term-policy] - Acceptance gating
+- [Device Documentation][ref-doc-device] - Device revoke and sessions
+- [Workspace Documentation][ref-doc-workspace] - Workspace guards and `x-workspace-id`
+- [Project Documentation][ref-doc-project] - Project guards and owner bypass
+- [Feature Flag Documentation][ref-doc-feature-flag] - `@FeatureFlagProtected` in the stack
+- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Rate limits and headers
 
 ## Table of Contents
 
@@ -64,13 +72,13 @@ Guards stack as: user, role, policy, term-policy acceptance. NestJS applies each
 
 ## Decorator Order
 
-NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method executes FIRST. The order encodes which gate rejects first, so a reshuffle changes the error a caller sees even when the application still boots. Every route uses this order, top to bottom in source (the constraint when changing it: `.claude/rules/http.md`):
+NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method executes FIRST. The order encodes which gate rejects first, so a reshuffle changes the error a caller sees even when the application still boots. Every route uses this order, top to bottom in source:
 
 ```typescript
-@ExampleDoc()                              // 1.  Swagger doc factory
-@Response('example.action')                // 2.  @Response / @ResponsePaging / @ResponseFile
+@Doc({ summary: '…' })                     // 1.  OpenAPI operation + global error kit
+@Response('example.action')                // 2.  @Response / @ResponsePagination / @ResponseFile
 @TermPolicyAcceptanceProtected()           // 3.  Term policy acceptance
-@PolicyProtected({ ... })           // 4.  CASL policy ability
+@PolicyProtected({ ... })                  // 4.  CASL policy ability
 @RoleProtected(EnumRoleType.admin)         // 5.  Role type
 @ProjectMemberProtected(...)               // 6.  Project member role
 @ProjectProtected()                        // 7.  Project resolution from :projectId
@@ -227,13 +235,9 @@ flowchart TD
 @AuthJwtAccessProtected()
 @Get('/list')
 async list(
-  @PaginationOffsetQuery({
-    availableSearch: UserDefaultAvailableSearch,
-    availableOrderBy: UserDefaultAvailableOrderBy,
-  })
-  pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-): Promise<IResponsePagingReturn<UserListResponseDto>> {
-  return this.userHttpService.getListOffsetByAdmin(pagination);
+  @Query({ schema: UserListRequestSchema }) query: UserListRequestDto
+): Promise<IResponsePaginationReturn<IUserList>> {
+  return this.userHttpService.getListOffsetByAdmin(query);
 }
 ```
 
@@ -345,13 +349,9 @@ flowchart TD
 @AuthJwtAccessProtected()
 @Get('/list')
 async list(
-  @PaginationOffsetQuery({
-    availableSearch: UserDefaultAvailableSearch,
-    availableOrderBy: UserDefaultAvailableOrderBy,
-  })
-  pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-): Promise<IResponsePagingReturn<UserListResponseDto>> {
-  return this.userHttpService.getListOffsetByAdmin(pagination);
+  @Query({ schema: UserListRequestSchema }) query: UserListRequestDto
+): Promise<IResponsePaginationReturn<IUserList>> {
+  return this.userHttpService.getListOffsetByAdmin(query);
 }
 
 @PolicyProtected({
@@ -363,7 +363,7 @@ async list(
 @AuthJwtAccessProtected()
 @Patch('/update/:userId/status')
 async updateStatus(
-  @Param('userId', { schema: RequestUuidSchema }) userId: string,
+  @Param('userId', { schema: RequestMongoIdSchema }) userId: string,
   @AuthJwtPayload('userId') updatedBy: string,
   @Body({ schema: UserUpdateStatusRequestSchema }) body: UserUpdateStatusRequestDto
 ): Promise<IResponseReturn<void>> {
@@ -385,8 +385,8 @@ async updateStatus(
 @AuthJwtAccessProtected()
 @Delete('/revoke/:sessionId')
 async revoke(
-  @Param('userId', { schema: RequestUuidSchema }) userId: string,
-  @Param('sessionId', { schema: RequestUuidSchema }) sessionId: string,
+  @Param('userId', { schema: RequestMongoIdSchema }) userId: string,
+  @Param('sessionId', { schema: RequestMongoIdSchema }) sessionId: string,
   @AuthJwtPayload('userId') revokedBy: string
 ): Promise<IResponseReturn<void>> {
   return this.sessionHttpService.revokeByAdmin(userId, sessionId, revokedBy);
@@ -460,7 +460,7 @@ The project uses [CASL][casl] for permission checks:
 
 `TermPolicyAcceptanceProtected` rejects the request until the user has accepted the required policies (Terms of Service, Privacy Policy, and the rest of the set).
 
-For more detailed information about term policies, see [Term Policy Document][ref-doc-term-policy].
+Details: [Term Policy Documentation][ref-doc-term-policy].
 
 ### Decorators
 
@@ -485,15 +485,13 @@ For more detailed information about term policies, see [Term Policy Document][re
 @AuthJwtAccessProtected()
 @Get('/acceptance/list')
 async listAccepted(
-  @PaginationCursorQuery({
-    availableOrderBy: TermPolicyAcceptanceDefaultAvailableOrderBy,
-  })
-  pagination: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>,
+  @Query({ schema: TermPolicyAcceptedListRequestSchema })
+  query: TermPolicyAcceptedListRequestDto,
   @AuthJwtPayload('userId') userId: string
-): Promise<IResponsePagingReturn<ITermPolicyUserAcceptance>> {
+): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
   return this.termPolicyAcceptanceHttpService.getListUserAccepted(
     userId,
-    pagination
+    query
   );
 }
 ```
@@ -510,7 +508,7 @@ The `TermPolicyAcceptanceProtected` decorator follows this validation sequence:
 
 1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) exists
 2. **Default Policy Check**: If no required policies specified, sets defaults to `termsOfService` and `privacy`
-3. **Term Policy Lookup**: Reads the required acceptance columns from the stored user (`termsOfServiceAccepted`, `privacyAccepted`, `cookiesAccepted`, or `marketingAccepted`)
+3. **Term Policy Lookup**: Retrieves user's term policy acceptance status from the stored user's `termPolicy`
 4. **Acceptance Validation**: Checks if all required term policies are accepted
 5. **Access Decision**: Grants access only if all required policies are accepted
 
@@ -528,7 +526,7 @@ flowchart TD
     CheckRequired -->|No| SetDefault[Set default policies:<br/>termsOfService and privacy]
     CheckRequired -->|Yes| UseSpecified[Use specified policies]
     
-    SetDefault --> GetTermPolicy[Read required User<br/>acceptance columns]
+    SetDefault --> GetTermPolicy[Get user.termPolicy<br/>acceptance status]
     UseSpecified --> GetTermPolicy
     
     GetTermPolicy --> CheckAcceptance{All required policies<br/>accepted by user?}
@@ -662,10 +660,9 @@ flowchart LR
 
 [ref-doc-authentication]: authentication.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
-[ref-doc-configuration]: configuration.md
-[ref-doc-environment]: environment.md
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-term-policy]: term-policy.md
 [ref-doc-device]: device.md
 [ref-doc-workspace]: workspace.md
 [ref-doc-project]: project.md
+[ref-doc-feature-flag]: feature-flag.md

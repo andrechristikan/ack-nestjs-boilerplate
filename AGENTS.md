@@ -15,7 +15,7 @@ boilerplate: no external client depends on it, so the clean design wins over com
 
 - NestJS 12, TypeScript strict, Node `>= 24.11`, PNPM `>= 10.25`, pinned to `pnpm@11.25.0`
 - PNPM only. `npm` and `yarn` are blocked by engines and the preinstall guard.
-- Prisma 6 with PostgreSQL 18. Schema changes use versioned Prisma Migrate files.
+- Prisma 6 with MongoDB 8 replica set. MongoDB transactions require the replica set.
 - Redis for cache and BullMQ, with separate cache and queue Redis URLs.
 - HTTP transport uses zod schemas with global request validation and response serialization.
 - Pino logging, Sentry instrumentation, Swagger, Vault, and nest-commander seeding CLI.
@@ -93,7 +93,7 @@ branches and is never evidence about the current checkout.
 
 ## Prisma And Database
 
-`prisma/schema.prisma` is editable. Applying it to PostgreSQL is owner-only.
+`prisma/schema.prisma` is editable. Applying it to MongoDB is owner-only.
 
 Agent-owned file-only commands:
 
@@ -112,13 +112,14 @@ Owner-owned DB commands:
 - `pnpm migration:remove`
 - `pnpm migration:fresh`
 - `node dist/migration.js`
+- `mongosh`
 - `redis-cli`
 - `pnpm db:studio`
 
-PostgreSQL schema changes use Prisma Migrate files under `prisma/migrations/`. After a
-schema edit, hand back `pnpm db:migrate` as the owner's step and state the data consequence,
-affected indexes or unique constraints, and any runtime surface that depends on the unapplied
-schema.
+There are no migration files for MongoDB. A schema change is a schema edit, generated client
+refresh, and owner-applied push. After a schema edit, hand back `pnpm db:migrate` as the
+owner's step and state the data consequence, affected indexes or unique constraints, and any
+runtime surface that depends on the unapplied schema.
 
 ## Testing
 

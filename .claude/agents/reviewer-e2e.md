@@ -96,7 +96,7 @@ Every HTTP request crosses them whether or not the change touched them:
   `ActivityLogInterceptor` (`activity-log.domain.module.ts`, flushes staged activity), and the
   Sentry SDK's tracing interceptor (`SentryModule`). The response interceptor that reads `metadata`
   off the returned envelope is route-local, mounted by `@Response()` /
-  `@ResponsePaging()` / `@ResponseFile()`, not an `APP_INTERCEPTOR`.
+  `@ResponsePagination()` / `@ResponseFile()`, not an `APP_INTERCEPTOR`.
 - **The route-local guard stack**, bottom-up: api key → JWT → feature flag → user status →
   workspace → project → role → policy → term policy. The order is exact
   (`rules/http.md`).
@@ -163,7 +163,8 @@ the STRING is absent, not the behaviour.**
 
 - Git stays READ-ONLY. No fetch, no pull, no checkout.
 - No fixes, no edits, no spec, no e2e test, no HTTP call, no boot.
-- No `docs/*.md`. No schema, DB, or seed commands.
+- No `docs/*.md`. No root people files (`README.md`, `SECURITY.md`, `CONTRIBUTING.md`,
+  `CODE_OF_CONDUCT.md`). No schema, DB, or seed commands.
 - A finding is a flow that no longer reaches its true end, or a rename that strands live
   runtime state with no operational step named — a queue drain, a cursor invalidation, a
   forced re-login, an i18n key renamed on one side only (`rules/naming.md`).

@@ -1,3 +1,6 @@
+import type { ApiKeyListRequestDto } from '@modules/api-key/dtos/request/api-key.list.request.dto';
+import { ApiKeyListRequestSchema } from '@modules/api-key/dtos/request/api-key.list.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     Body,
     Controller,
@@ -7,24 +10,16 @@ import {
     Patch,
     Post,
     Put,
+    Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import {
-    PaginationOffsetQuery,
-    PaginationQueryFilterEqualBoolean,
-    PaginationQueryFilterInEnum,
-} from '@common/pagination/decorators/pagination.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
-    ResponsePaging,
+    ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-import {
-    ApiKeyDefaultAvailableOrderBy,
-    ApiKeyDefaultAvailableSearch,
-    ApiKeyDefaultType,
-} from '@modules/api-key/constants/api-key.list.constant';
+
 import { ApiKeyCreateRequestSchema } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import type { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import { ApiKeyUpdateDateRequestSchema } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
@@ -34,34 +29,20 @@ import type { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-k
 import { ApiKeyCreateResponseSchema } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import type { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import { ApiKeyHttpService } from '@modules/api-key/services/api-key.http.service';
-import {
-    ApiKeyAdminCreateDoc,
-    ApiKeyAdminDeleteDoc,
-    ApiKeyAdminListDoc,
-    ApiKeyAdminResetDoc,
-    ApiKeyAdminUpdateDateDoc,
-    ApiKeyAdminUpdateDoc,
-    ApiKeyAdminUpdateStatusDoc,
-} from '@modules/api-key/docs/api-key.admin.doc';
 import type {
-    IPaginationEqual,
-    IPaginationIn,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import type {
-    IResponsePagingReturn,
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
-    EnumApiKeyType,
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
-    Prisma,
 } from '@generated/prisma-client/client';
+
 import type { ApiKey } from '@generated/prisma-client/client';
 import type { IApiKeyList } from '@modules/api-key/interfaces/api-key.interface';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -79,8 +60,8 @@ import { ApiKeyResponseSchema } from '@modules/api-key/dtos/response/api-key.res
 export class ApiKeyAdminController {
     constructor(private readonly apiKeyHttpService: ApiKeyHttpService) {}
 
-    @ApiKeyAdminListDoc()
-    @ResponsePaging('apiKey.list', {
+    @Doc({ summary: 'get list of api keys' })
+    @ResponsePagination('apiKey.list', {
         schema: ApiKeyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -95,27 +76,13 @@ export class ApiKeyAdminController {
     @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationOffsetQuery({
-            availableSearch: ApiKeyDefaultAvailableSearch,
-            availableOrderBy: ApiKeyDefaultAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
-        @PaginationQueryFilterEqualBoolean('isActive')
-        isActive?: Record<string, IPaginationEqual>,
-        @PaginationQueryFilterInEnum<EnumApiKeyType>('type', ApiKeyDefaultType)
-        type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IApiKeyList>> {
-        return this.apiKeyHttpService.getListByAdmin(
-            pagination,
-            isActive,
-            type
-        );
+        @Query({ schema: ApiKeyListRequestSchema }) query: ApiKeyListRequestDto
+    ): Promise<IResponsePaginationReturn<IApiKeyList>> {
+        return this.apiKeyHttpService.getListByAdmin(query);
     }
 
-    @ApiKeyAdminCreateDoc()
-    @Response('apiKey.create', {
-        schema: ApiKeyCreateResponseSchema,
-    })
+    @Doc({ summary: 'create an api key' })
+    @Response('apiKey.create', { schema: ApiKeyCreateResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.apiKey,
@@ -134,7 +101,7 @@ export class ApiKeyAdminController {
         return this.apiKeyHttpService.createByAdmin(body);
     }
 
-    @ApiKeyAdminResetDoc()
+    @Doc({ summary: 'reset secret an api key' })
     @Response('apiKey.reset', {
         schema: ApiKeyCreateResponseSchema,
     })
@@ -150,13 +117,13 @@ export class ApiKeyAdminController {
     @RequestThrottle({ user: true })
     @Patch('/reset/:apiKeyId')
     async reset(
-        @Param('apiKeyId', { schema: RequestUuidSchema })
+        @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
         return this.apiKeyHttpService.resetByAdmin(apiKeyId);
     }
 
-    @ApiKeyAdminUpdateDoc()
+    @Doc({ summary: 'update data an api key' })
     @Response('apiKey.update', {
         schema: ApiKeyResponseSchema,
     })
@@ -174,13 +141,13 @@ export class ApiKeyAdminController {
     async update(
         @Body({ schema: ApiKeyUpdateRequestSchema })
         body: ApiKeyUpdateRequestDto,
-        @Param('apiKeyId', { schema: RequestUuidSchema })
+        @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKey>> {
         return this.apiKeyHttpService.updateByAdmin(apiKeyId, body);
     }
 
-    @ApiKeyAdminUpdateDateDoc()
+    @Doc({ summary: 'update date of api key' })
     @Response('apiKey.updateDate', {
         schema: ApiKeyResponseSchema,
     })
@@ -198,13 +165,13 @@ export class ApiKeyAdminController {
     async updateDate(
         @Body({ schema: ApiKeyUpdateDateRequestSchema })
         body: ApiKeyUpdateDateRequestDto,
-        @Param('apiKeyId', { schema: RequestUuidSchema })
+        @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKey>> {
         return this.apiKeyHttpService.updateDatesByAdmin(apiKeyId, body);
     }
 
-    @ApiKeyAdminUpdateStatusDoc()
+    @Doc({ summary: 'update status of an api key' })
     @Response('apiKey.updateStatus', {
         schema: ApiKeyResponseSchema,
     })
@@ -220,7 +187,7 @@ export class ApiKeyAdminController {
     @RequestThrottle({ user: true })
     @Patch('/update/:apiKeyId/status')
     async updateStatus(
-        @Param('apiKeyId', { schema: RequestUuidSchema })
+        @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string,
         @Body({ schema: ApiKeyUpdateStatusRequestSchema })
         body: ApiKeyUpdateStatusRequestDto
@@ -228,7 +195,7 @@ export class ApiKeyAdminController {
         return this.apiKeyHttpService.updateStatusByAdmin(apiKeyId, body);
     }
 
-    @ApiKeyAdminDeleteDoc()
+    @Doc({ summary: 'delete an api key' })
     @Response('apiKey.delete', {
         schema: ApiKeyResponseSchema,
     })
@@ -244,7 +211,7 @@ export class ApiKeyAdminController {
     @RequestThrottle({ user: true })
     @Delete('/delete/:apiKeyId')
     async delete(
-        @Param('apiKeyId', { schema: RequestUuidSchema })
+        @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKey>> {
         return this.apiKeyHttpService.deleteByAdmin(apiKeyId);

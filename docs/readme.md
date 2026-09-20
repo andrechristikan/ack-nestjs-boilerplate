@@ -17,7 +17,7 @@ This project aligns with the [Twelve-Factor App][ref-12factor] methodology.
 | Codebase | Single repo, one codebase tracked in Git, multiple deploys via env |
 | Dependencies | All dependencies declared in `package.json`, enforced with PNPM lockfile |
 | Config | All configuration via environment variables, validated at startup via `AppEnvSchema` |
-| Backing Services | PostgreSQL, Redis, AWS S3/SES, Firebase — treated as attached resources via env config |
+| Backing Services | MongoDB, Redis, AWS S3/SES, Firebase; treated as attached resources via env config |
 | Build, Release, Run | Build (`pnpm build`) is strictly separated from runtime |
 | Processes | Stateless app processes; session and cache state stored in Redis, not in-memory |
 | Port Binding | App self-contained via NestJS HTTP server, port exposed via `HTTP_PORT` env |
@@ -59,19 +59,19 @@ Install and configure the project.
 
 ### Core
 
-5. [Database][ref-doc-database] — Prisma + PostgreSQL, migrations, transactions, and the Database Module
-6. [Authentication][ref-doc-authentication] — JWT (ES256/ES512), session lifecycle, API key auth
-7. [Authorization][ref-doc-authorization] — `UserProtected`, `RoleProtected`, `PolicyProtected`, `TermPolicyAcceptanceProtected`, `WorkspaceProtected`, `ProjectProtected`
-8. [Device][ref-doc-device] — Device fingerprinting, `DeviceOwnership`, max 1 session per device
-9. [Response][ref-doc-response] — Standardized response decorators, pagination response, file download
-10. [Request Validation][ref-doc-request-validation] — `RequestSchemaValidationPipe`, zod request schemas, body and path validation
-11. [Handling Error][ref-doc-handling-error] — Exception filters, standardized HTTP error responses, i18n errors
-12. [Status Codes][ref-doc-status-codes] — Full catalog of application statusCode values by module
-13. [Message][ref-doc-message] — i18n with `nestjs-i18n`, nested JSON message files in `src/languages/`
-14. [Cache][ref-doc-cache] — Redis caching with shared `RedisCacheModule`, TTL strategy
-15. [Queue][ref-doc-queue] — BullMQ background jobs, `QueueProcessorBase`, retry/backoff
-16. [Logger][ref-doc-logger] — Pino logging, file rotation, sensitive data redaction, Sentry integration
-17. [Security and Middleware][ref-doc-security-and-middleware] — HTTP middleware layer, headers, rate limiting
+5. [Database][ref-doc-database]; Prisma + MongoDB replica set, transactions, and the Database Module
+6. [Authentication][ref-doc-authentication]; JWT (ES256/ES512), session lifecycle, API key auth
+7. [Authorization][ref-doc-authorization]; `UserProtected`, `RoleProtected`, `PolicyProtected`, `TermPolicyAcceptanceProtected`, `WorkspaceProtected`, `ProjectProtected`
+8. [Device][ref-doc-device]; Device fingerprinting, `DeviceOwnership`, max 1 session per device
+9. [Response][ref-doc-response]; Standardized response decorators, pagination response, file download
+10. [Request Validation][ref-doc-request-validation]; `RequestSchemaValidationPipe`, zod request schemas, body and path validation
+11. [Handling Error][ref-doc-handling-error]; Exception filters, standardized HTTP error responses, i18n errors
+12. [Status Codes][ref-doc-status-codes]; Full catalog of application statusCode values by module
+13. [Language Message][ref-doc-message]; i18n with `nestjs-i18n`, nested JSON message files in `src/languages/`
+14. [Cache][ref-doc-cache]; Redis caching with shared `RedisCacheModule`, TTL strategy
+15. [Queue][ref-doc-queue]; BullMQ background jobs, `QueueProcessorBase`, retry/backoff
+16. [Logger][ref-doc-logger]; Pino logging, file rotation, sensitive data redaction, Sentry integration
+17. [Security and Middleware][ref-doc-security-and-middleware]; HTTP middleware layer, headers, rate limiting
 
 ### Advanced
 
@@ -79,15 +79,15 @@ Install and configure the project.
 19. [Project][ref-doc-project]; Workspace-scoped projects with `:projectId` in the path and their own member roles
 20. [Pagination][ref-doc-pagination]; Offset-based, cursor-based pagination, advanced filtering
 21. [Notification][ref-doc-notification]; Multi-channel notifications (email, push, inApp, silent) via BullMQ
-22. [Two Factor][ref-doc-two-factor]; TOTP 2FA with authenticator apps and backup codes
-23. [Feature Flag][ref-doc-feature-flag]; Dynamic feature management and percentage rollouts
-24. [Activity Log][ref-doc-activity-log]; Recording user activities staged by domains and flushed by `ActivityLogInterceptor`
-25. [Analytic][ref-doc-analytic]; Live admin dashboard metrics, anomaly and fraud reports, current-workspace user metrics
-26. [Term Policy][ref-doc-term-policy]; Legal agreements, versioning, and user consent enforcement
-27. [File Upload][ref-doc-file-upload]; Single/multiple file uploads, CSV processing, upload decorators
-28. [Presign][ref-doc-presign]; AWS S3 presigned URLs for secure time-limited object access
-29. [Third Party Integration][ref-doc-third-party-integration]; AWS S3/SES, Firebase, Sentry, no-op mode
-30. [Doc][ref-doc-doc]; Swagger/OpenAPI decorators via the Doc Module
+22. [Email][ref-doc-email]; SES Handlebars templates, sync command, and send mapping
+23. [Two Factor][ref-doc-two-factor]; TOTP 2FA with authenticator apps and backup codes
+24. [Feature Flag][ref-doc-feature-flag]; Dynamic feature management and percentage rollouts
+25. [Activity Log][ref-doc-activity-log]; Recording user activities staged by domains and flushed by `ActivityLogInterceptor`
+26. [Analytic][ref-doc-analytic]; Live admin dashboard metrics, anomaly and fraud reports, current-workspace user metrics
+27. [Term Policy][ref-doc-term-policy]; Legal agreements, versioning, and user consent enforcement
+28. [File Upload][ref-doc-file-upload]; Multipart uploads, CSV processing, and S3 presign (GET, upload, part)
+29. [Third Party Integration][ref-doc-third-party-integration]; AWS S3/SES, Firebase, Sentry, no-op mode, S3 bucket setup
+30. [Doc][ref-doc-doc]; Swagger/OpenAPI co-located on `@Doc`, `@Response*` / `FileUpload*`, and `*Protected` kits
 31. [Vault][ref-doc-vault]; Optional secret management via HashiCorp Vault
 
 
@@ -104,7 +104,7 @@ Install and configure the project.
 [ref-doc-request-validation]: request-validation.md
 [ref-doc-handling-error]: handling-error.md
 [ref-doc-status-codes]: status-codes.md
-[ref-doc-message]: message.md
+[ref-doc-message]: language-message.md
 [ref-doc-cache]: cache.md
 [ref-doc-queue]: queue.md
 [ref-doc-logger]: logger.md
@@ -113,13 +113,13 @@ Install and configure the project.
 [ref-doc-project]: project.md
 [ref-doc-pagination]: pagination.md
 [ref-doc-notification]: notification.md
+[ref-doc-email]: email.md
 [ref-doc-two-factor]: two-factor.md
 [ref-doc-feature-flag]: feature-flag.md
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-analytic]: analytic.md
 [ref-doc-term-policy]: term-policy.md
 [ref-doc-file-upload]: file-upload.md
-[ref-doc-presign]: presign.md
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-doc]: doc.md
 [ref-doc-vault]: vault.md

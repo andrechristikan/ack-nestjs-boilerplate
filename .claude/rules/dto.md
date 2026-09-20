@@ -40,17 +40,17 @@ export type UserUpdateProfileRequestDto = z.infer<
   `z.infer` type. No file-local helper schema and no second exported schema beside it. A
   nested shape is inlined into the parent object. A piece reused across schemas is a custom
   schema in `src/common/request/validations/request.<name>.validation.ts`
-  (`RequestUuidSchema`, `RequestBooleanStringSchema`). A second top-level schema is its own
+  (`RequestMongoIdSchema`, `RequestBooleanStringSchema`). A second top-level schema is its own
   file.
 - The schema is the source of truth; the type is `z.infer` of it and is never hand-written
   beside it. A hand-written interface mirroring a schema drifts (`rules/code-style.md`).
-- The `Schema` const is what a decorator, a pipe and a doc factory receive. The `Dto` type is
+- The `Schema` const is what a decorator and a pipe receive. The `Dto` type is
   what a signature is annotated with.
 - **A request schema is `z.strictObject`; a response schema is `z.object`.** An unknown key
   entering is a caller error and is rejected; an undeclared key leaving is stripped, which is
   what makes the response fail closed. Neither is ever a top-level `z.array` or `z.record`: an
   array declares nothing to strip at its root, and a record declares nothing at all. A payload
-  that is a LIST is a paginated route (`@ResponsePaging`, `rules/pagination.md`), whose schema
+  that is a LIST is a paginated route (`@ResponsePagination`, `rules/pagination.md`), whose schema
   is the row — the one shape that is a whole collection in a single response is the one nothing
   grows: a fixed enum's members, and even that carries its rows inside a declared object.
 - Compose with the zod combinators rather than restating fields: `.extend()`, `.omit()`,
@@ -60,8 +60,8 @@ export type UserUpdateProfileRequestDto = z.infer<
 ## A response schema is what reaches the wire (HARD)
 
 A route declares its payload shape on `@Response(messagePath, { schema })` or
-`@ResponsePaging(messagePath, { schema })`, and `ResponseInterceptor` validates the handler's
-payload against it before the envelope is sent.
+`@ResponsePagination(messagePath, { schema })`, and the matching interceptor validates the
+handler's payload against it before the envelope is sent.
 
 - **A field absent from the schema is absent from the response.** `z.object` strips what it
   does not declare, so a column added to the Prisma model does not leak just because someone
@@ -69,13 +69,16 @@ payload against it before the envelope is sent.
 - **A payload with no declared schema is refused.** `@Response()` without `options.schema`
   declares a route that returns no data; a handler that returns one anyway raises
   `ResponseSerializationException`, and so does a payload the schema rejects.
-- `@ResponsePaging` takes the schema of ONE item; the interceptor wraps the page around it.
+- `@ResponsePagination` takes the schema of ONE item; the interceptor wraps the page around it.
+  Options carry **schema only** — no pagination `type` field. OpenAPI success uses
+  `DocResponseError` with `baseSchema: ResponsePaginationSchema` (`rules/pagination.md`,
+  `rules/http.md`).
 - Never hand a response schema to a domain. It belongs to the transport
   (`rules/architecture.md`).
 
 ## The envelope, not the schema
 
-A handler that returns data returns `IResponseReturn<T>`, `IResponsePagingReturn<T>`, or
+A handler that returns data returns `IResponseReturn<T>`, `IResponsePaginationReturn<T>`, or
 `IResponseFileReturn` — **never a bare payload**. The interceptor reads `metadata` off the
 returned object, and a bare payload has none. A handler with nothing to return is
 `Promise<void>` (`rules/http.md`).

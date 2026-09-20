@@ -1,3 +1,4 @@
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { Response } from '@common/response/decorators/response.decorator';
@@ -11,18 +12,6 @@ import {
 import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
 import type { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
-import {
-    AuthPublicLoginSocialAppleDoc,
-    AuthPublicLoginSocialGoogleDoc,
-    UserPublicForgotPasswordDoc,
-    UserPublicLoginCredentialDoc,
-    UserPublicLoginSetupTwoFactorDoc,
-    UserPublicLoginVerifyTwoFactorDoc,
-    UserPublicResetPasswordDoc,
-    UserPublicSendEmailVerificationDoc,
-    UserPublicSignUpDoc,
-    UserPublicVerifyEmailDoc,
-} from '@modules/user/docs/user.public.doc';
 import { UserCreateSocialRequestSchema } from '@modules/user/dtos/request/user.create-social.request.dto';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { UserForgotPasswordResetRequestSchema } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
@@ -74,7 +63,7 @@ export class UserPublicController {
         private readonly userTwoFactorHttpService: UserTwoFactorHttpService
     ) {}
 
-    @UserPublicLoginCredentialDoc()
+    @Doc({ summary: 'login with credential' })
     @Response('user.loginCredential', { schema: UserLoginResponseSchema })
     @FeatureFlagProtected('loginWithCredential')
     @ApiKeyProtected()
@@ -88,7 +77,7 @@ export class UserPublicController {
         return this.userAuthHttpService.loginCredential(body);
     }
 
-    @AuthPublicLoginSocialGoogleDoc()
+    @Doc({ summary: 'Login with social google' })
     @Response('user.loginWithSocialGoogle', {
         schema: UserLoginResponseSchema,
     })
@@ -111,7 +100,7 @@ export class UserPublicController {
         );
     }
 
-    @AuthPublicLoginSocialAppleDoc()
+    @Doc({ summary: 'Login with social apple' })
     @Response('user.loginWithSocialApple', {
         schema: UserLoginResponseSchema,
     })
@@ -134,7 +123,7 @@ export class UserPublicController {
         );
     }
 
-    @UserPublicSignUpDoc()
+    @Doc({ summary: 'User sign up' })
     @Response('user.signUp')
     @FeatureFlagProtected('signUp')
     @ApiKeyProtected()
@@ -147,7 +136,7 @@ export class UserPublicController {
         await this.userAuthHttpService.signUp(body);
     }
 
-    @UserPublicVerifyEmailDoc()
+    @Doc({ summary: 'User Email Verification' })
     @Response('user.verifyEmail')
     @ApiKeyProtected()
     @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
@@ -159,7 +148,7 @@ export class UserPublicController {
         await this.userVerificationHttpService.verifyEmail(body);
     }
 
-    @UserPublicSendEmailVerificationDoc()
+    @Doc({ summary: 'User resend email verification' })
     @Response('user.sendEmailVerification')
     @ApiKeyProtected()
     @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
@@ -172,7 +161,7 @@ export class UserPublicController {
         await this.userVerificationHttpService.sendVerificationEmail(body);
     }
 
-    @UserPublicForgotPasswordDoc()
+    @Doc({ summary: 'User forgot password' })
     @Response('user.forgotPassword')
     @FeatureFlagProtected('changePassword')
     @ApiKeyProtected()
@@ -186,7 +175,7 @@ export class UserPublicController {
         await this.userPasswordHttpService.forgotPassword(body);
     }
 
-    @UserPublicResetPasswordDoc()
+    @Doc({ summary: 'User reset password' })
     @Response('user.resetPassword')
     @FeatureFlagProtected('changePassword')
     @ApiKeyProtected()
@@ -199,7 +188,7 @@ export class UserPublicController {
         await this.userPasswordHttpService.resetPassword(body);
     }
 
-    @UserPublicLoginVerifyTwoFactorDoc()
+    @Doc({ summary: 'User verify two factor during login' })
     @Response('user.verifyTwoFactor', { schema: AuthTokenResponseSchema })
     @ApiKeyProtected()
     @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
@@ -211,7 +200,10 @@ export class UserPublicController {
         return this.userTwoFactorHttpService.loginVerifyTwoFactor(body);
     }
 
-    @UserPublicLoginSetupTwoFactorDoc()
+    @Doc({
+        summary:
+            'User enable two factor during login after reset by admin. Required setup 2FA flow',
+    })
     @Response('user.loginSetupTwoFactor', {
         schema: UserTwoFactorEnableResponseSchema,
     })

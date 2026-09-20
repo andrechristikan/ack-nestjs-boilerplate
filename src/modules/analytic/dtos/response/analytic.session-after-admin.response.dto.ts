@@ -8,7 +8,7 @@ import { faker } from '@faker-js/faker';
 export const AnalyticSessionAfterAdminResponseSchema = z.object({
     userId: z.string().meta({
         description: 'Identifier of the user who logged back in',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     revokedAt: z.date().meta({
         description: 'When the admin revoked the session',

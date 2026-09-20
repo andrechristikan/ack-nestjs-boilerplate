@@ -1,13 +1,17 @@
+import { Prisma } from '@generated/prisma-client/client';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import type {
-    IPaginationEqual,
-    IPaginationQueryCursorParams,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import type {
-    IResponsePagingReturn,
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    DeviceCursorAvailableOrderBy,
+    DeviceDefaultAvailableOrderBy,
+} from '@modules/device/constants/device.list.constant';
+import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
+import type { DeviceSharedListRequestDto } from '@modules/device/dtos/request/device.shared-list.request.dto';
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
@@ -15,18 +19,40 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DeviceHttpService {
-    constructor(private readonly deviceDomain: DeviceDomain) {}
+    constructor(
+        private readonly deviceDomain: DeviceDomain,
+        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly requestStoreService: RequestStoreService
+    ) {}
 
     async getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IDeviceOwnershipDetail>> {
+        query: DeviceAdminListRequestDto
+    ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.DeviceOwnershipWhereInput>(
+                query,
+                {
+                    availableOrderBy: DeviceDefaultAvailableOrderBy,
+                }
+            );
+        const isRevoked = this.paginationQueryUtil.equalBoolean(
+            Prisma.DeviceOwnershipScalarFieldEnum.isRevoked,
+            query.isRevoked
+        );
+        this.requestStoreService.merge(PaginationStoreKey, {
+            ...storePatch,
+            filters: {
+                ...storePatch.filters,
+                ...(isRevoked?.storeFilter ?? {}),
+            },
+        });
+
         const { data, ...others } =
             await this.deviceDomain.getListOffsetByAdmin(
                 userId,
-                pagination,
-                isRevoked
+                params,
+                isRevoked?.where
             );
         const deviceOwnerships: IDeviceOwnershipDetail[] = data.map(
             deviceOwnership => ({
@@ -45,12 +71,21 @@ export class DeviceHttpService {
     async getListCursor(
         userId: string,
         sessionId: string,
-        pagination: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
-    ): Promise<IResponsePagingReturn<IDeviceOwnershipDetail>> {
+        query: DeviceSharedListRequestDto
+    ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.cursor<Prisma.DeviceOwnershipWhereInput>(
+                query,
+                {
+                    availableOrderBy: DeviceCursorAvailableOrderBy,
+                }
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
         const { data, ...others } = await this.deviceDomain.getListCursor(
             userId,
             sessionId,
-            pagination
+            params
         );
         const deviceOwnerships: IDeviceOwnershipDetail[] = data.map(
             deviceOwnership => ({

@@ -51,28 +51,12 @@ body:
           description: What actually happened.
       validations:
           required: true
-    - type: dropdown
+    - type: input
       id: module
       attributes:
-          label: Affected Module
-          options:
-              - activity-log
-              - api-key
-              - auth
-              - country
-              - device
-              - feature-flag
-              - health
-              - hello
-              - notification
-              - password-history
-              - policy
-              - role
-              - session
-              - term-policy
-              - user
-              - common / shared
-              - other / unknown
+          label: Affected module
+          description: Comma-separated `src/modules/<name>` names, or `common` / `other`.
+          placeholder: e.g. auth, session, common
       validations:
           required: true
     - type: dropdown
@@ -94,82 +78,22 @@ body:
           placeholder: e.g. 51501 / userNotFound / user.error.notFound
       validations:
           required: false
-    - type: checkboxes
-      id: reproduction-surface
+    - type: textarea
+      id: environment
       attributes:
-          label: Reproduction surface
-          description: Tick any that apply. Details go in Additional Context.
-          options:
-              - label: Happens after a fresh `pnpm migration:seed`
-                required: false
-              - label: Needs specific `.env` values (describe in Additional Context)
-                required: false
-              - label: Only fails when MongoDB is Standalone (not a Replica Set)
-                required: false
-    - type: input
-      id: os
-      attributes:
-          label: OS
-          placeholder: e.g. Ubuntu 22.04 / macOS 14
+          label: Environment
+          description: Node, pnpm, Mongo setup, how you run the stack, and project version or commit. Engines are Node >= 24.15.0 and pnpm >= 10.25.0 (packageManager pin `pnpm@12.5.1`).
+          placeholder: |
+              OS: macOS 14
+              Node: v24.15.0
+              pnpm: 12.5.1
+              Project: 9.0.0 / commit hash
+              MongoDB: replica set (Compose) | standalone
+              Running via: Docker Compose | manual
+              Redis: (optional)
+              Notes: e.g. after fresh `pnpm migration:seed`, specific `.env` values
       validations:
           required: true
-    - type: input
-      id: node
-      attributes:
-          label: Node.js version
-          description: Project requires Node >= 24.15.0
-          placeholder: e.g. v24.15.0
-      validations:
-          required: true
-    - type: input
-      id: pnpm
-      attributes:
-          label: pnpm version
-          description: Project requires pnpm >= 10.25.0 (repo pins packageManager pnpm@11.x)
-          placeholder: e.g. 11.17.0
-      validations:
-          required: true
-    - type: input
-      id: nestjs
-      attributes:
-          label: NestJS version
-          description: From `package.json` / lockfile (optional but helpful).
-          placeholder: e.g. 11.1.28
-      validations:
-          required: false
-    - type: input
-      id: version
-      attributes:
-          label: Project version / commit
-          placeholder: e.g. commit hash or tag
-      validations:
-          required: true
-    - type: dropdown
-      id: mongodb
-      attributes:
-          label: MongoDB setup
-          description: This project requires a replica set for transactions.
-          options:
-              - Replica Set
-              - Standalone
-      validations:
-          required: true
-    - type: dropdown
-      id: running-via
-      attributes:
-          label: Running via
-          options:
-              - Docker Compose
-              - Manual
-      validations:
-          required: true
-    - type: input
-      id: redis
-      attributes:
-          label: Redis version
-          placeholder: e.g. 7.x
-      validations:
-          required: false
     - type: textarea
       id: logs
       attributes:
@@ -199,6 +123,6 @@ body:
       id: context
       attributes:
           label: Additional Context
-          description: Screenshots, related issues, env details, or anything else relevant.
+          description: Screenshots, related issues, or anything else relevant.
       validations:
           required: false

@@ -3,7 +3,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumPasswordHistoryType,
     Prisma,
@@ -22,7 +22,7 @@ export class PasswordHistoryDomain {
     async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
-    ): Promise<IResponsePagingReturn<IPasswordHistoryList>> {
+    ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         return this.passwordHistoryRepository.findWithPaginationOffsetByAdmin(
             userId,
             pagination
@@ -32,7 +32,7 @@ export class PasswordHistoryDomain {
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
-    ): Promise<IResponsePagingReturn<IPasswordHistoryList>> {
+    ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         return this.passwordHistoryRepository.findWithPaginationCursor(
             userId,
             pagination

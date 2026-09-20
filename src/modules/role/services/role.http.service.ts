@@ -1,13 +1,18 @@
+import { Prisma } from '@generated/prisma-client/client';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import type {
-    IPaginationIn,
-    IPaginationQueryCursorParams,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import type {
-    IResponsePagingReturn,
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    RoleDefaultAvailableOrderBy,
+    RoleDefaultAvailableSearch,
+    RoleDefaultType,
+} from '@modules/role/constants/role.list.constant';
+import type { RoleAdminListRequestDto } from '@modules/role/dtos/request/role.admin-list.request.dto';
+import type { RoleSystemListRequestDto } from '@modules/role/dtos/request/role.system-list.request.dto';
 import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
@@ -17,15 +22,36 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class RoleHttpService {
-    constructor(private readonly roleDomain: RoleDomain) {}
+    constructor(
+        private readonly roleDomain: RoleDomain,
+        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly requestStoreService: RequestStoreService
+    ) {}
 
     async getListOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
-        type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
+        query: RoleAdminListRequestDto
+    ): Promise<IResponsePaginationReturn<RoleListResponseDto>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.RoleWhereInput>(query, {
+                availableSearch: RoleDefaultAvailableSearch,
+                availableOrderBy: RoleDefaultAvailableOrderBy,
+            });
+        const type = this.paginationQueryUtil.inEnum(
+            Prisma.RoleScalarFieldEnum.type,
+            query.type,
+            RoleDefaultType
+        );
+        this.requestStoreService.merge(PaginationStoreKey, {
+            ...storePatch,
+            filters: {
+                ...storePatch.filters,
+                ...(type?.storeFilter ?? {}),
+            },
+        });
+
         const { data, ...others } = await this.roleDomain.getListOffsetByAdmin(
-            pagination,
-            type
+            params,
+            type?.where
         );
         const roles: RoleListResponseDto[] = data.map(
             ({ _count, ...role }) => ({
@@ -41,12 +67,29 @@ export class RoleHttpService {
     }
 
     async getListCursorBySystem(
-        pagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
-        type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
+        query: RoleSystemListRequestDto
+    ): Promise<IResponsePaginationReturn<RoleListResponseDto>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.cursor<Prisma.RoleWhereInput>(query, {
+                availableSearch: RoleDefaultAvailableSearch,
+                availableOrderBy: RoleDefaultAvailableOrderBy,
+            });
+        const type = this.paginationQueryUtil.inEnum(
+            Prisma.RoleScalarFieldEnum.type,
+            query.type,
+            RoleDefaultType
+        );
+        this.requestStoreService.merge(PaginationStoreKey, {
+            ...storePatch,
+            filters: {
+                ...storePatch.filters,
+                ...(type?.storeFilter ?? {}),
+            },
+        });
+
         const { data, ...others } = await this.roleDomain.getListCursorBySystem(
-            pagination,
-            type
+            params,
+            type?.where
         );
         const roles: RoleListResponseDto[] = data.map(
             ({ _count, ...role }) => ({

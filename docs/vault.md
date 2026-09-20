@@ -5,26 +5,26 @@
 > [!IMPORTANT]
 > Local-development setup only. The unseal key and root token are written to `generated/vault/init.json` so the stack unseals itself unattended. A dev convenience, not a production pattern. See [Scope](#scope).
 
-Optional [HashiCorp Vault][ref-vault] setup for **local development secret management**. Secrets live in Vault; `pnpm vault:pull` writes them into `.env` on demand.
+Optional [HashiCorp Vault][ref-vault] setup for **local development secret management**. Secrets live in Vault; `pnpm vault:pull` writes them into `.env` on demand. Vault is optional: skip the `vault` profile and keep a hand-managed `.env` as in [Installation][ref-doc-installation].
 
 - Wired through Docker Compose, gated behind the `vault` profile (never starts unless you opt in).
 - **File storage backend**, persistent across restarts.
 - Container entrypoint **auto-initializes and auto-unseals** on every boot.
 - Layout mirrors production: one kv-v2 mount per project, one path per environment, a read-only [AppRole][ref-approle] per environment.
+- Useful in a team: one source of truth in kv-v2 (seeded from `.env.example`), one sync command (`pnpm vault:pull`), AppRole standing in for production OIDC/JWT.
 
 ## Related Documents
 
-- [Installation Documentation][ref-doc-installation] - For the full Docker setup walkthrough
-- [Environment Documentation][ref-doc-environment] - For the environment variables seeded into Vault
-- [Configuration Documentation][ref-doc-configuration] - For how the app consumes `.env` at startup
-- [Third Party Integration Documentation][ref-doc-third-party-integration] - For other external integrations
+- [Installation Documentation][ref-doc-installation] - Docker setup (including the `vault` profile)
+- [Environment Documentation][ref-doc-environment] - Variables seeded into Vault
+- [Configuration Documentation][ref-doc-configuration] - How the app reads `.env` at startup
+- [Third Party Integration Documentation][ref-doc-third-party-integration] - Other external services
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Scope](#scope)
-- [Why Vault](#why-vault)
 - [Architecture](#architecture)
 - [Components](#components)
   - [`vault` service](#vault-service)
@@ -68,23 +68,6 @@ Development vs production. Informational, not a migration checklist:
 | Seeding | `development` only, from `.env.example` | Policy-managed, never from committed files |
 | Secret delivery | `pnpm vault:pull` writes a local env file | CI/CD fetches at deploy time, injects into the runtime env |
 | Transport | Plain HTTP | TLS |
-
-## Why Vault
-
-> [!NOTE]
-> Vault is optional. Skip the `vault` profile and the project runs exactly as in [Installation][ref-doc-installation] with a hand-managed `.env`.
-
-A plain `.env` works, but in a team:
-
-- Secrets drift out of sync across machines.
-- No single source of truth; everyone keeps their own `.env`.
-- Onboarding means manually filling dozens of values.
-
-This setup fixes that **for local development**:
-
-- **One source of truth.** Secrets in the kv-v2 store, seeded once from `.env.example`.
-- **One command to sync.** `pnpm vault:pull` rewrites `.env`.
-- **Mirrors production.** Mount, per-env paths, and read-only policies match what production needs. Only auth differs: AppRole stands in for GitHub OIDC/JWT. Swap `approle` for `jwt` (bound OIDC claims) for production.
 
 ## Architecture
 
@@ -263,7 +246,13 @@ Unchanged from here. The app reads `.env` as usual:
 pnpm start:dev
 ```
 
-The seeded `development` secret copies `.env.example`, where the JWT keys and KIDs and the two encryption secrets (`APP_ENCRYPTION_SECRET_KEY`, `AUTH_TWO_FACTOR_ENCRYPTION_KEY`) are empty, and startup validation rejects them empty. Until those fields hold real values in Vault, `pnpm generate:secret --direct-insert` fills them in the pulled `.env`; the next `pnpm vault:pull` overwrites that file again. See [Installation][ref-doc-installation].
+The seeded `development` secret copies `.env.example`. These fields are empty there, and startup validation rejects them empty:
+
+- JWT keys and KIDs
+- `APP_ENCRYPTION_SECRET_KEY`
+- `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
+
+Until those fields hold real values in Vault, `pnpm generate:secret --direct-insert` fills them in the pulled `.env`; the next `pnpm vault:pull` overwrites that file again. See [Installation][ref-doc-installation].
 
 ### Reading the Root Token
 

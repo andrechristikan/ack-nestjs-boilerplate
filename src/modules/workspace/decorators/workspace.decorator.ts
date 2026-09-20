@@ -4,6 +4,8 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import {
+    DocWorkspaceErrorResponses,
+    DocWorkspaceRoleErrorResponses,
     WorkspaceMemberStoreKey,
     WorkspaceRoleMetaKey,
     WorkspaceStoreKey,
@@ -25,7 +27,11 @@ import { RequestContextMissingException } from '@common/request/exceptions/reque
  * @public
  */
 export function WorkspaceProtected(): MethodDecorator {
-    return applyDecorators(UseGuards(WorkspaceGuard));
+    return applyDecorators(
+        UseGuards(WorkspaceGuard),
+        DocWorkspaceErrorResponses.notFound,
+        DocWorkspaceErrorResponses.forbidden
+    );
 }
 
 /**
@@ -76,7 +82,8 @@ export function WorkspaceMemberProtected(
 
     return applyDecorators(
         UseGuards(WorkspaceMemberGuard, WorkspaceRoleGuard),
-        SetMetadata(WorkspaceRoleMetaKey, roles)
+        SetMetadata(WorkspaceRoleMetaKey, roles),
+        DocWorkspaceRoleErrorResponses.forbidden
     );
 }
 

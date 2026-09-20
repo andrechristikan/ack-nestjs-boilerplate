@@ -1,5 +1,5 @@
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { Prisma } from '@generated/prisma-client/client';
 import type {
     IAnalyticRoleCount,
@@ -26,7 +26,7 @@ export class WorkspaceMemberAnalyticDomain {
 
     membershipDistributionOffset(
         params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
+    ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         return this.workspaceMemberAnalyticRepository.membershipDistributionOffset(
             params
         );

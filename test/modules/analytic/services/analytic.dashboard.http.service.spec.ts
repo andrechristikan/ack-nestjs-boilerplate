@@ -1,3 +1,5 @@
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -12,6 +14,10 @@ describe('AnalyticDashboardHttpService', () => {
         mock<AnalyticDashboardDomain>();
     const analyticDateDomain: MockProxy<AnalyticDateDomain> =
         mock<AnalyticDateDomain>();
+    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
+        mock<PaginationQueryUtil>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
@@ -25,6 +31,10 @@ describe('AnalyticDashboardHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        paginationQueryUtil.offset.mockReturnValue({
+            params: pagination,
+            storePatch: {},
+        } as never);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -34,6 +44,14 @@ describe('AnalyticDashboardHttpService', () => {
                     useValue: analyticDashboardDomain,
                 },
                 { provide: AnalyticDateDomain, useValue: analyticDateDomain },
+                {
+                    provide: PaginationQueryUtil,
+                    useValue: paginationQueryUtil,
+                },
+                {
+                    provide: RequestStoreService,
+                    useValue: requestStoreService,
+                },
             ],
         }).compile();
 
@@ -56,6 +74,22 @@ describe('AnalyticDashboardHttpService', () => {
             expect(
                 analyticDashboardDomain.usersRegistrations
             ).toHaveBeenCalledWith(startDate, endDate);
+        });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.usersRegistrations.mockResolvedValue(
+                {} as never
+            );
+
+            await service.usersRegistrations();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 
@@ -81,6 +115,20 @@ describe('AnalyticDashboardHttpService', () => {
                 endDate
             );
         });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.usersChurn.mockResolvedValue({} as never);
+
+            await service.usersChurn();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('usersBlocked', () => {
@@ -100,6 +148,20 @@ describe('AnalyticDashboardHttpService', () => {
             expect(analyticDashboardDomain.usersBlocked).toHaveBeenCalledWith(
                 startDate,
                 endDate
+            );
+        });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.usersBlocked.mockResolvedValue({} as never);
+
+            await service.usersBlocked();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
             );
         });
     });
@@ -123,6 +185,21 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.usersSignUpWith
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes undefined dates when the optional range is empty', async () => {
+            analyticDateDomain.optionalRange.mockReturnValue({
+                startDate: null,
+                endDate: null,
+            });
+            analyticDashboardDomain.usersSignUpWith.mockResolvedValue(
+                {} as never
+            );
+
+            await service.usersSignUpWith();
+
+            expect(
+                analyticDashboardDomain.usersSignUpWith
+            ).toHaveBeenCalledWith(undefined, undefined);
+        });
     });
 
     describe('usersSignUpFrom', () => {
@@ -143,6 +220,21 @@ describe('AnalyticDashboardHttpService', () => {
             expect(
                 analyticDashboardDomain.usersSignUpFrom
             ).toHaveBeenCalledWith(startDate, endDate);
+        });
+        it('passes undefined dates when the optional range is empty', async () => {
+            analyticDateDomain.optionalRange.mockReturnValue({
+                startDate: null,
+                endDate: null,
+            });
+            analyticDashboardDomain.usersSignUpFrom.mockResolvedValue(
+                {} as never
+            );
+
+            await service.usersSignUpFrom();
+
+            expect(
+                analyticDashboardDomain.usersSignUpFrom
+            ).toHaveBeenCalledWith(undefined, undefined);
         });
     });
 
@@ -170,6 +262,21 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.usersEmailVerification
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes undefined dates when the optional range is empty', async () => {
+            analyticDateDomain.optionalRange.mockReturnValue({
+                startDate: null,
+                endDate: null,
+            });
+            analyticDashboardDomain.usersEmailVerification.mockResolvedValue(
+                {} as never
+            );
+
+            await service.usersEmailVerification();
+
+            expect(
+                analyticDashboardDomain.usersEmailVerification
+            ).toHaveBeenCalledWith(undefined, undefined);
+        });
     });
 
     describe('usersMobileVerification', () => {
@@ -195,6 +302,21 @@ describe('AnalyticDashboardHttpService', () => {
             expect(
                 analyticDashboardDomain.usersMobileVerification
             ).toHaveBeenCalledWith(startDate, endDate);
+        });
+        it('passes undefined dates when the optional range is empty', async () => {
+            analyticDateDomain.optionalRange.mockReturnValue({
+                startDate: null,
+                endDate: null,
+            });
+            analyticDashboardDomain.usersMobileVerification.mockResolvedValue(
+                {} as never
+            );
+
+            await service.usersMobileVerification();
+
+            expect(
+                analyticDashboardDomain.usersMobileVerification
+            ).toHaveBeenCalledWith(undefined, undefined);
         });
     });
 
@@ -266,6 +388,22 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.usersSelfDelete
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.usersSelfDelete.mockResolvedValue(
+                {} as never
+            );
+
+            await service.usersSelfDelete();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('usersClaimUsername', () => {
@@ -284,6 +422,22 @@ describe('AnalyticDashboardHttpService', () => {
             expect(
                 analyticDashboardDomain.usersClaimUsername
             ).toHaveBeenCalledWith(startDate, endDate);
+        });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.usersClaimUsername.mockResolvedValue(
+                {} as never
+            );
+
+            await service.usersClaimUsername();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 
@@ -308,6 +462,22 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.usersMobileChurn
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.usersMobileChurn.mockResolvedValue(
+                {} as never
+            );
+
+            await service.usersMobileChurn();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('authLoginFrequency', () => {
@@ -326,6 +496,22 @@ describe('AnalyticDashboardHttpService', () => {
             expect(
                 analyticDashboardDomain.authLoginFrequency
             ).toHaveBeenCalledWith(startDate, endDate);
+        });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.authLoginFrequency.mockResolvedValue(
+                {} as never
+            );
+
+            await service.authLoginFrequency();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 
@@ -348,6 +534,21 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.authLoginMethod
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes undefined dates when the optional range is empty', async () => {
+            analyticDateDomain.optionalRange.mockReturnValue({
+                startDate: null,
+                endDate: null,
+            });
+            analyticDashboardDomain.authLoginMethod.mockResolvedValue(
+                {} as never
+            );
+
+            await service.authLoginMethod();
+
+            expect(
+                analyticDashboardDomain.authLoginMethod
+            ).toHaveBeenCalledWith(undefined, undefined);
+        });
     });
 
     describe('authLoginSource', () => {
@@ -368,6 +569,21 @@ describe('AnalyticDashboardHttpService', () => {
             expect(
                 analyticDashboardDomain.authLoginSource
             ).toHaveBeenCalledWith(startDate, endDate);
+        });
+        it('passes undefined dates when the optional range is empty', async () => {
+            analyticDateDomain.optionalRange.mockReturnValue({
+                startDate: null,
+                endDate: null,
+            });
+            analyticDashboardDomain.authLoginSource.mockResolvedValue(
+                {} as never
+            );
+
+            await service.authLoginSource();
+
+            expect(
+                analyticDashboardDomain.authLoginSource
+            ).toHaveBeenCalledWith(undefined, undefined);
         });
     });
 
@@ -390,6 +606,20 @@ describe('AnalyticDashboardHttpService', () => {
                 endDate
             );
         });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.authLockout.mockResolvedValue({} as never);
+
+            await service.authLockout();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('authSessionRevoke', () => {
@@ -408,6 +638,22 @@ describe('AnalyticDashboardHttpService', () => {
             expect(
                 analyticDashboardDomain.authSessionRevoke
             ).toHaveBeenCalledWith(startDate, endDate);
+        });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.authSessionRevoke.mockResolvedValue(
+                {} as never
+            );
+
+            await service.authSessionRevoke();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 
@@ -447,6 +693,21 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.authSessionsGeo
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes undefined dates when the optional range is empty', async () => {
+            analyticDateDomain.optionalRange.mockReturnValue({
+                startDate: null,
+                endDate: null,
+            });
+            analyticDashboardDomain.authSessionsGeo.mockResolvedValue(
+                {} as never
+            );
+
+            await service.authSessionsGeo();
+
+            expect(
+                analyticDashboardDomain.authSessionsGeo
+            ).toHaveBeenCalledWith(undefined, undefined);
+        });
     });
 
     describe('authSessionsUserAgent', () => {
@@ -471,6 +732,21 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.authSessionsUserAgent
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes undefined dates when the optional range is empty', async () => {
+            analyticDateDomain.optionalRange.mockReturnValue({
+                startDate: null,
+                endDate: null,
+            });
+            analyticDashboardDomain.authSessionsUserAgent.mockResolvedValue(
+                {} as never
+            );
+
+            await service.authSessionsUserAgent();
+
+            expect(
+                analyticDashboardDomain.authSessionsUserAgent
+            ).toHaveBeenCalledWith(undefined, undefined);
+        });
     });
 
     describe('authRefreshTokenVolume', () => {
@@ -493,6 +769,22 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.authRefreshTokenVolume
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.authRefreshTokenVolume.mockResolvedValue(
+                {} as never
+            );
+
+            await service.authRefreshTokenVolume();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('authLogoutRate', () => {
@@ -511,6 +803,22 @@ describe('AnalyticDashboardHttpService', () => {
             expect(analyticDashboardDomain.authLogoutRate).toHaveBeenCalledWith(
                 startDate,
                 endDate
+            );
+        });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.authLogoutRate.mockResolvedValue(
+                {} as never
+            );
+
+            await service.authLogoutRate();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
             );
         });
     });
@@ -540,6 +848,22 @@ describe('AnalyticDashboardHttpService', () => {
             expect(
                 analyticDashboardDomain.authVerificationFunnel
             ).toHaveBeenCalledWith(startDate, endDate);
+        });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.authVerificationFunnel.mockResolvedValue(
+                {} as never
+            );
+
+            await service.authVerificationFunnel();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 
@@ -580,6 +904,22 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.authPasswordChange
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.authPasswordChange.mockResolvedValue(
+                {} as never
+            );
+
+            await service.authPasswordChange();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('authForgotPasswordConversion', () => {
@@ -604,6 +944,22 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.authForgotPasswordConversion
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.authForgotPasswordConversion.mockResolvedValue(
+                {} as never
+            );
+
+            await service.authForgotPasswordConversion();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('authAdminForcePassword', () => {
@@ -625,6 +981,22 @@ describe('AnalyticDashboardHttpService', () => {
             expect(
                 analyticDashboardDomain.authAdminForcePassword
             ).toHaveBeenCalledWith(startDate, endDate);
+        });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.authAdminForcePassword.mockResolvedValue(
+                {} as never
+            );
+
+            await service.authAdminForcePassword();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 
@@ -667,6 +1039,22 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.authTwoFactorAdminReset
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.authTwoFactorAdminReset.mockResolvedValue(
+                {} as never
+            );
+
+            await service.authTwoFactorAdminReset();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('authTwoFactorVerifySuccess', () => {
@@ -689,6 +1077,22 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.authTwoFactorVerifySuccess
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.authTwoFactorVerifySuccess.mockResolvedValue(
+                {} as never
+            );
+
+            await service.authTwoFactorVerifySuccess();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('authBackupCodeRegeneration', () => {
@@ -710,6 +1114,22 @@ describe('AnalyticDashboardHttpService', () => {
             expect(
                 analyticDashboardDomain.authBackupCodeRegeneration
             ).toHaveBeenCalledWith(startDate, endDate);
+        });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.authBackupCodeRegeneration.mockResolvedValue(
+                {} as never
+            );
+
+            await service.authBackupCodeRegeneration();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 
@@ -750,6 +1170,22 @@ describe('AnalyticDashboardHttpService', () => {
             expect(
                 analyticDashboardDomain.devicesRegistration
             ).toHaveBeenCalledWith(startDate, endDate);
+        });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.devicesRegistration.mockResolvedValue(
+                {} as never
+            );
+
+            await service.devicesRegistration();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 
@@ -805,6 +1241,22 @@ describe('AnalyticDashboardHttpService', () => {
             expect(
                 analyticDashboardDomain.devicesInfoRefresh
             ).toHaveBeenCalledWith(startDate, endDate);
+        });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.devicesInfoRefresh.mockResolvedValue(
+                {} as never
+            );
+
+            await service.devicesInfoRefresh();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 
@@ -881,6 +1333,22 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.apiKeysLifecycle
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.apiKeysLifecycle.mockResolvedValue(
+                {} as never
+            );
+
+            await service.apiKeysLifecycle();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('apiKeysActiveExpired', () => {
@@ -938,6 +1406,21 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.termPoliciesAcceptanceRate
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes undefined dates when the optional range is empty', async () => {
+            analyticDateDomain.optionalRange.mockReturnValue({
+                startDate: null,
+                endDate: null,
+            });
+            analyticDashboardDomain.termPoliciesAcceptanceRate.mockResolvedValue(
+                {} as never
+            );
+
+            await service.termPoliciesAcceptanceRate();
+
+            expect(
+                analyticDashboardDomain.termPoliciesAcceptanceRate
+            ).toHaveBeenCalledWith(undefined, undefined);
+        });
     });
 
     describe('termPoliciesTimeToAccept', () => {
@@ -961,6 +1444,21 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.termPoliciesTimeToAccept
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes undefined dates when the optional range is empty', async () => {
+            analyticDateDomain.optionalRange.mockReturnValue({
+                startDate: null,
+                endDate: null,
+            });
+            analyticDashboardDomain.termPoliciesTimeToAccept.mockResolvedValue(
+                {} as never
+            );
+
+            await service.termPoliciesTimeToAccept();
+
+            expect(
+                analyticDashboardDomain.termPoliciesTimeToAccept
+            ).toHaveBeenCalledWith(undefined, undefined);
+        });
     });
 
     describe('workspacesCreation', () => {
@@ -979,6 +1477,22 @@ describe('AnalyticDashboardHttpService', () => {
             expect(
                 analyticDashboardDomain.workspacesCreation
             ).toHaveBeenCalledWith(startDate, endDate);
+        });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.workspacesCreation.mockResolvedValue(
+                {} as never
+            );
+
+            await service.workspacesCreation();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 
@@ -1021,6 +1535,22 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.workspacesInviteFunnel
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.workspacesInviteFunnel.mockResolvedValue(
+                {} as never
+            );
+
+            await service.workspacesInviteFunnel();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('workspacesJoinOutcomes', () => {
@@ -1045,6 +1575,22 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.workspacesJoinOutcomes
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.workspacesJoinOutcomes.mockResolvedValue(
+                {} as never
+            );
+
+            await service.workspacesJoinOutcomes();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('workspacesMembership', () => {
@@ -1063,7 +1609,10 @@ describe('AnalyticDashboardHttpService', () => {
                 page
             );
 
-            const result = await service.workspacesMembership(pagination);
+            const result = await service.workspacesMembership({
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(
@@ -1092,16 +1641,46 @@ describe('AnalyticDashboardHttpService', () => {
                 page
             );
 
-            const result = await service.workspacesActivityVolume(
-                pagination,
+            const result = await service.workspacesActivityVolume({
                 startDate,
-                endDate
-            );
+                endDate,
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(
                 analyticDashboardDomain.workspacesActivityVolume
             ).toHaveBeenCalledWith(startDate, endDate, pagination);
+        });
+        it('passes null dates when query dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            const page = {
+                type: EnumPaginationType.offset as const,
+                count: 0,
+                perPage: 20,
+                page: 1,
+                totalPage: 0,
+                hasNext: false,
+                hasPrevious: false,
+                data: [],
+            };
+            analyticDashboardDomain.workspacesActivityVolume.mockResolvedValue(
+                page
+            );
+
+            await service.workspacesActivityVolume({
+                page: 1,
+                perPage: 20,
+            } as never);
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 
@@ -1128,6 +1707,22 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.projectsCreation
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticDashboardDomain.projectsCreation.mockResolvedValue(
+                {} as never
+            );
+
+            await service.projectsCreation();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('projectsMembership', () => {
@@ -1144,7 +1739,10 @@ describe('AnalyticDashboardHttpService', () => {
             };
             analyticDashboardDomain.projectsMembership.mockResolvedValue(page);
 
-            const result = await service.projectsMembership(pagination);
+            const result = await service.projectsMembership({
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(

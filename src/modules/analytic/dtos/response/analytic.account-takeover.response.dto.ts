@@ -8,7 +8,7 @@ import { faker } from '@faker-js/faker';
 export const AnalyticAccountTakeoverResponseSchema = z.object({
     userId: z.string().meta({
         description: 'Identifier of the taken over user',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     indicatorCodes: z.array(z.string()).meta({
         description: 'Indicator codes that raised the detection',

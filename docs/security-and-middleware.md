@@ -25,10 +25,11 @@ consumer
 
 ## Related Documents
 
-- [Authentication][ref-doc-authentication]
-- [Authorization][ref-doc-authorization]
-- [Configuration][ref-doc-configuration]
-- [Environment][ref-doc-environment]
+- [Authentication][ref-doc-authentication] - JWT, OAuth, API keys, sessions
+- [Authorization][ref-doc-authorization] - Guards and decorator stack
+- [Configuration][ref-doc-configuration] - Request, CORS, and throttle config
+- [Environment][ref-doc-environment] - CORS, proxy, and related env vars
+- [Cache][ref-doc-cache] - Redis client used by rate limiting
 
 ## Table of Contents
 
@@ -58,10 +59,10 @@ consumer
 
 ## Authentication & Authorization
 
-ACK NestJS Boilerplate includes authentication and authorization. See dedicated documentation:
+Guards and sessions are not middleware. See:
 
-- [Authentication][ref-doc-authentication] - JWT, OAuth, API Keys, sessions, password management
-- [Authorization][ref-doc-authorization] - RBAC, policy abilities, user protection
+- [Authentication][ref-doc-authentication] - JWT, OAuth, API keys, sessions, passwords
+- [Authorization][ref-doc-authorization] - RBAC, policies, user protection
 
 ## Helmet
 
@@ -86,7 +87,16 @@ Routes behind this chain answer with JSON or a file download (CSV or PDF via `Re
 
 `X-Download-Options: noopen` is on because file routes return the bytes as an attachment.
 
-**Off; set to `false` in the same object:** `contentSecurityPolicy`, `crossOriginOpenerPolicy`, `originAgentCluster`, `referrerPolicy`, `xDnsPrefetchControl`, and `xXssProtection`. Each governs how a browser renders a document, and none of them changes how a client handles a JSON body or an attachment download.
+**Off; set to `false` in the same object:**
+
+- `contentSecurityPolicy`
+- `crossOriginOpenerPolicy`
+- `originAgentCluster`
+- `referrerPolicy`
+- `xDnsPrefetchControl`
+- `xXssProtection`
+
+Each governs how a browser renders a document, and none of them changes how a client handles a JSON body or an attachment download.
 
 `Strict-Transport-Security` is the one directive driven by config: `request.helmet.maxAgeInSeconds` (365 days) is the `max-age`, and `request.helmet.includeSubDomains` and `request.helmet.preload` decide whether each directive is appended. See [Configuration][ref-doc-configuration].
 
@@ -139,15 +149,36 @@ Every limit lives in `request.config.ts`. A decorator carries a switch or a tier
 
 `default.limit` (300) sits above `user.limit` (100). The per-IP limiter is checked first on every request, so with the two limits equal or inverted a client on a single address always trips the IP bucket first and its per-user limit stops meaning anything.
 
-**Default (per IP, global):** `RequestThrottleDefaultGuard` is one of the two `APP_GUARD` providers registered by `RequestMiddlewareModule`, and enforces the single library throttler, explicitly named `default`. Its tracker is the client IP, and it applies to every route with no opt-in. The library's `@SkipThrottle()` appears nowhere in this codebase, so the global limiter is the floor every endpoint sits on.
+**Default (per IP, global):**
 
-**Opt-in (`user` and `route`):** enforcement is split across two phases. `route` is enforced by `RequestThrottleRouteGuard`, the second `APP_GUARD` in the same module; `user` is enforced by `RequestThrottleUserInterceptor`, mounted by `@RequestThrottle`. Both read the decorator's metadata off the handler, and the `route` limiter is evaluated first because every global guard runs before every interceptor, so a request rejected by the endpoint limit never touches the personal counter.
+- `RequestThrottleDefaultGuard` is one of the two `APP_GUARD` providers registered by `RequestMiddlewareModule`
+- It enforces the single library throttler, explicitly named `default`
+- Tracker is the client IP; applies to every route with no opt-in
+- The library's `@SkipThrottle()` appears nowhere in this codebase, so the global limiter is the floor every endpoint sits on
+
+**Opt-in (`user` and `route`):** enforcement is split across two phases:
+
+- `route` is enforced by `RequestThrottleRouteGuard`, the second `APP_GUARD` in the same module
+- `user` is enforced by `RequestThrottleUserInterceptor`, mounted by `@RequestThrottle`
+- Both read the decorator's metadata off the handler
+- The `route` limiter is evaluated first because every global guard runs before every interceptor, so a request rejected by the endpoint limit never touches the personal counter
 
 Being a global guard also puts the `route` limiter ahead of controller-level and route-level guards, which run later. A route tier therefore rejects before `@ApiKeyProtected()`, `@FeatureFlagProtected()`, and the social-login guards do any work: `POST /login/social/google` and `/login/social/apple` carry the `strict` tier, so the limiter gates the outbound provider verification instead of following it.
 
-Both opt-in limiters run through `RequestThrottleService.evaluate()` (`src/common/request/services/request.throttle.service.ts`), the single place that counts the hit, sets `Retry-After`, raises `ThrottlerException`, and writes the `X-RateLimit-*` trio. Their responses are therefore identical in shape. `RequestThrottleStorageService.increment()` does the counting and always resolves with a record, so `evaluate()` branches on `isBlocked` alone and a storage failure arrives there as an unblocked record.
+Both opt-in limiters run through `RequestThrottleService.evaluate()` (`src/common/request/services/request.throttle.service.ts`), the single place that:
 
-Every handler carrying `@AuthJwtAccessProtected()` or `@AuthJwtRefreshProtected()` also carries `@RequestThrottle({ user: true })`. `user: true` on a request with no authenticated user is a silent no-op, so the `public` and `system` scopes, which never populate `req.user`, deliberately omit the switch. A JWT-protected handler that omits it keeps only the global per-IP limit, and nothing fails or logs to say so.
+- counts the hit
+- sets `Retry-After`
+- raises `ThrottlerException`
+- writes the `X-RateLimit-*` trio
+
+Their responses are therefore identical in shape. `RequestThrottleStorageService.increment()` does the counting and always resolves with a record, so `evaluate()` branches on `isBlocked` alone and a storage failure arrives there as an unblocked record.
+
+Every handler carrying `@AuthJwtAccessProtected()` or `@AuthJwtRefreshProtected()` also carries `@RequestThrottle({ user: true })`:
+
+- `user: true` on a request with no authenticated user is a silent no-op
+- the `public` and `system` scopes, which never populate `req.user`, deliberately omit the switch
+- a JWT-protected handler that omits it keeps only the global per-IP limit, and nothing fails or logs to say so
 
 ```typescript
 @UserProtected()
@@ -441,7 +472,7 @@ Feature modules own the rest of the keys, each declared in its own `constants/` 
 | `ProjectMemberStoreKey` | `ProjectMemberGuard` | the caller's `ProjectMember` row |
 | `ProjectWorkspaceOwnerStoreKey` | `ProjectRoleGuard` | `true` when the caller passed as workspace owner rather than as a project member |
 | `ActivityLogStageStoreKey` | `ActivityLogDomain.stagePrepared` | the staged activity events of the request |
-| `PaginationStoreKey` | the pagination pipes | the response-metadata block the paging interceptor emits |
+| `PaginationStoreKey` | HTTP services via `PaginationQueryUtil` `storePatch` | the response-metadata block `ResponsePaginationInterceptor` emits |
 
 **Request log (`RequestLogStoreKey`):** `userAgent`, `ipAddress`, and `geoLocation` are resolved once per request by the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), called from `RequestRequestLogMiddleware`. `ActivityLogDomain.flushStaged` reads `get<IRequestLog>(RequestLogStoreKey)` when it writes the staged rows, and throws `ActivityLogContractInvalidException` when the key is absent (the interceptor logs it). `UserLoginDomain` reads the same key with a non-null assertion (no fallback object) and threads the `IRequestLog` to the session and device writes, since the middleware always populates the key before any handler runs. Nothing recomputes ua/ip/geo. `IRequestLog` declares all three fields as present: `ipAddress` and `geoLocation` are `null` when unresolved, never absent. The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators each read one fixed field of that entry and take no argument. See [Store Parameter Decorators](#store-parameter-decorators).
 
@@ -548,3 +579,4 @@ StoreReader<K extends Extract<keyof Model, string>>(field?: K): ParameterDecorat
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
 [ref-doc-handling-error]: handling-error.md
+[ref-doc-cache]: cache.md

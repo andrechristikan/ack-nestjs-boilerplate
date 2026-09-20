@@ -14,7 +14,7 @@ kind for every assertion it makes.
 | Kind | Subject | I/O | What it proves |
 |---|---|---|---|
 | **Unit** | One class: a domain, HTTP or processor service, util, cache, queue, guard, pipe, interceptor, filter, DTO, exception | Collaborators doubled (`mock<T>()` / `mockDeep<T>()`) | The class's behaviour |
-| **Integration** | One adapter: a repository, or another class whose job is a real engine | Prisma and PostgreSQL, or Redis, are real | The query or command against that engine |
+| **Integration** | One adapter: a repository, or another class whose job is a real engine | Prisma and MongoDB (replica set), or Redis, are real | The query or command against that engine |
 | **E2E** | One transport path: an HTTP route or a consumed job | The running app | Wiring from the edge through guards, pipes, interceptors, domain, and persistence |
 
 This repository's suite is **unit**. `pnpm test` and `pnpm test:cov` collect `test/**/*.spec.ts`
@@ -35,17 +35,18 @@ Every DI collaborator is a double. The subject is the one class that is real
 - An HTTP or processor service spec doubles the domain. It never reaches a repository.
 - A repository is the double, never the subject. Constructing `UserRepository` and stubbing
   `databaseService.client` is still a unit spec of the adapter: it freezes a Prisma `where` /
-  `select` shape and does not prove the query against PostgreSQL. Those files sit outside the
+  `select` shape and does not prove the query against MongoDB. Those files sit outside the
   coverage set.
 - A controller and a processor are route or job delegation. They have no unit spec.
-- A Swagger doc factory (`*.doc.ts`) is `applyDecorators` of the doc kit. It has no unit spec.
+- OpenAPI composition on runtime decorators (`@Doc`, `@Response*`, `*Protected`, `FileUpload*`) has no unit spec.
 - A contract is a lookup table. The consumer's unit spec exercises it.
 
-TDD is this kind (`coder`). `/ack-spec` covers this kind against code that already exists.
+TDD is this kind (`coder`). `/ack-spec` covers this kind against code that already exists,
+and repairs a confirmed no-flow bug through `coder`.
 
 ### Integration
 
-The adapter is the subject. Prisma and PostgreSQL are real. Doubling
+The adapter is the subject. Prisma and the MongoDB replica set are real. Doubling
 `DatabaseService.client` makes the file a unit spec of the repository, which this suite does
 not write.
 
@@ -143,7 +144,7 @@ the work is done.
 `coverage.include` is every `src/**/*.ts`, minus a denylist in `vitest.config.ts`:
 
 `*.module.ts` · `*.enum.ts` · `*.interface.ts` · `*.constant.ts` · `*.contract.ts` ·
-`*.controller.ts` · `*.processor.ts` · `*.repository.ts` · `*.doc.ts` · `src/generated/**` ·
+`*.controller.ts` · `*.processor.ts` · `*.repository.ts` · `src/generated/**` ·
 `src/migration/**` · `src/router/**` · `src/configs/**` · `src/languages/**` · the root
 `src/*.ts` files
 
@@ -151,14 +152,13 @@ Everything else is measured: services, domains, utils, caches, queues, guards, p
 interceptors, filters, middlewares, strategies, indicators, factories, decorators
 (including the doc kit in `src/common/doc/`), validations, exceptions and DTOs.
 
-**Controllers, processors, repositories, contracts and Swagger doc factories (`*.doc.ts`)
-are not in the coverage set.** A controller and a processor are delegation, a repository is
-a Prisma call shape, a contract is a lookup table, and a `*.doc.ts` factory is
-`applyDecorators` of the doc kit — specs there would assert the mock, restatement, or
-TypeScript already proved. If you find yourself wanting a controller, processor, or
-repository spec, the logic is probably in the wrong layer. A contract is exercised by the
-consumer that reads it (a domain or a pipe), not by a spec of the table. A doc factory is
-wired by the controller; it is not a unit subject.
+**Controllers, processors, repositories, and contracts are not in the coverage set.** A
+controller and a processor are delegation, a repository is a Prisma call shape, and a
+contract is a lookup table — specs there would assert the mock, restatement, or TypeScript
+already proved. If you find yourself wanting a controller, processor, or repository spec,
+the logic is probably in the wrong layer. A contract is exercised by the consumer that reads
+it (a domain or a pipe), not by a spec of the table. OpenAPI composition on `@Doc` /
+`@Response*` / `*Protected` / `FileUpload*` is not a unit subject.
 
 **The denylist decides WHAT gets a spec for `/ack-spec`, and an excluded file gets NONE
 (HARD).** Wanting coverage on an excluded path is a request to change `vitest.config.ts`,
@@ -175,15 +175,19 @@ A spec lives at its final path under `test/` and stays as the regression net. TD
 **unit** cycle. When the behaviour lives on a domain, the TDD subject is that domain class
 (`rules/architecture.md`).
 
-Seeds, controllers, processors, repositories, contracts and Swagger doc factories
-(`*.doc.ts`) have no TDD cycle (the coverage denylist excludes them). A contract row is the
+Seeds, controllers, processors, repositories, and contracts have no TDD cycle (the coverage
+denylist excludes them). The run surface has no TDD cycle (`rules/architecture.md`). A contract row is the
 `src/` that turns the consumer's unit spec green. A repository's presence in that cycle is
 the double in the domain spec.
 
 ## The code is the specification (`/ack-spec`)
 
-When the code already exists and the job is to cover it, `src/` wins. `/ack-spec` writes
-those specs through `test-writer` and never changes `src/`.
+When the job is to cover code that already exists, `src/` wins. `/ack-spec` writes those
+specs through `test-writer`.
+
+A **confirmed bug that does not change a flow** is repaired here through `coder`, test-first,
+then reported. A flow change or a decision is asked of the owner or appended to
+`generated/docs/report-src-sweep.md`.
 
 ## Writing the spec itself
 
@@ -196,11 +200,13 @@ never done to reach green — which is what someone who only RUNS the suite need
 
 Which skill is running decides who wins:
 
-- **TDD (`coder` / `/ack-code`):** changing `src/` to turn a failing spec green is the job.
-- **`/ack-spec`:** the existing `src/` wins. **Do NOT change production code to make a spec
-  pass.** If the code is wrong, pin the spec green against current behaviour and report the
-  defect with file and line. The only sanctioned `src/` edit on that path is a typo or syntax
-  fix that cannot change behavior for any input.
+- **TDD (`coder` / `/ack-code`, and `/ack-spec` on a no-flow repair):** changing `src/` to
+  turn a failing spec green is the job.
+- **`/ack-spec` coverage path:** the existing `src/` wins. **Do NOT change production code
+  to make a coverage spec pass.** If the code is a flow change or a decision, pin the spec
+  green against current behaviour and ask or record the defect with file and line. The only
+  sanctioned `src/` edit on the coverage path is a typo or syntax fix that cannot change
+  behavior for any input.
 
 Always:
 

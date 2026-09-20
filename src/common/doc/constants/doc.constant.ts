@@ -2,7 +2,6 @@ import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
-import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { EnumHelperStatusCodeError } from '@common/helper/enums/helper.status-code.enum';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
@@ -11,21 +10,9 @@ import { EnumResponseStatusCodeError } from '@common/response/enums/response.sta
 import { HttpStatus } from '@nestjs/common';
 
 /**
- * Maps request body types to MIME strings. `none` is excluded on purpose so `DocRequest`
- * skips `ApiConsumes` instead of emitting an invalid MIME type.
- * @public
- */
-export const DocContentTypeMapping = {
-    [EnumDocRequestBodyType.formData]: 'multipart/form-data',
-    [EnumDocRequestBodyType.text]: 'text/plain',
-    [EnumDocRequestBodyType.json]: 'application/json',
-    [EnumDocRequestBodyType.formUrlencoded]: 'x-www-form-urlencoded',
-} as const;
-
-/**
- * Metadata key the doc primitives accumulate their documented response entries under, on the
- * decorated method. Deliberately not `swagger/apiResponse`: the entries stored here are
- * un-assembled records, not assembled `ApiResponse` entries.
+ * Metadata key `DocResponseError` stores documented response entries under on the decorated
+ * method. Deliberately not `swagger/apiResponse`: the entries stored here are un-assembled
+ * records, not assembled `ApiResponse` entries.
  * @public
  */
 export const DocResponseEntryMetaKey = 'DocResponseEntryMetaKey';
@@ -251,49 +238,3 @@ export const DocFileErrorResponses = {
         statusCode: EnumFileStatusCodeError.multipartInvalid,
     }),
 };
-
-/**
- * Swagger query parameters of an offset list endpoint: `perPage` and `page`.
- * @public
- */
-export const DocPaginationOffsetQueries = [
-    {
-        name: 'perPage',
-        required: false,
-        allowEmptyValue: true,
-        example: 20,
-        type: 'number',
-        description: 'Data per page, max 100',
-    },
-    {
-        name: 'page',
-        required: false,
-        allowEmptyValue: true,
-        example: 1,
-        type: 'number',
-        description: 'page number, max 20',
-    },
-];
-
-/**
- * Swagger query parameters of a cursor list endpoint: `perPage` and `cursor`.
- * @public
- */
-export const DocPaginationCursorQueries = [
-    {
-        name: 'perPage',
-        required: false,
-        allowEmptyValue: true,
-        example: 20,
-        type: 'number',
-        description: 'Data per page, max 100',
-    },
-    {
-        name: 'cursor',
-        required: false,
-        allowEmptyValue: true,
-        example: 'eyJpZCI6IjE2In0=',
-        type: 'string',
-        description: 'The pagination cursor returned from the previous request',
-    },
-];

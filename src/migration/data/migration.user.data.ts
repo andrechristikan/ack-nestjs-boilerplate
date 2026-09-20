@@ -1,7 +1,7 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import type { IMigrationUserData } from '@migration/interfaces/migration.interface';
 
-export const MigrationUserSuperAdminId = '01900000-0000-7000-8000-000000000001';
+export const MigrationUserSuperAdminId = '6aac171205d6fc2f45c6d616';
 
 const UserData: IMigrationUserData[] = [
     {

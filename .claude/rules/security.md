@@ -11,7 +11,7 @@ A credential is a password hash, a generated password, a 2FA secret or pending s
 
 - **A credential MUST NOT appear in a log line or a Sentry event** — not in `logger.debug`, not inside an error message, not inside a `JSON.stringify`, not in a URL path. Pino and `src/instrument.ts` redact the keys in `LoggerSensitiveFields`, but redaction is a safety net, not a licence (`rules/logging.md`).
 - **A credential at rest or in a job payload is hashed or encrypted.** A value that is only compared (backup code, token, API key secret) is stored as its SHA-256 hash; a value that must be read back (2FA secret, a queued password or link) is encrypted with `HelperEncryptionService`.
-- **A credential MUST NOT reach the wire.** A response carries only what its zod schema declares (`rules/dto.md`), which is what keeps an overfetched column off the response — that protection holds only while every route declares its schema on `@Response` / `@ResponsePaging`.
+- **A credential MUST NOT reach the wire.** A response carries only what its zod schema declares (`rules/dto.md`), which is what keeps an overfetched column off the response — that protection holds only while every route declares its schema on `@Response` / `@ResponsePagination`.
 - **A credential MUST NOT land on `request.<field>`.** Whatever a guard assigns there is readable by every downstream controller, interceptor, logger, and error reporter for the rest of the request.
 - Pass credentials as explicit plain values across a call, never bundled inside a payload object that drags every other field along and makes the crossing invisible at the call site.
 

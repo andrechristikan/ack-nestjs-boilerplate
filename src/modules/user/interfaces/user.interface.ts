@@ -11,6 +11,7 @@ import {
     EnumVerificationType,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
+import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import type {
     Country,
     Prisma,
@@ -21,7 +22,6 @@ import type {
     UserMobileNumber,
     UserPhoto,
 } from '@generated/prisma-client/client';
-import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import type {
     UserAdminListSelect,
     UserAdminNearLockoutSelect,
@@ -42,6 +42,11 @@ export interface IUserTwoFactor extends TwoFactor {
 export interface IUser extends User {
     role: IRoleWithPolicies;
     twoFactor: IUserTwoFactor | null;
+}
+
+/** A user row plus its profile photo, as rendered in the admin list. */
+export interface IUserList extends IUser {
+    photo: UserPhoto | null;
 }
 
 /** A user row flattened for CSV export: only the role name and the photo are joined. */

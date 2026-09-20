@@ -1,37 +1,30 @@
-import {
-    PaginationOffsetQuery,
-    PaginationQueryFilterEqualBoolean,
-} from '@common/pagination/decorators/pagination.decorator';
-import type {
-    IPaginationEqual,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
+import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
+import { DeviceAdminListRequestSchema } from '@modules/device/dtos/request/device.admin-list.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
-    ResponsePaging,
+    ResponsePagination,
 } from '@common/response/decorators/response.decorator';
+
 import type {
-    IResponsePagingReturn,
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
-    Prisma,
 } from '@generated/prisma-client/client';
+
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import {
-    DeviceAdminListDoc,
-    DeviceAdminRemoveDoc,
-} from '@modules/device/docs/device.admin.doc';
-import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
+
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceHttpService } from '@modules/device/services/device.http.service';
@@ -39,7 +32,8 @@ import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { Controller, Delete, Get, Param } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
+
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.admin.user.device')
@@ -50,8 +44,8 @@ import { ApiTags } from '@nestjs/swagger';
 export class DeviceAdminController {
     constructor(private readonly deviceHttpService: DeviceHttpService) {}
 
-    @DeviceAdminListDoc()
-    @ResponsePaging('device.list', {
+    @Doc({ summary: 'admin get all user Devices' })
+    @ResponsePagination('device.list', {
         schema: DeviceOwnershipResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -72,23 +66,15 @@ export class DeviceAdminController {
     @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationOffsetQuery({
-            availableOrderBy: DeviceDefaultAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
-        @Param('userId', { schema: RequestUuidSchema })
-        userId: string,
-        @PaginationQueryFilterEqualBoolean('isRevoked')
-        isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IDeviceOwnershipDetail>> {
-        return this.deviceHttpService.getListOffsetByAdmin(
-            userId,
-            pagination,
-            isRevoked
-        );
+        @Query({ schema: DeviceAdminListRequestSchema })
+        query: DeviceAdminListRequestDto,
+        @Param('userId', { schema: RequestMongoIdSchema })
+        userId: string
+    ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
+        return this.deviceHttpService.getListOffsetByAdmin(userId, query);
     }
 
-    @DeviceAdminRemoveDoc()
+    @Doc({ summary: 'admin remove user Device' })
     @Response('device.remove')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
@@ -109,9 +95,9 @@ export class DeviceAdminController {
     @Delete('/remove/:deviceOwnershipId')
     async remove(
         @AuthJwtPayload('userId') removedBy: string,
-        @Param('userId', { schema: RequestUuidSchema })
+        @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
-        @Param('deviceOwnershipId', { schema: RequestUuidSchema })
+        @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
         return this.deviceHttpService.removeByAdmin(

@@ -6,7 +6,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
@@ -40,7 +40,7 @@ export class SessionDomain {
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<ISessionList>> {
+    ): Promise<IResponsePaginationReturn<ISessionList>> {
         return this.sessionRepository.findWithPaginationOffsetByAdmin(
             userId,
             pagination,
@@ -51,7 +51,7 @@ export class SessionDomain {
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
-    ): Promise<IResponsePagingReturn<ISessionList>> {
+    ): Promise<IResponsePaginationReturn<ISessionList>> {
         return this.sessionRepository.findActiveWithPaginationCursor(
             userId,
             pagination

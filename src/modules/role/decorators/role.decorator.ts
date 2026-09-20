@@ -1,4 +1,7 @@
-import { RoleRequiredMetaKey } from '@modules/role/constants/role.constant';
+import {
+    DocRoleErrorResponses,
+    RoleRequiredMetaKey,
+} from '@modules/role/constants/role.constant';
 import { RoleGuard } from '@modules/role/guards/role.guard';
 import {
     SetMetadata,
@@ -14,7 +17,7 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 
 /**
- * Restricts a route to the given role types via RoleGuard.
+ * Restricts a route to the given role types via RoleGuard and documents role kits.
  * @public
  */
 export function RoleProtected(
@@ -22,7 +25,9 @@ export function RoleProtected(
 ): MethodDecorator {
     return applyDecorators(
         UseGuards(RoleGuard),
-        SetMetadata(RoleRequiredMetaKey, requiredRoles)
+        SetMetadata(RoleRequiredMetaKey, requiredRoles),
+        DocRoleErrorResponses.forbidden,
+        DocRoleErrorResponses.predefinedNotFound
     );
 }
 

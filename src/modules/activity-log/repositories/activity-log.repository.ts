@@ -6,7 +6,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
     IActivityLog,
     IActivityLogCreate,
@@ -18,10 +18,6 @@ import { Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class ActivityLogRepository implements IActivityLogRepository {
-    private readonly userScopedFilter: Prisma.ActivityLogWhereInput = {
-        workspaceId: null,
-    };
-
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
@@ -33,7 +29,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
         where?: Prisma.ActivityLogWhereInput
     ): Prisma.ActivityLogWhereInput {
         return {
-            AND: [...(where ? [where] : []), { userId }, this.userScopedFilter],
+            AND: [...(where ? [where] : []), { userId }],
         };
     }
 
@@ -57,7 +53,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IActivityLog>> {
+    ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const scopedWhere = this.buildUserScopedWhere(userId, where);
 
         return this.paginationService.offset<
@@ -104,7 +100,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IActivityLog>> {
+    ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
             userId,
@@ -159,27 +155,33 @@ export class ActivityLogRepository implements IActivityLogRepository {
         return rows.map(
             ({
                 userId,
-                createdBy: _createdBy,
+                createdBy,
                 workspaceId,
                 action,
                 description,
                 requestLog: { ipAddress, userAgent, geoLocation },
                 metadata,
-            }) => ({
-                userId,
-                workspaceId,
-                action,
-                ipAddress,
-                userAgent: this.databaseUtil.toPlainObject(userAgent),
-                geoLocation: this.databaseUtil.toPlainObject(geoLocation),
-                description,
-                metadata: this.databaseUtil.toPlainObject(
-                    metadata && Object.keys(metadata).length > 0
-                        ? metadata
-                        : null
-                ),
-                createdBy: userId,
-            })
+            }) => {
+                const plainUserAgent =
+                    this.databaseUtil.toPlainObject(userAgent);
+                const plainGeoLocation =
+                    this.databaseUtil.toPlainObject(geoLocation);
+
+                return {
+                    userId,
+                    workspaceId,
+                    action,
+                    ipAddress,
+                    userAgent: plainUserAgent,
+                    geoLocation: plainGeoLocation,
+                    description,
+                    metadata:
+                        Object.keys(metadata).length > 0
+                            ? (metadata as Prisma.InputJsonValue)
+                            : null,
+                    createdBy,
+                };
+            }
         );
     }
 

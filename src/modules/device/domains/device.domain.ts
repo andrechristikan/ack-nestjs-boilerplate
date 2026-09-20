@@ -8,7 +8,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumDeviceNotificationProvider,
@@ -46,7 +46,7 @@ export class DeviceDomain {
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IDeviceOwnership>> {
+    ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
         return this.deviceOwnershipRepository.findWithPaginationOffsetByAdmin(
             userId,
             pagination,
@@ -58,7 +58,7 @@ export class DeviceDomain {
         userId: string,
         sessionId: string,
         pagination: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
-    ): Promise<IResponsePagingReturn<IDeviceOwnershipWithSession>> {
+    ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>> {
         return this.deviceOwnershipRepository.findActiveWithPaginationCursor(
             userId,
             sessionId,

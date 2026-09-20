@@ -7,7 +7,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
@@ -27,7 +27,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         return this.databaseService.client.workspace.findFirst({
             where: {
                 id: workspaceId,
-                ...WorkspaceActiveFilter,
+                OR: WorkspaceActiveFilter,
             },
         });
     }
@@ -37,7 +37,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             where: {
                 slug,
                 isPublic: true,
-                ...WorkspaceActiveFilter,
+                OR: WorkspaceActiveFilter,
             },
         });
     }
@@ -80,7 +80,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             where: {
                 AND: [
                     where ?? {},
-                    WorkspaceActiveFilter,
+                    { OR: WorkspaceActiveFilter },
                     { members: { some: { userId } } },
                 ],
             },
@@ -93,7 +93,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             ...others
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
         isPublic?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<Workspace>> {
+    ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.paginationService.offset<
             Workspace,
             Prisma.WorkspaceWhereInput

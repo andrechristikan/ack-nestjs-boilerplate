@@ -6,7 +6,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { PasswordHistoryListSelect } from '@modules/password-history/constants/password-history.constant';
 import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
 import type { IPasswordHistoryRepository } from '@modules/password-history/interfaces/password-history.repository.interface';
@@ -31,7 +31,7 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
-    ): Promise<IResponsePagingReturn<IPasswordHistoryList>> {
+    ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         return this.paginationService.offset<
             IPasswordHistoryList,
             Prisma.PasswordHistoryWhereInput
@@ -51,7 +51,7 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
-    ): Promise<IResponsePagingReturn<IPasswordHistoryList>> {
+    ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         return this.paginationService.cursor<
             IPasswordHistoryList,
             Prisma.PasswordHistoryWhereInput

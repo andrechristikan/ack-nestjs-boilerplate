@@ -1,3 +1,4 @@
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -5,12 +6,6 @@ import {
     HealthCacheControlHeaderName,
     HealthCacheControlHeaderValue,
 } from '@modules/health/constants/health.constant';
-import {
-    HealthSystemCheckAwsDoc,
-    HealthSystemCheckDatabaseDoc,
-    HealthSystemCheckInstanceDoc,
-    HealthSystemCheckThirdPartyDoc,
-} from '@modules/health/docs/health.system.doc';
 import { HealthAwsResponseSchema } from '@modules/health/dtos/response/health.aws.response.dto';
 import type { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
 import { HealthDatabaseResponseSchema } from '@modules/health/dtos/response/health.database.response.dto';
@@ -31,7 +26,7 @@ import { ApiTags } from '@nestjs/swagger';
 export class HealthSystemController {
     constructor(private readonly healthHttpService: HealthHttpService) {}
 
-    @HealthSystemCheckAwsDoc()
+    @Doc({ summary: 'health check api for aws' })
     @Response('health.checkAws', { schema: HealthAwsResponseSchema })
     @Header(HealthCacheControlHeaderName, HealthCacheControlHeaderValue)
     @ApiKeySystemProtected()
@@ -40,7 +35,7 @@ export class HealthSystemController {
         return this.healthHttpService.checkAws();
     }
 
-    @HealthSystemCheckDatabaseDoc()
+    @Doc({ summary: 'health check api for database' })
     @Response('health.checkDatabase', { schema: HealthDatabaseResponseSchema })
     @Header(HealthCacheControlHeaderName, HealthCacheControlHeaderValue)
     @ApiKeySystemProtected()
@@ -49,7 +44,7 @@ export class HealthSystemController {
         return this.healthHttpService.checkDatabase();
     }
 
-    @HealthSystemCheckThirdPartyDoc()
+    @Doc({ summary: 'health check api for third party services' })
     @Response('health.checkThirdParty', {
         schema: HealthThirdPartyResponseSchema,
     })
@@ -62,7 +57,7 @@ export class HealthSystemController {
         return this.healthHttpService.checkThirdParty();
     }
 
-    @HealthSystemCheckInstanceDoc()
+    @Doc({ summary: 'health check api for instance' })
     @Response('health.checkInstance', { schema: HealthInstanceResponseSchema })
     @Header(HealthCacheControlHeaderName, HealthCacheControlHeaderValue)
     @ApiKeySystemProtected()

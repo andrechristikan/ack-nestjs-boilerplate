@@ -10,18 +10,16 @@ The stack is **cache-manager v7**, **Keyv** as the storage interface, and `@keyv
 
 ## Related Documents
 
-- [Configuration Documentation][ref-doc-configuration] - For Redis configuration settings
-- [Environment Documentation][ref-doc-environment] - For Redis environment variables
-- [Authentication Documentation][ref-doc-authentication] - For session cache usage examples
-- [Response Documentation][ref-doc-response] - For response caching implementation
+- [Configuration Documentation][ref-doc-configuration] - Redis config keys
+- [Environment Documentation][ref-doc-environment] - `CACHE_REDIS_URL` / Compose vs ElastiCache
+- [Authentication Documentation][ref-doc-authentication] - Session cache
+- [Response Documentation][ref-doc-response] - Response caching
+- [Installation Documentation][ref-doc-installation] - Local Redis via Docker Compose
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
-- [Principles & Patterns](#principles--patterns)
-  - [DRY & Singleton Pattern](#dry--singleton-pattern)
-  - [Global Module Pattern](#global-module-pattern)
 - [Architecture](#architecture)
   - [Module Dependency Flow](#module-dependency-flow)
   - [RedisCacheModule](#rediscachemodule)
@@ -37,24 +35,9 @@ The stack is **cache-manager v7**, **Keyv** as the storage interface, and `@keyv
   - [Cache Operations](#cache-operations)
 
 
-## Principles & Patterns
-
-### DRY & Singleton Pattern
-
-- **Single Cache Connection**: Only ONE Redis connection is created for caching and shared across every cache consumer. BullMQ opens its own connections against `QUEUE_REDIS_URL` and does not reuse this client
-- **Single Configuration**: Defined once in `redis.config.ts`
-- **Reusable Providers**: `CacheMainProvider` and `SessionCacheProvider` share the same Redis client
-- **Direct client consumer**: `RequestThrottleStorageService` injects `RedisClientCachedProvider` itself and runs its sliding-window Lua script on that same connection, so rate limiting adds no Redis connection of its own. See [Security and Middleware Documentation][ref-doc-security-and-middleware]
-
-`RedisCacheModule` creates one Redis connection. Cache classes, `SessionCacheProvider`, and `RequestThrottleStorageService` inject that client.
-
-### Global Module Pattern
-
-`RedisCacheModule` and `CacheMainModule` are dynamic modules whose `forRoot()` returns `global: true`, and `SessionDomainModule` carries the `@Global()` decorator:
-- Providers automatically available everywhere
-- No need to import in feature modules
-
 ## Architecture
+
+One Redis connection serves caching. `RedisCacheModule.forRoot()` and `CacheMainModule.forRoot()` are global; `SessionDomainModule` is `@Global()`. Feature modules do not re-import them. `CacheMainProvider` and `SessionCacheProvider` share that client. `RequestThrottleStorageService` injects `RedisClientCachedProvider` for its sliding-window Lua script, so rate limiting adds no extra connection. See [Security and Middleware][ref-doc-security-and-middleware]. BullMQ uses `QUEUE_REDIS_URL` and does not reuse this client.
 
 ### Module Dependency Flow
 
@@ -74,11 +57,7 @@ CommonModule
 
 ### RedisCacheModule
 
-**Purpose:** Provides Redis client instance
-
-**Provider:** `RedisClientCachedProvider`
-
-**Scope:** Global (available everywhere)
+Provides `RedisClientCachedProvider` (global).
 
 **Configuration:**
 ```typescript
@@ -98,13 +77,7 @@ createKeyv(
 
 ### CacheMainModule
 
-**Purpose:** Provides cache manager for application-wide caching
-
-**Provider:** `CacheMainProvider`
-
-**Scope:** Global (available everywhere)
-
-**Depends on:** `RedisClientCachedProvider`
+Provides `CacheMainProvider` (global application cache). Depends on `RedisClientCachedProvider`.
 
 **Usage:**
 ```typescript
@@ -115,7 +88,14 @@ export class FeatureFlagCache {
 }
 ```
 
-A cache manager is injected into a dedicated cache class, an interceptor, or a health indicator. The current consumers of `CacheMainProvider` are `ApiKeyCache`, `AuthCache`, `FeatureFlagCache`, `AnalyticCache`, `HealthRedisIndicator`, and `ResponseCacheInterceptor`.
+A cache manager is injected into a dedicated cache class, an interceptor, or a health indicator. Current consumers of `CacheMainProvider`:
+
+- `ApiKeyCache`
+- `AuthCache`
+- `FeatureFlagCache`
+- `AnalyticCache`
+- `HealthRedisIndicator`
+- `ResponseCacheInterceptor`
 
 **Building a key from its config pattern.** Every key pattern lives in config, and how it is filled follows the number of placeholders in it:
 
@@ -128,13 +108,7 @@ The function form of `replace` stops a value containing `$&` or `$1` from being 
 
 ### SessionDomainModule
 
-**Purpose:** Provides cache for session management only
-
-**Provider:** `SessionCacheProvider` (`src/modules/session/constants/session.constant.ts`)
-
-**Scope:** Global (available everywhere)
-
-**Depends on:** `RedisClientCachedProvider` (shares same Redis connection)
+Registers `SessionCacheProvider` (session keys only) on the same Redis client. Global via `@Global()`.
 
 **Usage:**
 ```typescript
@@ -145,7 +119,13 @@ export class SessionCache {
 }
 ```
 
-`SessionCache` is the only injection site of `SessionCacheProvider`. `SessionCache` also injects `RedisClientCachedProvider` for the two operations the cache manager cannot express (see [Session Cache](#session-cache)). `SessionCacheProvider` is registered inside `SessionDomainModule` and stays internal to it: the module imports `SessionRepositoryModule`, provides `SessionDomain`, `SessionCache`, `SessionUtil`, and `SessionAnalyticDomain`, and exports `SessionDomain`, `SessionCache`, and `SessionAnalyticDomain`.
+`SessionCache` is the only injection site of `SessionCacheProvider`. `SessionCache` also injects `RedisClientCachedProvider` for the two operations the cache manager cannot express (see [Session Cache](#session-cache)).
+
+`SessionCacheProvider` is registered inside `SessionDomainModule` and stays internal to it. The module:
+
+- imports `SessionRepositoryModule`
+- provides `SessionDomain`, `SessionCache`, `SessionUtil`, and `SessionAnalyticDomain`
+- exports `SessionDomain`, `SessionCache`, and `SessionAnalyticDomain`
 
 Both cache modules register their own `CacheManagerModule.registerAsync` over the shared `RedisClientCachedProvider` with `ttl` from `redis.cache.ttlInMs`, then alias `CACHE_MANAGER` to their named provider with `useExisting`.
 
@@ -161,13 +141,20 @@ Both cache modules register their own `CacheManagerModule.registerAsync` over th
 | `deleteLogins(userId, sessions)` | Deletes exactly the given session entries through `mdel`; nothing when the list is empty |
 | `deleteLoginsByUser(userId)` | Walks every master node with `SCAN` (`MATCH` on the user's key prefix, `COUNT` `SessionCachePurgeScanCount` = 1000, `TYPE string`) and `UNLINK`s each batch it finds |
 
-`SessionDomain` wraps the two deletes. `purgeRevokedLogins` calls `deleteLogins` and serves the paths that revoke one session or a subset: logout, a single self or admin revoke, device removal, and the sessions a login revokes on a known device. `purgeLoginsByUser` calls `deleteLoginsByUser` and serves the paths that revoke every session of a user: account self-deletion, admin revoke-all, an admin status change to `blocked` or `inactive`, password change, forgot-password reset, admin password reset, two-factor disable, and admin two-factor reset. Both run after the revoke has committed, and both log and swallow a failure, so the committed revoke still answers success. Each path then stages its activity rows. Flow narrative: [Authentication][ref-doc-authentication].
+`SessionDomain` wraps the two deletes:
+
+| Wrapper | Calls | Serves |
+|---|---|---|
+| `purgeRevokedLogins` | `deleteLogins` | Paths that revoke one session or a subset: logout, a single self or admin revoke, device removal, and the sessions a login revokes on a known device |
+| `purgeLoginsByUser` | `deleteLoginsByUser` | Paths that revoke every session of a user: account self-deletion, admin revoke-all, an admin status change to `blocked` or `inactive`, password change, forgot-password reset, admin password reset, two-factor disable, and admin two-factor reset |
+
+Both run after the revoke has committed, and both log and swallow a failure, so the committed revoke still answers success. Each path then stages its activity rows. Flow narrative: [Authentication][ref-doc-authentication].
 
 A refresh rotates the entry with `updateLogin` after its database commit. When the entry is gone (a revoke purged it while the refresh ran), nothing is written and the refresh answers `AuthJwtRefreshTokenInvalidException` (401, `50801`).
 
 ### Redis Failures
 
-Reads through the cache manager (`get`, `ttl`) resolve to a miss when Redis fails, so a read falls through to the database or to the caller's miss handling. Writes and deletes split into two groups:
+Reads through the cache manager (`get`, `ttl`) resolve to a miss when Redis fails, so a read falls through to the database or to the caller's miss handling. Writes and deletes split into three groups:
 
 | Group | Calls | On a Redis failure |
 |---|---|---|
@@ -177,7 +164,13 @@ Reads through the cache manager (`get`, `ttl`) resolve to a miss when Redis fail
 
 `ResponseCacheInterceptor` inherits the error handling of `@nestjs/cache-manager`'s `CacheInterceptor`, which logs a failed write and runs the handler when the cache lookup fails.
 
-An API key admin write that changes or deletes a key (status, name, dates, reset, delete) runs the database write, then stages its activity row with `onError: true`, then deletes the key's cache entry, in that order. When the delete fails, the request answers 500 with the database change applied and its activity row written. `MigrationApiKeySeed.remove` deletes the `ApiKey` rows first, then the cache entries of the seeded keys.
+An API key admin write that changes or deletes a key runs, in order:
+
+1. database write
+2. stages its activity row with `onError: true`
+3. deletes the key's cache entry
+
+Writes covered: status, name, dates, reset, delete. When the delete fails, the request answers 500 with the database change applied and its activity row written. `MigrationApiKeySeed.remove` deletes the `ApiKey` rows first, then the cache entries of the seeded keys.
 
 ## Configuration
 
@@ -197,7 +190,7 @@ An API key admin write that changes or deletes a key (status, name, dates, reset
 
 **Default TTL:** Cache entries expire after **5 minutes** (300,000 milliseconds) by default. This can be overridden per cache operation.
 
-**Redis database:** The cache uses database `0` (`CACHE_REDIS_URL=redis://localhost:6379/0`). BullMQ uses database `1` (`QUEUE_REDIS_URL=redis://localhost:6379/1`) on the same server, so flushing one does not touch the other.
+**Redis database:** Cache uses `db:0` via `CACHE_REDIS_URL`; BullMQ uses `db:1` via `QUEUE_REDIS_URL`. Locally prefer Compose Redis; without Docker use a hosted Redis such as [Amazon ElastiCache][ref-elasticache]. See [Environment][ref-doc-environment] and [Installation][ref-doc-installation].
 
 **Key prefix:** `namespace: 'Cache'` with `keyPrefixSeparator: ':'` means every key is stored as `Cache:{key}`.
 
@@ -220,7 +213,7 @@ An API key admin write that changes or deletes a key (status, name, dates, reset
 export class CommonModule {}
 ```
 
-**Why this order?** `CacheMainModule` depends on `RedisClientCachedProvider` from `RedisCacheModule`. `SessionDomainModule` registers its own cache provider over the same client later.
+`CacheMainModule` needs `RedisClientCachedProvider` from `RedisCacheModule`. `SessionDomainModule` registers its session cache provider on the same client later.
 
 ## Usage
 
@@ -263,3 +256,5 @@ For cache operations (set, get, delete, etc.), see:
 [ref-doc-authentication]: authentication.md
 [ref-doc-response]: response.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-installation]: installation.md
+[ref-elasticache]: https://aws.amazon.com/elasticache/

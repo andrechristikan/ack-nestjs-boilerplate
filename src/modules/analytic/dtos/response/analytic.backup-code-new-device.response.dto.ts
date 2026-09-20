@@ -8,7 +8,7 @@ import { faker } from '@faker-js/faker';
 export const AnalyticBackupCodeNewDeviceResponseSchema = z.object({
     userId: z.string().meta({
         description: 'Identifier of the user who regenerated the backup codes',
-        example: faker.string.uuid(),
+        example: faker.database.mongodbObjectId(),
     }),
     regeneratedAt: z.date().meta({
         description: 'When the backup codes were regenerated',

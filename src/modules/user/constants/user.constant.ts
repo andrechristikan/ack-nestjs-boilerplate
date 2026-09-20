@@ -1,4 +1,7 @@
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import { HttpStatus } from '@nestjs/common';
+import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
 /**
  * Route metadata key holding whether `@UserProtected` requires a verified user.
@@ -13,13 +16,43 @@ export const UserGuardIsVerifiedMetaKey = 'UserGuardIsVerifiedMetaKey';
 export const UserStoreKey = 'UserStore';
 
 /**
- * Matches a `TwoFactorBackupCode` the user can still spend — a consumed code is never read back.
+ * User guard error kit for `@UserProtected` (no `auth.error.accessTokenUnauthorized`).
+ * @public
  */
-export const TwoFactorActiveBackupCodesFilter: Prisma.TwoFactorBackupCodeWhereInput =
-    {
-        usedAt: null,
-    };
+export const DocUserErrorResponses = {
+    unauthorized: DocResponseError(HttpStatus.UNAUTHORIZED, {
+        statusCode: EnumUserStatusCodeError.notAuthenticated,
+        messagePath: 'user.error.notAuthenticated',
+    }),
+    forbidden: DocResponseError(
+        HttpStatus.FORBIDDEN,
+        {
+            statusCode: EnumUserStatusCodeError.notFoundForbidden,
+            messagePath: 'user.error.notFound',
+        },
+        {
+            statusCode: EnumUserStatusCodeError.blockedForbidden,
+            messagePath: 'user.error.blocked',
+        },
+        {
+            statusCode: EnumUserStatusCodeError.inactiveForbidden,
+            messagePath: 'user.error.inactive',
+        },
+        {
+            statusCode: EnumUserStatusCodeError.passwordExpired,
+            messagePath: 'auth.error.passwordExpired',
+        },
+        {
+            statusCode: EnumUserStatusCodeError.emailNotVerified,
+            messagePath: 'user.error.emailNotVerified',
+        }
+    ),
+} as const;
 
+/**
+ * Prisma select of the embedded user reference other records carry.
+ * @public
+ */
 export const UserRefSelect = {
     id: true,
     name: true,
@@ -60,6 +93,7 @@ export const UserAdminListSelect = {
     lastLoginWith: true,
     lastWorkspaceId: true,
     lastWorkspaceChangedAt: true,
+    termPolicy: true,
     photo: true,
     createdAt: true,
     createdBy: true,

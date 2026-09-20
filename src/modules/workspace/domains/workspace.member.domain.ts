@@ -4,7 +4,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumWorkspaceMemberRole,
@@ -194,7 +194,7 @@ export class WorkspaceMemberDomain {
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
         role?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
+    ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         return this.workspaceMemberRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
@@ -297,7 +297,7 @@ export class WorkspaceMemberDomain {
     async getMembersListForAdmin(
         workspaceId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
-    ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
+    ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const [workspace, paginated] = await Promise.all([
             this.workspaceRepository.findByIdForAdmin(workspaceId),
             this.workspaceMemberRepository.findWithPaginationOffset(

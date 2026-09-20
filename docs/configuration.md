@@ -8,9 +8,9 @@ NestJS `ConfigModule` loads one `registerAs` file per concern from `src/configs`
 
 ## Related Documents
 
-- [Environment Documentation][ref-doc-environment] - For detailed environment variable configuration and validation
-- [Database Documentation][ref-doc-database] - For database configuration usage
-- [Cache Documentation][ref-doc-cache] - For Redis configuration usage
+- [Environment Documentation][ref-doc-environment] - Env var names and validation (`AppEnvSchema`)
+- [Database Documentation][ref-doc-database] - MongoDB and Prisma usage
+- [Cache Documentation][ref-doc-cache] - Redis cache usage
 
 ## Table of Contents
 
@@ -47,7 +47,7 @@ NestJS `ConfigModule` loads one `registerAs` file per concern from `src/configs`
 
 ## Configuration Structure
 
-All configuration files are in `src/configs`. Each file uses `registerAs` from `@nestjs/config` and a TypeScript interface.
+All configuration files are in `src/configs`. Each file uses `registerAs` from `@nestjs/config` and a TypeScript interface. Env var names and validation live in [Environment Documentation][ref-doc-environment]; this page documents the typed config objects the app injects.
 
 The configuration modules are imported and registered in `src/configs/index.ts` as an array and this configuration array is then loaded in `src/common/common.module.ts`:
 
@@ -72,17 +72,15 @@ export class CommonModule {}
 
 A config value whose name ends in `Pattern` or `Path` is a template carrying `{token}` placeholders: cache and Redis keys, S3 object paths and URLs, email links, and the export filename. The consumer fills it at the point of use, and the number of placeholders decides how:
 
-- One placeholder is filled by `String.prototype.replace('{name}', () => value)`. The function form of the replacement stops a value containing `$&` or `$1` from being read as a replacement pattern.
-- Two or more go through `HelperStringService.fillPattern(pattern, values)`, which scans the pattern once so a substituted value is never re-read as a token. A `{token}` the caller supplied no value for raises `HelperPatternTokenMissingException` (`52202`, 500) naming that token, rather than leaving the literal `{token}` in the key or the link.
+- **One placeholder.** Filled by `String.prototype.replace('{name}', () => value)`. The function form of the replacement stops a value containing `$&` or `$1` from being read as a replacement pattern.
+- **Two or more.** Go through `HelperStringService.fillPattern(pattern, values)`, which scans the pattern once so a substituted value is never re-read as a token. A `{token}` the caller supplied no value for raises `HelperPatternTokenMissingException` (`52202`, 500) naming that token, rather than leaving the literal `{token}` in the key or the link.
 
 ### App Configuration
 
 **File**: `src/configs/app.config.ts`
 **Interface**: `IConfigApp`
 
-This configuration handles the core application settings including environment details, versioning, and server configuration.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -156,9 +154,7 @@ encryptionSecretKey: string     // From APP_ENCRYPTION_SECRET_KEY: 64 base64url 
 **File**: `src/configs/auth.config.ts`
 **Interface**: `IConfigAuth`
 
-This configuration manages JWT authentication settings including token configuration, password policies, social authentication, and two-factor authentication.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -258,15 +254,13 @@ xApiKey: {
 **File**: `src/configs/database.config.ts`
 **Interface**: `IConfigDatabase`
 
-This configuration manages database connection settings for PostgreSQL.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
 **`url`** - Database connection string
 ```typescript
-url: string                     // PostgreSQL connection URL
+url: string                     // MongoDB connection URL
 ```
 
 **`debug`** - Database debug mode
@@ -284,9 +278,7 @@ seedTransactionTimeoutInMs: number  // Timeout every seed passes to withTransact
 **File**: `src/configs/aws.config.ts`
 **Interface**: `IConfigAws`
 
-This configuration handles AWS service integration including S3 and SES services with support for IAM role-based authentication.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -356,9 +348,7 @@ ses: {
 **File**: `src/configs/logger.config.ts`
 **Interface**: `IConfigDebug`
 
-This configuration manages logging settings using Pino logger with customizable log levels and formatting.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -405,9 +395,7 @@ sentry: {
 **File**: `src/configs/request.config.ts`
 **Interface**: `IConfigRequest`
 
-This configuration handles HTTP request settings including body size limits, CORS, security headers, and rate limiting.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -500,9 +488,7 @@ Route tiers (`EnumRequestThrottleRoute`), each with `ttlInMs` 60s and `blockDura
 **File**: `src/configs/redis.config.ts`
 **Interface**: `IConfigRedis`
 
-This configuration manages Redis connection settings for caching and queue operations.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -528,7 +514,6 @@ queue: {
 **File**: `src/configs/user.config.ts`
 **Interface**: `IUserConfig`
 
-This configuration handles user-related settings including username patterns and file upload paths.
 
 #### Configuration Keys:
 
@@ -576,9 +561,7 @@ onboarding: {
 **File**: `src/configs/doc.config.ts`
 **Interface**: `IConfigDoc`
 
-This configuration manages API documentation settings for Swagger/OpenAPI.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -607,9 +590,7 @@ jsonUrlPattern: string          // Relative path template ('{docPrefix}/json'), 
 **File**: `src/configs/message.config.ts`
 **Interface**: `IConfigMessage`
 
-This configuration handles application messaging and internationalization settings.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -628,9 +609,7 @@ language: string                // Default application language
 **File**: `src/configs/email.config.ts`
 **Interface**: `IConfigEmail`
 
-This configuration manages default email addresses for system communications. Email addresses (`noreply`, `support`, `admin`) come from environment variables and fall back to `null` when unset.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -659,7 +638,6 @@ batchSize: number               // Maximum number of emails per batch (default: 
 **File**: `src/configs/verification.config.ts`
 **Interface**: `IConfigVerification`
 
-This configuration handles user verification processes including email verification.
 
 #### Configuration Keys:
 
@@ -701,7 +679,6 @@ reference: {
 **File**: `src/configs/forgot-password.config.ts`
 **Interface**: `IConfigForgotPassword`
 
-This configuration manages password reset functionality and security policies.
 
 #### Configuration Keys:
 
@@ -738,9 +715,7 @@ reference: {
 **File**: `src/configs/home.config.ts`
 **Interface**: `IConfigHome`
 
-This configuration handles home page and organization information.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -759,7 +734,6 @@ url: string                     // URL for organization/home page
 **File**: `src/configs/session.config.ts`
 **Interface**: `IConfigSession`
 
-This configuration manages user session key patterns for Redis storage.
 
 #### Configuration Keys:
 
@@ -773,7 +747,6 @@ keyPattern: string              // Redis key pattern for user sessions ('User:{u
 **File**: `src/configs/term-policy.config.ts`
 **Interface**: `IConfigTermPolicy`
 
-This configuration handles terms of service and privacy policy file management.
 
 #### Configuration Keys:
 
@@ -792,7 +765,6 @@ contentPublicPath: string       // Public path for accessing policy content
 **File**: `src/configs/feature-flag.config.ts`
 **Interface**: `IConfigFeatureFlag`
 
-This configuration manages feature flag caching settings.
 
 #### Configuration Keys:
 
@@ -820,7 +792,6 @@ anonymous: {
 **File**: `src/configs/response.config.ts`
 **Interface**: `IConfigResponse`
 
-This configuration handles API response caching and file-export settings.
 
 #### Configuration Keys:
 
@@ -839,9 +810,7 @@ filenameExportPattern: string   // e.g. 'export-{timestamp}.{extension}'
 **File**: `src/configs/firebase.config.ts`  
 **Interface**: `IConfigFirebase`
 
-This configuration manages Firebase integration settings for push notification delivery via FCM.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -868,7 +837,6 @@ privateKey: string | null       // Service account private key (PEM), verbatim f
 **File**: `src/configs/queue.config.ts`
 **Interface**: `IConfigQueue`
 
-This configuration holds the BullMQ default job options. `QueueModule.forRoot()` applies shared connection defaults; each named queue's `RegisterQueueOptionsFactory` on the owning feature domain module applies that queue's backoff.
 
 #### Configuration Keys:
 
@@ -890,7 +858,6 @@ job: {
 **File**: `src/configs/health.config.ts`
 **Interface**: `IConfigHealth`
 
-This configuration holds the thresholds consumed by `HealthInstanceIndicator` for the instance health check, plus the graceful-shutdown window `HealthDomainModule` hands to `TerminusModule.forRootAsync`.
 
 #### Configuration Keys:
 
@@ -924,7 +891,6 @@ gracefulShutdownTimeoutInMs: number  // How long Terminus keeps serving after a 
 **File**: `src/configs/notification.config.ts`
 **Interface**: `IConfigNotification`
 
-This configuration holds notification deduplication and push-cleanup settings, consumed by the notification queue classes when they enqueue and by `NotificationPushMaintenanceDomain` when it runs a sweep.
 
 #### Configuration Keys:
 
@@ -947,7 +913,6 @@ push: {
 **File**: `src/configs/file.config.ts`
 **Interface**: `IConfigFile`
 
-This configuration holds the file import and export limits.
 
 #### Configuration Keys:
 
@@ -971,7 +936,6 @@ maxSizeExportInBytes: number    // Largest file `ResponseFileInterceptor` sends 
 **File**: `src/configs/workspace.config.ts`
 **Interface**: `IConfigWorkspace`
 
-This configuration handles workspace resolution, slug generation, and workspace invitation settings.
 
 #### Configuration Keys:
 
@@ -1040,7 +1004,6 @@ joinRequest: {
 **File**: `src/configs/project.config.ts`
 **Interface**: `IConfigProject`
 
-This configuration handles project slug generation.
 
 #### Configuration Keys:
 

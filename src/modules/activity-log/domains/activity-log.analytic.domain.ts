@@ -1,5 +1,5 @@
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogWorkspaceVolumeContract } from '@modules/activity-log/contracts/activity-log.workspace-volume.contract';
 import type {
     IActivityLogAnalyticActionCount,
@@ -71,7 +71,7 @@ export class ActivityLogAnalyticDomain {
         startDate: Date,
         endDate: Date,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
+    ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         return this.activityLogAnalyticRepository.groupActivityByWorkspaceOffset(
             [...ActivityLogWorkspaceVolumeContract],
             startDate,

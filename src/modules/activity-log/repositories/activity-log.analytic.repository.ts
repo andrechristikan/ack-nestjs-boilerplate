@@ -2,7 +2,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { IActivityLogAnalyticRepository } from '@modules/activity-log/interfaces/activity-log.analytic-repository.interface';
 import type {
     IActivityLogAnalyticActionCount,
@@ -95,7 +95,7 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
         startDate: Date,
         endDate: Date,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
+    ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         const { skip, limit } = params;
         const scopedWhere: Prisma.ActivityLogWhereInput = {
             workspaceId: { not: null },

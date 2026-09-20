@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { PaginationService } from '@common/pagination/services/pagination.service';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 
 /**
- * Global module exposing `PaginationService` app-wide.
+ * Global module exposing `PaginationService` and `PaginationQueryUtil` app-wide.
  */
 @Module({})
 export class PaginationModule {
@@ -11,8 +12,8 @@ export class PaginationModule {
         return {
             module: PaginationModule,
             global: true,
-            providers: [PaginationService],
-            exports: [PaginationService],
+            providers: [PaginationService, PaginationQueryUtil],
+            exports: [PaginationService, PaginationQueryUtil],
             imports: [],
             controllers: [],
         };

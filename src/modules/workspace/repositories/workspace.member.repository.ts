@@ -7,7 +7,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumWorkspaceMemberRole,
     Prisma,
@@ -105,7 +105,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
             ...others
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
         role?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
+    ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
             where,

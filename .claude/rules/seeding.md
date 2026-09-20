@@ -8,7 +8,7 @@ schema migrations — the schema is `rules/prisma-schema.md`. Flow narrative:
 
 `src/migration/` seeds **initial data only**: the reference and bootstrap rows an empty database needs to boot and be usable — roles, countries, the seed api-key, feature flags, term policies, notification/term templates, the aws-s3 config, and the seed user.
 
-- **PostgreSQL schema changes use versioned Prisma Migrate files** under `prisma/migrations/`, applied through `db:migrate`. This workflow covers initial-data seeds only; schema migrations remain governed by `rules/database.md`.
+- **MongoDB has NO migration files.** Schema shape is applied by `prisma db push` (`db:migrate`), not by versioned migration scripts. So there is no "write a migration" here — there is only "seed initial data".
 - **A seed is re-runnable bootstrap.** It populates the baseline an empty install starts from.
   A one-off production write, a column re-compute, or a historical import does not belong here.
 - **Not a place for business logic.** A seed writes rows; it does not compute business decisions.
@@ -24,7 +24,8 @@ src/migration/
 └── migration.module.ts            # registers every seed command as a provider
 ```
 
-- A seed is `<module>.<concern>.seed.ts`, class `Migration<Module>Seed`, decorated `@Command({ name: '<module>' })`, and **extends `MigrationSeedBase`** — never `CommandRunner` directly. The base owns the `--type seed|remove` dispatch; a seed only implements `seed()` and `remove()`.
+- A seed is `<module>.<concern>.seed.ts`, class `Migration<Module>Seed`, decorated `@Command({ name })`, and **extends `MigrationSeedBase`** — never `CommandRunner` directly. The base owns the `--type seed|remove` dispatch; a seed only implements `seed()` and `remove()`.
+- **`@Command` `name` is camelCase** matching the module or concern — `apiKey`, `featureFlag`, `termPolicy`, `templateEmailNotification`, `templateTermPolicy`, `awsS3Config`. Never kebab-case and never a mixed dash form (`template-email-notification`, `template-termPolicy`, `aws-s3-config`).
 - **Every `seed()` has a matching `remove()`.** Seeding without a clean teardown leaves `migration:remove` unable to undo it. The pair is mandatory, not optional.
 - **Static seed rows live in `data/` as a PascalCase const** (`<module>.<concern>.data.ts`), imported by the seed. Every const in that tree is PascalCase, exported or not. A seed whose data is built inline (no external key/reference) needs no `data/` file — do not invent one to be symmetric.
 - **A seed writes its audit fields explicitly.** There is no request actor in a command, so `createdBy` and `updatedBy` on every seeded row — including the update branch of an upsert and every nested row — carry `MigrationUserSuperAdminId`, the fixed id the user seed gives the superadmin. A seeded activity row follows the same contracts a request does (`rules/security.md`): a row one user creates for another writes the pair, and an action with no metadata writes `{}`.
@@ -41,16 +42,16 @@ Bundled today:
 - `migration:seed` — `apiKey → country → featureFlag → role → policy → termPolicy → user → workspace`
 - `migration:remove` — `workspace → user → apiKey → featureFlag → country → policy → role → termPolicy` (**not** a strict reverse of seed; do not invent a reverse that is not in the script)
 
-Extra seeds exist and are registered (`template-email-notification`, `template-termPolicy`, `aws-s3-config`, …) but are **not** part of `migration:seed` / `migration:remove` — run them as separate `migration` commands when needed.
+Extra seeds exist and are registered (`templateEmailNotification`, `templateTermPolicy`, `awsS3Config`, …) but are **not** part of `migration:seed` / `migration:remove` — run them as separate `migration` commands when needed.
 
 Adding a seed with a dependency means placing it correctly in **both** bundled scripts when it belongs in the bundled flow. The `providers` array order is irrelevant to execution.
 
 ## Idempotency
 
 - `seed()` MUST be safe to run against a database that may already hold its rows — guard with an existence check or an upsert, never a blind `create` that throws on the second run. `migration:seed` is run repeatedly across environments.
-- `remove()` deletes what `seed()` wrote, scoped to it. It does not truncate a shared table another seed also populates.
+- `remove()` is a RESET of the collections its `seed()` owns, not a scoped undo. `migration:remove` exists to bring an environment back to a known-empty baseline before `migration:seed`, so a seed clears its collections outright — the user seed takes the user-owned collections with it. The command is destructive by design and the owner runs it knowing that.
 
 ## Off-limits (inherits the mandatory schema rule)
 
-- **`migration:fresh` is a DB-reset command** — it runs `prisma migrate reset --force` before seeding. It is on the forbidden list (`rules/database.md`, mandatory rule 1): do not run it, describe the intent and let the owner run it.
+- **`migration:fresh` is a DB-reset command** — it resets the database before seeding. It is one of the commands the owner runs (`rules/prisma-schema.md`): describe the intent and let the owner run it.
 - `migration:seed`, `migration:remove`, and every `migration:*` command are the owner's to run — you write the seed, you do not execute the seeder against a database.

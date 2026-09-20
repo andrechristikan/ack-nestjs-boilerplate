@@ -5,7 +5,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
     ISession,
     ISessionList,
@@ -22,14 +22,14 @@ export interface ISessionRepository {
             ...others
         }: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<ISessionList>>;
+    ): Promise<IResponsePaginationReturn<ISessionList>>;
     findActiveWithPaginationCursor(
         userId: string,
         {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
-    ): Promise<IResponsePagingReturn<ISessionList>>;
+    ): Promise<IResponsePaginationReturn<ISessionList>>;
     findOneActive(userId: string, sessionId: string): Promise<ISession | null>;
     createInTx(
         tx: IDatabaseTransactionClient,

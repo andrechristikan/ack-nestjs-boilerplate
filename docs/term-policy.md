@@ -6,11 +6,12 @@ Term Policy stores versioned legal documents (terms of service, privacy policy, 
 
 ## Related Documents
 
-- [Database Documentation][ref-doc-database] - Migration, seeding, and schema details
-- [Authorization Documentation][ref-doc-authorization] - RBAC for admin operations
-- [Authentication Documentation][ref-doc-authentication] - User authentication requirements
-- [Presign Documentation][ref-doc-presign] - How to upload the contents
+- [Database Documentation][ref-doc-database] - Migration, seeding, and schema
+- [Authorization Documentation][ref-doc-authorization] - Admin RBAC on term-policy routes
+- [Authentication Documentation][ref-doc-authentication] - JWT and session context
+- [File Upload Documentation][ref-doc-file-upload] - Content upload and admin content GET (presign)
 - [Analytic Documentation][ref-doc-analytic] - Admin acceptance-rate and time-to-accept metrics under `/admin/analytic/term-policies/*`
+- [Email Documentation][ref-doc-email] - SES templates for policy publication (not the HTML bodies)
 
 ## Table of Contents
 
@@ -79,7 +80,7 @@ Term policies follow a two-stage status:
 
 Both paths resolve to the same key, so the two copies differ by bucket alone. The record's `contents` point at the public copy, each entry carrying the `access` of the bucket it names.
 
-**Important**: When a new version is published, the matching `User` acceptance column (`termsOfServiceAccepted`, `privacyAccepted`, `cookiesAccepted`, or `marketingAccepted`) is set to `false` for every active, non-deleted user, requiring them to accept the new version before accessing protected endpoints.
+Publishing a new version sets `termPolicy[type]` to `false` for every active, non-deleted user, so each one accepts the new version before reaching protected endpoints again.
 
 ## Flow
 
@@ -115,7 +116,7 @@ sequenceDiagram
     Admin->>API: Publish policy
     API->>Database: Reject an already-published policy, then a policy with no content
     API->>S3 Public: Copy all content files from the private bucket
-    API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to the public items,<br/>matching active users acceptance column = false
+    API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to the public items,<br/>active users termPolicy[type] = false
     API->>Users: Queue publishTermPolicy notification
     API->>Admin: Policy published
     
@@ -145,7 +146,7 @@ sequenceDiagram
     User->>API: Accept policy (type)
     API->>Database: Check latest published exists (404 otherwise)
     API->>Database: Check that version not already accepted (409 otherwise)
-    API->>Database: One transaction: create acceptance record,<br/>set matching User acceptance column = true,<br/>log activity (IP, userAgent)
+    API->>Database: One transaction: create acceptance record,<br/>set user.termPolicy[type] = true,<br/>log activity (IP, userAgent)
     API->>User: Queue userAcceptTermPolicy notification
     API->>User: Acceptance recorded
     
@@ -153,7 +154,7 @@ sequenceDiagram
     
     User->>API: Request protected endpoint
     API->>Guard: Check term policy requirement
-    Guard->>Database: Verify required User acceptance columns are true
+    Guard->>Database: Verify user.termPolicy[type]=true
     alt Policy Accepted
         Guard->>API: Allow access
         API->>User: Return response
@@ -217,7 +218,14 @@ POST /admin/term-policy/content/presign/generate
 }
 ```
 
-The API derives the S3 key itself from `type`, `version`, and `language`; the client does not supply it. The response is the standard presign payload (`key`, `mime`, `extension`, `presignUrl`, `expiredInSeconds`) against the **private** bucket. Requesting a presign for a type and version already published returns `400` (`statusInvalid`).
+The API derives the S3 key itself from `type`, `version`, and `language`; the client does not supply it.
+
+Response:
+
+- the standard presign payload (`key`, `mime`, `extension`, `presignUrl`, `expiredInSeconds`)
+- against the **private** bucket
+
+Requesting a presign for a type and version already published returns `400` (`statusInvalid`).
 
 ### Create Policy
 
@@ -268,7 +276,13 @@ Publish policy and invalidate all user acceptances:
 ```typescript
 PATCH /admin/term-policy/publish/:termPolicyId
 ```
-**Critical**: Publishing sets the matching `User` acceptance column to `false` for every active, non-deleted user, requiring re-acceptance. Existing `TermPolicyUserAcceptance` records remain as acceptance history. Publishing an already-published policy returns `400` (`statusInvalid`); publishing one with no content returns `400` (`contentEmpty`). Once published, a policy cannot be edited or deleted, and its content files exist in both buckets: the public copy the record points at, and the private original the draft was uploaded to.
+Publishing:
+
+- sets `termPolicy[type]` to `false` for every active, non-deleted user, so each one accepts again
+- an already-published policy returns `400` (`statusInvalid`)
+- a policy with no content returns `400` (`contentEmpty`)
+
+Once published, a policy cannot be edited or deleted, and its content files exist in both buckets: the public copy the record points at, and the private original the draft was uploaded to.
 
 ### List Policies
 
@@ -311,26 +325,35 @@ The guard reads the user out of the request store, which `@UserProtected()` fill
   path: '/user/term-policy',
 })
 export class TermPolicySharedController {
+  @Doc({ summary: 'List of terms or policies accepted by the user' })
+  @ResponsePagination('termPolicy.listAccepted', {
+    schema: TermPolicyUserAcceptanceResponseSchema,
+  })
   @TermPolicyAcceptanceProtected()
   @UserProtected()
   @AuthJwtAccessProtected()
+  @ApiKeyProtected()
+  @RequestThrottle({ user: true })
   @Get('/acceptance/list')
   async listAccepted(
-    @PaginationCursorQuery({
-      availableOrderBy: TermPolicyAcceptanceDefaultAvailableOrderBy,
-    })
-    pagination: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>,
+    @Query({ schema: TermPolicyAcceptedListRequestSchema })
+    query: TermPolicyAcceptedListRequestDto,
     @AuthJwtPayload('userId') userId: string
-  ): Promise<IResponsePagingReturn<ITermPolicyUserAcceptance>> {
+  ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
     return this.termPolicyAcceptanceHttpService.getListUserAccepted(
       userId,
-      pagination
+      query
     );
   }
 
+  @Doc({ summary: 'User accepts term or policy' })
+  @Response('termPolicy.accept')
   @TermPolicyAcceptanceProtected()
   @UserProtected()
   @AuthJwtAccessProtected()
+  @ApiKeyProtected()
+  @RequestThrottle({ user: true })
+  @HttpCode(HttpStatus.OK)
   @Post('/accept')
   async accept(
     @UserCurrent() user: IUser,
@@ -357,7 +380,7 @@ flowchart TD
     CheckRequired -->|No| SetDefault[Use Default:<br/>termsOfService + privacy]
     CheckRequired -->|Yes| UseSpecified[Use Specified Policies]
     
-    SetDefault --> GetTermPolicy[Read required User<br/>acceptance columns]
+    SetDefault --> GetTermPolicy[Get user.termPolicy<br/>acceptance status]
     UseSpecified --> GetTermPolicy
     
     GetTermPolicy --> CheckAcceptance{All required policies<br/>accepted by user?}
@@ -393,13 +416,16 @@ Two seeds cover term policies:
 
 ```
 src/migration/seeds/migration.term-policy.seed.ts           # command: termPolicy
-src/migration/seeds/migration.template-term-policy.seed.ts  # command: template-termPolicy
+src/migration/seeds/migration.template-term-policy.seed.ts  # command: templateTermPolicy
 ```
 
-- `termPolicy` is the seed wired into `pnpm migration:seed` and `pnpm migration:remove`. It upserts the rows in `src/migration/data/migration.term-policy.data.ts`: one version 1 record per type, all `published`, with empty `contents`.
-- `template-termPolicy` is run on its own. For each type it uploads the bundled `.hbs` document to the private bucket, copies it to the public content path, and upserts a published version 1 record whose single `en` content entry is the public item, so a seeded policy sits in both buckets like any published one. It throws when S3 is not initialized, and its `remove()` is a no-op.
+- `termPolicy` is the seed wired into `pnpm migration:seed` and `pnpm migration:remove`. It upserts the rows in `src/migration/data/migration.term-policy.data.ts`: one version 1 record per type, all `published`, with empty `contents`. Details of that seed (actor, order, remove): [Database Documentation][ref-doc-database].
+- `templateTermPolicy` is run on its own. For each type it uploads the bundled `.hbs` document to the private bucket, copies it to the public content path, and upserts a published version 1 record whose single `en` content entry is the public item, so a seeded policy sits in both buckets like any published one. It throws when S3 is not initialized, and its `remove()` is a no-op.
 
-For detailed migration and seeding instructions, see [Database Documentation][ref-doc-database].
+```bash
+pnpm migration templateTermPolicy --type seed
+pnpm migration templateTermPolicy --type remove
+```
 
 ## Contribution
 
@@ -414,7 +440,8 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for contributing to the Term 
 [ref-doc-database]: database.md
 [ref-doc-authorization]: authorization.md
 [ref-doc-authentication]: authentication.md
-[ref-doc-presign]: presign.md
+[ref-doc-file-upload]: file-upload.md#presign-upload
 [ref-doc-analytic]: analytic.md
+[ref-doc-email]: email.md
 
 [ref-contributor-gzerox]: https://github.com/Gzerox

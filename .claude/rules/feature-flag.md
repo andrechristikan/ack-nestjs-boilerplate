@@ -17,8 +17,7 @@ rollout question is not settled here.
 - **An array value cannot change element type on update.** `checkMetadataKey` treats `string[]` and `number[]` as distinct types, and an empty array counts as an empty value (rejected), same as `''`.
 - **Keys are frozen; only values change.** The admin API updates values, never adds or removes a metadata key — schema consistency is the contract.
 - **A metadata sub-key used as a gate requires a boolean value.** `FeatureFlagDomain.validateFeatureFlagMetadata(key, metadataKey)` throws `predefinedKeyTypeInvalid` when the value is not boolean, and `serviceUnavailable` (503) when it is `false`.
-- Per-feature config lives in metadata; per-user targeting lives in the `FeatureFlagUser` relation and percentage rollout lives in `rolloutPercent`, never in metadata.
-- Status updates only change `isEnable` and `rolloutPercent`; target users are added or removed through dedicated target-user operations.
+- Per-feature config lives in metadata; per-user rollout lives in `targetUserIds` and `rolloutPercent`, never in metadata.
 
 ## Gating
 
@@ -27,8 +26,8 @@ rollout question is not settled here.
 - **A metadata sub-key is asserted in the domain, never in the decorator (HARD).** The decorator answers only "is this feature on at all". Whether the feature currently permits this particular operation is a business condition, so it is a guard clause at the top of the domain method — `await this.featureFlagDomain.validateFeatureFlagMetadata('<key>', '<metadataKey>')` before any work. Written into the decorator it would gate one route instead of every caller of the method, and `rules/http.md` already forbids a guard from holding a business rule.
 ## Rollout and targeting
 
-- **`FeatureFlagUser` is an allow-list that bypasses rollout entirely.** A targeted user passes even at `rolloutPercent: 0`.
-- **Rollout buckets stickily.** `md5('<key>:<identifier>')` salted by the flag key, so the same caller always lands in the same bucket for a given flag and does not land on the same side of every flag at once.
+- **`targetUserIds` is an allow-list that bypasses rollout entirely.** A targeted user passes even at `rolloutPercent: 0`.
+- **Rollout buckets stickily.** `sha256Hash('<key>:<identifier>')`, the first 8 hex characters modulo 100, salted by the flag key, so the same caller always lands in the same bucket for a given flag and does not land on the same side of every flag at once.
 - **`isEnable: false` outranks both.** A targeted user is still rejected when the flag is globally off — that is what makes it a kill switch.
 
 ## Anonymous callers — fail closed
@@ -36,7 +35,7 @@ rollout question is not settled here.
 - **An authenticated caller is always bucketed by `userId`, and the `x-anonymous-id` header is ignored entirely.** If the header could override it, any user could move their own bucket by sending one.
 - **With no authenticated user:** `rolloutPercent: 100` passes without the header ever being read; anything below 100 buckets by `x-anonymous-id`, and a caller that sends none or sends a malformed one is REJECTED. Fail closed — a gate that silently admits everyone is not a gate.
 - The header name and the length/charset bounds come from `featureFlag.anonymous.*` config, never a literal in the service. An unbounded client string must not reach the hash, the logs, or a cache key; an invalid value is treated as absent.
-- **`FeatureFlagUser` targeting applies to authenticated callers only** — targeting is by `userId`, which an anonymous caller does not have.
+- **`targetUserIds` applies to authenticated callers only** — targeting is by `userId`, which an anonymous caller does not have.
 
 ## A flag is never an authorization boundary (HARD)
 
