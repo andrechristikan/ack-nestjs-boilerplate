@@ -166,20 +166,11 @@ docs(readme): update docker setup instructions
 3. Ensure the husky pre-commit gates pass. The hook runs, in order: `pnpm lint:staged`, `pnpm typecheck`, `pnpm deadcode`, `pnpm spell`, and `NODE_ENV=test pnpm test`
 4. Push and open a PR against `development` (integration branch). `main` stays the release/default line.
 5. Fill in the PR template so a reviewer can follow the work:
-   - **Summary**, **Related Issue**, **Scope**, **How Has This Been Tested?** (required checks + tests + mandatory when applicable)
+   - **Summary**, **Related Issue**, **Scope**, **How Has This Been Tested?**, **Checklist**
    - **Out of scope**, **Breaking Changes**, **Additional Notes** when they apply
 6. Wait for review. At least **1 maintainer approval** is required to merge
 
-The PR template asks for what a reviewer verifies:
-
-- boot
-- tests
-- seed/env
-- layering
-- status codes
-- i18n
-
-Tick only the rows that apply to the change. Husky and CI still own lint/test gates.
+The Checklist covers lint, typecheck, boot, seed/env, layering, status codes, and i18n. Tick only the rows that apply. Tests live under How Has This Been Tested?. Husky and CI still own lint/test gates.
 
 **PR will be rejected if:**
 - Tests are failing
@@ -193,10 +184,9 @@ Tick only the rows that apply to the change. Husky and CI still own lint/test ga
 
 Open an issue using the **Bug Report** template. Include:
 
-- NestJS and Node.js version
-- Steps to reproduce
-- Expected vs actual behavior
-- Relevant logs or error messages
+- Description, steps to reproduce, expected vs actual behavior
+- Environment (Node, pnpm, Mongo setup, Docker vs manual, project version or commit)
+- Relevant logs, API request/response, or error identity when useful
 
 ---
 
@@ -204,9 +194,10 @@ Open an issue using the **Bug Report** template. Include:
 
 Open an issue using the **Feature Request** template. Include:
 
-- Problem you're solving
+- Problem you are solving
 - Proposed solution
-- Alternatives considered
+- Acceptance criteria
+- Technical notes when useful (API shape, schema/seed, env keys, alternatives)
 
 Large features should be discussed in an issue **before** any implementation starts.
 

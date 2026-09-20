@@ -104,9 +104,10 @@ The agent diffs the named range the skill resolved. Uncommitted work is out of s
 - the document title (branch name, or version / range label)
 - the output path
 
-The document names the owner-facing base or version (`develop`, `main`, `v1.2.0`), not the
-local tracking ref. Working artifacts and `.claude/**` stay out of the document
-(`rules/authoring.md`).
+**No branch-compare framing in the document** (`rules/authoring.md`). Do not name which
+branches or refs were compared. A version identity (`v1.2.0`, `9.0.0`) may appear. Local
+compare refs stay in the dispatch and the hand-back only. Working artifacts and
+`.claude/**` stay out of the document.
 
 **Mode `pr` fills `.github/pull_request_template.md`** — same headings and checkbox labels,
 paste-ready into a GitHub PR body. **Mode `version`** stays lean release notes (not the

@@ -30,7 +30,7 @@ files: `docs/` holds around thirty files and a full pass is a long run.
 | `CONTRIBUTING.md` | `engines` / packageManager, setup scripts vs `package.json` `scripts`, CoC link |
 | `CODE_OF_CONDUCT.md` | maintainer contact (aligned with `SECURITY.md`), covenant attribution |
 | `.github/workflows/*.yml` | `pnpm` scripts / `engines` / `packageManager` vs `package.json` |
-| `.github/pull_request_template.md` | `src/modules/*` names; commit types vs `.commitlintrc` |
+| `.github/pull_request_template.md` | free-text `src/modules/*` names in Module(s); commit types vs `.commitlintrc` |
 | `.github/ISSUE_TEMPLATE/*` | advisory URL, contributing path, docs path |
 | `.github/dependabot.yml` | lockfile ecosystem, `package.json` |
 

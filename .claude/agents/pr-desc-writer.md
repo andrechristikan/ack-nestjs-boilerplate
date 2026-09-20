@@ -64,8 +64,10 @@ document is English.
 document never cites `.superpowers/`, `generated/`, `graphify-out/`, worktrees, a local-only
 git ref (`pr-desc/*`), an absolute filesystem path, or `.claude/**`.
 
-The compare base or version named in the document is what the owner picked (`develop`, `main`,
-`v1.2.0`), not the local tracking ref. That ref stays in the hand-back.
+**No branch-compare framing (HARD).** The document body does not name which branches or
+refs were compared (`main`, `develop`, `development`, `origin/*`, `pr-desc/*`, "merge into",
+"against base", and similar). A version identity the release is about (`v1.2.0`, `9.0.0`)
+may appear. Compare refs stay in the hand-back only.
 
 ## Audience — public (HARD)
 
@@ -106,23 +108,20 @@ Fill from the diff:
 | Section | What you write |
 |---|---|
 | **Summary** | 2–5 lines: what changed and why; name the module(s). |
-| **Related Issue** | `Closes #N` only when the branch name or commits make it obvious; otherwise `n/a`. Never invent an issue number. Name the compare base (`main` / `develop`) in one short clause if useful. |
+| **Related Issue** | `Closes #N` only when the branch name or commits make it obvious; otherwise `n/a`. Never invent an issue number. Do not name a compare base or branch pair. |
 | **Scope → Type of change** | Tick every type the diff supports; leave the rest unchecked. |
-| **Scope → Module(s)** | Tick every `src/modules/<name>` the product diff owns; use `common` / shared or Other when that fits. Keep the template's module list as written — do not add rows that are not on the template; put extras under Other. |
+| **Scope → Module(s)** | Comma-separated `src/modules/<name>` list the product diff owns; add `common` / shared when that fits. Free text — not a checkbox list. |
 | **Scope → Entry points** | Tick and complete HTTP / Queue / CLI / Other from the diff. |
 | **Out of scope** | What this branch deliberately does not touch, when the diff makes that clear; otherwise a short honest line. |
 | **How Has This Been Tested?** | |
-| → **Checks** | Leave unchecked unless the dispatch says those commands already ran green this session. |
-| → **Tests** | Tick kinds the diff supports (e.g. Unit test + scope from `test/` paths). Do not claim a run you did not see. |
+| → **Tests** | Tick kinds the diff supports (Unit test + scope from `test/` paths; Manual / other when relevant). Do not claim a run you did not see. |
 | → **How to run** | Concrete local steps to exercise the change. |
-| → **Database / seed** | Tick from schema / `src/migration/` / seed diffs; spell the owner commands (`pnpm db:migrate`, `pnpm db:generate`, seed CLI). |
-| → **Environment** | Tick and list new or changed env keys (name + purpose); note `.env.example` when the diff touches it. |
-| → **Mandatory** | Keep only subsections whose surface the diff touches. Leave those checkboxes **unchecked** — they are the author's attestation on submit, not something you certify from the diff alone. Omit subsections the diff does not touch. |
+| **Checklist** | One list: lint / typecheck / boot (leave unchecked unless the dispatch says they ran green this session); Database / seed and Config / env (tick and fill from the diff, or note no change); layering, secrets, status codes, i18n (leave unchecked — author attestation on submit; omit a row only when that surface is clearly out of scope). |
 | **Breaking Changes** | What callers must update, or `n/a`. |
-| **Additional Notes** | Upgrade or reviewer notes that do not fit Database / Environment (queue drain, Vault rollout, compare-base caveat). Omit the section when empty. |
+| **Additional Notes** | Upgrade or reviewer notes that do not fit Checklist (queue drain, Vault rollout). No branch-compare framing. Omit the section when empty. |
 
 No parallel "Changes" / "Upgrade notes" / "How to test" headings — those map into Summary,
-Scope, How Has This Been Tested?, and Additional Notes on the template.
+Scope, How Has This Been Tested?, Checklist, and Additional Notes on the template.
 
 ## Shape — mode `version`
 
@@ -136,7 +135,7 @@ Not the PR template. Lean release notes:
 ## Upgrade notes
 ```
 
-- **Summary** — 2–5 lines for the release.
+- **Summary** — 2–5 lines for the release. Version identity only; no branch-compare framing.
 - **Changes** — user-facing bullets per behaviour or module. Not a file list.
 - **Breaking Changes** — what callers must update, or `n/a`.
 - **Upgrade notes** — always present. `pnpm db:migrate`, seed commands, env keys, or `None.`

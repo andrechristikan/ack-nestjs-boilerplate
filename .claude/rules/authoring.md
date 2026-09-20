@@ -127,7 +127,7 @@ This binds every published tree:
 |---|---|
 | `docs/*.md`, the root people files, `.github/**` except `copilot-instructions.md` | the product |
 | `.claude/**` | how the project works |
-| `generated/docs/pr-*.md` | the branch against its base — filled `.github/pull_request_template.md` |
+| `generated/docs/pr-*.md` | filled `.github/pull_request_template.md` (public PR body) |
 | `generated/docs/version-*.md` | a version or tag range (public release description) |
 
 A PR description follows the project pull-request template (same sections and checkbox
@@ -135,9 +135,10 @@ labels). A version description is lean release notes. Both are public paste-read
 They never cite `.claude/**`, working artifacts, machine paths, or local-only git refs.
 A `.claude/**` path in the diff is one line in the hand-back.
 
-The compare base or version named in the document is what the owner picked (`develop`,
-`main`, `v1.2.0`). The local tracking ref used to produce the diff is not written into the
-document.
+**No branch-compare framing in the document body (HARD).** Do not name which git branches
+or refs were compared (`main`, `develop`, `development`, `origin/*`, `pr-desc/*`,
+"merge into", "against base", and similar). A version identity the release is about
+(`v1.2.0`, `9.0.0`) may appear. Compare refs stay in the hand-back only.
 
 ## Documentation prose (`docs/*.md`, root people files, `.github/` markdown)
 

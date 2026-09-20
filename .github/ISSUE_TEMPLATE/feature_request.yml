@@ -33,33 +33,12 @@ body:
           description: Describe the feature you'd like.
       validations:
           required: true
-    - type: dropdown
+    - type: input
       id: module
       attributes:
-          label: Primary affected module
-          description: Main module this request targets. Mentions others in Additional Context if needed.
-          options:
-              - activity-log
-              - analytic
-              - api-key
-              - auth
-              - country
-              - device
-              - feature-flag
-              - health
-              - hello
-              - notification
-              - password-history
-              - policy
-              - project
-              - role
-              - session
-              - term-policy
-              - user
-              - workspace
-              - common / shared
-              - new module
-              - other / unknown
+          label: Primary module
+          description: Comma-separated `src/modules/<name>` names, or `common` / `new module` / `other`.
+          placeholder: e.g. auth, workspace
       validations:
           required: true
     - type: dropdown
@@ -84,49 +63,15 @@ body:
       validations:
           required: true
     - type: textarea
-      id: api
+      id: technical
       attributes:
-          label: API Design (if applicable)
-          render: shell
+          label: Technical notes (optional)
+          description: API shape, Prisma/seed impact, `.env` keys, alternatives, or other design notes.
           placeholder: |
-              METHOD /api/v1/path
-              Request body: { ... }
-              Response: {
-                "data": { ... },
-                "message": "...",
-                ...
-              }
-              Error (ResponseErrorDto): {
-                "statusCode": 51501,
-                "statusCodeKey": "userNotFound",
-                "module": "user",
-                "message": "..."
-              }
-      validations:
-          required: false
-    - type: textarea
-      id: database
-      attributes:
-          label: Database / seed (if applicable)
-          description: New Prisma models/fields/indexes, or seed commands (`migration:seed` / standalone seed)?
-          placeholder: |
-              Schema: …
-              Seed: e.g. pnpm migration <name> --type seed — or none
-      validations:
-          required: false
-    - type: textarea
-      id: environment
-      attributes:
-          label: Environment (if applicable)
-          description: New or changed `.env` keys? Remember to call out `.env.example` updates.
-          placeholder: e.g. FOO_BAR=… — or none
-      validations:
-          required: false
-    - type: textarea
-      id: alternatives
-      attributes:
-          label: Alternatives Considered
-          description: Any alternative solutions or workarounds you've considered.
+              API: METHOD /api/v1/path …
+              Schema / seed: …
+              Env: FOO_BAR=… (and `.env.example`)
+              Alternatives: …
       validations:
           required: false
     - type: textarea

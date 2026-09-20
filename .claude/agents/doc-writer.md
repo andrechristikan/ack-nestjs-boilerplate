@@ -46,7 +46,7 @@ against the source of truth:
 | `CONTRIBUTING.md` | `package.json` `engines` / `packageManager`, setup commands vs `scripts`, link to `CODE_OF_CONDUCT.md` |
 | `CODE_OF_CONDUCT.md` | maintainer contact aligned with `SECURITY.md`, covenant attribution URL |
 | `.github/workflows/*.yml` | `package.json` `scripts` / `engines` / `packageManager`; `pnpm` commands as written in the workflow |
-| `.github/pull_request_template.md` | `src/modules/*` directory names; commit `type` values vs `.commitlintrc` |
+| `.github/pull_request_template.md` | free-text `src/modules/*` directory names in Module(s); commit `type` values vs `.commitlintrc` |
 | `.github/ISSUE_TEMPLATE/*` | `SECURITY.md` advisory URL, `CONTRIBUTING.md` path, `docs/` path |
 | `.github/dependabot.yml` | lockfile ecosystem (`pnpm-lock.yaml`), `package.json` |
 
