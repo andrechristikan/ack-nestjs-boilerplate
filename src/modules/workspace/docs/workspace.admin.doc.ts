@@ -4,7 +4,6 @@ import {
     DocGuard,
     DocRequest,
     DocResponse,
-    DocResponseError,
     DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -13,23 +12,19 @@ import {
     WorkspaceDefaultAvailableSearch,
     WorkspaceMemberDefaultAvailableOrderBy,
 } from '@modules/workspace/constants/workspace.list.constant';
-import {
-    WorkspaceDocParamsId,
-    WorkspaceDocQueryList,
-} from '@modules/workspace/constants/workspace.doc.constant';
+import { WorkspaceDocQueryList } from '@modules/workspace/constants/workspace.doc.constant';
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import type { WorkspaceMemberResponseDto } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
 import type { WorkspaceResponseDto } from '@modules/workspace/dtos/response/workspace.response.dto';
-import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
-import { HttpStatus, applyDecorators } from '@nestjs/common';
+import { applyDecorators } from '@nestjs/common';
 
 export function WorkspaceAdminListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin list all workspaces (read-only)' }),
         DocRequest({ queries: WorkspaceDocQueryList }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true }),
+        DocGuard({ role: true, user: true, policy: true, termPolicy: true }),
         DocResponsePagination<WorkspaceResponseDto>('workspace.admin.list', {
             schema: WorkspaceResponseSchema,
             type: EnumPaginationType.offset,
@@ -45,13 +40,8 @@ export function WorkspaceAdminGetDoc(): MethodDecorator {
             summary:
                 'admin get a workspace by id (read-only, includes soft-deleted)',
         }),
-        DocRequest({ params: WorkspaceDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true }),
-        DocResponseError(HttpStatus.NOT_FOUND, {
-            statusCode: EnumWorkspaceStatusCodeError.notFound,
-            messagePath: 'workspace.error.notFound',
-        }),
+        DocGuard({ role: true, user: true, policy: true, termPolicy: true }),
         DocResponse<WorkspaceResponseDto>('workspace.admin.get', {
             schema: WorkspaceResponseSchema,
         })
@@ -61,13 +51,8 @@ export function WorkspaceAdminGetDoc(): MethodDecorator {
 export function WorkspaceAdminMemberListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin list members of a workspace (read-only)' }),
-        DocRequest({ params: WorkspaceDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true }),
-        DocResponseError(HttpStatus.NOT_FOUND, {
-            statusCode: EnumWorkspaceStatusCodeError.notFound,
-            messagePath: 'workspace.error.notFound',
-        }),
+        DocGuard({ role: true, user: true, policy: true, termPolicy: true }),
         DocResponsePagination<WorkspaceMemberResponseDto>(
             'workspace.admin.member.list',
             {

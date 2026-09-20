@@ -9,7 +9,6 @@ import {
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
-import { NotificationDocParamsId } from '@modules/notification/constants/notification.doc.constant';
 import { NotificationResponseSchema } from '@modules/notification/dtos/response/notification.response.dto';
 import type { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { NotificationUserSettingResponseSchema } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
@@ -25,7 +24,7 @@ export function NotificationSharedListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ termPolicy: true }),
+        DocGuard({ termPolicy: true, user: true }),
         DocResponsePagination<NotificationResponseDto>('notification.list', {
             schema: NotificationResponseSchema,
             availableOrderBy: NotificationDefaultAvailableOrderBy,
@@ -43,7 +42,7 @@ export function NotificationSharedListUserSettingDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ termPolicy: true }),
+        DocGuard({ termPolicy: true, user: true }),
         DocResponse<NotificationUserSettingResponseDto>(
             'notification.listUserSetting',
             {
@@ -62,10 +61,7 @@ export function NotificationSharedMarkAsReadDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ termPolicy: true }),
-        DocRequest({
-            params: NotificationDocParamsId,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocResponse('notification.markAsRead')
     );
 }
@@ -79,7 +75,7 @@ export function NotificationSharedMarkAllAsReadDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ termPolicy: true }),
+        DocGuard({ termPolicy: true, user: true }),
         DocResponse('notification.markAllAsRead')
     );
 }
@@ -92,9 +88,7 @@ export function NotificationSharedUpdateUserSettingDoc(): MethodDecorator {
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,

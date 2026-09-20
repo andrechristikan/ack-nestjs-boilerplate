@@ -32,7 +32,9 @@ export interface IDocResponseErrorOptions<T = unknown> {
  * entry passes `ResponsePagingSchema`.
  * @public
  */
-export interface IDocResponseEntry<T = unknown> extends IDocResponseErrorOptions<T> {
+export interface IDocResponseEntry<
+    T = unknown,
+> extends IDocResponseErrorOptions<T> {
     httpStatus: HttpStatus;
     envelope?: z.ZodObject;
 }
@@ -71,7 +73,8 @@ export interface IDocRequestFileOptions<T = unknown> extends Omit<
 }
 
 /**
- * Options of `DocGuard`: which user, policy, role and term-policy guards the endpoint documents.
+ * Options of `DocGuard`: which user, policy, role, term-policy, workspace, workspace-role,
+ * feature-flag, project, project-member and project-role guards the endpoint documents.
  * @public
  */
 export interface IDocGuardOptions {
@@ -79,6 +82,12 @@ export interface IDocGuardOptions {
     policy?: boolean;
     role?: boolean;
     termPolicy?: boolean;
+    workspace?: boolean;
+    workspaceRole?: boolean;
+    featureFlag?: boolean;
+    project?: boolean;
+    projectMember?: boolean;
+    projectRole?: boolean;
 }
 
 /**

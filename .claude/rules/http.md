@@ -84,7 +84,7 @@ Write the roles that are actually checked — for a platform admin route that is
 ## Route params
 
 - Route params are camelCase and EXPLICIT: `@Get('/get/:userId')` with `@Param('userId')`. Never a bare `:id` — it goes ambiguous the moment a route nests two of them, and the ambiguity is invisible until someone reads the wrong one.
-- **Three places must agree or it fails at RUNTIME with `tsc` green:** the route template, the `@Param('…')` key, and the `name` in the Swagger param constant. A mismatch between the first two makes the param silently `undefined`.
+- **The route template and the `@Param('…')` key must agree or it fails at RUNTIME with `tsc` green** — a mismatch makes the param silently `undefined`. Where a Swagger param constant documents a placeholder no handler binds, its `name` is the third place that must agree.
 - A body field MUST NOT duplicate a path param. The path is authoritative.
 ### Path and query params bind a zod schema (HARD)
 
@@ -225,36 +225,74 @@ the decorator stack, above `@Response`. The doc file mirrors the controller: one
 endpoint, same order.
 
 Use the primitives (`Doc`, `DocAuth`, `DocGuard`, `DocRequest`, `DocRequestFile`,
-`DocResponse`, `DocResponsePagination`, `DocResponseFile`, `DocResponseError`). A bare
-`@ApiOperation` / `@ApiResponse` bypasses the shared shape.
+`DocResponse`, `DocResponsePagination`, `DocResponseFile`). A bare `@ApiOperation` /
+`@ApiResponse` bypasses the shared shape.
 
-**`DocResponseError(httpStatus, ...entries)` documents the non-success responses of one status**,
-each entry a `statusCode` plus its i18n `messagePath`. One entry at a status emits a plain schema,
-two or more emit a `oneOf`. Every primitive accumulates its entries on the decorated method and
-re-emits that status in full, so entries contributed by different primitives at one status compose
-instead of replacing each other, and their order inside `applyDecorators` does not change what the
-endpoint documents.
+**`DocResponseError(httpStatus, ...entries)` is the kit emitter for non-success responses of one
+status**, each entry a `statusCode` plus its i18n `messagePath`. One entry at a status emits a
+plain schema with field examples. Two or more emit one shared response-envelope schema plus
+named OpenAPI `examples` keyed by `messagePath`, each value the full envelope (`statusCode`,
+`message`, `metadata`). A `oneOf` of full envelopes is not used. Every primitive that documents
+errors goes through `accumulateResponseEntries` on the decorated method and re-emits that status
+in full, so entries from different primitives at one status compose instead of replacing each
+other; order inside `applyDecorators` does not change what the endpoint documents. Module
+`*.doc.ts` factories do not call `DocResponseError`.
 
-**An endpoint documents every response it can return.** Every exception reachable on its flow
-carries an entry — raised by its guards, its controller, its HTTP service, its domain, or another
-module's domain it calls — and an entry for an error the endpoint cannot raise is removed. The
-shared authentication and authorization chain arrives through the `DocAuth` and `DocGuard` flags;
-the module's own errors are written in the factory with `DocResponseError`. One error has one
-source, never both.
+**An endpoint factory publishes the kit error set only.** The OpenAPI error responses come from
+`Doc()`, `DocAuth`, `DocGuard`, and — when the route uses them — `DocResponsePagination`,
+`DocRequestFile`, and `DocResponseFile`. Module-flow exceptions (domain or HTTP throws that are
+not behind a `DocGuard` / `DocAuth` flag) are not listed on the factory. **One error has one
+source**, and which source it is follows from where the exception LIVES:
 
-`@ApiQuery` / `@ApiParam` arrays live as PascalCase constants in
-`<module>/constants/<module>.doc.constant.ts`. Never an inline array, never generated from
-the request DTO.
+| The exception lives in | Its entry belongs to |
+|---|---|
+| `src/common/` or `src/app/`, and any request can reach it | `Doc()` — every endpoint carries it |
+| `src/common/`, behind one primitive | that primitive: the pagination set on `DocResponsePagination`, the upload set on `DocRequestFile`, the download set on `DocResponseFile` |
+| a module, raised by a guard or an auth strategy | a `DocGuard` or `DocAuth` flag |
 
-**A query bound to a zod schema needs no constant.** `src/swagger.ts` hands
-`standardSchemaConverter` to `SwaggerModule.createDocument`, so a `@Query({ schema })` emits its
-own parameters, typed from the schema. Writing a constant for one of those documents the shape
-twice: the route ends up with duplicated `(name, in)` pairs, which OpenAPI 3.1 forbids, and the
-hand copy is the poorer of the two. The constants are for queries no schema describes — the
-pagination filters a pipe assembles.
+The kit's errors are declared once, in the primitive, for everyone it decorates — a paginated
+route publishes the whole pagination set whether or not a given request could trip each member.
+That breadth is the contract of a shared primitive, not an oversight.
 
-The route template, the `@Param('…')` key, and the `name` in the Swagger param constant must
-agree. A mismatch between the first two makes the param silently `undefined`.
+A module marked `@Global()` changes nothing about this. Its errors reach the kit only through a
+guard or auth strategy that gates them.
+
+**`auth.error.accessTokenUnauthorized` belongs to `DocAuth({ jwtAccessToken })`.** A `DocGuard`
+flag whose domain also throws `AuthJwtAccessTokenInvalidException` when the principal is missing
+does not publish that 401 again.
+
+**A `DocGuard` flag mirrors one guard class, one for one, and emits exactly that guard's throw
+set** — `IDocGuardOptions` in `src/common/doc/interfaces/doc.interface.ts` is the list. A flag
+raised without its guard advertises an error the endpoint cannot return; a guard without its flag
+hides one it can. Where a decorator installs a DIFFERENT guard class depending on its arguments,
+each class takes its own flag: two flags that are mutually exclusive by construction are honest,
+one flag covering both is not.
+
+**A guard used by a handful of endpoints takes no flag.** Its throws stay off the OpenAPI
+document with the rest of module-flow errors. A flag exists to stop a repetition, and a flag that
+is `false` on almost every endpoint is a field the writer must remember for no return.
+
+**Kit `DocResponseError` calls live in `src/common/doc/constants/doc.constant.ts`**
+(`DocGlobalErrorResponses`, `DocPaginationErrorResponses`, `DocFileErrorResponses`, …).
+
+**`DocRequest` documents request shape the other primitives do not.** Path and query inputs
+follow one of four bindings; which binding decides whether `DocRequest` appears:
+
+| Binding on the controller | OpenAPI source | `DocRequest`? |
+|---|---|---|
+| `@Param('…', { schema })` or `@Query({ schema })` / `@Query('…', { schema })` | zod via `standardSchemaConverter` in `src/swagger.ts` (pattern, description, required from `.meta`) | **No.** A `*.doc.constant.ts` entry beside it documents twice and loses. |
+| Path placeholder the route declares and a **guard** reads; the handler has no `@Param` | nothing else emits it | **Yes** — `DocRequest({ params })` with a PascalCase `ApiParamOptions[]` in `<module>.doc.constant.ts` (e.g. `projectId` on `/user/project` routes). |
+| `@PaginationQueryFilter*` field (`EqualString`, `InEnum`, `EqualBoolean`, …) next to `@PaginationOffsetQuery` / `@PaginationCursorQuery` | nothing — filter pipes do not emit `@ApiQuery`, and they cannot be folded into one zod query object with the pagination kit | **Yes** — `DocRequest({ queries })` with a PascalCase `ApiQueryOptions[]` in `<module>.doc.constant.ts`. Every filter field name on the controller has a matching entry; each entry carries `description`. |
+| `@PaginationOffsetQuery` / `@PaginationCursorQuery` kit alone (`search`, `orderBy`, page/cursor) | `DocResponsePagination` from the same allow-list constants | **No** for those kit keys — `DocResponsePagination` owns them (`rules/pagination.md`). |
+
+`DocResponsePagination` never documents module filter fields. A list that uses both
+`@Pagination*Query` and `@PaginationQueryFilter*` therefore carries **both**
+`DocResponsePagination` (kit) and `DocRequest({ queries })` (filters). `bodyType` on
+`DocRequest` still sets `ApiConsumes` when the endpoint has a body.
+
+`@ApiQuery` / `@ApiParam` arrays live only as those PascalCase constants in
+`<module>/constants/<module>.doc.constant.ts`. Never an inline array in a `*.doc.ts`, never
+generated from a request DTO.
 
 `DocResponsePagination` takes the SAME allow-list constants the controller's `@Pagination*Query`
 decorator takes, and `type` is required (`EnumPaginationType.offset` or `.cursor`).

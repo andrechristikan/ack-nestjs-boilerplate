@@ -5,13 +5,13 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticDashboardDomain } from '@modules/analytic/domains/analytic.dashboard.domain';
 import { AnalyticDashboardHttpService } from '@modules/analytic/services/analytic.dashboard.http.service';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
+import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
 
 describe('AnalyticDashboardHttpService', () => {
     const analyticDashboardDomain: MockProxy<AnalyticDashboardDomain> =
         mock<AnalyticDashboardDomain>();
-    const analyticDateUtil: MockProxy<AnalyticDateUtil> =
-        mock<AnalyticDateUtil>();
+    const analyticDateDomain: MockProxy<AnalyticDateDomain> =
+        mock<AnalyticDateDomain>();
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
@@ -33,7 +33,7 @@ describe('AnalyticDashboardHttpService', () => {
                     provide: AnalyticDashboardDomain,
                     useValue: analyticDashboardDomain,
                 },
-                { provide: AnalyticDateUtil, useValue: analyticDateUtil },
+                { provide: AnalyticDateDomain, useValue: analyticDateDomain },
             ],
         }).compile();
 
@@ -42,7 +42,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('usersRegistrations', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -61,7 +61,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('usersChurn', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -85,7 +85,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('usersBlocked', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -106,7 +106,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('usersSignUpWith', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({
+            analyticDateDomain.optionalRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -127,7 +127,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('usersSignUpFrom', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({
+            analyticDateDomain.optionalRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -148,7 +148,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('usersEmailVerification', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({
+            analyticDateDomain.optionalRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -174,7 +174,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('usersMobileVerification', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({
+            analyticDateDomain.optionalRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -251,7 +251,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('usersSelfDelete', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -270,7 +270,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('usersClaimUsername', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -289,7 +289,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('usersMobileChurn', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -312,7 +312,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authLoginFrequency', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -331,7 +331,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authLoginMethod', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({
+            analyticDateDomain.optionalRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -352,7 +352,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authLoginSource', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({
+            analyticDateDomain.optionalRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -373,7 +373,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authLockout', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -394,7 +394,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authSessionRevoke', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -430,7 +430,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authSessionsGeo', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({
+            analyticDateDomain.optionalRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -451,7 +451,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authSessionsUserAgent', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({
+            analyticDateDomain.optionalRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -475,7 +475,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authRefreshTokenVolume', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -497,7 +497,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authLogoutRate', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -517,7 +517,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authVerificationFunnel', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -565,7 +565,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authPasswordChange', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -584,7 +584,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authForgotPasswordConversion', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -608,7 +608,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authAdminForcePassword', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -649,7 +649,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authTwoFactorAdminReset', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -671,7 +671,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authTwoFactorVerifySuccess', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -693,7 +693,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('authBackupCodeRegeneration', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -733,7 +733,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('devicesRegistration', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -791,7 +791,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('devicesInfoRefresh', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -861,7 +861,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('apiKeysLifecycle', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -918,7 +918,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('termPoliciesAcceptanceRate', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({
+            analyticDateDomain.optionalRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -942,7 +942,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('termPoliciesTimeToAccept', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({
+            analyticDateDomain.optionalRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -965,7 +965,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('workspacesCreation', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -1001,7 +1001,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('workspacesInviteFunnel', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -1025,7 +1025,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('workspacesJoinOutcomes', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -1074,7 +1074,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('workspacesActivityVolume', () => {
         it('returns the domain page unchanged', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -1107,7 +1107,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     describe('projectsCreation', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });

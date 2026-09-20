@@ -18,7 +18,7 @@ import type {
     IAnalyticSessionAfterAdmin,
     IAnalyticSharedFingerprint,
 } from '@modules/analytic/interfaces/analytic.interface';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
+import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
 
@@ -26,7 +26,7 @@ import { Prisma } from '@generated/prisma-client/client';
 export class AnalyticFraudHttpService {
     constructor(
         private readonly analyticFraudDomain: AnalyticFraudDomain,
-        private readonly analyticDateUtil: AnalyticDateUtil
+        private readonly analyticDateDomain: AnalyticDateDomain
     ) {}
 
     async credentialStuffingSummary(
@@ -53,7 +53,10 @@ export class AnalyticFraudHttpService {
         startDate?: Date,
         endDate?: Date
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        const range = this.analyticDateUtil.requireRange(startDate, endDate);
+        const range = this.analyticDateDomain.requireRange(
+            startDate ?? null,
+            endDate ?? null
+        );
         const data = await this.analyticFraudDomain.accountTakeoverSummary(
             range.startDate,
             range.endDate
@@ -67,7 +70,10 @@ export class AnalyticFraudHttpService {
         endDate: Date | undefined,
         params: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
     ): Promise<IResponsePagingReturn<IAnalyticAccountTakeover>> {
-        const range = this.analyticDateUtil.requireRange(startDate, endDate);
+        const range = this.analyticDateDomain.requireRange(
+            startDate ?? null,
+            endDate ?? null
+        );
         return this.analyticFraudDomain.accountTakeoverList(
             range.startDate,
             range.endDate,
@@ -134,7 +140,10 @@ export class AnalyticFraudHttpService {
         startDate?: Date,
         endDate?: Date
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        const range = this.analyticDateUtil.requireRange(startDate, endDate);
+        const range = this.analyticDateDomain.requireRange(
+            startDate ?? null,
+            endDate ?? null
+        );
         const data = await this.analyticFraudDomain.sessionAfterAdminSummary(
             range.startDate,
             range.endDate
@@ -148,7 +157,10 @@ export class AnalyticFraudHttpService {
         endDate: Date | undefined,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePagingReturn<IAnalyticSessionAfterAdmin>> {
-        const range = this.analyticDateUtil.requireRange(startDate, endDate);
+        const range = this.analyticDateDomain.requireRange(
+            startDate ?? null,
+            endDate ?? null
+        );
         return this.analyticFraudDomain.sessionAfterAdminList(
             range.startDate,
             range.endDate,

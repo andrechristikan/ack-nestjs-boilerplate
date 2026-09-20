@@ -5,13 +5,13 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticAnomalyDomain } from '@modules/analytic/domains/analytic.anomaly.domain';
 import { AnalyticAnomalyHttpService } from '@modules/analytic/services/analytic.anomaly.http.service';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
+import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
 
 describe('AnalyticAnomalyHttpService', () => {
     const analyticAnomalyDomain: MockProxy<AnalyticAnomalyDomain> =
         mock<AnalyticAnomalyDomain>();
-    const analyticDateUtil: MockProxy<AnalyticDateUtil> =
-        mock<AnalyticDateUtil>();
+    const analyticDateDomain: MockProxy<AnalyticDateDomain> =
+        mock<AnalyticDateDomain>();
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
@@ -43,7 +43,7 @@ describe('AnalyticAnomalyHttpService', () => {
                     provide: AnalyticAnomalyDomain,
                     useValue: analyticAnomalyDomain,
                 },
-                { provide: AnalyticDateUtil, useValue: analyticDateUtil },
+                { provide: AnalyticDateDomain, useValue: analyticDateDomain },
             ],
         }).compile();
 
@@ -52,7 +52,7 @@ describe('AnalyticAnomalyHttpService', () => {
 
     describe('impossibleTravelSummary', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({
+            analyticDateDomain.optionalRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -76,7 +76,10 @@ describe('AnalyticAnomalyHttpService', () => {
         });
 
         it('passes null dates when the optional range is empty', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({});
+            analyticDateDomain.optionalRange.mockReturnValue({
+                startDate: null,
+                endDate: null,
+            });
             analyticAnomalyDomain.impossibleTravelSummary.mockResolvedValue({
                 count: 0,
             });
@@ -91,7 +94,7 @@ describe('AnalyticAnomalyHttpService', () => {
 
     describe('impossibleTravelList', () => {
         it('hands the optional range and pagination to the domain', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({
+            analyticDateDomain.optionalRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -122,7 +125,10 @@ describe('AnalyticAnomalyHttpService', () => {
         });
 
         it('passes null dates when the optional range is empty', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({});
+            analyticDateDomain.optionalRange.mockReturnValue({
+                startDate: null,
+                endDate: null,
+            });
             const page = {
                 ...offsetPage,
                 data: [
@@ -254,6 +260,7 @@ describe('AnalyticAnomalyHttpService', () => {
                         email: 'user@example.com',
                         passwordAttempt: 4,
                         lastLoginAt: startDate,
+                        createdAt: startDate,
                     },
                 ],
             };
@@ -314,7 +321,7 @@ describe('AnalyticAnomalyHttpService', () => {
 
     describe('loginTimeSummary', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({
+            analyticDateDomain.optionalRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -336,7 +343,10 @@ describe('AnalyticAnomalyHttpService', () => {
         });
 
         it('passes null dates when the optional range is empty', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({});
+            analyticDateDomain.optionalRange.mockReturnValue({
+                startDate: null,
+                endDate: null,
+            });
             analyticAnomalyDomain.loginTimeSummary.mockResolvedValue({
                 count: 0,
             });
@@ -352,7 +362,7 @@ describe('AnalyticAnomalyHttpService', () => {
 
     describe('loginTimeList', () => {
         it('hands the optional range and pagination to the domain', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({
+            analyticDateDomain.optionalRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -383,7 +393,10 @@ describe('AnalyticAnomalyHttpService', () => {
         });
 
         it('passes null dates when the optional range is empty', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({});
+            analyticDateDomain.optionalRange.mockReturnValue({
+                startDate: null,
+                endDate: null,
+            });
             const page = {
                 ...offsetPage,
                 data: [

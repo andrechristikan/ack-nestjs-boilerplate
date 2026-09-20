@@ -54,7 +54,7 @@ Processor ───▶ Processor Service ─┘
 | Prisma select constant | `<Module>[<Audience>][<Concern>]Select` | `UserAdminListSelect` |
 | Contract table | `<Module><Concept>Contract`, one per file under `contracts/` | `ActivityLogActionContract` |
 
-**One controller per scope** (`<module>.<scope>.controller.ts`), whatever its size; concerns split in the HTTP services and doc factories behind it. **Three constants files per module** and no more: `<module>.constant.ts`, `<module>.doc.constant.ts`, `<module>.list.constant.ts`. **One interface per file**, except the module's own `<module>.interface.ts` collection; a data constant never sits in a class file.
+**One controller per scope** (`<module>.<scope>.controller.ts`), whatever its size; concerns split in the HTTP services and doc factories behind it. **At most three constants files:** `<module>.constant.ts`; `<module>.doc.constant.ts` only when it holds Swagger `@ApiParam` / `@ApiQuery` arrays; `<module>.list.constant.ts` only when the module has a list endpoint. Empty file → delete. **One interface per file**, except the module's own `<module>.interface.ts` collection; a data constant never sits in a class file.
 
 Never `UPPER_SNAKE_CASE`. Wire is camelCase only. **No `./` or `../` imports** — aliases:
 `@app/* @common/* @configs/* @modules/* @router/* @migration/* @queues/* @test/* @generated/* @instrument @swagger @main @migration`.
@@ -98,6 +98,8 @@ Prisma from `@generated/prisma-client/client`, never `…/internal`. Node built-
 Guards run bottom-up. Admin routes never carry workspace/project guards. Return `IResponseReturn<T>` / `IResponsePagingReturn<T>` / `IResponseFileReturn`. Scopes: `admin` · `public` · `user` · `system` · `shared`.
 
 - **Every JWT-protected handler** (`@AuthJwtAccessProtected` / `@AuthJwtRefreshProtected`) carries `@RequestThrottle({ user: true })`. One call per handler; a sensitive route adds `route:` in that same call. `public` and `system` omit it. Method decorator only; class-level does not compile.
+- **`DocRequest` is selective.** Zod-bound `@Param` / `@Query({ schema })` → no `DocRequest` (OpenAPI from schema). Unbound guard path params → `DocRequest({ params })`. `@PaginationQueryFilter*` fields → `DocRequest({ queries })` from `*.doc.constant.ts` (cannot merge into pagination zod); kit `search`/`orderBy`/page → `DocResponsePagination` only.
+- **Swagger errors are the kit only.** Factory publishes `Doc` / `DocAuth` / `DocGuard` (and pagination/file kits when used). No module-flow `DocResponseError` on `*.doc.ts`. JWT `accessTokenUnauthorized` from `DocAuth({ jwtAccessToken })` only.
 - **`@FeatureFlagProtected` takes the bare key.** Workspace-scoped and project-scoped routes on `user` / `shared` / `public` carry `@FeatureFlagProtected('workspace')`. Admin does not.
 - **`@RoleProtected` never lists `superAdmin`.** The bypass runs before the required list.
 - **Activity is not a decorator.** A domain prepares with `ActivityLogDomain.prepare(...)` before the write and stages with `stagePrepared(...)` after it.

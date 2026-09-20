@@ -17,10 +17,7 @@ import {
     UserDefaultAvailableOrderBy,
     UserDefaultAvailableSearch,
 } from '@modules/user/constants/user.list.constant';
-import {
-    UserDocParamsId,
-    UserDocQueryList,
-} from '@modules/user/constants/user.doc.constant';
+import { UserDocQueryList } from '@modules/user/constants/user.doc.constant';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { DatabaseIdResponseSchema } from '@common/database/dtos/response/database.id.response.dto';
@@ -40,7 +37,7 @@ export function UserAdminListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponsePagination<UserListResponseDto>('user.list', {
             schema: UserListResponseSchema,
             availableSearch: UserDefaultAvailableSearch,
@@ -55,14 +52,11 @@ export function UserAdminGetDoc(): MethodDecorator {
         Doc({
             summary: 'get detail an user',
         }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse<UserProfileResponseDto>('user.get', {
             schema: UserProfileResponseSchema,
         })
@@ -81,7 +75,7 @@ export function UserAdminCreateDoc(): MethodDecorator {
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse<DatabaseIdResponseDto>('user.create', {
             httpStatus: HttpStatus.CREATED,
             schema: DatabaseIdResponseSchema,
@@ -95,14 +89,13 @@ export function UserAdminUpdateStatusDoc(): MethodDecorator {
             summary: 'update status of user',
         }),
         DocRequest({
-            params: UserDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse('user.updateStatus')
     );
 }
@@ -112,14 +105,11 @@ export function UserAdminUpdatePasswordDoc(): MethodDecorator {
         Doc({
             summary: 'update password of user',
         }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse('user.updatePassword')
     );
 }
@@ -129,14 +119,11 @@ export function UserAdminResetTwoFactorDoc(): MethodDecorator {
         Doc({
             summary: "Reset user's two-factor authentication",
         }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse('user.twoFactor.reset')
     );
 }
@@ -153,7 +140,7 @@ export function UserAdminImportDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse('user.import', {
             httpStatus: HttpStatus.CREATED,
         })
@@ -172,7 +159,7 @@ export function UserAdminExportDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponseFile({
             extension: EnumFileExtensionDocument.csv,
         })

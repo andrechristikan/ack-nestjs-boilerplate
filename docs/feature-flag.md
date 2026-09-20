@@ -4,7 +4,7 @@ Feature Flag lives in `src/modules/feature-flag`.
 
 ## Overview
 
-Flags gate routes and code paths. Targeting: rollout percentage, per-user, metadata, and A/B testing. Results are cached.
+Flags gate routes and code paths. Targeting uses rollout percentage, a per-user allow-list (`targetUserIds`), and metadata sub-keys. Results are cached.
 
 ## Related Documents
 
@@ -215,13 +215,12 @@ The flag key and the caller identifier are combined and hashed with SHA-256 (`He
 - The evaluation **fails closed** with 503 when that header is absent, empty, over length, or does not match the pattern. An anonymous caller lands in the same bucket only while it sends the same `x-anonymous-id`.
 
 **Use cases:**
-- A/B testing
 - Gradual rollouts
 - Canary deployments
 
 ## Caching
 
-Feature flags are cached for performance. Configuration in `src/configs/feature-flag.config.ts`:
+Feature flags are cached. Configuration in `src/configs/feature-flag.config.ts`:
 ```typescript
 {
   keyPattern: 'FeatureFlag:{key}',
@@ -235,7 +234,7 @@ Feature flags are cached for performance. Configuration in `src/configs/feature-
 ```
 
 **Cache operations:**
-- Automatic cache on first read
+- Cache on first read
 - Cache invalidation on updates
 - Key format: `FeatureFlag:{key}`
 - Best-effort: cache read/write/delete failures are logged and fall through to the database, so a cache outage never breaks evaluation. There is no fail-open: an unknown flag key still returns 500 (`predefinedKeyNotFound`) and a disabled flag still returns 503 (`serviceUnavailable`).

@@ -124,6 +124,24 @@ describe('AppHttpFilter', () => {
             );
         });
 
+        it('falls back to the status name and http module when the response body is not an object', async () => {
+            const exception = new HttpException(
+                null as unknown as string,
+                HttpStatus.BAD_REQUEST
+            );
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(response.json).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    statusCodeKey: 'badRequest',
+                    module: 'http',
+                    data: undefined,
+                })
+            );
+        });
+
         it('uses the numeric status as statusCodeKey when HttpStatus has no name for it', async () => {
             const exception = new HttpException('Unknown', 599);
 

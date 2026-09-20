@@ -22,7 +22,7 @@ export function TermPolicySharedListAcceptedDoc(): MethodDecorator {
             jwtAccessToken: true,
             xApiKey: true,
         }),
-        DocGuard({ termPolicy: true }),
+        DocGuard({ termPolicy: true, user: true }),
         DocResponsePagination<TermPolicyUserAcceptanceResponseDto>(
             'termPolicy.accepted',
             {
@@ -46,7 +46,7 @@ export function TermPolicySharedAcceptDoc(): MethodDecorator {
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
         }),
-        DocGuard({ termPolicy: true }),
+        DocGuard({ termPolicy: true, user: true }),
         DocResponse('termPolicy.accept')
     );
 }

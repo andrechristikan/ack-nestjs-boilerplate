@@ -1,5 +1,9 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import {
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
+} from '@common/pagination/enums/pagination.enum';
+import type { IPaginationOrderBy } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -14,8 +18,20 @@ import {
 } from '@generated/prisma-client/client';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import {
+    AnalyticAccountTakeoverAvailableOrderBy,
+    AnalyticBackupCodeNewDeviceAvailableOrderBy,
+    AnalyticCredentialStuffingAvailableOrderBy,
+    AnalyticForgotPasswordAbuseAvailableOrderBy,
+    AnalyticFraudRiskScoreAvailableOrderBy,
+    AnalyticKeyCountAvailableOrderBy,
+    AnalyticSessionAfterAdminAvailableOrderBy,
+    AnalyticSharedFingerprintAvailableOrderBy,
+    AnalyticUserCountAvailableOrderBy,
+} from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticFraudDomain } from '@modules/analytic/domains/analytic.fraud.domain';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
+import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
 import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
 import { UserForgotPasswordAnalyticDomain } from '@modules/user/domains/user.forgot-password.analytic.domain';
@@ -28,6 +44,8 @@ describe('AnalyticFraudDomain', () => {
     const analyticCache: MockProxy<AnalyticCache> = mock<AnalyticCache>();
     const analyticDateUtil: MockProxy<AnalyticDateUtil> =
         mock<AnalyticDateUtil>();
+    const analyticSortUtil: MockProxy<AnalyticSortUtil> =
+        mock<AnalyticSortUtil>();
     const paginationService: MockProxy<PaginationService> =
         mock<PaginationService>();
     const configGet = vi.fn<(key: string) => number | string | undefined>();
@@ -54,6 +72,9 @@ describe('AnalyticFraudDomain', () => {
     const now: Date = new Date('2026-03-01T00:00:00.000Z');
     const windowEnd: Date = new Date('2026-01-01T01:00:00.000Z');
     const pagination = { skip: 0, limit: 20, orderBy: [] };
+    const orderBy: IPaginationOrderBy[] = [
+        { userId: EnumPaginationOrderDirectionType.asc },
+    ];
     const offsetPage = {
         type: EnumPaginationType.offset as const,
         count: 0,
@@ -113,6 +134,7 @@ describe('AnalyticFraudDomain', () => {
         helperDateService.create.mockReturnValue(now);
         helperDateService.backward.mockReturnValue(startDate);
         helperDateService.forward.mockReturnValue(windowEnd);
+        analyticSortUtil.sortRows.mockImplementation(rows => rows);
         paginationService.offsetPage.mockReturnValue(offsetPage);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -120,6 +142,7 @@ describe('AnalyticFraudDomain', () => {
                 AnalyticFraudDomain,
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: AnalyticDateUtil, useValue: analyticDateUtil },
+                { provide: AnalyticSortUtil, useValue: analyticSortUtil },
                 { provide: PaginationService, useValue: paginationService },
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -184,6 +207,32 @@ describe('AnalyticFraudDomain', () => {
 
             expect(result).toEqual(offsetPage);
         });
+
+        it('sorts the computed rows before it slices the page', async () => {
+            userLoginAnalyticDomain.findFailedLoginEvents.mockResolvedValue([]);
+            const sorted = [
+                { ipAddress: '10.0.0.1', uniqueUsers: 4, failCount: 9 },
+                { ipAddress: '10.0.0.2', uniqueUsers: 2, failCount: 5 },
+            ];
+            analyticSortUtil.sortRows.mockReturnValue(sorted);
+
+            await domain.credentialStuffingList(null, {
+                skip: 1,
+                limit: 1,
+                orderBy,
+            });
+
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                orderBy,
+                AnalyticCredentialStuffingAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+                [sorted[1]],
+                2,
+                { skip: 1, limit: 1 }
+            );
+        });
     });
 
     describe('accountTakeoverSummary', () => {
@@ -223,6 +272,40 @@ describe('AnalyticFraudDomain', () => {
 
             expect(result).toEqual(offsetPage);
         });
+
+        it('sorts the computed rows before it slices the page', async () => {
+            userPasswordAnalyticDomain.findProfileChanges.mockResolvedValue([]);
+            const sorted = [
+                {
+                    userId: 'user-1',
+                    indicatorCodes: ['newDevice'],
+                    passwordChangedAt: startDate,
+                },
+                {
+                    userId: 'user-2',
+                    indicatorCodes: ['newDevice'],
+                    passwordChangedAt: endDate,
+                },
+            ];
+            analyticSortUtil.sortRows.mockReturnValue(sorted);
+
+            await domain.accountTakeoverList(startDate, endDate, {
+                skip: 1,
+                limit: 1,
+                orderBy,
+            });
+
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                orderBy,
+                AnalyticAccountTakeoverAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+                [sorted[1]],
+                2,
+                { skip: 1, limit: 1 }
+            );
+        });
     });
 
     describe('massRegistrationSummary', () => {
@@ -248,6 +331,32 @@ describe('AnalyticFraudDomain', () => {
 
             expect(await domain.massRegistrationList(null, pagination)).toEqual(
                 offsetPage
+            );
+        });
+
+        it('sorts the computed rows before it slices the page', async () => {
+            userAnalyticDomain.findSignUpsInRange.mockResolvedValue([]);
+            const sorted = [
+                { key: '10.0.0.1', count: 9 },
+                { key: '10.0.0.2', count: 5 },
+            ];
+            analyticSortUtil.sortRows.mockReturnValue(sorted);
+
+            await domain.massRegistrationList(null, {
+                skip: 1,
+                limit: 1,
+                orderBy,
+            });
+
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                orderBy,
+                AnalyticKeyCountAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+                [sorted[1]],
+                2,
+                { skip: 1, limit: 1 }
             );
         });
     });
@@ -282,6 +391,34 @@ describe('AnalyticFraudDomain', () => {
             expect(
                 await domain.passwordResetEnumerationList(null, pagination)
             ).toEqual(offsetPage);
+        });
+
+        it('sorts the computed rows before it slices the page', async () => {
+            userForgotPasswordAnalyticDomain.findCreatedInRange.mockResolvedValue(
+                []
+            );
+            const sorted = [
+                { key: '10.0.0.1', count: 9 },
+                { key: '10.0.0.2', count: 5 },
+            ];
+            analyticSortUtil.sortRows.mockReturnValue(sorted);
+
+            await domain.passwordResetEnumerationList(null, {
+                skip: 1,
+                limit: 1,
+                orderBy,
+            });
+
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                orderBy,
+                AnalyticKeyCountAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+                [sorted[1]],
+                2,
+                { skip: 1, limit: 1 }
+            );
         });
     });
 
@@ -331,6 +468,47 @@ describe('AnalyticFraudDomain', () => {
                 { skip: 0, limit: 1 }
             );
         });
+
+        it('sorts the computed rows before it slices the page', async () => {
+            const rows = [
+                {
+                    fingerprint: 'fp-1',
+                    userCount: 3,
+                    userIds: ['user-1', 'user-2', 'user-3'],
+                },
+            ];
+            deviceAnalyticDomain.sharedFingerprints.mockResolvedValue(rows);
+            const sorted = [
+                {
+                    fingerprint: 'fp-2',
+                    userCount: 4,
+                    userIds: ['user-4'],
+                },
+                {
+                    fingerprint: 'fp-1',
+                    userCount: 3,
+                    userIds: ['user-1', 'user-2', 'user-3'],
+                },
+            ];
+            analyticSortUtil.sortRows.mockReturnValue(sorted);
+
+            await domain.sharedFingerprintList({
+                skip: 1,
+                limit: 1,
+                orderBy,
+            });
+
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                rows,
+                orderBy,
+                AnalyticSharedFingerprintAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+                [sorted[1]],
+                2,
+                { skip: 1, limit: 1 }
+            );
+        });
     });
 
     describe('sessionAfterAdminSummary', () => {
@@ -371,6 +549,42 @@ describe('AnalyticFraudDomain', () => {
                 )
             ).toEqual(offsetPage);
         });
+
+        it('sorts the computed rows before it slices the page', async () => {
+            activityLogAnalyticDomain.findManyByActionsInRange.mockResolvedValue(
+                []
+            );
+            const sorted = [
+                {
+                    userId: 'user-1',
+                    revokedAt: startDate,
+                    loginAt: endDate,
+                },
+                {
+                    userId: 'user-2',
+                    revokedAt: startDate,
+                    loginAt: endDate,
+                },
+            ];
+            analyticSortUtil.sortRows.mockReturnValue(sorted);
+
+            await domain.sessionAfterAdminList(startDate, endDate, {
+                skip: 1,
+                limit: 1,
+                orderBy,
+            });
+
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                orderBy,
+                AnalyticSessionAfterAdminAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+                [sorted[1]],
+                2,
+                { skip: 1, limit: 1 }
+            );
+        });
     });
 
     describe('forgotPasswordTokenAbuseSummary', () => {
@@ -404,6 +618,34 @@ describe('AnalyticFraudDomain', () => {
                 await domain.forgotPasswordTokenAbuseList(null, pagination)
             ).toEqual(offsetPage);
         });
+
+        it('sorts the computed rows before it slices the page', async () => {
+            userForgotPasswordAnalyticDomain.unusedTokenCountsByUser.mockResolvedValue(
+                []
+            );
+            const sorted = [
+                { userId: 'user-1', tokenCount: 9 },
+                { userId: 'user-2', tokenCount: 5 },
+            ];
+            analyticSortUtil.sortRows.mockReturnValue(sorted);
+
+            await domain.forgotPasswordTokenAbuseList(null, {
+                skip: 1,
+                limit: 1,
+                orderBy,
+            });
+
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                orderBy,
+                AnalyticForgotPasswordAbuseAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+                [sorted[1]],
+                2,
+                { skip: 1, limit: 1 }
+            );
+        });
     });
 
     describe('refreshSpikeSummary', () => {
@@ -433,6 +675,34 @@ describe('AnalyticFraudDomain', () => {
 
             expect(await domain.refreshSpikeList(null, pagination)).toEqual(
                 offsetPage
+            );
+        });
+
+        it('sorts the computed rows before it slices the page', async () => {
+            activityLogAnalyticDomain.findManyByActionsInRange.mockResolvedValue(
+                []
+            );
+            const sorted = [
+                { userId: 'user-1', count: 9 },
+                { userId: 'user-2', count: 5 },
+            ];
+            analyticSortUtil.sortRows.mockReturnValue(sorted);
+
+            await domain.refreshSpikeList(null, {
+                skip: 1,
+                limit: 1,
+                orderBy,
+            });
+
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                orderBy,
+                AnalyticUserCountAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+                [sorted[1]],
+                2,
+                { skip: 1, limit: 1 }
             );
         });
     });
@@ -468,6 +738,34 @@ describe('AnalyticFraudDomain', () => {
                 await domain.backupCodeNewDeviceList(null, pagination)
             ).toEqual(offsetPage);
         });
+
+        it('sorts the computed rows before it slices the page', async () => {
+            activityLogAnalyticDomain.findManyByActionsInRange.mockResolvedValue(
+                []
+            );
+            const sorted = [
+                { userId: 'user-1', regeneratedAt: startDate },
+                { userId: 'user-2', regeneratedAt: endDate },
+            ];
+            analyticSortUtil.sortRows.mockReturnValue(sorted);
+
+            await domain.backupCodeNewDeviceList(null, {
+                skip: 1,
+                limit: 1,
+                orderBy,
+            });
+
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                orderBy,
+                AnalyticBackupCodeNewDeviceAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+                [sorted[1]],
+                2,
+                { skip: 1, limit: 1 }
+            );
+        });
     });
 
     describe('apiKeyBurstSummary', () => {
@@ -497,6 +795,34 @@ describe('AnalyticFraudDomain', () => {
 
             expect(await domain.apiKeyBurstList(null, pagination)).toEqual(
                 offsetPage
+            );
+        });
+
+        it('sorts the computed rows before it slices the page', async () => {
+            activityLogAnalyticDomain.findManyByActionsInRange.mockResolvedValue(
+                []
+            );
+            const sorted = [
+                { userId: 'user-1', count: 9 },
+                { userId: 'user-2', count: 5 },
+            ];
+            analyticSortUtil.sortRows.mockReturnValue(sorted);
+
+            await domain.apiKeyBurstList(null, {
+                skip: 1,
+                limit: 1,
+                orderBy,
+            });
+
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                orderBy,
+                AnalyticUserCountAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+                [sorted[1]],
+                2,
+                { skip: 1, limit: 1 }
             );
         });
     });
@@ -594,12 +920,14 @@ describe('AnalyticFraudDomain', () => {
                     email: 'low@example.com',
                     passwordAttempt: 1,
                     lastLoginAt: startDate,
+                    createdAt: startDate,
                 },
                 {
                     id: 'user-high',
                     email: 'high@example.com',
                     passwordAttempt: 4,
                     lastLoginAt: startDate,
+                    createdAt: startDate,
                 },
             ]);
             analyticCache.getRiskScore.mockImplementation(async userId => ({
@@ -612,6 +940,24 @@ describe('AnalyticFraudDomain', () => {
             const result = await domain.riskScores(null, pagination);
 
             expect(result).toEqual(offsetPage);
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [
+                    {
+                        userId: 'user-high',
+                        score: 40,
+                        band: 'monitor',
+                        contributingSignalCodes: [],
+                    },
+                    {
+                        userId: 'user-low',
+                        score: 10,
+                        band: 'monitor',
+                        contributingSignalCodes: [],
+                    },
+                ],
+                [],
+                AnalyticFraudRiskScoreAvailableOrderBy
+            );
             expect(paginationService.offsetPage).toHaveBeenCalledWith(
                 [
                     {
@@ -632,6 +978,38 @@ describe('AnalyticFraudDomain', () => {
             );
         });
 
+        it('pages whatever the sorter returns rather than the scored order', async () => {
+            userAnalyticDomain.findNearLockout.mockResolvedValue([]);
+            const sorted = [
+                {
+                    userId: 'user-a',
+                    score: 10,
+                    band: 'monitor',
+                    contributingSignalCodes: [],
+                },
+                {
+                    userId: 'user-b',
+                    score: 40,
+                    band: 'elevate',
+                    contributingSignalCodes: [],
+                },
+            ];
+            analyticSortUtil.sortRows.mockReturnValue(sorted);
+
+            await domain.riskScores(null, { skip: 1, limit: 1, orderBy });
+
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                orderBy,
+                AnalyticFraudRiskScoreAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+                [sorted[1]],
+                2,
+                { skip: 1, limit: 1 }
+            );
+        });
+
         it('drops scores below minScore', async () => {
             userAnalyticDomain.findNearLockout.mockResolvedValue([
                 {
@@ -639,12 +1017,14 @@ describe('AnalyticFraudDomain', () => {
                     email: 'low@example.com',
                     passwordAttempt: 1,
                     lastLoginAt: startDate,
+                    createdAt: startDate,
                 },
                 {
                     id: 'user-high',
                     email: 'high@example.com',
                     passwordAttempt: 4,
                     lastLoginAt: startDate,
+                    createdAt: startDate,
                 },
             ]);
             analyticCache.getRiskScore.mockImplementation(async userId => ({

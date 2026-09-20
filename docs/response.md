@@ -30,7 +30,7 @@ Response decorators wrap the handler result with metadata, a status code, and a 
 
 - [Message Documentation][ref-doc-message] - For internationalization and error message translation
 - [Handling Error Documentation][ref-doc-handling-error] - For exception handling and response formatting
-- [Doc Documentation][ref-doc-doc] - For API documentation integration with DTOs
+- [Doc Documentation][ref-doc-doc] - For API documentation integration with DTOs, and for which error responses OpenAPI publishes (kit primitives only)
 - [File Upload Documentation][ref-doc-file-upload] - For file validation pipes
 - [Request Validation Documentation][ref-doc-request-validation] - For input-boundary DTO validation and serialization
 
@@ -266,7 +266,7 @@ The `.meta({ description, example })` on each field is what the OpenAPI document
 
 ### A Route That Returns No Data
 
-`@Response(messagePath)` with no `schema` declares a route whose body carries `statusCode`, `message`, and `metadata` and nothing else. The handler returns `Promise<void>`:
+`@Response(messagePath)` with no `schema` declares a route whose body carries `statusCode`, `message`, and `metadata` and nothing else. The handler may return `Promise<void>`, or `IResponseReturn<void>` when the service already returns the envelope (for example to pass `metadata` overrides). Constraint: `rules/http.md`.
 
 ```typescript
 @Response('role.delete')

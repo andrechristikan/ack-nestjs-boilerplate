@@ -9,7 +9,6 @@ import {
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { DeviceCursorAvailableOrderBy } from '@modules/device/constants/device.list.constant';
-import { DeviceOwnershipDocParamsId } from '@modules/device/constants/device.doc.constant';
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
 import type { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 import { applyDecorators } from '@nestjs/common';
@@ -23,7 +22,7 @@ export function DeviceSharedListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ termPolicy: true }),
+        DocGuard({ termPolicy: true, user: true }),
         DocResponsePagination<DeviceOwnershipResponseDto>('device.list', {
             schema: DeviceOwnershipResponseSchema,
             availableOrderBy: DeviceCursorAvailableOrderBy,
@@ -41,9 +40,7 @@ export function DeviceSharedRefreshDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
         }),
@@ -56,16 +53,11 @@ export function DeviceSharedRemoveDoc(): MethodDecorator {
         Doc({
             summary: 'remove a user device',
         }),
-        DocRequest({
-            params: DeviceOwnershipDocParamsId,
-        }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({
-            termPolicy: true,
-        }),
+        DocGuard({ termPolicy: true, user: true }),
         DocResponse('device.remove')
     );
 }

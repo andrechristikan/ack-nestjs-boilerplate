@@ -2,24 +2,17 @@ import {
     Doc,
     DocAuth,
     DocGuard,
-    DocRequest,
     DocResponse,
-    DocResponseError,
     DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import {
-    ProjectAdminListDocQueries,
-    ProjectDocParamsId,
-} from '@modules/project/constants/project.doc.constant';
 import {
     ProjectDefaultAvailableOrderBy,
     ProjectDefaultAvailableSearch,
 } from '@modules/project/constants/project.list.constant';
 import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
 import type { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
-import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
-import { HttpStatus, applyDecorators } from '@nestjs/common';
+import { applyDecorators } from '@nestjs/common';
 
 export function ProjectAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -27,9 +20,8 @@ export function ProjectAdminListDoc(): MethodDecorator {
             summary:
                 'admin list all projects (read-only); optional workspaceId filter',
         }),
-        DocRequest({ queries: ProjectAdminListDocQueries }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true }),
+        DocGuard({ role: true, user: true, policy: true, termPolicy: true }),
         DocResponsePagination<ProjectResponseDto>('project.admin.list', {
             schema: ProjectResponseSchema,
             availableSearch: ProjectDefaultAvailableSearch,
@@ -45,13 +37,8 @@ export function ProjectAdminGetDoc(): MethodDecorator {
             summary:
                 'admin get a project by id (read-only, includes soft-deleted)',
         }),
-        DocRequest({ params: ProjectDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true }),
-        DocResponseError(HttpStatus.NOT_FOUND, {
-            statusCode: EnumProjectStatusCodeError.notFound,
-            messagePath: 'project.error.notFound',
-        }),
+        DocGuard({ role: true, user: true, policy: true, termPolicy: true }),
         DocResponse<ProjectResponseDto>('project.admin.get', {
             schema: ProjectResponseSchema,
         })

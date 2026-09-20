@@ -11,11 +11,7 @@ import {
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { TermPolicyDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
-import {
-    TermPolicyDocParamsGetContent,
-    TermPolicyDocParamsId,
-    TermPolicyListAdminDocQuery,
-} from '@modules/term-policy/constants/term-policy.doc.constant';
+import { TermPolicyListAdminDocQuery } from '@modules/term-policy/constants/term-policy.doc.constant';
 import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import type { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
@@ -32,11 +28,7 @@ export function TermPolicyAdminListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({
-            policy: true,
-            role: true,
-            termPolicy: true,
-        }),
+        DocGuard({ policy: true, role: true, termPolicy: true, user: true }),
         DocResponsePagination<TermPolicyResponseDto>('termPolicy.list', {
             schema: TermPolicyResponseSchema,
             availableOrderBy: TermPolicyDefaultAvailableOrderBy,
@@ -54,11 +46,7 @@ export function TermPolicyAdminCreateDoc(): MethodDecorator {
             jwtAccessToken: true,
             xApiKey: true,
         }),
-        DocGuard({
-            policy: true,
-            role: true,
-            termPolicy: true,
-        }),
+        DocGuard({ policy: true, role: true, termPolicy: true, user: true }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
         }),
@@ -78,14 +66,7 @@ export function TermPolicyAdminDeleteDoc(): MethodDecorator {
             jwtAccessToken: true,
             xApiKey: true,
         }),
-        DocGuard({
-            policy: true,
-            role: true,
-            termPolicy: true,
-        }),
-        DocRequest({
-            params: TermPolicyDocParamsId,
-        }),
+        DocGuard({ policy: true, role: true, termPolicy: true, user: true }),
         DocResponse<TermPolicyResponseDto>('termPolicy.create', {
             schema: TermPolicyResponseSchema,
         })
@@ -101,11 +82,7 @@ export function TermPolicyAdminGenerateContentPresignDoc(): MethodDecorator {
             jwtAccessToken: true,
             xApiKey: true,
         }),
-        DocGuard({
-            policy: true,
-            role: true,
-            termPolicy: true,
-        }),
+        DocGuard({ policy: true, role: true, termPolicy: true, user: true }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
         }),
@@ -127,14 +104,9 @@ export function TermPolicyAdminUpdateContentDoc(): MethodDecorator {
             jwtAccessToken: true,
             xApiKey: true,
         }),
-        DocGuard({
-            policy: true,
-            role: true,
-            termPolicy: true,
-        }),
+        DocGuard({ policy: true, role: true, termPolicy: true, user: true }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            params: TermPolicyDocParamsId,
         }),
         DocResponse('termPolicy.updateContent')
     );
@@ -149,14 +121,9 @@ export function TermPolicyAdminAddContentDoc(): MethodDecorator {
             jwtAccessToken: true,
             xApiKey: true,
         }),
-        DocGuard({
-            policy: true,
-            role: true,
-            termPolicy: true,
-        }),
+        DocGuard({ policy: true, role: true, termPolicy: true, user: true }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            params: TermPolicyDocParamsId,
         }),
         DocResponse('termPolicy.addContent')
     );
@@ -171,14 +138,9 @@ export function TermPolicyAdminRemoveContentDoc(): MethodDecorator {
             jwtAccessToken: true,
             xApiKey: true,
         }),
-        DocGuard({
-            policy: true,
-            role: true,
-            termPolicy: true,
-        }),
+        DocGuard({ policy: true, role: true, termPolicy: true, user: true }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            params: TermPolicyDocParamsId,
         }),
         DocResponse('termPolicy.removeContent')
     );
@@ -193,14 +155,9 @@ export function TermPolicyAdminGetContentDoc(): MethodDecorator {
             jwtAccessToken: true,
             xApiKey: true,
         }),
-        DocGuard({
-            policy: true,
-            role: true,
-            termPolicy: true,
-        }),
+        DocGuard({ policy: true, role: true, termPolicy: true, user: true }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            params: TermPolicyDocParamsGetContent,
         }),
         DocResponse('termPolicy.getContent', {
             schema: AwsS3PresignResponseSchema,
@@ -217,14 +174,7 @@ export function TermPolicyAdminPublishDoc(): MethodDecorator {
             jwtAccessToken: true,
             xApiKey: true,
         }),
-        DocGuard({
-            policy: true,
-            role: true,
-            termPolicy: true,
-        }),
-        DocRequest({
-            params: TermPolicyDocParamsId,
-        }),
+        DocGuard({ policy: true, role: true, termPolicy: true, user: true }),
         DocResponse('termPolicy.publish')
     );
 }

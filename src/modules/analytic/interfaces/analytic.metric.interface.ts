@@ -4,8 +4,8 @@ export interface IAnalyticDateRange {
 }
 
 export interface IAnalyticOptionalDateRange {
-    startDate?: Date;
-    endDate?: Date;
+    startDate: Date | null;
+    endDate: Date | null;
 }
 
 export interface IAnalyticCountBucket {

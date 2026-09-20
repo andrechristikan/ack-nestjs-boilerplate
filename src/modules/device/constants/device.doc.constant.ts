@@ -26,5 +26,6 @@ export const DeviceOwnershipDocQueryList: ApiQueryOptions[] = [
         required: false,
         type: 'boolean',
         example: true,
+        description: 'Filter by revoked ownership. Omit to return both',
     },
 ];

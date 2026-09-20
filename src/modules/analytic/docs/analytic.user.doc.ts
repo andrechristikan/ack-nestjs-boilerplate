@@ -18,7 +18,12 @@ export function AnalyticUserWorkspaceSummaryDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'get current workspace analytic summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: false, policy: false, termPolicy: true }),
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            featureFlag: true,
+            workspace: true,
+        }),
         DocResponse<AnalyticWorkspaceSummaryResponseDto>(
             'analytic.workspaceSummary',
             {
@@ -32,7 +37,13 @@ export function AnalyticUserWorkspaceInviteFunnelDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'get current workspace invite funnel by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: false, policy: false, termPolicy: true }),
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            featureFlag: true,
+            workspace: true,
+            workspaceRole: true,
+        }),
         DocResponse<AnalyticStatusCountResponseDto>(
             'analytic.workspaceInviteFunnel',
             {
@@ -49,7 +60,13 @@ export function AnalyticUserWorkspaceJoinOutcomesDoc(): MethodDecorator {
                 'get current workspace join request outcomes by date range',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: false, policy: false, termPolicy: true }),
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            featureFlag: true,
+            workspace: true,
+            workspaceRole: true,
+        }),
         DocResponse<AnalyticStatusCountResponseDto>(
             'analytic.workspaceJoinOutcomes',
             {
@@ -63,7 +80,13 @@ export function AnalyticUserWorkspaceMemberRolesDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'get current workspace member role distribution' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: false, policy: false, termPolicy: true }),
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            featureFlag: true,
+            workspace: true,
+            workspaceRole: true,
+        }),
         DocResponse<AnalyticRoleCountResponseDto>(
             'analytic.workspaceMemberRoles',
             {
@@ -77,7 +100,13 @@ export function AnalyticUserWorkspaceActivityDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'get current workspace activity count by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: false, policy: false, termPolicy: true }),
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            featureFlag: true,
+            workspace: true,
+            workspaceRole: true,
+        }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.workspaceActivity',
             {

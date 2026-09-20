@@ -3,6 +3,12 @@ import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import {
+    AnalyticDeviceProliferationAvailableOrderBy,
+    AnalyticImpossibleTravelAvailableOrderBy,
+    AnalyticLoginSpikeIpAvailableOrderBy,
+    AnalyticLoginTimeAnomalyAvailableOrderBy,
+} from '@modules/analytic/constants/analytic.list.constant';
 import type {
     IAnalyticAnomalySummary,
     IAnalyticDeviceProliferation,
@@ -13,6 +19,7 @@ import type {
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticGeoUtil } from '@modules/analytic/utils/analytic.geo.util';
+import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
 import { SessionAnalyticDomain } from '@modules/session/domains/session.analytic.domain';
 import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
@@ -28,6 +35,7 @@ export class AnalyticAnomalyDomain {
         private readonly analyticCache: AnalyticCache,
         private readonly analyticDateUtil: AnalyticDateUtil,
         private readonly analyticGeoUtil: AnalyticGeoUtil,
+        private readonly analyticSortUtil: AnalyticSortUtil,
         private readonly paginationService: PaginationService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
@@ -226,10 +234,15 @@ export class AnalyticAnomalyDomain {
         params: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>
     ): Promise<IResponsePagingReturn<IAnalyticImpossibleTravel>> {
         const rows = await this.computeImpossibleTravel(startDate, endDate);
-        const { skip, limit } = params;
-        const data = rows.slice(skip, skip + limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticImpossibleTravelAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
 
-        return this.paginationService.offsetPage(data, rows.length, {
+        return this.paginationService.offsetPage(data, sorted.length, {
             skip,
             limit,
         });
@@ -279,10 +292,15 @@ export class AnalyticAnomalyDomain {
         )!;
         const window = windowMs ?? configured;
         const rows = await this.computeLoginSpikeIp(window);
-        const { skip, limit } = params;
-        const data = rows.slice(skip, skip + limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticLoginSpikeIpAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
 
-        return this.paginationService.offsetPage(data, rows.length, {
+        return this.paginationService.offsetPage(data, sorted.length, {
             skip,
             limit,
         });
@@ -376,10 +394,15 @@ export class AnalyticAnomalyDomain {
             'analytic.anomaly.deviceProliferation.zScoreThreshold'
         )!;
         const result = await this.deviceAnalyticDomain.proliferationOutliers(z);
-        const { skip, limit } = params;
-        const data = result.rows.slice(skip, skip + limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            result.rows,
+            orderBy,
+            AnalyticDeviceProliferationAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
 
-        return this.paginationService.offsetPage(data, result.rows.length, {
+        return this.paginationService.offsetPage(data, sorted.length, {
             skip,
             limit,
         });
@@ -418,10 +441,15 @@ export class AnalyticAnomalyDomain {
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePagingReturn<IAnalyticLoginTimeAnomaly>> {
         const rows = await this.computeLoginTimeAnomalies(startDate, endDate);
-        const { skip, limit } = params;
-        const data = rows.slice(skip, skip + limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticLoginTimeAnomalyAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
 
-        return this.paginationService.offsetPage(data, rows.length, {
+        return this.paginationService.offsetPage(data, sorted.length, {
             skip,
             limit,
         });

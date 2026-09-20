@@ -1,6 +1,7 @@
 import {
     Doc,
     DocAuth,
+    DocGuard,
     DocRequest,
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
@@ -21,6 +22,7 @@ export function UserPublicLoginCredentialDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
         }),
+        DocGuard({ featureFlag: true }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
         }),
@@ -36,6 +38,7 @@ export function AuthPublicLoginSocialGoogleDoc(): MethodDecorator {
             summary: 'Login with social google',
         }),
         DocAuth({ xApiKey: true, google: true }),
+        DocGuard({ featureFlag: true }),
         DocResponse<UserLoginResponseDto>('auth.loginWithSocialGoogle', {
             schema: UserLoginResponseSchema,
         })
@@ -48,6 +51,7 @@ export function AuthPublicLoginSocialAppleDoc(): MethodDecorator {
             summary: 'Login with social apple',
         }),
         DocAuth({ xApiKey: true, apple: true }),
+        DocGuard({ featureFlag: true }),
         DocResponse<UserLoginResponseDto>('auth.loginWithSocialApple', {
             schema: UserLoginResponseSchema,
         })
@@ -65,24 +69,10 @@ export function UserPublicSignUpDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
         }),
+        DocGuard({ featureFlag: true }),
         DocResponse('user.signUp', {
             httpStatus: HttpStatus.CREATED,
         })
-    );
-}
-
-export function UserPublicSendEmailVerificationDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'User resend email verification',
-        }),
-        DocAuth({
-            xApiKey: true,
-        }),
-        DocRequest({
-            bodyType: EnumDocRequestBodyType.json,
-        }),
-        DocResponse('user.sendEmailVerification')
     );
 }
 
@@ -101,6 +91,21 @@ export function UserPublicVerifyEmailDoc(): MethodDecorator {
     );
 }
 
+export function UserPublicSendEmailVerificationDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'User resend email verification',
+        }),
+        DocAuth({
+            xApiKey: true,
+        }),
+        DocRequest({
+            bodyType: EnumDocRequestBodyType.json,
+        }),
+        DocResponse('user.sendEmailVerification')
+    );
+}
+
 export function UserPublicForgotPasswordDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
@@ -112,6 +117,7 @@ export function UserPublicForgotPasswordDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
         }),
+        DocGuard({ featureFlag: true }),
         DocResponse('user.forgotPassword')
     );
 }
@@ -127,6 +133,7 @@ export function UserPublicResetPasswordDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
         }),
+        DocGuard({ featureFlag: true }),
         DocResponse('user.resetPassword')
     );
 }

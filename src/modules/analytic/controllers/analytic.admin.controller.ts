@@ -177,7 +177,22 @@ import {
 } from '@generated/prisma-client/client';
 import { AnalyticFraudSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-summary.response.dto';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
-import { AnalyticDefaultAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+import {
+    AnalyticAccountTakeoverAvailableOrderBy,
+    AnalyticBackupCodeNewDeviceAvailableOrderBy,
+    AnalyticCredentialStuffingAvailableOrderBy,
+    AnalyticDeviceProliferationAvailableOrderBy,
+    AnalyticForgotPasswordAbuseAvailableOrderBy,
+    AnalyticFraudRiskScoreAvailableOrderBy,
+    AnalyticImpossibleTravelAvailableOrderBy,
+    AnalyticKeyCountAvailableOrderBy,
+    AnalyticLoginSpikeIpAvailableOrderBy,
+    AnalyticLoginTimeAnomalyAvailableOrderBy,
+    AnalyticNearLockoutAvailableOrderBy,
+    AnalyticSessionAfterAdminAvailableOrderBy,
+    AnalyticSharedFingerprintAvailableOrderBy,
+    AnalyticUserCountAvailableOrderBy,
+} from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticFraudRiskScoresRequestSchema } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores.request.dto';
 import type { AnalyticFraudRiskScoresRequestDto } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores.request.dto';
 import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
@@ -1507,7 +1522,7 @@ export class AnalyticAdminController {
     @Get('/fraud/credential-stuffing/list')
     async credentialStuffingList(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticCredentialStuffingAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -1561,7 +1576,7 @@ export class AnalyticAdminController {
     @Get('/fraud/account-takeover/list')
     async accountTakeoverList(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticAccountTakeoverAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>,
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -1615,7 +1630,7 @@ export class AnalyticAdminController {
     @Get('/fraud/mass-registration/list')
     async massRegistrationList(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticKeyCountAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -1668,7 +1683,7 @@ export class AnalyticAdminController {
     @Get('/fraud/password-reset-enumeration/list')
     async passwordResetEnumerationList(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticKeyCountAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.ForgotPasswordWhereInput>,
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -1716,7 +1731,7 @@ export class AnalyticAdminController {
     @Get('/fraud/shared-fingerprint/list')
     async sharedFingerprintList(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticSharedFingerprintAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>
     ): Promise<IResponsePagingReturn<IAnalyticSharedFingerprint>> {
@@ -1765,7 +1780,7 @@ export class AnalyticAdminController {
     @Get('/fraud/session-after-admin/list')
     async sessionAfterAdminList(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticSessionAfterAdminAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
         @Query({ schema: AnalyticDateRangeRequestSchema })
@@ -1819,7 +1834,7 @@ export class AnalyticAdminController {
     @Get('/fraud/forgot-password-token-abuse/list')
     async forgotPasswordTokenAbuseList(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticForgotPasswordAbuseAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.ForgotPasswordWhereInput>,
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -1872,7 +1887,7 @@ export class AnalyticAdminController {
     @Get('/fraud/refresh-spike/list')
     async refreshSpikeList(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticUserCountAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -1925,7 +1940,7 @@ export class AnalyticAdminController {
     @Get('/fraud/backup-code-new-device/list')
     async backupCodeNewDeviceList(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticBackupCodeNewDeviceAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -1976,7 +1991,7 @@ export class AnalyticAdminController {
     @Get('/fraud/api-key-burst/list')
     async apiKeyBurstList(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticUserCountAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -2027,7 +2042,7 @@ export class AnalyticAdminController {
     @Get('/fraud/risk-scores')
     async riskScores(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticFraudRiskScoreAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
         @Query({ schema: AnalyticFraudRiskScoresRequestSchema })
@@ -2081,7 +2096,7 @@ export class AnalyticAdminController {
     @Get('/anomaly/impossible-travel/list')
     async impossibleTravelList(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticImpossibleTravelAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
@@ -2135,7 +2150,7 @@ export class AnalyticAdminController {
     @Get('/anomaly/login-spike-ip/list')
     async loginSpikeIpList(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticLoginSpikeIpAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
         @Query({ schema: AnalyticWindowRequestSchema })
@@ -2185,7 +2200,7 @@ export class AnalyticAdminController {
     @Get('/anomaly/failed-login-spike/list')
     async failedLoginSpikeList(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticNearLockoutAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePagingReturn<IAnalyticNearLockout>> {
@@ -2230,7 +2245,7 @@ export class AnalyticAdminController {
     @Get('/anomaly/device-proliferation/list')
     async deviceProliferationList(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticDeviceProliferationAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>
     ): Promise<IResponsePagingReturn<IAnalyticDeviceProliferation>> {
@@ -2281,7 +2296,7 @@ export class AnalyticAdminController {
     @Get('/anomaly/login-time/list')
     async loginTimeList(
         @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDefaultAvailableOrderBy,
+            availableOrderBy: AnalyticLoginTimeAnomalyAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })

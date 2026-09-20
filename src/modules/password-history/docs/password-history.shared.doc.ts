@@ -19,11 +19,14 @@ export function PasswordHistorySharedListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ termPolicy: true }),
-        DocResponsePagination<PasswordHistoryResponseDto>('passwordHistory.list', {
-            schema: PasswordHistoryResponseSchema,
-            type: EnumPaginationType.cursor,
-            availableOrderBy: PasswordHistoryCursorAvailableOrderBy,
-        })
+        DocGuard({ termPolicy: true, user: true }),
+        DocResponsePagination<PasswordHistoryResponseDto>(
+            'passwordHistory.list',
+            {
+                schema: PasswordHistoryResponseSchema,
+                type: EnumPaginationType.cursor,
+                availableOrderBy: PasswordHistoryCursorAvailableOrderBy,
+            }
+        )
     );
 }

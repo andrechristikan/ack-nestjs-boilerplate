@@ -25,6 +25,10 @@ export const AnalyticNearLockoutResponseSchema = z.object({
         description: 'When the user last logged in',
         example: faker.date.recent(),
     }),
+    createdAt: z.date().meta({
+        description: 'When the user was created',
+        example: faker.date.past(),
+    }),
 });
 
 /**

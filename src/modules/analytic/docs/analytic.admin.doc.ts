@@ -2,13 +2,26 @@ import {
     Doc,
     DocAuth,
     DocGuard,
-    DocRequest,
     DocResponse,
     DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { AnalyticDefaultAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
-import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
+import {
+    AnalyticAccountTakeoverAvailableOrderBy,
+    AnalyticBackupCodeNewDeviceAvailableOrderBy,
+    AnalyticCredentialStuffingAvailableOrderBy,
+    AnalyticDeviceProliferationAvailableOrderBy,
+    AnalyticForgotPasswordAbuseAvailableOrderBy,
+    AnalyticFraudRiskScoreAvailableOrderBy,
+    AnalyticImpossibleTravelAvailableOrderBy,
+    AnalyticKeyCountAvailableOrderBy,
+    AnalyticLoginSpikeIpAvailableOrderBy,
+    AnalyticLoginTimeAnomalyAvailableOrderBy,
+    AnalyticNearLockoutAvailableOrderBy,
+    AnalyticSessionAfterAdminAvailableOrderBy,
+    AnalyticSharedFingerprintAvailableOrderBy,
+    AnalyticUserCountAvailableOrderBy,
+} from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticAccountTakeoverResponseSchema } from '@modules/analytic/dtos/response/analytic.account-takeover.response.dto';
 import { AnalyticAnomalySummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-summary.response.dto';
 import { AnalyticApiKeyActiveExpiredResponseSchema } from '@modules/analytic/dtos/response/analytic.api-key-active-expired.response.dto';
@@ -87,7 +100,7 @@ export function AnalyticAdminUsersRegistrationsDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get user registration count by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.usersRegistrations',
             {
@@ -101,7 +114,7 @@ export function AnalyticAdminUsersChurnDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get user churn rate by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricRateResponseDto>('analytic.usersChurn', {
             schema: AnalyticMetricRateResponseSchema,
         })
@@ -112,7 +125,7 @@ export function AnalyticAdminUsersBlockedDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get blocked user counts by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticBlockedUsersResponseDto>('analytic.usersBlocked', {
             schema: AnalyticBlockedUsersResponseSchema,
         })
@@ -123,7 +136,7 @@ export function AnalyticAdminUsersSignUpWithDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get user sign up method distribution' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticBucketsResponseDto>('analytic.usersSignUpWith', {
             schema: AnalyticBucketsResponseSchema,
         })
@@ -134,7 +147,7 @@ export function AnalyticAdminUsersSignUpFromDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get user sign up source distribution' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticBucketsResponseDto>('analytic.usersSignUpFrom', {
             schema: AnalyticBucketsResponseSchema,
         })
@@ -145,7 +158,7 @@ export function AnalyticAdminUsersEmailVerificationDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get user email verification rate' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricRateResponseDto>(
             'analytic.usersEmailVerification',
             {
@@ -159,7 +172,7 @@ export function AnalyticAdminUsersMobileVerificationDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get user mobile verification rate' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricRateResponseDto>(
             'analytic.usersMobileVerification',
             {
@@ -173,7 +186,7 @@ export function AnalyticAdminUsersStatusDistributionDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get user status distribution' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticBucketsResponseDto>(
             'analytic.usersStatusDistribution',
             {
@@ -187,7 +200,7 @@ export function AnalyticAdminUsersCountryDistributionDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get user country distribution' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticBucketsResponseDto>(
             'analytic.usersCountryDistribution',
             {
@@ -201,7 +214,7 @@ export function AnalyticAdminUsersRoleDistributionDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get user role distribution' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticBucketsResponseDto>(
             'analytic.usersRoleDistribution',
             {
@@ -215,7 +228,7 @@ export function AnalyticAdminUsersSelfDeleteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get user self delete count by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.usersSelfDelete',
             {
@@ -229,7 +242,7 @@ export function AnalyticAdminUsersClaimUsernameDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get username claim count by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.usersClaimUsername',
             {
@@ -243,7 +256,7 @@ export function AnalyticAdminUsersMobileChurnDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get user mobile number churn by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMobileChurnResponseDto>(
             'analytic.usersMobileChurn',
             {
@@ -257,7 +270,7 @@ export function AnalyticAdminAuthLoginFrequencyDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get login frequency by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.authLoginFrequency',
             {
@@ -271,7 +284,7 @@ export function AnalyticAdminAuthLoginMethodDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get login method distribution' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticBucketsResponseDto>('analytic.authLoginMethod', {
             schema: AnalyticBucketsResponseSchema,
         })
@@ -282,7 +295,7 @@ export function AnalyticAdminAuthLoginSourceDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get login source distribution' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticBucketsResponseDto>('analytic.authLoginSource', {
             schema: AnalyticBucketsResponseSchema,
         })
@@ -293,7 +306,7 @@ export function AnalyticAdminAuthLockoutDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get account lockout metrics by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticLockoutResponseDto>('analytic.authLockout', {
             schema: AnalyticLockoutResponseSchema,
         })
@@ -304,7 +317,7 @@ export function AnalyticAdminAuthSessionRevokeDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get session revoke count by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.authSessionRevoke',
             {
@@ -318,7 +331,7 @@ export function AnalyticAdminAuthConcurrentSessionsDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get concurrent session distribution' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticBucketsResponseDto>(
             'analytic.authConcurrentSessions',
             {
@@ -332,7 +345,7 @@ export function AnalyticAdminAuthSessionsGeoDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get session country distribution' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticBucketsResponseDto>('analytic.authSessionsGeo', {
             schema: AnalyticBucketsResponseSchema,
         })
@@ -343,7 +356,7 @@ export function AnalyticAdminAuthSessionsUserAgentDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get session user agent distribution' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticBucketsResponseDto>(
             'analytic.authSessionsUserAgent',
             {
@@ -357,7 +370,7 @@ export function AnalyticAdminAuthRefreshTokenVolumeDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get refresh token volume by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.authRefreshTokenVolume',
             {
@@ -371,7 +384,7 @@ export function AnalyticAdminAuthLogoutRateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get logout count by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>('analytic.authLogoutRate', {
             schema: AnalyticMetricCountResponseSchema,
         })
@@ -385,7 +398,7 @@ export function AnalyticAdminAuthVerificationFunnelDoc(): MethodDecorator {
                 'admin get email and mobile verification funnels by date range',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticVerificationFunnelResponseDto>(
             'analytic.authVerificationFunnel',
             {
@@ -399,7 +412,7 @@ export function AnalyticAdminAuthPasswordExpiryDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get password expiry snapshot' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticPasswordExpiryResponseDto>(
             'analytic.authPasswordExpiry',
             {
@@ -413,7 +426,7 @@ export function AnalyticAdminAuthPasswordChangeDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get password change count by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.authPasswordChange',
             {
@@ -427,7 +440,7 @@ export function AnalyticAdminAuthForgotPasswordConversionDoc(): MethodDecorator 
     return applyDecorators(
         Doc({ summary: 'admin get forgot password conversion by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticForgotPasswordConversionResponseDto>(
             'analytic.authForgotPasswordConversion',
             {
@@ -444,7 +457,7 @@ export function AnalyticAdminAuthAdminForcePasswordDoc(): MethodDecorator {
                 'admin get admin forced password change count by date range',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.authAdminForcePassword',
             {
@@ -458,7 +471,7 @@ export function AnalyticAdminAuthTwoFactorAdoptionDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get two factor adoption snapshot' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticTwoFactorAdoptionResponseDto>(
             'analytic.authTwoFactorAdoption',
             {
@@ -474,7 +487,7 @@ export function AnalyticAdminAuthTwoFactorAdminResetDoc(): MethodDecorator {
             summary: 'admin get admin two factor reset count by date range',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.authTwoFactorAdminReset',
             {
@@ -490,7 +503,7 @@ export function AnalyticAdminAuthTwoFactorVerifySuccessDoc(): MethodDecorator {
             summary: 'admin get two factor verify success count by date range',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.authTwoFactorVerifySuccess',
             {
@@ -506,7 +519,7 @@ export function AnalyticAdminAuthBackupCodeRegenerationDoc(): MethodDecorator {
             summary: 'admin get backup code regeneration count by date range',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.authBackupCodeRegeneration',
             {
@@ -520,7 +533,7 @@ export function AnalyticAdminAuthTwoFactorAttemptDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get two factor attempt snapshot' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticTwoFactorAttemptResponseDto>(
             'analytic.authTwoFactorAttempt',
             {
@@ -534,7 +547,7 @@ export function AnalyticAdminDevicesRegistrationDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get device registration count by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.devicesRegistration',
             {
@@ -548,7 +561,7 @@ export function AnalyticAdminDevicesPlatformDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get device platform distribution' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticBucketsResponseDto>('analytic.devicesPlatform', {
             schema: AnalyticBucketsResponseSchema,
         })
@@ -559,7 +572,7 @@ export function AnalyticAdminDevicesPushTokenDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get device push token coverage rate' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricRateResponseDto>(
             'analytic.devicesPushToken',
             {
@@ -573,7 +586,7 @@ export function AnalyticAdminDevicesInfoRefreshDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get device info refresh count by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.devicesInfoRefresh',
             {
@@ -587,7 +600,7 @@ export function AnalyticAdminDevicesSessionRatioDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get session to device ratio' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticSessionDeviceRatioResponseDto>(
             'analytic.devicesSessionRatio',
             {
@@ -601,7 +614,7 @@ export function AnalyticAdminDevicesPerUserDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get device per user distribution' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticBucketsResponseDto>('analytic.devicesPerUser', {
             schema: AnalyticBucketsResponseSchema,
         })
@@ -612,7 +625,7 @@ export function AnalyticAdminDevicesInactivityDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get inactive device count' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.devicesInactivity',
             {
@@ -626,7 +639,7 @@ export function AnalyticAdminApiKeysLifecycleDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get api key lifecycle counts by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticApiKeyLifecycleResponseDto>(
             'analytic.apiKeysLifecycle',
             {
@@ -640,7 +653,7 @@ export function AnalyticAdminApiKeysActiveExpiredDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get active and expired api key counts' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticApiKeyActiveExpiredResponseDto>(
             'analytic.apiKeysActiveExpired',
             {
@@ -654,7 +667,7 @@ export function AnalyticAdminApiKeysTypeMixDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get api key type distribution' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticBucketsResponseDto>('analytic.apiKeysTypeMix', {
             schema: AnalyticBucketsResponseSchema,
         })
@@ -665,7 +678,7 @@ export function AnalyticAdminTermPoliciesAcceptanceRateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get term policy acceptance rate' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticTermPolicyAcceptanceRateResponseDto>(
             'analytic.termPoliciesAcceptanceRate',
             {
@@ -679,7 +692,7 @@ export function AnalyticAdminTermPoliciesTimeToAcceptDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get term policy time to accept' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticTermPolicyTimeToAcceptResponseDto>(
             'analytic.termPoliciesTimeToAccept',
             {
@@ -693,7 +706,7 @@ export function AnalyticAdminWorkspacesCreationDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get workspace creation count by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticMetricCountResponseDto>(
             'analytic.workspacesCreation',
             {
@@ -707,7 +720,7 @@ export function AnalyticAdminWorkspacesVisibilityDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get workspace visibility distribution' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticBucketsResponseDto>(
             'analytic.workspacesVisibility',
             {
@@ -721,7 +734,7 @@ export function AnalyticAdminWorkspacesInviteFunnelDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get workspace invite funnel by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticStatusCountResponseDto>(
             'analytic.workspacesInviteFunnel',
             {
@@ -737,7 +750,7 @@ export function AnalyticAdminWorkspacesJoinOutcomesDoc(): MethodDecorator {
             summary: 'admin get workspace join request outcomes by date range',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticStatusCountResponseDto>(
             'analytic.workspacesJoinOutcomes',
             {
@@ -751,7 +764,7 @@ export function AnalyticAdminWorkspacesMembershipDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get member counts per workspace' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticWorkspaceCountResponseDto>(
             'analytic.workspacesMembership',
             {
@@ -768,7 +781,7 @@ export function AnalyticAdminWorkspacesActivityVolumeDoc(): MethodDecorator {
             summary: 'admin get activity volume per workspace by date range',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticWorkspaceCountResponseDto>(
             'analytic.workspacesActivityVolume',
             {
@@ -783,7 +796,7 @@ export function AnalyticAdminProjectsCreationDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get project creation counts by date range' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticProjectCreationResponseDto>(
             'analytic.projectsCreation',
             {
@@ -797,7 +810,7 @@ export function AnalyticAdminProjectsMembershipDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get member counts per project' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticProjectCountResponseDto>(
             'analytic.projectsMembership',
             {
@@ -812,7 +825,7 @@ export function AnalyticAdminFraudCredentialStuffingDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get credential stuffing fraud summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticFraudSummaryResponseDto>(
             'analytic.fraudCredentialStuffing',
             {
@@ -826,12 +839,12 @@ export function AnalyticAdminFraudCredentialStuffingListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get all credential stuffing fraud detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticCredentialStuffingResponseDto>(
             'analytic.fraudCredentialStuffingList',
             {
                 schema: AnalyticCredentialStuffingResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticCredentialStuffingAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )
@@ -842,7 +855,7 @@ export function AnalyticAdminFraudAccountTakeoverDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get account takeover fraud summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticFraudSummaryResponseDto>(
             'analytic.fraudAccountTakeover',
             {
@@ -856,12 +869,12 @@ export function AnalyticAdminFraudAccountTakeoverListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get all account takeover fraud detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticAccountTakeoverResponseDto>(
             'analytic.fraudAccountTakeoverList',
             {
                 schema: AnalyticAccountTakeoverResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticAccountTakeoverAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )
@@ -872,7 +885,7 @@ export function AnalyticAdminFraudMassRegistrationDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get mass registration fraud summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticFraudSummaryResponseDto>(
             'analytic.fraudMassRegistration',
             {
@@ -886,12 +899,12 @@ export function AnalyticAdminFraudMassRegistrationListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get all mass registration fraud detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticKeyCountResponseDto>(
             'analytic.fraudMassRegistrationList',
             {
                 schema: AnalyticKeyCountResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticKeyCountAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )
@@ -902,7 +915,7 @@ export function AnalyticAdminFraudPasswordResetEnumerationDoc(): MethodDecorator
     return applyDecorators(
         Doc({ summary: 'admin get password reset enumeration fraud summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticFraudSummaryResponseDto>(
             'analytic.fraudPasswordResetEnumeration',
             {
@@ -919,12 +932,12 @@ export function AnalyticAdminFraudPasswordResetEnumerationListDoc(): MethodDecor
                 'admin get all password reset enumeration fraud detections',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticKeyCountResponseDto>(
             'analytic.fraudPasswordResetEnumerationList',
             {
                 schema: AnalyticKeyCountResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticKeyCountAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )
@@ -935,7 +948,7 @@ export function AnalyticAdminFraudSharedFingerprintDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get shared device fingerprint fraud summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticFraudSummaryResponseDto>(
             'analytic.fraudSharedFingerprint',
             {
@@ -951,12 +964,12 @@ export function AnalyticAdminFraudSharedFingerprintListDoc(): MethodDecorator {
             summary: 'admin get all shared device fingerprint fraud detections',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticSharedFingerprintResponseDto>(
             'analytic.fraudSharedFingerprintList',
             {
                 schema: AnalyticSharedFingerprintResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticSharedFingerprintAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )
@@ -967,7 +980,7 @@ export function AnalyticAdminFraudSessionAfterAdminDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get session after admin action fraud summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticFraudSummaryResponseDto>(
             'analytic.fraudSessionAfterAdmin',
             {
@@ -984,12 +997,12 @@ export function AnalyticAdminFraudSessionAfterAdminListDoc(): MethodDecorator {
                 'admin get all session after admin action fraud detections',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticSessionAfterAdminResponseDto>(
             'analytic.fraudSessionAfterAdminList',
             {
                 schema: AnalyticSessionAfterAdminResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticSessionAfterAdminAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )
@@ -1000,7 +1013,7 @@ export function AnalyticAdminFraudForgotPasswordTokenAbuseDoc(): MethodDecorator
     return applyDecorators(
         Doc({ summary: 'admin get forgot password token abuse fraud summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticFraudSummaryResponseDto>(
             'analytic.fraudForgotPasswordTokenAbuse',
             {
@@ -1017,12 +1030,12 @@ export function AnalyticAdminFraudForgotPasswordTokenAbuseListDoc(): MethodDecor
                 'admin get all forgot password token abuse fraud detections',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticForgotPasswordAbuseResponseDto>(
             'analytic.fraudForgotPasswordTokenAbuseList',
             {
                 schema: AnalyticForgotPasswordAbuseResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticForgotPasswordAbuseAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )
@@ -1033,7 +1046,7 @@ export function AnalyticAdminFraudRefreshSpikeDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get refresh token spike fraud summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticFraudSummaryResponseDto>(
             'analytic.fraudRefreshSpike',
             {
@@ -1047,12 +1060,12 @@ export function AnalyticAdminFraudRefreshSpikeListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get all refresh token spike fraud detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticUserCountResponseDto>(
             'analytic.fraudRefreshSpikeList',
             {
                 schema: AnalyticUserCountResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticUserCountAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )
@@ -1063,7 +1076,7 @@ export function AnalyticAdminFraudBackupCodeNewDeviceDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get backup code on new device fraud summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticFraudSummaryResponseDto>(
             'analytic.fraudBackupCodeNewDevice',
             {
@@ -1079,12 +1092,12 @@ export function AnalyticAdminFraudBackupCodeNewDeviceListDoc(): MethodDecorator 
             summary: 'admin get all backup code on new device fraud detections',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticBackupCodeNewDeviceResponseDto>(
             'analytic.fraudBackupCodeNewDeviceList',
             {
                 schema: AnalyticBackupCodeNewDeviceResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticBackupCodeNewDeviceAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )
@@ -1095,7 +1108,7 @@ export function AnalyticAdminFraudApiKeyBurstDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get api key burst fraud summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticFraudSummaryResponseDto>(
             'analytic.fraudApiKeyBurst',
             {
@@ -1109,12 +1122,12 @@ export function AnalyticAdminFraudApiKeyBurstListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get all api key burst fraud detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticUserCountResponseDto>(
             'analytic.fraudApiKeyBurstList',
             {
                 schema: AnalyticUserCountResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticUserCountAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )
@@ -1124,9 +1137,8 @@ export function AnalyticAdminFraudApiKeyBurstListDoc(): MethodDecorator {
 export function AnalyticAdminFraudRiskScoreDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get fraud risk score of a user (report-only)' }),
-        DocRequest({ params: UserDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticFraudRiskScoreResponseDto>(
             'analytic.fraudRiskScore',
             {
@@ -1140,12 +1152,12 @@ export function AnalyticAdminFraudRiskScoresDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get all user fraud risk scores' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticFraudRiskScoreResponseDto>(
             'analytic.fraudRiskScores',
             {
                 schema: AnalyticFraudRiskScoreResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticFraudRiskScoreAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )
@@ -1156,7 +1168,7 @@ export function AnalyticAdminAnomalyImpossibleTravelDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get impossible travel anomaly summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticAnomalySummaryResponseDto>(
             'analytic.anomalyImpossibleTravel',
             {
@@ -1170,12 +1182,12 @@ export function AnalyticAdminAnomalyImpossibleTravelListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get all impossible travel anomaly detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticImpossibleTravelResponseDto>(
             'analytic.anomalyImpossibleTravelList',
             {
                 schema: AnalyticImpossibleTravelResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticImpossibleTravelAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )
@@ -1186,7 +1198,7 @@ export function AnalyticAdminAnomalyLoginSpikeIpDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get login spike by ip anomaly summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticAnomalySummaryResponseDto>(
             'analytic.anomalyLoginSpikeIp',
             {
@@ -1200,12 +1212,12 @@ export function AnalyticAdminAnomalyLoginSpikeIpListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get all login spike by ip anomaly detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticLoginSpikeIpResponseDto>(
             'analytic.anomalyLoginSpikeIpList',
             {
                 schema: AnalyticLoginSpikeIpResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticLoginSpikeIpAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )
@@ -1216,7 +1228,7 @@ export function AnalyticAdminAnomalyFailedLoginSpikeDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get failed login spike anomaly summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticAnomalySummaryResponseDto>(
             'analytic.anomalyFailedLoginSpike',
             {
@@ -1230,12 +1242,12 @@ export function AnalyticAdminAnomalyFailedLoginSpikeListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get all failed login spike anomaly detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticNearLockoutResponseDto>(
             'analytic.anomalyFailedLoginSpikeList',
             {
                 schema: AnalyticNearLockoutResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticNearLockoutAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )
@@ -1246,7 +1258,7 @@ export function AnalyticAdminAnomalyDeviceProliferationDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get device proliferation anomaly summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticAnomalySummaryResponseDto>(
             'analytic.anomalyDeviceProliferation',
             {
@@ -1262,12 +1274,12 @@ export function AnalyticAdminAnomalyDeviceProliferationListDoc(): MethodDecorato
             summary: 'admin get all device proliferation anomaly detections',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticDeviceProliferationResponseDto>(
             'analytic.anomalyDeviceProliferationList',
             {
                 schema: AnalyticDeviceProliferationResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticDeviceProliferationAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )
@@ -1278,7 +1290,7 @@ export function AnalyticAdminAnomalyLoginTimeDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get login time anomaly summary' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponse<AnalyticAnomalySummaryResponseDto>(
             'analytic.anomalyLoginTime',
             {
@@ -1292,12 +1304,12 @@ export function AnalyticAdminAnomalyLoginTimeListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'admin get all login time anomaly detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ user: true, role: true, policy: true, termPolicy: true }),
         DocResponsePagination<AnalyticLoginTimeAnomalyResponseDto>(
             'analytic.anomalyLoginTimeList',
             {
                 schema: AnalyticLoginTimeAnomalyResponseSchema,
-                availableOrderBy: AnalyticDefaultAvailableOrderBy,
+                availableOrderBy: AnalyticLoginTimeAnomalyAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )

@@ -2,12 +2,14 @@ import { AnalyticNearLockoutResponseSchema } from '@modules/analytic/dtos/respon
 
 describe('AnalyticNearLockoutResponseSchema', () => {
     const lastLoginAt = new Date('2026-01-02T03:04:05.000Z');
+    const createdAt = new Date('2025-11-30T21:22:23.000Z');
 
     const row = {
         id: 'user-1',
         email: 'user@example.com',
         passwordAttempt: 4,
         lastLoginAt,
+        createdAt,
     };
 
     it('parses a row into exactly the declared fields', () => {
@@ -28,7 +30,17 @@ describe('AnalyticNearLockoutResponseSchema', () => {
             email: 'user@example.com',
             passwordAttempt: null,
             lastLoginAt: null,
+            createdAt,
         });
+    });
+
+    it('rejects a createdAt that arrives as an ISO string', () => {
+        expect(() =>
+            AnalyticNearLockoutResponseSchema.parse({
+                ...row,
+                createdAt: createdAt.toISOString(),
+            })
+        ).toThrow();
     });
 
     it('strips the credential fields a full user row carries', () => {

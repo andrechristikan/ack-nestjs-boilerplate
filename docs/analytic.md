@@ -46,6 +46,7 @@ flowchart TB
         AF[AnalyticFraudDomain]
         AW[AnalyticWorkspaceUserDomain]
         AC[AnalyticCache]
+        ADATE[AnalyticDateDomain]
         AU[AnalyticDateUtil / AnalyticGeoUtil]
     end
     subgraph owners [Owner modules]
@@ -54,6 +55,7 @@ flowchart TB
         DB[(Owner Prisma models)]
     end
     C --> HS
+    HS --> ADATE
     HS --> AD
     HS --> AA
     HS --> AF
@@ -73,7 +75,7 @@ Nest wiring:
 
 | Module file | Role |
 |---|---|
-| `analytic.domain.module.ts` | `AnalyticCache`, date/geo utils, dashboard / anomaly / fraud / workspace-user domains; imports owner `*DomainModule`s |
+| `analytic.domain.module.ts` | `AnalyticCache`, `AnalyticDateDomain`, date/geo utils, dashboard / anomaly / fraud / workspace-user domains; imports owner `*DomainModule`s |
 | `analytic.http.module.ts` | HTTP services; imported by admin and user router modules |
 
 Analytic has no repository module of its own. Owner features keep sibling files such as `user.analytic.domain.ts` with `user.analytic.repository.ts` (and the same pattern on activity-log, session, device, workspace, project, api-key, term-policy, password-history). Placement and imports: `rules/nest-wiring.md`, `rules/architecture.md`.
@@ -123,7 +125,7 @@ User stack includes `@FeatureFlagProtected('workspace')`, `@WorkspaceProtected`,
 
 Every route declares its payload shape on `@Response` or `@ResponsePaging`, and those schemas live in `src/modules/analytic/dtos/response/`. Each one is an object at the top level. The five distributions over a fixed enum take no pagination and send their rows as a named array field inside it: admin `GET /analytic/workspaces/invite-funnel` and `/analytic/workspaces/join-outcomes` and user `GET /analytic/workspace/invite-funnel` and `/analytic/workspace/join-outcomes` carry `AnalyticStatusCountResponseSchema` (`{ statuses: [...] }`), and user `GET /analytic/workspace/member-roles` carries `AnalyticRoleCountResponseSchema` (`{ roles: [...] }`). Handlers and HTTP services return `IResponseReturn<T>`, and `IResponsePagingReturn<T>` on the paginated routes; `ResponseInterceptor` takes `data` off that return and serializes it against the declared schema. Schema and envelope rules: `rules/dto.md`. Flow: [Response](response.md).
 
-Each endpoint has a zero-argument doc factory in `src/modules/analytic/docs/analytic.admin.doc.ts` or `analytic.user.doc.ts`, in the controller's order, carrying the same i18n message path and the same response schema the route declares. Those factories (`*.doc.ts`) sit outside the coverage set and have no unit spec; there are no files under `test/modules/analytic/docs/`. Query parameters reach the OpenAPI document from the zod schema bound on `@Query({ schema })` through `standardSchemaConverter`. Doc factory rules: `rules/http.md`.
+Each endpoint has a zero-argument doc factory in `src/modules/analytic/docs/analytic.admin.doc.ts` or `analytic.user.doc.ts`, in the controller's order, carrying the same i18n message path and the same response schema the route declares. Those factories (`*.doc.ts`) sit outside the coverage set and have no unit spec; there are no files under `test/modules/analytic/docs/`. Query parameters reach the OpenAPI document from the zod schema bound on `@Query({ schema })` through `standardSchemaConverter`. Published OpenAPI errors are kit-only (`Doc`, `DocAuth`, `DocGuard`, and when used `DocResponsePagination`); domain exceptions such as `AnalyticInvalidDateRangeException` are not listed on the factory. Doc factory rules: `rules/http.md`. Flow: [Doc](doc.md).
 
 ## Caching and config
 
@@ -144,7 +146,7 @@ A paginated dashboard distribution appends `page=<n>:perPage=<n>` to its `{metri
 
 The same config file holds anomaly and fraud detection thresholds (windows, minimum counts, risk weights, band labels). Values are literals via `ms(...)`; they are not environment-driven.
 
-Date range helpers live in `AnalyticDateUtil`. A required range with a missing bound or `startDate >= endDate` raises `AnalyticInvalidDateRangeException`. An optional range accepts both bounds together or neither; a single bound is invalid.
+Date range validation lives in `AnalyticDateDomain` (`requireRange`, `optionalRange`). Both take `Date | null`. HTTP services normalize optional query dates with `?? null` before the call. A required range with a missing bound or `startDate >= endDate` raises `AnalyticInvalidDateRangeException`. An optional range accepts both bounds together or neither; a single bound is invalid. `AnalyticDateUtil` builds cache window tokens (`windowTokenPattern`, `workspaceWindowTokenPattern`), with an absent bound rendering `_`.
 
 ## Authorization
 

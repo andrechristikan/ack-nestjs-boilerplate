@@ -6,14 +6,14 @@ import type {
     IAnalyticStatusCountList,
     IAnalyticWorkspaceSummary,
 } from '@modules/analytic/interfaces/analytic.interface';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
+import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class AnalyticWorkspaceUserHttpService {
     constructor(
         private readonly analyticWorkspaceUserDomain: AnalyticWorkspaceUserDomain,
-        private readonly analyticDateUtil: AnalyticDateUtil
+        private readonly analyticDateDomain: AnalyticDateDomain
     ) {}
 
     async summary(
@@ -21,11 +21,14 @@ export class AnalyticWorkspaceUserHttpService {
         startDate?: Date,
         endDate?: Date
     ): Promise<IResponseReturn<IAnalyticWorkspaceSummary>> {
-        const range = this.analyticDateUtil.optionalRange(startDate, endDate);
+        const range = this.analyticDateDomain.optionalRange(
+            startDate ?? null,
+            endDate ?? null
+        );
         const data = await this.analyticWorkspaceUserDomain.summary(
             workspaceId,
-            range.startDate,
-            range.endDate
+            range.startDate ?? undefined,
+            range.endDate ?? undefined
         );
 
         return { data };
@@ -36,7 +39,10 @@ export class AnalyticWorkspaceUserHttpService {
         startDate?: Date,
         endDate?: Date
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
-        const range = this.analyticDateUtil.requireRange(startDate, endDate);
+        const range = this.analyticDateDomain.requireRange(
+            startDate ?? null,
+            endDate ?? null
+        );
         const statuses = await this.analyticWorkspaceUserDomain.inviteFunnel(
             workspaceId,
             range.startDate,
@@ -51,7 +57,10 @@ export class AnalyticWorkspaceUserHttpService {
         startDate?: Date,
         endDate?: Date
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
-        const range = this.analyticDateUtil.requireRange(startDate, endDate);
+        const range = this.analyticDateDomain.requireRange(
+            startDate ?? null,
+            endDate ?? null
+        );
         const statuses = await this.analyticWorkspaceUserDomain.joinOutcomes(
             workspaceId,
             range.startDate,
@@ -75,7 +84,10 @@ export class AnalyticWorkspaceUserHttpService {
         startDate?: Date,
         endDate?: Date
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateUtil.requireRange(startDate, endDate);
+        const range = this.analyticDateDomain.requireRange(
+            startDate ?? null,
+            endDate ?? null
+        );
         const data = await this.analyticWorkspaceUserDomain.activity(
             workspaceId,
             range.startDate,

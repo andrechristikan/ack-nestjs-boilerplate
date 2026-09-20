@@ -1,10 +1,10 @@
-import type { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
-import { faker } from '@faker-js/faker';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
-import { EnumMessageLanguage } from '@common/message/enums/message.enum';
+import { faker } from '@faker-js/faker';
+import type { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 
 /**
  * Swagger path parameter `termPolicyId`.

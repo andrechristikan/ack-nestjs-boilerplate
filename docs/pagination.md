@@ -1074,7 +1074,7 @@ export class UserAdminController {
 }
 ```
 
-`@ResponsePaging` is what turns the service's `IPaginationOffsetReturn` into the `metadata` block and serializes each row against the item schema; `@UserAdminListDoc()` wraps `DocResponsePaging` and is where the same allow-list constants reach Swagger.
+`@ResponsePaging` is what turns the service's `IPaginationOffsetReturn` into the `metadata` block and serializes each row against the item schema; `@UserAdminListDoc()` wraps `DocResponsePagination` and is where the same allow-list constants reach Swagger.
 
 ## Integration with Doc Module
 
@@ -1089,7 +1089,7 @@ export const UserDefaultAvailableSearch = ['name', 'username', 'email'];
 export const UserDefaultAvailableOrderBy = ['createdAt', 'name'];
 
 // src/modules/user/docs/user.admin.doc.ts
-DocResponsePaging<UserListResponseDto>('user.list', {
+DocResponsePagination<UserListResponseDto>('user.list', {
     schema: UserListResponseSchema,
     availableSearch: UserDefaultAvailableSearch,
     availableOrderBy: UserDefaultAvailableOrderBy,
@@ -1112,10 +1112,10 @@ async list(
 
 Both decorators use the same option name, `availableOrderBy`, for the same constant.
 
-`DocResponsePaging` also takes `type: EnumPaginationType`, which selects the query parameters and the error responses it documents. It is **required**: a block that omits it does not compile, so Swagger can never advertise `page` on a route that has no page.
+`DocResponsePagination` also takes `type: EnumPaginationType`, which selects the query parameters and the error responses it documents. It is **required**: a block that omits it does not compile, so Swagger can never advertise `page` on a route that has no page.
 
 ```typescript
-DocResponsePaging<WorkspaceResponseDto>('workspace.list', {
+DocResponsePagination<WorkspaceResponseDto>('workspace.list', {
     schema: WorkspaceResponseSchema,
     type: EnumPaginationType.cursor,
     availableSearch: WorkspaceDefaultAvailableSearch,
@@ -1123,13 +1123,15 @@ DocResponsePaging<WorkspaceResponseDto>('workspace.list', {
 })
 ```
 
-The `@DocResponsePaging` decorator automatically:
+The `@DocResponsePagination` decorator:
 - Documents paginated response structure
 - Adds the offset or cursor query parameters, chosen by `type`
 - Adds the shared pagination error responses plus the offset-only or cursor-only set
 - Documents the `search` parameter when `availableSearch` is provided
 - Documents the `orderBy` parameter when `availableOrderBy` is provided
-- Generates OpenAPI/Swagger specification
+- Emits the OpenAPI/Swagger specification for those pieces
+
+Module filter fields from `@PaginationQueryFilter*` are not part of that set. They reach Swagger through `DocRequest({ queries })` and a PascalCase `ApiQueryOptions[]` in `<module>.doc.constant.ts`, with a `description` on each entry. Constraint: `rules/http.md`, `rules/pagination.md`.
 
 For detailed Doc module documentation, see [Doc module documentation][ref-doc-doc].
 

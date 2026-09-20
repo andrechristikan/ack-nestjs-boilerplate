@@ -26,5 +26,6 @@ export const SessionDocQueryList: ApiQueryOptions[] = [
         required: false,
         type: 'boolean',
         example: true,
+        description: 'Filter by revoked session. Omit to return both',
     },
 ];

@@ -33,7 +33,8 @@ export interface IAnalyticNearLockout {
     id: string;
     email: string;
     passwordAttempt: number | null;
-    lastLoginAt?: Date | null;
+    lastLoginAt: Date | null;
+    createdAt: Date;
 }
 
 export interface IAnalyticDeviceProliferation {

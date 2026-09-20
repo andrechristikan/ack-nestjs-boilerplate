@@ -14,7 +14,7 @@ An admin console is the only consumer that needs a total, a page number and a ju
 Consequences that are part of the rule, not side effects:
 
 - A non-admin list has **no `count`, no `page`, no `totalPage`**. `includeCount` is a repository-side argument, never a query param; set it only when a concrete screen needs the number.
-- **Every field in a cursor route's `availableOrderBy` must be immutable.** A row whose sort key changes mid-scroll genuinely moves, and no tiebreaker can stabilise it. `updatedAt`, `lastActiveAt`, an `expiredAt` a resend rewrites, and a `name` the owner can edit are all illegal on a cursor route and legal on an offset one. **Split the constant only when a field is legal on one side and illegal on the other** — `<Module>DefaultAvailableOrderBy` for the offset route, `<Module>CursorAvailableOrderBy` for the narrowed cursor one. When every field is immutable, both routes share the one constant; duplicating an identical list is the waste, not the safety.
+- **Every field in a cursor route's `availableOrderBy` must be immutable.** A row whose sort key changes mid-scroll genuinely moves, and no tiebreaker can stabilise it. `updatedAt`, `lastActiveAt`, an `expiredAt` a resend rewrites, and a `name` the owner can edit are all illegal on a cursor route and legal on an offset one. **Split the constant only when a field is legal on one side and illegal on the other** — `<Module>DefaultAvailableOrderBy` for the offset route, `<Module>CursorAvailableOrderBy` for the narrowed cursor one. When every field is immutable, both routes share the one constant; duplicating an identical list is the waste, not the safety. A list whose sortable keys belong to one endpoint alone is named for that endpoint — `<Module><Endpoint>AvailableOrderBy`, as the computed analytic lists are.
 - **The test is whether a WRITE PATH exists, not what the field is called.** Grep every repository for a write to that column before you allow it. `country.name` sits on a cursor route legally because the module is seeded reference data with no write path anywhere; `workspace.name` is illegal because a rename endpoint exists. Where a field passes only because nothing writes it, say so in a comment on the constant — otherwise the next reader reads it as a violation.
 
 ## Where it runs
@@ -58,12 +58,20 @@ Available decorators: `PaginationOffsetQuery` · `PaginationCursorQuery` · `Pag
 
 **The Swagger doc factory imports the SAME constant the controller does.** `DocResponsePagination` documents the `search` query param only when it receives `availableSearch`, and the `orderBy` param only when it receives `availableOrderBy` — so a route whose doc omits them advertises nothing while the pipe still accepts the value. Both sides use the identical option names and the identical constant; **never inline a literal array into a `*.doc.ts`.** Two copies of one allow-list drift apart silently: the route keeps accepting the value while its doc advertises nothing, and neither `tsc` nor a test sees the gap.
 
+**`DocResponsePagination` documents the pagination kit only** (`search`, `orderBy`, page/cursor/`perPage`). It does not emit module filter query params. Every `@PaginationQueryFilter*` on the handler has a matching `DocRequest({ queries })` entry in the doc factory, from a PascalCase `ApiQueryOptions[]` in `<module>.doc.constant.ts`, with the same field names and a `description` on each (`rules/http.md`). Filter pipes cannot be merged into one zod object with `@Pagination*Query`; that is why those queries stay on `DocRequest`.
+
 **An `availableOrderBy` names keys the returned row carries, and the layer that pages the rows
 applies them.** A key absent from the response schema is not sortable and does not belong in the
 allow-list, and a list assembled in memory sorts before it slices. `PaginationDefaultOrderBy`
 (`createdAt desc`) reaches the pager on every request that omits `orderBy`, whatever the
 allow-list holds, so an in-memory sort applies only the terms whose key the row declares and
 leaves the order it was given when none survives.
+
+**Where the row is a declared interface, the allow-list is typed `(keyof I<Row>)[]`** and the
+sorter takes `sortableKeys: (keyof T)[]`. An untyped list makes a typo compile: the key matches no
+field, the comparison reads `undefined` on both sides, every row ties, and the sort degrades to a
+silent no-op while the document still advertises the misspelled field. Nothing in `tsc`, the
+suite or the emitted document catches that; the type does.
 
 **`DocResponsePagination` also requires `type`** — `EnumPaginationType.offset` or `.cursor`, matching the route's query decorator. It is a required field, so a block that omits it does not compile. Every paginated route has a strategy; there is no meaningful default, and a silent fallback would let a route mis-document itself with no compile error and no runtime signal.
 

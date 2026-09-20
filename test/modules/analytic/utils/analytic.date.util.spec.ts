@@ -4,10 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { AnalyticInvalidDateRangeException } from '@modules/analytic/exceptions/analytic.invalid-date-range.exception';
-import { EnumAnalyticStatusCodeError } from '@modules/analytic/enums/analytic.status-code.enum';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
-import { HttpStatus } from '@nestjs/common';
 
 describe('AnalyticDateUtil', () => {
     const configGet = vi.fn<(key: string) => string | undefined>();
@@ -44,103 +41,6 @@ describe('AnalyticDateUtil', () => {
         }).compile();
 
         util = module.get(AnalyticDateUtil);
-    });
-
-    describe('requireRange', () => {
-        it('returns the range when start is before end', () => {
-            expect(util.requireRange(startDate, endDate)).toEqual({
-                startDate,
-                endDate,
-            });
-        });
-
-        it('throws AnalyticInvalidDateRangeException when startDate is missing', () => {
-            try {
-                util.requireRange(undefined, endDate);
-                throw new Error('expected throw');
-            } catch (error) {
-                expect(error).toBeInstanceOf(AnalyticInvalidDateRangeException);
-                expect(error).toMatchObject({
-                    module: 'analytic',
-                    statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
-                    statusCodeKey:
-                        EnumAnalyticStatusCodeError[
-                            EnumAnalyticStatusCodeError.invalidDateRange
-                        ],
-                    httpStatus: HttpStatus.BAD_REQUEST,
-                    messagePath: 'analytic.error.invalidDateRange',
-                });
-            }
-        });
-
-        it('throws AnalyticInvalidDateRangeException when endDate is missing', () => {
-            try {
-                util.requireRange(startDate, undefined);
-                throw new Error('expected throw');
-            } catch (error) {
-                expect(error).toBeInstanceOf(AnalyticInvalidDateRangeException);
-                expect(error).toMatchObject({
-                    statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
-                    messagePath: 'analytic.error.invalidDateRange',
-                });
-            }
-        });
-
-        it('throws AnalyticInvalidDateRangeException when start equals end', () => {
-            try {
-                util.requireRange(startDate, startDate);
-                throw new Error('expected throw');
-            } catch (error) {
-                expect(error).toBeInstanceOf(AnalyticInvalidDateRangeException);
-                expect(error).toMatchObject({
-                    statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
-                });
-            }
-        });
-
-        it('throws AnalyticInvalidDateRangeException when start is after end', () => {
-            try {
-                util.requireRange(endDate, startDate);
-                throw new Error('expected throw');
-            } catch (error) {
-                expect(error).toBeInstanceOf(AnalyticInvalidDateRangeException);
-            }
-        });
-    });
-
-    describe('optionalRange', () => {
-        it('returns an empty object when both dates are omitted', () => {
-            expect(util.optionalRange()).toEqual({});
-        });
-
-        it('returns the validated range when both dates are present', () => {
-            expect(util.optionalRange(startDate, endDate)).toEqual({
-                startDate,
-                endDate,
-            });
-        });
-
-        it('throws AnalyticInvalidDateRangeException when only startDate is present', () => {
-            try {
-                util.optionalRange(startDate, undefined);
-                throw new Error('expected throw');
-            } catch (error) {
-                expect(error).toBeInstanceOf(AnalyticInvalidDateRangeException);
-                expect(error).toMatchObject({
-                    statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
-                    messagePath: 'analytic.error.invalidDateRange',
-                });
-            }
-        });
-
-        it('throws AnalyticInvalidDateRangeException when only endDate is present', () => {
-            try {
-                util.optionalRange(undefined, endDate);
-                throw new Error('expected throw');
-            } catch (error) {
-                expect(error).toBeInstanceOf(AnalyticInvalidDateRangeException);
-            }
-        });
     });
 
     describe('cacheToken', () => {

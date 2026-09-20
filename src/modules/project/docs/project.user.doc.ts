@@ -1,9 +1,9 @@
 import {
     Doc,
     DocAuth,
+    DocGuard,
     DocRequest,
     DocResponse,
-    DocResponseError,
     DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -21,34 +21,7 @@ import { ProjectMemberResponseSchema } from '@modules/project/dtos/response/proj
 import type { ProjectMemberResponseDto } from '@modules/project/dtos/response/project.member.response.dto';
 import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
 import type { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
-import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
-import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
-
-const NotFoundDoc = DocResponseError(HttpStatus.NOT_FOUND, {
-    statusCode: EnumProjectStatusCodeError.notFound,
-    messagePath: 'project.error.notFound',
-});
-
-const RoleForbiddenDoc = DocResponseError(HttpStatus.FORBIDDEN, {
-    statusCode: EnumProjectStatusCodeError.roleForbidden,
-    messagePath: 'project.error.roleForbidden',
-});
-
-const MemberForbiddenDoc = DocResponseError(HttpStatus.FORBIDDEN, {
-    statusCode: EnumProjectStatusCodeError.memberForbidden,
-    messagePath: 'project.error.memberForbidden',
-});
-
-const MemberPeerForbiddenDoc = DocResponseError(HttpStatus.FORBIDDEN, {
-    statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
-    messagePath: 'project.error.memberPeerForbidden',
-});
-
-const MemberNotFoundDoc = DocResponseError(HttpStatus.NOT_FOUND, {
-    statusCode: EnumProjectStatusCodeError.memberNotFound,
-    messagePath: 'project.error.memberNotFound',
-});
 
 export function ProjectUserListDoc(): MethodDecorator {
     return applyDecorators(
@@ -57,6 +30,12 @@ export function ProjectUserListDoc(): MethodDecorator {
                 'list projects in the current workspace; workspace owner/admin see all, others only assigned projects',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            featureFlag: true,
+        }),
         DocResponsePagination<ProjectResponseDto>('project.list', {
             schema: ProjectResponseSchema,
             availableSearch: ProjectDefaultAvailableSearch,
@@ -73,7 +52,13 @@ export function ProjectUserCreateDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        RoleForbiddenDoc,
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
+        }),
         DocResponse<ProjectResponseDto>('project.create', {
             schema: ProjectResponseSchema,
             httpStatus: HttpStatus.CREATED,
@@ -86,8 +71,14 @@ export function ProjectUserGetDoc(): MethodDecorator {
         Doc({ summary: 'get a project by id, subject to visibility' }),
         DocRequest({ params: ProjectDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            featureFlag: true,
+            project: true,
+            projectRole: true,
+        }),
         DocResponse<ProjectResponseDto>('project.get', {
             schema: ProjectResponseSchema,
         })
@@ -105,8 +96,14 @@ export function ProjectUserUpdateDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        RoleForbiddenDoc,
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            featureFlag: true,
+            project: true,
+            projectRole: true,
+        }),
         DocResponse<ProjectResponseDto>('project.update', {
             schema: ProjectResponseSchema,
         })
@@ -124,11 +121,13 @@ export function ProjectUserUpdateSlugDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        RoleForbiddenDoc,
-        DocResponseError(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumProjectStatusCodeError.slugAlreadyExists,
-            messagePath: 'project.error.slugAlreadyExists',
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            featureFlag: true,
+            project: true,
+            projectRole: true,
         }),
         DocResponse<ProjectResponseDto>('project.updateSlug', {
             schema: ProjectResponseSchema,
@@ -141,8 +140,14 @@ export function ProjectUserSoftDeleteDoc(): MethodDecorator {
         Doc({ summary: 'soft-delete a project; workspace owner/admin only' }),
         DocRequest({ params: ProjectDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        RoleForbiddenDoc,
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            workspaceRole: true,
+            featureFlag: true,
+            project: true,
+        }),
         DocResponse('project.softDelete')
     );
 }
@@ -152,8 +157,14 @@ export function ProjectMemberUserListDoc(): MethodDecorator {
         Doc({ summary: 'list members of a project, subject to visibility' }),
         DocRequest({ params: ProjectDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            featureFlag: true,
+            project: true,
+            projectRole: true,
+        }),
         DocResponsePagination<ProjectMemberResponseDto>('project.member.list', {
             schema: ProjectMemberResponseSchema,
             availableOrderBy: ProjectMemberDefaultAvailableOrderBy,
@@ -173,16 +184,13 @@ export function ProjectMemberUserAssignDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        RoleForbiddenDoc,
-        MemberPeerForbiddenDoc,
-        DocResponseError(HttpStatus.NOT_FOUND, {
-            statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-            messagePath: 'workspace.error.memberNotFound',
-        }),
-        DocResponseError(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumProjectStatusCodeError.memberAlreadyAssigned,
-            messagePath: 'project.error.memberAlreadyAssigned',
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            featureFlag: true,
+            project: true,
+            projectRole: true,
         }),
         DocResponse<ProjectMemberResponseDto>('project.member.assign', {
             schema: ProjectMemberResponseSchema,
@@ -202,10 +210,14 @@ export function ProjectMemberUserUpdateRoleDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        RoleForbiddenDoc,
-        MemberNotFoundDoc,
-        MemberPeerForbiddenDoc,
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            featureFlag: true,
+            project: true,
+            projectRole: true,
+        }),
         DocResponse('project.member.updateRole')
     );
 }
@@ -218,10 +230,14 @@ export function ProjectMemberUserRemoveDoc(): MethodDecorator {
         }),
         DocRequest({ params: ProjectMemberDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        RoleForbiddenDoc,
-        MemberNotFoundDoc,
-        MemberPeerForbiddenDoc,
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            featureFlag: true,
+            project: true,
+            projectRole: true,
+        }),
         DocResponse('project.member.remove')
     );
 }
@@ -231,8 +247,14 @@ export function ProjectMemberUserLeaveDoc(): MethodDecorator {
         Doc({ summary: 'leave a project; any project role may leave' }),
         DocRequest({ params: ProjectDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        NotFoundDoc,
-        MemberForbiddenDoc,
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            workspace: true,
+            featureFlag: true,
+            project: true,
+            projectMember: true,
+        }),
         DocResponse('project.member.leave')
     );
 }

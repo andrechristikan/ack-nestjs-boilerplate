@@ -1,5 +1,9 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import {
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
+} from '@common/pagination/enums/pagination.enum';
+import type { IPaginationOrderBy } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -10,9 +14,16 @@ import { Duration } from 'luxon';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import {
+    AnalyticDeviceProliferationAvailableOrderBy,
+    AnalyticImpossibleTravelAvailableOrderBy,
+    AnalyticLoginSpikeIpAvailableOrderBy,
+    AnalyticLoginTimeAnomalyAvailableOrderBy,
+} from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticAnomalyDomain } from '@modules/analytic/domains/analytic.anomaly.domain';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticGeoUtil } from '@modules/analytic/utils/analytic.geo.util';
+import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
 import { SessionAnalyticDomain } from '@modules/session/domains/session.analytic.domain';
 import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
@@ -23,6 +34,8 @@ describe('AnalyticAnomalyDomain', () => {
     const analyticDateUtil: MockProxy<AnalyticDateUtil> =
         mock<AnalyticDateUtil>();
     const analyticGeoUtil: MockProxy<AnalyticGeoUtil> = mock<AnalyticGeoUtil>();
+    const analyticSortUtil: MockProxy<AnalyticSortUtil> =
+        mock<AnalyticSortUtil>();
     const paginationService: MockProxy<PaginationService> =
         mock<PaginationService>();
     const configGet = vi.fn<(key: string) => number | undefined>();
@@ -44,6 +57,9 @@ describe('AnalyticAnomalyDomain', () => {
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
     const now: Date = new Date('2026-03-01T00:00:00.000Z');
     const pagination = { skip: 0, limit: 20, orderBy: [] };
+    const orderBy: IPaginationOrderBy[] = [
+        { userId: EnumPaginationOrderDirectionType.asc },
+    ];
     const offsetPage = {
         type: EnumPaginationType.offset as const,
         count: 0,
@@ -99,6 +115,7 @@ describe('AnalyticAnomalyDomain', () => {
         analyticDateUtil.windowToken.mockReturnValue('window-token');
         helperDateService.create.mockReturnValue(now);
         helperDateService.backward.mockReturnValue(startDate);
+        analyticSortUtil.sortRows.mockImplementation(rows => rows);
         paginationService.offsetPage.mockReturnValue(offsetPage);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -107,6 +124,7 @@ describe('AnalyticAnomalyDomain', () => {
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: AnalyticDateUtil, useValue: analyticDateUtil },
                 { provide: AnalyticGeoUtil, useValue: analyticGeoUtil },
+                { provide: AnalyticSortUtil, useValue: analyticSortUtil },
                 { provide: PaginationService, useValue: paginationService },
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -181,10 +199,55 @@ describe('AnalyticAnomalyDomain', () => {
             );
 
             expect(result).toEqual(offsetPage);
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                [],
+                AnalyticImpossibleTravelAvailableOrderBy
+            );
             expect(paginationService.offsetPage).toHaveBeenCalledWith([], 0, {
                 skip: 0,
                 limit: 20,
             });
+        });
+
+        it('slices the sorted rows and counts them', async () => {
+            sessionAnalyticDomain.findActiveWithGeoInRange.mockResolvedValue(
+                []
+            );
+            const sorted = [
+                {
+                    userId: 'user-1',
+                    fromSessionId: 'session-1',
+                    toSessionId: 'session-2',
+                    distanceKm: 900,
+                    deltaMs: 1000,
+                },
+                {
+                    userId: 'user-2',
+                    fromSessionId: 'session-3',
+                    toSessionId: 'session-4',
+                    distanceKm: 700,
+                    deltaMs: 2000,
+                },
+            ];
+            analyticSortUtil.sortRows.mockReturnValue(sorted);
+
+            await domain.impossibleTravelList(startDate, endDate, {
+                skip: 1,
+                limit: 1,
+                orderBy,
+            });
+
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                orderBy,
+                AnalyticImpossibleTravelAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+                [sorted[1]],
+                2,
+                { skip: 1, limit: 1 }
+            );
         });
     });
 
@@ -234,10 +297,41 @@ describe('AnalyticAnomalyDomain', () => {
             const result = await domain.loginSpikeIpList(null, pagination);
 
             expect(result).toEqual(offsetPage);
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                [],
+                AnalyticLoginSpikeIpAvailableOrderBy
+            );
             expect(paginationService.offsetPage).toHaveBeenCalledWith([], 0, {
                 skip: 0,
                 limit: 20,
             });
+        });
+
+        it('slices the sorted rows and counts them', async () => {
+            userLoginAnalyticDomain.findLoginEvents.mockResolvedValue([]);
+            const sorted = [
+                { ipAddress: '10.0.0.1', uniqueUsers: 4, attempts: 9 },
+                { ipAddress: '10.0.0.2', uniqueUsers: 2, attempts: 5 },
+            ];
+            analyticSortUtil.sortRows.mockReturnValue(sorted);
+
+            await domain.loginSpikeIpList(null, {
+                skip: 1,
+                limit: 1,
+                orderBy,
+            });
+
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                orderBy,
+                AnalyticLoginSpikeIpAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+                [sorted[1]],
+                2,
+                { skip: 1, limit: 1 }
+            );
         });
     });
 
@@ -262,6 +356,7 @@ describe('AnalyticAnomalyDomain', () => {
                     email: 'user@example.com',
                     passwordAttempt: 4,
                     lastLoginAt: startDate,
+                    createdAt: startDate,
                 },
             ]);
 
@@ -364,10 +459,47 @@ describe('AnalyticAnomalyDomain', () => {
             });
 
             expect(result).toEqual(offsetPage);
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                rows,
+                [],
+                AnalyticDeviceProliferationAvailableOrderBy
+            );
             expect(paginationService.offsetPage).toHaveBeenCalledWith(
                 [rows[1]],
                 2,
                 { skip: 1, limit: 1 }
+            );
+        });
+
+        it('slices the sorted rows and counts them', async () => {
+            const rows = [
+                { userId: 'user-1', deviceCount: 8, zScore: 3.1 },
+                { userId: 'user-2', deviceCount: 9, zScore: 3.4 },
+            ];
+            deviceAnalyticDomain.proliferationOutliers.mockResolvedValue({
+                count: 2,
+                avg: 2,
+                stdDev: 0.5,
+                rows,
+            });
+            const sorted = [rows[1], rows[0]];
+            analyticSortUtil.sortRows.mockReturnValue(sorted);
+
+            await domain.deviceProliferationList({
+                skip: 0,
+                limit: 1,
+                orderBy,
+            });
+
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                rows,
+                orderBy,
+                AnalyticDeviceProliferationAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+                [rows[1]],
+                2,
+                { skip: 0, limit: 1 }
             );
         });
     });
@@ -407,6 +539,49 @@ describe('AnalyticAnomalyDomain', () => {
             );
 
             expect(result).toEqual(offsetPage);
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                [],
+                AnalyticLoginTimeAnomalyAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith([], 0, {
+                skip: 0,
+                limit: 20,
+            });
+        });
+
+        it('slices the sorted rows and counts them', async () => {
+            userLoginAnalyticDomain.findLoginEvents.mockResolvedValue([]);
+            const sorted = [
+                {
+                    userId: 'user-1',
+                    lastHour: 3,
+                    historicalFrequencyPercent: 5,
+                },
+                {
+                    userId: 'user-2',
+                    lastHour: 4,
+                    historicalFrequencyPercent: 1,
+                },
+            ];
+            analyticSortUtil.sortRows.mockReturnValue(sorted);
+
+            await domain.loginTimeList(startDate, endDate, {
+                skip: 1,
+                limit: 1,
+                orderBy,
+            });
+
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [],
+                orderBy,
+                AnalyticLoginTimeAnomalyAvailableOrderBy
+            );
+            expect(paginationService.offsetPage).toHaveBeenCalledWith(
+                [sorted[1]],
+                2,
+                { skip: 1, limit: 1 }
+            );
         });
     });
 

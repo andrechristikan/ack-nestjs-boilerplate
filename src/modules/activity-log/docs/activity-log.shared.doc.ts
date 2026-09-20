@@ -2,15 +2,13 @@ import {
     Doc,
     DocAuth,
     DocGuard,
-    DocResponseError,
     DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 import type { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
-import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
-import { HttpStatus, applyDecorators } from '@nestjs/common';
+import { applyDecorators } from '@nestjs/common';
 
 export function ActivityLogSharedListSelfDoc(): MethodDecorator {
     return applyDecorators(
@@ -21,7 +19,7 @@ export function ActivityLogSharedListSelfDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ termPolicy: true }),
+        DocGuard({ user: true, termPolicy: true }),
         DocResponsePagination<ActivityLogResponseDto>('activityLog.listSelf', {
             schema: ActivityLogResponseSchema,
             availableOrderBy: ActivityLogDefaultAvailableOrderBy,
@@ -39,14 +37,11 @@ export function ActivityLogSharedListSelfByWorkspaceDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ termPolicy: true }),
-        DocResponseError(HttpStatus.NOT_FOUND, {
-            statusCode: EnumWorkspaceStatusCodeError.notFound,
-            messagePath: 'workspace.error.notFound',
-        }),
-        DocResponseError(HttpStatus.FORBIDDEN, {
-            statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
-            messagePath: 'workspace.error.memberForbidden',
+        DocGuard({
+            user: true,
+            termPolicy: true,
+            featureFlag: true,
+            workspace: true,
         }),
         DocResponsePagination<ActivityLogResponseDto>(
             'activityLog.listSelfByWorkspace',

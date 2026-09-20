@@ -46,6 +46,7 @@ import {
     DocPaginationOffsetErrorResponses,
     DocPaginationOffsetQueries,
     DocResponseEntryMetaKey,
+    DocSerializationErrorResponses,
 } from '@common/doc/constants/doc.constant';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
@@ -53,12 +54,19 @@ import { faker } from '@faker-js/faker';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
+import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
+import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 
 /**
  * Accumulates documented response entries on the decorated method and re-emits every entry of
- * each status the incoming entries touch, so a later decorator cannot erase an earlier one. Each
- * entry's envelope is built here and nowhere else: `entry.envelope` or `ResponseSchema`, carrying
- * `entry.schema` as `data` when the entry declares one.
+ * each HTTP status the incoming entries touch, so a later decorator cannot erase an earlier one.
+ * Dedupes by `httpStatus:statusCode:messagePath`. Each entry's envelope is built here:
+ * `entry.envelope` or `ResponseSchema`, with `entry.schema` as `data` when declared.
+ *
+ * One entry at a status emits that envelope as the response schema (field examples set from the
+ * entry). Two or more emit one shared envelope schema plus named OpenAPI `examples` keyed by
+ * `messagePath`; each example value is the full envelope (`statusCode`, `message`, `metadata`).
  */
 function accumulateResponseEntries(
     entries: IDocResponseEntry[]
@@ -71,8 +79,7 @@ function accumulateResponseEntries(
         const method = descriptor.value as object;
         const stored =
             (Reflect.getMetadata(DocResponseEntryMetaKey, method) as
-                | IDocResponseEntry[]
-                | undefined) ?? [];
+                IDocResponseEntry[] | undefined) ?? [];
 
         const accumulated: IDocResponseEntry[] = [...stored];
         const seen = new Set<string>(
@@ -103,9 +110,12 @@ function accumulateResponseEntries(
         );
 
         for (const httpStatus of touched) {
-            const schemas: SchemaObject[] = accumulated
-                .filter(entry => entry.httpStatus === httpStatus)
-                .map(entry => {
+            const statusEntries = accumulated.filter(
+                entry => entry.httpStatus === httpStatus
+            );
+
+            if (statusEntries.length > 0) {
+                const schemas: SchemaObject[] = statusEntries.map(entry => {
                     const envelope: z.ZodObject =
                         entry.envelope ?? ResponseSchema;
                     const enveloped: z.ZodObject = entry.schema
@@ -123,24 +133,55 @@ function accumulateResponseEntries(
                     return createSchema(documented, { io: 'output' })
                         .schema as SchemaObject;
                 });
-            const schema: SchemaObject =
-                schemas.length === 1 ? schemas[0] : { oneOf: schemas };
-            const description = described.has(httpStatus)
-                ? ''
-                : httpStatus.toString();
 
-            ApiResponse({ description, status: httpStatus, schema })(
-                target,
-                propertyKey,
-                descriptor
-            );
+                const schema: SchemaObject =
+                    schemas.length > 1
+                        ? (createSchema(
+                              statusEntries[0]?.envelope ?? ResponseSchema,
+                              { io: 'output' }
+                          ).schema as SchemaObject)
+                        : schemas[0];
+                const description = described.has(httpStatus)
+                    ? ''
+                    : httpStatus.toString();
+                const metadataExample = (
+                    schema.properties as
+                        Record<string, SchemaObject> | undefined
+                )?.metadata?.example;
+                const examples =
+                    schemas.length > 1
+                        ? Object.fromEntries(
+                              statusEntries.map(entry => [
+                                  entry.messagePath,
+                                  {
+                                      summary: `${entry.statusCode ?? httpStatus} — ${entry.messagePath}`,
+                                      value: {
+                                          statusCode:
+                                              entry.statusCode ?? httpStatus,
+                                          message: entry.messagePath,
+                                          metadata: metadataExample,
+                                      },
+                                  },
+                              ])
+                          )
+                        : undefined;
+
+                ApiResponse({
+                    description,
+                    status: httpStatus,
+                    schema,
+                    ...(examples ? { examples } : {}),
+                })(target, propertyKey, descriptor);
+            }
         }
     };
 }
 
 /**
  * Documents the error responses a status may return, accumulated with every other entry at that
- * status: a single entry emits a plain schema, two or more emit a `oneOf`.
+ * status: a single entry emits a plain schema with field examples; two or more emit one shared
+ * envelope schema plus named `examples` keyed by `messagePath`, each value the full envelope
+ * (`statusCode`, `message`, `metadata`).
  * @public
  */
 export function DocResponseError(
@@ -153,7 +194,8 @@ export function DocResponseError(
 }
 
 /**
- * Base endpoint doc: operation metadata, language/correlation headers, and the global error responses.
+ * Base endpoint doc: operation metadata, language/correlation headers, and the global error
+ * responses every endpoint can return.
  * @public
  */
 export function Doc(options?: IDocOptions): MethodDecorator {
@@ -189,8 +231,14 @@ export function Doc(options?: IDocOptions): MethodDecorator {
         DocGlobalErrorResponses.internalServerError,
         DocGlobalErrorResponses.requestTimeout,
         DocGlobalErrorResponses.validationError,
-        DocGlobalErrorResponses.envForbidden,
-        DocGlobalErrorResponses.tooManyRequests
+        DocGlobalErrorResponses.tooManyRequests,
+        DocGlobalErrorResponses.decryptFailed,
+        DocGlobalErrorResponses.encryptionSecretInvalid,
+        DocGlobalErrorResponses.patternTokenMissing,
+        DocGlobalErrorResponses.schemaMissing,
+        DocGlobalErrorResponses.contextMissing,
+        DocGlobalErrorResponses.uniqueValueGenerationFailed,
+        DocGlobalErrorResponses.serviceUnavailable
     );
 }
 
@@ -263,13 +311,16 @@ export function DocRequestFile(
 }
 
 /**
- * Documents the 401 and 403 responses each enabled authorization guard (user, role, policy,
- * term policy) can return.
+ * Documents the responses each enabled authorization guard (user, role, policy, term policy,
+ * workspace, workspace role, feature flag, project, project member, project role) can return.
  * @public
  */
 export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
     const oneOfUnauthorized: IDocResponseErrorOptions[] = [];
     const oneOfForbidden: IDocResponseErrorOptions[] = [];
+    const oneOfNotFound: IDocResponseErrorOptions[] = [];
+    const oneOfServerError: IDocResponseErrorOptions[] = [];
+    const oneOfServiceUnavailable: IDocResponseErrorOptions[] = [];
 
     if (options?.user) {
         oneOfUnauthorized.push({
@@ -305,6 +356,10 @@ export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
             statusCode: EnumRoleStatusCodeError.forbidden,
             messagePath: 'role.error.forbidden',
         });
+        oneOfServerError.push({
+            statusCode: EnumRoleStatusCodeError.predefinedNotFound,
+            messagePath: 'role.error.predefinedNotFound',
+        });
     }
 
     if (options?.policy) {
@@ -312,12 +367,92 @@ export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
             statusCode: EnumPolicyStatusCodeError.forbidden,
             messagePath: 'policy.error.forbidden',
         });
+        oneOfServerError.push({
+            statusCode: EnumPolicyStatusCodeError.predefinedNotFound,
+            messagePath: 'policy.error.predefinedNotFound',
+        });
     }
 
     if (options?.termPolicy) {
         oneOfForbidden.push({
             statusCode: EnumTermPolicyStatusCodeError.requiredInvalid,
             messagePath: 'termPolicy.error.requiredInvalid',
+        });
+    }
+
+    if (options?.workspace) {
+        oneOfNotFound.push({
+            statusCode: EnumWorkspaceStatusCodeError.notFound,
+            messagePath: 'workspace.error.notFound',
+        });
+        oneOfForbidden.push({
+            statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
+            messagePath: 'workspace.error.memberForbidden',
+        });
+    }
+
+    if (options?.workspaceRole) {
+        oneOfForbidden.push({
+            statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
+            messagePath: 'workspace.error.roleForbidden',
+        });
+    }
+
+    if (options?.project) {
+        oneOfNotFound.push(
+            {
+                statusCode: EnumWorkspaceStatusCodeError.notFound,
+                messagePath: 'workspace.error.notFound',
+            },
+            {
+                statusCode: EnumProjectStatusCodeError.notFound,
+                messagePath: 'project.error.notFound',
+            }
+        );
+    }
+
+    if (options?.projectMember) {
+        oneOfNotFound.push({
+            statusCode: EnumProjectStatusCodeError.notFound,
+            messagePath: 'project.error.notFound',
+        });
+        oneOfForbidden.push({
+            statusCode: EnumProjectStatusCodeError.memberForbidden,
+            messagePath: 'project.error.memberForbidden',
+        });
+    }
+
+    if (options?.projectRole) {
+        oneOfNotFound.push({
+            statusCode: EnumProjectStatusCodeError.notFound,
+            messagePath: 'project.error.notFound',
+        });
+        oneOfForbidden.push({
+            statusCode: EnumProjectStatusCodeError.roleForbidden,
+            messagePath: 'project.error.roleForbidden',
+        });
+    }
+
+    if (options?.featureFlag) {
+        oneOfServerError.push(
+            {
+                statusCode:
+                    EnumFeatureFlagStatusCodeError.predefinedKeyNotFound,
+                messagePath: 'featureFlag.error.predefinedKeyNotFound',
+            },
+            {
+                statusCode:
+                    EnumFeatureFlagStatusCodeError.predefinedKeyLengthExceeded,
+                messagePath: 'featureFlag.error.predefinedKeyLengthExceeded',
+            },
+            {
+                statusCode: EnumFeatureFlagStatusCodeError.predefinedKeyEmpty,
+                messagePath: 'featureFlag.error.predefinedKeyEmpty',
+            }
+        );
+        oneOfServiceUnavailable.push({
+            statusCode: EnumFeatureFlagStatusCodeError.serviceUnavailable,
+            messagePath: 'featureFlag.error.serviceUnavailable',
         });
     }
 
@@ -329,6 +464,18 @@ export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
         ...oneOfForbidden.map(document => ({
             ...document,
             httpStatus: HttpStatus.FORBIDDEN,
+        })),
+        ...oneOfNotFound.map(document => ({
+            ...document,
+            httpStatus: HttpStatus.NOT_FOUND,
+        })),
+        ...oneOfServerError.map(document => ({
+            ...document,
+            httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+        })),
+        ...oneOfServiceUnavailable.map(document => ({
+            ...document,
+            httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
         })),
     ]);
 }
@@ -346,10 +493,16 @@ export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
 
     if (options?.jwtRefreshToken) {
         docs.push(ApiBearerAuth('refreshToken'));
-        oneOfUnauthorized.push({
-            messagePath: 'auth.error.refreshTokenUnauthorized',
-            statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-        });
+        oneOfUnauthorized.push(
+            {
+                messagePath: 'auth.error.refreshTokenUnauthorized',
+                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
+            },
+            {
+                messagePath: 'session.error.forbidden',
+                statusCode: EnumSessionStatusCodeError.forbidden,
+            }
+        );
     }
 
     if (options?.jwtAccessToken) {
@@ -461,7 +614,8 @@ export function DocResponse<T = void>(
 
     return applyDecorators(
         ApiProduces('application/json'),
-        accumulateResponseEntries([docs])
+        accumulateResponseEntries([docs]),
+        DocSerializationErrorResponses.serialization
     );
 }
 
@@ -494,6 +648,9 @@ export function DocResponsePagination<T>(
         ...(options.type === EnumPaginationType.cursor
             ? Object.values(DocPaginationCursorErrorResponses)
             : Object.values(DocPaginationOffsetErrorResponses)),
+        DocSerializationErrorResponses.serialization,
+        DocSerializationErrorResponses.paginationShapeInvalid,
+        DocSerializationErrorResponses.paginationTypeInvalid,
     ];
 
     if (options.type === EnumPaginationType.cursor) {

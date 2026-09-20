@@ -173,21 +173,23 @@ interface when the row is a shape; a table whose rows are plain values needs non
   role: `user.password-repository.interface.ts`,
   `device.ownership-analytic-repository.interface.ts`. A spec mirrors its source name plus
   `.spec.ts` and is counted before that suffix, so it may carry one part more.
-- **Three constants files, and no more.** `constants/<module>.constant.ts` holds what the
-  module owns — store and metadata keys, Prisma selects, and any other constant of its own;
-  `<module>.doc.constant.ts` holds the Swagger `@ApiParam` / `@ApiQuery` constants
-  (`rules/http.md`); `<module>.list.constant.ts` holds the list-endpoint allow-lists and filter
-  defaults (`rules/pagination.md`). A fourth file split by some other concern is the defect —
-  that constant belongs in `<module>.constant.ts`.
+- **At most three constants files.** `constants/<module>.constant.ts` holds what the module
+  owns — store and metadata keys, Prisma selects, and any other constant of its own;
+  `<module>.doc.constant.ts` holds the Swagger `@ApiParam` / `@ApiQuery` arrays
+  (`rules/http.md`) and exists only when the module has those arrays;
+  `<module>.list.constant.ts` holds the list-endpoint allow-lists and filter defaults
+  (`rules/pagination.md`) and exists only when the module has a list endpoint. An empty
+  constants file is the defect — delete it. A fourth file split by some other concern is the
+  defect — that constant belongs in `<module>.constant.ts`.
 - **One contract per file.** `contracts/<module>.<concept>.contract.ts` exports one table
   (`rules/code-style.md` tags it `@public`). Two tables in a file means two files.
 - **A data constant never lives in a class file.** A list, a map, a threshold, a set of enum
-  members a class reads — it belongs in one of the module's three constants files above,
+  members a class reads — it belongs in one of the module's constants files above,
   imported by the class. A module-scope `const` inside a domain, service, repository, controller, guard,
   util, cache or processor file is the defect, whatever its casing. What legitimately sits at
   module scope in those trees is the class itself; a decorator in a `*.decorator.ts`, a schema
-  in a `*.validation.ts` and a doc fragment in a `*.doc.ts` are that file's own subject, not
-  data.
+  in a `*.validation.ts`, and the exported doc factory functions in a `*.doc.ts` are that file's
+  own subject, not data.
 - **One interface per file, except the module's own collection.** A behavioural header — an
   `I*Repository` port — is alone in its file. Data shapes and type aliases for a concern collect
   in `interfaces/<module>[.<concern>].interface.ts`, which is what that file is FOR; a shape

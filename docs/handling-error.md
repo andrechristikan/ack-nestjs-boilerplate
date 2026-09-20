@@ -13,6 +13,7 @@ Exception filters turn thrown errors into the same HTTP error body, with i18n me
 - [Status Codes Documentation][ref-doc-status-codes] - Full catalog of application `statusCode` values by module
 - [Message Documentation][ref-doc-message] - For error message internationalization
 - [Logger Documentation][ref-doc-logger] - For error logging and monitoring
+- [Doc Documentation][ref-doc-doc] - OpenAPI publishes kit errors only (`Doc`, `DocAuth`, `DocGuard`, and when used `DocResponsePagination` / `DocRequestFile` / `DocResponseFile`); module-flow domain exceptions are not listed on `*.doc.ts` factories
 
 ## Table of Contents
 
@@ -385,3 +386,4 @@ export class ExampleSomethingException extends AppBaseException {
 [ref-doc-message]: message.md
 [ref-doc-logger]: logger.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-doc]: doc.md

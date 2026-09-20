@@ -12,7 +12,7 @@ import type {
     IAnalyticLoginTimeAnomaly,
     IAnalyticNearLockout,
 } from '@modules/analytic/interfaces/analytic.interface';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
+import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
 
@@ -20,17 +20,20 @@ import { Prisma } from '@generated/prisma-client/client';
 export class AnalyticAnomalyHttpService {
     constructor(
         private readonly analyticAnomalyDomain: AnalyticAnomalyDomain,
-        private readonly analyticDateUtil: AnalyticDateUtil
+        private readonly analyticDateDomain: AnalyticDateDomain
     ) {}
 
     async impossibleTravelSummary(
         startDate?: Date,
         endDate?: Date
     ): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
-        const range = this.analyticDateUtil.optionalRange(startDate, endDate);
+        const range = this.analyticDateDomain.optionalRange(
+            startDate ?? null,
+            endDate ?? null
+        );
         const data = await this.analyticAnomalyDomain.impossibleTravelSummary(
-            range.startDate ?? null,
-            range.endDate ?? null
+            range.startDate,
+            range.endDate
         );
 
         return { data };
@@ -41,10 +44,13 @@ export class AnalyticAnomalyHttpService {
         endDate: Date | undefined,
         params: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>
     ): Promise<IResponsePagingReturn<IAnalyticImpossibleTravel>> {
-        const range = this.analyticDateUtil.optionalRange(startDate, endDate);
+        const range = this.analyticDateDomain.optionalRange(
+            startDate ?? null,
+            endDate ?? null
+        );
         return this.analyticAnomalyDomain.impossibleTravelList(
-            range.startDate ?? null,
-            range.endDate ?? null,
+            range.startDate,
+            range.endDate,
             params
         );
     }
@@ -102,10 +108,13 @@ export class AnalyticAnomalyHttpService {
         startDate?: Date,
         endDate?: Date
     ): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
-        const range = this.analyticDateUtil.optionalRange(startDate, endDate);
+        const range = this.analyticDateDomain.optionalRange(
+            startDate ?? null,
+            endDate ?? null
+        );
         const data = await this.analyticAnomalyDomain.loginTimeSummary(
-            range.startDate ?? null,
-            range.endDate ?? null
+            range.startDate,
+            range.endDate
         );
 
         return { data };
@@ -116,10 +125,13 @@ export class AnalyticAnomalyHttpService {
         endDate: Date | undefined,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePagingReturn<IAnalyticLoginTimeAnomaly>> {
-        const range = this.analyticDateUtil.optionalRange(startDate, endDate);
+        const range = this.analyticDateDomain.optionalRange(
+            startDate ?? null,
+            endDate ?? null
+        );
         return this.analyticAnomalyDomain.loginTimeList(
-            range.startDate ?? null,
-            range.endDate ?? null,
+            range.startDate,
+            range.endDate,
             params
         );
     }

@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import type { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
+import type { ApiParamOptions } from '@nestjs/swagger';
 
 /**
  * Swagger path parameter `projectId`.
@@ -12,6 +12,7 @@ export const ProjectDocParamsId: ApiParamOptions[] = [
         required: true,
         type: 'string',
         example: faker.database.mongodbObjectId(),
+        description: 'Project identifier read by the project guards',
     },
 ];
 
@@ -26,6 +27,7 @@ export const ProjectMemberDocParamsId: ApiParamOptions[] = [
         required: true,
         type: 'string',
         example: faker.database.mongodbObjectId(),
+        description: 'Project identifier read by the project guards',
     },
     {
         name: 'projectMemberId',
@@ -33,18 +35,6 @@ export const ProjectMemberDocParamsId: ApiParamOptions[] = [
         required: true,
         type: 'string',
         example: faker.database.mongodbObjectId(),
-    },
-];
-
-/**
- * Swagger query parameters of the admin project list: `workspaceId`.
- * @public
- */
-export const ProjectAdminListDocQueries: ApiQueryOptions[] = [
-    {
-        name: 'workspaceId',
-        required: false,
-        type: 'string',
-        example: faker.database.mongodbObjectId(),
+        description: 'Project member identifier',
     },
 ];

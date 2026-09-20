@@ -4,6 +4,17 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import {
+    AnalyticAccountTakeoverAvailableOrderBy,
+    AnalyticBackupCodeNewDeviceAvailableOrderBy,
+    AnalyticCredentialStuffingAvailableOrderBy,
+    AnalyticForgotPasswordAbuseAvailableOrderBy,
+    AnalyticFraudRiskScoreAvailableOrderBy,
+    AnalyticKeyCountAvailableOrderBy,
+    AnalyticSessionAfterAdminAvailableOrderBy,
+    AnalyticSharedFingerprintAvailableOrderBy,
+    AnalyticUserCountAvailableOrderBy,
+} from '@modules/analytic/constants/analytic.list.constant';
 import type {
     IAnalyticAccountTakeover,
     IAnalyticApiKeyBurst,
@@ -19,6 +30,7 @@ import type {
     IAnalyticSharedFingerprint,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
+import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
 import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
 import { UserForgotPasswordAnalyticDomain } from '@modules/user/domains/user.forgot-password.analytic.domain';
@@ -35,6 +47,7 @@ export class AnalyticFraudDomain {
     constructor(
         private readonly analyticCache: AnalyticCache,
         private readonly analyticDateUtil: AnalyticDateUtil,
+        private readonly analyticSortUtil: AnalyticSortUtil,
         private readonly paginationService: PaginationService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
@@ -397,10 +410,15 @@ export class AnalyticFraudDomain {
         );
         const rows = await this.computeCredentialStuffing(window);
 
-        const { skip, limit } = params;
-        const data = rows.slice(skip, skip + limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticCredentialStuffingAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
 
-        return this.paginationService.offsetPage(data, rows.length, {
+        return this.paginationService.offsetPage(data, sorted.length, {
             skip,
             limit,
         });
@@ -439,10 +457,15 @@ export class AnalyticFraudDomain {
     ): Promise<IResponsePagingReturn<IAnalyticAccountTakeover>> {
         const rows = await this.computeAccountTakeover(startDate, endDate);
 
-        const { skip, limit } = params;
-        const data = rows.slice(skip, skip + limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticAccountTakeoverAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
 
-        return this.paginationService.offsetPage(data, rows.length, {
+        return this.paginationService.offsetPage(data, sorted.length, {
             skip,
             limit,
         });
@@ -486,10 +509,15 @@ export class AnalyticFraudDomain {
         );
         const rows = await this.computeMassRegistration(window);
 
-        const { skip, limit } = params;
-        const data = rows.slice(skip, skip + limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticKeyCountAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
 
-        return this.paginationService.offsetPage(data, rows.length, {
+        return this.paginationService.offsetPage(data, sorted.length, {
             skip,
             limit,
         });
@@ -533,10 +561,15 @@ export class AnalyticFraudDomain {
         );
         const rows = await this.computePasswordResetEnumeration(window);
 
-        const { skip, limit } = params;
-        const data = rows.slice(skip, skip + limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticKeyCountAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
 
-        return this.paginationService.offsetPage(data, rows.length, {
+        return this.paginationService.offsetPage(data, sorted.length, {
             skip,
             limit,
         });
@@ -573,10 +606,15 @@ export class AnalyticFraudDomain {
         )!;
         const rows =
             await this.deviceAnalyticDomain.sharedFingerprints(minUsers);
-        const { skip, limit } = params;
-        const data = rows.slice(skip, skip + limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticSharedFingerprintAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
 
-        return this.paginationService.offsetPage(data, rows.length, {
+        return this.paginationService.offsetPage(data, sorted.length, {
             skip,
             limit,
         });
@@ -615,10 +653,15 @@ export class AnalyticFraudDomain {
     ): Promise<IResponsePagingReturn<IAnalyticSessionAfterAdmin>> {
         const rows = await this.computeSessionAfterAdmin(startDate, endDate);
 
-        const { skip, limit } = params;
-        const data = rows.slice(skip, skip + limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticSessionAfterAdminAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
 
-        return this.paginationService.offsetPage(data, rows.length, {
+        return this.paginationService.offsetPage(data, sorted.length, {
             skip,
             limit,
         });
@@ -662,10 +705,15 @@ export class AnalyticFraudDomain {
         );
         const rows = await this.computeForgotPasswordAbuse(window);
 
-        const { skip, limit } = params;
-        const data = rows.slice(skip, skip + limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticForgotPasswordAbuseAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
 
-        return this.paginationService.offsetPage(data, rows.length, {
+        return this.paginationService.offsetPage(data, sorted.length, {
             skip,
             limit,
         });
@@ -709,10 +757,15 @@ export class AnalyticFraudDomain {
         );
         const rows = await this.computeRefreshSpike(window);
 
-        const { skip, limit } = params;
-        const data = rows.slice(skip, skip + limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticUserCountAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
 
-        return this.paginationService.offsetPage(data, rows.length, {
+        return this.paginationService.offsetPage(data, sorted.length, {
             skip,
             limit,
         });
@@ -756,10 +809,15 @@ export class AnalyticFraudDomain {
         );
         const rows = await this.computeBackupCodeNewDevice(window);
 
-        const { skip, limit } = params;
-        const data = rows.slice(skip, skip + limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticBackupCodeNewDeviceAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
 
-        return this.paginationService.offsetPage(data, rows.length, {
+        return this.paginationService.offsetPage(data, sorted.length, {
             skip,
             limit,
         });
@@ -803,10 +861,15 @@ export class AnalyticFraudDomain {
         );
         const rows = await this.computeApiKeyBurst(window);
 
-        const { skip, limit } = params;
-        const data = rows.slice(skip, skip + limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            rows,
+            orderBy,
+            AnalyticUserCountAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
 
-        return this.paginationService.offsetPage(data, rows.length, {
+        return this.paginationService.offsetPage(data, sorted.length, {
             skip,
             limit,
         });
@@ -912,10 +975,15 @@ export class AnalyticFraudDomain {
             }
         }
         scored.sort((a, b) => b.score - a.score);
-        const { skip, limit } = params;
-        const data = scored.slice(skip, skip + limit);
+        const { skip, limit, orderBy } = params;
+        const sorted = this.analyticSortUtil.sortRows(
+            scored,
+            orderBy,
+            AnalyticFraudRiskScoreAvailableOrderBy
+        );
+        const data = sorted.slice(skip, skip + limit);
 
-        return this.paginationService.offsetPage(data, scored.length, {
+        return this.paginationService.offsetPage(data, sorted.length, {
             skip,
             limit,
         });

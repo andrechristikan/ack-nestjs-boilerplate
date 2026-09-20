@@ -1,6 +1,6 @@
+import { EnumRoleType } from '@generated/prisma-client/client';
 import { faker } from '@faker-js/faker';
 import type { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
-import { EnumRoleType } from '@generated/prisma-client/client';
 
 /**
  * Swagger path parameter `roleId`.

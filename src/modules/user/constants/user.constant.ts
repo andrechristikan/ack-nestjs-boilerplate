@@ -81,6 +81,7 @@ export const UserAdminNearLockoutSelect = {
     email: true,
     passwordAttempt: true,
     lastLoginAt: true,
+    createdAt: true,
 } satisfies Prisma.UserSelect;
 
 /**

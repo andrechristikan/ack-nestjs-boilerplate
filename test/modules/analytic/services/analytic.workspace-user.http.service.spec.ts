@@ -4,13 +4,13 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticWorkspaceUserDomain } from '@modules/analytic/domains/analytic.workspace-user.domain';
 import { AnalyticWorkspaceUserHttpService } from '@modules/analytic/services/analytic.workspace-user.http.service';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
+import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
 
 describe('AnalyticWorkspaceUserHttpService', () => {
     const analyticWorkspaceUserDomain: MockProxy<AnalyticWorkspaceUserDomain> =
         mock<AnalyticWorkspaceUserDomain>();
-    const analyticDateUtil: MockProxy<AnalyticDateUtil> =
-        mock<AnalyticDateUtil>();
+    const analyticDateDomain: MockProxy<AnalyticDateDomain> =
+        mock<AnalyticDateDomain>();
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
@@ -27,7 +27,7 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                     provide: AnalyticWorkspaceUserDomain,
                     useValue: analyticWorkspaceUserDomain,
                 },
-                { provide: AnalyticDateUtil, useValue: analyticDateUtil },
+                { provide: AnalyticDateDomain, useValue: analyticDateDomain },
             ],
         }).compile();
 
@@ -36,7 +36,7 @@ describe('AnalyticWorkspaceUserHttpService', () => {
 
     describe('summary', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.optionalRange.mockReturnValue({
+            analyticDateDomain.optionalRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -65,7 +65,7 @@ describe('AnalyticWorkspaceUserHttpService', () => {
 
     describe('inviteFunnel', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -90,7 +90,7 @@ describe('AnalyticWorkspaceUserHttpService', () => {
 
     describe('joinOutcomes', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
@@ -132,7 +132,7 @@ describe('AnalyticWorkspaceUserHttpService', () => {
 
     describe('activity', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticDateUtil.requireRange.mockReturnValue({
+            analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });

@@ -8,14 +8,10 @@ import {
     DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
-import {
-    SessionDocParamsId,
-    SessionDocQueryList,
-} from '@modules/session/constants/session.doc.constant';
+import { SessionDocQueryList } from '@modules/session/constants/session.doc.constant';
 
 export function SessionAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -23,14 +19,13 @@ export function SessionAdminListDoc(): MethodDecorator {
             summary: 'admin get all user Sessions',
         }),
         DocRequest({
-            params: UserDocParamsId,
             queries: SessionDocQueryList,
         }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponsePagination<SessionResponseDto>('session.list', {
             schema: SessionResponseSchema,
             availableOrderBy: SessionDefaultAvailableOrderBy,
@@ -44,14 +39,11 @@ export function SessionAdminRevokeDoc(): MethodDecorator {
         Doc({
             summary: 'admin revoke user Session',
         }),
-        DocRequest({
-            params: [...UserDocParamsId, ...SessionDocParamsId],
-        }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse('session.revoke')
     );
 }
@@ -61,14 +53,11 @@ export function SessionAdminRevokeAllDoc(): MethodDecorator {
         Doc({
             summary: 'admin revoke all user Sessions',
         }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true, user: true }),
         DocResponse('session.revokeAll')
     );
 }

@@ -1,6 +1,6 @@
-import { EnumUserStatus } from '@generated/prisma-client/client';
 import { faker } from '@faker-js/faker';
 import type { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
+import { EnumUserStatus } from '@generated/prisma-client/client';
 
 /**
  * Swagger path parameter `userId`.
@@ -49,6 +49,7 @@ export const UserDocQueryList: ApiQueryOptions[] = [
         required: false,
         type: 'string',
         example: faker.database.mongodbObjectId(),
+        description: 'Filter by countryId',
     },
     {
         name: 'status',

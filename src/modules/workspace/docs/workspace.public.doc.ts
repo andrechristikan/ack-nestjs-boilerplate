@@ -1,20 +1,14 @@
 import {
     Doc,
     DocAuth,
-    DocRequest,
+    DocGuard,
     DocResponse,
-    DocResponseError,
 } from '@common/doc/decorators/doc.decorator';
-import {
-    WorkspaceDocParamsSlug,
-    WorkspaceInviteTokenDocParamsId,
-} from '@modules/workspace/constants/workspace.doc.constant';
 import { WorkspaceInvitePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspacePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.preview.response.dto';
 import type { WorkspacePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.preview.response.dto';
-import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
-import { HttpStatus, applyDecorators } from '@nestjs/common';
+import { applyDecorators } from '@nestjs/common';
 
 export function WorkspacePublicInvitePreviewDoc(): MethodDecorator {
     return applyDecorators(
@@ -22,12 +16,8 @@ export function WorkspacePublicInvitePreviewDoc(): MethodDecorator {
             summary:
                 'safe, unauthenticated preview of a workspace invite (workspace name, inviter, offered role); never the token or internal ids',
         }),
-        DocRequest({ params: WorkspaceInviteTokenDocParamsId }),
         DocAuth({ xApiKey: true }),
-        DocResponseError(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
-            messagePath: 'workspace.error.inviteInvalid',
-        }),
+        DocGuard({ featureFlag: true }),
         DocResponse<WorkspaceInvitePreviewResponseDto>(
             'workspace.invite.preview',
             {
@@ -45,12 +35,8 @@ export function WorkspacePublicPreviewDoc(): MethodDecorator {
             description:
                 'Returns 404 for an unknown slug, a soft-deleted workspace, and a workspace that is not public alike — one indistinguishable answer, so the endpoint cannot be used to probe for private slugs.',
         }),
-        DocRequest({ params: WorkspaceDocParamsSlug }),
         DocAuth({ xApiKey: true }),
-        DocResponseError(HttpStatus.NOT_FOUND, {
-            statusCode: EnumWorkspaceStatusCodeError.notFound,
-            messagePath: 'workspace.error.notFound',
-        }),
+        DocGuard({ featureFlag: true }),
         DocResponse<WorkspacePreviewResponseDto>('workspace.preview', {
             schema: WorkspacePreviewResponseSchema,
         })
