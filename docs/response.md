@@ -32,11 +32,11 @@ Response decorators wrap the handler result with metadata, a status code, and a 
 
 ## Related Documents
 
-- [Message Documentation][ref-doc-message] - For internationalization and error message translation
-- [Handling Error Documentation][ref-doc-handling-error] - For exception handling and response formatting
-- [Doc Documentation][ref-doc-doc] - For API documentation integration with DTOs, and for which error responses OpenAPI publishes (kit primitives only)
-- [File Upload Documentation][ref-doc-file-upload] - For file validation pipes
-- [Request Validation Documentation][ref-doc-request-validation] - For input-boundary DTO validation and serialization
+- [Language Message Documentation][ref-doc-message] - Success and error message paths
+- [Handling Error Documentation][ref-doc-handling-error] - Exception filters and error envelopes
+- [Doc Documentation][ref-doc-doc] - OpenAPI from response schemas; kit error responses only unless `@DocErrors` opts in
+- [File Upload Documentation][ref-doc-file-upload] - File response and upload pipes
+- [Request Validation Documentation][ref-doc-request-validation] - Input-boundary schemas (inbound mirror)
 
 ## Response Decorators
 
@@ -209,7 +209,7 @@ async export(
 
 ## Serialization
 
-A route declares its payload shape on the decorator, and the interceptor validates the handler's payload against that schema before the envelope is sent. Every response schema in `src/` is a `z.object` at the top level, so a key the schema does not declare is stripped: a column added to the Prisma model stays out of the response until someone declares it. The constraint when writing one: `rules/dto.md`.
+A route declares its payload shape on the decorator, and the interceptor validates the handler's payload against that schema before the envelope is sent. Every response schema in `src/` is a `z.object` at the top level, so a key the schema does not declare is stripped: a column added to the Prisma model stays out of the response until someone declares it.
 
 A route whose payload is a list of rows over a fixed enum declares that list as a named array field of an object, and `@Response` carries the object schema. `GET /admin/analytic/workspaces/invite-funnel` sends `{ "statuses": [ { "status": …, "count": … } ] }` and `GET /user/analytic/workspace/member-roles` sends `{ "roles": [ … ] }`.
 
@@ -268,7 +268,7 @@ The `.meta({ description, example })` on each field is what the OpenAPI document
 
 ### A Route That Returns No Data
 
-`@Response(messagePath)` with no `schema` declares a route whose body carries `statusCode`, `message`, and `metadata` and nothing else. The handler may return `Promise<void>`, or `IResponseReturn<void>` when the service already returns the envelope (for example to pass `metadata` overrides). Constraint: `rules/http.md`.
+`@Response(messagePath)` with no `schema` declares a route whose body carries `statusCode`, `message`, and `metadata` and nothing else. The handler may return `Promise<void>`, or `IResponseReturn<void>` when the service already returns the envelope (for example to pass `metadata` overrides).
 
 ```typescript
 @Response('role.delete')
@@ -454,7 +454,7 @@ The same store-sourced `language`, `version`, `requestId`, and `correlationId` f
 
 <!-- REFERENCES -->
 
-[ref-doc-message]: message.md
+[ref-doc-message]: language-message.md
 [ref-doc-handling-error]: handling-error.md
 [ref-doc-doc]: doc.md
 [ref-doc-file-upload]: file-upload.md

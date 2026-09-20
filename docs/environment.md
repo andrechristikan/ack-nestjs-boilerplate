@@ -4,15 +4,16 @@ Environment variables are listed in `.env.example`.
 
 ## Overview
 
-Runtime config is environment variables. `AppEnvSchema` validates them at startup.
+Runtime config is environment variables. `AppEnvSchema` validates them at startup. Docker Compose is the recommended way to run MongoDB and Redis locally; see [Installation][ref-doc-installation].
 
 ## Related Documents
 
-- [Configuration Documentation][ref-doc-configuration] - For understanding how environment variables map to configurations
-- [Installation Documentation][ref-doc-installation] - For initial setup and environment file creation
-- [Database Documentation][ref-doc-database] - For database connection details
-- [Authentication Documentation][ref-doc-authentication] - For JWT and OAuth configuration
-- [Vault Documentation][ref-doc-vault] - For managing environment variables and secrets with HashiCorp Vault
+- [Configuration Documentation][ref-doc-configuration] - How env vars map into `registerAs` configs
+- [Installation Documentation][ref-doc-installation] - Creating `.env` (Docker recommended)
+- [Database Documentation][ref-doc-database] - MongoDB connection and replica set
+- [Authentication Documentation][ref-doc-authentication] - JWT and OAuth
+- [Vault Documentation][ref-doc-vault] - Optional secret sync into `.env`
+- [Email Documentation][ref-doc-email] - SES templates
 
 ## Table of Contents
 
@@ -99,7 +100,7 @@ CORS_ALLOWED_ORIGIN=*
 URL_VERSIONING_ENABLE=true
 URL_VERSION=1
 
-# Database
+# Database (Compose replica set locally; Atlas without Docker)
 DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
 DATABASE_DEBUG=true
 
@@ -158,6 +159,7 @@ FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY=
 
 # Redis
+# Redis (Compose locally; ElastiCache without Docker)
 CACHE_REDIS_URL=redis://localhost:6379/0
 QUEUE_REDIS_URL=redis://localhost:6379/1
 
@@ -352,17 +354,17 @@ URL_VERSION=1
 ### Database Settings
 
 **`DATABASE_URL`** *(required)*  
-MongoDB connection string. Must include replica set for transactions.
+MongoDB connection string. Must target a **replica set** (Prisma transactions need one). Docker Compose is the recommended local path; without Docker use [MongoDB Atlas][ref-mongodb-atlas] (or any MongoDB 8+ replica set). Setup: [Installation][ref-doc-installation].
 ```bash
-# Local MongoDB with replica set
+# Local Compose replica set (recommended)
 DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
 
-# MongoDB Atlas example
+# MongoDB Atlas (replica set via mongodb+srv)
 # DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/ACKNestJs
 ```
 
 **`DATABASE_DEBUG`** *(required)*  
-Enable database debug mode to log all queries.
+Log Prisma queries when `true`.
 ```bash
 DATABASE_DEBUG=true
 ```
@@ -626,14 +628,16 @@ FIREBASE_PRIVATE_KEY=
 ### Redis Settings
 
 **`CACHE_REDIS_URL`** *(required)*  
-Redis URL for caching operations.
+Redis URL for cache (`db:0`). Prefer Compose Redis locally; without Docker use a hosted Redis such as [Amazon ElastiCache][ref-elasticache]. Setup: [Installation][ref-doc-installation].
 ```bash
+# Local Compose
 CACHE_REDIS_URL=redis://localhost:6379/0
 ```
 
 **`QUEUE_REDIS_URL`** *(required)*  
-Redis URL for queue operations (background jobs).
+Redis URL for BullMQ (`db:1`). Same host as cache is fine; keep a different logical DB when you can.
 ```bash
+# Local Compose
 QUEUE_REDIS_URL=redis://localhost:6379/1
 ```
 
@@ -655,3 +659,6 @@ SENTRY_DSN=
 [ref-doc-authentication]: authentication.md
 [ref-doc-two-factor]: two-factor.md
 [ref-doc-vault]: vault.md
+[ref-doc-email]: email.md
+[ref-mongodb-atlas]: https://www.mongodb.com/products/platform/atlas-database
+[ref-elasticache]: https://aws.amazon.com/elasticache/

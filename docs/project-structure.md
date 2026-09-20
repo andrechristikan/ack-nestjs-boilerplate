@@ -96,7 +96,7 @@ The migration folder seeds initial data. MongoDB has no migration files; the sch
 - `migration.module.ts`: Registers every seed command as a provider
 - Subfolders for migration bases, data, enums, interfaces, and seeds
 - Populates the reference and bootstrap rows an empty database needs: api keys, countries, feature flags, roles, policies, term policies, users, and workspaces (the eight commands bundled into `pnpm migration:seed`)
-- Ships three on-demand commands that are not part of `pnpm migration:seed`: `awsS3Config`, `templateEmailNotification`, and `templateTermPolicy`
+- Ships three on-demand commands that are not part of `pnpm migration:seed`: `awsS3Config` (S3 bucket setup; see [Third Party Integration](third-party-integration.md#bucket-setup)), `templateEmailNotification` (see [Email](email.md)), and `templateTermPolicy` (see [Term Policy](term-policy.md#migration--seeding))
 
 ## Queues
 
@@ -324,7 +324,7 @@ Below are explanations for the root folders and files outside `src/`:
 - **.swcrc**: Configuration for SWC JavaScript/TypeScript compiler.
 - **cspell.json**: Configuration for code spell checking to maintain code quality and consistency.
 - **docker-compose.yml**: Docker Compose configuration for orchestrating multi-container Docker applications, such as local development environments.
-- **eslint.config.mjs**: ESLint flat configuration. It applies `typescript-eslint` recommended rules, `eslint-plugin-security` (every recommended rule at `error`, `detect-object-injection` off, and `detect-non-literal-fs-filename` off for the notification and term-policy template domains and for `scripts/`), and import bans: `Math.random`, `crypto-js`, a bare `'crypto'` import (use `node:crypto`), `lodash` and a default `lodash-es` import (use named `lodash-es` imports), and `@generated/prisma-client/internal`. The convention that a `this.`-rooted call is assigned to a `const` before it is used in an expression position lives in `.claude/rules/code-style.md` and is checked in review, not by a linter.
+- **eslint.config.mjs**: ESLint flat configuration. It applies `typescript-eslint` recommended rules, `eslint-plugin-security` (every recommended rule at `error`, `detect-object-injection` off, and `detect-non-literal-fs-filename` off for the notification and term-policy template domains and for `scripts/`), and import bans: `Math.random`, `crypto-js`, a bare `'crypto'` import (use `node:crypto`), `lodash` and a default `lodash-es` import (use named `lodash-es` imports), and `@generated/prisma-client/internal`. A `this.`-rooted call is assigned to a `const` before it is used in an expression position; that convention is checked in review, not by a linter.
 - **knip.json**: The `pnpm deadcode` configuration. Entries are `src/main.ts`, `src/migration.ts`, `src/instrument.ts`, and `scripts/*.ts`. Unused files, exports, types, enum members, and dependencies report as warnings; every other knip rule (unlisted or unresolved imports, unlisted binaries, duplicate exports) is an error.
 - **nest-cli.json**: Configuration for NestJS CLI, defining project structure and build options.
 - **package.json**: Node.js project manifest, listing dependencies, scripts, and metadata.

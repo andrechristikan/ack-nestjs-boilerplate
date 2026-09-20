@@ -8,11 +8,11 @@ Every request shape is a [zod][ref-zod] schema. Schemas reach the framework thro
 
 ## Related Documents
 
-- [Message Documentation][ref-doc-message] - For internationalization and error message translation
-- [Handling Error Documentation][ref-doc-handling-error] - For exception handling and response formatting
-- [Doc Documentation][ref-doc-doc] - For API documentation generated from the same schemas
-- [Response Documentation][ref-doc-response] - For the outbound half, where a response schema serializes the payload
-- [File Upload Documentation][ref-doc-file-upload] - For file validation pipes
+- [Language Message Documentation][ref-doc-message] - Validation and error message i18n
+- [Handling Error Documentation][ref-doc-handling-error] - `RequestValidationException` filter path
+- [Doc Documentation][ref-doc-doc] - OpenAPI built from the same schemas
+- [Response Documentation][ref-doc-response] - Outbound schemas that serialize the payload
+- [File Upload Documentation][ref-doc-file-upload] - File validation pipes
 
 ## Table of Contents
 
@@ -52,7 +52,7 @@ The subclass adds two rules on top of the framework pipe:
 - **Fail-closed on `body` and `param`.** An argument of either type arriving with no schema attached throws `RequestSchemaMissingException` instead of reaching the handler unchecked, so a body is bound as `@Body({ schema: <Module><Action>RequestSchema })` and a path param as `@Param('userId', { schema: RequestMongoIdSchema })`. A `query` argument with no schema still passes.
 - **Empty issue paths carry the argument name.** An issue whose Standard Schema `path` is empty is stamped with the bound argument name before `exceptionFactory` runs, so `errors[].property` reads as the parameter rather than as `Unknown`.
 
-The pipe also strips prototype-polluting keys from the value before validating. The constraint when writing a schema: `rules/validation.md`.
+The pipe also strips prototype-polluting keys from the value before validating.
 
 **Processing flow**:
 ```
@@ -366,7 +366,7 @@ See [Handling Error][ref-doc-handling-error] for the complete error handling flo
 [ref-standard-schema]: https://standardschema.dev
 [ref-nestjs-i18n]: https://nestjs-i18n.com
 
-[ref-doc-message]: message.md
+[ref-doc-message]: language-message.md
 [ref-doc-handling-error]: handling-error.md
 [ref-doc-doc]: doc.md
 [ref-doc-file-upload]: file-upload.md

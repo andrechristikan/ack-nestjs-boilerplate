@@ -22,14 +22,14 @@ NestJS applies each layer on the route handler.
 
 ## Related Documents
 
-- [Configuration Documentation][ref-doc-configuration] - For Redis configuration settings
-- [Environment Documentation][ref-doc-environment] - For Redis environment variables
 - [Authentication Documentation][ref-doc-authentication] - JWT, sessions, and API keys
-- [Activity Log Documentation][ref-doc-activity-log] - For tracking authorization-related user activities
-- [Term Policy Document][ref-doc-term-policy] - For managing user acceptance of terms and policies
-- [Device Documentation][ref-doc-device] - For device management and session invalidation
-- [Workspace Documentation][ref-doc-workspace] - For the workspace guards, their exceptions, and `x-workspace-id`
-- [Project Documentation][ref-doc-project] - For the project guards and the workspace-owner bypass
+- [Activity Log Documentation][ref-doc-activity-log] - Authz-related activity rows
+- [Term Policy Documentation][ref-doc-term-policy] - Acceptance gating
+- [Device Documentation][ref-doc-device] - Device revoke and sessions
+- [Workspace Documentation][ref-doc-workspace] - Workspace guards and `x-workspace-id`
+- [Project Documentation][ref-doc-project] - Project guards and owner bypass
+- [Feature Flag Documentation][ref-doc-feature-flag] - `@FeatureFlagProtected` in the stack
+- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Rate limits and headers
 
 ## Table of Contents
 
@@ -72,7 +72,7 @@ NestJS applies each layer on the route handler.
 
 ## Decorator Order
 
-NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method executes FIRST. The order encodes which gate rejects first, so a reshuffle changes the error a caller sees even when the application still boots. Every route uses this order, top to bottom in source (the constraint when changing it: `.claude/rules/http.md`):
+NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method executes FIRST. The order encodes which gate rejects first, so a reshuffle changes the error a caller sees even when the application still boots. Every route uses this order, top to bottom in source:
 
 ```typescript
 @Doc({ summary: '…' })                     // 1.  OpenAPI operation + global error kit
@@ -460,7 +460,7 @@ The project uses [CASL][casl] for permission checks:
 
 `TermPolicyAcceptanceProtected` rejects the request until the user has accepted the required policies (Terms of Service, Privacy Policy, and the rest of the set).
 
-For more detailed information about term policies, see [Term Policy Document][ref-doc-term-policy].
+Details: [Term Policy Documentation][ref-doc-term-policy].
 
 ### Decorators
 
@@ -660,10 +660,9 @@ flowchart LR
 
 [ref-doc-authentication]: authentication.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
-[ref-doc-configuration]: configuration.md
-[ref-doc-environment]: environment.md
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-term-policy]: term-policy.md
 [ref-doc-device]: device.md
 [ref-doc-workspace]: workspace.md
 [ref-doc-project]: project.md
+[ref-doc-feature-flag]: feature-flag.md

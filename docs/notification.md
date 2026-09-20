@@ -10,14 +10,15 @@ Key features:
 - **Multi-Channel Delivery**: `email`, `push`, `inApp`, and `silent` channels
 - **Queue-Based Processing**: Three separate BullMQ queues for orchestration, email, and push, each fed by its own `@Injectable()` queue class in `src/modules/notification/queues/`
 - **User Preference Control**: Per type+channel opt-in/out settings for each user
-- **AWS SES Email Templates**: Handlebars `.hbs` templates synced to SES by the four template domains: `NotificationTemplateAccountDomain`, `NotificationTemplateSecurityDomain`, `NotificationTemplateTermPolicyDomain`, `NotificationTemplateWorkspaceDomain`
+- **AWS SES Email Templates**: Handlebars `.hbs` templates synced to SES; see [Email Documentation][ref-doc-email]
 - **Firebase FCM Push**: Multicast delivery with batch chunking, rate limiting, and stale token cleanup
 - **Delivery Tracking**: `silent` and `inApp` deliveries are pre-marked at creation time, `push` deliveries record `processedAt`, `sentAt`, and `failureTokens` as the processor runs, and `email` deliveries carry no timestamps at all
 
 ## Related Documents
 
 - [Authentication][ref-doc-authentication] - Session management and push token linking
-- [Third-Party Integration][ref-doc-third-party] - Firebase and AWS SES setup and no-op mode
+- [Email][ref-doc-email] - SES templates, sync command, and send mapping
+- [Third-Party Integration][ref-doc-third-party] - Firebase and AWS SES credentials / no-op mode
 - [Queue][ref-doc-queue] - Background job processing
 - [Configuration][ref-doc-configuration] - App configuration
 - [Environment][ref-doc-environment] - Environment variables
@@ -38,7 +39,6 @@ Key features:
     - [Token Cleanup Strategy](#token-cleanup-strategy)
     - [FCM Rate Limiting](#fcm-rate-limiting)
 - [Email Notifications](#email-notifications)
-    - [Template System](#template-system)
 - [Delivery Tracking](#delivery-tracking)
 - [User Notification Settings](#user-notification-settings)
 - [Shared HTTP Endpoints](#shared-http-endpoints)
@@ -217,7 +217,7 @@ A job payload sits in Redis until a worker consumes it, so the queue classes sea
 
 `NotificationQueue` seals the fields of the orchestration jobs; the orchestration domains pass the sealed value through to the email job unopened. `NotificationEmailQueue` seals the invite link of `workspaceInviteUnregistered`, which skips the orchestration queue. Push jobs carry no secret: `NotificationPushQueue` builds each push payload from an explicit field list (`INotification*PushPayload`) that leaves out passwords and links.
 
-A payload that fails to open (a rotated key, a tampered value, the wrong recipient) raises `HelperDecryptFailedException` (`52200`). Inside `handle`, `NotificationEmailProcessor` maps that to a BullMQ `UnrecoverableError`, so the job fails at once without retries, and `QueueProcessorBase.onFailed` reports it to Sentry. Every other email failure is rethrown as it is and retried. The constraint when changing this: `.claude/rules/notification.md`.
+A payload that fails to open (a rotated key, a tampered value, the wrong recipient) raises `HelperDecryptFailedException` (`52200`). Inside `handle`, `NotificationEmailProcessor` maps that to a BullMQ `UnrecoverableError`, so the job fails at once without retries, and `QueueProcessorBase.onFailed` reports it to Sentry. Every other email failure is rethrown as it is and retried.
 
 ## Push Notifications
 
@@ -267,35 +267,9 @@ For Firebase configuration and no-op mode (disabled when credentials are missing
 
 ## Email Notifications
 
-### Template System
+Handlebars templates, SES sync (`templateEmailNotification`), and how channel domains call `AwsSESService`: [Email Documentation][ref-doc-email].
 
-Email templates are Handlebars (`.hbs`) files located in `src/modules/notification/templates/`. They are **uploaded to AWS SES** as named templates by four template domains, each providing `emailImport*`, `emailGet*`, and `emailDelete*` per template it owns: `NotificationTemplateAccountDomain` (welcome and verification), `NotificationTemplateSecurityDomain` (passwords, two-factor, new device login), `NotificationTemplateTermPolicyDomain` (policy publication), and `NotificationTemplateWorkspaceDomain` (invite and join request).
-
-Available templates (one per `EnumNotificationProcess` that uses email):
-
-| Template File | Process |
-|---------------|---------|
-| `notification.welcome.template.hbs` | `welcome` |
-| `notification.welcome-social.template.hbs` | `welcomeSocial` |
-| `notification.welcome-by-admin.template.hbs` | `welcomeByAdmin` |
-| `notification.temporary-password-by-admin.template.hbs` | `temporaryPasswordByAdmin` |
-| `notification.change-password.template.hbs` | `changePassword` |
-| `notification.forgot-password.template.hbs` | `forgotPassword` |
-| `notification.new-device-login.template.hbs` | `newDeviceLogin` |
-| `notification.reset-password.template.hbs` | `resetPassword` |
-| `notification.verification-email.template.hbs` | `verificationEmail` |
-| `notification.verified-email.template.hbs` | `verifiedEmail` |
-| `notification.verified-mobile-number.template.hbs` | `verifiedMobileNumber` |
-| `notification.reset-two-factor-by-admin.template.hbs` | `resetTwoFactorByAdmin` |
-| `notification.publish-term-policy.template.hbs` | `publishTermPolicy` |
-| `notification.workspace-invite.template.hbs` | `workspaceInvite`, `workspaceInviteUnregistered` |
-| `notification.workspace-join-request.template.hbs` | `workspaceJoinRequest` |
-| `notification.workspace-join-accepted.template.hbs` | `workspaceJoinAccepted` |
-| `notification.workspace-join-rejected.template.hbs` | `workspaceJoinRejected` |
-
-Templates are not part of the bundled `migration:seed` / `migration:remove` scripts. They are synced by the standalone `templateEmailNotification` migration command (`MigrationTemplateEmailNotificationSeed`, registered in `MigrationModule`), which calls the import method on the owning template domain (e.g., `NotificationTemplateAccountDomain.emailImportWelcome()`) on `--type seed` and the matching delete method (e.g., `emailDeleteWelcome()`) on `--type remove`. The seed refuses to run when SES reports itself uninitialized.
-
-For AWS SES configuration and no-op mode, see [Third-Party Integration; SES][ref-doc-third-party].
+The email queue, rate limits, dedup, and sealed payload fields stay in this document under [Email Queue](#email-queue) and [Payload Encryption](#payload-encryption).
 
 ## Delivery Tracking
 
@@ -383,6 +357,7 @@ Special thanks to [ak2g][ref-contributor-ak2g] for contributing to the Notificat
 [ref-doc-authentication]: authentication.md
 [ref-doc-device]: device.md
 [ref-doc-third-party]: third-party-integration.md
+[ref-doc-email]: email.md
 [ref-doc-queue]: queue.md
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md

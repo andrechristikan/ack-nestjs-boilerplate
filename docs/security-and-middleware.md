@@ -25,10 +25,11 @@ consumer
 
 ## Related Documents
 
-- [Authentication][ref-doc-authentication]
-- [Authorization][ref-doc-authorization]
-- [Configuration][ref-doc-configuration]
-- [Environment][ref-doc-environment]
+- [Authentication][ref-doc-authentication] - JWT, OAuth, API keys, sessions
+- [Authorization][ref-doc-authorization] - Guards and decorator stack
+- [Configuration][ref-doc-configuration] - Request, CORS, and throttle config
+- [Environment][ref-doc-environment] - CORS, proxy, and related env vars
+- [Cache][ref-doc-cache] - Redis client used by rate limiting
 
 ## Table of Contents
 
@@ -58,10 +59,10 @@ consumer
 
 ## Authentication & Authorization
 
-ACK NestJS Boilerplate includes authentication and authorization. See dedicated documentation:
+Guards and sessions are not middleware. See:
 
-- [Authentication][ref-doc-authentication] - JWT, OAuth, API Keys, sessions, password management
-- [Authorization][ref-doc-authorization] - RBAC, policy abilities, user protection
+- [Authentication][ref-doc-authentication] - JWT, OAuth, API keys, sessions, passwords
+- [Authorization][ref-doc-authorization] - RBAC, policies, user protection
 
 ## Helmet
 
@@ -578,3 +579,4 @@ StoreReader<K extends Extract<keyof Model, string>>(field?: K): ParameterDecorat
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
 [ref-doc-handling-error]: handling-error.md
+[ref-doc-cache]: cache.md

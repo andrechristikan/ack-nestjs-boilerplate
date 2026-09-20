@@ -8,11 +8,12 @@ Flags gate routes and code paths. Targeting uses rollout percentage, a per-user 
 
 ## Related Documents
 
-- [Cache Documentation][ref-doc-cache]
-- [Authorization Documentation][ref-doc-authorization]
+- [Cache Documentation][ref-doc-cache] - Flag result caching
+- [Authorization Documentation][ref-doc-authorization] - Decorator stack with `@FeatureFlagProtected`
 
 ## Table of Contents
 
+- [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Features](#features)
 - [Flow](#flow)
@@ -79,7 +80,7 @@ flowchart TD
 
 ## Usage
 
-## With Decorators
+### With Decorators
 
 `@FeatureFlagProtected()` provides no authentication; authentication comes from the guards stacked with it. A flag is never an authorization boundary.
 
@@ -221,10 +222,6 @@ The flag key and the caller identifier are combined and hashed with SHA-256 (`He
 - Below 100, the identifier comes from the `x-anonymous-id` request header. Its name, max length (100) and allowed charset (`/^[a-zA-Z0-9-_]+$/`) live in `src/configs/feature-flag.config.ts`.
 - The evaluation **fails closed** with 503 when that header is absent, empty, over length, or does not match the pattern. An anonymous caller lands in the same bucket only while it sends the same `x-anonymous-id`.
 
-**Use cases:**
-- Gradual rollouts
-- Canary deployments
-
 ## Caching
 
 Feature flags are cached. Configuration in `src/configs/feature-flag.config.ts`:
@@ -258,7 +255,7 @@ See [Cache Documentation][ref-doc-cache] for cache system details.
 
 ## Contribution
 
-Special thanks to [Gzerox][ref-contributor-gzerox] for main contributor for this feature.
+Thanks to [Gzerox][ref-contributor-gzerox] for this feature.
 
 
 <!-- REFERENCES -->

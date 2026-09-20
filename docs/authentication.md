@@ -16,14 +16,16 @@ Configuration for tokens, password, two-factor, social providers, and API keys i
 
 ## Related Documents
 
-- [Cache Documentation][ref-doc-cache] - For understanding session storage and caching mechanisms
-- [Configuration Documentation][ref-doc-configuration] - For auth configuration details
-- [Environment Documentation][ref-doc-environment] - For JWT and OAuth environment variables
-- [Device Documentation][ref-doc-device] - For device management and its impact on session lifecycle
-- [Workspace Documentation][ref-doc-workspace] - For what an authenticated request is scoped to, and for sign-up carrying an invite token
-- [Project Documentation][ref-doc-project] - For project scoping inside a workspace
+- [Cache Documentation][ref-doc-cache] - Session cache in Redis
+- [Configuration Documentation][ref-doc-configuration] - Auth and session config
+- [Environment Documentation][ref-doc-environment] - JWT and OAuth env vars
+- [Device Documentation][ref-doc-device] - Devices and session lifecycle
+- [Two Factor Documentation][ref-doc-two-factor] - TOTP and backup codes
+- [Workspace Documentation][ref-doc-workspace] - Workspace scope and invite sign-up
+- [Project Documentation][ref-doc-project] - Project scope inside a workspace
+- [Authorization Documentation][ref-doc-authorization] - What an authenticated caller may reach
 
-This document covers authentication only: proving who the caller is. What an authenticated caller is then allowed to reach is [Authorization][ref-doc-authorization]. The workspace or project a request is scoped to is [Workspace][ref-doc-workspace] and [Project][ref-doc-project].
+This document covers authentication only: proving who the caller is. Authorization, workspace, and project scoping are separate docs.
 
 ## Table of Contents
 
@@ -750,7 +752,7 @@ To obtain Google OAuth credentials:
 5. Configure authorized redirect URIs
 6. Copy Client ID and Client Secret to your `.env` file
 
-**For detailed setup instructions**, visit [Google OAuth 2.0 Documentation][ref-google-client-secret]
+Setup: [Google OAuth 2.0 Documentation][ref-google-client-secret]
 
 #### Usage
 
@@ -816,7 +818,7 @@ To obtain Apple credentials:
 5. Download and configure private key
 6. Copy Service ID (Client ID) to your `.env` file
 
-**For detailed setup instructions**, visit [Apple Sign In Documentation](https://developer.apple.com/sign-in-with-apple/get-started/)
+Setup: [Apple Sign In Documentation](https://developer.apple.com/sign-in-with-apple/get-started/)
 
 #### Usage
 
@@ -1303,7 +1305,7 @@ When a session is revoked:
    - Revoked session id purged from Redis after the commit, then the activity row staged
    - All tokens for this session become invalid immediately
 
-**What invalidates sessions.** Every trigger follows one order: revoke the session rows in the database, commit, purge Redis, then stage the activity rows. The JWT guards read Redis, so a revoked token fails on the first request after the purge. A purge failure is logged and does not fail the request. The constraint when changing this: `.claude/rules/security.md` (Session invalidation).
+**What invalidates sessions.** Every trigger follows one order: revoke the session rows in the database, commit, purge Redis, then stage the activity rows. The JWT guards read Redis, so a revoked token fails on the first request after the purge. A purge failure is logged and does not fail the request.
 
 | Trigger | Scope | Redis purge |
 |---|---|---|

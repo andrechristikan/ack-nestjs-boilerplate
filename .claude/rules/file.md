@@ -2,7 +2,7 @@
 
 `FileService`, the file pipes, and `AwsS3Service` are the shared kit in `src/common/file/`
 and `src/common/aws/`; a feature never re-implements them. Flow narrative:
-`docs/file-upload.md`, `docs/presign.md` — explorer or planner.
+`docs/file-upload.md` — explorer or planner.
 
 ## Upload validation is a pipe, never inline
 

@@ -80,9 +80,9 @@ Root (every run): `readme` · `security` · `contributing` · `code-of-conduct`.
 `ISSUE_TEMPLATE/*` · `pull_request_template.md` · `dependabot.yml`.
 
 The `docs/` tree: `activity-log` · `analytic` · `authentication` · `authorization` · `cache` · `configuration` ·
-`database` · `device` · `doc` · `environment` · `feature-flag` · `file-upload` ·
-`handling-error` · `installation` · `logger` · `message` · `notification` · `pagination` ·
-`presign` · `project` · `project-structure` · `queue` · `readme` · `request-validation` ·
+`database` · `device` · `doc` · `email` · `environment` · `feature-flag` · `file-upload` ·
+`handling-error` · `installation` · `language-message` · `logger` · `notification` · `pagination` ·
+`project` · `project-structure` · `queue` · `readme` · `request-validation` ·
 `response` · `security-and-middleware` · `status-codes` · `term-policy` ·
 `third-party-integration` · `two-factor` · `vault` · `workspace`.
 
@@ -134,12 +134,13 @@ exists nowhere any more, or when the claim is descriptive rather than normative.
 ## Style
 
 Write in the INDICATIVE. Documentation prose states facts; it carries no obligations — rewrite an
-obligation as a fact plus a pointer to the rule file.
+obligation as a fact. Never cite a harness path (`.claude/`, `claude/`, or anything under that
+tree). `rules/authoring.md` → "No harness paths in documentation".
 
 - Wrong: `Every response field MUST be declared on the route's schema.`
+- Wrong: `The constraint when changing this: .claude/rules/dto.md.`
 - Right: `A field the response schema does not declare is stripped before the envelope is sent,
-  which is what keeps a new column off the response. The constraint when changing this:
-  rules/dto.md.`
+  which is what keeps a new column off the response.`
 
 **The asymmetry.** A rule MAY carry the minimum rationale needed to apply it correctly. A
 document MUST NOT carry an obligation. Rationale inside a rule prevents cargo-cult application;

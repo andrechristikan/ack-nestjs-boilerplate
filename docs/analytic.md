@@ -13,7 +13,7 @@ Fraud and anomaly routes are report-only:
 - They return summaries, lists, and risk scores.
 - They do not block users, revoke sessions, or change credentials.
 
-Analytic injects owner `*AnalyticDomain` / `*AnalyticRepository` pairs and never opens foreign Prisma models. That boundary is `rules/cross-module.md`.
+Analytic injects owner `*AnalyticDomain` / `*AnalyticRepository` pairs and never opens foreign Prisma models.
 
 Status codes for this module live in the `52100` block. Catalog: [Status Codes](status-codes.md).
 
@@ -74,7 +74,7 @@ flowchart LR
 - `@TermPolicyAcceptanceProtected`
 - `@RequestThrottle({ user: true })`
 
-Admin scope carries no workspace header. Guard order and admin scope: `rules/http.md`, `rules/security.md`.
+Admin scope carries no workspace header.
 
 **User** (`/user/analytic/*`). Every route stacks:
 
@@ -239,13 +239,13 @@ Mounted at `/user/analytic`. One controller: `AnalyticUserController` (`analytic
 - Required date range: `AnalyticDateRangeRequestSchema` (`startDate`, `endDate`).
 - Optional date range: `AnalyticOptionalDateRangeRequestSchema`. Both bounds together or neither; a single bound raises `AnalyticInvalidDateRangeException`.
 - Window: `AnalyticWindowRequestSchema` (`windowMs`) on several fraud and anomaly summaries.
-- Offset lists: anomaly and fraud `/list` routes, `GET /fraud/risk-scores`, and the three dashboard distributions `GET /workspaces/membership`, `GET /workspaces/activity-volume`, and `GET /projects/membership` use `@ResponsePagination` and list schemas that extend `PaginationOffsetQuerySchema`. Anomaly and fraud lists carry order-by allow-lists in `analytic.list.constant.ts`. The three dashboard membership / activity-volume lists extend the kit offset schema only and declare no `orderBy` allow-list. Pagination rules: `rules/pagination.md`.
+- Offset lists: anomaly and fraud `/list` routes, `GET /fraud/risk-scores`, and the three dashboard distributions `GET /workspaces/membership`, `GET /workspaces/activity-volume`, and `GET /projects/membership` use `@ResponsePagination` and list schemas that extend `PaginationOffsetQuerySchema`. Anomaly and fraud lists carry order-by allow-lists in `analytic.list.constant.ts`. The three dashboard membership / activity-volume lists extend the kit offset schema only and declare no `orderBy` allow-list.
 
 A signal that the database cannot group and page in one query computes its rows, slices `[skip, skip + limit)`, and builds the envelope with `PaginationService.offsetPage`, so `page` is 1-based and `totalPage` counts the whole computed set. Page metadata: [Pagination](pagination.md).
 
-Every route declares its payload on `@Response` or `@ResponsePagination`. Schemas live in `src/modules/analytic/dtos/response/`. Handlers return `IResponseReturn<T>` or `IResponsePaginationReturn<T>`; the response interceptors serialize `data` against the declared schema. Schema and envelope rules: `rules/dto.md`. Flow: [Response](response.md).
+Every route declares its payload on `@Response` or `@ResponsePagination`. Schemas live in `src/modules/analytic/dtos/response/`. Handlers return `IResponseReturn<T>` or `IResponsePaginationReturn<T>`; the response interceptors serialize `data` against the declared schema. Flow: [Response](response.md).
 
-Each endpoint carries `@Doc({ summary })` plus `@Response` / `@ResponsePagination`. Query parameters reach OpenAPI from the zod schema on `@Query({ schema })`. Published OpenAPI errors are kit-only; domain exceptions such as `AnalyticInvalidDateRangeException` appear in OpenAPI only when an endpoint opts in with `@DocErrors`. Doc rules: `rules/http.md`. Flow: [Doc](doc.md).
+Each endpoint carries `@Doc({ summary })` plus `@Response` / `@ResponsePagination`. Query parameters reach OpenAPI from the zod schema on `@Query({ schema })`. Published OpenAPI errors are kit-only; domain exceptions such as `AnalyticInvalidDateRangeException` appear in OpenAPI only when an endpoint opts in with `@DocErrors`. Flow: [Doc](doc.md).
 
 ## Caching and config
 
@@ -255,8 +255,6 @@ Each endpoint carries `@Doc({ summary })` plus `@Response` / `@ResponsePaginatio
 - anomaly summaries
 - fraud summaries
 - risk scores
-
-Cache class placement: `rules/cache.md`. Config shape: `rules/config.md`.
 
 Default TTLs in `analytic.config.ts`:
 
@@ -281,7 +279,7 @@ Admin analytic routes require `EnumPolicySubject.analytic` with `EnumPolicyActio
 |---|---|---|---|
 | `invalidDateRange` | `52100` | 400 (`BAD_REQUEST`) | `analytic.error.invalidDateRange` |
 
-Exception class: `AnalyticInvalidDateRangeException`. Exception and status-code layout: `rules/exceptions.md`, `rules/status-code.md`.
+Exception class: `AnalyticInvalidDateRangeException`.
 
 ## Activity log seam
 

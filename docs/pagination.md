@@ -20,10 +20,10 @@ List query parsing is zod on `@Query({ schema })` plus `PaginationQueryUtil` in 
 
 ## Related Documents
 
-- [Response Documentation][ref-doc-response]
-- [Request Validation Documentation][ref-doc-request-validation]
-- [Database Documentation][ref-doc-database]
-- [Doc Documentation][ref-doc-doc]
+- [Response Documentation][ref-doc-response] - List envelopes
+- [Request Validation Documentation][ref-doc-request-validation] - Query schemas for page/limit and cursor
+- [Database Documentation][ref-doc-database] - Prisma queries behind list repositories
+- [Doc Documentation][ref-doc-doc] - OpenAPI for paginated routes
 
 ## Table of Contents
 
@@ -711,7 +711,7 @@ OpenAPI for list endpoints is co-located on the runtime stack: `@Doc`, `@Respons
 | operation summary + global errors | `@Doc` |
 | auth / guard errors | `*Protected` / auth decorators |
 
-Allow-list text in `.meta({ description })` on the schema and the constants passed to `PaginationQueryUtil` are the same module list constants, so the documented contract and the enforced contract are one source. Constraint: `rules/http.md`, `rules/pagination.md`. Flow: [Doc Documentation][ref-doc-doc].
+Allow-list text in `.meta({ description })` on the schema and the constants passed to `PaginationQueryUtil` are the same module list constants, so the documented contract and the enforced contract are one source. Flow: [Doc Documentation][ref-doc-doc].
 
 ## Implementation Notes
 

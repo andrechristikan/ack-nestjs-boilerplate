@@ -21,15 +21,15 @@ Both paths answer an error; `onError: true` is what writes the rows. All three c
 **Notes:**
 
 - Flush failures are logged and do not change the handler outcome.
-- Metadata carries no secrets (password, token, API key) and no large objects; each action's metadata schema in `ActivityLogActionContract` declares what it holds. Metadata is returned to the client through a typed response schema. The constraint when changing this: `.claude/rules/security.md`.
+- Metadata carries no secrets (password, token, API key) and no large objects; each action's metadata schema in `ActivityLogActionContract` declares what it holds. Metadata is returned to the client through a typed response schema.
 
 ## Related Documents
 
-- [Authentication Documentation][ref-doc-authentication] - For user context (`request.user`)
-- [Authorization Documentation][ref-doc-authorization] - For guards and policy abilities
-- [Response Documentation][ref-doc-response] - For serialization of list responses
-- [Message Documentation][ref-doc-message] - For the i18n description source
-- [Pagination Documentation][ref-doc-pagination] - For the list endpoints
+- [Authentication Documentation][ref-doc-authentication] - User context (`request.user`)
+- [Authorization Documentation][ref-doc-authorization] - Guards and policy abilities
+- [Response Documentation][ref-doc-response] - List response serialization
+- [Language Message Documentation][ref-doc-message] - i18n description source
+- [Pagination Documentation][ref-doc-pagination] - List endpoints
 - [Analytic Documentation][ref-doc-analytic] - Metrics that count activity-log actions
 
 ## Table of Contents
@@ -214,8 +214,6 @@ flowchart TD
 - **Revoke rows first:** An admin status change to `blocked` or `inactive` stages the revoke-all pair (`adminSessionRevokeAll` / `userRevokeAllSessionsByAdmin`, only when at least one session was revoked) before the status pair. Account self-deletion stages `userRevokeAllSessions` and then `userDeleteSelf`; the credential lockout stages `userRevokeAllSessions` and then `userReachMaxPasswordAttempt`. Both paths write both rows every time, including when no session was revoked. The password and two-factor paths that revoke every session write no revoke-all row.
 - **Counting:** `ActivityLogWorkspaceVolumeContract` lists the eleven workspace and project target actions. Workspace volume metrics leave them out, so each paired workspace event counts once. `workspaceCreatedByAdmin` is not on the list, because the admin's row for the same event carries no workspace. See [Analytic][ref-doc-analytic].
 
-The pair model and the self check are bound by `.claude/rules/security.md` (Activity log).
-
 ## Data
 
 Each flushed log contains:
@@ -258,7 +256,7 @@ Stored as `null` when empty. Each action's schema is a strict zod object, so a k
 | API key, role, term policy, and notification setting actions | Their own schemas; every key optional |
 | Every other action | None |
 
-The response returns `metadata` through `ActivityLogMetadataResponseSchema`, which declares every key above as optional, types `timestamp` as a string, and is `null` when nothing was stored. A stored key the schema does not declare is stripped from the response. The schema lives in `dtos/response/activity-log.metadata.response.dto.ts`; the constraint when changing it: `.claude/rules/dto.md`.
+The response returns `metadata` through `ActivityLogMetadataResponseSchema`, which declares every key above as optional, types `timestamp` as a string, and is `null` when nothing was stored. A stored key the schema does not declare is stripped from the response. The schema lives in `dtos/response/activity-log.metadata.response.dto.ts`.
 
 ### Description
 
@@ -270,7 +268,7 @@ Built by `ActivityLogUtil.getDescription`, which resolves `activityLog.<action>`
 [ref-doc-authentication]: authentication.md
 [ref-doc-authorization]: authorization.md
 [ref-doc-response]: response.md
-[ref-doc-message]: message.md
+[ref-doc-message]: language-message.md
 [ref-doc-pagination]: pagination.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
 [ref-doc-analytic]: analytic.md

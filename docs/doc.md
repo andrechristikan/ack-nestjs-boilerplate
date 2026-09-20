@@ -23,16 +23,16 @@ Internal kit plumbing:
 - Kit constants (`DocGlobalErrorResponses`, `DocPaginationErrorResponses`, `DocFileErrorResponses`, …) live in `src/common/doc/constants/doc.constant.ts`
 - Module kits live as `Doc<Module>ErrorResponses` in that module's `constants/<module>.constant.ts`
 
-The kit in `src/common/doc/` is in the coverage set. Constraint when changing this surface: `rules/http.md` (OpenAPI section).
+The kit in `src/common/doc/` is in the coverage set.
 
 ## Related Documents
 
-- [Request Validation Documentation][ref-doc-request-validation] - For the request schemas the OpenAPI document is generated from
-- [Response Documentation][ref-doc-response] - For response structure and formatting
-- [Authentication Documentation][ref-doc-authentication] - For authentication decorator usage
-- [Authorization Documentation][ref-doc-authorization] - For authorization guard documentation
-- [Pagination Documentation][ref-doc-pagination] - For offset and cursor list contracts
-- [File Upload Documentation][ref-doc-file-upload] - For multipart upload decorators
+- [Request Validation Documentation][ref-doc-request-validation] - Request schemas OpenAPI is built from
+- [Response Documentation][ref-doc-response] - Response structure and formatting
+- [Authentication Documentation][ref-doc-authentication] - Auth decorator usage on routes
+- [Authorization Documentation][ref-doc-authorization] - Guard and protection kits
+- [Pagination Documentation][ref-doc-pagination] - Offset and cursor list contracts
+- [File Upload Documentation][ref-doc-file-upload] - Multipart upload decorators
 
 ## Table of Contents
 
@@ -187,7 +187,7 @@ OpenAPI security scheme names are the module constants below. `ApiBearerAuth`, `
 | `AuthSocialAppleDocSecurityName` | `apple` | `src/swagger.ts` + `AuthSocialAppleProtected` |
 | `ApiKeyDocSecurityName` | `xApiKey` | `src/swagger.ts` + `ApiKeyProtected` / `ApiKeySystemProtected` |
 
-Scheme values are camelCase. The API key transport header is `x-api-key` (`addApiKey` `name`). Constraint: `rules/http.md` (OpenAPI security scheme names).
+Scheme values are camelCase. The API key transport header is `x-api-key` (`addApiKey` `name`).
 
 `auth.error.accessTokenUnauthorized` belongs to `AuthJwtAccessProtected`. A Protected decorator whose domain also throws when the principal is missing does not publish that 401 again.
 
@@ -224,7 +224,7 @@ The OpenAPI document describes endpoints, schemas, and metadata for integration 
 
 The Swagger document is built only when `app.env` is not `production`. In a production environment neither the `/docs` UI, the JSON endpoint, nor `generated/swagger.json` is produced.
 
-Building the document (and loading the Swagger UI) takes noticeably longer because the document carries many examples: per-status error kits emit named OpenAPI `examples` keyed by `messagePath`, and list, query, and response fields carry `.meta` examples. Constraint when changing this surface: `rules/http.md` (OpenAPI section).
+Building the document (and loading the Swagger UI) takes noticeably longer because the document carries many examples: per-status error kits emit named OpenAPI `examples` keyed by `messagePath`, and list, query, and response fields carry `.meta` examples.
 
 ### How to Get swagger.json
 

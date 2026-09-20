@@ -10,18 +10,16 @@ The stack is **cache-manager v7**, **Keyv** as the storage interface, and `@keyv
 
 ## Related Documents
 
-- [Configuration Documentation][ref-doc-configuration] - For Redis configuration settings
-- [Environment Documentation][ref-doc-environment] - For Redis environment variables
-- [Authentication Documentation][ref-doc-authentication] - For session cache usage examples
-- [Response Documentation][ref-doc-response] - For response caching implementation
+- [Configuration Documentation][ref-doc-configuration] - Redis config keys
+- [Environment Documentation][ref-doc-environment] - `CACHE_REDIS_URL` / Compose vs ElastiCache
+- [Authentication Documentation][ref-doc-authentication] - Session cache
+- [Response Documentation][ref-doc-response] - Response caching
+- [Installation Documentation][ref-doc-installation] - Local Redis via Docker Compose
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
-- [Principles & Patterns](#principles--patterns)
-  - [DRY & Singleton Pattern](#dry--singleton-pattern)
-  - [Global Module Pattern](#global-module-pattern)
 - [Architecture](#architecture)
   - [Module Dependency Flow](#module-dependency-flow)
   - [RedisCacheModule](#rediscachemodule)
@@ -37,24 +35,9 @@ The stack is **cache-manager v7**, **Keyv** as the storage interface, and `@keyv
   - [Cache Operations](#cache-operations)
 
 
-## Principles & Patterns
-
-### DRY & Singleton Pattern
-
-- **Single Cache Connection**: Only ONE Redis connection is created for caching and shared across every cache consumer. BullMQ opens its own connections against `QUEUE_REDIS_URL` and does not reuse this client
-- **Single Configuration**: Defined once in `redis.config.ts`
-- **Reusable Providers**: `CacheMainProvider` and `SessionCacheProvider` share the same Redis client
-- **Direct client consumer**: `RequestThrottleStorageService` injects `RedisClientCachedProvider` itself and runs its sliding-window Lua script on that same connection, so rate limiting adds no Redis connection of its own. See [Security and Middleware Documentation][ref-doc-security-and-middleware]
-
-`RedisCacheModule` creates one Redis connection. Cache classes, `SessionCacheProvider`, and `RequestThrottleStorageService` inject that client.
-
-### Global Module Pattern
-
-`RedisCacheModule` and `CacheMainModule` are dynamic modules whose `forRoot()` returns `global: true`, and `SessionDomainModule` carries the `@Global()` decorator:
-- Providers automatically available everywhere
-- No need to import in feature modules
-
 ## Architecture
+
+One Redis connection serves caching. `RedisCacheModule.forRoot()` and `CacheMainModule.forRoot()` are global; `SessionDomainModule` is `@Global()`. Feature modules do not re-import them. `CacheMainProvider` and `SessionCacheProvider` share that client. `RequestThrottleStorageService` injects `RedisClientCachedProvider` for its sliding-window Lua script, so rate limiting adds no extra connection. See [Security and Middleware][ref-doc-security-and-middleware]. BullMQ uses `QUEUE_REDIS_URL` and does not reuse this client.
 
 ### Module Dependency Flow
 
@@ -74,11 +57,7 @@ CommonModule
 
 ### RedisCacheModule
 
-**Purpose:** Provides Redis client instance
-
-**Provider:** `RedisClientCachedProvider`
-
-**Scope:** Global (available everywhere)
+Provides `RedisClientCachedProvider` (global).
 
 **Configuration:**
 ```typescript
@@ -98,13 +77,7 @@ createKeyv(
 
 ### CacheMainModule
 
-**Purpose:** Provides cache manager for application-wide caching
-
-**Provider:** `CacheMainProvider`
-
-**Scope:** Global (available everywhere)
-
-**Depends on:** `RedisClientCachedProvider`
+Provides `CacheMainProvider` (global application cache). Depends on `RedisClientCachedProvider`.
 
 **Usage:**
 ```typescript
@@ -135,13 +108,7 @@ The function form of `replace` stops a value containing `$&` or `$1` from being 
 
 ### SessionDomainModule
 
-**Purpose:** Provides cache for session management only
-
-**Provider:** `SessionCacheProvider` (`src/modules/session/constants/session.constant.ts`)
-
-**Scope:** Global (available everywhere)
-
-**Depends on:** `RedisClientCachedProvider` (shares same Redis connection)
+Registers `SessionCacheProvider` (session keys only) on the same Redis client. Global via `@Global()`.
 
 **Usage:**
 ```typescript
@@ -223,7 +190,7 @@ Writes covered: status, name, dates, reset, delete. When the delete fails, the r
 
 **Default TTL:** Cache entries expire after **5 minutes** (300,000 milliseconds) by default. This can be overridden per cache operation.
 
-**Redis database:** The cache uses database `0` (`CACHE_REDIS_URL=redis://localhost:6379/0`). BullMQ uses database `1` (`QUEUE_REDIS_URL=redis://localhost:6379/1`) on the same server, so flushing one does not touch the other.
+**Redis database:** Cache uses `db:0` via `CACHE_REDIS_URL`; BullMQ uses `db:1` via `QUEUE_REDIS_URL`. Locally prefer Compose Redis; without Docker use a hosted Redis such as [Amazon ElastiCache][ref-elasticache]. See [Environment][ref-doc-environment] and [Installation][ref-doc-installation].
 
 **Key prefix:** `namespace: 'Cache'` with `keyPrefixSeparator: ':'` means every key is stored as `Cache:{key}`.
 
@@ -246,7 +213,7 @@ Writes covered: status, name, dates, reset, delete. When the delete fails, the r
 export class CommonModule {}
 ```
 
-**Why this order?** `CacheMainModule` depends on `RedisClientCachedProvider` from `RedisCacheModule`. `SessionDomainModule` registers its own cache provider over the same client later.
+`CacheMainModule` needs `RedisClientCachedProvider` from `RedisCacheModule`. `SessionDomainModule` registers its session cache provider on the same client later.
 
 ## Usage
 
@@ -289,3 +256,5 @@ For cache operations (set, get, delete, etc.), see:
 [ref-doc-authentication]: authentication.md
 [ref-doc-response]: response.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-installation]: installation.md
+[ref-elasticache]: https://aws.amazon.com/elasticache/

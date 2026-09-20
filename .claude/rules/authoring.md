@@ -64,11 +64,11 @@ the contrast.
 
 ## Mood
 
-`docs/` is written in the indicative. Rewrite an obligation as a fact plus a pointer.
+`docs/` is written in the indicative. Rewrite an obligation as a fact. Do not point at a
+rule file.
 
 - Wrong: `All paths MUST produce identical idempotency keys.`
-- Right: `All three paths produce the same idempotency key, which is what dedupes them. The
-  constraint when changing this: rules/queue.md.`
+- Right: `All three paths produce the same idempotency key, which is what dedupes them.`
 
 Verification aid, not an oracle:
 
@@ -77,6 +77,19 @@ Verification aid, not an oracle:
 Two false-positive classes are excluded by READING, not by pattern: enum member names in
 tables (`ABILITY_FORBIDDEN`, `NOT_FOUND`), and identifiers inside code fences. The
 criterion is "no obligation SENTENCE in documentation prose".
+
+## No harness paths in documentation (HARD)
+
+**Binds `docs/*.md` and the root people files (`README.md`, `SECURITY.md`, `CONTRIBUTING.md`,
+`CODE_OF_CONDUCT.md`).** Never mention `.claude/`, `claude/`, or any path under the harness
+tree. Never cite a rule by path either (`rules/http.md`, `rules/dto.md`, and the same
+shape with or without a leading `.claude/`). A constraint that lives in a rule is stated as a
+fact in the document; the rule path is never cited. Agents load rules through
+`orientation.md`; humans reading these files do not need that map.
+
+Verification aid:
+
+    grep -nE '\.claude|/claude/|`rules/[a-z0-9-]+\.md`|Constraint when changing|The constraint when' docs/*.md README.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md
 
 ## Language
 

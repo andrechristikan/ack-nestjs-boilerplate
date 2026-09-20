@@ -22,9 +22,9 @@ Repository boundary:
 
 ## Related Documents
 
-- [Authentication Documentation][ref-doc-authentication] - For understanding session management and JWT
-- [Authorization Documentation][ref-doc-authorization] - For policy-based access control on device endpoints
-- [Notification Documentation][ref-doc-notification] - For push notification token management tied to devices
+- [Authentication Documentation][ref-doc-authentication] - Sessions and JWT
+- [Authorization Documentation][ref-doc-authorization] - Policy on device endpoints
+- [Notification Documentation][ref-doc-notification] - Push tokens on devices
 
 ## Table of Contents
 

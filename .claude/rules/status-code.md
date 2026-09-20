@@ -2,7 +2,7 @@
 
 A status code is the `statusCode` field on `AppBaseException`, surfaced in `ResponseErrorDto` beside `statusCodeKey` and `module`. It is **not** an HTTP status — `httpStatus` is a separate field.
 
-**The enum files are the machine registry.** Scan them before allocating; never invent a number from memory. This rule file is the procedure and the human layout. Durable prose about error *behavior* stays in `docs/handling-error.md` / `docs/message.md`. The full human catalog of every code is `docs/status-codes.md`.
+**The enum files are the machine registry.** Scan them before allocating; never invent a number from memory. This rule file is the procedure and the human layout. Durable prose about error *behavior* stays in `docs/handling-error.md` / `docs/language-message.md`. The full human catalog of every code is `docs/status-codes.md`.
 
 ```bash
 find src -name '*.status-code.enum.ts' | sort | while read -r f; do

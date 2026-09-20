@@ -6,11 +6,12 @@ Term Policy stores versioned legal documents (terms of service, privacy policy, 
 
 ## Related Documents
 
-- [Database Documentation][ref-doc-database] - Migration, seeding, and schema details
-- [Authorization Documentation][ref-doc-authorization] - RBAC for admin operations
-- [Authentication Documentation][ref-doc-authentication] - User authentication requirements
-- [Presign Documentation][ref-doc-presign] - How to upload the contents
+- [Database Documentation][ref-doc-database] - Migration, seeding, and schema
+- [Authorization Documentation][ref-doc-authorization] - Admin RBAC on term-policy routes
+- [Authentication Documentation][ref-doc-authentication] - JWT and session context
+- [File Upload Documentation][ref-doc-file-upload] - Content upload and admin content GET (presign)
 - [Analytic Documentation][ref-doc-analytic] - Admin acceptance-rate and time-to-accept metrics under `/admin/analytic/term-policies/*`
+- [Email Documentation][ref-doc-email] - SES templates for policy publication (not the HTML bodies)
 
 ## Table of Contents
 
@@ -418,10 +419,13 @@ src/migration/seeds/migration.term-policy.seed.ts           # command: termPolic
 src/migration/seeds/migration.template-term-policy.seed.ts  # command: templateTermPolicy
 ```
 
-- `termPolicy` is the seed wired into `pnpm migration:seed` and `pnpm migration:remove`. It upserts the rows in `src/migration/data/migration.term-policy.data.ts`: one version 1 record per type, all `published`, with empty `contents`.
+- `termPolicy` is the seed wired into `pnpm migration:seed` and `pnpm migration:remove`. It upserts the rows in `src/migration/data/migration.term-policy.data.ts`: one version 1 record per type, all `published`, with empty `contents`. Details of that seed (actor, order, remove): [Database Documentation][ref-doc-database].
 - `templateTermPolicy` is run on its own. For each type it uploads the bundled `.hbs` document to the private bucket, copies it to the public content path, and upserts a published version 1 record whose single `en` content entry is the public item, so a seeded policy sits in both buckets like any published one. It throws when S3 is not initialized, and its `remove()` is a no-op.
 
-For detailed migration and seeding instructions, see [Database Documentation][ref-doc-database].
+```bash
+pnpm migration templateTermPolicy --type seed
+pnpm migration templateTermPolicy --type remove
+```
 
 ## Contribution
 
@@ -436,7 +440,8 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for contributing to the Term 
 [ref-doc-database]: database.md
 [ref-doc-authorization]: authorization.md
 [ref-doc-authentication]: authentication.md
-[ref-doc-presign]: presign.md
+[ref-doc-file-upload]: file-upload.md#presign-upload
 [ref-doc-analytic]: analytic.md
+[ref-doc-email]: email.md
 
 [ref-contributor-gzerox]: https://github.com/Gzerox

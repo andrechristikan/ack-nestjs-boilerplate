@@ -57,10 +57,11 @@ This project follows a [Code of Conduct][ref-code-of-conduct]. By participating,
 | Tool | Version |
 |------|---------|
 | Node.js | >= 24.15.0 |
-| pnpm | >= 10.25.0 (pin `pnpm@11.25.0`) |
-| Docker | Latest stable |
-| MongoDB | Replication set (required for transactions) |
-| Redis | Latest stable |
+| pnpm | >= 10.25.0 (pin `pnpm@12.5.1`) |
+| Docker | v28.5.x+ (recommended for local MongoDB, Redis, JWKS, BullBoard) |
+| Docker Compose | v2.40.x+ |
+| MongoDB | v8+ replica set (Compose locally, or Atlas without Docker) |
+| Redis | v8+ (Compose locally, or ElastiCache without Docker) |
 
 ### Steps
 

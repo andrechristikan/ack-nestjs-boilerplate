@@ -1,4 +1,4 @@
-# Message Documentation
+# Language Message Documentation
 
 i18n lives in `src/common/message`. Message files live in `src/languages/`.
 
@@ -8,14 +8,14 @@ i18n through [nestjs-i18n][ref-nestjs-i18n].
 
 - Message files live in `src/languages/{language}` as JSON
 - English (`en`) is the only language shipped
-- `MessageModule` is imported globally via `CommonModule` in `src/common/common.module.ts`, making `MessageService` available throughout the application without additional imports
+- `MessageModule` is imported globally through `CommonModule` in `src/common/common.module.ts`, so `MessageService` is injectable without a local import
 
 ## Related Documents
 
-- [Response Documentation][ref-doc-response] - For response integration with message service
-- [Handling Error Documentation][ref-doc-handling-error] - For exception filter integration
-- [Request Validation Documentation][ref-doc-request-validation] - For validation message translation
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - For custom language header middleware and internationalization
+- [Response Documentation][ref-doc-response] - Message paths on success envelopes
+- [Handling Error Documentation][ref-doc-handling-error] - Exception filters that resolve message paths
+- [Request Validation Documentation][ref-doc-request-validation] - Validation message translation
+- [Security and Middleware Documentation][ref-doc-security-and-middleware] - `x-custom-lang` middleware
 
 ## Table of Contents
 

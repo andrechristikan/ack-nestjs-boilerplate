@@ -70,7 +70,7 @@ this way. Send back any sentence that exists only because something used to be d
 
 `rules/authoring.md` binds every line:
 
-- indicative — a fact plus a pointer to the rule, never an obligation
+- indicative — a fact, never an obligation and never a harness path
 - no em-dash in documentation prose
 - no filler, no throat-clearing, no rhetorical questions
 - a flow, a stack, or a hand-off is a mermaid diagram (`flowchart`, `sequenceDiagram`, or

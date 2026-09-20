@@ -10,10 +10,10 @@ Pino logs, with file rotation, redaction of sensitive fields, request/response s
 
 ## Related Documents
 
-- [Configuration Documentation][ref-doc-configuration] - For logger configuration settings
-- [Environment Documentation][ref-doc-environment] - For logger environment variables
-- [Handling Error Documentation][ref-doc-handling-error] - For error logging integration
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Logger middleware, security features, and request ID tracking 
+- [Configuration Documentation][ref-doc-configuration] - Logger config keys
+- [Environment Documentation][ref-doc-environment] - Logger env vars
+- [Handling Error Documentation][ref-doc-handling-error] - Filters that report to Sentry
+- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Request ID and logger middleware 
 
 ## Table of Contents
 
@@ -102,7 +102,7 @@ SENTRY_DSN=<your_sentry_dsn>
 
 ## Usage
 
-Use [NestJS][ref-nestjs] Logger throughout the application:
+Use [NestJS][ref-nestjs] Logger in application code:
 
 ```typescript
 import { Logger } from '@nestjs/common';
@@ -637,8 +637,6 @@ Error-level logs are forwarded to Sentry Logs only; they are NOT duplicated as S
 - Methods never throw: a Sentry SDK failure is logged and swallowed
 - `log` writes to Sentry Logs directly; its `attributes` bypass the pino redaction and are scrubbed only by `beforeSendLog`, so they carry no credential
 - `withScope` runs a callback against a fresh Sentry scope (used by `QueueProcessorBase.onFailed` to attach job attributes before `captureException`)
-
-The constraint when changing this: `.claude/rules/logging.md`.
 
 **Exceptions (Sentry Issues).** Exception reporting goes through `SentryService.captureException`:
 

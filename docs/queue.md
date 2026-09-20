@@ -18,8 +18,10 @@ Code lives in two places:
 
 ## Related Documents
 
-- [Configuration][ref-doc-configuration]
-- [Environment][ref-doc-environment]
+- [Configuration][ref-doc-configuration] - Queue Redis and BullMQ config keys
+- [Environment][ref-doc-environment] - `QUEUE_REDIS_URL` and related vars
+- [Notification][ref-doc-notification] - Notification queue consumers
+- [Installation][ref-doc-installation] - Local Redis and BullBoard via Compose
 
 ## Table of Contents
 
@@ -86,7 +88,7 @@ Named queues are registered on the owning feature's domain module with `BullModu
 
 Processors are not registered inside `src/queues`. Each one is a provider of its own feature's `<feature>.processor.module.ts` (`NotificationProcessorModule`, `WorkspaceProcessorModule`), and `RouterProcessorModule` (`src/router/processor/router.processor.module.ts`) imports every one of them. `RouterModule` imports `RouterProcessorModule` alongside the five HTTP route modules, so booting the API boots the workers in the same process.
 
-Producers and workers do not share one connection. `queue.module.ts` calls `BullModule.forRootAsync` twice: once under `QueueConfigKey` for the producer side (connection name `{APP_NAME}-{APP_ENV}:queue`) and once under `QueueProcessorConfigKey` for the worker side (connection name `{APP_NAME}-{APP_ENV}:processor`). Both use `redis.queue.url` and the queue Redis namespace as prefix. A named queue registers with `configKey: QueueConfigKey`; the `@QueueProcessor` decorator binds `QueueProcessorConfigKey` itself. The constraint when changing this: `rules/queue.md`.
+Producers and workers do not share one connection. `queue.module.ts` calls `BullModule.forRootAsync` twice: once under `QueueConfigKey` for the producer side (connection name `{APP_NAME}-{APP_ENV}:queue`) and once under `QueueProcessorConfigKey` for the worker side (connection name `{APP_NAME}-{APP_ENV}:processor`). Both use `redis.queue.url` and the queue Redis namespace as prefix. A named queue registers with `configKey: QueueConfigKey`; the `@QueueProcessor` decorator binds `QueueProcessorConfigKey` itself.
 
 ## Available Queues
 
@@ -273,7 +275,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
 }
 ```
 
-`handle` is the dispatcher: it switches on `job.name` and awaits a `*.processor.service.ts` method. Feature remaps stay inside `handle` (for example `NotificationEmailProcessor` maps `HelperDecryptFailedException` to BullMQ `UnrecoverableError`). The subclass implements `handle` only; `QueueProcessorBase` owns `process`, Nest failure logging, and `job.log`. The constraint when changing this: `.claude/rules/queue.md`.
+`handle` is the dispatcher: it switches on `job.name` and awaits a `*.processor.service.ts` method. Feature remaps stay inside `handle` (for example `NotificationEmailProcessor` maps `HelperDecryptFailedException` to BullMQ `UnrecoverableError`). The subclass implements `handle` only; `QueueProcessorBase` owns `process`, Nest failure logging, and `job.log`.
 
 The second argument of `@QueueProcessor` is `IQueueProcessorOptions`, a BullMQ `WorkerOptions` minus `name` and `connection` (the decorator owns the first, the shared Redis connection the second), so a worker that needs its own throughput ceiling passes one: `NotificationPushProcessor` sets `limiter` from the Firebase send-quota constants. The worker name itself is derived by the decorator as `{APP_NAME}-{APP_ENV}:{queue}:consumer`, read from `process.env` at decoration time.
 
@@ -498,3 +500,4 @@ redis-bullboard:
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
 [ref-doc-notification]: notification.md
+[ref-doc-installation]: installation.md
