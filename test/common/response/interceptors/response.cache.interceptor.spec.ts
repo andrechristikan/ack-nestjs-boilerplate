@@ -1,4 +1,3 @@
-import { createMock } from '@golevelup/ts-vitest';
 import { CACHE_KEY_METADATA } from '@nestjs/cache-manager';
 import type { CallHandler, ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -6,35 +5,29 @@ import { HttpAdapterHost, Reflector } from '@nestjs/core';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Cache } from 'cache-manager';
 import { firstValueFrom, of } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { ResponseCacheInterceptor } from '@common/response/interceptors/response.cache.interceptor';
 
 describe('ResponseCacheInterceptor', () => {
-    const cache: Pick<Cache, 'get'> = {
-        get: vi.fn(),
-    };
+    const cache: MockProxy<Cache> = mock<Cache>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const reflector: MockProxy<Reflector> = mock<Reflector>();
     const cacheGet = vi.mocked(cache.get);
-    const configService: Pick<ConfigService, 'get'> = {
-        get: vi.fn(),
-    };
     const configGet = vi.mocked(configService.get);
-    const reflector = {
-        get: vi.fn<Reflector['get']>(),
-    } satisfies Pick<Reflector, 'get'>;
     const handler = vi.fn();
     class TestController {}
-    let context: ExecutionContext;
+    let context: MockProxy<ExecutionContext>;
 
     let interceptor: ResponseCacheInterceptor;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        context = createMock<ExecutionContext>({
-            getHandler: () => handler,
-            getClass: () => TestController,
-        });
+        context = mock<ExecutionContext>();
+        context.getHandler.mockReturnValue(handler);
+        context.getClass.mockReturnValue(TestController);
         configGet.mockReturnValue('Apis:{key}');
 
         const moduleRef: TestingModule = await Test.createTestingModule({

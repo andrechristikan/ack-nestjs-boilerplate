@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 
 describe('RequestUuidSchema', () => {

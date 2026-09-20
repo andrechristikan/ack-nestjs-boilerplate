@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { FeatureFlagUpdateMetadataRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 
 describe('FeatureFlagUpdateMetadataRequestSchema', () => {

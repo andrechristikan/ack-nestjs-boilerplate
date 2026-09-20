@@ -1,8 +1,9 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
@@ -19,13 +20,11 @@ import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 
 describe('PolicyGuard', () => {
-    const reflector = createMock<Pick<Reflector, 'get'>>();
-    const policyService =
-        createMock<Pick<PolicyDomain, 'validatePolicyGuard'>>();
-    const requestStoreGet = vi.fn((_key: string): unknown => null);
-    const requestStoreService = createMock<RequestStoreService>({
-        get: <T>(key: string) => requestStoreGet(key) as T | null,
-    });
+    const reflector: MockProxy<Reflector> = mock<Reflector>();
+    const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const requestStoreGet = vi.mocked(requestStoreService.get);
     const now = new Date('2026-01-01T00:00:00.000Z');
     const policies = [
         {
@@ -48,7 +47,7 @@ describe('PolicyGuard', () => {
             providers: [
                 PolicyGuard,
                 { provide: Reflector, useValue: reflector },
-                { provide: PolicyDomain, useValue: policyService },
+                { provide: PolicyDomain, useValue: policyDomain },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
@@ -57,9 +56,8 @@ describe('PolicyGuard', () => {
 
     it('hands required metadata and request-scoped authorization state to the service', async () => {
         const handler = () => undefined;
-        const context = createMock<ExecutionContext>({
-            getHandler: () => handler,
-        });
+        const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
+        context.getHandler.mockReturnValue(handler);
         const required = [
             {
                 subject: EnumPolicySubject.user,
@@ -71,7 +69,7 @@ describe('PolicyGuard', () => {
         requestStoreGet
             .mockReturnValueOnce(storedUser)
             .mockReturnValueOnce(policies);
-        policyService.validatePolicyGuard.mockReturnValue(true);
+        policyDomain.validatePolicyGuard.mockReturnValue(true);
 
         await expect(guard.canActivate(context)).resolves.toBe(true);
         expect(reflector.get).toHaveBeenCalledWith(
@@ -80,7 +78,7 @@ describe('PolicyGuard', () => {
         );
         expect(requestStoreGet).toHaveBeenNthCalledWith(1, UserStoreKey);
         expect(requestStoreGet).toHaveBeenNthCalledWith(2, PolicyStoreKey);
-        expect(policyService.validatePolicyGuard).toHaveBeenCalledWith(
+        expect(policyDomain.validatePolicyGuard).toHaveBeenCalledWith(
             storedUser,
             policies,
             required
@@ -88,14 +86,14 @@ describe('PolicyGuard', () => {
     });
 
     it('uses an empty required-policy list when metadata is absent', async () => {
-        const context = createMock<ExecutionContext>();
+        const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
         reflector.get.mockReturnValue(undefined);
         requestStoreGet.mockReturnValue(null);
-        policyService.validatePolicyGuard.mockReturnValue(true);
+        policyDomain.validatePolicyGuard.mockReturnValue(true);
 
         await guard.canActivate(context);
 
-        expect(policyService.validatePolicyGuard).toHaveBeenCalledWith(
+        expect(policyDomain.validatePolicyGuard).toHaveBeenCalledWith(
             null,
             null,
             []

@@ -1,13 +1,11 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { ArgumentMetadata } from '@nestjs/common';
-import { describe, expect, it } from 'vitest';
 
 import { FileRequiredException } from '@common/file/exceptions/file.required.exception';
 import { FileRequiredPipe } from '@common/file/pipes/file.required.pipe';
 
 describe('FileRequiredPipe', () => {
     const pipe = new (FileRequiredPipe())();
-    const metadata = createMock<ArgumentMetadata>();
+    const metadata: ArgumentMetadata = { type: 'body' };
 
     it.each([undefined, null, '', false, {}, []])(
         'rejects the empty value %j',

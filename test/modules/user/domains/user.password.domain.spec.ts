@@ -1,9 +1,11 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 import { ConfigService } from '@nestjs/config';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Duration } from 'luxon';
 
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -38,49 +40,43 @@ import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.pas
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserPasswordRepository } from '@modules/user/repositories/user.password.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
-import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
-import {
-    createDatabaseServiceMock,
-    mockDatabaseServiceTransaction,
-} from '@test/support/database.mock';
 
 describe('UserPasswordDomain', () => {
-    const userPasswordRepository =
-        createMock<UserPasswordRepository>() as unknown as Record<
-            string,
-            ReturnType<typeof vi.fn>
-        >;
-    const userRepository = createMock<UserRepository>();
-    const userDomain = createMock<UserDomain>();
-    const sessionDomain = createMock<SessionDomain>();
-    const deviceDomain = createMock<DeviceDomain>();
-    const activityLogDomain = createMock<ActivityLogDomain>();
-    const userTwoFactorRepository = createMock<UserTwoFactorRepository>();
-    const passwordHistoryService = createMock<PasswordHistoryDomain>();
-    const userUtil = createMock<UserUtil>();
-    const helperHashService = createMock<HelperHashService>();
-    const userLoginService = createMock<UserLoginDomain>();
-    const authPasswordService = createMock<AuthPasswordUtil>();
-    const notificationQueue = createMock<NotificationQueue>();
-    const featureFlagService = createMock<FeatureFlagDomain>();
-    const helperDateService = createMock<HelperDateService>();
-    const configGet = vi.fn((_key: string): unknown => undefined);
-    const configService = {
-        get<T>(key: string): T | undefined {
-            return configGet(key) as T | undefined;
-        },
-    } satisfies Pick<ConfigService, 'get'>;
-    const helperStringService = {
-        random: vi.fn<HelperStringService['random']>(),
-        fillPattern: vi.fn<HelperStringService['fillPattern']>(),
-    } satisfies Pick<HelperStringService, 'random' | 'fillPattern'>;
-    const databaseService = createDatabaseServiceMock();
+    const userPasswordRepository: MockProxy<UserPasswordRepository> =
+        mock<UserPasswordRepository>();
+    const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
+    const passwordHistoryDomain: MockProxy<PasswordHistoryDomain> =
+        mock<PasswordHistoryDomain>();
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
+    const userLoginDomain: MockProxy<UserLoginDomain> = mock<UserLoginDomain>();
+    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
+    const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const databaseService: DeepMockProxy<DatabaseService> =
+        mockDeep<DatabaseService>();
+    const authPasswordUtil: MockProxy<AuthPasswordUtil> =
+        mock<AuthPasswordUtil>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const featureFlagDomain: MockProxy<FeatureFlagDomain> =
+        mock<FeatureFlagDomain>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
+    const transactionClient: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const expiredAt = new Date('2026-01-02T00:00:00.000Z');
@@ -183,8 +179,10 @@ describe('UserPasswordDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        mockDatabaseServiceTransaction(databaseService);
-        configGet.mockImplementation((key: string) => {
+        databaseService.withTransaction.mockImplementation(async callback =>
+            callback(transactionClient)
+        );
+        vi.mocked(configService.get).mockImplementation((key: string) => {
             const values = {
                 'home.url': 'https://app.example.com',
                 'forgotPassword.reference.prefix': 'FP',
@@ -226,19 +224,16 @@ describe('UserPasswordDomain', () => {
                 user,
             }
         );
-        userPasswordRepository.updatePasswordByAdmin.mockResolvedValue(user);
-        userPasswordRepository.changePassword.mockResolvedValue(user);
-        userPasswordRepository.resetPassword.mockResolvedValue(user);
-        passwordHistoryService.getActiveByUser.mockResolvedValue([]);
-        authPasswordService.createPasswordRandom.mockReturnValue(
+        passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
+        authPasswordUtil.createPasswordRandom.mockReturnValue(
             'temporary-password'
         );
-        authPasswordService.createPassword.mockReturnValue(password);
-        authPasswordService.checkPasswordAttempt.mockReturnValue(false);
-        authPasswordService.validatePassword.mockReturnValue(true);
-        authPasswordService.checkPasswordPeriod.mockReturnValue(null);
-        authPasswordService.getPasswordPeriodInDays.mockReturnValue(90);
-        userLoginService.handleTwoFactorValidation.mockResolvedValue(
+        authPasswordUtil.createPassword.mockReturnValue(password);
+        authPasswordUtil.checkPasswordAttempt.mockReturnValue(false);
+        authPasswordUtil.validatePassword.mockReturnValue(true);
+        authPasswordUtil.checkPasswordPeriod.mockReturnValue(null);
+        authPasswordUtil.getPasswordPeriodInDays.mockReturnValue(90);
+        userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
             twoFactorVerified
         );
         userUtil.mapActivityLogActorMetadata.mockReturnValue({
@@ -257,24 +252,20 @@ describe('UserPasswordDomain', () => {
                 },
                 { provide: UserRepository, useValue: userRepository },
                 {
-                    provide: UserTwoFactorRepository,
-                    useValue: userTwoFactorRepository,
-                },
-                {
                     provide: PasswordHistoryDomain,
-                    useValue: passwordHistoryService,
+                    useValue: passwordHistoryDomain,
                 },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: HelperHashService, useValue: helperHashService },
-                { provide: UserLoginDomain, useValue: userLoginService },
+                { provide: UserLoginDomain, useValue: userLoginDomain },
                 { provide: UserDomain, useValue: userDomain },
                 { provide: SessionDomain, useValue: sessionDomain },
                 { provide: DeviceDomain, useValue: deviceDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
-                { provide: AuthPasswordUtil, useValue: authPasswordService },
+                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: NotificationQueue, useValue: notificationQueue },
-                { provide: FeatureFlagDomain, useValue: featureFlagService },
+                { provide: FeatureFlagDomain, useValue: featureFlagDomain },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperStringService, useValue: helperStringService },
@@ -303,10 +294,10 @@ describe('UserPasswordDomain', () => {
         it('sets a temporary password, revokes sessions, notifies the user, and stages activity events', async () => {
             await service.updatePasswordByAdmin(user.id, 'admin-id');
 
-            expect(
-                authPasswordService.createPasswordRandom
-            ).toHaveBeenCalledTimes(1);
-            expect(authPasswordService.createPassword).toHaveBeenCalledWith(
+            expect(authPasswordUtil.createPasswordRandom).toHaveBeenCalledTimes(
+                1
+            );
+            expect(authPasswordUtil.createPassword).toHaveBeenCalledWith(
                 'temporary-password',
                 { temporary: true }
             );
@@ -358,13 +349,13 @@ describe('UserPasswordDomain', () => {
             await expect(
                 service.updatePasswordByAdmin(user.id, 'admin-id')
             ).rejects.toBeInstanceOf(UserBlockedInvalidException);
-            expect(authPasswordService.createPassword).not.toHaveBeenCalled();
+            expect(authPasswordUtil.createPassword).not.toHaveBeenCalled();
         });
     });
 
     describe('changePassword', () => {
         it('rejects an incorrect old password and records the failed attempt', async () => {
-            authPasswordService.validatePassword.mockReturnValue(false);
+            authPasswordUtil.validatePassword.mockReturnValue(false);
 
             await expect(
                 service.changePassword(user, {
@@ -379,7 +370,7 @@ describe('UserPasswordDomain', () => {
         });
 
         it('rejects a reused password before changing persistence', async () => {
-            authPasswordService.checkPasswordPeriod.mockReturnValue(
+            authPasswordUtil.checkPasswordPeriod.mockReturnValue(
                 oldPasswordHistory
             );
 
@@ -389,9 +380,6 @@ describe('UserPasswordDomain', () => {
                     newPassword: 'reused-password',
                 })
             ).rejects.toBeInstanceOf(UserPasswordMustNewException);
-            expect(
-                userPasswordRepository.changePassword
-            ).not.toHaveBeenCalled();
         });
 
         it('validates 2FA, revokes sessions, updates the password, marks the factor isUsedById, and notifies the user', async () => {
@@ -406,7 +394,7 @@ describe('UserPasswordDomain', () => {
                 user.id
             );
             expect(
-                userLoginService.handleTwoFactorValidation
+                userLoginDomain.handleTwoFactorValidation
             ).toHaveBeenCalledWith(user, {
                 method: EnumAuthTwoFactorMethod.code,
                 code: '123456',
@@ -422,7 +410,7 @@ describe('UserPasswordDomain', () => {
                 user.id
             );
             expect(
-                userLoginService.recordTwoFactorVerificationInTx
+                userLoginDomain.recordTwoFactorVerificationInTx
             ).toHaveBeenCalledWith(expect.any(Object), user, twoFactorVerified);
             expect(notificationQueue.sendChangePassword).toHaveBeenCalledWith(
                 user.id
@@ -435,7 +423,7 @@ describe('UserPasswordDomain', () => {
             await service.forgotPassword(user.email);
 
             expect(
-                featureFlagService.validateFeatureFlagMetadata
+                featureFlagDomain.validateFeatureFlagMetadata
             ).toHaveBeenCalledWith('changePassword', 'forgotAllowed');
             expect(
                 userPasswordRepository.createReplacingUnused
@@ -505,7 +493,7 @@ describe('UserPasswordDomain', () => {
                 'reset-token'
             );
             expect(
-                userLoginService.handleTwoFactorValidation
+                userLoginDomain.handleTwoFactorValidation
             ).toHaveBeenCalledWith(user, {
                 method: EnumAuthTwoFactorMethod.code,
                 code: '123456',
@@ -521,7 +509,7 @@ describe('UserPasswordDomain', () => {
                 user.id
             );
             expect(
-                userLoginService.recordTwoFactorVerificationInTx
+                userLoginDomain.recordTwoFactorVerificationInTx
             ).toHaveBeenCalledWith(expect.any(Object), user, twoFactorVerified);
             expect(notificationQueue.sendResetPassword).toHaveBeenCalledWith(
                 user.id

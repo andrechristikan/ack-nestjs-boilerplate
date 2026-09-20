@@ -1,6 +1,6 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { describe, expect, it, vi } from 'vitest';
 import 'reflect-metadata';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import {
     UserGuardIsVerifiedMetaKey,
     UserStoreKey,
@@ -75,20 +75,19 @@ describe('UserCurrent', () => {
 
     it('returns the user stored by UserGuard', () => {
         const user = { id: 'user-id' };
-        const get = vi.fn(() => user);
-        const clsService = createMock<ClsService>();
-        clsService.get = get;
+        const clsService: MockProxy<ClsService> = mock<ClsService>();
+        clsService.get.mockReturnValue(user);
         vi.mocked(ClsServiceManager.getClsService).mockReturnValue(clsService);
 
         const factory = extractFactory();
 
         expect(factory(undefined, {})).toBe(user);
-        expect(get).toHaveBeenCalledWith(UserStoreKey);
+        expect(clsService.get).toHaveBeenCalledWith(UserStoreKey);
     });
 
     it('rejects a missing user context', () => {
-        const clsService = createMock<ClsService>();
-        clsService.get.mockImplementation(() => undefined as never);
+        const clsService: MockProxy<ClsService> = mock<ClsService>();
+        clsService.get.mockReturnValue(undefined);
         vi.mocked(ClsServiceManager.getClsService).mockReturnValue(clsService);
 
         const factory = extractFactory();

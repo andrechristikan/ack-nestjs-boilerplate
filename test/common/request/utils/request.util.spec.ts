@@ -1,8 +1,8 @@
-import { createMock } from '@golevelup/ts-vitest';
 import { type IncomingMessage } from 'http';
 import { getClientIp } from '@supercharge/request-ip';
 import geoIp from 'geoip-lite';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestUtil } from '@common/request/utils/request.util';
@@ -30,7 +30,7 @@ describe('RequestUtil', () => {
     ])(
         'resolves request IP %s with its socket fallback',
         (ip, remote, expected) => {
-            const request = createMock<IRequestApp>({
+            const request: MockProxy<IRequestApp> = mock<IRequestApp>({
                 ip,
                 socket: { remoteAddress: remote },
             });
@@ -77,7 +77,7 @@ describe('RequestUtil', () => {
             metro: 0,
             area: 1,
         });
-        const request = createMock<IncomingMessage>({
+        const request: MockProxy<IncomingMessage> = mock<IncomingMessage>({
             headers: { 'user-agent': 'test-agent' },
         });
 

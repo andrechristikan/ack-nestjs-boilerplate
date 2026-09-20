@@ -1,24 +1,38 @@
 import { ConfigService } from '@nestjs/config';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import type KeyvRedis from '@keyv/redis';
 import type Keyv from 'keyv';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import { RequestThrottleStorageService } from '@common/request/services/request.throttle-storage.service';
 
 describe('RequestThrottleStorageService', () => {
     const evalScript = vi.fn();
-    const getClient = vi.fn(() => ({ eval: evalScript }));
-    const keyv = { store: { getClient } } as unknown as Keyv;
-    const configService: Pick<ConfigService, 'get'> = { get: vi.fn() };
-    const configGet = vi.mocked(configService.get);
+    const keyvStore: MockProxy<KeyvRedis<string>> = mock<KeyvRedis<string>>();
+    const keyv: MockProxy<Keyv> = mock<Keyv>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
 
-    const helperStringService = new HelperStringService();
     let service: RequestThrottleStorageService;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.resetAllMocks();
-        getClient.mockReturnValue({ eval: evalScript });
-        configGet.mockImplementation(key => {
+        keyv.store = keyvStore;
+        keyvStore.getClient.mockResolvedValue({
+            eval: evalScript,
+        } as unknown as Awaited<ReturnType<KeyvRedis<string>['getClient']>>);
+        helperStringService.fillPattern.mockImplementation((pattern, values) =>
+            pattern.replace(
+                /\{(\w+)\}/g,
+                (_match, token: string) => values[token]
+            )
+        );
+        vi.mocked(configService.get).mockImplementation(key => {
             const values: Record<string, string> = {
                 'request.throttle.keyPattern': 'Throttle:{name}:{tracker}',
                 'request.throttle.blockKeyPattern':
@@ -28,11 +42,15 @@ describe('RequestThrottleStorageService', () => {
             };
             return values[key];
         });
-        service = new RequestThrottleStorageService(
-            keyv,
-            configService as ConfigService,
-            helperStringService
-        );
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                RequestThrottleStorageService,
+                { provide: RedisClientCachedProvider, useValue: keyv },
+                { provide: ConfigService, useValue: configService },
+                { provide: HelperStringService, useValue: helperStringService },
+            ],
+        }).compile();
+        service = moduleRef.get(RequestThrottleStorageService);
     });
 
     it('maps Redis millisecond counters to the throttler record in seconds', async () => {
@@ -73,7 +91,7 @@ describe('RequestThrottleStorageService', () => {
     });
 
     it('fails open when Redis is unavailable', async () => {
-        getClient.mockRejectedValue(new Error('redis unavailable'));
+        keyvStore.getClient.mockRejectedValue(new Error('redis unavailable'));
 
         await expect(
             service.increment('user-id', 60_000, 2, 30_000, 'user')

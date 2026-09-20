@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { EnumApiKeyType, type ApiKey } from '@generated/prisma-client';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 

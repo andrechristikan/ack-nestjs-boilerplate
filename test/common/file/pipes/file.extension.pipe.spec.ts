@@ -1,9 +1,9 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { ArgumentMetadata } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { Readable } from 'stream';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import { FileExtensionInvalidException } from '@common/file/exceptions/file.extension-invalid.exception';
 import type { IFile } from '@common/file/interfaces/file.interface';
@@ -11,13 +11,7 @@ import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import { FileService } from '@common/file/services/file.service';
 
 describe('FileExtensionPipe', () => {
-    const fileService =
-        createMock<
-            Pick<
-                FileService,
-                'extractExtensionFromFilename' | 'sniffExtensionFromBuffer'
-            >
-        >();
+    const fileService: MockProxy<FileService> = mock<FileService>();
     const metadata: ArgumentMetadata = { type: 'body' };
 
     beforeEach(() => vi.resetAllMocks());

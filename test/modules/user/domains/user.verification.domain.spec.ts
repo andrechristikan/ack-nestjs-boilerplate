@@ -1,9 +1,11 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -27,73 +29,28 @@ import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import {
-    createDatabaseServiceMock,
-    mockDatabaseServiceTransaction,
-} from '@test/support/database.mock';
 
 describe('UserVerificationDomain', () => {
-    const userVerificationRepository = {
-        findOneActiveByVerificationEmailToken:
-            vi.fn<
-                UserVerificationRepository['findOneActiveByVerificationEmailToken']
-            >(),
-        markUsedInTx: vi.fn<UserVerificationRepository['markUsedInTx']>(),
-        findOneLatestByVerificationEmail:
-            vi.fn<
-                UserVerificationRepository['findOneLatestByVerificationEmail']
-            >(),
-        createReplacingActive:
-            vi.fn<UserVerificationRepository['createReplacingActive']>(),
-    } satisfies Pick<
-        UserVerificationRepository,
-        | 'findOneActiveByVerificationEmailToken'
-        | 'markUsedInTx'
-        | 'findOneLatestByVerificationEmail'
-        | 'createReplacingActive'
-    >;
-    const userRepository = {
-        findOneActiveByEmail: vi.fn<UserRepository['findOneActiveByEmail']>(),
-        markVerifiedInTx: vi.fn<UserRepository['markVerifiedInTx']>(),
-    } satisfies Pick<
-        UserRepository,
-        'findOneActiveByEmail' | 'markVerifiedInTx'
-    >;
-    const helperHashService = {
-        sha256Hash: vi.fn<HelperHashService['sha256Hash']>(),
-    } satisfies Pick<HelperHashService, 'sha256Hash'>;
-    const notificationQueue = {
-        sendVerifiedEmail: vi.fn<NotificationQueue['sendVerifiedEmail']>(),
-        sendVerificationEmail:
-            vi.fn<NotificationQueue['sendVerificationEmail']>(),
-    } satisfies Pick<
-        NotificationQueue,
-        'sendVerifiedEmail' | 'sendVerificationEmail'
-    >;
-    const helperDateService = {
-        create: vi.fn<HelperDateService['create']>(),
-        forward: vi.fn<HelperDateService['forward']>(),
-        formatToIso: vi.fn<HelperDateService['formatToIso']>(),
-        diff: vi.fn<HelperDateService['diff']>(),
-    } satisfies Pick<
-        HelperDateService,
-        'create' | 'forward' | 'formatToIso' | 'diff'
-    >;
-    const configGet = vi.fn((_key: string): unknown => undefined);
-    const configService = {
-        get<T>(key: string): T | undefined {
-            return configGet(key) as T | undefined;
-        },
-    } satisfies Pick<ConfigService, 'get'>;
-    const helperStringService = {
-        random: vi.fn<HelperStringService['random']>(),
-        fillPattern: vi.fn<HelperStringService['fillPattern']>(),
-    } satisfies Pick<HelperStringService, 'random' | 'fillPattern'>;
-    const helperNumberService = {
-        randomDigits: vi.fn<HelperNumberService['randomDigits']>(),
-    } satisfies Pick<HelperNumberService, 'randomDigits'>;
-    const databaseService = createDatabaseServiceMock();
-    const activityLogDomain = createMock<ActivityLogDomain>();
+    const userVerificationRepository: MockProxy<UserVerificationRepository> =
+        mock<UserVerificationRepository>();
+    const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const databaseService: DeepMockProxy<DatabaseService> =
+        mockDeep<DatabaseService>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const helperNumberService: MockProxy<HelperNumberService> =
+        mock<HelperNumberService>();
+    const transactionClient: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const expiredAt = new Date('2026-01-01T01:00:00.000Z');
@@ -151,8 +108,10 @@ describe('UserVerificationDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        mockDatabaseServiceTransaction(databaseService);
-        configGet.mockImplementation((key: string) => {
+        databaseService.withTransaction.mockImplementation(async callback =>
+            callback(transactionClient)
+        );
+        vi.mocked(configService.get).mockImplementation((key: string) => {
             const values = {
                 'home.url': 'https://app.example.com',
                 'verification.reference.prefix': 'VE',

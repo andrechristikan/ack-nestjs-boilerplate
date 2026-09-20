@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import type { ISession } from '@modules/session/interfaces/session.interface';
 import { SessionUtil } from '@modules/session/utils/session.util';
 

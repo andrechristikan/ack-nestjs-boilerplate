@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { AppEnvSchema } from '@app/dtos/app.env.dto';
 
 describe('AppEnvSchema', () => {

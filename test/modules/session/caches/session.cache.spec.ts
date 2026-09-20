@@ -1,8 +1,9 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { Cache } from '@nestjs/cache-manager';
 import { ConfigService } from '@nestjs/config';
-import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -13,12 +14,13 @@ import { SessionCache } from '@modules/session/caches/session.cache';
 import type Keyv from 'keyv';
 
 describe('SessionCache', () => {
-    const cacheManager = createMock<Cache>();
-    const cacheSet = cacheManager.set;
-    const cacheMdel = cacheManager.mdel;
-    const helperDateService = {
-        create: vi.fn<HelperDateService['create']>(),
-    } satisfies Pick<HelperDateService, 'create'>;
+    const cacheManager: MockProxy<Cache> = mock<Cache>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configGet = vi.mocked(configService.get);
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
     const redisSet = vi.fn();
     const redisClient = { set: redisSet };
     const redisStore = {
@@ -36,6 +38,12 @@ describe('SessionCache', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockReturnValue('session:{userId}:{sessionId}');
+        helperStringService.fillPattern.mockImplementation((pattern, params) =>
+            pattern
+                .replace('{userId}', String(params.userId))
+                .replace('{sessionId}', String(params.sessionId))
+        );
         cacheManager.set.mockImplementation(
             async <T>(_key: string, value: T): Promise<T> => value
         );
@@ -48,16 +56,11 @@ describe('SessionCache', () => {
                 SessionCache,
                 { provide: SessionCacheProvider, useValue: cacheManager },
                 { provide: RedisClientCachedProvider, useValue: keyv },
-                {
-                    provide: ConfigService,
-                    useValue: new ConfigService({
-                        'session.keyPattern': 'session:{userId}:{sessionId}',
-                    }),
-                },
+                { provide: ConfigService, useValue: configService },
                 { provide: HelperDateService, useValue: helperDateService },
                 {
                     provide: HelperStringService,
-                    useValue: new HelperStringService(),
+                    useValue: helperStringService,
                 },
             ],
         }).compile();
@@ -71,7 +74,7 @@ describe('SessionCache', () => {
 
         await service.setLogin('user-id', 'session-id', 'jti', expiredAt);
 
-        expect(cacheSet).toHaveBeenCalledWith(
+        expect(cacheManager.set).toHaveBeenCalledWith(
             'session:user-id:session-id',
             {
                 userId: 'user-id',
@@ -118,7 +121,7 @@ describe('SessionCache', () => {
             { id: 'session-2' },
         ]);
 
-        expect(cacheMdel).toHaveBeenCalledWith([
+        expect(cacheManager.mdel).toHaveBeenCalledWith([
             'session:user-id:session-1',
             'session:user-id:session-2',
         ]);
@@ -127,6 +130,6 @@ describe('SessionCache', () => {
     it('does not issue an empty bulk cache deletion', async () => {
         await service.deleteLogins('user-id', []);
 
-        expect(cacheMdel).not.toHaveBeenCalled();
+        expect(cacheManager.mdel).not.toHaveBeenCalled();
     });
 });

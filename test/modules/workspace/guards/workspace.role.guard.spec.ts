@@ -1,10 +1,15 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { ExecutionContext } from '@nestjs/common';
-import type { Reflector } from '@nestjs/core';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Reflector } from '@nestjs/core';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client';
+import {
+    EnumWorkspaceMemberRole,
+    type WorkspaceMember,
+} from '@generated/prisma-client';
 import {
     WorkspaceMemberStoreKey,
     WorkspaceRoleMetaKey,
@@ -13,31 +18,53 @@ import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.memb
 import { WorkspaceRoleGuard } from '@modules/workspace/guards/workspace.role.guard';
 
 describe('WorkspaceRoleGuard', () => {
-    const reflector = createMock<Reflector>();
-    const workspaceMemberDomain = createMock<WorkspaceMemberDomain>();
-    const requestStoreService = createMock<RequestStoreService>();
+    const reflector: MockProxy<Reflector> = mock<Reflector>();
+    const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> =
+        mock<WorkspaceMemberDomain>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
     const handler = vi.fn();
-    const context = createMock<ExecutionContext>({ getHandler: () => handler });
+    const joinedAt = new Date('2026-01-01T00:00:00.000Z');
+    let guard: WorkspaceRoleGuard;
 
-    beforeEach(() => vi.resetAllMocks());
+    beforeEach(async () => {
+        vi.resetAllMocks();
+        context.getHandler.mockReturnValue(handler);
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                WorkspaceRoleGuard,
+                { provide: Reflector, useValue: reflector },
+                {
+                    provide: WorkspaceMemberDomain,
+                    useValue: workspaceMemberDomain,
+                },
+                {
+                    provide: RequestStoreService,
+                    useValue: requestStoreService,
+                },
+            ],
+        }).compile();
+
+        guard = module.get(WorkspaceRoleGuard);
+    });
 
     it('validates the stored member against declared roles', () => {
         const roles = [EnumWorkspaceMemberRole.owner];
-        const member =
-            createMock<
-                NonNullable<
-                    Parameters<
-                        WorkspaceMemberDomain['validateWorkspaceRoleGuard']
-                    >[0]
-                >
-            >();
+        const member: WorkspaceMember = {
+            id: 'member-id',
+            workspaceId: 'workspace-id',
+            userId: 'user-id',
+            role: EnumWorkspaceMemberRole.owner,
+            joinedAt,
+            createdAt: joinedAt,
+            createdBy: null,
+            updatedAt: joinedAt,
+            updatedBy: null,
+        };
         reflector.get.mockReturnValue(roles);
         requestStoreService.get.mockReturnValue(member);
-        const guard = new WorkspaceRoleGuard(
-            reflector,
-            workspaceMemberDomain,
-            requestStoreService
-        );
 
         expect(guard.canActivate(context)).toBe(true);
         expect(reflector.get).toHaveBeenCalledWith(
@@ -55,11 +82,7 @@ describe('WorkspaceRoleGuard', () => {
     it('uses an empty role list when metadata is absent', () => {
         reflector.get.mockReturnValue(undefined);
         requestStoreService.get.mockReturnValue(undefined);
-        const guard = new WorkspaceRoleGuard(
-            reflector,
-            workspaceMemberDomain,
-            requestStoreService
-        );
+
         expect(guard.canActivate(context)).toBe(true);
         expect(
             workspaceMemberDomain.validateWorkspaceRoleGuard
@@ -74,11 +97,6 @@ describe('WorkspaceRoleGuard', () => {
             () => {
                 throw error;
             }
-        );
-        const guard = new WorkspaceRoleGuard(
-            reflector,
-            workspaceMemberDomain,
-            requestStoreService
         );
 
         let thrown: unknown;

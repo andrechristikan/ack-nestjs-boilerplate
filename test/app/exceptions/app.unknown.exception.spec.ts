@@ -1,6 +1,4 @@
 import { HttpStatus } from '@nestjs/common';
-import { describe, expect, it } from 'vitest';
-
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 

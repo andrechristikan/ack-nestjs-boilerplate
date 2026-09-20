@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { EnumDevicePlatform } from '@generated/prisma-client';
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
 

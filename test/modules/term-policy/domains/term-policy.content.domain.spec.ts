@@ -1,5 +1,6 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
@@ -21,32 +22,14 @@ import { TermPolicyContentDomain } from '@modules/term-policy/domains/term-polic
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 
 describe('TermPolicyContentDomain', () => {
-    const termPolicyRepository = {
-        findOneById: vi.fn<TermPolicyRepository['findOneById']>(),
-        addContent: vi.fn<TermPolicyRepository['addContent']>(),
-        removeContent: vi.fn<TermPolicyRepository['removeContent']>(),
-    } satisfies Pick<
-        TermPolicyRepository,
-        'findOneById' | 'addContent' | 'removeContent'
-    >;
-    const awsS3Service = {
-        mapPresign: vi.fn<AwsS3Service['mapPresign']>(),
-    } satisfies Pick<AwsS3Service, 'mapPresign'>;
-    const termPolicyUtil = {
-        getContentByLanguage: vi.fn<TermPolicyUtil['getContentByLanguage']>(),
-        mapActivityLogMetadata:
-            vi.fn<TermPolicyUtil['mapActivityLogMetadata']>(),
-    } satisfies Pick<
-        TermPolicyUtil,
-        'getContentByLanguage' | 'mapActivityLogMetadata'
-    >;
-    const activityLogDomain = {
-        prepare: vi.fn<ActivityLogDomain['prepare']>(),
-        stagePrepared: vi.fn<ActivityLogDomain['stagePrepared']>(),
-    } satisfies Pick<ActivityLogDomain, 'prepare' | 'stagePrepared'>;
-    const helperDateService = {
-        create: vi.fn<HelperDateService['create']>(),
-    } satisfies Pick<HelperDateService, 'create'>;
+    const termPolicyRepository: MockProxy<TermPolicyRepository> =
+        mock<TermPolicyRepository>();
+    const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
+    const termPolicyUtil: MockProxy<TermPolicyUtil> = mock<TermPolicyUtil>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
     const now = new Date('2026-01-01T00:00:00.000Z');
     const content = {
         id: 'content-id',

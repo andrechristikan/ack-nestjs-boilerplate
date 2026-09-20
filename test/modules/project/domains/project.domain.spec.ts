@@ -1,5 +1,7 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -15,13 +17,18 @@ import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/worksp
 import { ConfigService } from '@nestjs/config';
 
 describe('ProjectDomain', () => {
-    const repository = createMock<ProjectRepository>();
-    const projectUtil = createMock<ProjectUtil>();
-    const activityLogDomain = createMock<ActivityLogDomain>();
-    const helperDateService = createMock<HelperDateService>();
-    const helperStringService = createMock<HelperStringService>();
-    const configService = createMock<ConfigService>();
-    const project = createMock<Project>({
+    const projectRepository: MockProxy<ProjectRepository> =
+        mock<ProjectRepository>();
+    const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configGet = vi.mocked(configService.get);
+    const project = mock<Project>({
         id: 'project-id',
         workspaceId: 'workspace-id',
         slug: 'project-slug',
@@ -29,9 +36,9 @@ describe('ProjectDomain', () => {
 
     let domain: ProjectDomain;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.resetAllMocks();
-        configService.get.mockImplementation(key => {
+        configGet.mockImplementation((key: string) => {
             if (key === 'project.slugRegex') return /^[a-z-]+$/;
             if (key === 'project.slugPrefix') return 'project';
             if (key === 'project.slugMaxLength') return 20;
@@ -41,14 +48,23 @@ describe('ProjectDomain', () => {
         helperStringService.generateSlug
             .mockReturnValueOnce('first-slug')
             .mockReturnValueOnce('second-slug');
-        domain = new ProjectDomain(
-            repository,
-            projectUtil,
-            activityLogDomain,
-            helperDateService,
-            helperStringService,
-            configService
-        );
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                ProjectDomain,
+                { provide: ProjectRepository, useValue: projectRepository },
+                { provide: ProjectUtil, useValue: projectUtil },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: HelperDateService, useValue: helperDateService },
+                {
+                    provide: HelperStringService,
+                    useValue: helperStringService,
+                },
+                { provide: ConfigService, useValue: configService },
+            ],
+        }).compile();
+
+        domain = module.get(ProjectDomain);
     });
 
     it('rejects project validation without workspace or project context', async () => {
@@ -61,20 +77,20 @@ describe('ProjectDomain', () => {
     });
 
     it('rejects a project outside the active workspace', async () => {
-        repository.findActiveByIdAndWorkspace.mockResolvedValue(null);
+        projectRepository.findActiveByIdAndWorkspace.mockResolvedValue(null);
         await expect(
             domain.validateProjectGuard('workspace-id', 'project-id')
         ).rejects.toBeInstanceOf(ProjectNotFoundException);
     });
 
     it('creates a project and stages its activity', async () => {
-        repository.create.mockResolvedValue(project);
+        projectRepository.create.mockResolvedValue(project);
         await expect(
             domain.createProject('workspace-id', 'actor-id', {
                 name: 'Project',
             })
         ).resolves.toBe(project);
-        expect(repository.create).toHaveBeenCalledWith(
+        expect(projectRepository.create).toHaveBeenCalledWith(
             'workspace-id',
             { name: 'Project' },
             ['first-slug', 'second-slug']
@@ -93,12 +109,14 @@ describe('ProjectDomain', () => {
             await expect(
                 domain.updateProjectSlug(project, 'actor-id', slug)
             ).rejects.toBeInstanceOf(ProjectSlugInvalidException);
-            expect(repository.existsBySlugInWorkspace).not.toHaveBeenCalled();
+            expect(
+                projectRepository.existsBySlugInWorkspace
+            ).not.toHaveBeenCalled();
         }
     );
 
     it('rejects an existing project slug in the workspace', async () => {
-        repository.existsBySlugInWorkspace.mockResolvedValue(true);
+        projectRepository.existsBySlugInWorkspace.mockResolvedValue(true);
         await expect(
             domain.updateProjectSlug(project, 'actor-id', 'valid-slug')
         ).rejects.toBeInstanceOf(ProjectSlugAlreadyExistsException);

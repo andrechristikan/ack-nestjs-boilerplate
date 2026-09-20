@@ -1,6 +1,10 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ConfigService } from '@nestjs/config';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 
+import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
@@ -27,59 +31,131 @@ import { WorkspaceNotPublicException } from '@modules/workspace/exceptions/works
 import { WorkspaceJoinRequestRepository } from '@modules/workspace/repositories/workspace.join-request.repository';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
-import { ConfigService } from '@nestjs/config';
-import { createDatabaseServiceMock } from '@test/support/database.mock';
+
+const now = new Date('2026-01-01T00:00:00.000Z');
+const buildWorkspace = (
+    overrides: Pick<Workspace, 'id' | 'name' | 'isPublic'>
+): Workspace => ({
+    slug: 'workspace',
+    description: null,
+    createdAt: now,
+    createdBy: null,
+    updatedAt: now,
+    updatedBy: null,
+    deletedAt: null,
+    deletedBy: null,
+    ...overrides,
+});
+const buildJoinRequest = (
+    overrides: Pick<
+        WorkspaceJoinRequest,
+        'id' | 'workspaceId' | 'userId' | 'status'
+    >
+): WorkspaceJoinRequest => ({
+    message: null,
+    rejectReasonCode: null,
+    reviewedByUserId: null,
+    reviewedAt: null,
+    createdAt: now,
+    createdBy: null,
+    updatedAt: now,
+    updatedBy: null,
+    ...overrides,
+});
 
 describe('WorkspaceJoinRequestDomain', () => {
-    const joinRepository = createMock<WorkspaceJoinRequestRepository>();
-    const memberRepository = createMock<WorkspaceMemberRepository>();
-    const workspaceRepository = createMock<WorkspaceRepository>();
-    const memberDomain = createMock<WorkspaceMemberDomain>();
-    const userDomain = createMock<UserDomain>();
-    const activityLogDomain = createMock<ActivityLogDomain>();
-    const databaseService = createDatabaseServiceMock();
-    const helperStringService = createMock<HelperStringService>();
-    const dateService = createMock<HelperDateService>();
-    const configService = createMock<ConfigService>();
-    const notificationQueue = createMock<NotificationQueue>();
-    const featureFlagDomain = createMock<FeatureFlagDomain>();
-    const workspace = createMock<Workspace>({
+    const joinRepository: MockProxy<WorkspaceJoinRequestRepository> =
+        mock<WorkspaceJoinRequestRepository>();
+    const memberRepository: MockProxy<WorkspaceMemberRepository> =
+        mock<WorkspaceMemberRepository>();
+    const workspaceRepository: MockProxy<WorkspaceRepository> =
+        mock<WorkspaceRepository>();
+    const memberDomain: MockProxy<WorkspaceMemberDomain> =
+        mock<WorkspaceMemberDomain>();
+    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const databaseService: DeepMockProxy<DatabaseService> =
+        mockDeep<DatabaseService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const featureFlagDomain: MockProxy<FeatureFlagDomain> =
+        mock<FeatureFlagDomain>();
+    const workspace = buildWorkspace({
         id: 'workspace-id',
         name: 'Workspace',
         isPublic: true,
     });
-    const joinRequest = createMock<WorkspaceJoinRequest>({
+    const joinRequest = buildJoinRequest({
         id: 'join-id',
         workspaceId: 'workspace-id',
         userId: 'requester-id',
         status: EnumWorkspaceJoinRequestStatus.pending,
     });
+    const workspaceMember: WorkspaceMember = {
+        id: 'member-id',
+        workspaceId: 'workspace-id',
+        userId: 'user-id',
+        role: EnumWorkspaceMemberRole.member,
+        joinedAt: now,
+        createdAt: now,
+        createdBy: null,
+        updatedAt: now,
+        updatedBy: null,
+    };
+    const configGet = vi.mocked(configService.get);
+    const transactionClient = {} as Parameters<
+        Parameters<DatabaseService['withTransaction']>[0]
+    >[0];
 
     let domain: WorkspaceJoinRequestDomain;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.resetAllMocks();
-        configService.get.mockImplementation(key => {
+        databaseService.withTransaction.mockImplementation(async callback =>
+            callback(transactionClient)
+        );
+        configGet.mockImplementation((key: string) => {
             if (key === 'home.url') return 'https://example.com';
             if (key === 'workspace.joinRequest.reviewLinkPattern') {
                 return '{homeUrl}/join/{joinRequestId}';
             }
             return undefined;
         });
-        domain = new WorkspaceJoinRequestDomain(
-            joinRepository,
-            memberRepository,
-            workspaceRepository,
-            memberDomain,
-            userDomain,
-            activityLogDomain,
-            databaseService,
-            dateService,
-            helperStringService,
-            configService,
-            notificationQueue,
-            featureFlagDomain
-        );
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                WorkspaceJoinRequestDomain,
+                {
+                    provide: WorkspaceJoinRequestRepository,
+                    useValue: joinRepository,
+                },
+                {
+                    provide: WorkspaceMemberRepository,
+                    useValue: memberRepository,
+                },
+                { provide: WorkspaceRepository, useValue: workspaceRepository },
+                { provide: WorkspaceMemberDomain, useValue: memberDomain },
+                { provide: UserDomain, useValue: userDomain },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: DatabaseService, useValue: databaseService },
+                { provide: HelperDateService, useValue: helperDateService },
+                {
+                    provide: HelperStringService,
+                    useValue: helperStringService,
+                },
+                { provide: ConfigService, useValue: configService },
+                { provide: NotificationQueue, useValue: notificationQueue },
+                { provide: FeatureFlagDomain, useValue: featureFlagDomain },
+            ],
+        }).compile();
+
+        domain = module.get(WorkspaceJoinRequestDomain);
     });
 
     it('checks the join-request feature before loading a workspace', async () => {
@@ -101,7 +177,11 @@ describe('WorkspaceJoinRequestDomain', () => {
             })
         ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
         workspaceRepository.findActiveById.mockResolvedValueOnce(
-            createMock<Workspace>({ id: 'workspace-id', isPublic: false })
+            buildWorkspace({
+                id: 'workspace-id',
+                name: 'Private',
+                isPublic: false,
+            })
         );
         await expect(
             domain.createJoinRequest('user-id', {
@@ -113,7 +193,7 @@ describe('WorkspaceJoinRequestDomain', () => {
     it('rejects an existing member before a duplicate request', async () => {
         workspaceRepository.findActiveById.mockResolvedValue(workspace);
         memberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
-            createMock<WorkspaceMember>()
+            workspaceMember
         );
         joinRepository.existsPendingByWorkspaceAndUser.mockResolvedValue(true);
         await expect(
@@ -177,7 +257,10 @@ describe('WorkspaceJoinRequestDomain', () => {
     it.each([
         [null, WorkspaceJoinRequestNotFoundException],
         [
-            createMock<WorkspaceJoinRequest>({
+            buildJoinRequest({
+                id: 'join-id',
+                workspaceId: 'workspace-id',
+                userId: 'requester-id',
                 status: EnumWorkspaceJoinRequestStatus.accepted,
             }),
             WorkspaceJoinRequestAlreadyProcessedException,
@@ -195,7 +278,7 @@ describe('WorkspaceJoinRequestDomain', () => {
     it('accepts a pending request and creates a member atomically', async () => {
         const reviewedAt = new Date('2026-01-01T00:00:00.000Z');
         joinRepository.findByIdAndWorkspace.mockResolvedValue(joinRequest);
-        dateService.create.mockReturnValue(reviewedAt);
+        helperDateService.create.mockReturnValue(reviewedAt);
         await domain.acceptJoinRequest(workspace, 'reviewer-id', 'join-id');
         expect(memberDomain.createInTx).toHaveBeenCalledWith(
             expect.anything(),
@@ -236,7 +319,10 @@ describe('WorkspaceJoinRequestDomain', () => {
     it.each([
         [null, WorkspaceJoinRequestNotFoundException],
         [
-            createMock<WorkspaceJoinRequest>({
+            buildJoinRequest({
+                id: 'join-id',
+                workspaceId: 'workspace-id',
+                userId: 'requester-id',
                 status: EnumWorkspaceJoinRequestStatus.rejected,
             }),
             WorkspaceJoinRequestAlreadyProcessedException,
@@ -259,7 +345,7 @@ describe('WorkspaceJoinRequestDomain', () => {
     it('rejects a pending request and notifies the requester', async () => {
         const reviewedAt = new Date('2026-01-01T00:00:00.000Z');
         joinRepository.findByIdAndWorkspace.mockResolvedValue(joinRequest);
-        dateService.create.mockReturnValue(reviewedAt);
+        helperDateService.create.mockReturnValue(reviewedAt);
 
         await domain.rejectJoinRequest(
             workspace,

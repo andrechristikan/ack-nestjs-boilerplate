@@ -1,6 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { EnumUserLoginFrom, EnumUserLoginWith } from '@generated/prisma-client';
 import { AuthJwtAccessStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.access.strategy';
@@ -8,18 +9,17 @@ import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.i
 import { AuthDomain } from '@modules/auth/domains/auth.domain';
 
 describe('AuthJwtAccessStrategy', () => {
-    const authService = {
-        validateJwtAccessStrategy:
-            vi.fn<AuthDomain['validateJwtAccessStrategy']>(),
-    } satisfies Pick<AuthDomain, 'validateJwtAccessStrategy'>;
-    const configService = new ConfigService({
+    const authDomain: MockProxy<AuthDomain> = mock<AuthDomain>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configGet = vi.mocked(configService.get);
+    const config: Record<string, string> = {
         'auth.jwt.prefix': 'Bearer',
         'auth.jwt.audience': 'ACK',
         'auth.jwt.issuer': 'https://example.com',
         'auth.jwt.accessToken.jwksUri':
             'https://example.com/.well-known/access-jwks.json',
         'auth.jwt.accessToken.algorithm': 'ES256',
-    });
+    };
     const payload = {
         userId: 'user-id',
         roleId: 'role-id',
@@ -36,10 +36,11 @@ describe('AuthJwtAccessStrategy', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockImplementation((key: string) => config[key]);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtAccessStrategy,
-                { provide: AuthDomain, useValue: authService },
+                { provide: AuthDomain, useValue: authDomain },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -47,10 +48,10 @@ describe('AuthJwtAccessStrategy', () => {
     });
 
     it('delegates a signature-verified payload to access validation', async () => {
-        authService.validateJwtAccessStrategy.mockResolvedValue(payload);
+        authDomain.validateJwtAccessStrategy.mockResolvedValue(payload);
 
         await expect(strategy.validate(payload)).resolves.toBe(payload);
-        expect(authService.validateJwtAccessStrategy).toHaveBeenCalledWith(
+        expect(authDomain.validateJwtAccessStrategy).toHaveBeenCalledWith(
             payload
         );
     });

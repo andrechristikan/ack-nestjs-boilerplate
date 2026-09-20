@@ -1,37 +1,46 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { beforeEach, describe, expect, it } from 'vitest';
-import type { RequestStoreService } from '@common/request/services/request.store.service';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { TermPolicyRequiredGuardMetaKey } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyGuard } from '@modules/term-policy/guards/term-policy.guard';
-import type { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
+import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import type { ExecutionContext } from '@nestjs/common';
-import type { Reflector } from '@nestjs/core';
+import { Reflector } from '@nestjs/core';
 
 describe('TermPolicyGuard', () => {
-    const reflector = createMock<Reflector>();
-    const termPolicyAcceptanceService =
-        createMock<TermPolicyAcceptanceDomain>();
-    const requestStoreService = createMock<RequestStoreService>();
+    const reflector: MockProxy<Reflector> = mock<Reflector>();
+    const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceDomain> =
+        mock<TermPolicyAcceptanceDomain>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
     let guard: TermPolicyGuard;
 
     const user = { id: 'user-id' };
 
-    const createContext = () => createMock<ExecutionContext>();
+    const createContext = (): MockProxy<ExecutionContext> =>
+        mock<ExecutionContext>();
 
-    beforeEach(() => {
-        reflector.get.mockReset();
-        termPolicyAcceptanceService.validateTermPolicyGuard.mockReset();
+    beforeEach(async () => {
+        vi.resetAllMocks();
         termPolicyAcceptanceService.validateTermPolicyGuard.mockResolvedValue(
             undefined
         );
-        requestStoreService.get.mockReset();
         requestStoreService.get.mockReturnValue(user);
 
-        guard = new TermPolicyGuard(
-            reflector,
-            termPolicyAcceptanceService,
-            requestStoreService
-        );
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                TermPolicyGuard,
+                { provide: Reflector, useValue: reflector },
+                {
+                    provide: TermPolicyAcceptanceDomain,
+                    useValue: termPolicyAcceptanceService,
+                },
+                { provide: RequestStoreService, useValue: requestStoreService },
+            ],
+        }).compile();
+        guard = moduleRef.get(TermPolicyGuard);
     });
 
     it('reads the required policies metadata and the stored user, then delegates to the service', async () => {

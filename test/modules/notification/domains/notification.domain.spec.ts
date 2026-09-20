@@ -1,5 +1,7 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import {
     EnumActivityLogAction,
@@ -15,26 +17,47 @@ import { NotificationNotFoundException } from '@modules/notification/exceptions/
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
 import { UserDomain } from '@modules/user/domains/user.domain';
-import { createDatabaseServiceMock } from '@test/support/database.mock';
+import { DatabaseService } from '@common/database/services/database.service';
 
 describe('NotificationDomain', () => {
-    const notificationRepository = createMock<NotificationRepository>();
-    const settingRepository = createMock<NotificationUserSettingRepository>();
-    const userDomain = createMock<UserDomain>();
-    const activityLogDomain = createMock<ActivityLogDomain>();
-    const databaseService = createDatabaseServiceMock();
+    const notificationRepository: MockProxy<NotificationRepository> =
+        mock<NotificationRepository>();
+    const notificationUserSettingRepository: MockProxy<NotificationUserSettingRepository> =
+        mock<NotificationUserSettingRepository>();
+    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const databaseService = mockDeep<DatabaseService>();
+    const transactionClient = {} as Parameters<
+        Parameters<DatabaseService['withTransaction']>[0]
+    >[0];
 
     let domain: NotificationDomain;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.resetAllMocks();
-        domain = new NotificationDomain(
-            notificationRepository,
-            settingRepository,
-            userDomain,
-            activityLogDomain,
-            databaseService
+        databaseService.withTransaction.mockImplementation(async callback =>
+            callback(transactionClient)
         );
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                NotificationDomain,
+                {
+                    provide: NotificationRepository,
+                    useValue: notificationRepository,
+                },
+                {
+                    provide: NotificationUserSettingRepository,
+                    useValue: notificationUserSettingRepository,
+                },
+                { provide: UserDomain, useValue: userDomain },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: DatabaseService, useValue: databaseService },
+            ],
+        }).compile();
+
+        domain = module.get(NotificationDomain);
     });
 
     it('rejects marking an unknown notification as read', async () => {
@@ -94,11 +117,9 @@ describe('NotificationDomain', () => {
             isActive: false,
         };
         await domain.updateUserSetting('user-id', data);
-        expect(settingRepository.updateUserSettingInTx).toHaveBeenCalledWith(
-            expect.anything(),
-            'user-id',
-            data
-        );
+        expect(
+            notificationUserSettingRepository.updateUserSettingInTx
+        ).toHaveBeenCalledWith(expect.anything(), 'user-id', data);
         expect(userDomain.touchUpdatedByInTx).toHaveBeenCalledWith(
             expect.anything(),
             'user-id'

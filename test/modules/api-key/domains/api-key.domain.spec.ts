@@ -1,9 +1,9 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { createMock } from '@golevelup/ts-vitest';
 import { EnumApiKeyType, type ApiKey } from '@generated/prisma-client';
 import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
 import { ApiKeyXApiKeyForbiddenException } from '@modules/api-key/exceptions/api-key.x-api-key-forbidden.exception';
@@ -19,53 +19,17 @@ import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 
 describe('ApiKeyDomain', () => {
-    const helperDateService = {
-        create: vi.fn<HelperDateService['create']>(),
-    } satisfies Pick<HelperDateService, 'create'>;
-    const apiKeyUtil = {
-        isActive: vi.fn<ApiKeyUtil['isActive']>(),
-        isExpired: vi.fn<ApiKeyUtil['isExpired']>(),
-        isValid: vi.fn<ApiKeyUtil['isValid']>(),
-        validateType: vi.fn<ApiKeyUtil['validateType']>(),
-        mapActivityLogMetadata: vi.fn<ApiKeyUtil['mapActivityLogMetadata']>(),
-    } satisfies Pick<
-        ApiKeyUtil,
-        | 'isActive'
-        | 'isExpired'
-        | 'isValid'
-        | 'validateType'
-        | 'mapActivityLogMetadata'
-    >;
-    const apiKeyCredentialService = {
-        createSecret: vi.fn<ApiKeyCredentialUtil['createSecret']>(),
-        createHash: vi.fn<ApiKeyCredentialUtil['createHash']>(),
-        validateCredential: vi.fn<ApiKeyCredentialUtil['validateCredential']>(),
-    } satisfies Pick<
-        ApiKeyCredentialUtil,
-        'createSecret' | 'createHash' | 'validateCredential'
-    >;
-    const apiKeyCacheService = {
-        getCacheByKey: vi.fn<ApiKeyCache['getCacheByKey']>(),
-        setCacheByKey: vi.fn<ApiKeyCache['setCacheByKey']>(),
-        deleteCacheByKey: vi.fn<ApiKeyCache['deleteCacheByKey']>(),
-    } satisfies Pick<
-        ApiKeyCache,
-        'getCacheByKey' | 'setCacheByKey' | 'deleteCacheByKey'
-    >;
-    const apiKeyRepository = {
-        findOneById: vi.fn<ApiKeyRepository['findOneById']>(),
-        findOneByKey: vi.fn<ApiKeyRepository['findOneByKey']>(),
-        updateStatus: vi.fn<ApiKeyRepository['updateStatus']>(),
-        updateHash: vi.fn<ApiKeyRepository['updateHash']>(),
-    } satisfies Pick<
-        ApiKeyRepository,
-        'findOneById' | 'findOneByKey' | 'updateStatus' | 'updateHash'
-    >;
-    const activityLogDomain = {
-        prepare: vi.fn<ActivityLogDomain['prepare']>(),
-        stagePrepared: vi.fn<ActivityLogDomain['stagePrepared']>(),
-    } satisfies Pick<ActivityLogDomain, 'prepare' | 'stagePrepared'>;
-    const databaseUtil = createMock<DatabaseUtil>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const apiKeyUtil: MockProxy<ApiKeyUtil> = mock<ApiKeyUtil>();
+    const apiKeyCredentialUtil: MockProxy<ApiKeyCredentialUtil> =
+        mock<ApiKeyCredentialUtil>();
+    const apiKeyCache: MockProxy<ApiKeyCache> = mock<ApiKeyCache>();
+    const apiKeyRepository: MockProxy<ApiKeyRepository> =
+        mock<ApiKeyRepository>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     const now = new Date('2026-01-01T12:00:00.000Z');
     const apiKey = {
@@ -102,9 +66,9 @@ describe('ApiKeyDomain', () => {
                 { provide: ApiKeyUtil, useValue: apiKeyUtil },
                 {
                     provide: ApiKeyCredentialUtil,
-                    useValue: apiKeyCredentialService,
+                    useValue: apiKeyCredentialUtil,
                 },
-                { provide: ApiKeyCache, useValue: apiKeyCacheService },
+                { provide: ApiKeyCache, useValue: apiKeyCache },
                 { provide: ApiKeyRepository, useValue: apiKeyRepository },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseUtil, useValue: databaseUtil },
@@ -115,7 +79,7 @@ describe('ApiKeyDomain', () => {
 
     describe('findOneActiveByKeyAndCache', () => {
         it('returns a cache hit without querying persistence', async () => {
-            apiKeyCacheService.getCacheByKey.mockResolvedValue(apiKey);
+            apiKeyCache.getCacheByKey.mockResolvedValue(apiKey);
 
             await expect(
                 service.findOneActiveByKeyAndCache(apiKey.key)
@@ -124,13 +88,13 @@ describe('ApiKeyDomain', () => {
         });
 
         it('caches and returns a persistence hit', async () => {
-            apiKeyCacheService.getCacheByKey.mockResolvedValue(null);
+            apiKeyCache.getCacheByKey.mockResolvedValue(null);
             apiKeyRepository.findOneByKey.mockResolvedValue(apiKey);
 
             await expect(
                 service.findOneActiveByKeyAndCache(apiKey.key)
             ).resolves.toBe(apiKey);
-            expect(apiKeyCacheService.setCacheByKey).toHaveBeenCalledWith(
+            expect(apiKeyCache.setCacheByKey).toHaveBeenCalledWith(
                 apiKey.key,
                 apiKey
             );
@@ -157,14 +121,14 @@ describe('ApiKeyDomain', () => {
         );
 
         it('rejects an unknown public key before secret verification', async () => {
-            apiKeyCacheService.getCacheByKey.mockResolvedValue(null);
+            apiKeyCache.getCacheByKey.mockResolvedValue(null);
             apiKeyRepository.findOneByKey.mockResolvedValue(null);
 
             await expect(
                 service.validateXApiKey('unknown:secret')
             ).rejects.toBeInstanceOf(ApiKeyXApiKeyNotFoundException);
             expect(
-                apiKeyCredentialService.validateCredential
+                apiKeyCredentialUtil.validateCredential
             ).not.toHaveBeenCalled();
         });
 
@@ -172,8 +136,8 @@ describe('ApiKeyDomain', () => {
             ['secret mismatch', false, true],
             ['inactive or out-of-window key', true, false],
         ])('rejects a %s', async (_case, credentialValid, keyValid) => {
-            apiKeyCacheService.getCacheByKey.mockResolvedValue(apiKey);
-            apiKeyCredentialService.validateCredential.mockReturnValue(
+            apiKeyCache.getCacheByKey.mockResolvedValue(apiKey);
+            apiKeyCredentialUtil.validateCredential.mockReturnValue(
                 credentialValid
             );
             apiKeyUtil.isValid.mockReturnValue(keyValid);
@@ -184,15 +148,15 @@ describe('ApiKeyDomain', () => {
         });
 
         it('returns an active in-window key with a valid secret', async () => {
-            apiKeyCacheService.getCacheByKey.mockResolvedValue(apiKey);
-            apiKeyCredentialService.validateCredential.mockReturnValue(true);
+            apiKeyCache.getCacheByKey.mockResolvedValue(apiKey);
+            apiKeyCredentialUtil.validateCredential.mockReturnValue(true);
             apiKeyUtil.isValid.mockReturnValue(true);
 
             await expect(
                 service.validateXApiKey(`${apiKey.key}:secret`)
             ).resolves.toBe(apiKey);
             expect(
-                apiKeyCredentialService.validateCredential
+                apiKeyCredentialUtil.validateCredential
             ).toHaveBeenCalledWith(apiKey.key, 'secret', apiKey);
         });
     });
@@ -221,7 +185,7 @@ describe('ApiKeyDomain', () => {
                 apiKey.id,
                 { isActive: false }
             );
-            expect(apiKeyCacheService.deleteCacheByKey).toHaveBeenCalledWith(
+            expect(apiKeyCache.deleteCacheByKey).toHaveBeenCalledWith(
                 apiKey.key
             );
         });
@@ -230,19 +194,19 @@ describe('ApiKeyDomain', () => {
             const updated = { ...apiKey, hash: 'new-hash' };
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
             apiKeyUtil.isActive.mockReturnValue(true);
-            apiKeyCredentialService.createSecret.mockReturnValue('new-secret');
-            apiKeyCredentialService.createHash.mockReturnValue('new-hash');
+            apiKeyCredentialUtil.createSecret.mockReturnValue('new-secret');
+            apiKeyCredentialUtil.createHash.mockReturnValue('new-hash');
             apiKeyRepository.updateHash.mockResolvedValue(updated);
 
             await expect(service.resetByAdmin(apiKey.id)).resolves.toEqual({
                 apiKey: updated,
                 secret: 'new-secret',
             });
-            expect(apiKeyCredentialService.createHash).toHaveBeenCalledWith(
+            expect(apiKeyCredentialUtil.createHash).toHaveBeenCalledWith(
                 apiKey.key,
                 'new-secret'
             );
-            expect(apiKeyCacheService.deleteCacheByKey).toHaveBeenCalledWith(
+            expect(apiKeyCache.deleteCacheByKey).toHaveBeenCalledWith(
                 apiKey.key
             );
         });

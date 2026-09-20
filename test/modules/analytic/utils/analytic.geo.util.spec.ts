@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { AnalyticGeoUtil } from '@modules/analytic/utils/analytic.geo.util';
 
 describe('AnalyticGeoUtil', () => {

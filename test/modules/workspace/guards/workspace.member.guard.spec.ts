@@ -1,8 +1,14 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { ExecutionContext } from '@nestjs/common';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import {
+    EnumWorkspaceMemberRole,
+    type WorkspaceMember,
+} from '@generated/prisma-client';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import {
     WorkspaceMemberStoreKey,
@@ -12,34 +18,55 @@ import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.memb
 import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
 
 describe('WorkspaceMemberGuard', () => {
-    const workspaceMemberDomain = createMock<WorkspaceMemberDomain>();
-    const requestStoreService = createMock<RequestStoreService>();
-    const context = createMock<ExecutionContext>();
+    const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> =
+        mock<WorkspaceMemberDomain>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
+    const joinedAt = new Date('2026-01-01T00:00:00.000Z');
+    const member: WorkspaceMember = {
+        id: 'member-id',
+        workspaceId: 'workspace-id',
+        userId: 'user-id',
+        role: EnumWorkspaceMemberRole.member,
+        joinedAt,
+        createdAt: joinedAt,
+        createdBy: null,
+        updatedAt: joinedAt,
+        updatedBy: null,
+    };
+    let guard: WorkspaceMemberGuard;
 
-    beforeEach(() => vi.resetAllMocks());
+    beforeEach(async () => {
+        vi.resetAllMocks();
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                WorkspaceMemberGuard,
+                {
+                    provide: WorkspaceMemberDomain,
+                    useValue: workspaceMemberDomain,
+                },
+                {
+                    provide: RequestStoreService,
+                    useValue: requestStoreService,
+                },
+            ],
+        }).compile();
+
+        guard = module.get(WorkspaceMemberGuard);
+    });
 
     it('validates and stores the current membership', async () => {
         const workspace = { id: 'workspace-id' };
         const user = { id: 'user-id' };
-        const member =
-            createMock<
-                Awaited<
-                    ReturnType<
-                        WorkspaceMemberDomain['validateWorkspaceMemberGuard']
-                    >
-                >
-            >();
-        requestStoreService.get.mockImplementation(key => {
+        requestStoreService.get.mockImplementation((key: unknown) => {
             if (key === WorkspaceStoreKey) return workspace;
             if (key === UserStoreKey) return user;
             return undefined;
         });
         workspaceMemberDomain.validateWorkspaceMemberGuard.mockResolvedValue(
             member
-        );
-        const guard = new WorkspaceMemberGuard(
-            workspaceMemberDomain,
-            requestStoreService
         );
 
         await expect(guard.canActivate(context)).resolves.toBe(true);
@@ -53,21 +80,9 @@ describe('WorkspaceMemberGuard', () => {
     });
 
     it('passes null identifiers when prerequisite guards did not store context', async () => {
-        const member =
-            createMock<
-                Awaited<
-                    ReturnType<
-                        WorkspaceMemberDomain['validateWorkspaceMemberGuard']
-                    >
-                >
-            >();
         requestStoreService.get.mockReturnValue(undefined);
         workspaceMemberDomain.validateWorkspaceMemberGuard.mockResolvedValue(
             member
-        );
-        const guard = new WorkspaceMemberGuard(
-            workspaceMemberDomain,
-            requestStoreService
         );
 
         await expect(guard.canActivate(context)).resolves.toBe(true);
@@ -92,23 +107,13 @@ describe('WorkspaceMemberGuard', () => {
     ])(
         'passes null for the missing identifier when $name',
         async ({ workspace, user, expected }) => {
-            requestStoreService.get.mockImplementation(key => {
+            requestStoreService.get.mockImplementation((key: unknown) => {
                 if (key === WorkspaceStoreKey) return workspace;
                 if (key === UserStoreKey) return user;
                 return undefined;
             });
             workspaceMemberDomain.validateWorkspaceMemberGuard.mockResolvedValue(
-                createMock<
-                    Awaited<
-                        ReturnType<
-                            WorkspaceMemberDomain['validateWorkspaceMemberGuard']
-                        >
-                    >
-                >()
-            );
-            const guard = new WorkspaceMemberGuard(
-                workspaceMemberDomain,
-                requestStoreService
+                member
             );
 
             await expect(guard.canActivate(context)).resolves.toBe(true);
@@ -121,17 +126,13 @@ describe('WorkspaceMemberGuard', () => {
 
     it('propagates the domain rejection unchanged and publishes nothing', async () => {
         const error = new Error('not a workspace member');
-        requestStoreService.get.mockImplementation(key => {
+        requestStoreService.get.mockImplementation((key: unknown) => {
             if (key === WorkspaceStoreKey) return { id: 'workspace-id' };
             if (key === UserStoreKey) return { id: 'user-id' };
             return undefined;
         });
         workspaceMemberDomain.validateWorkspaceMemberGuard.mockRejectedValue(
             error
-        );
-        const guard = new WorkspaceMemberGuard(
-            workspaceMemberDomain,
-            requestStoreService
         );
 
         await expect(guard.canActivate(context)).rejects.toBe(error);

@@ -1,8 +1,9 @@
-import { createMock } from '@golevelup/ts-vitest';
 import { ConfigService } from '@nestjs/config';
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
 import type { Response } from 'express';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { RequestVersionStoreKey } from '@common/request/constants/request.constant';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
@@ -10,16 +11,14 @@ import { RequestUrlVersionMiddleware } from '@common/request/middlewares/request
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 describe('RequestUrlVersionMiddleware', () => {
-    const configService: Pick<ConfigService, 'get'> = { get: vi.fn() };
-    const configGet = vi.mocked(configService.get);
-    const requestStoreService: Pick<RequestStoreService, 'set'> = {
-        set: vi.fn(),
-    };
-    const requestStoreSet = vi.mocked(requestStoreService.set);
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const response: MockProxy<Response> = mock<Response>();
     const next = vi.fn<() => void>();
 
     async function createMiddleware(enabled: boolean) {
-        configGet.mockImplementation(key => {
+        vi.mocked(configService.get).mockImplementation(key => {
             const values: Record<string, unknown> = {
                 'app.globalPrefix': '/api',
                 'app.urlVersion.enable': enabled,
@@ -44,13 +43,13 @@ describe('RequestUrlVersionMiddleware', () => {
 
     it('extracts the version from a versioned API URL', async () => {
         const middleware = await createMiddleware(true);
-        const request = createMock<IRequestApp>({
+        const request: MockProxy<IRequestApp> = mock<IRequestApp>({
             originalUrl: '/api/v2/users',
         });
 
-        await middleware.use(request, createMock<Response>(), next);
+        await middleware.use(request, response, next);
 
-        expect(requestStoreSet).toHaveBeenCalledWith(
+        expect(requestStoreService.set).toHaveBeenCalledWith(
             RequestVersionStoreKey,
             '2'
         );
@@ -60,11 +59,13 @@ describe('RequestUrlVersionMiddleware', () => {
         'uses the configured version when enable is %s and no version matches',
         async enabled => {
             const middleware = await createMiddleware(enabled);
-            const request = createMock<IRequestApp>({ originalUrl: '/health' });
+            const request: MockProxy<IRequestApp> = mock<IRequestApp>({
+                originalUrl: '/health',
+            });
 
-            await middleware.use(request, createMock<Response>(), next);
+            await middleware.use(request, response, next);
 
-            expect(requestStoreSet).toHaveBeenCalledWith(
+            expect(requestStoreService.set).toHaveBeenCalledWith(
                 RequestVersionStoreKey,
                 '1'
             );

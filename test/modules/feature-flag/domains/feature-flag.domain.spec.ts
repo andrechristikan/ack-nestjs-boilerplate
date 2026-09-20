@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { IFeatureFlagWithTargetUsers } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagPredefinedKeyEmptyException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-empty.exception';
 import { FeatureFlagPredefinedKeyNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-not-found.exception';
@@ -10,23 +8,19 @@ import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cach
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 describe('FeatureFlagDomain', () => {
-    const featureFlagRepository = {
-        findOneById: vi.fn<FeatureFlagRepository['findOneById']>(),
-        updateStatus: vi.fn<FeatureFlagRepository['updateStatus']>(),
-    } satisfies Pick<FeatureFlagRepository, 'findOneById' | 'updateStatus'>;
-    const featureFlagCacheService = {
-        getByKeyAndCache: vi.fn<FeatureFlagCache['getByKeyAndCache']>(),
-        deleteCacheByKey: vi.fn<FeatureFlagCache['deleteCacheByKey']>(),
-    } satisfies Pick<FeatureFlagCache, 'getByKeyAndCache' | 'deleteCacheByKey'>;
-    const featureFlagUtil = {
-        checkMetadataKey: vi.fn<FeatureFlagUtil['checkMetadataKey']>(),
-    } satisfies Pick<FeatureFlagUtil, 'checkMetadataKey'>;
-    const helperHashService = {
-        sha256Hash: vi.fn<HelperHashService['sha256Hash']>(),
-    } satisfies Pick<HelperHashService, 'sha256Hash'>;
+    const featureFlagRepository: MockProxy<FeatureFlagRepository> =
+        mock<FeatureFlagRepository>();
+    const featureFlagCache: MockProxy<FeatureFlagCache> =
+        mock<FeatureFlagCache>();
+    const featureFlagUtil: MockProxy<FeatureFlagUtil> = mock<FeatureFlagUtil>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
 
     const featureFlag = {
         id: 'flag-id',
@@ -56,7 +50,7 @@ describe('FeatureFlagDomain', () => {
                 { provide: FeatureFlagUtil, useValue: featureFlagUtil },
                 {
                     provide: FeatureFlagCache,
-                    useValue: featureFlagCacheService,
+                    useValue: featureFlagCache,
                 },
                 { provide: HelperHashService, useValue: helperHashService },
             ],
@@ -69,13 +63,11 @@ describe('FeatureFlagDomain', () => {
             await expect(
                 service.validateFeatureFlag('login.', null, null)
             ).rejects.toBeInstanceOf(FeatureFlagPredefinedKeyEmptyException);
-            expect(
-                featureFlagCacheService.getByKeyAndCache
-            ).not.toHaveBeenCalled();
+            expect(featureFlagCache.getByKeyAndCache).not.toHaveBeenCalled();
         });
 
         it('rejects an unknown or disabled flag without failing open', async () => {
-            featureFlagCacheService.getByKeyAndCache
+            featureFlagCache.getByKeyAndCache
                 .mockResolvedValueOnce(null)
                 .mockResolvedValueOnce({ ...featureFlag, isEnable: false });
 
@@ -88,7 +80,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('allows an explicitly targeted user even at zero rollout', async () => {
-            featureFlagCacheService.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getByKeyAndCache.mockResolvedValue({
                 ...featureFlag,
                 rolloutPercent: 0,
                 targetUsers: [
@@ -107,9 +99,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('uses a flag-salted deterministic bucket for an untargeted user', async () => {
-            featureFlagCacheService.getByKeyAndCache.mockResolvedValue(
-                featureFlag
-            );
+            featureFlagCache.getByKeyAndCache.mockResolvedValue(featureFlag);
             helperHashService.sha256Hash.mockReturnValue('00000031ffff');
 
             await expect(
@@ -121,9 +111,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('rejects an anonymous caller below full rollout without a usable id', async () => {
-            featureFlagCacheService.getByKeyAndCache.mockResolvedValue(
-                featureFlag
-            );
+            featureFlagCache.getByKeyAndCache.mockResolvedValue(featureFlag);
 
             await expect(
                 service.validateFeatureFlag('new-home', null, null)
@@ -133,7 +121,7 @@ describe('FeatureFlagDomain', () => {
 
     describe('validateFeatureFlagMetadata', () => {
         it('accepts only a true boolean metadata gate', async () => {
-            featureFlagCacheService.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getByKeyAndCache.mockResolvedValue({
                 ...featureFlag,
                 metadata: { allowed: true },
             });
@@ -144,7 +132,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('rejects a non-boolean metadata gate', async () => {
-            featureFlagCacheService.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getByKeyAndCache.mockResolvedValue({
                 ...featureFlag,
                 metadata: { allowed: 'yes' },
             });
@@ -157,7 +145,7 @@ describe('FeatureFlagDomain', () => {
         });
 
         it('rejects a false metadata gate as unavailable', async () => {
-            featureFlagCacheService.getByKeyAndCache.mockResolvedValue({
+            featureFlagCache.getByKeyAndCache.mockResolvedValue({
                 ...featureFlag,
                 metadata: { allowed: false },
             });
@@ -183,7 +171,7 @@ describe('FeatureFlagDomain', () => {
             'flag-id',
             { isEnable: true, rolloutPercent: 50 }
         );
-        expect(featureFlagCacheService.deleteCacheByKey).toHaveBeenCalledWith(
+        expect(featureFlagCache.deleteCacheByKey).toHaveBeenCalledWith(
             'new-home'
         );
     });

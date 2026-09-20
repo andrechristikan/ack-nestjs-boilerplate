@@ -1,6 +1,6 @@
-import { createMock } from '@golevelup/ts-vitest';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
@@ -16,23 +16,12 @@ import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
 
 describe('ActivityLogDomain', () => {
-    const activityLogRepository = createMock<ActivityLogRepository>();
-    const activityLogUtil = createMock<ActivityLogUtil>();
+    const activityLogRepository: MockProxy<ActivityLogRepository> =
+        mock<ActivityLogRepository>();
+    const activityLogUtil: MockProxy<ActivityLogUtil> = mock<ActivityLogUtil>();
     const requestStore = new Map<string, unknown>();
-    const requestStoreGet = vi.fn((key: string): unknown =>
-        requestStore.get(key)
-    );
-    const requestStoreSet = vi.fn((key: string, value: unknown): void => {
-        requestStore.set(key, value);
-    });
-    const requestStoreService = {
-        get<T>(key: string): T | null {
-            return (requestStoreGet(key) as T | undefined) ?? null;
-        },
-        set<T>(key: string, value: T): void {
-            requestStoreSet(key, value);
-        },
-    } satisfies Pick<RequestStoreService, 'get' | 'set'>;
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
     const requestLog = {
         userAgent: { ua: 'browser' },
         ipAddress: '127.0.0.1',
@@ -44,6 +33,14 @@ describe('ActivityLogDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         requestStore.clear();
+        requestStoreService.get.mockImplementation(
+            (key: string) => (requestStore.get(key) as never) ?? null
+        );
+        requestStoreService.set.mockImplementation(
+            (key: string, value: unknown): void => {
+                requestStore.set(key, value);
+            }
+        );
         activityLogUtil.getDescription.mockImplementation(action => action);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
@@ -70,7 +67,7 @@ describe('ActivityLogDomain', () => {
             });
             domain.stagePrepared([event]);
 
-            expect(requestStoreSet).toHaveBeenCalledWith(
+            expect(requestStoreService.set).toHaveBeenCalledWith(
                 ActivityLogStageStoreKey,
                 [
                     {
@@ -88,7 +85,7 @@ describe('ActivityLogDomain', () => {
                     action: EnumActivityLogAction.userCreated,
                 })
             ).toThrow(ActivityLogContractInvalidException);
-            expect(requestStoreSet).not.toHaveBeenCalled();
+            expect(requestStoreService.set).not.toHaveBeenCalled();
         });
 
         it('rejects metadata outside the action contract', () => {
@@ -98,7 +95,7 @@ describe('ActivityLogDomain', () => {
                     metadata: { unexpected: true },
                 })
             ).toThrow(ActivityLogContractInvalidException);
-            expect(requestStoreSet).not.toHaveBeenCalled();
+            expect(requestStoreService.set).not.toHaveBeenCalled();
         });
     });
 
@@ -145,7 +142,7 @@ describe('ActivityLogDomain', () => {
                     metadata: {},
                 },
             ]);
-            expect(requestStoreSet).toHaveBeenLastCalledWith(
+            expect(requestStoreService.set).toHaveBeenLastCalledWith(
                 ActivityLogStageStoreKey,
                 []
             );
@@ -196,7 +193,7 @@ describe('ActivityLogDomain', () => {
             });
 
             expect(activityLogRepository.createMany).not.toHaveBeenCalled();
-            expect(requestStoreSet).toHaveBeenCalledWith(
+            expect(requestStoreService.set).toHaveBeenCalledWith(
                 ActivityLogStageStoreKey,
                 []
             );

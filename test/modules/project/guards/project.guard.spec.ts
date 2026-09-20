@@ -1,6 +1,8 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { ExecutionContext } from '@nestjs/common';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { ProjectStoreKey } from '@modules/project/constants/project.constant';
@@ -8,25 +10,46 @@ import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { ProjectGuard } from '@modules/project/guards/project.guard';
 import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
 
-describe('ProjectGuard', () => {
-    const projectDomain = createMock<ProjectDomain>();
-    const requestStoreService = createMock<RequestStoreService>();
+type THttpArgumentsHost = ReturnType<ExecutionContext['switchToHttp']>;
+type TValidatedProject = Awaited<
+    ReturnType<ProjectDomain['validateProjectGuard']>
+>;
 
-    beforeEach(() => vi.resetAllMocks());
+describe('ProjectGuard', () => {
+    const projectDomain: MockProxy<ProjectDomain> = mock<ProjectDomain>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
+    const httpArgumentsHost: MockProxy<THttpArgumentsHost> =
+        mock<THttpArgumentsHost>();
+
+    let guard: ProjectGuard;
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+        context.switchToHttp.mockReturnValue(httpArgumentsHost);
+        httpArgumentsHost.getRequest.mockReturnValue({
+            params: { projectId: 'project-id' },
+        });
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                ProjectGuard,
+                { provide: ProjectDomain, useValue: projectDomain },
+                {
+                    provide: RequestStoreService,
+                    useValue: requestStoreService,
+                },
+            ],
+        }).compile();
+
+        guard = module.get(ProjectGuard);
+    });
 
     it('resolves the route project within the stored workspace', async () => {
-        const project =
-            createMock<
-                Awaited<ReturnType<ProjectDomain['validateProjectGuard']>>
-            >();
+        const project = mock<TValidatedProject>();
         requestStoreService.get.mockReturnValue({ id: 'workspace-id' });
         projectDomain.validateProjectGuard.mockResolvedValue(project);
-        const context = createMock<ExecutionContext>({
-            switchToHttp: () => ({
-                getRequest: () => ({ params: { projectId: 'project-id' } }),
-            }),
-        });
-        const guard = new ProjectGuard(projectDomain, requestStoreService);
 
         await expect(guard.canActivate(context)).resolves.toBe(true);
         expect(requestStoreService.get).toHaveBeenCalledWith(WorkspaceStoreKey);
@@ -44,12 +67,6 @@ describe('ProjectGuard', () => {
         const error = new Error('project not found');
         requestStoreService.get.mockReturnValue({ id: 'workspace-id' });
         projectDomain.validateProjectGuard.mockRejectedValue(error);
-        const context = createMock<ExecutionContext>({
-            switchToHttp: () => ({
-                getRequest: () => ({ params: { projectId: 'project-id' } }),
-            }),
-        });
-        const guard = new ProjectGuard(projectDomain, requestStoreService);
 
         await expect(guard.canActivate(context)).rejects.toBe(error);
         expect(requestStoreService.set).not.toHaveBeenCalled();
@@ -79,16 +96,9 @@ describe('ProjectGuard', () => {
         async ({ workspace, params, expected }) => {
             requestStoreService.get.mockReturnValue(workspace);
             projectDomain.validateProjectGuard.mockResolvedValue(
-                createMock<
-                    Awaited<ReturnType<ProjectDomain['validateProjectGuard']>>
-                >()
+                mock<TValidatedProject>()
             );
-            const context = createMock<ExecutionContext>({
-                switchToHttp: () => ({
-                    getRequest: () => ({ params }),
-                }),
-            });
-            const guard = new ProjectGuard(projectDomain, requestStoreService);
+            httpArgumentsHost.getRequest.mockReturnValue({ params });
 
             await expect(guard.canActivate(context)).resolves.toBe(true);
 

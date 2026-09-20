@@ -1,5 +1,4 @@
 import { generateKeyPairSync } from 'crypto';
-import { describe, expect, it } from 'vitest';
 
 import { FirebaseUtil } from '@common/firebase/utils/firebase.util';
 

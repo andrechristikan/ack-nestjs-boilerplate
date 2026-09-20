@@ -1,6 +1,7 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 
 import {
     EnumRoleType,
@@ -35,30 +36,34 @@ import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { createDatabaseServiceMock } from '@test/support/database.mock';
 
 describe('UserDomain', () => {
-    const userRepository = {
-        findOneWithRoleById: vi.fn<UserRepository['findOneWithRoleById']>(),
-    } satisfies Pick<UserRepository, 'findOneWithRoleById'>;
-    const authPasswordService = {
-        checkPasswordExpired: vi.fn<AuthPasswordUtil['checkPasswordExpired']>(),
-    } satisfies Pick<AuthPasswordUtil, 'checkPasswordExpired'>;
-    const roleService = createMock<RoleDomain>();
-    const countryService = createMock<CountryDomain>();
-    const deviceDomain = createMock<DeviceDomain>();
-    const userUtil = createMock<UserUtil>();
-    const userVerificationService = createMock<UserVerificationDomain>();
-    const helperHashService = createMock<HelperHashService>();
-    const userOnboardingService = createMock<UserOnboardingDomain>();
-    const userLoginService = createMock<UserLoginDomain>();
-    const databaseUtil = createMock<DatabaseUtil>();
-    const notificationQueue = createMock<NotificationQueue>();
-    const sessionDomain = createMock<SessionDomain>();
-    const helperDateService = createMock<HelperDateService>();
-    const requestStoreService = createMock<RequestStoreService>();
-    const activityLogDomain = createMock<ActivityLogDomain>();
-    const databaseService = createDatabaseServiceMock();
+    const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
+    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
+    const countryDomain: MockProxy<CountryDomain> = mock<CountryDomain>();
+    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const userVerificationDomain: MockProxy<UserVerificationDomain> =
+        mock<UserVerificationDomain>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
+    const userOnboardingDomain: MockProxy<UserOnboardingDomain> =
+        mock<UserOnboardingDomain>();
+    const userLoginDomain: MockProxy<UserLoginDomain> = mock<UserLoginDomain>();
+    const authPasswordUtil: MockProxy<AuthPasswordUtil> =
+        mock<AuthPasswordUtil>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const databaseService: DeepMockProxy<DatabaseService> =
+        mockDeep<DatabaseService>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const userRow = {
@@ -116,27 +121,27 @@ describe('UserDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        authPasswordService.checkPasswordExpired.mockReturnValue(false);
+        authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
 
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 UserDomain,
                 { provide: UserRepository, useValue: userRepository },
-                { provide: RoleDomain, useValue: roleService },
-                { provide: CountryDomain, useValue: countryService },
+                { provide: RoleDomain, useValue: roleDomain },
+                { provide: CountryDomain, useValue: countryDomain },
                 { provide: DeviceDomain, useValue: deviceDomain },
                 { provide: UserUtil, useValue: userUtil },
                 {
                     provide: UserVerificationDomain,
-                    useValue: userVerificationService,
+                    useValue: userVerificationDomain,
                 },
                 { provide: HelperHashService, useValue: helperHashService },
                 {
                     provide: UserOnboardingDomain,
-                    useValue: userOnboardingService,
+                    useValue: userOnboardingDomain,
                 },
-                { provide: UserLoginDomain, useValue: userLoginService },
-                { provide: AuthPasswordUtil, useValue: authPasswordService },
+                { provide: UserLoginDomain, useValue: userLoginDomain },
+                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: SessionDomain, useValue: sessionDomain },
@@ -178,7 +183,7 @@ describe('UserDomain', () => {
 
     it('rejects an expired password', async () => {
         userRepository.findOneWithRoleById.mockResolvedValue(activeUser);
-        authPasswordService.checkPasswordExpired.mockReturnValue(true);
+        authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
         await expect(
             service.validateUserGuard('user-id', false)
         ).rejects.toBeInstanceOf(UserPasswordExpiredException);

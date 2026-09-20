@@ -1,33 +1,32 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { ExecutionContext } from '@nestjs/common';
+import type { HttpArgumentsHost } from '@nestjs/common/interfaces/features/arguments-host.interface';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { AuthSocialGoogleRequiredException } from '@modules/auth/exceptions/auth.social-google-required.exception';
 import { AuthSocialGoogleGuard } from '@modules/auth/guards/social/auth.social.google.guard';
 import { AuthDomain } from '@modules/auth/domains/auth.domain';
 
 describe('AuthSocialGoogleGuard', () => {
-    const authService = {
-        validateOAuthGoogle: vi.fn<AuthDomain['validateOAuthGoogle']>(),
-    } satisfies Pick<AuthDomain, 'validateOAuthGoogle'>;
-    const configService = createMock<ConfigService>({
-        get: <T>(key: string) =>
-            ({
-                'auth.google.header': 'x-google-token',
-                'auth.google.prefix': 'Google',
-            })[key] as T | undefined,
-    });
+    const authDomain: MockProxy<AuthDomain> = mock<AuthDomain>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configGet = vi.mocked(configService.get);
+    const config: Record<string, string> = {
+        'auth.google.header': 'x-google-token',
+        'auth.google.prefix': 'Google',
+    };
 
     let guard: AuthSocialGoogleGuard;
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockImplementation((key: string) => config[key]);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthSocialGoogleGuard,
-                { provide: AuthDomain, useValue: authService },
+                { provide: AuthDomain, useValue: authDomain },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -38,19 +37,18 @@ describe('AuthSocialGoogleGuard', () => {
         const request: { headers: Record<string, string>; user?: unknown } = {
             headers: { 'x-google-token': 'Google identity-token' },
         };
-        const context = createMock<ExecutionContext>({
-            switchToHttp: () =>
-                createMock<ReturnType<ExecutionContext['switchToHttp']>>({
-                    getRequest: () => request,
-                }),
-        });
-        authService.validateOAuthGoogle.mockResolvedValue({
+        const httpArguments: MockProxy<HttpArgumentsHost> =
+            mock<HttpArgumentsHost>();
+        httpArguments.getRequest.mockReturnValue(request);
+        const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
+        context.switchToHttp.mockReturnValue(httpArguments);
+        authDomain.validateOAuthGoogle.mockResolvedValue({
             email: 'user@example.com',
             emailVerified: true,
         });
 
         await expect(guard.canActivate(context)).resolves.toBe(true);
-        expect(authService.validateOAuthGoogle).toHaveBeenCalledWith(
+        expect(authDomain.validateOAuthGoogle).toHaveBeenCalledWith(
             'identity-token'
         );
         expect(request.user).toEqual({
@@ -60,18 +58,17 @@ describe('AuthSocialGoogleGuard', () => {
     });
 
     it('rejects a missing or malformed provider header', async () => {
-        const context = createMock<ExecutionContext>({
-            switchToHttp: () =>
-                createMock<ReturnType<ExecutionContext['switchToHttp']>>({
-                    getRequest: () => ({
-                        headers: { 'x-google-token': 'token' },
-                    }),
-                }),
+        const httpArguments: MockProxy<HttpArgumentsHost> =
+            mock<HttpArgumentsHost>();
+        httpArguments.getRequest.mockReturnValue({
+            headers: { 'x-google-token': 'token' },
         });
+        const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
+        context.switchToHttp.mockReturnValue(httpArguments);
 
         await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
             AuthSocialGoogleRequiredException
         );
-        expect(authService.validateOAuthGoogle).not.toHaveBeenCalled();
+        expect(authDomain.validateOAuthGoogle).not.toHaveBeenCalled();
     });
 });

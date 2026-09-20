@@ -1,7 +1,8 @@
 import type { Cache } from '@nestjs/cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -19,33 +20,18 @@ import { AuthCache } from '@modules/auth/caches/auth.cache';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
 describe('AuthCache', () => {
-    const cacheSet = vi.fn(
-        async (_key: string, value: unknown, _ttl?: number) => value
-    );
-    const cacheGet = vi.fn(async (_key: string): Promise<unknown> => undefined);
-    const cacheDel = vi.fn(async (_key: string) => true);
-    const cacheTtl = vi.fn(async (_key: string) => 0);
-    const cacheManager = {
-        async set<T>(key: string, value: T, ttl?: number): Promise<T> {
-            await cacheSet(key, value, ttl);
-            return value;
-        },
-        async get<T>(key: string): Promise<T | undefined> {
-            return (await cacheGet(key)) as T | undefined;
-        },
-        del: cacheDel,
-        ttl: cacheTtl,
-    } satisfies Pick<Cache, 'set' | 'get' | 'del' | 'ttl'>;
-    const helperStringService = {
-        random: vi.fn<HelperStringService['random']>(),
-    } satisfies Pick<HelperStringService, 'random'>;
-    const configService = new ConfigService({
+    const cacheManager: MockProxy<Cache> = mock<Cache>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configGet = vi.mocked(configService.get);
+    const config: Record<string, unknown> = {
         'auth.twoFactor.challengeKeyPattern': 'auth:challenge:{token}',
         'auth.twoFactor.challengeTtlInMs': 300_000,
         'auth.twoFactor.lockKeyPattern': 'auth:lock:{userId}',
         'auth.twoFactor.maxAttempt': 5,
         'auth.twoFactor.lockAttemptDurationInMs': 60_000,
-    });
+    };
     const challenge = {
         userId: 'user-id',
         device: { fingerprint: 'fingerprint' },
@@ -120,6 +106,7 @@ describe('AuthCache', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockImplementation((key: string) => config[key]);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthCache,
@@ -139,7 +126,7 @@ describe('AuthCache', () => {
             expiresInMs: 300_000,
         });
         expect(helperStringService.random).toHaveBeenCalledWith(48);
-        expect(cacheSet).toHaveBeenCalledWith(
+        expect(cacheManager.set).toHaveBeenCalledWith(
             'auth:challenge:challenge-token',
             challenge,
             300_000
@@ -147,16 +134,16 @@ describe('AuthCache', () => {
     });
 
     it('normalizes a missing cached challenge to null', async () => {
-        cacheGet.mockResolvedValue(undefined);
+        cacheManager.get.mockResolvedValue(undefined);
 
         await expect(service.getChallenge('missing')).resolves.toBeNull();
-        expect(cacheGet).toHaveBeenCalledWith('auth:challenge:missing');
+        expect(cacheManager.get).toHaveBeenCalledWith('auth:challenge:missing');
     });
 
     it('applies exponential lock duration from the current attempt count', async () => {
         await service.lockTwoFactorAttempt(user);
 
-        expect(cacheSet).toHaveBeenCalledWith(
+        expect(cacheManager.set).toHaveBeenCalledWith(
             'auth:lock:user-id',
             true,
             120_000
@@ -164,8 +151,10 @@ describe('AuthCache', () => {
     });
 
     it('returns the remaining lock TTL only when the lock exists', async () => {
-        cacheGet.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
-        cacheTtl.mockResolvedValue(45_000);
+        cacheManager.get
+            .mockResolvedValueOnce(true)
+            .mockResolvedValueOnce(false);
+        cacheManager.ttl.mockResolvedValue(45_000);
 
         await expect(service.getLockTwoFactorAttempt(user)).resolves.toBe(
             45_000

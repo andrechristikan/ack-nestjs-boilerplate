@@ -1,48 +1,44 @@
 import type { Cache } from 'cache-manager';
 import { ConfigService } from '@nestjs/config';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
+import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 import type { ApiKey } from '@generated/prisma-client';
 
 describe('ApiKeyCache', () => {
-    const cacheSet = vi.fn(async (_key: string, _value: unknown) => undefined);
-    const cacheGet = vi.fn(async (_key: string): Promise<unknown> => undefined);
-    const cacheDel = vi.fn(async (_key: string) => true);
-    const cacheManager = {
-        async set<T>(key: string, value: T): Promise<T> {
-            await cacheSet(key, value);
-            return value;
-        },
-        async get<T>(key: string): Promise<T | undefined> {
-            return (await cacheGet(key)) as T | undefined;
-        },
-        del: cacheDel,
-    } satisfies Pick<Cache, 'set' | 'get' | 'del'>;
-    const configService = new ConfigService({
-        'auth.xApiKey.keyPattern': 'apikey:{key}',
-    });
+    const cacheManager: MockProxy<Cache> = mock<Cache>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configGet = vi.mocked(configService.get);
     const apiKey = { id: 'api-key-id' } as ApiKey;
 
     let cache: ApiKeyCache;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.resetAllMocks();
-        cache = new ApiKeyCache(
-            cacheManager as unknown as Cache,
-            configService
-        );
+        configGet.mockReturnValue('apikey:{key}');
+
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                ApiKeyCache,
+                { provide: CacheMainProvider, useValue: cacheManager },
+                { provide: ConfigService, useValue: configService },
+            ],
+        }).compile();
+        cache = moduleRef.get(ApiKeyCache);
     });
 
     it('returns the cached record under the pattern-expanded key', async () => {
-        cacheGet.mockResolvedValue(apiKey);
+        cacheManager.get.mockResolvedValue(apiKey);
 
         await expect(cache.getCacheByKey('abc')).resolves.toBe(apiKey);
-        expect(cacheGet).toHaveBeenCalledWith('apikey:abc');
+        expect(cacheManager.get).toHaveBeenCalledWith('apikey:abc');
     });
 
     it('returns null on a cache miss', async () => {
-        cacheGet.mockResolvedValue(undefined);
+        cacheManager.get.mockResolvedValue(undefined);
 
         await expect(cache.getCacheByKey('abc')).resolves.toBeNull();
     });
@@ -50,12 +46,12 @@ describe('ApiKeyCache', () => {
     it('stores the record under the pattern-expanded key', async () => {
         await cache.setCacheByKey('abc', apiKey);
 
-        expect(cacheSet).toHaveBeenCalledWith('apikey:abc', apiKey);
+        expect(cacheManager.set).toHaveBeenCalledWith('apikey:abc', apiKey);
     });
 
     it('deletes the pattern-expanded key', async () => {
         await cache.deleteCacheByKey('abc');
 
-        expect(cacheDel).toHaveBeenCalledWith('apikey:abc');
+        expect(cacheManager.del).toHaveBeenCalledWith('apikey:abc');
     });
 });

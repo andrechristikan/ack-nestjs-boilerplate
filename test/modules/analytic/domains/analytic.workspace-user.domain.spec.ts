@@ -1,5 +1,6 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
@@ -11,19 +12,24 @@ import { WorkspaceJoinRequestAnalyticDomain } from '@modules/workspace/domains/w
 import { WorkspaceMemberAnalyticDomain } from '@modules/workspace/domains/workspace.member.analytic.domain';
 
 describe('AnalyticWorkspaceUserDomain', () => {
-    const cache = createMock<AnalyticCache>();
-    const dateUtil = createMock<AnalyticDateUtil>();
-    const memberDomain = createMock<WorkspaceMemberAnalyticDomain>();
-    const inviteDomain = createMock<WorkspaceInviteAnalyticDomain>();
-    const joinRequestDomain = createMock<WorkspaceJoinRequestAnalyticDomain>();
-    const projectDomain = createMock<ProjectAnalyticDomain>();
-    const activityDomain = createMock<ActivityLogAnalyticDomain>();
+    const cache: MockProxy<AnalyticCache> = mock<AnalyticCache>();
+    const dateUtil: MockProxy<AnalyticDateUtil> = mock<AnalyticDateUtil>();
+    const memberDomain: MockProxy<WorkspaceMemberAnalyticDomain> =
+        mock<WorkspaceMemberAnalyticDomain>();
+    const inviteDomain: MockProxy<WorkspaceInviteAnalyticDomain> =
+        mock<WorkspaceInviteAnalyticDomain>();
+    const joinRequestDomain: MockProxy<WorkspaceJoinRequestAnalyticDomain> =
+        mock<WorkspaceJoinRequestAnalyticDomain>();
+    const projectDomain: MockProxy<ProjectAnalyticDomain> =
+        mock<ProjectAnalyticDomain>();
+    const activityDomain: MockProxy<ActivityLogAnalyticDomain> =
+        mock<ActivityLogAnalyticDomain>();
     const startDate = new Date('2026-01-01T00:00:00.000Z');
     const endDate = new Date('2026-01-02T00:00:00.000Z');
 
     let domain: AnalyticWorkspaceUserDomain;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.resetAllMocks();
         cache.getDashboard.mockResolvedValue(null);
         dateUtil.cacheToken.mockImplementation(date =>
@@ -32,15 +38,31 @@ describe('AnalyticWorkspaceUserDomain', () => {
         dateUtil.workspaceWindowToken.mockReturnValue(
             `workspace-id:${startDate.toISOString()}:${endDate.toISOString()}`
         );
-        domain = new AnalyticWorkspaceUserDomain(
-            cache,
-            dateUtil,
-            memberDomain,
-            inviteDomain,
-            joinRequestDomain,
-            projectDomain,
-            activityDomain
-        );
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                AnalyticWorkspaceUserDomain,
+                { provide: AnalyticCache, useValue: cache },
+                { provide: AnalyticDateUtil, useValue: dateUtil },
+                {
+                    provide: WorkspaceMemberAnalyticDomain,
+                    useValue: memberDomain,
+                },
+                {
+                    provide: WorkspaceInviteAnalyticDomain,
+                    useValue: inviteDomain,
+                },
+                {
+                    provide: WorkspaceJoinRequestAnalyticDomain,
+                    useValue: joinRequestDomain,
+                },
+                { provide: ProjectAnalyticDomain, useValue: projectDomain },
+                {
+                    provide: ActivityLogAnalyticDomain,
+                    useValue: activityDomain,
+                },
+            ],
+        }).compile();
+        domain = moduleRef.get(AnalyticWorkspaceUserDomain);
     });
 
     it('returns a cached workspace summary without querying domains', async () => {

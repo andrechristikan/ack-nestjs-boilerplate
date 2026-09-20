@@ -1,17 +1,34 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { CallHandler, ExecutionContext } from '@nestjs/common';
 import { lastValueFrom, of, throwError } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ActivityLogInterceptor } from '@modules/activity-log/interceptors/activity-log.interceptor';
 
 describe('ActivityLogInterceptor', () => {
-    const activityLogDomain = createMock<ActivityLogDomain>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
     const request = {
         user: {
             userId: 'user-id',
         },
+    };
+
+    const buildContext = (
+        type: string,
+        httpRequest?: unknown
+    ): MockProxy<ExecutionContext> => {
+        const httpHost: MockProxy<
+            ReturnType<ExecutionContext['switchToHttp']>
+        > = mock<ReturnType<ExecutionContext['switchToHttp']>>();
+        httpHost.getRequest.mockReturnValue(httpRequest);
+        const executionContext: MockProxy<ExecutionContext> =
+            mock<ExecutionContext>();
+        executionContext.getType.mockReturnValue(type);
+        executionContext.switchToHttp.mockReturnValue(httpHost);
+
+        return executionContext;
     };
 
     let interceptor: ActivityLogInterceptor;
@@ -20,20 +37,13 @@ describe('ActivityLogInterceptor', () => {
     beforeEach(() => {
         vi.resetAllMocks();
         activityLogDomain.flushStaged.mockResolvedValue(undefined);
-        context = createMock<ExecutionContext>({
-            getType: () => 'http',
-            switchToHttp: () =>
-                createMock<ReturnType<ExecutionContext['switchToHttp']>>({
-                    getRequest: () => request,
-                }),
-        });
+        context = buildContext('http', request);
         interceptor = new ActivityLogInterceptor(activityLogDomain);
     });
 
     it('flushes all staged events after a successful HTTP response', async () => {
-        const next = {
-            handle: vi.fn<CallHandler['handle']>().mockReturnValue(of('ok')),
-        } satisfies CallHandler;
+        const next: MockProxy<CallHandler> = mock<CallHandler>();
+        next.handle.mockReturnValue(of('ok'));
 
         await expect(
             lastValueFrom(interceptor.intercept(context, next))
@@ -46,11 +56,8 @@ describe('ActivityLogInterceptor', () => {
 
     it('flushes error-enabled events and rethrows the handler error', async () => {
         const error = new Error('failed');
-        const next = {
-            handle: vi
-                .fn<CallHandler['handle']>()
-                .mockReturnValue(throwError(() => error)),
-        } satisfies CallHandler;
+        const next: MockProxy<CallHandler> = mock<CallHandler>();
+        next.handle.mockReturnValue(throwError(() => error));
 
         await expect(
             lastValueFrom(interceptor.intercept(context, next))
@@ -62,16 +69,9 @@ describe('ActivityLogInterceptor', () => {
     });
 
     it('flushes anonymous HTTP requests with a null payload user', async () => {
-        context = createMock<ExecutionContext>({
-            getType: () => 'http',
-            switchToHttp: () =>
-                createMock<ReturnType<ExecutionContext['switchToHttp']>>({
-                    getRequest: () => ({ user: null }),
-                }),
-        });
-        const next = {
-            handle: vi.fn<CallHandler['handle']>().mockReturnValue(of('ok')),
-        } satisfies CallHandler;
+        context = buildContext('http', { user: null });
+        const next: MockProxy<CallHandler> = mock<CallHandler>();
+        next.handle.mockReturnValue(of('ok'));
 
         await lastValueFrom(interceptor.intercept(context, next));
 
@@ -83,9 +83,8 @@ describe('ActivityLogInterceptor', () => {
 
     it('preserves a successful response when flushing fails', async () => {
         activityLogDomain.flushStaged.mockRejectedValue(new Error('db down'));
-        const next = {
-            handle: vi.fn<CallHandler['handle']>().mockReturnValue(of('ok')),
-        } satisfies CallHandler;
+        const next: MockProxy<CallHandler> = mock<CallHandler>();
+        next.handle.mockReturnValue(of('ok'));
 
         await expect(
             lastValueFrom(interceptor.intercept(context, next))
@@ -95,11 +94,8 @@ describe('ActivityLogInterceptor', () => {
     it('preserves the handler error when its error flush fails', async () => {
         const error = new Error('handler failed');
         activityLogDomain.flushStaged.mockRejectedValue(new Error('db down'));
-        const next = {
-            handle: vi
-                .fn<CallHandler['handle']>()
-                .mockReturnValue(throwError(() => error)),
-        } satisfies CallHandler;
+        const next: MockProxy<CallHandler> = mock<CallHandler>();
+        next.handle.mockReturnValue(throwError(() => error));
 
         await expect(
             lastValueFrom(interceptor.intercept(context, next))
@@ -107,12 +103,9 @@ describe('ActivityLogInterceptor', () => {
     });
 
     it('passes through non-http contexts without flushing staged events', async () => {
-        const rpcContext = createMock<ExecutionContext>({
-            getType: () => 'rpc',
-        });
-        const next = {
-            handle: vi.fn<CallHandler['handle']>().mockReturnValue(of('ok')),
-        } satisfies CallHandler;
+        const rpcContext = buildContext('rpc');
+        const next: MockProxy<CallHandler> = mock<CallHandler>();
+        next.handle.mockReturnValue(of('ok'));
 
         await expect(
             lastValueFrom(interceptor.intercept(rpcContext, next))

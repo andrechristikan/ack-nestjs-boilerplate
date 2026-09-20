@@ -1,5 +1,6 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { NotificationProcessor } from '@modules/notification/processors/notification.processor';
@@ -8,20 +9,31 @@ import { QueueException } from '@queues/exceptions/queue.exception';
 import { createQueueJob } from '@test/support/queue-job.mock';
 
 describe('QueueProcessorBase', () => {
-    const sentryService = createMock<SentryService>();
+    const sentryService: MockProxy<SentryService> = mock<SentryService>();
+    const notificationProcessorService: MockProxy<NotificationProcessorService> =
+        mock<NotificationProcessorService>();
     const scope = {
         setAttribute: vi.fn(),
     };
-    const processor = new NotificationProcessor(
-        createMock<NotificationProcessorService>(),
-        sentryService
-    );
 
-    beforeEach(() => {
+    let processor: NotificationProcessor;
+
+    beforeEach(async () => {
         vi.resetAllMocks();
         sentryService.withScope.mockImplementation(callback => {
             callback(scope as never);
         });
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                NotificationProcessor,
+                {
+                    provide: NotificationProcessorService,
+                    useValue: notificationProcessorService,
+                },
+                { provide: SentryService, useValue: sentryService },
+            ],
+        }).compile();
+        processor = moduleRef.get(NotificationProcessor);
     });
 
     it('reports a fatal error on the final attempt', () => {

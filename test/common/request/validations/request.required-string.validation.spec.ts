@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { RequestRequiredStringSchema } from '@common/request/validations/request.required-string.validation';
 
 describe('RequestRequiredStringSchema', () => {

@@ -1,10 +1,15 @@
 import { ConfigService } from '@nestjs/config';
-import { describe, expect, it } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { NotificationPushQueueFactory } from '@modules/notification/factories/notification.push.queue.factory';
 
 describe('NotificationPushQueueFactory', () => {
-    const configService = new ConfigService({
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configGet = vi.mocked(configService.get);
+    const config: Record<string, number> = {
         'queue.job.attempts': 4,
         'queue.job.emailBackoffDelayInMs': 111,
         'queue.job.pushBackoffDelayInMs': 222,
@@ -12,11 +17,25 @@ describe('NotificationPushQueueFactory', () => {
         'queue.job.workspaceBackoffDelayInMs': 444,
         'queue.job.removeOnCompleteAgeInSeconds': 555,
         'queue.job.removeOnFailAgeInSeconds': 666,
+    };
+
+    let factory: NotificationPushQueueFactory;
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+        configGet.mockImplementation((key: string) => config[key]);
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                NotificationPushQueueFactory,
+                { provide: ConfigService, useValue: configService },
+            ],
+        }).compile();
+
+        factory = module.get(NotificationPushQueueFactory);
     });
 
     it('builds default job options from the queue config with the push backoff delay', () => {
-        const factory = new NotificationPushQueueFactory(configService);
-
         expect(factory.createRegisterQueueOptions()).toEqual({
             defaultJobOptions: {
                 attempts: 4,

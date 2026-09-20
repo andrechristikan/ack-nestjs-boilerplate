@@ -1,5 +1,8 @@
 import { ConfigService } from '@nestjs/config';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import {
     EnumRoleType,
@@ -18,58 +21,33 @@ import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
 
 describe('UserImportDomain', () => {
-    const userRepository = {
-        findByEmails: vi.fn<UserRepository['findByEmails']>(),
-        findByUsernames: vi.fn<UserRepository['findByUsernames']>(),
-        findExport: vi.fn<UserRepository['findExport']>(),
-    } satisfies Pick<
-        UserRepository,
-        'findByEmails' | 'findByUsernames' | 'findExport'
-    >;
-    const roleDomain = {
-        getByName: vi.fn<RoleDomain['getByName']>(),
-    } satisfies Pick<RoleDomain, 'getByName'>;
-    const countryDomain = {
-        getIdByAlpha2Code: vi.fn<CountryDomain['getIdByAlpha2Code']>(),
-    } satisfies Pick<CountryDomain, 'getIdByAlpha2Code'>;
-    const userUtil = {
-        checkBadWord: vi.fn<UserUtil['checkBadWord']>(),
-    } satisfies Pick<UserUtil, 'checkBadWord'>;
-    const onboardingDomain = {
-        buildPersonalWorkspaceContexts:
-            vi.fn<UserOnboardingDomain['buildPersonalWorkspaceContexts']>(),
-    } satisfies Pick<UserOnboardingDomain, 'buildPersonalWorkspaceContexts'>;
-    const passwordUtil = {
-        createPasswordRandom: vi.fn<AuthPasswordUtil['createPasswordRandom']>(),
-        createPassword: vi.fn<AuthPasswordUtil['createPassword']>(),
-    } satisfies Pick<
-        AuthPasswordUtil,
-        'createPasswordRandom' | 'createPassword'
-    >;
-    const databaseUtil = {
-        createId: vi.fn<DatabaseUtil['createId']>(),
-    } satisfies Pick<DatabaseUtil, 'createId'>;
-    const notificationQueue = {
-        sendWelcomeByAdmin: vi.fn<NotificationQueue['sendWelcomeByAdmin']>(),
-    } satisfies Pick<NotificationQueue, 'sendWelcomeByAdmin'>;
-    const helperDateService = {
-        formatToIso: vi.fn<HelperDateService['formatToIso']>(),
-    } satisfies Pick<HelperDateService, 'formatToIso'>;
-    const configService = {
-        get: vi.fn(
-            (key: string) =>
-                ({
-                    'user.default.role': 'User',
-                    'user.default.country': 'ID',
-                    'user.maxDataExport': 100,
-                })[key]
-        ),
-    } satisfies Pick<ConfigService, 'get'>;
+    const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
+    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
+    const countryDomain: MockProxy<CountryDomain> = mock<CountryDomain>();
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const userOnboardingDomain: MockProxy<UserOnboardingDomain> =
+        mock<UserOnboardingDomain>();
+    const authPasswordUtil: MockProxy<AuthPasswordUtil> =
+        mock<AuthPasswordUtil>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configValues: Record<string, unknown> = {
+        'user.default.role': 'User',
+        'user.default.country': 'ID',
+        'user.maxDataExport': 100,
+    };
 
     let domain: UserImportDomain;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.resetAllMocks();
+        vi.mocked(configService.get).mockImplementation(
+            (key: string) => configValues[key]
+        );
         roleDomain.getByName.mockResolvedValue({
             id: 'role-id',
             name: 'User',
@@ -80,24 +58,32 @@ describe('UserImportDomain', () => {
         userRepository.findByUsernames.mockResolvedValue([]);
         userUtil.checkBadWord.mockResolvedValue(false);
         databaseUtil.createId.mockReturnValue('generated-id');
-        onboardingDomain.buildPersonalWorkspaceContexts.mockReturnValue([]);
-        domain = new UserImportDomain(
-            userRepository as unknown as UserRepository,
-            roleDomain as unknown as RoleDomain,
-            countryDomain as unknown as CountryDomain,
-            userUtil as unknown as UserUtil,
-            onboardingDomain as unknown as UserOnboardingDomain,
-            passwordUtil as unknown as AuthPasswordUtil,
-            databaseUtil as unknown as DatabaseUtil,
-            notificationQueue as unknown as NotificationQueue,
-            helperDateService as unknown as HelperDateService,
-            configService as unknown as ConfigService
-        );
+        userOnboardingDomain.buildPersonalWorkspaceContexts.mockReturnValue([]);
+
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                UserImportDomain,
+                { provide: UserRepository, useValue: userRepository },
+                { provide: RoleDomain, useValue: roleDomain },
+                { provide: CountryDomain, useValue: countryDomain },
+                { provide: UserUtil, useValue: userUtil },
+                {
+                    provide: UserOnboardingDomain,
+                    useValue: userOnboardingDomain,
+                },
+                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
+                { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: NotificationQueue, useValue: notificationQueue },
+                { provide: HelperDateService, useValue: helperDateService },
+                { provide: ConfigService, useValue: configService },
+            ],
+        }).compile();
+        domain = moduleRef.get(UserImportDomain);
     });
 
     it('prepares imported users through the consolidated repository contract', async () => {
-        passwordUtil.createPasswordRandom.mockReturnValue('plain');
-        passwordUtil.createPassword.mockReturnValue({
+        authPasswordUtil.createPasswordRandom.mockReturnValue('plain');
+        authPasswordUtil.createPassword.mockReturnValue({
             passwordHash: 'hash',
         } as never);
         const result = await domain.prepareImportByAdmin(

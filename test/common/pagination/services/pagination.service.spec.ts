@@ -1,6 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import {
     EnumPaginationOrderDirectionType,
@@ -12,9 +13,8 @@ import type { IPaginationRepository } from '@common/pagination/interfaces/pagina
 import { PaginationService } from '@common/pagination/services/pagination.service';
 
 describe('PaginationService', () => {
-    const helperHashService = {
-        sha256Hash: vi.fn<HelperHashService['sha256Hash']>(),
-    } satisfies Pick<HelperHashService, 'sha256Hash'>;
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
     const repository: IPaginationRepository = {
         findMany: vi.fn(),
         count: vi.fn(),

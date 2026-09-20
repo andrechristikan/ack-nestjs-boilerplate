@@ -1,10 +1,11 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { CallHandler, ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
 import { firstValueFrom, of } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import {
     RequestThrottleHandledStoreKey,
@@ -18,42 +19,32 @@ import type { Response } from 'express';
 
 describe('RequestThrottleUserInterceptor', () => {
     const policy = { ttlInMs: 60_000, limit: 100, blockDurationInMs: 60_000 };
-    const reflector = {
-        get: vi.fn<Reflector['get']>(),
-    } satisfies Pick<Reflector, 'get'>;
-    const configService: Pick<ConfigService, 'get'> = { get: vi.fn() };
-    const configGet = vi.mocked(configService.get);
-    const requestStoreService: Pick<RequestStoreService, 'get' | 'set'> = {
-        get: vi.fn(),
-        set: vi.fn(),
-    };
-    const requestStoreGet = vi.mocked(requestStoreService.get);
-    const requestStoreSet = vi.mocked(requestStoreService.set);
-    const requestThrottleService = {
-        evaluate: vi.fn<RequestThrottleService['evaluate']>(),
-    } satisfies Pick<RequestThrottleService, 'evaluate'>;
-    const response = createMock<Response>();
+    const reflector: MockProxy<Reflector> = mock<Reflector>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const requestThrottleService: MockProxy<RequestThrottleService> =
+        mock<RequestThrottleService>();
+    const response: MockProxy<Response> = mock<Response>();
+    const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
+    const httpContext: MockProxy<ReturnType<ExecutionContext['switchToHttp']>> =
+        mock<ReturnType<ExecutionContext['switchToHttp']>>();
+    const next: MockProxy<CallHandler> = mock<CallHandler>();
     const handler = vi.fn();
-    const next = { handle: vi.fn(() => of('result')) } satisfies CallHandler;
 
-    let request: IRequestApp<{ userId: string }>;
-    let context: ExecutionContext;
+    let request: MockProxy<IRequestApp<{ userId: string }>>;
     let interceptor: RequestThrottleUserInterceptor;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockReturnValue(policy);
-        request = createMock<IRequestApp<{ userId: string }>>({
+        vi.mocked(configService.get).mockReturnValue(policy);
+        request = mock<IRequestApp<{ userId: string }>>({
             user: { userId: 'user-id' },
         });
-        context = createMock<ExecutionContext>({
-            getHandler: () => handler,
-            switchToHttp: () =>
-                createMock<ReturnType<ExecutionContext['switchToHttp']>>({
-                    getRequest: () => request,
-                    getResponse: () => response,
-                }),
-        });
+        context.getHandler.mockReturnValue(handler);
+        context.switchToHttp.mockReturnValue(httpContext);
+        httpContext.getRequest.mockImplementation(() => request);
+        httpContext.getResponse.mockReturnValue(response);
         next.handle.mockReturnValue(of('result'));
 
         const moduleRef: TestingModule = await Test.createTestingModule({
@@ -72,14 +63,14 @@ describe('RequestThrottleUserInterceptor', () => {
     });
 
     it('evaluates the user limiter once before delegating', async () => {
-        requestStoreGet.mockReturnValue(null);
+        requestStoreService.get.mockReturnValue(null);
         reflector.get.mockReturnValue({ user: true });
 
         await expect(
             firstValueFrom(await interceptor.intercept(context, next))
         ).resolves.toBe('result');
 
-        expect(requestStoreSet).toHaveBeenCalledWith(
+        expect(requestStoreService.set).toHaveBeenCalledWith(
             RequestThrottleHandledStoreKey,
             true
         );
@@ -102,10 +93,12 @@ describe('RequestThrottleUserInterceptor', () => {
     ])(
         'does not evaluate when the request is %s',
         async (_name, handled, options, hasUser) => {
-            requestStoreGet.mockReturnValue(handled);
+            requestStoreService.get.mockReturnValue(handled);
             reflector.get.mockReturnValue(options);
             if (!hasUser)
-                request = createMock<IRequestApp>({ user: undefined });
+                request = mock<IRequestApp<{ userId: string }>>({
+                    user: undefined,
+                });
 
             await firstValueFrom(await interceptor.intercept(context, next));
 

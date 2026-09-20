@@ -1,9 +1,10 @@
-import { createMock } from '@golevelup/ts-vitest';
 import { ConfigService } from '@nestjs/config';
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
 import type { CorsOptions } from 'cors';
 import type { Request, Response } from 'express';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { RequestCorsMiddleware } from '@common/request/middlewares/request.cors.middleware';
 
@@ -16,14 +17,15 @@ vi.mock(import('cors'), () => ({
 }));
 
 describe('RequestCorsMiddleware', () => {
-    const configService: Pick<ConfigService, 'get'> = { get: vi.fn() };
-    const configGet = vi.mocked(configService.get);
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const request: MockProxy<Request> = mock<Request>();
+    const response: MockProxy<Response> = mock<Response>();
     let capturedOptions: CorsOptions;
 
     async function createMiddleware(
         allowedOrigin: string | boolean | string[]
     ) {
-        configGet.mockImplementation(key => {
+        vi.mocked(configService.get).mockImplementation(key => {
             const values: Record<string, unknown> = {
                 'request.cors.allowedOrigin': allowedOrigin,
                 'request.cors.allowedMethod': ['GET', 'POST'],
@@ -52,7 +54,7 @@ describe('RequestCorsMiddleware', () => {
     it('disables credentials for a wildcard origin', async () => {
         const middleware = await createMiddleware('*');
 
-        middleware.use(createMock<Request>(), createMock<Response>(), vi.fn());
+        middleware.use(request, response, vi.fn());
 
         expect(capturedOptions).toMatchObject({
             credentials: false,
@@ -71,7 +73,7 @@ describe('RequestCorsMiddleware', () => {
         ['https://api.example.com/path', false],
     ])('validates exact origin %s as %s', async (origin, allowed) => {
         const middleware = await createMiddleware('api.example.com');
-        middleware.use(createMock<Request>(), createMock<Response>(), vi.fn());
+        middleware.use(request, response, vi.fn());
 
         await expect(validateOrigin(origin)).resolves.toBe(allowed);
         expect(capturedOptions.credentials).toBe(true);
@@ -84,7 +86,7 @@ describe('RequestCorsMiddleware', () => {
         ['https://sub.example.com:3000', false],
     ])('validates wildcard origin %s as %s', async (origin, allowed) => {
         const middleware = await createMiddleware(['*.example.com']);
-        middleware.use(createMock<Request>(), createMock<Response>(), vi.fn());
+        middleware.use(request, response, vi.fn());
 
         await expect(validateOrigin(origin)).resolves.toBe(allowed);
     });

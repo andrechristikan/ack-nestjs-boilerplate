@@ -2,7 +2,8 @@ import { generateKeyPairSync } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import { Duration } from 'luxon';
 
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -35,27 +36,13 @@ function createDerKeyPair(namedCurve: 'P-256' | 'P-521') {
 describe('AuthJwtDomain', () => {
     const accessKeys = createDerKeyPair('P-256');
     const refreshKeys = createDerKeyPair('P-521');
-    const databaseUtil = {
-        createId: vi.fn<DatabaseUtil['createId']>(),
-    } satisfies Pick<DatabaseUtil, 'createId'>;
-    const helperDateService = {
-        create: vi.fn<HelperDateService['create']>(),
-        createFromTimestamp: vi.fn<HelperDateService['createFromTimestamp']>(),
-        diff: vi.fn<HelperDateService['diff']>(),
-    } satisfies Pick<
-        HelperDateService,
-        'create' | 'createFromTimestamp' | 'diff'
-    >;
-    const authUtil = {
-        generateJti: vi.fn<AuthUtil['generateJti']>(),
-        createPayloadAccessToken: vi.fn<AuthUtil['createPayloadAccessToken']>(),
-        createPayloadRefreshToken:
-            vi.fn<AuthUtil['createPayloadRefreshToken']>(),
-    } satisfies Pick<
-        AuthUtil,
-        'generateJti' | 'createPayloadAccessToken' | 'createPayloadRefreshToken'
-    >;
-    const configService = new ConfigService({
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const authUtil: MockProxy<AuthUtil> = mock<AuthUtil>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configGet = vi.mocked(configService.get);
+    const config: Record<string, unknown> = {
         'auth.jwt.accessToken.kid': 'access-kid',
         'auth.jwt.accessToken.expirationTimeInSeconds': 3600,
         'auth.jwt.accessToken.privateKey':
@@ -73,7 +60,7 @@ describe('AuthJwtDomain', () => {
         'auth.jwt.prefix': 'Bearer',
         'auth.jwt.audience': 'ACK',
         'auth.jwt.issuer': 'https://example.com',
-    });
+    };
     const accessPayload = {
         userId: 'user-id',
         roleId: 'role-id',
@@ -147,6 +134,7 @@ describe('AuthJwtDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockImplementation((key: string) => config[key]);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtDomain,

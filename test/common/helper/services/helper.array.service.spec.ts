@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 
 describe('HelperArrayService', () => {

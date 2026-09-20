@@ -1,9 +1,9 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { ConfigService } from '@nestjs/config';
 import { I18nService } from 'nestjs-i18n';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { MessageService } from '@common/message/services/message.service';
 
@@ -12,7 +12,7 @@ type IIssue = StandardSchemaV1.Issue & { code?: unknown };
 const issue = (value: IIssue): StandardSchemaV1.Issue => value;
 
 describe('MessageService', () => {
-    const i18n = createMock<Pick<I18nService, 'translate'>>();
+    const i18n: MockProxy<I18nService> = mock<I18nService>();
     const translate = vi.fn<(path: string, options: unknown) => string>();
     const configService = new ConfigService({
         'message.language': EnumMessageLanguage.en,

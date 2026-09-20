@@ -1,27 +1,26 @@
-import { createMock } from '@golevelup/ts-vitest';
 import { ConfigService } from '@nestjs/config';
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
 import type { Response } from 'express';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestWorkspaceMiddleware } from '@common/request/middlewares/request.workspace.middleware';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 describe('RequestWorkspaceMiddleware', () => {
-    const configService: Pick<ConfigService, 'get'> = { get: vi.fn() };
-    const configGet = vi.mocked(configService.get);
-    const requestStoreService: Pick<RequestStoreService, 'set'> = {
-        set: vi.fn(),
-    };
-    const requestStoreSet = vi.mocked(requestStoreService.set);
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const response: MockProxy<Response> = mock<Response>();
     const next = vi.fn<() => void>();
 
     let middleware: RequestWorkspaceMiddleware;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockImplementation(key =>
+        vi.mocked(configService.get).mockImplementation(key =>
             key === 'workspace.headerName' ? 'x-workspace-id' : 'workspaceId'
         );
         const moduleRef: TestingModule = await Test.createTestingModule({
@@ -39,13 +38,16 @@ describe('RequestWorkspaceMiddleware', () => {
         [undefined, null],
         [['one', 'two'], null],
     ])('stores header %s as %s', (header, expected) => {
-        const request = createMock<IRequestApp>({
+        const request: MockProxy<IRequestApp> = mock<IRequestApp>({
             headers: { 'x-workspace-id': header },
         });
 
-        middleware.use(request, createMock<Response>(), next);
+        middleware.use(request, response, next);
 
-        expect(requestStoreSet).toHaveBeenCalledWith('workspaceId', expected);
+        expect(requestStoreService.set).toHaveBeenCalledWith(
+            'workspaceId',
+            expected
+        );
         expect(next).toHaveBeenCalledTimes(1);
     });
 });

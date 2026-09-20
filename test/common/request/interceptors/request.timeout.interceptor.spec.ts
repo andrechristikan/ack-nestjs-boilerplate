@@ -1,10 +1,11 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { CallHandler, ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
 import { firstValueFrom, NEVER, of, throwError } from 'rxjs';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import {
     RequestCustomTimeoutMetaKey,
@@ -14,22 +15,19 @@ import { RequestTimeoutException } from '@common/request/exceptions/request.time
 import { RequestTimeoutInterceptor } from '@common/request/interceptors/request.timeout.interceptor';
 
 describe('RequestTimeoutInterceptor', () => {
-    const configService: Pick<ConfigService, 'get'> = { get: vi.fn() };
-    const configGet = vi.mocked(configService.get);
-    const reflector = createMock<Pick<Reflector, 'get'>>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const reflector: MockProxy<Reflector> = mock<Reflector>();
+    const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
     const handler = vi.fn();
-    let context: ExecutionContext;
 
     let interceptor: RequestTimeoutInterceptor;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        context = createMock<ExecutionContext>({
-            getType: () => 'http',
-            getHandler: () => handler,
-        });
+        context.getType.mockReturnValue('http');
+        context.getHandler.mockReturnValue(handler);
         vi.useFakeTimers();
-        configGet.mockReturnValue(1_000);
+        vi.mocked(configService.get).mockReturnValue(1_000);
         reflector.get.mockReturnValue(undefined);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
@@ -46,7 +44,8 @@ describe('RequestTimeoutInterceptor', () => {
     });
 
     it('maps the global timeout boundary to RequestTimeoutException', async () => {
-        const next = { handle: vi.fn(() => NEVER) } satisfies CallHandler;
+        const next: MockProxy<CallHandler> = mock<CallHandler>();
+        next.handle.mockReturnValue(NEVER);
         const result = firstValueFrom(interceptor.intercept(context, next));
         const assertion = expect(result).rejects.toBeInstanceOf(
             RequestTimeoutException
@@ -63,7 +62,8 @@ describe('RequestTimeoutInterceptor', () => {
             if (key === RequestCustomTimeoutValueMetaKey) return '2s';
             return undefined;
         });
-        const next = { handle: vi.fn(() => NEVER) } satisfies CallHandler;
+        const next: MockProxy<CallHandler> = mock<CallHandler>();
+        next.handle.mockReturnValue(NEVER);
         const result = firstValueFrom(interceptor.intercept(context, next));
         const assertion = expect(result).rejects.toBeInstanceOf(
             RequestTimeoutException
@@ -88,9 +88,8 @@ describe('RequestTimeoutInterceptor', () => {
 
     it('propagates non-timeout failures unchanged', async () => {
         const failure = new Error('handler failed');
-        const next = {
-            handle: vi.fn(() => throwError(() => failure)),
-        } satisfies CallHandler;
+        const next: MockProxy<CallHandler> = mock<CallHandler>();
+        next.handle.mockReturnValue(throwError(() => failure));
 
         await expect(
             firstValueFrom(interceptor.intercept(context, next))
@@ -98,12 +97,11 @@ describe('RequestTimeoutInterceptor', () => {
     });
 
     it('does not apply an HTTP timeout to another transport', async () => {
-        const rpcContext = createMock<ExecutionContext>({
-            getType: () => 'rpc',
-        });
-        const next = {
-            handle: vi.fn(() => of('result')),
-        } satisfies CallHandler;
+        const rpcContext: MockProxy<ExecutionContext> =
+            mock<ExecutionContext>();
+        rpcContext.getType.mockReturnValue('rpc');
+        const next: MockProxy<CallHandler> = mock<CallHandler>();
+        next.handle.mockReturnValue(of('result'));
 
         await expect(
             firstValueFrom(interceptor.intercept(rpcContext, next))

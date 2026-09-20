@@ -1,25 +1,15 @@
-import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
 
 describe('PasswordHistoryDomain', () => {
-    const passwordHistoryRepository = {
-        findWithPaginationOffsetByAdmin:
-            vi.fn<
-                PasswordHistoryRepository['findWithPaginationOffsetByAdmin']
-            >(),
-        findWithPaginationCursor:
-            vi.fn<PasswordHistoryRepository['findWithPaginationCursor']>(),
-        findActiveUser: vi.fn<PasswordHistoryRepository['findActiveUser']>(),
-    } satisfies Pick<
-        PasswordHistoryRepository,
-        | 'findWithPaginationOffsetByAdmin'
-        | 'findWithPaginationCursor'
-        | 'findActiveUser'
-    >;
+    const passwordHistoryRepository: MockProxy<PasswordHistoryRepository> =
+        mock<PasswordHistoryRepository>();
 
     let service: PasswordHistoryDomain;
 

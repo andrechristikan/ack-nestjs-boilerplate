@@ -1,7 +1,7 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -22,40 +22,23 @@ import { DeviceRepository } from '@modules/device/repositories/device.repository
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { SessionDomain } from '@modules/session/domains/session.domain';
-import {
-    createDatabaseServiceMock,
-    mockDatabaseServiceTransaction,
-} from '@test/support/database.mock';
 
 describe('DeviceDomain', () => {
-    const deviceOwnershipRepository = {
-        findActiveWithPaginationCursor:
-            vi.fn<
-                DeviceOwnershipRepository['findActiveWithPaginationCursor']
-            >(),
-        existsActive: vi.fn<DeviceOwnershipRepository['existsActive']>(),
-        touchInTx: vi.fn<DeviceOwnershipRepository['touchInTx']>(),
-        removeOwnershipInTx:
-            vi.fn<DeviceOwnershipRepository['removeOwnershipInTx']>(),
-    } satisfies Pick<
-        DeviceOwnershipRepository,
-        | 'findActiveWithPaginationCursor'
-        | 'existsActive'
-        | 'touchInTx'
-        | 'removeOwnershipInTx'
-    >;
-    const sessionService = {
-        purgeRevokedLogins: vi.fn<SessionDomain['purgeRevokedLogins']>(),
-        revokeByDeviceOwnershipInTx:
-            vi.fn<SessionDomain['revokeByDeviceOwnershipInTx']>(),
-    } satisfies Pick<
-        SessionDomain,
-        'purgeRevokedLogins' | 'revokeByDeviceOwnershipInTx'
-    >;
-    const deviceRepository = createMock<DeviceRepository>();
-    const activityLogDomain = createMock<ActivityLogDomain>();
-    const databaseService = createDatabaseServiceMock();
-    const helperDateService = createMock<HelperDateService>();
+    const deviceOwnershipRepository: MockProxy<DeviceOwnershipRepository> =
+        mock<DeviceOwnershipRepository>();
+    const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
+    const deviceRepository: MockProxy<DeviceRepository> =
+        mock<DeviceRepository>();
+    const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const databaseService: DeepMockProxy<DatabaseService> =
+        mockDeep<DatabaseService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const transactionClient = {} as Parameters<
+        Parameters<DatabaseService['withTransaction']>[0]
+    >[0];
     const now = new Date('2026-01-01T00:00:00.000Z');
     const ownership = {
         id: 'ownership-id',
@@ -106,7 +89,10 @@ describe('DeviceDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        mockDatabaseServiceTransaction(databaseService);
+        databaseService.withTransaction.mockImplementation(async callback =>
+            callback(transactionClient)
+        );
+        deviceUtil.resolveNotificationProvider.mockReturnValue(null);
         helperDateService.create.mockReturnValue(now);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
@@ -116,8 +102,8 @@ describe('DeviceDomain', () => {
                     useValue: deviceOwnershipRepository,
                 },
                 { provide: DeviceRepository, useValue: deviceRepository },
-                { provide: SessionDomain, useValue: sessionService },
-                { provide: DeviceUtil, useValue: new DeviceUtil() },
+                { provide: SessionDomain, useValue: sessionDomain },
+                { provide: DeviceUtil, useValue: deviceUtil },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -165,6 +151,9 @@ describe('DeviceDomain', () => {
             notificationToken: 'push-token',
         };
         deviceOwnershipRepository.touchInTx.mockResolvedValue('device-id');
+        deviceUtil.resolveNotificationProvider.mockReturnValue(
+            EnumDeviceNotificationProvider.apns
+        );
 
         await expect(
             service.refresh('user-id', ownership.id, update)
@@ -184,7 +173,7 @@ describe('DeviceDomain', () => {
     it('invalidates device sessions before self-removal', async () => {
         deviceOwnershipRepository.existsActive.mockResolvedValue(true);
         const order: string[] = [];
-        sessionService.revokeByDeviceOwnershipInTx.mockImplementation(
+        sessionDomain.revokeByDeviceOwnershipInTx.mockImplementation(
             async () => {
                 order.push('sessions');
                 return [];
@@ -213,16 +202,34 @@ describe('DeviceDomain', () => {
 
     it('invalidates sessions and records metadata for administrator removal', async () => {
         deviceOwnershipRepository.existsActive.mockResolvedValue(true);
-        sessionService.revokeByDeviceOwnershipInTx.mockResolvedValue([
+        sessionDomain.revokeByDeviceOwnershipInTx.mockResolvedValue([
             { id: 'session-1' },
             { id: 'session-2' },
         ]);
         deviceOwnershipRepository.removeOwnershipInTx.mockResolvedValue(
             ownership
         );
+        const metadata = {
+            deviceOwnershipId: ownership.id,
+            deviceId: ownership.device.id,
+            targetUserId: ownership.userId,
+            targetUsername: ownership.user.username,
+            timestamp: ownership.updatedAt,
+            sessionCount: ownership._count.sessions,
+        };
+        const targetMetadata = {
+            deviceOwnershipId: ownership.id,
+            deviceId: ownership.device.id,
+            actorUserId: 'admin-id',
+            timestamp: ownership.updatedAt,
+            sessionCount: ownership._count.sessions,
+        };
+        deviceUtil.mapActivityLogActorMetadata.mockReturnValue(metadata);
+        deviceUtil.mapActivityLogTargetMetadata.mockReturnValue(targetMetadata);
+
         await service.removeByAdmin('user-id', ownership.id, 'admin-id');
 
-        expect(sessionService.revokeByDeviceOwnershipInTx).toHaveBeenCalledWith(
+        expect(sessionDomain.revokeByDeviceOwnershipInTx).toHaveBeenCalledWith(
             expect.any(Object),
             'user-id',
             ownership.id,
@@ -238,14 +245,6 @@ describe('DeviceDomain', () => {
             'admin-id',
             expect.any(Date)
         );
-        const metadata = {
-            deviceOwnershipId: ownership.id,
-            deviceId: ownership.device.id,
-            targetUserId: ownership.userId,
-            targetUsername: ownership.user.username,
-            timestamp: ownership.updatedAt,
-            sessionCount: ownership._count.sessions,
-        };
         expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
             action: EnumActivityLogAction.adminDeviceRemove,
             metadata,
@@ -254,13 +253,7 @@ describe('DeviceDomain', () => {
             action: EnumActivityLogAction.userRemoveDeviceByAdmin,
             userId: 'user-id',
             createdBy: 'admin-id',
-            metadata: {
-                deviceOwnershipId: ownership.id,
-                deviceId: ownership.device.id,
-                actorUserId: 'admin-id',
-                timestamp: ownership.updatedAt,
-                sessionCount: ownership._count.sessions,
-            },
+            metadata: targetMetadata,
         });
     });
 });

@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { validateEmail } from '@common/request/validations/request.custom-email.validation';
 
 describe('validateEmail', () => {

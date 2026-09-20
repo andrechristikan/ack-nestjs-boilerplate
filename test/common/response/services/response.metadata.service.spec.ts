@@ -1,8 +1,8 @@
-import { createMock } from '@golevelup/ts-vitest';
 import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
@@ -16,16 +16,13 @@ import { ResponseMetadataService } from '@common/response/services/response.meta
 import type { Response } from 'express';
 
 describe('ResponseMetadataService', () => {
-    const requestStoreService = createMock<Pick<RequestStoreService, 'get'>>();
-    const configService: Pick<ConfigService, 'get'> = {
-        get: vi.fn(),
-    };
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const requestStoreGet = vi.mocked(requestStoreService.get);
     const configGet = vi.mocked(configService.get);
-    const helperDateService =
-        createMock<
-            Pick<HelperDateService, 'create' | 'getTimestamp' | 'getZone'>
-        >();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
 
     let service: ResponseMetadataService;
 
@@ -88,8 +85,8 @@ describe('ResponseMetadataService', () => {
             requestId: 'request-id',
             correlationId: 'correlation-id',
         };
-        const setHeader = vi.fn<Response['setHeader']>();
-        const response = createMock<Response>({ setHeader });
+        const response = mock<Response>();
+        const setHeader = vi.mocked(response.setHeader);
 
         service.setHeaders(response, metadata);
 

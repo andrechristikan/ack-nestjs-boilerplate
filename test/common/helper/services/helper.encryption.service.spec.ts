@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { HelperEncryptionSecretInvalidException } from '@common/helper/exceptions/helper.encryption-secret-invalid.exception';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';

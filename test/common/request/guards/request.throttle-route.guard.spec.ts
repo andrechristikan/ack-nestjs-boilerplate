@@ -1,9 +1,10 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
-import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { RequestThrottleOptionsMetaKey } from '@common/request/constants/request.constant';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
@@ -15,34 +16,29 @@ import type { Response } from 'express';
 
 describe('RequestThrottleRouteGuard', () => {
     const policy = { ttlInMs: 1_000, limit: 5, blockDurationInMs: 30_000 };
-    const reflector = createMock<Pick<Reflector, 'get'>>();
-    const configService: Pick<ConfigService, 'get'> = { get: vi.fn() };
-    const configGet = vi.mocked(configService.get);
-    const requestUtil =
-        createMock<Pick<RequestUtil, 'resolveThrottleTrackerIp'>>();
-    const requestThrottleService =
-        createMock<Pick<RequestThrottleService, 'evaluate'>>();
-    const request = createMock<IRequestApp>();
-    const response = createMock<Response>();
+    const reflector: MockProxy<Reflector> = mock<Reflector>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const requestUtil: MockProxy<RequestUtil> = mock<RequestUtil>();
+    const requestThrottleService: MockProxy<RequestThrottleService> =
+        mock<RequestThrottleService>();
+    const request: MockProxy<IRequestApp> = mock<IRequestApp>();
+    const response: MockProxy<Response> = mock<Response>();
+    const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
+    const httpContext: MockProxy<ReturnType<ExecutionContext['switchToHttp']>> =
+        mock<ReturnType<ExecutionContext['switchToHttp']>>();
     class UserController {}
     function login() {}
-    let context: ExecutionContext;
-
     let guard: RequestThrottleRouteGuard;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        context = createMock<ExecutionContext>({
-            getType: () => 'http',
-            getHandler: () => login,
-            getClass: () => UserController,
-            switchToHttp: () =>
-                createMock<ReturnType<ExecutionContext['switchToHttp']>>({
-                    getRequest: () => request,
-                    getResponse: () => response,
-                }),
-        });
-        configGet.mockReturnValue({
+        context.getType.mockReturnValue('http');
+        context.getHandler.mockReturnValue(login);
+        context.getClass.mockReturnValue(UserController);
+        context.switchToHttp.mockReturnValue(httpContext);
+        httpContext.getRequest.mockReturnValue(request);
+        httpContext.getResponse.mockReturnValue(response);
+        vi.mocked(configService.get).mockReturnValue({
             [EnumRequestThrottleRoute.strict]: policy,
             [EnumRequestThrottleRoute.moderate]: policy,
             [EnumRequestThrottleRoute.relaxed]: policy,

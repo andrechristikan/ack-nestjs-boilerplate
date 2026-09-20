@@ -1,5 +1,7 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import {
     EnumPolicyAction,
@@ -86,20 +88,37 @@ describe('PolicyDomain', () => {
             action: [EnumPolicyAction.read, EnumPolicyAction.update],
         },
     ];
-    const policyRepository = createMock<PolicyRepository>();
-    const policyAbilityFactory = new PolicyAbilityFactory();
-    const roleDomain = createMock<RoleDomain>();
-    const activityLogDomain = createMock<ActivityLogDomain>();
+    const policyRepository: MockProxy<PolicyRepository> =
+        mock<PolicyRepository>();
+    const policyAbilityFactory: MockProxy<PolicyAbilityFactory> =
+        mock<PolicyAbilityFactory>();
+    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
 
     let service: PolicyDomain;
 
     beforeEach(async () => {
-        service = new PolicyDomain(
-            policyAbilityFactory,
-            policyRepository,
-            roleDomain,
-            activityLogDomain
+        vi.resetAllMocks();
+        policyAbilityFactory.createForUser.mockReturnValue(
+            mock<ReturnType<PolicyAbilityFactory['createForUser']>>()
         );
+        policyAbilityFactory.handlerPolicies.mockReturnValue(true);
+
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                PolicyDomain,
+                {
+                    provide: PolicyAbilityFactory,
+                    useValue: policyAbilityFactory,
+                },
+                { provide: PolicyRepository, useValue: policyRepository },
+                { provide: RoleDomain, useValue: roleDomain },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+            ],
+        }).compile();
+
+        service = moduleRef.get(PolicyDomain);
     });
 
     it('rejects a request without an authenticated user', () => {
@@ -134,6 +153,7 @@ describe('PolicyDomain', () => {
     });
 
     it('rejects when any required action is absent', () => {
+        policyAbilityFactory.handlerPolicies.mockReturnValue(false);
         expect(() =>
             service.validatePolicyGuard(
                 user,

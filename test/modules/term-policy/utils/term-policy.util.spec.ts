@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
@@ -14,22 +17,38 @@ import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { ConfigService } from '@nestjs/config';
 
 describe('TermPolicyUtil', () => {
-    let configService: ConfigService;
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const helperArrayService: MockProxy<HelperArrayService> =
+        mock<HelperArrayService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
     let util: TermPolicyUtil;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.resetAllMocks();
-        configService = new ConfigService({
-            termPolicy: {
-                uploadContentPath: '/terms/{type}/{version}',
-                contentPublicPath: 'public/{type}/{version}',
-            },
-        });
-        util = new TermPolicyUtil(
-            configService,
-            new HelperArrayService(),
-            new HelperStringService()
+        const config: Record<string, string> = {
+            'termPolicy.uploadContentPath': '/terms/{type}/{version}',
+            'termPolicy.contentPublicPath': 'public/{type}/{version}',
+        };
+        vi.mocked(configService.get).mockImplementation(
+            (key: string) => config[key]
         );
+        helperArrayService.unique.mockImplementation(items => [
+            ...new Set(items),
+        ]);
+        helperStringService.fillPattern.mockImplementation(
+            (pattern: string, values: Record<string, string>) =>
+                pattern.replace(/\{(\w+)\}/g, (_m, k: string) => values[k])
+        );
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                TermPolicyUtil,
+                { provide: ConfigService, useValue: configService },
+                { provide: HelperArrayService, useValue: helperArrayService },
+                { provide: HelperStringService, useValue: helperStringService },
+            ],
+        }).compile();
+        util = moduleRef.get(TermPolicyUtil);
     });
 
     it('rejects duplicate languages', () => {

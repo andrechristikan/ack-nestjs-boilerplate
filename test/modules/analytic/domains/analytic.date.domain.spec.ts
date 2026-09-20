@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
 import { AnalyticInvalidDateRangeException } from '@modules/analytic/exceptions/analytic.invalid-date-range.exception';
 

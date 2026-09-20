@@ -1,14 +1,14 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 
 describe('FileService', () => {
-    const helperStringService = {
-        random: vi.fn<HelperStringService['random']>(),
-    } satisfies Pick<HelperStringService, 'random'>;
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
     let service: FileService;
 
     beforeEach(async () => {

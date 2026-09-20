@@ -1,5 +1,7 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { EnumTermPolicyType } from '@generated/prisma-client';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
@@ -14,25 +16,36 @@ import { UserDomain } from '@modules/user/domains/user.domain';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
 describe('TermPolicyAcceptanceDomain', () => {
-    const termPolicyRepository = createMock<TermPolicyRepository>();
-    const notificationQueue = createMock<NotificationQueue>();
-    const activityLogDomain = createMock<ActivityLogDomain>();
-    const databaseService = createMock<DatabaseService>();
-    const helperDateService = createMock<HelperDateService>();
-    const userDomain = createMock<UserDomain>();
+    const termPolicyRepository: MockProxy<TermPolicyRepository> =
+        mock<TermPolicyRepository>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
 
     let service: TermPolicyAcceptanceDomain;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.resetAllMocks();
-        service = new TermPolicyAcceptanceDomain(
-            termPolicyRepository,
-            notificationQueue,
-            activityLogDomain,
-            databaseService,
-            helperDateService,
-            userDomain
-        );
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                TermPolicyAcceptanceDomain,
+                {
+                    provide: TermPolicyRepository,
+                    useValue: termPolicyRepository,
+                },
+                { provide: NotificationQueue, useValue: notificationQueue },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: DatabaseService, useValue: databaseService },
+                { provide: HelperDateService, useValue: helperDateService },
+                { provide: UserDomain, useValue: userDomain },
+            ],
+        }).compile();
+        service = moduleRef.get(TermPolicyAcceptanceDomain);
     });
 
     it('throws when no authenticated user exists', async () => {
@@ -44,7 +57,7 @@ describe('TermPolicyAcceptanceDomain', () => {
     it('accepts users who accepted both default policies', async () => {
         await expect(
             service.validateTermPolicyGuard(
-                createMock<IUser>({
+                mock<IUser>({
                     termsOfServiceAccepted: true,
                     privacyAccepted: true,
                     cookiesAccepted: false,
@@ -57,7 +70,7 @@ describe('TermPolicyAcceptanceDomain', () => {
     it('rejects users missing a required default policy', async () => {
         await expect(
             service.validateTermPolicyGuard(
-                createMock<IUser>({
+                mock<IUser>({
                     termsOfServiceAccepted: true,
                     privacyAccepted: false,
                     cookiesAccepted: false,
@@ -70,7 +83,7 @@ describe('TermPolicyAcceptanceDomain', () => {
     it('checks only explicitly required policy types', async () => {
         await expect(
             service.validateTermPolicyGuard(
-                createMock<IUser>({
+                mock<IUser>({
                     termsOfServiceAccepted: false,
                     privacyAccepted: false,
                     cookiesAccepted: true,

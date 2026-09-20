@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { EnumHealthStatus } from '@modules/health/enums/health.enum';
 import { HealthUtil } from '@modules/health/utils/health.util';
 

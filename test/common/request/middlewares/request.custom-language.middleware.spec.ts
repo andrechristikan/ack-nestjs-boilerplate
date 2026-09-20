@@ -1,8 +1,9 @@
-import { createMock } from '@golevelup/ts-vitest';
 import { ConfigService } from '@nestjs/config';
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
 import type { Response } from 'express';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { RequestLanguageStoreKey } from '@common/request/constants/request.constant';
@@ -11,20 +12,22 @@ import { RequestCustomLanguageMiddleware } from '@common/request/middlewares/req
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 describe('RequestCustomLanguageMiddleware', () => {
-    const configService: Pick<ConfigService, 'get'> = { get: vi.fn() };
-    const configGet = vi.mocked(configService.get);
-    const helperArrayService = new HelperArrayService();
-    const requestStoreService: Pick<RequestStoreService, 'set'> = {
-        set: vi.fn(),
-    };
-    const requestStoreSet = vi.mocked(requestStoreService.set);
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const helperArrayService: MockProxy<HelperArrayService> =
+        mock<HelperArrayService>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const response: MockProxy<Response> = mock<Response>();
     const next = vi.fn<() => void>();
     let middleware: RequestCustomLanguageMiddleware;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockImplementation(key =>
+        vi.mocked(configService.get).mockImplementation(key =>
             key === 'message.availableLanguage' ? ['en'] : 'en'
+        );
+        helperArrayService.intersection.mockImplementation(
+            (a: unknown[], b: unknown[]) => a.filter(item => b.includes(item))
         );
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
@@ -42,13 +45,13 @@ describe('RequestCustomLanguageMiddleware', () => {
         ['fr', 'en'],
         [undefined, 'en'],
     ])('resolves header %s to %s', async (header, expected) => {
-        const request = createMock<IRequestApp>({
+        const request: MockProxy<IRequestApp> = mock<IRequestApp>({
             headers: header ? { 'x-custom-lang': header } : {},
         });
-        await middleware.use(request, createMock<Response>(), next);
+        await middleware.use(request, response, next);
 
         expect(request.headers['x-custom-lang']).toBe(expected);
-        expect(requestStoreSet).toHaveBeenCalledWith(
+        expect(requestStoreService.set).toHaveBeenCalledWith(
             RequestLanguageStoreKey,
             expected
         );

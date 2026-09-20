@@ -1,7 +1,8 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
 import type { Response } from 'express';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import {
     RequestCorrelationIdStoreKey,
@@ -18,10 +19,9 @@ vi.mock(import('uuid'), () => ({
 }));
 
 describe('RequestRequestIdMiddleware', () => {
-    const requestStoreService: Pick<RequestStoreService, 'set'> = {
-        set: vi.fn(),
-    };
-    const requestStoreSet = vi.mocked(requestStoreService.set);
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const response: MockProxy<Response> = mock<Response>();
     const next = vi.fn<() => void>();
     let middleware: RequestRequestIdMiddleware;
 
@@ -38,19 +38,19 @@ describe('RequestRequestIdMiddleware', () => {
     });
 
     it('generates a request id and preserves an incoming correlation id', () => {
-        const request = createMock<IRequestApp>({
+        const request: MockProxy<IRequestApp> = mock<IRequestApp>({
             headers: { 'x-correlation-id': 'incoming-correlation-id' },
         });
 
-        middleware.use(request, createMock<Response>(), next);
+        middleware.use(request, response, next);
 
         expect(request.id).toBe('generated-request-id');
         expect(request.correlationId).toBe('incoming-correlation-id');
-        expect(requestStoreSet).toHaveBeenCalledWith(
+        expect(requestStoreService.set).toHaveBeenCalledWith(
             RequestIdStoreKey,
             'generated-request-id'
         );
-        expect(requestStoreSet).toHaveBeenCalledWith(
+        expect(requestStoreService.set).toHaveBeenCalledWith(
             RequestCorrelationIdStoreKey,
             'incoming-correlation-id'
         );
@@ -59,9 +59,11 @@ describe('RequestRequestIdMiddleware', () => {
 
     it('generates a correlation id when the incoming header is absent', () => {
         uuidState.values = ['generated-request-id', 'generated-correlation-id'];
-        const request = createMock<IRequestApp>({ headers: {} });
+        const request: MockProxy<IRequestApp> = mock<IRequestApp>({
+            headers: {},
+        });
 
-        middleware.use(request, createMock<Response>(), next);
+        middleware.use(request, response, next);
 
         expect(request.correlationId).toBe('generated-correlation-id');
         expect(request.headers['x-correlation-id']).toBe(

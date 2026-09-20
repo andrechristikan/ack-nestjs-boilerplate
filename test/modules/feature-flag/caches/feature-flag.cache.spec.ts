@@ -3,26 +3,18 @@ import type { IFeatureFlagWithTargetUsers } from '@modules/feature-flag/interfac
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
 import { ConfigService } from '@nestjs/config';
-import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import type { Cache } from 'cache-manager';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 describe('FeatureFlagCache', () => {
-    const get = vi.fn<(key: string) => Promise<unknown>>();
-    const set =
-        vi.fn<
-            (key: string, value: unknown, ttl?: number) => Promise<unknown>
-        >();
-    const del = vi.fn<(key: string) => Promise<boolean>>();
-    const cacheManager = { get, set, del };
-    const featureFlagRepository = {
-        findOneByKey: vi.fn<FeatureFlagRepository['findOneByKey']>(),
-    } satisfies Pick<FeatureFlagRepository, 'findOneByKey'>;
-    const configService = new ConfigService({
-        featureFlag: {
-            keyPattern: 'feature-flag:{key}',
-            cacheTtlInMs: 60000,
-        },
-    });
+    const cacheManager: MockProxy<Cache> = mock<Cache>();
+    const featureFlagRepository: MockProxy<FeatureFlagRepository> =
+        mock<FeatureFlagRepository>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configGet = vi.mocked(configService.get);
     const featureFlag: IFeatureFlagWithTargetUsers = {
         id: 'flag-id',
         key: 'new-home',
@@ -41,6 +33,13 @@ describe('FeatureFlagCache', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockImplementation(
+            (key: string) =>
+                ({
+                    'featureFlag.keyPattern': 'feature-flag:{key}',
+                    'featureFlag.cacheTtlInMs': 60000,
+                })[key]
+        );
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 FeatureFlagCache,
@@ -56,7 +55,7 @@ describe('FeatureFlagCache', () => {
     });
 
     it('returns a cached flag without loading the repository', async () => {
-        get.mockResolvedValue(featureFlag);
+        cacheManager.get.mockResolvedValue(featureFlag);
 
         await expect(service.getByKeyAndCache('new-home')).resolves.toBe(
             featureFlag
@@ -65,13 +64,13 @@ describe('FeatureFlagCache', () => {
     });
 
     it('loads and caches a flag when the cache is empty', async () => {
-        get.mockResolvedValue(null);
+        cacheManager.get.mockResolvedValue(null);
         featureFlagRepository.findOneByKey.mockResolvedValue(featureFlag);
 
         await expect(service.getByKeyAndCache('new-home')).resolves.toBe(
             featureFlag
         );
-        expect(set).toHaveBeenCalledWith(
+        expect(cacheManager.set).toHaveBeenCalledWith(
             'feature-flag:new-home',
             featureFlag,
             60000
@@ -79,7 +78,7 @@ describe('FeatureFlagCache', () => {
     });
 
     it('treats a cache read failure as a cache miss', async () => {
-        get.mockRejectedValue(new Error('cache unavailable'));
+        cacheManager.get.mockRejectedValue(new Error('cache unavailable'));
         featureFlagRepository.findOneByKey.mockResolvedValue(null);
 
         await expect(service.getByKeyAndCache('new-home')).resolves.toBeNull();

@@ -1,10 +1,15 @@
 import { ConfigService } from '@nestjs/config';
-import { describe, expect, it } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { WorkspaceQueueFactory } from '@modules/workspace/factories/workspace.queue.factory';
 
 describe('WorkspaceQueueFactory', () => {
-    const configService = new ConfigService({
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configGet = vi.mocked(configService.get);
+    const config: Record<string, number> = {
         'queue.job.attempts': 4,
         'queue.job.emailBackoffDelayInMs': 111,
         'queue.job.pushBackoffDelayInMs': 222,
@@ -12,11 +17,24 @@ describe('WorkspaceQueueFactory', () => {
         'queue.job.workspaceBackoffDelayInMs': 444,
         'queue.job.removeOnCompleteAgeInSeconds': 555,
         'queue.job.removeOnFailAgeInSeconds': 666,
+    };
+    let factory: WorkspaceQueueFactory;
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+        configGet.mockImplementation((key: string) => config[key]);
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                WorkspaceQueueFactory,
+                { provide: ConfigService, useValue: configService },
+            ],
+        }).compile();
+
+        factory = module.get(WorkspaceQueueFactory);
     });
 
     it('builds default job options from the queue config with the workspace backoff delay', () => {
-        const factory = new WorkspaceQueueFactory(configService);
-
         expect(factory.createRegisterQueueOptions()).toEqual({
             defaultJobOptions: {
                 attempts: 4,

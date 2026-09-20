@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -8,27 +9,22 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.util';
 
 describe('ApiKeyCredentialUtil', () => {
-    const helperStringService = {
-        random: vi.fn<HelperStringService['random']>(),
-    } satisfies Pick<HelperStringService, 'random'>;
-    const helperHashService = {
-        sha256Hash: vi.fn<HelperHashService['sha256Hash']>(),
-        sha256Compare: vi.fn<HelperHashService['sha256Compare']>(),
-    } satisfies Pick<HelperHashService, 'sha256Hash' | 'sha256Compare'>;
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configGet = vi.mocked(configService.get);
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
 
     let service: ApiKeyCredentialUtil;
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockReturnValue(EnumAppEnvironment.production);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 ApiKeyCredentialUtil,
-                {
-                    provide: ConfigService,
-                    useValue: new ConfigService({
-                        'app.env': EnumAppEnvironment.production,
-                    }),
-                },
+                { provide: ConfigService, useValue: configService },
                 { provide: HelperStringService, useValue: helperStringService },
                 { provide: HelperHashService, useValue: helperHashService },
             ],

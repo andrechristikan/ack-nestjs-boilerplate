@@ -1,5 +1,7 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
@@ -25,27 +27,42 @@ import { ProjectUtil } from '@modules/project/utils/project.util';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
 
 describe('ProjectMemberDomain', () => {
-    const projectMemberRepository = createMock<ProjectMemberRepository>();
-    const projectUtil = createMock<ProjectUtil>();
-    const activityLogDomain = createMock<ActivityLogDomain>();
-    const requestStoreService = createMock<RequestStoreService>();
+    const projectMemberRepository: MockProxy<ProjectMemberRepository> =
+        mock<ProjectMemberRepository>();
+    const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
 
-    const project = createMock<Project>({
+    const project = mock<Project>({
         id: 'project-id',
         workspaceId: 'workspace-id',
     });
 
     let domain: ProjectMemberDomain;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.resetAllMocks();
         requestStoreService.get.mockReturnValue(null);
-        domain = new ProjectMemberDomain(
-            projectMemberRepository,
-            projectUtil,
-            activityLogDomain,
-            requestStoreService
-        );
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                ProjectMemberDomain,
+                {
+                    provide: ProjectMemberRepository,
+                    useValue: projectMemberRepository,
+                },
+                { provide: ProjectUtil, useValue: projectUtil },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                {
+                    provide: RequestStoreService,
+                    useValue: requestStoreService,
+                },
+            ],
+        }).compile();
+
+        domain = module.get(ProjectMemberDomain);
     });
 
     function setWorkspaceOwner(isOwner: boolean): void {
@@ -78,7 +95,7 @@ describe('ProjectMemberDomain', () => {
         });
 
         it('returns a valid project member', async () => {
-            const member = createMock<ProjectMember>({ id: 'member-id' });
+            const member = mock<ProjectMember>({ id: 'member-id' });
             projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
                 member
             );
@@ -102,7 +119,7 @@ describe('ProjectMemberDomain', () => {
         });
 
         it('lets a workspace owner bypass the project role check', async () => {
-            const workspaceMember = createMock<WorkspaceMember>({
+            const workspaceMember = mock<WorkspaceMember>({
                 userId: 'owner-id',
             });
             projectUtil.isWorkspaceOwner.mockReturnValue(true);
@@ -119,7 +136,7 @@ describe('ProjectMemberDomain', () => {
         });
 
         it('rejects a workspace member with no matching or allowed project role', async () => {
-            const workspaceMember = createMock<WorkspaceMember>({
+            const workspaceMember = mock<WorkspaceMember>({
                 userId: 'user-id',
             });
             projectUtil.isWorkspaceOwner.mockReturnValue(false);
@@ -134,12 +151,12 @@ describe('ProjectMemberDomain', () => {
         });
 
         it('returns false for a non-owner project member with an allowed role', async () => {
-            const workspaceMember = createMock<WorkspaceMember>({
+            const workspaceMember = mock<WorkspaceMember>({
                 userId: 'user-id',
             });
             projectUtil.isWorkspaceOwner.mockReturnValue(false);
             projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
-                createMock<ProjectMember>({
+                mock<ProjectMember>({
                     role: EnumProjectMemberRole.member,
                 })
             );
@@ -154,14 +171,14 @@ describe('ProjectMemberDomain', () => {
     describe('assignMember', () => {
         it('assigns a member and stages activity when the actor is a workspace owner', async () => {
             setWorkspaceOwner(true);
-            const targetMember = createMock<WorkspaceMember>({
+            const targetMember = mock<WorkspaceMember>({
                 userId: 'target-id',
                 workspaceId: 'workspace-id',
             });
             projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
                 null
             );
-            const created = createMock<IProjectMember>({
+            const created = mock<IProjectMember>({
                 id: 'new-member-id',
                 user: {
                     id: 'target-id',
@@ -203,7 +220,7 @@ describe('ProjectMemberDomain', () => {
 
         it('rejects a non-owner assigning an admin peer', async () => {
             setWorkspaceOwner(false);
-            const targetMember = createMock<WorkspaceMember>({
+            const targetMember = mock<WorkspaceMember>({
                 userId: 'target-id',
                 workspaceId: 'workspace-id',
             });
@@ -236,12 +253,12 @@ describe('ProjectMemberDomain', () => {
 
         it('rejects assigning a member already assigned to the project', async () => {
             setWorkspaceOwner(true);
-            const targetMember = createMock<WorkspaceMember>({
+            const targetMember = mock<WorkspaceMember>({
                 userId: 'target-id',
                 workspaceId: 'workspace-id',
             });
             projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
-                createMock<ProjectMember>({ id: 'existing-id' })
+                mock<ProjectMember>({ id: 'existing-id' })
             );
 
             await expect(
@@ -258,7 +275,7 @@ describe('ProjectMemberDomain', () => {
     describe('updateMemberRole', () => {
         it('updates the role and stages activity', async () => {
             setWorkspaceOwner(true);
-            const targetMember = createMock<ProjectMember>({
+            const targetMember = mock<ProjectMember>({
                 id: 'target-member-id',
                 userId: 'target-user-id',
                 role: EnumProjectMemberRole.member,
@@ -302,7 +319,7 @@ describe('ProjectMemberDomain', () => {
 
         it('rejects a non-owner changing an existing admin peer role', async () => {
             setWorkspaceOwner(false);
-            const targetMember = createMock<ProjectMember>({
+            const targetMember = mock<ProjectMember>({
                 id: 'target-member-id',
                 role: EnumProjectMemberRole.admin,
             });
@@ -322,7 +339,7 @@ describe('ProjectMemberDomain', () => {
 
         it('rejects a non-owner promoting a peer to admin', async () => {
             setWorkspaceOwner(false);
-            const targetMember = createMock<ProjectMember>({
+            const targetMember = mock<ProjectMember>({
                 id: 'target-member-id',
                 role: EnumProjectMemberRole.member,
             });
@@ -344,7 +361,7 @@ describe('ProjectMemberDomain', () => {
     describe('removeMember', () => {
         it('removes the member and stages activity', async () => {
             setWorkspaceOwner(true);
-            const targetMember = createMock<ProjectMember>({
+            const targetMember = mock<ProjectMember>({
                 id: 'target-member-id',
                 userId: 'target-user-id',
                 role: EnumProjectMemberRole.admin,
@@ -376,7 +393,7 @@ describe('ProjectMemberDomain', () => {
         });
 
         it('rejects removing oneself, directing to leaveProject instead', async () => {
-            const targetMember = createMock<ProjectMember>({
+            const targetMember = mock<ProjectMember>({
                 id: 'target-member-id',
                 userId: 'actor-id',
                 role: EnumProjectMemberRole.member,
@@ -393,7 +410,7 @@ describe('ProjectMemberDomain', () => {
 
         it('rejects a non-owner removing an admin peer', async () => {
             setWorkspaceOwner(false);
-            const targetMember = createMock<ProjectMember>({
+            const targetMember = mock<ProjectMember>({
                 id: 'target-member-id',
                 userId: 'target-user-id',
                 role: EnumProjectMemberRole.admin,
@@ -410,7 +427,7 @@ describe('ProjectMemberDomain', () => {
 
     describe('leaveProject', () => {
         it('removes the member and stages the leave activity', async () => {
-            const member = createMock<ProjectMember>({
+            const member = mock<ProjectMember>({
                 id: 'member-id',
                 userId: 'user-id',
             });

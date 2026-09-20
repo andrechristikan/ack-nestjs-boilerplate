@@ -1,5 +1,7 @@
 import { ConfigService } from '@nestjs/config';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import type { AuthSocialDomain } from '@modules/auth/domains/auth.social.domain';
 
@@ -19,21 +21,30 @@ vi.mock('verify-apple-id-token', () => ({
 }));
 
 describe('AuthSocialDomain', () => {
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configGet = vi.mocked(configService.get);
+    const config: Record<string, string> = {
+        'auth.apple.clientId': 'apple-client',
+        'auth.apple.signInClientId': 'apple-sign-in-client',
+        'auth.google.clientId': 'google-client',
+        'auth.google.clientSecret': 'google-secret',
+    };
+
     let service: AuthSocialDomain;
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockImplementation((key: string) => config[key]);
         vi.resetModules();
         const { AuthSocialDomain: AuthSocialDomainClass } =
             await import('@modules/auth/domains/auth.social.domain');
-        service = new AuthSocialDomainClass(
-            new ConfigService({
-                'auth.apple.clientId': 'apple-client',
-                'auth.apple.signInClientId': 'apple-sign-in-client',
-                'auth.google.clientId': 'google-client',
-                'auth.google.clientSecret': 'google-secret',
-            })
-        );
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                AuthSocialDomainClass,
+                { provide: ConfigService, useValue: configService },
+            ],
+        }).compile();
+        service = moduleRef.get(AuthSocialDomainClass);
     });
 
     it('returns a Google payload with a verified email', async () => {

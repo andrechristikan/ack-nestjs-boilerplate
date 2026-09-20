@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import {
     EnumActivityLogAction,
     EnumUserLoginWith,
@@ -9,18 +7,32 @@ import {
 import type { IUserTwoFactor } from '@modules/user/interfaces/user.interface';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { ConfigService } from '@nestjs/config';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 describe('UserUtil', () => {
-    let configService: ConfigService;
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
     let util: UserUtil;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.resetAllMocks();
-        configService = new ConfigService({
-            user: { usernamePattern: /^[a-z0-9-]+$/ },
-            message: { availableLanguage: ['en'] },
-        });
-        util = new UserUtil(configService);
+        vi.mocked(configService.get).mockImplementation((key: string) =>
+            key === 'user.usernamePattern'
+                ? /^[a-z0-9-]+$/
+                : key === 'message.availableLanguage'
+                  ? ['en']
+                  : undefined
+        );
+
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                UserUtil,
+                { provide: ConfigService, useValue: configService },
+            ],
+        }).compile();
+        util = moduleRef.get(UserUtil);
     });
 
     it('rejects usernames outside the configured pattern', () => {

@@ -1,5 +1,6 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
@@ -14,9 +15,8 @@ import {
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 
 describe('AuthUtil', () => {
-    const helperStringService = {
-        random: vi.fn<HelperStringService['random']>(),
-    } satisfies Pick<HelperStringService, 'random'>;
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
     const now = new Date('2026-01-01T00:00:00.000Z');
     const user = {
         id: 'user-id',

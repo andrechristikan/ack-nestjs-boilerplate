@@ -1,6 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { Readable } from 'stream';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FileExtensionInvalidException } from '@common/file/exceptions/file.extension-invalid.exception';
 import { FileRequiredException } from '@common/file/exceptions/file.required.exception';

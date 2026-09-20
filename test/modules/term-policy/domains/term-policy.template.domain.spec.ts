@@ -1,6 +1,8 @@
-import { createMock } from '@golevelup/ts-vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import { readFileSync } from 'fs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
@@ -14,14 +16,21 @@ vi.mock(import('fs'), () => ({
 }));
 
 describe('TermPolicyTemplateDomain', () => {
-    const termPolicyUtil = createMock<TermPolicyUtil>();
-    const awsS3Service = createMock<AwsS3Service>();
+    const termPolicyUtil: MockProxy<TermPolicyUtil> = mock<TermPolicyUtil>();
+    const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
 
     let service: TermPolicyTemplateDomain;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        service = new TermPolicyTemplateDomain(termPolicyUtil, awsS3Service);
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                TermPolicyTemplateDomain,
+                { provide: TermPolicyUtil, useValue: termPolicyUtil },
+                { provide: AwsS3Service, useValue: awsS3Service },
+            ],
+        }).compile();
+        service = moduleRef.get(TermPolicyTemplateDomain);
     });
 
     it('imports the privacy template under its generated storage key', async () => {

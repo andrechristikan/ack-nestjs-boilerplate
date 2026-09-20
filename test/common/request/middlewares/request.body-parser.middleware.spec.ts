@@ -1,8 +1,9 @@
-import { createMock } from '@golevelup/ts-vitest';
 import { ConfigService } from '@nestjs/config';
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
 import type { Request, Response } from 'express';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { RequestBodyParserMiddleware } from '@common/request/middlewares/request.body-parser.middleware';
 
@@ -18,16 +19,15 @@ vi.mock('body-parser', () => ({
 }));
 
 describe('RequestBodyParserMiddleware', () => {
-    const configService: Pick<ConfigService, 'get'> = { get: vi.fn() };
-    const configGet = vi.mocked(configService.get);
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const next = vi.fn<() => void>();
-    const response = createMock<Response>();
+    const response: MockProxy<Response> = mock<Response>();
 
     let middleware: RequestBodyParserMiddleware;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockImplementation(key => {
+        vi.mocked(configService.get).mockImplementation(key => {
             const values: Record<string, number> = {
                 'request.body.json.limitInBytes': 1_000,
                 'request.body.text.limitInBytes': 2_000,
@@ -80,9 +80,8 @@ describe('RequestBodyParserMiddleware', () => {
     ] as const)(
         'selects the %s parser with configured limits',
         (contentType, parserName, options) => {
-            const request = createMock<Request>({
-                get: vi.fn(() => contentType),
-            });
+            const request: MockProxy<Request> = mock<Request>();
+            request.get.mockReturnValue(contentType as never);
 
             middleware.use(request, response, next);
 
@@ -92,9 +91,8 @@ describe('RequestBodyParserMiddleware', () => {
     );
 
     it('leaves multipart content for the upload middleware', () => {
-        const request = createMock<Request>({
-            get: vi.fn(() => 'multipart/form-data'),
-        });
+        const request: MockProxy<Request> = mock<Request>();
+        request.get.mockReturnValue('multipart/form-data' as never);
 
         middleware.use(request, response, next);
 

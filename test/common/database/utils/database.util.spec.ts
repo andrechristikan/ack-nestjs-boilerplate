@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import { v4, validate, version } from 'uuid';
 
 import { DatabaseUtil } from '@common/database/utils/database.util';

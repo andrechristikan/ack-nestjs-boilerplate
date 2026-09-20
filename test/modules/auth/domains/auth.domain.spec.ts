@@ -1,5 +1,6 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { EnumUserLoginFrom, EnumUserLoginWith } from '@generated/prisma-client';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
@@ -16,13 +17,9 @@ import { SessionForbiddenException } from '@modules/session/exceptions/session.f
 import { SessionCache } from '@modules/session/caches/session.cache';
 
 describe('AuthDomain', () => {
-    const authSocialService = {
-        verifyApple: vi.fn<AuthSocialDomain['verifyApple']>(),
-        verifyGoogle: vi.fn<AuthSocialDomain['verifyGoogle']>(),
-    } satisfies Pick<AuthSocialDomain, 'verifyApple' | 'verifyGoogle'>;
-    const sessionCacheService = {
-        getLogin: vi.fn<SessionCache['getLogin']>(),
-    } satisfies Pick<SessionCache, 'getLogin'>;
+    const authSocialDomain: MockProxy<AuthSocialDomain> =
+        mock<AuthSocialDomain>();
+    const sessionCache: MockProxy<SessionCache> = mock<SessionCache>();
 
     const accessPayload = {
         userId: 'user-id',
@@ -56,8 +53,8 @@ describe('AuthDomain', () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthDomain,
-                { provide: AuthSocialDomain, useValue: authSocialService },
-                { provide: SessionCache, useValue: sessionCacheService },
+                { provide: AuthSocialDomain, useValue: authSocialDomain },
+                { provide: SessionCache, useValue: sessionCache },
             ],
         }).compile();
 
@@ -84,7 +81,7 @@ describe('AuthDomain', () => {
                     ? AuthJwtAccessTokenInvalidException
                     : AuthJwtRefreshTokenInvalidException
             );
-            expect(sessionCacheService.getLogin).not.toHaveBeenCalled();
+            expect(sessionCache.getLogin).not.toHaveBeenCalled();
         });
 
         it.each([
@@ -99,7 +96,7 @@ describe('AuthDomain', () => {
                 },
             ],
         ])('rejects an access token with a %s', async (_case, session) => {
-            sessionCacheService.getLogin.mockResolvedValue(session);
+            sessionCache.getLogin.mockResolvedValue(session);
 
             await expect(
                 service.validateJwtAccessStrategy(accessPayload)
@@ -107,7 +104,7 @@ describe('AuthDomain', () => {
         });
 
         it('returns an access payload bound to the current session jti', async () => {
-            sessionCacheService.getLogin.mockResolvedValue({
+            sessionCache.getLogin.mockResolvedValue({
                 userId: 'user-id',
                 sessionId: 'session-id',
                 expiredAt: new Date('2026-02-01T00:00:00.000Z'),
@@ -117,14 +114,14 @@ describe('AuthDomain', () => {
             await expect(
                 service.validateJwtAccessStrategy(accessPayload)
             ).resolves.toBe(accessPayload);
-            expect(sessionCacheService.getLogin).toHaveBeenCalledWith(
+            expect(sessionCache.getLogin).toHaveBeenCalledWith(
                 'user-id',
                 'session-id'
             );
         });
 
         it('returns a refreshInTx payload bound to the current session jti', async () => {
-            sessionCacheService.getLogin.mockResolvedValue({
+            sessionCache.getLogin.mockResolvedValue({
                 userId: 'user-id',
                 sessionId: 'session-id',
                 expiredAt: new Date('2026-02-01T00:00:00.000Z'),
@@ -171,7 +168,7 @@ describe('AuthDomain', () => {
 
     describe('social validation', () => {
         it('normalizes a verified Apple identity payload', async () => {
-            authSocialService.verifyApple.mockResolvedValue({
+            authSocialDomain.verifyApple.mockResolvedValue({
                 iss: 'https://appleid.apple.com',
                 aud: 'client-id',
                 exp: 1,
@@ -192,7 +189,7 @@ describe('AuthDomain', () => {
         });
 
         it('normalizes missing optional Google fields to safe defaults', async () => {
-            authSocialService.verifyGoogle.mockResolvedValue({
+            authSocialDomain.verifyGoogle.mockResolvedValue({
                 iss: 'accounts.google.com',
                 aud: 'client-id',
                 exp: 1,
@@ -211,7 +208,7 @@ describe('AuthDomain', () => {
         ] as const)(
             'maps %s provider failures to the provider-specific exception',
             async (provider, method, collaborator) => {
-                authSocialService[collaborator].mockRejectedValue(
+                authSocialDomain[collaborator].mockRejectedValue(
                     new Error('provider rejected token')
                 );
 

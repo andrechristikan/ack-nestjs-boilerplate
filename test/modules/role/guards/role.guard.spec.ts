@@ -1,8 +1,9 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
@@ -18,12 +19,11 @@ import { RoleDomain } from '@modules/role/domains/role.domain';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 
 describe('RoleGuard', () => {
-    const reflector = createMock<Pick<Reflector, 'get'>>();
-    const roleService = createMock<Pick<RoleDomain, 'validateRoleGuard'>>();
-    const requestStoreGet = vi.fn((_key: string): unknown => null);
-    const requestStoreService = createMock<RequestStoreService>({
-        get: <T>(key: string) => requestStoreGet(key) as T | null,
-    });
+    const reflector: MockProxy<Reflector> = mock<Reflector>();
+    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const requestStoreGet = vi.mocked(requestStoreService.get);
     const policies = [
         {
             id: 'policy-id',
@@ -45,7 +45,7 @@ describe('RoleGuard', () => {
             providers: [
                 RoleGuard,
                 { provide: Reflector, useValue: reflector },
-                { provide: RoleDomain, useValue: roleService },
+                { provide: RoleDomain, useValue: roleDomain },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
@@ -54,13 +54,12 @@ describe('RoleGuard', () => {
 
     it('delegates required roles and stores the returned policies', async () => {
         const handler = () => undefined;
-        const context = createMock<ExecutionContext>({
-            getHandler: () => handler,
-        });
+        const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
+        context.getHandler.mockReturnValue(handler);
         const storedUser = { id: 'user-id' };
         reflector.get.mockReturnValue([EnumRoleType.admin]);
         requestStoreGet.mockReturnValue(storedUser);
-        roleService.validateRoleGuard.mockResolvedValue(policies);
+        roleDomain.validateRoleGuard.mockResolvedValue(policies);
 
         await expect(guard.canActivate(context)).resolves.toBe(true);
         expect(reflector.get).toHaveBeenCalledWith(
@@ -68,7 +67,7 @@ describe('RoleGuard', () => {
             handler
         );
         expect(requestStoreGet).toHaveBeenCalledWith(UserStoreKey);
-        expect(roleService.validateRoleGuard).toHaveBeenCalledWith(storedUser, [
+        expect(roleDomain.validateRoleGuard).toHaveBeenCalledWith(storedUser, [
             EnumRoleType.admin,
         ]);
         expect(requestStoreService.set).toHaveBeenCalledWith(
@@ -78,10 +77,10 @@ describe('RoleGuard', () => {
     });
 
     it('does not store policies when role validation rejects', async () => {
-        const context = createMock<ExecutionContext>();
+        const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
         reflector.get.mockReturnValue(undefined);
         requestStoreGet.mockReturnValue(null);
-        roleService.validateRoleGuard.mockRejectedValue(new Error('forbidden'));
+        roleDomain.validateRoleGuard.mockRejectedValue(new Error('forbidden'));
 
         await expect(guard.canActivate(context)).rejects.toThrow('forbidden');
         expect(requestStoreService.set).not.toHaveBeenCalled();

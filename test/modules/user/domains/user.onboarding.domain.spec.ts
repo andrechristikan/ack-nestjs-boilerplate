@@ -1,6 +1,8 @@
-import { createMock } from '@golevelup/ts-vitest';
 import { ConfigService } from '@nestjs/config';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -20,22 +22,20 @@ import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.doma
 import { UserRepository } from '@modules/user/repositories/user.repository';
 
 describe('UserOnboardingDomain', () => {
-    const activityLogUtil = {
-        buildCreateManyUserData:
-            vi.fn<ActivityLogUtil['buildCreateManyUserData']>(),
-    } satisfies Pick<ActivityLogUtil, 'buildCreateManyUserData'>;
-    const databaseUtil = createMock<DatabaseUtil>();
-    const helperDateService = {
-        create: vi.fn<HelperDateService['create']>(),
-    } satisfies Pick<HelperDateService, 'create'>;
-    const helperStringService = createMock<HelperStringService>();
-    const configService = new ConfigService({
+    const activityLogUtil: MockProxy<ActivityLogUtil> = mock<ActivityLogUtil>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
+    const configValues: Record<string, unknown> = {
         'workspace.personalNamePattern': '{username} workspace',
         'workspace.slugPrefix': 'ws',
         'workspace.slugMaxLength': 12,
         'workspace.slugMaxAttempts': 2,
-    });
-    const userRepository = createMock<UserRepository>();
+    };
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const personalContext = {
@@ -49,6 +49,9 @@ describe('UserOnboardingDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        vi.mocked(configService.get).mockImplementation(
+            (key: string) => configValues[key]
+        );
         databaseUtil.createId.mockReturnValue('workspace-id');
         helperStringService.generateSlug
             .mockReturnValueOnce('slug-a')
@@ -64,12 +67,16 @@ describe('UserOnboardingDomain', () => {
             })
         );
 
-        service = new UserOnboardingDomain(
-            userRepository,
-            databaseUtil,
-            helperStringService,
-            configService
-        );
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                UserOnboardingDomain,
+                { provide: UserRepository, useValue: userRepository },
+                { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: HelperStringService, useValue: helperStringService },
+                { provide: ConfigService, useValue: configService },
+            ],
+        }).compile();
+        service = moduleRef.get(UserOnboardingDomain);
     });
 
     it('builds personal workspace contexts with configured names and slug candidates', () => {
@@ -83,12 +90,12 @@ describe('UserOnboardingDomain', () => {
     it('builds sign-up activity logs including the verification-email request and workspace creation', () => {
         const logs = service.buildOnboardingActivities(
             EnumUserCreateMode.signUp,
-            createMock<IUserCreateWithWorkspaceInput>({
+            mock<IUserCreateWithWorkspaceInput>({
                 userId: 'user-id',
                 createdBy: 'user-id',
                 workspaceContext: personalContext,
             }),
-            createMock<IUser>({ createdAt: now })
+            mock<IUser>({ createdAt: now })
         );
 
         expect(logs).toEqual([

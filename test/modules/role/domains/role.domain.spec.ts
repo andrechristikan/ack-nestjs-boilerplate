@@ -1,5 +1,7 @@
-import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import {
     EnumPolicyAction,
@@ -24,33 +26,15 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { createMock } from '@golevelup/ts-vitest';
 
 describe('RoleDomain', () => {
-    const roleRepository = {
-        existsByName: vi.fn<RoleRepository['existsByName']>(),
-        existsById: vi.fn<RoleRepository['existsById']>(),
-        findOneById: vi.fn<RoleRepository['findOneById']>(),
-        create: vi.fn<RoleRepository['create']>(),
-        isUsedById: vi.fn<RoleRepository['isUsedById']>(),
-        delete: vi.fn<RoleRepository['delete']>(),
-    } satisfies Pick<
-        RoleRepository,
-        | 'existsByName'
-        | 'existsById'
-        | 'findOneById'
-        | 'create'
-        | 'isUsedById'
-        | 'delete'
-    >;
-    const roleUtil = {
-        mapActivityLogMetadata: vi.fn<RoleUtil['mapActivityLogMetadata']>(),
-    } satisfies Pick<RoleUtil, 'mapActivityLogMetadata'>;
-    const activityLogDomain = {
-        prepare: vi.fn<ActivityLogDomain['prepare']>(),
-    } satisfies Pick<ActivityLogDomain, 'prepare'>;
-    const databaseUtil = createMock<DatabaseUtil>();
-    const helperDateService = createMock<HelperDateService>();
+    const roleRepository: MockProxy<RoleRepository> = mock<RoleRepository>();
+    const roleUtil: MockProxy<RoleUtil> = mock<RoleUtil>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
     const now = new Date('2026-01-01T00:00:00.000Z');
     const policy = {
         id: 'policy-id',

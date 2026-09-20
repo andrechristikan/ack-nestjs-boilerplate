@@ -1,7 +1,7 @@
-import { createMock } from '@golevelup/ts-vitest';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { Cache } from 'cache-manager';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -9,8 +9,8 @@ import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import { ConfigService } from '@nestjs/config';
 
 describe('AnalyticCache', () => {
-    const cacheManager = createMock<Cache>();
-    const configService = createMock<ConfigService>();
+    const cacheManager: MockProxy<Cache> = mock<Cache>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const helperStringService = new HelperStringService();
     const config = new Map<string, string | number>([
         [
@@ -30,7 +30,9 @@ describe('AnalyticCache', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configService.get.mockImplementation(key => config.get(key));
+        vi.mocked(configService.get).mockImplementation(key =>
+            config.get(key as string)
+        );
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticCache,

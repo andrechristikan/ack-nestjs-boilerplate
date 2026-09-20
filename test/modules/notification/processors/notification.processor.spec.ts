@@ -1,5 +1,7 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { SentryService } from '@common/sentry/services/sentry.service';
@@ -9,11 +11,9 @@ import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 import { createQueueJob } from '@test/support/queue-job.mock';
 
 describe('NotificationProcessor', () => {
-    const service = createMock<NotificationProcessorService>();
-    const processor = new NotificationProcessor(
-        service,
-        createMock<SentryService>()
-    );
+    const service: MockProxy<NotificationProcessorService> =
+        mock<NotificationProcessorService>();
+    const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const cases = [
         [EnumNotificationProcess.newDeviceLogin, service.processNewDeviceLogin],
         [EnumNotificationProcess.welcomeByAdmin, service.processWelcomeByAdmin],
@@ -65,7 +65,21 @@ describe('NotificationProcessor', () => {
         ],
     ] as const;
 
-    beforeEach(() => vi.resetAllMocks());
+    let processor: NotificationProcessor;
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                NotificationProcessor,
+                { provide: NotificationProcessorService, useValue: service },
+                { provide: SentryService, useValue: sentryService },
+            ],
+        }).compile();
+
+        processor = module.get(NotificationProcessor);
+    });
 
     it.each(cases)('dispatches %s jobs', async (name, handler) => {
         const job = createQueueJob<

@@ -1,8 +1,10 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
@@ -14,43 +16,21 @@ import { UserMobileNumberDomain } from '@modules/user/domains/user.mobile-number
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
-import {
-    createDatabaseServiceMock,
-    mockDatabaseServiceTransaction,
-} from '@test/support/database.mock';
 
 describe('UserMobileNumberDomain', () => {
-    const userMobileNumberRepository = {
-        existsMobileNumber:
-            vi.fn<UserMobileNumberRepository['existsMobileNumber']>(),
-        addInTx: vi.fn<UserMobileNumberRepository['addInTx']>(),
-        findOneMobileNumber:
-            vi.fn<UserMobileNumberRepository['findOneMobileNumber']>(),
-        updateInTx: vi.fn<UserMobileNumberRepository['updateInTx']>(),
-        deleteInTx: vi.fn<UserMobileNumberRepository['deleteInTx']>(),
-    } satisfies Pick<
-        UserMobileNumberRepository,
-        | 'existsMobileNumber'
-        | 'addInTx'
-        | 'findOneMobileNumber'
-        | 'updateInTx'
-        | 'deleteInTx'
-    >;
-    const countryService = {
-        getOne: vi.fn<CountryDomain['getOne']>(),
-    } satisfies Pick<CountryDomain, 'getOne'>;
-    const userUtil = {
-        checkMobileNumber: vi.fn<UserUtil['checkMobileNumber']>(),
-    } satisfies Pick<UserUtil, 'checkMobileNumber'>;
-    const requestStoreGet = vi.fn((_key: string): unknown => null);
-    const requestStoreService = {
-        get<T>(key: string): T | null {
-            return requestStoreGet(key) as T | null;
-        },
-    } satisfies Pick<RequestStoreService, 'get'>;
-    const databaseService = createDatabaseServiceMock();
-    const userDomain = createMock<UserDomain>();
-    const activityLogDomain = createMock<ActivityLogDomain>();
+    const userMobileNumberRepository: MockProxy<UserMobileNumberRepository> =
+        mock<UserMobileNumberRepository>();
+    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const databaseService: DeepMockProxy<DatabaseService> =
+        mockDeep<DatabaseService>();
+    const countryDomain: MockProxy<CountryDomain> = mock<CountryDomain>();
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const transactionClient: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const requestLog = {
@@ -90,9 +70,11 @@ describe('UserMobileNumberDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        mockDatabaseServiceTransaction(databaseService);
-        requestStoreGet.mockReturnValue(requestLog);
-        countryService.getOne.mockResolvedValue(country);
+        databaseService.withTransaction.mockImplementation(async callback =>
+            callback(transactionClient)
+        );
+        requestStoreService.get.mockReturnValue(requestLog);
+        countryDomain.getOne.mockResolvedValue(country);
         userUtil.checkMobileNumber.mockReturnValue(true);
         userMobileNumberRepository.existsMobileNumber.mockResolvedValue(false);
         userMobileNumberRepository.addInTx.mockResolvedValue(mobileNumber);
@@ -115,7 +97,7 @@ describe('UserMobileNumberDomain', () => {
                 { provide: UserDomain, useValue: userDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
-                { provide: CountryDomain, useValue: countryService },
+                { provide: CountryDomain, useValue: countryDomain },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],

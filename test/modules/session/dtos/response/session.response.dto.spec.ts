@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 
 describe('SessionResponseSchema', () => {

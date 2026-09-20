@@ -1,4 +1,3 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type {
     CallHandler,
     ExecutionContext,
@@ -8,8 +7,9 @@ import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { firstValueFrom, of } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -19,31 +19,28 @@ import { ResponseMetadataService } from '@common/response/services/response.meta
 import type { Response } from 'express';
 
 describe('ResponseFileInterceptor', () => {
-    const fileService =
-        createMock<Pick<FileService, 'extractMimeFromFilename'>>();
-    const helperDateService =
-        createMock<Pick<HelperDateService, 'create' | 'getTimestamp'>>();
-    const helperStringService = createMock<HelperStringService>();
-    const responseMetadataService =
-        createMock<Pick<ResponseMetadataService, 'create' | 'setHeaders'>>();
-    const configService: Pick<ConfigService, 'get'> = {
-        get: vi.fn(),
-    };
+    const fileService: MockProxy<FileService> = mock<FileService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const responseMetadataService: MockProxy<ResponseMetadataService> =
+        mock<ResponseMetadataService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const configGet = vi.mocked(configService.get);
-    const response = createMock<Response>();
-    let context: ExecutionContext;
+    const response: MockProxy<Response> = mock<Response>();
+    let context: MockProxy<ExecutionContext>;
 
     let interceptor: ResponseFileInterceptor;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        context = createMock<ExecutionContext>({
-            getType: () => 'http',
-            switchToHttp: () =>
-                createMock<ReturnType<ExecutionContext['switchToHttp']>>({
-                    getResponse: () => response,
-                }),
-        });
+        const httpContext =
+            mock<ReturnType<ExecutionContext['switchToHttp']>>();
+        httpContext.getResponse.mockReturnValue(response);
+        context = mock<ExecutionContext>();
+        context.getType.mockReturnValue('http');
+        context.switchToHttp.mockReturnValue(httpContext);
         configGet.mockReturnValue('export-{timestamp}.{extension}');
         helperDateService.create.mockReturnValue(
             new Date('2026-09-09T12:00:00.000Z')
@@ -148,9 +145,8 @@ describe('ResponseFileInterceptor', () => {
     it('passes non-HTTP execution through unchanged', async () => {
         const payload = { data: 'queue-result' };
         const next = { handle: vi.fn(() => of(payload)) } satisfies CallHandler;
-        const rpcContext = createMock<ExecutionContext>({
-            getType: () => 'rpc',
-        });
+        const rpcContext = mock<ExecutionContext>();
+        rpcContext.getType.mockReturnValue('rpc');
 
         await expect(
             firstValueFrom(interceptor.intercept(rpcContext, next))

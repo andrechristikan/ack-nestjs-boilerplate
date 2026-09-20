@@ -1,6 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import { generateSecret, verifySync } from 'otplib';
 
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
@@ -30,30 +31,18 @@ vi.mock('otplib', () => ({
 }));
 
 describe('AuthTwoFactorDomain', () => {
-    const aes256Decrypt = vi.fn<HelperEncryptionService['aes256Decrypt']>(
-        () => 'plain-secret'
-    );
-    const helperEncryptionService = {
-        aes256Encrypt: vi.fn<HelperEncryptionService['aes256Encrypt']>(),
-        aes256Decrypt,
-    } satisfies Pick<
-        HelperEncryptionService,
-        'aes256Encrypt' | 'aes256Decrypt'
-    >;
-    const helperStringService = {
-        randomUppercase: vi.fn<HelperStringService['randomUppercase']>(),
-    } satisfies Pick<HelperStringService, 'randomUppercase'>;
-    const helperHashService = {
-        sha256Hash: vi.fn<HelperHashService['sha256Hash']>(),
-        sha256Compare: vi.fn<HelperHashService['sha256Compare']>(),
-    } satisfies Pick<HelperHashService, 'sha256Hash' | 'sha256Compare'>;
-    const authTwoFactorUtil = {
-        createKeyUri: vi.fn<AuthTwoFactorUtil['createKeyUri']>(),
-    } satisfies Pick<AuthTwoFactorUtil, 'createKeyUri'>;
-    const sentryService = {
-        captureException: vi.fn<SentryService['captureException']>(),
-    } satisfies Pick<SentryService, 'captureException'>;
-    const configService = new ConfigService({
+    const helperEncryptionService: MockProxy<HelperEncryptionService> =
+        mock<HelperEncryptionService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
+    const authTwoFactorUtil: MockProxy<AuthTwoFactorUtil> =
+        mock<AuthTwoFactorUtil>();
+    const sentryService: MockProxy<SentryService> = mock<SentryService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configGet = vi.mocked(configService.get);
+    const config: Record<string, unknown> = {
         'auth.twoFactor.strategy': 'totp',
         'auth.twoFactor.algorithm': 'sha1',
         'auth.twoFactor.digits': 6,
@@ -64,7 +53,7 @@ describe('AuthTwoFactorDomain', () => {
         'auth.twoFactor.backupCodes.length': 10,
         'auth.twoFactor.encryption.key': 'encryption-key',
         'auth.twoFactor.maxAttempt': 5,
-    });
+    };
     const now = new Date('2026-01-01T00:00:00.000Z');
     const twoFactor = {
         id: 'two-factor-id',
@@ -149,6 +138,8 @@ describe('AuthTwoFactorDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        helperEncryptionService.aes256Decrypt.mockReturnValue('plain-secret');
+        configGet.mockImplementation((key: string) => config[key]);
         vi.mocked(generateSecret).mockReturnValue('TOTPSECRET');
         vi.mocked(verifySync).mockReturnValue({ valid: true, delta: 0 });
 
@@ -200,7 +191,7 @@ describe('AuthTwoFactorDomain', () => {
             isValid: false,
             method: EnumAuthTwoFactorMethod.code,
         });
-        expect(aes256Decrypt).not.toHaveBeenCalled();
+        expect(helperEncryptionService.aes256Decrypt).not.toHaveBeenCalled();
     });
 
     it('rejects a nonempty authenticator code that does not verify', async () => {

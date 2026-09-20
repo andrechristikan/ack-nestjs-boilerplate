@@ -1,6 +1,7 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import { Duration } from 'luxon';
 
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -18,33 +19,22 @@ import {
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 
 describe('AuthPasswordUtil', () => {
-    const helperHashService = {
-        bcryptCompare: vi.fn<HelperHashService['bcryptCompare']>(),
-        bcryptGenerateSalt: vi.fn<HelperHashService['bcryptGenerateSalt']>(),
-        bcryptHash: vi.fn<HelperHashService['bcryptHash']>(),
-    } satisfies Pick<
-        HelperHashService,
-        'bcryptCompare' | 'bcryptGenerateSalt' | 'bcryptHash'
-    >;
-    const helperDateService = {
-        create: vi.fn<HelperDateService['create']>(),
-        createDuration: vi.fn<HelperDateService['createDuration']>(),
-        forward: vi.fn<HelperDateService['forward']>(),
-    } satisfies Pick<
-        HelperDateService,
-        'create' | 'createDuration' | 'forward'
-    >;
-    const helperStringService = {
-        random: vi.fn<HelperStringService['random']>(),
-    } satisfies Pick<HelperStringService, 'random'>;
-    const configService = new ConfigService({
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configGet = vi.mocked(configService.get);
+    const config: Record<string, unknown> = {
         'auth.password.expiredInMs': 86_400_000,
         'auth.password.expiredTemporaryInMs': 3_600_000,
         'auth.password.saltLength': 12,
         'auth.password.periodInDays': 90,
         'auth.password.attempt': true,
         'auth.password.maxAttempt': 5,
-    });
+    };
     const now = new Date('2026-01-01T00:00:00.000Z');
     const user = {
         id: 'user-id',
@@ -86,6 +76,7 @@ describe('AuthPasswordUtil', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        configGet.mockImplementation((key: string) => config[key]);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthPasswordUtil,

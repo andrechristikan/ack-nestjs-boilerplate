@@ -1,41 +1,59 @@
-import { describe, expect, it } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { Prisma } from '@generated/prisma-client';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
 
 describe('UserOnboardingUtil', () => {
-    const util = new UserOnboardingUtil(new DatabaseUtil());
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    let util: UserOnboardingUtil;
 
-    const collision = (target: unknown, code = 'P2002') =>
-        new Prisma.PrismaClientKnownRequestError('collision', {
-            code,
-            clientVersion: 'test',
-            meta: { target },
-        });
+    beforeEach(async () => {
+        vi.resetAllMocks();
+        databaseUtil.isUniqueCollision.mockReturnValue(false);
+
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                UserOnboardingUtil,
+                { provide: DatabaseUtil, useValue: databaseUtil },
+            ],
+        }).compile();
+        util = moduleRef.get(UserOnboardingUtil);
+    });
 
     it('maps a username collision to UserUsernameExistException', () => {
-        expect(util.mapCreateCollision(collision(['username']))).toBeInstanceOf(
+        databaseUtil.isUniqueCollision.mockImplementation(
+            (_error, field) => field === 'username'
+        );
+
+        expect(util.mapCreateCollision(new Error('collision'))).toBeInstanceOf(
             UserUsernameExistException
         );
     });
 
     it('maps an email collision to UserEmailExistException', () => {
-        expect(util.mapCreateCollision(collision(['email']))).toBeInstanceOf(
+        databaseUtil.isUniqueCollision.mockImplementation(
+            (_error, field) => field === 'email'
+        );
+
+        expect(util.mapCreateCollision(new Error('collision'))).toBeInstanceOf(
             UserEmailExistException
         );
     });
 
     it('returns a collision on another field untouched', () => {
-        const error = collision(['phone']);
+        const error = new Error('collision');
 
         expect(util.mapCreateCollision(error)).toBe(error);
     });
 
     it('returns a non-unique Prisma error untouched', () => {
-        const error = collision(['username'], 'P2025');
+        const error = new Error('collision');
+        databaseUtil.isUniqueCollision.mockReturnValue(false);
 
         expect(util.mapCreateCollision(error)).toBe(error);
     });

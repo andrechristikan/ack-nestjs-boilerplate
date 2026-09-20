@@ -1,5 +1,6 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { MessageService } from '@common/message/services/message.service';
@@ -7,21 +8,14 @@ import { EnumActivityLogAction } from '@generated/prisma-client';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 
 describe('ActivityLogUtil', () => {
-    const messageService = {
-        setMessage: vi.fn<MessageService['setMessage']>(),
-    } satisfies Pick<MessageService, 'setMessage'>;
-    const toPlainObjectMock = vi.fn((_data: unknown): unknown => undefined);
-    const databaseUtil = {
-        toPlainObject<T, N = T>(data: T): N {
-            toPlainObjectMock(data);
-            return data as unknown as N;
-        },
-    } satisfies Pick<DatabaseUtil, 'toPlainObject'>;
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let util: ActivityLogUtil;
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        databaseUtil.toPlainObject.mockImplementation(data => data);
 
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [

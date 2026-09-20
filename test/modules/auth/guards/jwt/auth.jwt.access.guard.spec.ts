@@ -1,6 +1,6 @@
-import { createMock } from '@golevelup/ts-vitest';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { EnumUserLoginFrom, EnumUserLoginWith } from '@generated/prisma-client';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -10,9 +10,9 @@ import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.i
 import { AuthDomain } from '@modules/auth/domains/auth.domain';
 
 describe('AuthJwtAccessGuard', () => {
-    const authService =
-        createMock<Pick<AuthDomain, 'validateJwtAccessGuard'>>();
-    const requestStoreService = createMock<Pick<RequestStoreService, 'set'>>();
+    const authDomain: MockProxy<AuthDomain> = mock<AuthDomain>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
     const payload = {
         userId: 'user-id',
         roleId: 'role-id',
@@ -34,7 +34,7 @@ describe('AuthJwtAccessGuard', () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtAccessGuard,
-                { provide: AuthDomain, useValue: authService },
+                { provide: AuthDomain, useValue: authDomain },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
@@ -42,7 +42,7 @@ describe('AuthJwtAccessGuard', () => {
     });
 
     it('stores and returns the principal accepted by AuthDomain', () => {
-        authService.validateJwtAccessGuard.mockReturnValue(payload);
+        authDomain.validateJwtAccessGuard.mockReturnValue(payload);
         const passportUser = { ...payload, jti: 'untrusted-jti' };
 
         expect(
@@ -59,7 +59,7 @@ describe('AuthJwtAccessGuard', () => {
     });
 
     it('does not populate request state when validation rejects', () => {
-        authService.validateJwtAccessGuard.mockImplementation(() => {
+        authDomain.validateJwtAccessGuard.mockImplementation(() => {
             throw new Error('rejected');
         });
 

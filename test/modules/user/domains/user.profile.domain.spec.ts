@@ -1,7 +1,8 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { AwsServiceUnavailableException } from '@common/aws/exceptions/aws.service-unavailable.exception';
 import type {
@@ -26,47 +27,14 @@ import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
 
 describe('UserProfileDomain', () => {
-    const userRepository = {
-        findOneActiveProfileById:
-            vi.fn<UserRepository['findOneActiveProfileById']>(),
-        updateProfile: vi.fn<UserRepository['updateProfile']>(),
-        updatePhotoProfile: vi.fn<UserRepository['updatePhotoProfile']>(),
-        existsByUsername: vi.fn<UserRepository['existsByUsername']>(),
-        claimUsername: vi.fn<UserRepository['claimUsername']>(),
-    } satisfies Pick<
-        UserRepository,
-        | 'findOneActiveProfileById'
-        | 'updateProfile'
-        | 'updatePhotoProfile'
-        | 'existsByUsername'
-        | 'claimUsername'
-    >;
-    const countryService = {
-        existsById: vi.fn<CountryDomain['existsById']>(),
-    } satisfies Pick<CountryDomain, 'existsById'>;
-    const userUtil = {
-        checkUsernamePattern: vi.fn<UserUtil['checkUsernamePattern']>(),
-        checkBadWord: vi.fn<UserUtil['checkBadWord']>(),
-    } satisfies Pick<UserUtil, 'checkUsernamePattern' | 'checkBadWord'>;
-    const awsS3Service = {
-        presignPutItem: vi.fn<AwsS3Service['presignPutItem']>(),
-        mapPresign: vi.fn<AwsS3Service['mapPresign']>(),
-        putItem: vi.fn<AwsS3Service['putItem']>(),
-    } satisfies Pick<AwsS3Service, 'presignPutItem' | 'mapPresign' | 'putItem'>;
-    const fileService = {
-        createRandomFilename: vi.fn<FileService['createRandomFilename']>(),
-        extractExtensionFromFilename:
-            vi.fn<FileService['extractExtensionFromFilename']>(),
-    } satisfies Pick<
-        FileService,
-        'createRandomFilename' | 'extractExtensionFromFilename'
-    >;
-    const configGet = vi.fn((_key: string): unknown => undefined);
-    const configService = {
-        get<T>(key: string): T | undefined {
-            return configGet(key) as T | undefined;
-        },
-    } satisfies Pick<ConfigService, 'get'>;
+    const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const countryDomain: MockProxy<CountryDomain> = mock<CountryDomain>();
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
+    const fileService: MockProxy<FileService> = mock<FileService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
 
     const aws = {
         bucket: 'bucket',
@@ -90,14 +58,14 @@ describe('UserProfileDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => {
+        vi.mocked(configService.get).mockImplementation((key: string) => {
             const values = {
                 'user.uploadPhotoProfilePath': 'users/{userId}/photos',
             };
 
             return values[key as keyof typeof values];
         });
-        countryService.existsById.mockResolvedValue(true);
+        countryDomain.existsById.mockResolvedValue(true);
         userUtil.checkUsernamePattern.mockReturnValue(false);
         userUtil.checkBadWord.mockResolvedValue(false);
         userRepository.existsByUsername.mockResolvedValue(false);
@@ -113,11 +81,8 @@ describe('UserProfileDomain', () => {
             providers: [
                 UserProfileDomain,
                 { provide: UserRepository, useValue: userRepository },
-                {
-                    provide: ActivityLogDomain,
-                    useValue: createMock<ActivityLogDomain>(),
-                },
-                { provide: CountryDomain, useValue: countryService },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: CountryDomain, useValue: countryDomain },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: FileService, useValue: fileService },
@@ -145,9 +110,7 @@ describe('UserProfileDomain', () => {
                 name: 'User',
             });
 
-            expect(countryService.existsById).toHaveBeenCalledWith(
-                'country-id'
-            );
+            expect(countryDomain.existsById).toHaveBeenCalledWith('country-id');
             expect(userRepository.updateProfile).toHaveBeenCalledWith(
                 'user-id',
                 {
@@ -159,7 +122,7 @@ describe('UserProfileDomain', () => {
         });
 
         it('throws CountryNotFoundException when the country id is unknown', async () => {
-            countryService.existsById.mockResolvedValue(false);
+            countryDomain.existsById.mockResolvedValue(false);
 
             await expect(
                 service.updateProfile('user-id', {

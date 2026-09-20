@@ -1,4 +1,3 @@
-import { createMock } from '@golevelup/ts-vitest';
 import {
     HttpException,
     type CallHandler,
@@ -9,8 +8,9 @@ import {
     multerExceptions,
 } from '@nestjs/platform-express/multer/multer/multer.constants';
 import { lastValueFrom, of, throwError } from 'rxjs';
-import { describe, expect, it } from 'vitest';
 
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import { FileExceedMaxFilesException } from '@common/file/exceptions/file.exceed-max-files.exception';
 import { FileExceedMaxSizeUploadException } from '@common/file/exceptions/file.exceed-max-size-upload.exception';
 import { FileFieldUnexpectedException } from '@common/file/exceptions/file.field-unexpected.exception';
@@ -19,10 +19,11 @@ import { FileUploadErrorInterceptor } from '@common/file/interceptors/file.uploa
 
 describe('FileUploadErrorInterceptor', () => {
     const interceptor = new FileUploadErrorInterceptor();
-    const context = createMock<ExecutionContext>();
+    const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
 
     it('passes successful values through unchanged', async () => {
-        const next = createMock<CallHandler>({ handle: () => of('value') });
+        const next = mock<CallHandler>();
+        next.handle.mockReturnValue(of('value'));
         await expect(
             lastValueFrom(interceptor.intercept(context, next))
         ).resolves.toBe('value');
@@ -55,25 +56,26 @@ describe('FileUploadErrorInterceptor', () => {
             FileMultipartInvalidException,
         ],
     ])('maps framework message %s', async (message, ExceptionClass) => {
-        const next = createMock<CallHandler>({
-            handle: () => throwError(() => new HttpException(message, 400)),
-        });
+        const next = mock<CallHandler>();
+        next.handle.mockReturnValue(
+            throwError(() => new HttpException(message, 400))
+        );
         await expect(
             lastValueFrom(interceptor.intercept(context, next))
         ).rejects.toBeInstanceOf(ExceptionClass);
     });
 
     it('maps a framework message carrying field detail', async () => {
-        const next = createMock<CallHandler>({
-            handle: () =>
-                throwError(
-                    () =>
-                        new HttpException(
-                            `${multerExceptions.LIMIT_FILE_SIZE} - avatar`,
-                            400
-                        )
-                ),
-        });
+        const next = mock<CallHandler>();
+        next.handle.mockReturnValue(
+            throwError(
+                () =>
+                    new HttpException(
+                        `${multerExceptions.LIMIT_FILE_SIZE} - avatar`,
+                        400
+                    )
+            )
+        );
         await expect(
             lastValueFrom(interceptor.intercept(context, next))
         ).rejects.toBeInstanceOf(FileExceedMaxSizeUploadException);
@@ -82,9 +84,8 @@ describe('FileUploadErrorInterceptor', () => {
     it.each([new Error('ordinary'), new HttpException('unknown', 400)])(
         'preserves an unmapped error',
         async error => {
-            const next = createMock<CallHandler>({
-                handle: () => throwError(() => error),
-            });
+            const next = mock<CallHandler>();
+            next.handle.mockReturnValue(throwError(() => error));
             await expect(
                 lastValueFrom(interceptor.intercept(context, next))
             ).rejects.toBe(error);

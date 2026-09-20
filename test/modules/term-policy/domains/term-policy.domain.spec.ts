@@ -1,6 +1,6 @@
-import { createMock } from '@golevelup/ts-vitest';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
@@ -24,45 +24,24 @@ import type { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.in
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
-import {
-    createDatabaseServiceMock,
-    mockDatabaseServiceTransaction,
-} from '@test/support/database.mock';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 
 describe('TermPolicyDomain', () => {
-    const termPolicyRepository = {
-        findOneById: vi.fn<TermPolicyRepository['findOneById']>(),
-        publishInTx: vi.fn<TermPolicyRepository['publishInTx']>(),
-    } satisfies Pick<TermPolicyRepository, 'findOneById' | 'publishInTx'>;
-    const awsS3Service = {
-        copyItems: vi.fn<AwsS3Service['copyItems']>(),
-        deleteDir: vi.fn<AwsS3Service['deleteDir']>(),
-    } satisfies Pick<AwsS3Service, 'copyItems' | 'deleteDir'>;
-    const termPolicyUtil = {
-        getContentPublicPath: vi.fn<TermPolicyUtil['getContentPublicPath']>(),
-        getPath: vi.fn<TermPolicyUtil['getPath']>(),
-        mapActivityLogMetadata:
-            vi.fn<TermPolicyUtil['mapActivityLogMetadata']>(),
-    } satisfies Pick<
-        TermPolicyUtil,
-        'getContentPublicPath' | 'getPath' | 'mapActivityLogMetadata'
-    >;
-    const notificationQueue = {
-        sendPublishTermPolicy:
-            vi.fn<NotificationQueue['sendPublishTermPolicy']>(),
-    } satisfies Pick<NotificationQueue, 'sendPublishTermPolicy'>;
-    const activityLogDomain = {
-        prepare: vi.fn<ActivityLogDomain['prepare']>(),
-        stagePrepared: vi.fn<ActivityLogDomain['stagePrepared']>(),
-    } satisfies Pick<ActivityLogDomain, 'prepare' | 'stagePrepared'>;
-    const fileService = {
-        extractFilenameFromPath:
-            vi.fn<FileService['extractFilenameFromPath']>(),
-    } satisfies Pick<FileService, 'extractFilenameFromPath'>;
-    const databaseService = createDatabaseServiceMock();
-    const userDomain = createMock<UserDomain>();
-    const databaseUtil = createMock<DatabaseUtil>();
-    const helperDateService = createMock<HelperDateService>();
+    const termPolicyRepository: MockProxy<TermPolicyRepository> =
+        mock<TermPolicyRepository>();
+    const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
+    const termPolicyUtil: MockProxy<TermPolicyUtil> = mock<TermPolicyUtil>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const fileService: MockProxy<FileService> = mock<FileService>();
+    const databaseService: DeepMockProxy<DatabaseService> =
+        mockDeep<DatabaseService>();
+    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
     const now = new Date('2026-01-01T00:00:00.000Z');
     const content = {
         id: 'content-id',
@@ -94,7 +73,9 @@ describe('TermPolicyDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        mockDatabaseServiceTransaction(databaseService);
+        databaseService.withTransaction.mockImplementation(async callback =>
+            callback({} as IDatabaseTransactionClient)
+        );
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 TermPolicyDomain,

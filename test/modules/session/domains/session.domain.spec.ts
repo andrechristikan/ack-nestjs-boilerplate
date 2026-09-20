@@ -1,5 +1,7 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { EnumActivityLogAction } from '@generated/prisma-client';
@@ -14,11 +16,14 @@ import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionUtil } from '@modules/session/utils/session.util';
 
 describe('SessionDomain', () => {
-    const sessionRepository = createMock<SessionRepository>();
-    const sessionCacheService = createMock<SessionCache>();
-    const sessionUtil = createMock<SessionUtil>();
-    const activityLogDomain = createMock<ActivityLogDomain>();
-    const helperDateService = createMock<HelperDateService>();
+    const sessionRepository: MockProxy<SessionRepository> =
+        mock<SessionRepository>();
+    const sessionCache: MockProxy<SessionCache> = mock<SessionCache>();
+    const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
     const now = new Date('2026-01-01T00:00:00.000Z');
     const userRef = {
         id: 'user-id',
@@ -56,13 +61,18 @@ describe('SessionDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
-        service = new SessionDomain(
-            sessionRepository,
-            sessionUtil,
-            sessionCacheService,
-            activityLogDomain,
-            helperDateService
-        );
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                SessionDomain,
+                { provide: SessionRepository, useValue: sessionRepository },
+                { provide: SessionUtil, useValue: sessionUtil },
+                { provide: SessionCache, useValue: sessionCache },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: HelperDateService, useValue: helperDateService },
+            ],
+        }).compile();
+
+        service = moduleRef.get(SessionDomain);
     });
 
     it('delegates the active session cursor list for the owning user', async () => {
@@ -111,10 +121,9 @@ describe('SessionDomain', () => {
             'user-id',
             expect.any(Date)
         );
-        expect(sessionCacheService.deleteLogins).toHaveBeenCalledWith(
-            'user-id',
-            [{ id: 'session-id' }]
-        );
+        expect(sessionCache.deleteLogins).toHaveBeenCalledWith('user-id', [
+            { id: 'session-id' },
+        ]);
     });
 
     it('revokes a user session as administrator and records audit metadata', async () => {
@@ -140,10 +149,9 @@ describe('SessionDomain', () => {
             'admin-id',
             expect.any(Date)
         );
-        expect(sessionCacheService.deleteLogins).toHaveBeenCalledWith(
-            'user-id',
-            [{ id: 'session-id' }]
-        );
+        expect(sessionCache.deleteLogins).toHaveBeenCalledWith('user-id', [
+            { id: 'session-id' },
+        ]);
         expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
             action: EnumActivityLogAction.adminSessionRevoke,
             metadata: {
@@ -168,8 +176,6 @@ describe('SessionDomain', () => {
     it('invalidates every cached login for a user', async () => {
         await service.purgeLoginsByUser('user-id');
 
-        expect(sessionCacheService.deleteLoginsByUser).toHaveBeenCalledWith(
-            'user-id'
-        );
+        expect(sessionCache.deleteLoginsByUser).toHaveBeenCalledWith('user-id');
     });
 });

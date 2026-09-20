@@ -1,6 +1,7 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -17,6 +18,7 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client';
 import type { Session } from '@generated/prisma-client';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
 import { AuthTwoFactorAttemptTemporaryLockException } from '@modules/auth/exceptions/auth.two-factor-attempt-temporary-lock.exception';
 import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
@@ -33,54 +35,47 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
-import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
-import {
-    createDatabaseServiceMock,
-    mockDatabaseServiceTransaction,
-} from '@test/support/database.mock';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 
 describe('UserLoginDomain', () => {
-    const userSessionRepository =
-        createMock<SessionRepository>() as unknown as Record<
-            string,
-            ReturnType<typeof vi.fn>
-        >;
-    const userTwoFactorRepository = createMock<UserTwoFactorRepository>();
-    const userRepository = createMock<UserRepository>();
-    const userVerificationRepository = createMock<UserVerificationRepository>();
-    const payloadToken = vi.fn((_token: string): unknown => null);
-    const authJwtService = createMock<AuthJwtDomain>({
+    const userTwoFactorRepository: MockProxy<UserTwoFactorRepository> =
+        mock<UserTwoFactorRepository>();
+    const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
+    const authJwtDomain: MockProxy<AuthJwtDomain> = mock<AuthJwtDomain>({
         jwtRefreshTokenExpirationTimeInSeconds: 2_592_000,
-        payloadToken: <T>(token: string) => payloadToken(token) as T,
     });
-    const authTwoFactorService = createMock<AuthTwoFactorDomain>();
-    const authCacheService = createMock<AuthCache>();
-    const sessionCacheService = createMock<SessionCache>();
-    const sessionService = createMock<SessionDomain>();
-    const notificationQueue = createMock<NotificationQueue>();
-    const helperDateService = createMock<HelperDateService>();
-    const helperHashService = createMock<HelperHashService>();
-    const userUtil = createMock<UserUtil>();
-    const userVerificationService = createMock<UserVerificationDomain>();
-    const featureFlagService = createMock<FeatureFlagDomain>();
-    const deviceUtil = createMock<DeviceUtil>();
-    const deviceDomain = createMock<DeviceDomain>();
-    const createdSession = createMock<Session>();
-    const activityLogDomain = createMock<ActivityLogDomain>();
-    const requestStoreGet = vi.fn((_key: string): unknown => null);
-    const requestStoreService = {
-        get<T>(key: string): T | null {
-            return requestStoreGet(key) as T | null;
-        },
-    } satisfies Pick<RequestStoreService, 'get'>;
-    const databaseService = createDatabaseServiceMock();
+    const authTwoFactorDomain: MockProxy<AuthTwoFactorDomain> =
+        mock<AuthTwoFactorDomain>();
+    const authCache: MockProxy<AuthCache> = mock<AuthCache>();
+    const sessionCache: MockProxy<SessionCache> = mock<SessionCache>();
+    const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const userVerificationDomain: MockProxy<UserVerificationDomain> =
+        mock<UserVerificationDomain>();
+    const featureFlagDomain: MockProxy<FeatureFlagDomain> =
+        mock<FeatureFlagDomain>();
+    const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
+    const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
+    const createdSession: MockProxy<Session> = mock<Session>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const databaseService: DeepMockProxy<DatabaseService> =
+        mockDeep<DatabaseService>();
+    const transactionClient: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
     const now = new Date('2026-01-01T00:00:00.000Z');
     const expiredAt = new Date('2026-02-01T00:00:00.000Z');
     const tokens = {
@@ -192,43 +187,40 @@ describe('UserLoginDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        mockDatabaseServiceTransaction(databaseService);
-        requestStoreGet.mockReturnValue(requestLog);
-        authCacheService.getLockTwoFactorAttempt.mockResolvedValue(0);
+        databaseService.withTransaction.mockImplementation(async callback =>
+            callback(transactionClient)
+        );
+        requestStoreService.get.mockReturnValue(requestLog);
+        authCache.getLockTwoFactorAttempt.mockResolvedValue(0);
         helperHashService.sha256Hash.mockImplementation(value => value);
         helperHashService.sha256Compare.mockReturnValue(false);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 UserLoginDomain,
-                { provide: SessionRepository, useValue: userSessionRepository },
                 { provide: UserRepository, useValue: userRepository },
                 {
                     provide: UserTwoFactorRepository,
                     useValue: userTwoFactorRepository,
                 },
-                {
-                    provide: UserVerificationRepository,
-                    useValue: userVerificationRepository,
-                },
                 { provide: UserUtil, useValue: userUtil },
                 {
                     provide: UserVerificationDomain,
-                    useValue: userVerificationService,
+                    useValue: userVerificationDomain,
                 },
                 { provide: DeviceDomain, useValue: deviceDomain },
                 { provide: DeviceUtil, useValue: deviceUtil },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
-                { provide: AuthJwtDomain, useValue: authJwtService },
+                { provide: AuthJwtDomain, useValue: authJwtDomain },
                 {
                     provide: AuthTwoFactorDomain,
-                    useValue: authTwoFactorService,
+                    useValue: authTwoFactorDomain,
                 },
-                { provide: AuthCache, useValue: authCacheService },
-                { provide: SessionCache, useValue: sessionCacheService },
-                { provide: SessionDomain, useValue: sessionService },
+                { provide: AuthCache, useValue: authCache },
+                { provide: SessionCache, useValue: sessionCache },
+                { provide: SessionDomain, useValue: sessionDomain },
                 { provide: NotificationQueue, useValue: notificationQueue },
-                { provide: FeatureFlagDomain, useValue: featureFlagService },
+                { provide: FeatureFlagDomain, useValue: featureFlagDomain },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: HelperHashService, useValue: helperHashService },
                 { provide: RequestStoreService, useValue: requestStoreService },
@@ -238,26 +230,19 @@ describe('UserLoginDomain', () => {
     });
 
     it('creates the session cache and notifies a new device', async () => {
-        authJwtService.createTokens.mockReturnValue({
+        authJwtDomain.createTokens.mockReturnValue({
             tokens,
             sessionId: 'session-id',
             jti: 'jti',
         });
         helperDateService.forward.mockReturnValue(expiredAt);
         helperDateService.formatToIso.mockReturnValue(now.toISOString());
-        userSessionRepository.login.mockResolvedValue({
-            user,
-            device,
-            deviceOwnership,
-            isNewDevice: true,
-            sessionShouldBeInactive: [{ id: 'old-session' }],
-        });
         deviceDomain.upsertForLoginInTx.mockResolvedValue({
             isNewDevice: true,
             deviceOwnership,
             device,
         });
-        sessionService.createInTx.mockResolvedValue(createdSession);
+        sessionDomain.createInTx.mockResolvedValue(createdSession);
         userRepository.updateLoginInTx.mockResolvedValue(user);
 
         await expect(
@@ -269,18 +254,18 @@ describe('UserLoginDomain', () => {
                 now
             )
         ).resolves.toBe(tokens);
-        expect(sessionCacheService.setLogin).toHaveBeenCalledWith(
+        expect(sessionCache.setLogin).toHaveBeenCalledWith(
             user.id,
             'session-id',
             'jti',
             expiredAt
         );
-        expect(sessionService.purgeLoginsByUser).not.toHaveBeenCalled();
+        expect(sessionDomain.purgeLoginsByUser).not.toHaveBeenCalled();
         expect(notificationQueue.sendNewDeviceLogin).toHaveBeenCalled();
     });
 
     it('rejects two-factor validation while the user is temporarily locked', async () => {
-        authCacheService.getLockTwoFactorAttempt.mockResolvedValue(30_000);
+        authCache.getLockTwoFactorAttempt.mockResolvedValue(30_000);
 
         await expect(
             service.handleTwoFactorValidation(user, {
@@ -288,7 +273,7 @@ describe('UserLoginDomain', () => {
                 code: '123456',
             })
         ).rejects.toBeInstanceOf(AuthTwoFactorAttemptTemporaryLockException);
-        expect(authTwoFactorService.verifyTwoFactor).not.toHaveBeenCalled();
+        expect(authTwoFactorDomain.verifyTwoFactor).not.toHaveBeenCalled();
     });
 
     it('requires an explicit two-factor method', async () => {
@@ -298,7 +283,7 @@ describe('UserLoginDomain', () => {
     });
 
     it('increments attempts, locks at the limit, and rejects an invalid code', async () => {
-        authTwoFactorService.verifyTwoFactor.mockResolvedValue({
+        authTwoFactorDomain.verifyTwoFactor.mockResolvedValue({
             isValid: false,
             method: EnumAuthTwoFactorMethod.code,
         });
@@ -309,7 +294,7 @@ describe('UserLoginDomain', () => {
         userTwoFactorRepository.increaseTwoFactorAttempt.mockResolvedValue(
             attempted.twoFactor
         );
-        authTwoFactorService.checkAttempt.mockReturnValue(true);
+        authTwoFactorDomain.checkAttempt.mockReturnValue(true);
 
         await expect(
             service.handleTwoFactorValidation(user, {
@@ -317,9 +302,7 @@ describe('UserLoginDomain', () => {
                 code: 'wrong',
             })
         ).rejects.toBeInstanceOf(AuthTwoFactorInvalidException);
-        expect(authCacheService.lockTwoFactorAttempt).toHaveBeenCalledWith(
-            attempted
-        );
+        expect(authCache.lockTwoFactorAttempt).toHaveBeenCalledWith(attempted);
     });
 
     it('resets attempts after successful backup-code verification', async () => {
@@ -328,7 +311,7 @@ describe('UserLoginDomain', () => {
             method: EnumAuthTwoFactorMethod.backupCodes,
             usedBackupCodeHash: 'isUsedById-hash',
         };
-        authTwoFactorService.verifyTwoFactor.mockResolvedValue(verified);
+        authTwoFactorDomain.verifyTwoFactor.mockResolvedValue(verified);
 
         await expect(
             service.handleTwoFactorValidation(user, {
@@ -342,7 +325,7 @@ describe('UserLoginDomain', () => {
     });
 
     it('rejects refreshInTx when the session is missing or its jti was rotated', async () => {
-        payloadToken.mockReturnValue({
+        authJwtDomain.payloadToken.mockReturnValue({
             userId: user.id,
             sessionId: 'session-id',
             deviceOwnershipId: 'ownership-id',
@@ -351,7 +334,7 @@ describe('UserLoginDomain', () => {
             loginWith: EnumUserLoginWith.credential,
             jti: 'request-jti',
         });
-        sessionCacheService.getLogin.mockResolvedValue({
+        sessionCache.getLogin.mockResolvedValue({
             userId: user.id,
             sessionId: 'session-id',
             expiredAt,
@@ -361,7 +344,7 @@ describe('UserLoginDomain', () => {
         await expect(
             service.refreshSession(user, 'refreshInTx-token')
         ).rejects.toBeInstanceOf(AuthJwtRefreshTokenInvalidException);
-        expect(authJwtService.refreshToken).not.toHaveBeenCalled();
+        expect(authJwtDomain.refreshToken).not.toHaveBeenCalled();
     });
 
     it('rotates the cache and persisted session to the new jti', async () => {
@@ -372,7 +355,7 @@ describe('UserLoginDomain', () => {
             expiredAt,
             jti: 'old-jti',
         };
-        payloadToken.mockReturnValue({
+        authJwtDomain.payloadToken.mockReturnValue({
             userId: user.id,
             sessionId: 'session-id',
             deviceOwnershipId: 'ownership-id',
@@ -381,8 +364,9 @@ describe('UserLoginDomain', () => {
             loginWith: EnumUserLoginWith.credential,
             jti: 'old-jti',
         });
-        sessionCacheService.getLogin.mockResolvedValue(session);
-        authJwtService.refreshToken.mockReturnValue({
+        sessionCache.getLogin.mockResolvedValue(session);
+        sessionCache.updateLogin.mockResolvedValue(true);
+        authJwtDomain.refreshToken.mockReturnValue({
             tokens,
             jti: 'new-jti',
             sessionId: 'session-id',
@@ -392,7 +376,7 @@ describe('UserLoginDomain', () => {
         await expect(
             service.refreshSession(user, 'refreshInTx-token')
         ).resolves.toBe(tokens);
-        expect(sessionCacheService.updateLogin).toHaveBeenCalledWith(
+        expect(sessionCache.updateLogin).toHaveBeenCalledWith(
             user.id,
             'session-id',
             session,

@@ -1,7 +1,8 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import { ConfigService } from '@nestjs/config';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -38,51 +39,25 @@ import { UserVerificationDomain } from '@modules/user/domains/user.verification.
 import { UserUtil } from '@modules/user/utils/user.util';
 
 describe('UserAuthDomain', () => {
-    const userRepository = {
-        findOneWithRoleByEmail:
-            vi.fn<UserRepository['findOneWithRoleByEmail']>(),
-    } satisfies Pick<UserRepository, 'findOneWithRoleByEmail'>;
-    const userPasswordDomain = createMock<UserPasswordDomain>();
-    const userLoginService = {
-        handleLogin: vi.fn<UserLoginDomain['handleLogin']>(),
-        refreshSession: vi.fn<UserLoginDomain['refreshSession']>(),
-        logout: vi.fn<UserLoginDomain['logout']>(),
-        recordLoginFailed: vi.fn<UserLoginDomain['recordLoginFailed']>(),
-    } satisfies Pick<
-        UserLoginDomain,
-        'handleLogin' | 'refreshSession' | 'logout' | 'recordLoginFailed'
-    >;
-    const authPasswordService = {
-        checkPasswordAttempt: vi.fn<AuthPasswordUtil['checkPasswordAttempt']>(),
-        validatePassword: vi.fn<AuthPasswordUtil['validatePassword']>(),
-        checkPasswordExpired: vi.fn<AuthPasswordUtil['checkPasswordExpired']>(),
-    } satisfies Pick<
-        AuthPasswordUtil,
-        'checkPasswordAttempt' | 'validatePassword' | 'checkPasswordExpired'
-    >;
-    const getFeatureFlagMetadata = vi.fn(
-        async (_key: string): Promise<unknown> => null
-    );
-    const featureFlagCacheService = {
-        async getMetadataByKeyAndCache<T>(key: string): Promise<T | null> {
-            return (await getFeatureFlagMetadata(key)) as T | null;
-        },
-    } satisfies Pick<FeatureFlagCache, 'getMetadataByKeyAndCache'>;
-    const helperDateService = {
-        create: vi.fn<HelperDateService['create']>(),
-    } satisfies Pick<HelperDateService, 'create'>;
-    const configGet = vi.fn((_key: string): unknown => undefined);
-    const configService = {
-        get<T>(key: string): T | undefined {
-            return configGet(key) as T | undefined;
-        },
-    } satisfies Pick<ConfigService, 'get'>;
-    const roleService = createMock<RoleDomain>();
-    const countryService = createMock<CountryDomain>();
-    const userUtil = createMock<UserUtil>();
-    const userVerificationService = createMock<UserVerificationDomain>();
-    const databaseUtil = createMock<DatabaseUtil>();
-    const notificationQueue = createMock<NotificationQueue>();
+    const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
+    const userPasswordDomain: MockProxy<UserPasswordDomain> =
+        mock<UserPasswordDomain>();
+    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
+    const countryDomain: MockProxy<CountryDomain> = mock<CountryDomain>();
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const userVerificationDomain: MockProxy<UserVerificationDomain> =
+        mock<UserVerificationDomain>();
+    const userLoginDomain: MockProxy<UserLoginDomain> = mock<UserLoginDomain>();
+    const authPasswordUtil: MockProxy<AuthPasswordUtil> =
+        mock<AuthPasswordUtil>();
+    const featureFlagCache: MockProxy<FeatureFlagCache> =
+        mock<FeatureFlagCache>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const tokens = {
@@ -154,7 +129,7 @@ describe('UserAuthDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => {
+        vi.mocked(configService.get).mockImplementation((key: string) => {
             const values = {
                 'user.default.role': 'User',
             };
@@ -163,31 +138,31 @@ describe('UserAuthDomain', () => {
         });
         helperDateService.create.mockReturnValue(now);
         userRepository.findOneWithRoleByEmail.mockResolvedValue(user);
-        authPasswordService.checkPasswordAttempt.mockReturnValue(false);
-        authPasswordService.validatePassword.mockReturnValue(true);
-        authPasswordService.checkPasswordExpired.mockReturnValue(false);
-        userLoginService.handleLogin.mockResolvedValue(loginOutcome);
-        userLoginService.refreshSession.mockResolvedValue(tokens);
-        userLoginService.logout.mockResolvedValue(undefined);
-        userVerificationService.markVerified.mockResolvedValue(undefined);
+        authPasswordUtil.checkPasswordAttempt.mockReturnValue(false);
+        authPasswordUtil.validatePassword.mockReturnValue(true);
+        authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
+        userLoginDomain.handleLogin.mockResolvedValue(loginOutcome);
+        userLoginDomain.refreshSession.mockResolvedValue(tokens);
+        userLoginDomain.logout.mockResolvedValue(undefined);
+        userVerificationDomain.markVerified.mockResolvedValue(undefined);
 
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 UserAuthDomain,
                 { provide: UserRepository, useValue: userRepository },
                 { provide: UserPasswordDomain, useValue: userPasswordDomain },
-                { provide: RoleDomain, useValue: roleService },
-                { provide: CountryDomain, useValue: countryService },
+                { provide: RoleDomain, useValue: roleDomain },
+                { provide: CountryDomain, useValue: countryDomain },
                 { provide: UserUtil, useValue: userUtil },
                 {
                     provide: UserVerificationDomain,
-                    useValue: userVerificationService,
+                    useValue: userVerificationDomain,
                 },
-                { provide: UserLoginDomain, useValue: userLoginService },
-                { provide: AuthPasswordUtil, useValue: authPasswordService },
+                { provide: UserLoginDomain, useValue: userLoginDomain },
+                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
                 {
                     provide: FeatureFlagCache,
-                    useValue: featureFlagCacheService,
+                    useValue: featureFlagCache,
                 },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: NotificationQueue, useValue: notificationQueue },
@@ -212,14 +187,14 @@ describe('UserAuthDomain', () => {
             expect(userRepository.findOneWithRoleByEmail).toHaveBeenCalledWith(
                 user.email
             );
-            expect(authPasswordService.validatePassword).toHaveBeenCalledWith(
+            expect(authPasswordUtil.validatePassword).toHaveBeenCalledWith(
                 'plain-password',
                 user.password
             );
             expect(
                 userPasswordDomain.resetPasswordAttempt
             ).toHaveBeenCalledWith(user.id);
-            expect(userLoginService.handleLogin).toHaveBeenCalledWith(
+            expect(userLoginDomain.handleLogin).toHaveBeenCalledWith(
                 user,
                 device,
                 EnumUserLoginFrom.website,
@@ -239,7 +214,7 @@ describe('UserAuthDomain', () => {
                     device,
                 })
             ).rejects.toBeInstanceOf(UserNotFoundException);
-            expect(authPasswordService.validatePassword).not.toHaveBeenCalled();
+            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
         });
 
         it('throws UserInactiveForbiddenException when the user is inactive', async () => {
@@ -272,11 +247,11 @@ describe('UserAuthDomain', () => {
                     device,
                 })
             ).rejects.toBeInstanceOf(UserPasswordNotSetException);
-            expect(authPasswordService.validatePassword).not.toHaveBeenCalled();
+            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
         });
 
         it('marks max-attempt users inactive before throwing UserPasswordAttemptMaxException', async () => {
-            authPasswordService.checkPasswordAttempt.mockReturnValue(true);
+            authPasswordUtil.checkPasswordAttempt.mockReturnValue(true);
 
             await expect(
                 service.loginCredential({
@@ -292,7 +267,7 @@ describe('UserAuthDomain', () => {
         });
 
         it('increments password attempts when the password does not match', async () => {
-            authPasswordService.validatePassword.mockReturnValue(false);
+            authPasswordUtil.validatePassword.mockReturnValue(false);
 
             await expect(
                 service.loginCredential({
@@ -302,13 +277,13 @@ describe('UserAuthDomain', () => {
                     device,
                 })
             ).rejects.toBeInstanceOf(UserPasswordNotMatchException);
-            expect(userLoginService.recordLoginFailed).toHaveBeenCalledWith(
+            expect(userLoginDomain.recordLoginFailed).toHaveBeenCalledWith(
                 user.id
             );
         });
 
         it('throws UserPasswordExpiredException after resetting attempts for expired credentials', async () => {
-            authPasswordService.checkPasswordExpired.mockReturnValue(true);
+            authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
 
             await expect(
                 service.loginCredential({
@@ -321,7 +296,7 @@ describe('UserAuthDomain', () => {
             expect(
                 userPasswordDomain.resetPasswordAttempt
             ).toHaveBeenCalledWith(user.id);
-            expect(userLoginService.handleLogin).not.toHaveBeenCalled();
+            expect(userLoginDomain.handleLogin).not.toHaveBeenCalled();
         });
     });
 
@@ -353,10 +328,10 @@ describe('UserAuthDomain', () => {
                 )
             ).resolves.toEqual(loginOutcome);
 
-            expect(userVerificationService.markVerified).toHaveBeenCalledWith(
+            expect(userVerificationDomain.markVerified).toHaveBeenCalledWith(
                 user.id
             );
-            expect(userLoginService.handleLogin).toHaveBeenCalledWith(
+            expect(userLoginDomain.handleLogin).toHaveBeenCalledWith(
                 expect.objectContaining({ id: user.id, isVerified: true }),
                 device,
                 EnumUserLoginFrom.website,
@@ -371,7 +346,7 @@ describe('UserAuthDomain', () => {
             await expect(
                 service.refresh(user, 'refreshInTx-token')
             ).resolves.toEqual(tokens);
-            expect(userLoginService.refreshSession).toHaveBeenCalledWith(
+            expect(userLoginDomain.refreshSession).toHaveBeenCalledWith(
                 user,
                 'refreshInTx-token'
             );
@@ -381,14 +356,14 @@ describe('UserAuthDomain', () => {
     describe('logout', () => {
         it('revokes the session cache before persisting the logout', async () => {
             const order: string[] = [];
-            userLoginService.logout.mockImplementation(async () => {
+            userLoginDomain.logout.mockImplementation(async () => {
                 order.push('logout');
             });
 
             await service.logout('user-id', 'session-id', 'ownership-id');
 
             expect(order).toEqual(['logout']);
-            expect(userLoginService.logout).toHaveBeenCalledWith(
+            expect(userLoginDomain.logout).toHaveBeenCalledWith(
                 'user-id',
                 'session-id',
                 'ownership-id'

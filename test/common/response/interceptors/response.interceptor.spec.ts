@@ -1,4 +1,3 @@
-import { createMock } from '@golevelup/ts-vitest';
 import {
     type CallHandler,
     type ExecutionContext,
@@ -8,7 +7,8 @@ import { Reflector } from '@nestjs/core';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { firstValueFrom, of } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { MessageService } from '@common/message/services/message.service';
@@ -31,27 +31,26 @@ describe('ResponseInterceptor', () => {
         requestId: 'request-id',
         correlationId: 'correlation-id',
     } as const;
-    const reflector = createMock<Pick<Reflector, 'get'>>();
-    const messageService = createMock<Pick<MessageService, 'setMessage'>>();
-    const responseMetadataService =
-        createMock<Pick<ResponseMetadataService, 'create' | 'setHeaders'>>();
-    const status = vi.fn<Response['status']>();
-    const response = createMock<Response>({ statusCode: 200, status });
+    const reflector: MockProxy<Reflector> = mock<Reflector>();
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const responseMetadataService: MockProxy<ResponseMetadataService> =
+        mock<ResponseMetadataService>();
+    const response: MockProxy<Response> = mock<Response>();
+    const status = vi.mocked(response.status);
     const handler = vi.fn();
-    let context: ExecutionContext;
+    let context: MockProxy<ExecutionContext>;
 
     let interceptor: ResponseInterceptor<unknown>;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        context = createMock<ExecutionContext>({
-            getType: () => 'http',
-            getHandler: () => handler,
-            switchToHttp: () =>
-                createMock<ReturnType<ExecutionContext['switchToHttp']>>({
-                    getResponse: () => response,
-                }),
-        });
+        const httpContext =
+            mock<ReturnType<ExecutionContext['switchToHttp']>>();
+        httpContext.getResponse.mockReturnValue(response);
+        context = mock<ExecutionContext>();
+        context.getType.mockReturnValue('http');
+        context.getHandler.mockReturnValue(handler);
+        context.switchToHttp.mockReturnValue(httpContext);
         response.statusCode = 200;
         responseMetadataService.create.mockReturnValue(metadata);
         messageService.setMessage.mockReturnValue('localized message');
@@ -180,9 +179,8 @@ describe('ResponseInterceptor', () => {
     it('passes non-HTTP execution through unchanged', async () => {
         const payload = { data: { id: 'job-id' } };
         const next = { handle: vi.fn(() => of(payload)) } satisfies CallHandler;
-        const rpcContext = createMock<ExecutionContext>({
-            getType: () => 'rpc',
-        });
+        const rpcContext = mock<ExecutionContext>();
+        rpcContext.getType.mockReturnValue('rpc');
 
         await expect(
             firstValueFrom(interceptor.intercept(rpcContext, next))

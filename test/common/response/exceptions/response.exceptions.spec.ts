@@ -1,5 +1,4 @@
 import { HttpStatus } from '@nestjs/common';
-import { describe, expect, it } from 'vitest';
 
 import { EnumResponseStatusCodeError } from '@common/response/enums/response.status-code.enum';
 import { ResponsePaginationShapeInvalidException } from '@common/response/exceptions/response.pagination-shape-invalid.exception';

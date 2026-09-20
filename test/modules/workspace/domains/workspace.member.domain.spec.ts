@@ -1,5 +1,7 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import {
     EnumActivityLogAction,
@@ -19,44 +21,65 @@ import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/wo
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 
+const now = new Date('2026-01-01T00:00:00.000Z');
+const buildMember = (
+    overrides: Pick<WorkspaceMember, 'id' | 'userId' | 'role'>
+): WorkspaceMember => ({
+    workspaceId: 'workspace-id',
+    joinedAt: now,
+    createdAt: now,
+    createdBy: null,
+    updatedAt: now,
+    updatedBy: null,
+    ...overrides,
+});
+
 describe('WorkspaceMemberDomain', () => {
-    const memberRepository = createMock<WorkspaceMemberRepository>();
-    const workspaceRepository = createMock<WorkspaceRepository>();
-    const activityLogDomain = createMock<ActivityLogDomain>();
-    const owner = createMock<WorkspaceMember>({
+    const memberRepository: MockProxy<WorkspaceMemberRepository> =
+        mock<WorkspaceMemberRepository>();
+    const workspaceRepository: MockProxy<WorkspaceRepository> =
+        mock<WorkspaceRepository>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const owner = buildMember({
         id: 'owner-member-id',
         userId: 'owner-id',
-        workspaceId: 'workspace-id',
         role: EnumWorkspaceMemberRole.owner,
     });
-    const admin = createMock<WorkspaceMember>({
+    const admin = buildMember({
         id: 'admin-member-id',
         userId: 'admin-id',
-        workspaceId: 'workspace-id',
         role: EnumWorkspaceMemberRole.admin,
     });
-    const otherAdmin = createMock<WorkspaceMember>({
+    const otherAdmin = buildMember({
         id: 'other-admin-member-id',
         userId: 'other-admin-id',
-        workspaceId: 'workspace-id',
         role: EnumWorkspaceMemberRole.admin,
     });
-    const member = createMock<WorkspaceMember>({
+    const member = buildMember({
         id: 'member-id',
         userId: 'member-id',
-        workspaceId: 'workspace-id',
         role: EnumWorkspaceMemberRole.member,
     });
 
     let domain: WorkspaceMemberDomain;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.resetAllMocks();
-        domain = new WorkspaceMemberDomain(
-            memberRepository,
-            workspaceRepository,
-            activityLogDomain
-        );
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                WorkspaceMemberDomain,
+                {
+                    provide: WorkspaceMemberRepository,
+                    useValue: memberRepository,
+                },
+                { provide: WorkspaceRepository, useValue: workspaceRepository },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+            ],
+        }).compile();
+
+        domain = module.get(WorkspaceMemberDomain);
     });
 
     it('rejects member validation without a user', async () => {

@@ -1,7 +1,9 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { RequestHelmetMiddleware } from '@common/request/middlewares/request.helmet.middleware';
 import { ConfigService } from '@nestjs/config';
@@ -9,26 +11,35 @@ import { ConfigService } from '@nestjs/config';
 vi.mock('helmet', () => ({ default: vi.fn(() => vi.fn()) }));
 
 describe('RequestHelmetMiddleware', () => {
-    const configService = createMock<ConfigService>();
-    const request = createMock<Request>();
-    const response = createMock<Response>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const request: MockProxy<Request> = mock<Request>();
+    const response: MockProxy<Response> = mock<Response>();
     const next: NextFunction = () => undefined;
     const helmetMiddleware = vi.fn();
     const helmetMock = vi.mocked(helmet);
 
-    beforeEach(() => {
+    let middleware: RequestHelmetMiddleware;
+
+    beforeEach(async () => {
         vi.resetAllMocks();
         helmetMock.mockReturnValue(helmetMiddleware);
-        configService.get.mockImplementation(key => {
+        vi.mocked(configService.get).mockImplementation(key => {
             if (key === 'request.helmet.maxAgeInSeconds') return 31536000;
             if (key === 'request.helmet.includeSubDomains') return true;
             if (key === 'request.helmet.preload') return false;
             return undefined;
         });
+
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                RequestHelmetMiddleware,
+                { provide: ConfigService, useValue: configService },
+            ],
+        }).compile();
+        middleware = moduleRef.get(RequestHelmetMiddleware);
     });
 
     it('applies the configured API security-header profile', () => {
-        const middleware = new RequestHelmetMiddleware(configService);
         middleware.use(request, response, next);
         expect(helmetMock).toHaveBeenCalledWith({
             contentSecurityPolicy: false,

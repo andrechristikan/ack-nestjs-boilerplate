@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { EnumApiKeyType } from '@generated/prisma-client';
 import { ApiKeyCreateResponseSchema } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import { ApiKeyResponseSchema } from '@modules/api-key/dtos/response/api-key.response.dto';

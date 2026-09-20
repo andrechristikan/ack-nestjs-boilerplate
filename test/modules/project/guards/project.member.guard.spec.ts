@@ -1,6 +1,8 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { ExecutionContext } from '@nestjs/common';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
@@ -12,15 +14,34 @@ import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 
 describe('ProjectMemberGuard', () => {
-    const projectMemberDomain = createMock<ProjectMemberDomain>();
-    const requestStoreService = createMock<RequestStoreService>();
-    const context = createMock<ExecutionContext>();
+    const projectMemberDomain: MockProxy<ProjectMemberDomain> =
+        mock<ProjectMemberDomain>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
 
-    beforeEach(() => vi.resetAllMocks());
+    let guard: ProjectMemberGuard;
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                ProjectMemberGuard,
+                { provide: ProjectMemberDomain, useValue: projectMemberDomain },
+                {
+                    provide: RequestStoreService,
+                    useValue: requestStoreService,
+                },
+            ],
+        }).compile();
+
+        guard = module.get(ProjectMemberGuard);
+    });
 
     it('validates and stores the current project membership', async () => {
         const member =
-            createMock<
+            mock<
                 Awaited<
                     ReturnType<
                         ProjectMemberDomain['validateProjectMemberGuard']
@@ -34,10 +55,6 @@ describe('ProjectMemberGuard', () => {
         });
         projectMemberDomain.validateProjectMemberGuard.mockResolvedValue(
             member
-        );
-        const guard = new ProjectMemberGuard(
-            projectMemberDomain,
-            requestStoreService
         );
 
         await expect(guard.canActivate(context)).resolves.toBe(true);
@@ -58,10 +75,6 @@ describe('ProjectMemberGuard', () => {
             return undefined;
         });
         projectMemberDomain.validateProjectMemberGuard.mockRejectedValue(error);
-        const guard = new ProjectMemberGuard(
-            projectMemberDomain,
-            requestStoreService
-        );
 
         await expect(guard.canActivate(context)).rejects.toBe(error);
         expect(requestStoreService.set).not.toHaveBeenCalled();
@@ -95,17 +108,13 @@ describe('ProjectMemberGuard', () => {
                 return undefined;
             });
             projectMemberDomain.validateProjectMemberGuard.mockResolvedValue(
-                createMock<
+                mock<
                     Awaited<
                         ReturnType<
                             ProjectMemberDomain['validateProjectMemberGuard']
                         >
                     >
                 >()
-            );
-            const guard = new ProjectMemberGuard(
-                projectMemberDomain,
-                requestStoreService
             );
 
             await expect(guard.canActivate(context)).resolves.toBe(true);

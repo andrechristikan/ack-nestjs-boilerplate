@@ -1,7 +1,9 @@
-import { createMock } from '@golevelup/ts-vitest';
-import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -36,85 +38,29 @@ import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domai
 import { UserUtil } from '@modules/user/utils/user.util';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import {
-    createDatabaseServiceMock,
-    mockDatabaseServiceTransaction,
-} from '@test/support/database.mock';
 
 describe('UserTwoFactorDomain', () => {
-    const userTwoFactorRepository = {
-        verifyTwoFactorInTx:
-            vi.fn<UserTwoFactorRepository['verifyTwoFactorInTx']>(),
-        setupTwoFactor: vi.fn<UserTwoFactorRepository['setupTwoFactor']>(),
-        enableTwoFactor: vi.fn<UserTwoFactorRepository['enableTwoFactor']>(),
-        disableTwoFactorInTx:
-            vi.fn<UserTwoFactorRepository['disableTwoFactorInTx']>(),
-        regenerateTwoFactorBackupCodes:
-            vi.fn<UserTwoFactorRepository['regenerateTwoFactorBackupCodes']>(),
-        resetTwoFactorByAdminInTx:
-            vi.fn<UserTwoFactorRepository['resetTwoFactorByAdminInTx']>(),
-    } satisfies Pick<
-        UserTwoFactorRepository,
-        | 'verifyTwoFactorInTx'
-        | 'setupTwoFactor'
-        | 'enableTwoFactor'
-        | 'disableTwoFactorInTx'
-        | 'regenerateTwoFactorBackupCodes'
-        | 'resetTwoFactorByAdminInTx'
-    >;
-    const userRepository = {
-        findOneWithRoleById: vi.fn<UserRepository['findOneWithRoleById']>(),
-    } satisfies Pick<UserRepository, 'findOneWithRoleById'>;
-    const userLoginService = {
-        handleTwoFactorValidation:
-            vi.fn<UserLoginDomain['handleTwoFactorValidation']>(),
-        createTokenAndSession:
-            vi.fn<UserLoginDomain['createTokenAndSession']>(),
-        recordTwoFactorVerification:
-            vi.fn<UserLoginDomain['recordTwoFactorVerification']>(),
-        handleTwoFactorSetupValidation:
-            vi.fn<UserLoginDomain['handleTwoFactorSetupValidation']>(),
-    } satisfies Pick<
-        UserLoginDomain,
-        | 'handleTwoFactorValidation'
-        | 'createTokenAndSession'
-        | 'recordTwoFactorVerification'
-        | 'handleTwoFactorSetupValidation'
-    >;
-    const authTwoFactorService = {
-        setupTwoFactor: vi.fn<AuthTwoFactorDomain['setupTwoFactor']>(),
-        generateBackupCodes:
-            vi.fn<AuthTwoFactorDomain['generateBackupCodes']>(),
-    } satisfies Pick<
-        AuthTwoFactorDomain,
-        'setupTwoFactor' | 'generateBackupCodes'
-    >;
-    const authCacheService = {
-        getChallenge: vi.fn<AuthCache['getChallenge']>(),
-        clearChallenge: vi.fn<AuthCache['clearChallenge']>(),
-        clearLockTwoFactorAttempt:
-            vi.fn<AuthCache['clearLockTwoFactorAttempt']>(),
-    } satisfies Pick<
-        AuthCache,
-        'getChallenge' | 'clearChallenge' | 'clearLockTwoFactorAttempt'
-    >;
-    const notificationQueue = {
-        sendResetTwoFactorByAdmin:
-            vi.fn<NotificationQueue['sendResetTwoFactorByAdmin']>(),
-    } satisfies Pick<NotificationQueue, 'sendResetTwoFactorByAdmin'>;
-    const helperDateService = {
-        create: vi.fn<HelperDateService['create']>(),
-    } satisfies Pick<HelperDateService, 'create'>;
-    const requestStoreGet = vi.fn((_key: string): unknown => null);
-    const requestStoreService = {
-        get<T>(key: string): T | null {
-            return requestStoreGet(key) as T | null;
-        },
-    } satisfies Pick<RequestStoreService, 'get'>;
-    const databaseService = createDatabaseServiceMock();
-    const sessionDomain = createMock<SessionDomain>();
-    const activityLogDomain = createMock<ActivityLogDomain>();
-    const userUtil = createMock<UserUtil>();
+    const userTwoFactorRepository: MockProxy<UserTwoFactorRepository> =
+        mock<UserTwoFactorRepository>();
+    const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
+    const userLoginDomain: MockProxy<UserLoginDomain> = mock<UserLoginDomain>();
+    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    const sessionDomain: MockProxy<SessionDomain> = mock<SessionDomain>();
+    const activityLogDomain: MockProxy<ActivityLogDomain> =
+        mock<ActivityLogDomain>();
+    const databaseService: DeepMockProxy<DatabaseService> =
+        mockDeep<DatabaseService>();
+    const authTwoFactorDomain: MockProxy<AuthTwoFactorDomain> =
+        mock<AuthTwoFactorDomain>();
+    const authCache: MockProxy<AuthCache> = mock<AuthCache>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const transactionClient: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const requestLog = {
@@ -221,16 +167,18 @@ describe('UserTwoFactorDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        mockDatabaseServiceTransaction(databaseService);
-        requestStoreGet.mockReturnValue(requestLog);
+        databaseService.withTransaction.mockImplementation(async callback =>
+            callback(transactionClient)
+        );
+        requestStoreService.get.mockReturnValue(requestLog);
         helperDateService.create.mockReturnValue(now);
-        authCacheService.getChallenge.mockResolvedValue(challenge);
+        authCache.getChallenge.mockResolvedValue(challenge);
         userRepository.findOneWithRoleById.mockResolvedValue(user);
-        userLoginService.handleTwoFactorValidation.mockResolvedValue(
+        userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
             twoFactorVerified
         );
-        userLoginService.createTokenAndSession.mockResolvedValue(tokens);
-        authTwoFactorService.generateBackupCodes.mockReturnValue(backupCodes);
+        userLoginDomain.createTokenAndSession.mockResolvedValue(tokens);
+        authTwoFactorDomain.generateBackupCodes.mockReturnValue(backupCodes);
 
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
@@ -240,16 +188,16 @@ describe('UserTwoFactorDomain', () => {
                     useValue: userTwoFactorRepository,
                 },
                 { provide: UserRepository, useValue: userRepository },
-                { provide: UserLoginDomain, useValue: userLoginService },
+                { provide: UserLoginDomain, useValue: userLoginDomain },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: SessionDomain, useValue: sessionDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
                 {
                     provide: AuthTwoFactorDomain,
-                    useValue: authTwoFactorService,
+                    useValue: authTwoFactorDomain,
                 },
-                { provide: AuthCache, useValue: authCacheService },
+                { provide: AuthCache, useValue: authCache },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: RequestStoreService, useValue: requestStoreService },
@@ -270,29 +218,29 @@ describe('UserTwoFactorDomain', () => {
 
             expect(result).toEqual(tokens);
             expect(
-                userLoginService.handleTwoFactorValidation
+                userLoginDomain.handleTwoFactorValidation
             ).toHaveBeenCalledWith(user, {
                 method: EnumAuthTwoFactorMethod.code,
                 code: '123456',
                 backupCode: undefined,
             });
-            expect(userLoginService.createTokenAndSession).toHaveBeenCalledWith(
+            expect(userLoginDomain.createTokenAndSession).toHaveBeenCalledWith(
                 user,
                 challenge.device,
                 challenge.loginFrom,
                 challenge.loginWith,
                 now
             );
-            expect(authCacheService.clearChallenge).toHaveBeenCalledWith(
+            expect(authCache.clearChallenge).toHaveBeenCalledWith(
                 'challenge-token'
             );
             expect(
-                userLoginService.recordTwoFactorVerification
+                userLoginDomain.recordTwoFactorVerification
             ).toHaveBeenCalledWith(user, twoFactorVerified);
         });
 
         it('throws AuthTwoFactorChallengeInvalidException when the challenge is missing', async () => {
-            authCacheService.getChallenge.mockResolvedValue(null);
+            authCache.getChallenge.mockResolvedValue(null);
 
             await expect(
                 service.loginVerifyTwoFactor('missing-token', {
@@ -326,7 +274,7 @@ describe('UserTwoFactorDomain', () => {
 
             expect(result).toEqual(backupCodes.codes);
             expect(
-                userLoginService.handleTwoFactorSetupValidation
+                userLoginDomain.handleTwoFactorSetupValidation
             ).toHaveBeenCalledWith(
                 setupRequiredUser,
                 'pending-secret',
@@ -354,7 +302,7 @@ describe('UserTwoFactorDomain', () => {
                     confirmedAt: null,
                 },
             } satisfies IUser;
-            authTwoFactorService.setupTwoFactor.mockResolvedValue({
+            authTwoFactorDomain.setupTwoFactor.mockResolvedValue({
                 secret: 'plain-secret',
                 otpauthUrl: 'otpauth://totp/user',
                 encryptedSecret: 'encrypted-secret',
@@ -366,7 +314,7 @@ describe('UserTwoFactorDomain', () => {
                 secret: 'plain-secret',
                 otpauthUrl: 'otpauth://totp/user',
             });
-            expect(authTwoFactorService.setupTwoFactor).toHaveBeenCalledWith(
+            expect(authTwoFactorDomain.setupTwoFactor).toHaveBeenCalledWith(
                 disabledUser.id,
                 disabledUser.email
             );
@@ -380,7 +328,7 @@ describe('UserTwoFactorDomain', () => {
             await expect(
                 service.setupTwoFactor(user, null)
             ).rejects.toBeInstanceOf(AuthTwoFactorBackupCodeRequiredException);
-            expect(authTwoFactorService.setupTwoFactor).not.toHaveBeenCalled();
+            expect(authTwoFactorDomain.setupTwoFactor).not.toHaveBeenCalled();
         });
     });
 
@@ -400,7 +348,7 @@ describe('UserTwoFactorDomain', () => {
 
             expect(result).toEqual(backupCodes.codes);
             expect(
-                userLoginService.handleTwoFactorSetupValidation
+                userLoginDomain.handleTwoFactorSetupValidation
             ).toHaveBeenCalledWith(pendingUser, 'pending-secret', '123456');
             expect(
                 userTwoFactorRepository.enableTwoFactor
@@ -427,7 +375,7 @@ describe('UserTwoFactorDomain', () => {
                 service.enableTwoFactor(disabledUser, '123456')
             ).rejects.toBeInstanceOf(AuthTwoFactorSetupRequiredException);
             expect(
-                userLoginService.handleTwoFactorValidation
+                userLoginDomain.handleTwoFactorValidation
             ).not.toHaveBeenCalled();
         });
     });
@@ -454,7 +402,7 @@ describe('UserTwoFactorDomain', () => {
             });
 
             expect(
-                userLoginService.handleTwoFactorValidation
+                userLoginDomain.handleTwoFactorValidation
             ).toHaveBeenCalledWith(user, {
                 method: EnumAuthTwoFactorMethod.backupCodes,
                 code: undefined,
@@ -479,7 +427,7 @@ describe('UserTwoFactorDomain', () => {
                 })
             ).rejects.toBeInstanceOf(AuthTwoFactorNotEnabledException);
             expect(
-                userLoginService.handleTwoFactorValidation
+                userLoginDomain.handleTwoFactorValidation
             ).not.toHaveBeenCalled();
         });
     });
@@ -493,7 +441,7 @@ describe('UserTwoFactorDomain', () => {
 
             expect(result).toEqual(backupCodes.codes);
             expect(
-                userLoginService.handleTwoFactorValidation
+                userLoginDomain.handleTwoFactorValidation
             ).toHaveBeenCalledWith(user, {
                 method: EnumAuthTwoFactorMethod.code,
                 code: '123456',
@@ -512,9 +460,9 @@ describe('UserTwoFactorDomain', () => {
             expect(
                 userTwoFactorRepository.resetTwoFactorByAdminInTx
             ).toHaveBeenCalledWith(expect.any(Object), user.id);
-            expect(
-                authCacheService.clearLockTwoFactorAttempt
-            ).toHaveBeenCalledWith(user);
+            expect(authCache.clearLockTwoFactorAttempt).toHaveBeenCalledWith(
+                user
+            );
             expect(
                 notificationQueue.sendResetTwoFactorByAdmin
             ).toHaveBeenCalledWith(user.id, 'admin-id');

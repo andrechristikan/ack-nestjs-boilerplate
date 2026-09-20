@@ -1,6 +1,6 @@
-import { createMock } from '@golevelup/ts-vitest';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { EnumUserLoginFrom, EnumUserLoginWith } from '@generated/prisma-client';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -10,9 +10,9 @@ import type { IAuthJwtRefreshTokenPayload } from '@modules/auth/interfaces/auth.
 import { AuthDomain } from '@modules/auth/domains/auth.domain';
 
 describe('AuthJwtRefreshGuard', () => {
-    const authService =
-        createMock<Pick<AuthDomain, 'validateJwtRefreshGuard'>>();
-    const requestStoreService = createMock<Pick<RequestStoreService, 'set'>>();
+    const authDomain: MockProxy<AuthDomain> = mock<AuthDomain>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
     const payload = {
         userId: 'user-id',
         sessionId: 'session-id',
@@ -31,7 +31,7 @@ describe('AuthJwtRefreshGuard', () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtRefreshGuard,
-                { provide: AuthDomain, useValue: authService },
+                { provide: AuthDomain, useValue: authDomain },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
@@ -39,7 +39,7 @@ describe('AuthJwtRefreshGuard', () => {
     });
 
     it('stores and returns the validated refreshInTx principal', () => {
-        authService.validateJwtRefreshGuard.mockReturnValue(payload);
+        authDomain.validateJwtRefreshGuard.mockReturnValue(payload);
 
         expect(
             guard.handleRequest(

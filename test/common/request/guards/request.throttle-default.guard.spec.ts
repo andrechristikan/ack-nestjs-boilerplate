@@ -1,18 +1,24 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type {
     ThrottlerModuleOptions,
     ThrottlerStorage,
 } from '@nestjs/throttler';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { RequestThrottleDefaultGuard } from '@common/request/guards/request.throttle-default.guard';
 import { RequestUtil } from '@common/request/utils/request.util';
+import type { Response } from 'express';
 
 describe('RequestThrottleDefaultGuard', () => {
-    const increment = vi.fn<ThrottlerStorage['increment']>();
-    const storage: ThrottlerStorage = { increment };
+    const storage: MockProxy<ThrottlerStorage> = mock<ThrottlerStorage>();
+    const reflector: MockProxy<Reflector> = mock<Reflector>();
+    const requestUtil: MockProxy<RequestUtil> = mock<RequestUtil>();
+    const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
+    const httpContext: MockProxy<ReturnType<ExecutionContext['switchToHttp']>> =
+        mock<ReturnType<ExecutionContext['switchToHttp']>>();
+    const response: MockProxy<Response> = mock<Response>();
     const options: ThrottlerModuleOptions = {
         throttlers: [
             {
@@ -23,29 +29,24 @@ describe('RequestThrottleDefaultGuard', () => {
             },
         ],
     };
-    const header = vi.fn();
     class TestController {}
     function list() {}
-    let context: ExecutionContext;
-
     let guard: RequestThrottleDefaultGuard;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        context = createMock<ExecutionContext>({
-            getHandler: () => list,
-            getClass: () => TestController,
-            switchToHttp: () =>
-                createMock<ReturnType<ExecutionContext['switchToHttp']>>({
-                    getRequest: () => ({
-                        ip: 'untrusted-value',
-                        socket: { remoteAddress: '203.0.113.10' },
-                        headers: {},
-                    }),
-                    getResponse: () => createMock({ header }),
-                }),
+        context.getHandler.mockReturnValue(list);
+        context.getClass.mockReturnValue(TestController);
+        context.switchToHttp.mockReturnValue(httpContext);
+        httpContext.getRequest.mockReturnValue({
+            ip: 'untrusted-value',
+            socket: { remoteAddress: '203.0.113.10' },
+            headers: {},
         });
-        increment.mockResolvedValue({
+        httpContext.getResponse.mockReturnValue(response);
+        response.header.mockReturnValue(response);
+        requestUtil.resolveThrottleTrackerIp.mockReturnValue('203.0.113.10');
+        storage.increment.mockResolvedValue({
             totalHits: 1,
             timeToExpire: 60,
             isBlocked: false,
@@ -54,8 +55,8 @@ describe('RequestThrottleDefaultGuard', () => {
         guard = new RequestThrottleDefaultGuard(
             options,
             storage,
-            new Reflector(),
-            new RequestUtil()
+            reflector,
+            requestUtil
         );
         await guard.onModuleInit();
     });
@@ -63,13 +64,13 @@ describe('RequestThrottleDefaultGuard', () => {
     it('uses the resolved client IP directly as the global throttler key', async () => {
         await expect(guard.canActivate(context)).resolves.toBe(true);
 
-        expect(increment).toHaveBeenCalledWith(
+        expect(storage.increment).toHaveBeenCalledWith(
             '203.0.113.10',
             60_000,
             10,
             30_000,
             'default'
         );
-        expect(header).toHaveBeenCalledWith('X-RateLimit-Limit', 10);
+        expect(response.header).toHaveBeenCalledWith('X-RateLimit-Limit', 10);
     });
 });

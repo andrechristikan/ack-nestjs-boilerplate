@@ -1,8 +1,9 @@
-import { createMock } from '@golevelup/ts-vitest';
 import type { CallHandler, ExecutionContext } from '@nestjs/common';
-import { Test, type TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
 import { firstValueFrom, of } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { RequestActorStoreKey } from '@common/request/constants/request.constant';
 import { RequestActorInterceptor } from '@common/request/interceptors/request.actor.interceptor';
@@ -10,9 +11,9 @@ import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 describe('RequestActorInterceptor', () => {
-    const requestStoreService = createMock<Pick<RequestStoreService, 'set'>>();
-    const requestStoreSet = requestStoreService.set;
-    const next = { handle: vi.fn(() => of('result')) } satisfies CallHandler;
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const next: MockProxy<CallHandler> = mock<CallHandler>();
 
     let interceptor: RequestActorInterceptor;
 
@@ -29,36 +30,38 @@ describe('RequestActorInterceptor', () => {
     });
 
     it('stores the authenticated actor and passes through the handler result', async () => {
-        const request = createMock<IRequestApp>({
+        const request: MockProxy<IRequestApp> = mock<IRequestApp>({
             user: { userId: 'user-id' },
         });
-        const context = createMock<ExecutionContext>({
-            switchToHttp: () =>
-                createMock<ReturnType<ExecutionContext['switchToHttp']>>({
-                    getRequest: () => request,
-                }),
-        });
+        const httpContext: MockProxy<
+            ReturnType<ExecutionContext['switchToHttp']>
+        > = mock<ReturnType<ExecutionContext['switchToHttp']>>();
+        const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
+        httpContext.getRequest.mockReturnValue(request);
+        context.switchToHttp.mockReturnValue(httpContext);
 
         await expect(
             firstValueFrom(interceptor.intercept(context, next))
         ).resolves.toBe('result');
-        expect(requestStoreSet).toHaveBeenCalledWith(
+        expect(requestStoreService.set).toHaveBeenCalledWith(
             RequestActorStoreKey,
             'user-id'
         );
     });
 
     it('does not store an actor for an anonymous request', async () => {
-        const request = createMock<IRequestApp>({ user: undefined });
-        const context = createMock<ExecutionContext>({
-            switchToHttp: () =>
-                createMock<ReturnType<ExecutionContext['switchToHttp']>>({
-                    getRequest: () => request,
-                }),
+        const request: MockProxy<IRequestApp> = mock<IRequestApp>({
+            user: undefined,
         });
+        const httpContext: MockProxy<
+            ReturnType<ExecutionContext['switchToHttp']>
+        > = mock<ReturnType<ExecutionContext['switchToHttp']>>();
+        const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
+        httpContext.getRequest.mockReturnValue(request);
+        context.switchToHttp.mockReturnValue(httpContext);
 
         await firstValueFrom(interceptor.intercept(context, next));
 
-        expect(requestStoreSet).not.toHaveBeenCalled();
+        expect(requestStoreService.set).not.toHaveBeenCalled();
     });
 });

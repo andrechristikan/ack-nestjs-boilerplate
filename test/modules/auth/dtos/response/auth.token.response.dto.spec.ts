@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { EnumRoleType } from '@generated/prisma-client';
 import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
 

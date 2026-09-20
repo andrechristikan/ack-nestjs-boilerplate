@@ -1,9 +1,10 @@
-import { createMock } from '@golevelup/ts-vitest';
 import * as Sentry from '@sentry/nestjs';
 import { HttpException, HttpStatus, type ArgumentsHost } from '@nestjs/common';
+import type { HttpArgumentsHost } from '@nestjs/common/interfaces/features/arguments-host.interface.js';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
@@ -36,34 +37,22 @@ describe('Application error filters', () => {
         requestId: 'request-id',
         correlationId: 'correlation-id',
     } as const;
-    const messageService =
-        createMock<
-            Pick<
-                MessageService,
-                | 'setMessage'
-                | 'setValidationMessage'
-                | 'setValidationImportMessage'
-            >
-        >();
-    const responseMetadataService =
-        createMock<Pick<ResponseMetadataService, 'create' | 'setHeaders'>>();
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const responseMetadataService: MockProxy<ResponseMetadataService> =
+        mock<ResponseMetadataService>();
     const sentryService = new SentryService();
-    const json = vi.fn<(body: unknown) => Response>();
-    const status = vi.fn<(statusCode: number) => Response>();
-    const response = createMock<Response>({ json, status });
-    const host = createMock<ArgumentsHost>({
-        switchToHttp: () =>
-            createMock<ReturnType<ArgumentsHost['switchToHttp']>>({
-                getResponse: () => response,
-            }),
-    });
+    const response: MockProxy<Response> = mock<Response>();
+    const httpHost: MockProxy<HttpArgumentsHost> = mock<HttpArgumentsHost>();
+    const host: MockProxy<ArgumentsHost> = mock<ArgumentsHost>();
 
     beforeEach(() => {
         vi.resetAllMocks();
         messageService.setMessage.mockReturnValue('localized message');
         responseMetadataService.create.mockReturnValue(metadata);
-        status.mockReturnValue(response);
-        json.mockReturnValue(response);
+        response.status.mockReturnValue(response);
+        response.json.mockReturnValue(response);
+        httpHost.getResponse.mockReturnValue(response);
+        host.switchToHttp.mockReturnValue(httpHost);
     });
 
     async function resolveFilter<T>(
@@ -99,8 +88,10 @@ describe('Application error filters', () => {
             response,
             metadata
         );
-        expect(status).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
-        expect(json).toHaveBeenCalledWith({
+        expect(response.status).toHaveBeenCalledWith(
+            HttpStatus.UNPROCESSABLE_ENTITY
+        );
+        expect(response.json).toHaveBeenCalledWith({
             statusCode: exception.statusCode,
             statusCodeKey: exception.statusCodeKey,
             module: 'file',
@@ -117,7 +108,9 @@ describe('Application error filters', () => {
         await filter.catch(new AppUnknownException(cause), host);
 
         expect(Sentry.captureException).toHaveBeenCalledWith(cause);
-        expect(status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
+        expect(response.status).toHaveBeenCalledWith(
+            HttpStatus.INTERNAL_SERVER_ERROR
+        );
     });
 
     it('renders and reports unknown errors through the general fallback', async () => {
@@ -131,8 +124,10 @@ describe('Application error filters', () => {
             'http.serverError.internalServerError',
             { customLanguage: 'en' }
         );
-        expect(status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
-        expect(json).toHaveBeenCalledWith({
+        expect(response.status).toHaveBeenCalledWith(
+            HttpStatus.INTERNAL_SERVER_ERROR
+        );
+        expect(response.json).toHaveBeenCalledWith({
             statusCode: EnumAppStatusCodeError.unknown,
             statusCodeKey: 'unknown',
             module: 'app',
@@ -150,8 +145,8 @@ describe('Application error filters', () => {
         );
 
         expect(Sentry.captureException).not.toHaveBeenCalled();
-        expect(status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
-        expect(json).toHaveBeenCalledWith({
+        expect(response.status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
+        expect(response.json).toHaveBeenCalledWith({
             statusCode: HttpStatus.NOT_FOUND,
             statusCodeKey: 'notFound',
             module: 'http',
@@ -175,7 +170,7 @@ describe('Application error filters', () => {
         await filter.catch(exception, host);
 
         expect(Sentry.captureException).toHaveBeenCalledWith(exception);
-        expect(json).toHaveBeenCalledWith(
+        expect(response.json).toHaveBeenCalledWith(
             expect.objectContaining({
                 statusCodeKey: 'customFailure',
                 module: 'gateway',
@@ -202,7 +197,7 @@ describe('Application error filters', () => {
             issues,
             { customLanguage: 'en' }
         );
-        expect(json).toHaveBeenCalledWith(
+        expect(response.json).toHaveBeenCalledWith(
             expect.objectContaining({ errors: localizedErrors })
         );
         expect(Sentry.captureException).not.toHaveBeenCalled();
@@ -235,7 +230,7 @@ describe('Application error filters', () => {
             importErrors,
             { customLanguage: 'en' }
         );
-        expect(json).toHaveBeenCalledWith(
+        expect(response.json).toHaveBeenCalledWith(
             expect.objectContaining({ errors: localizedErrors })
         );
         expect(Sentry.captureException).not.toHaveBeenCalled();
@@ -260,8 +255,10 @@ describe('Application error filters', () => {
                 properties: { retryAfterSeconds: 30 },
             }
         );
-        expect(status).toHaveBeenCalledWith(HttpStatus.TOO_MANY_REQUESTS);
-        expect(json).toHaveBeenCalledWith(
+        expect(response.status).toHaveBeenCalledWith(
+            HttpStatus.TOO_MANY_REQUESTS
+        );
+        expect(response.json).toHaveBeenCalledWith(
             expect.objectContaining({
                 module: 'auth',
                 data: { attempts: 5 },
@@ -297,8 +294,8 @@ describe('Application error filters', () => {
         );
         await generalFilter.catch(new Error('y'), host);
 
-        expect(status).toHaveBeenCalledTimes(3);
-        expect(json).toHaveBeenCalledTimes(3);
+        expect(response.status).toHaveBeenCalledTimes(3);
+        expect(response.json).toHaveBeenCalledTimes(3);
     });
 
     it('falls back to the numeric status when the HTTP status has no name', async () => {
@@ -309,7 +306,7 @@ describe('Application error filters', () => {
         expect(messageService.setMessage).toHaveBeenCalledWith('http.599', {
             customLanguage: 'en',
         });
-        expect(json).toHaveBeenCalledWith(
+        expect(response.json).toHaveBeenCalledWith(
             expect.objectContaining({ statusCode: 599, statusCodeKey: '599' })
         );
     });
@@ -321,7 +318,7 @@ describe('Application error filters', () => {
         await filter.catch(exception, host);
 
         expect(Sentry.captureException).toHaveBeenCalledWith(exception);
-        expect(json).toHaveBeenCalledWith(
+        expect(response.json).toHaveBeenCalledWith(
             expect.objectContaining({
                 statusCodeKey: 'badGateway',
                 module: 'http',
@@ -340,8 +337,11 @@ describe('Application error filters', () => {
         await validationFilter.catch(validation, host);
         await importFilter.catch(fileImport, host);
 
-        expect(status).toHaveBeenNthCalledWith(1, validation.httpStatus);
-        expect(json).toHaveBeenNthCalledWith(1, {
+        expect(response.status).toHaveBeenNthCalledWith(
+            1,
+            validation.httpStatus
+        );
+        expect(response.json).toHaveBeenNthCalledWith(1, {
             statusCode: validation.statusCode,
             statusCodeKey: validation.statusCodeKey,
             module: validation.module,
@@ -349,8 +349,11 @@ describe('Application error filters', () => {
             metadata,
             errors: [],
         });
-        expect(status).toHaveBeenNthCalledWith(2, fileImport.httpStatus);
-        expect(json).toHaveBeenNthCalledWith(2, {
+        expect(response.status).toHaveBeenNthCalledWith(
+            2,
+            fileImport.httpStatus
+        );
+        expect(response.json).toHaveBeenNthCalledWith(2, {
             statusCode: fileImport.statusCode,
             statusCodeKey: fileImport.statusCodeKey,
             module: fileImport.module,
