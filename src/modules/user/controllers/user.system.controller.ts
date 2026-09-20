@@ -1,51 +1,20 @@
-import {
-    PaginationCursorQuery,
-    PaginationQueryFilterEqualString,
-    PaginationQueryFilterInEnum,
-} from '@common/pagination/decorators/pagination.decorator';
-import {
-    IPaginationEqual,
-    IPaginationIn,
-    IPaginationQueryCursorParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import {
-    Response,
-    ResponsePaging,
-} from '@common/response/decorators/response.decorator';
-import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
+import { Doc } from '@common/doc/decorators/doc.decorator';
+import { Response } from '@common/response/decorators/response.decorator';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
-import {
-    UserDefaultAvailableSearch,
-    UserDefaultStatus,
-} from '@modules/user/constants/user.list.constant';
-import {
-    UserSystemCheckEmailDoc,
-    UserSystemCheckUsernameDoc,
-    UserSystemListDoc,
-} from '@modules/user/docs/user.system.doc';
-import {
-    UserCheckEmailRequestDto,
-    UserCheckUsernameRequestDto,
-} from '@modules/user/dtos/request/user.check.request.dto';
-import {
-    UserCheckEmailResponseDto,
-    UserCheckUsernameResponseDto,
-} from '@modules/user/dtos/response/user.check.response.dto';
-import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
-import { UserService } from '@modules/user/services/user.service';
-import {
-    Body,
-    Controller,
-    Get,
-    HttpCode,
-    HttpStatus,
-    Post,
-} from '@nestjs/common';
+import { UserCheckEmailRequestSchema } from '@modules/user/dtos/request/user.check-email.request.dto';
+import { UserCheckUsernameRequestSchema } from '@modules/user/dtos/request/user.check-username.request.dto';
+import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
+import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/user.check-username.request.dto';
+import { UserCheckEmailResponseSchema } from '@modules/user/dtos/response/user.check-email.response.dto';
+import { UserCheckUsernameResponseSchema } from '@modules/user/dtos/response/user.check-username.response.dto';
+import type {
+    IUserCheckEmail,
+    IUserCheckUsername,
+} from '@modules/user/interfaces/user.interface';
+import { UserHttpService } from '@modules/user/services/user.http.service';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumUserStatus, Prisma } from '@generated/prisma-client';
 
 @ApiTags('modules.system.user')
 @Controller({
@@ -53,57 +22,31 @@ import { EnumUserStatus, Prisma } from '@generated/prisma-client';
     path: '/user',
 })
 export class UserSystemController {
-    constructor(private readonly userService: UserService) {}
+    constructor(private readonly userHttpService: UserHttpService) {}
 
-    @UserSystemListDoc()
-    @ResponsePaging('user.list')
-    @ApiKeySystemProtected()
-    @Get('/list')
-    async list(
-        @PaginationCursorQuery({
-            availableSearch: UserDefaultAvailableSearch,
-        })
-        pagination: IPaginationQueryCursorParams<
-            Prisma.UserSelect,
-            Prisma.UserWhereInput
-        >,
-        @PaginationQueryFilterInEnum<EnumUserStatus>(
-            'status',
-            UserDefaultStatus
-        )
-        status?: Record<string, IPaginationIn>,
-        @PaginationQueryFilterEqualString('role')
-        role?: Record<string, IPaginationEqual>,
-        @PaginationQueryFilterEqualString('country')
-        country?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-        return this.userService.getListCursor(
-            pagination,
-            status,
-            role,
-            country
-        );
-    }
-
-    @UserSystemCheckUsernameDoc()
-    @Response('user.checkUsername')
+    @Doc({ summary: 'check user exist by username' })
+    @Response('user.checkUsername', {
+        schema: UserCheckUsernameResponseSchema,
+    })
     @ApiKeySystemProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/check/username')
+    @Post('/username/check')
     async checkUsername(
-        @Body() body: UserCheckUsernameRequestDto
-    ): Promise<IResponseReturn<UserCheckUsernameResponseDto>> {
-        return this.userService.checkUsername(body);
+        @Body({ schema: UserCheckUsernameRequestSchema })
+        body: UserCheckUsernameRequestDto
+    ): Promise<IResponseReturn<IUserCheckUsername>> {
+        return this.userHttpService.checkUsername(body);
     }
 
-    @UserSystemCheckEmailDoc()
-    @Response('user.checkEmail')
+    @Doc({ summary: 'check user exist by email' })
+    @Response('user.checkEmail', { schema: UserCheckEmailResponseSchema })
     @ApiKeySystemProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/check/email')
+    @Post('/email/check')
     async checkEmail(
-        @Body() body: UserCheckEmailRequestDto
-    ): Promise<IResponseReturn<UserCheckEmailResponseDto>> {
-        return this.userService.checkEmail(body);
+        @Body({ schema: UserCheckEmailRequestSchema })
+        body: UserCheckEmailRequestDto
+    ): Promise<IResponseReturn<IUserCheckEmail>> {
+        return this.userHttpService.checkEmail(body);
     }
 }

@@ -1,7 +1,17 @@
-import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
-import { OmitType } from '@nestjs/swagger';
+import { z } from 'zod';
+import { UserLoginVerifyTwoFactorRequestSchema } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 
-export class UserTwoFactorDisableRequestDto extends OmitType(
-    UserLoginVerifyTwoFactorRequestDto,
-    ['challengeToken'] as const
-) {}
+/**
+ * Validates the body for disabling two-factor authentication.
+ * @public
+ */
+export const UserTwoFactorDisableRequestSchema =
+    UserLoginVerifyTwoFactorRequestSchema.omit({ challengeToken: true });
+
+/**
+ * Body for disabling two-factor authentication.
+ * @public
+ */
+export type UserTwoFactorDisableRequestDto = z.infer<
+    typeof UserTwoFactorDisableRequestSchema
+>;

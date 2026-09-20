@@ -61,9 +61,23 @@
             "problemMatcher": []
         },
         {
-            "label": "Generate Keys",
+            "label": "Generate All Secrets",
             "type": "shell",
-            "command": "pnpm generate:keys",
+            "command": "pnpm generate:secret",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Generate JWT Secret",
+            "type": "shell",
+            "command": "pnpm generate:secret:jwt",
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Generate Encryption Secret",
+            "type": "shell",
+            "command": "pnpm generate:secret:encryption",
             "group": "none",
             "problemMatcher": []
         },
@@ -91,14 +105,14 @@
         {
             "label": "Seed Template",
             "type": "shell",
-            "command": "pnpm migration template-email-notification --type seed && pnpm migration template-termPolicy --type seed",
+            "command": "pnpm migration templateEmailNotification --type seed && pnpm migration templateTermPolicy --type seed",
             "group": "none",
             "problemMatcher": []
         },
         {
             "label": "Remove Template",
             "type": "shell",
-            "command": "pnpm migration template-email-notification --type remove && pnpm migration template-termPolicy --type remove",
+            "command": "pnpm migration templateEmailNotification --type remove && pnpm migration templateTermPolicy --type remove",
             "group": "none",
             "problemMatcher": []
         },

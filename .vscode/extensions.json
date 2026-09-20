@@ -2,7 +2,7 @@
     "recommendations": [
         "dbaeumer.vscode-eslint", // ESLint for linting
         "esbenp.prettier-vscode", // Prettier for code formatting
-        "firsttris.vscode-jest-runner", // Jest test runner
+        "vitest.explorer", // Vitest test explorer
         "ms-vscode.vscode-typescript-next", // TypeScript support
         "mikestead.dotenv", // .env file support
         "streetsidesoftware.code-spell-checker", // Spell checking

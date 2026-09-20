@@ -1,7 +1,7 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { CountryRequestDto } from '@modules/country/dtos/request/country.request.dto';
+import type { CountryRequestDto } from '@modules/country/dtos/request/country.request.dto';
 
-const countryData = [
+const CountryData = [
     {
         name: 'Indonesia',
         alpha2Code: 'ID',
@@ -12,12 +12,12 @@ const countryData = [
     },
 ];
 
-export const migrationCountryData: Record<
+export const MigrationCountryData: Record<
     EnumAppEnvironment,
     CountryRequestDto[]
 > = {
-    [EnumAppEnvironment.local]: countryData,
-    [EnumAppEnvironment.development]: countryData,
-    [EnumAppEnvironment.staging]: countryData,
-    [EnumAppEnvironment.production]: countryData,
+    [EnumAppEnvironment.local]: CountryData,
+    [EnumAppEnvironment.development]: CountryData,
+    [EnumAppEnvironment.staging]: CountryData,
+    [EnumAppEnvironment.production]: CountryData,
 };

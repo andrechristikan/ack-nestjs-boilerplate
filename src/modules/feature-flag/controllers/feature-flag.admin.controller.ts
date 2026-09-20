@@ -1,50 +1,66 @@
-import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import type { FeatureFlagAdminListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.admin-list.request.dto';
+import { FeatureFlagAdminListRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.admin-list.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
-    ResponsePaging,
+    ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-import {
-    IResponsePagingReturn,
+
+import type {
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { FeatureFlagDefaultAvailableSearch } from '@modules/feature-flag/constants/feature-flag.list.constant';
-import {
-    FeatureFlagAdminListDoc,
-    FeatureFlagAdminUpdateMetadataDoc,
-    FeatureFlagAdminUpdateStatusDoc,
-} from '@modules/feature-flag/docs/feature-flag.admin.doc';
-import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request';
-import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request';
-import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
-import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-} from '@modules/policy/enums/policy.enum';
+
+import { FeatureFlagUpdateMetadataRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
+import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
+import { FeatureFlagUpdateStatusRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
+import type { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
+import { FeatureFlagResponseSchema } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
+import { FeatureFlagHttpService } from '@modules/feature-flag/services/feature-flag.http.service';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { Body, Controller, Get, Param, Patch, Put } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
-import { EnumRoleType, Prisma } from '@generated/prisma-client';
+import {
+    Body,
+    Controller,
+    Get,
+    Param,
+    Patch,
+    Put,
+    Query,
+} from '@nestjs/common';
 
-@ApiTags('common.admin.featureFlag')
+import { ApiTags } from '@nestjs/swagger';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    EnumRoleType,
+} from '@generated/prisma-client/client';
+
+import type { FeatureFlag } from '@generated/prisma-client/client';
+
+@ApiTags('modules.admin.featureFlag')
 @Controller({
     version: '1',
     path: '/feature-flag',
 })
 export class FeatureFlagAdminController {
-    constructor(private readonly featureFlagService: FeatureFlagService) {}
+    constructor(
+        private readonly featureFlagHttpService: FeatureFlagHttpService
+    ) {}
 
-    @FeatureFlagAdminListDoc()
-    @ResponsePaging('featureFlag.list')
+    @Doc({ summary: 'admin get all Feature Flags' })
+    @ResponsePagination('featureFlag.list', {
+        schema: FeatureFlagResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.featureFlag,
         action: [EnumPolicyAction.read],
     })
@@ -52,23 +68,21 @@ export class FeatureFlagAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationOffsetQuery({
-            availableSearch: FeatureFlagDefaultAvailableSearch,
-        })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.FeatureFlagSelect,
-            Prisma.FeatureFlagWhereInput
-        >
-    ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
-        return this.featureFlagService.getListByAdmin(pagination);
+        @Query({ schema: FeatureFlagAdminListRequestSchema })
+        query: FeatureFlagAdminListRequestDto
+    ): Promise<IResponsePaginationReturn<FeatureFlag>> {
+        return this.featureFlagHttpService.getListByAdmin(query);
     }
 
-    @FeatureFlagAdminUpdateStatusDoc()
-    @Response('featureFlag.updateStatus')
+    @Doc({ summary: 'admin update Feature Flag status' })
+    @Response('featureFlag.updateStatus', {
+        schema: FeatureFlagResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.featureFlag,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -76,19 +90,26 @@ export class FeatureFlagAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Patch('/update/:featureFlagId/status')
     async updateStatus(
-        @Param('featureFlagId', RequestRequiredPipe)
+        @Param('featureFlagId', { schema: RequestMongoIdSchema })
         featureFlagId: string,
-        @Body() body: FeatureFlagUpdateStatusRequestDto
-    ): Promise<IResponseReturn<FeatureFlagResponseDto>> {
-        return this.featureFlagService.updateStatusByAdmin(featureFlagId, body);
+        @Body({ schema: FeatureFlagUpdateStatusRequestSchema })
+        body: FeatureFlagUpdateStatusRequestDto
+    ): Promise<IResponseReturn<FeatureFlag>> {
+        return this.featureFlagHttpService.updateStatusByAdmin(
+            featureFlagId,
+            body
+        );
     }
 
-    @FeatureFlagAdminUpdateMetadataDoc()
-    @Response('featureFlag.updateMetadata')
+    @Doc({ summary: 'admin update Feature Flag metadata' })
+    @Response('featureFlag.updateMetadata', {
+        schema: FeatureFlagResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.featureFlag,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -96,13 +117,15 @@ export class FeatureFlagAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Put('/update/:featureFlagId/metadata')
     async update(
-        @Param('featureFlagId', RequestRequiredPipe)
+        @Param('featureFlagId', { schema: RequestMongoIdSchema })
         featureFlagId: string,
-        @Body() body: FeatureFlagUpdateMetadataRequestDto
-    ): Promise<IResponseReturn<FeatureFlagResponseDto>> {
-        return this.featureFlagService.updateMetadataByAdmin(
+        @Body({ schema: FeatureFlagUpdateMetadataRequestSchema })
+        body: FeatureFlagUpdateMetadataRequestDto
+    ): Promise<IResponseReturn<FeatureFlag>> {
+        return this.featureFlagHttpService.updateMetadataByAdmin(
             featureFlagId,
             body
         );

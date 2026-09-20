@@ -22,20 +22,20 @@ export interface IPaginationQuery {
     perPage: number;
     cursor?: string;
     orderBy: IPaginationOrderBy[];
-    availableSearch: string[];
-    availableOrderBy: string[];
+    availableSearch: readonly string[];
+    availableOrderBy: readonly string[];
 }
 
 export interface IPaginationQueryOffsetOptions {
-    availableSearch?: string[];
+    availableOrderBy?: readonly string[];
+    availableSearch?: readonly string[];
     defaultPerPage?: number;
-    availableOrderBy?: string[];
 }
 
 export interface IPaginationQueryCursorOptions {
-    availableSearch?: string[];
+    availableOrderBy?: readonly string[];
+    availableSearch?: readonly string[];
     defaultPerPage?: number;
-    availableOrderBy?: string[];
     cursorField?: string;
 }
 
@@ -50,32 +50,36 @@ export interface IPaginationQueryReturn<
     where?: TArgsWhere;
     orderBy?: IPaginationOrderBy[];
     limit: number;
-    include?: unknown;
 }
 
 export interface IPaginationQueryOffsetParams<
-    TArgsSelect = unknown,
     TArgsWhere = unknown,
 > extends IPaginationQueryReturn<TArgsWhere> {
-    select?: TArgsSelect;
     skip: number;
 }
 
 export interface IPaginationQueryCursorParams<
-    TArgsSelect = unknown,
     TArgsWhere = unknown,
 > extends IPaginationQueryReturn<TArgsWhere> {
-    select?: TArgsSelect;
     cursor?: string;
     cursorField?: string;
-    includeCount?: boolean;
 }
+
+export type IPaginationShape =
+    | { include?: unknown; select?: never }
+    | { select?: unknown; include?: never };
+
+export type IPaginationOffsetArgs<TArgsWhere = unknown> =
+    IPaginationQueryOffsetParams<TArgsWhere> & IPaginationShape;
+
+export type IPaginationCursorArgs<TArgsWhere = unknown> =
+    IPaginationQueryCursorParams<TArgsWhere> & {
+        includeCount?: boolean;
+    } & IPaginationShape;
 
 export interface IPaginationQueryFilterOptions {
     customField?: string;
 }
-
-export type IPaginationQueryFilterEnumOptions = IPaginationQueryFilterOptions;
 
 export interface IPaginationQueryFilterNumberOptions extends IPaginationQueryFilterOptions {
     isNumber: true;
@@ -146,6 +150,35 @@ export interface IPaginationRepository {
 
 export interface IPaginationCursorValue {
     cursor: string;
-    orderBy: IPaginationOrderBy[];
-    where: unknown;
+    fingerprint: string;
+}
+
+/**
+ * Wire shape shared by offset list query DTOs after zod parse.
+ */
+export interface IPaginationOffsetQueryDto {
+    page?: number;
+    perPage?: number;
+    search?: string;
+    orderBy?: string | string[];
+}
+
+/**
+ * Wire shape shared by cursor list query DTOs after zod parse.
+ */
+export interface IPaginationCursorQueryDto {
+    cursor?: string;
+    perPage?: number;
+    search?: string;
+    orderBy?: string | string[];
+}
+
+/**
+ * One filter helper result: Prisma `where` fragment plus the scalar the store surfaces.
+ */
+export interface IPaginationQueryFilterResult<
+    TWhere extends Record<string, unknown> = Record<string, unknown>,
+> {
+    where: TWhere;
+    storeFilter: IPaginationQueryFilter;
 }

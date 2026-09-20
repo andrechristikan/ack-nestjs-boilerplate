@@ -4,7 +4,19 @@ This project follows the [Contributor Covenant v2.1][ref-contributor-covenant] s
 
 ## Our Pledge
 
-I, as the maintainer, and everyone who contributes, pledge to make participation in this project a harassment-free experience for everyone — regardless of age, body size, disability, ethnicity, gender identity, level of experience, nationality, personal appearance, race, religion, or sexual identity.
+I, as the maintainer, and everyone who contributes, pledge to make participation in this project a harassment-free experience for everyone, regardless of:
+
+- age
+- body size
+- disability
+- ethnicity
+- gender identity
+- level of experience
+- nationality
+- personal appearance
+- race
+- religion
+- sexual identity
 
 ## Our Standards
 
@@ -26,7 +38,7 @@ Instances of unacceptable behavior may be reported directly to the maintainer:
 
 📧 **andrechristikan@gmail.com**
 
-All reports will be reviewed and investigated promptly and fairly. The maintainer reserves the right to remove, edit, or reject comments, commits, issues, and other contributions that violate this Code of Conduct.
+All reports are reviewed and investigated promptly and fairly. The maintainer may remove, edit, or reject comments, commits, issues, and other contributions that violate this Code of Conduct.
 
 ## Attribution
 

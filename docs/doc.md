@@ -1,26 +1,38 @@
 # Doc Documentation
 
-This documentation explains the features and usage of **Doc Module**: Located at `src/common/doc`
+Swagger decorators live in `src/common/doc`.
 
 ## Overview
 
-This module provides decorators for API documentation using [Swagger/OpenAPI][ref-nestjs-swagger]. It creates standardized, consistent API documentation with minimal boilerplate code.
+Decorators that build the [Swagger/OpenAPI][ref-nestjs-swagger] document from route metadata and the same zod schemas used for request validation.
 
-Features:
-- Standardized API documentation structure
-- Automatic error response documentation
-- Built-in pagination support
-- File upload/download documentation
-- Multiple authentication method support
-- Request validation documentation
-- Custom language header support
+OpenAPI is co-located on the same runtime decorators that own the HTTP contract.
+
+Controller-facing surface:
+
+- `@Doc` stamps operation metadata, shared headers, and the global kit error responses
+- `@DocErrors` is the public escape hatch for endpoint-specific module-flow errors an endpoint opts into the OpenAPI document
+- Success envelopes and response-kind error kits come from `@Response` / `@ResponsePagination` / `@ResponseFile`
+- Auth and guard error kits come from the matching `*Protected` / auth decorators
+- Multipart upload OpenAPI comes from `FileUploadSingle` / `FileUploadMultiple` / `FileUploadMultipleFields`
+- Path, query, and body shapes come from zod on `@Param` / `@Query` / `@Body` via `standardSchemaConverter` in `src/swagger.ts`
+
+Internal kit plumbing:
+
+- `DocResponseError` merges response entries under `DocResponseEntryMetaKey` and re-emits `ApiResponse` for that status
+- Kit constants (`DocGlobalErrorResponses`, `DocPaginationErrorResponses`, `DocFileErrorResponses`, …) live in `src/common/doc/constants/doc.constant.ts`
+- Module kits live as `Doc<Module>ErrorResponses` in that module's `constants/<module>.constant.ts`
+
+The kit in `src/common/doc/` is in the coverage set.
 
 ## Related Documents
 
-- [Request Validation Documentation][ref-doc-request-validation] - For DTO validation and request documentation
-- [Response Documentation][ref-doc-response] - For response structure and formatting
-- [Authentication Documentation][ref-doc-authentication] - For authentication decorator usage
-- [Authorization Documentation][ref-doc-authorization] - For authorization guard documentation
+- [Request Validation Documentation][ref-doc-request-validation] - Request schemas OpenAPI is built from
+- [Response Documentation][ref-doc-response] - Response structure and formatting
+- [Authentication Documentation][ref-doc-authentication] - Auth decorator usage on routes
+- [Authorization Documentation][ref-doc-authorization] - Guard and protection kits
+- [Pagination Documentation][ref-doc-pagination] - Offset and cursor list contracts
+- [File Upload Documentation][ref-doc-file-upload] - Multipart upload decorators
 
 ## Table of Contents
 
@@ -28,20 +40,16 @@ Features:
 - [Related Documents](#related-documents)
 - [Decorators](#decorators)
   - [Doc](#doc)
-  - [DocRequest](#docrequest)
-  - [DocRequestFile](#docrequestfile)
-  - [DocResponse](#docresponse)
-  - [DocResponsePaging](#docresponsepaging)
-  - [DocResponseFile](#docresponsefile)
-  - [DocAuth](#docauth)
-  - [DocGuard](#docguard)
-- [Advanced Decorators](#advanced-decorators)
-  - [DocDefault](#docdefault)
-  - [DocOneOf](#doconeof)
-  - [DocAnyOf](#docanyof)
-  - [DocAllOf](#docallof)
-- [DTO Documentation](#dto-documentation)
-  - [ApiProperty](#apiproperty)
+  - [DocErrors](#docerrors)
+  - [DocResponseError](#docresponseerror)
+- [Who documents what](#who-documents-what)
+  - [Request shape](#request-shape)
+  - [Success and response-kind errors](#success-and-response-kind-errors)
+  - [Auth and guard errors](#auth-and-guard-errors)
+  - [Published errors](#published-errors)
+- [Swagger JSON](#swagger-json)
+- [Schema Documentation](#schema-documentation)
+  - [.meta()](#meta)
 - [Usage](#usage)
   - [Complete Admin Endpoint](#complete-admin-endpoint)
   - [Complete Public Endpoint](#complete-public-endpoint)
@@ -53,7 +61,7 @@ Features:
 
 ### Doc
 
-Basic API documentation decorator that sets up common operation metadata.
+Basic operation metadata for an endpoint. Every endpoint carries `@Doc({ summary })` at the top of the decorator stack.
 
 **Parameters:**
 
@@ -66,651 +74,341 @@ Basic API documentation decorator that sets up common operation metadata.
 **Auto-includes:**
 
 - Custom headers:
-  - `x-custom-lang` - **Customizable by frontend** - Custom language header (default: EN)
-  - `x-correlation-id` - **Customizable by frontend** - Correlation identifier for tracking requests across services
-- Standard error responses:
+  - `x-custom-lang` - Custom language header (default: EN)
+  - `x-correlation-id` - Correlation identifier for tracking requests across services
+- Global kit error responses from `DocGlobalErrorResponses` in `src/common/doc/constants/doc.constant.ts`:
   - Internal server error (500)
   - Request timeout (408)
   - Validation error (422)
-  - Environment forbidden error
-  - Parameter required error
+  - Too many requests (429)
+  - Helper decrypt / encryption-secret / pattern-token failures (500)
+  - Missing request schema or request context (500)
+  - Unique-value generation failure (500)
+  - AWS service unavailable (503)
 
 **Usage:**
 
 ```typescript
 @Doc({
-    summary: 'Get user profile',
-    operation: 'getUserProfile',
-    description: 'Retrieve authenticated user profile information'
+    summary: 'get profile',
 })
-@Get('/profile')
-async getProfile() {
-    // implementation
+@Response('user.profile', { schema: UserProfileResponseSchema })
+@Get('/profile/get')
+async profile(
+    @AuthJwtPayload('userId') userId: string
+): Promise<IResponseReturn<IUserProfile>> {
+    return this.userProfileHttpService.getProfile(userId);
 }
 ```
 
-### DocRequest
+### DocErrors
 
-Documents request specifications including body, parameters, and queries.
+Public escape hatch for endpoint-specific module-flow errors an endpoint opts into the OpenAPI document. Controllers do not call `DocResponseError` directly; they use `@DocErrors`.
 
 **Parameters:**
 
-- `options?: IDocRequestOptions`
-  - `params?: ApiParamOptions[]` - URL parameters
-  - `queries?: ApiQueryOptions[]` - Query parameters
-  - `bodyType?: EnumDocRequestBodyType` - Request body content type
-  - `dto?: ClassConstructor<T>` - Request DTO class
-
-**Body Types:**
-
-```typescript
-enum EnumDocRequestBodyType {
-    json = 'json',
-    formData = 'formData',
-    formUrlencoded = 'formUrlencoded',
-    text = 'text',
-    none = 'none',
-}
-```
-
-**Auto-includes:**
-
-- Content-Type header based on bodyType (or 'none' if not specified)
+- `httpStatus: HttpStatus` - HTTP status for the documented responses
+- `...entries: IDocResponseErrorOptions[]` - Each entry is a `statusCode` plus its i18n `messagePath` (and optional `schema` / `baseSchema`)
 
 **Usage:**
 
 ```typescript
-@DocRequest({
-    params: [
-        {
-            name: 'id',
-            required: true,
-            type: 'string'
-        }
-    ],
-    queries: [
-        {
-            name: 'include',
-            required: false,
-            type: 'string'
-        }
-    ],
-    bodyType: EnumDocRequestBodyType.json,
-    dto: UpdateUserDto
+@Doc({ summary: '…' })
+@DocErrors(HttpStatus.UNPROCESSABLE_ENTITY, {
+    statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
+    messagePath: 'analytic.error.invalidDateRange',
 })
-@Put('/:id')
-async updateUser() {
-    // implementation
+@Response('…', { schema: SomeResponseSchema })
+@Get('/…')
+async handler(): Promise<IResponseReturn<SomeResponseDto>> {
+    // …
 }
 ```
 
-### DocRequestFile
-
-Documents file upload endpoints with multipart/form-data.
-
-**Parameters:**
-
-- `options?: IDocRequestFileOptions` - Same as `DocRequest` but excludes `bodyType`
-
-**Auto-includes:**
-
-- Content-Type: multipart/form-data
-- File-related error responses:
-  - File extension invalid error
-  - File required error
-  - File required extract first error
-
-**Usage:**
-
-```typescript
-@DocRequestFile({
-    params: [
-        {
-            name: 'id',
-            required: true,
-            type: 'string'
-        }
-    ],
-    dto: UserUploadDto
-})
-@Post('/upload')
-async uploadFile() {
-    // implementation
-}
-```
-
-### DocResponse
-
-Documents standard response with message and optional data.
-
-**Parameters:**
-
-- `messagePath: string` - i18n message path
-- `options?: IDocResponseOptions<T>`
-  - `statusCode?: number` - Custom status code
-  - `httpStatus?: HttpStatus` - HTTP status (default: 200)
-  - `dto?: ClassConstructor<T>` - Response DTO class
-
-**Auto-includes:**
-
-- Content-Type: application/json
-- Standard response schema with message, statusCode, and data
-
-**Usage:**
-
-```typescript
-@DocResponse<UserProfileResponseDto>('user.get', {
-    dto: UserProfileResponseDto
-})
-@Get('/:id')
-async getUser() {
-    // implementation
-}
-
-@DocResponse('user.delete', {
-    httpStatus: HttpStatus.NO_CONTENT
-})
-@Delete('/:id')
-async deleteUser() {
-    // implementation
-}
-```
-
-### DocResponsePaging
-
-Documents paginated response with automatic pagination parameters.
-
-**Parameters:**
-
-- `messagePath: string` - i18n message path
-- `options: IDocResponsePagingOptions<T>`
-  - `dto: ClassConstructor<T>` - Response DTO class (required)
-  - `type?: EnumPaginationType` - Pagination type: `offset` or `cursor` (default: `offset`)
-  - `statusCode?: number` - Custom status code
-  - `httpStatus?: HttpStatus` - HTTP status
-  - `availableSearch?: string[]` - Searchable fields
-  - `availableOrder?: string[]` - Sortable fields
-
-**Auto-includes:**
-
-- Standard pagination query parameters (depends on type):
-    - **Offset type (default)**:
-        - `perPage` - Data per page (max: 100)
-        - `page` - Page number (max: 20)
-    - **Cursor type**:
-        - `perPage` - Data per page (max: 100)
-        - `cursor` - The pagination cursor returned from the previous request
-- Optional search query when `availableSearch` provided
-- Optional ordering query when `availableOrder` provided:
-    - `orderBy` - Field and direction in `field:direction` format (e.g., `name:asc`, `createdAt:desc`). Repeat to sort by multiple fields.
-- Shared error responses (422) for both types:
-    - `orderByNotAllowed` (50200), `orderDirectionNotAllowed` (50215), `filterInvalidValue` (50201)
-    - `invalidPerPage`, `perPageExceedsMaximum`, `perPageCannotBeLessThanOne`
-- Type-specific error responses (422):
-    - **Offset**: `invalidOffsetPaginationParams`, `invalidPage`, `pageExceedsMaximum`, `pageCannotBeLessThanOne`
-    - **Cursor**: `invalidCursorPaginationParams`, `cursorTooLong`, `invalidCursorFormat`, `invalidCursorData`, `failedToEncodeCursor`, `failedToDecodeCursor`, `paginationConditionsChanged`
-
-**Usage:**
-
-```typescript
-// Offset pagination (default)
-@DocResponsePaging<UserListResponseDto>('user.list', {
-    dto: UserListResponseDto,
-    availableSearch: ['name', 'email'],
-    availableOrder: ['createdAt', 'name']
-})
-@Get('/list')
-async getUsers() {
-    // implementation
-}
-
-// Cursor pagination
-@DocResponsePaging<UserListResponseDto>('user.list', {
-    dto: UserListResponseDto,
-    type: EnumPaginationType.cursor,
-    availableSearch: ['name', 'email'],
-    availableOrder: ['createdAt', 'name']
-})
-@Get('/list')
-async getUsers() {
-    // implementation
-}
-```
-
-### DocResponseFile
-
-Documents file download/response endpoints.
-
-**Parameters:**
-
-- `options?: IDocResponseFileOptions`
-  - `httpStatus?: HttpStatus` - HTTP status (default: 200)
-  - `extension?: EnumFileExtensionDocument` - File extension (default: CSV)
-
-**Usage:**
-
-```typescript
-@DocResponseFile({
-    extension: EnumFileExtensionDocument.pdf
-})
-@Get('/export')
-async exportData() {
-    // implementation
-}
-```
-
-### DocAuth
-
-Documents authentication requirements and error responses.
-
-**Parameters:**
-
-- `options?: IDocAuthOptions`
-  - `jwtAccessToken?: boolean` - Require access token
-  - `jwtRefreshToken?: boolean` - Require refresh token
-  - `xApiKey?: boolean` - Require API key
-  - `google?: boolean` - Require Google OAuth
-  - `apple?: boolean` - Require Apple OAuth
-
-**Auto-includes:**
-
-- Bearer auth or security scheme based on options
-- Unauthorized error responses (401) for each auth method
-
-**Usage:**
-
-```typescript
-@DocAuth({
-    jwtAccessToken: true,
-    xApiKey: true
-})
-@Get('/protected')
-async protectedRoute() {
-    // implementation
-}
-
-@DocAuth({
-    google: true,
-    xApiKey: true
-})
-@Post('/auth/google')
-async googleLogin() {
-    // implementation
-}
-```
-
-### DocGuard
-
-Documents authorization guards and forbidden responses.
-
-**Parameters:**
-
-- `options?: IDocGuardOptions`
-    - `role?: boolean` - Role-based guard
-    - `policy?: boolean` - Policy-based guard
-    - `termPolicy?: boolean` - Term policy acceptance guard
-
-**Auto-includes:**
-
-- Forbidden error responses (403) based on guard types:
-    - If `role` is true, documents forbidden response for role-based access control.
-    - If `policy` is true, documents forbidden response for policy-based access control.
-    - If `termPolicy` is true, documents forbidden response for term policy acceptance.
-
-**Usage:**
-
-```typescript
-@DocGuard({
-        role: true,
-        policy: true,
-        termPolicy: true
-})
-@Post('/admin/users')
-async createUser() {
-    // implementation
-}
-```
-
-## Advanced Decorators
-
-### DocDefault
-
-Creates standard response schema with message, statusCode, and optional data.
-
-**Parameters:**
-
-- `options: IDocDefaultOptions<T>`
-  - `httpStatus: HttpStatus` - HTTP status (required)
-  - `messagePath: string` - i18n message path (required)
-  - `statusCode: number` - Custom status code (required)
-  - `dto?: ClassConstructor<T>` - Response DTO class
-
-**Usage:**
-
-```typescript
-@DocDefault({
-    httpStatus: HttpStatus.CREATED,
-    messagePath: 'resource.created',
-    statusCode: HttpStatus.CREATED,
-    dto: CreatedResourceDto
-})
-@Post('/resource')
-async createResource() {
-    // implementation
-}
-```
-
-### DocOneOf
-
-Documents endpoint that returns **one of** several possible response types using OpenAPI's `oneOf`. Useful for documenting endpoints that can return different error types with the same HTTP status.
-
-**Parameters:**
-
-- `httpStatus: HttpStatus` - HTTP status code
-- `...documents: IDocOfOptions[]` - One or more possible response schemas
-  - `statusCode: number` - Status code
-  - `messagePath: string` - Message path for i18n
-  - `dto?: ClassConstructor` - Optional DTO class
-
-**Basic Usage:**
-
-```typescript
-DocOneOf(
-    HttpStatus.BAD_REQUEST,
-    {
-        statusCode: EnumUserStatusCodeError.emailExist,
-        messagePath: 'user.error.emailExist',
-    },
-    {
-        statusCode: EnumUserStatusCodeError.usernameExist,
-        messagePath: 'user.error.usernameExist',
-    }
-)
-```
-
-**Detailed Examples:**
-
-For complete examples of `DocOneOf` usage in combination with other decorators, see:
-- [ApiKey Admin Documentation](../src/modules/api-key/docs/api-key.admin.doc.ts)
-
-### DocAnyOf
-
-Documents endpoint that can match **any combination** of provided schemas using OpenAPI's `anyOf`. Useful when response can satisfy one or more schemas simultaneously.
-
-**Parameters:**
-
-- `httpStatus: HttpStatus` - HTTP status code
-- `...documents: IDocOfOptions[]` - Possible response schemas
-  - `statusCode: number` - Status code
-  - `messagePath: string` - Message path for i18n
-  - `dto?: ClassConstructor` - Optional DTO class
-
-**Basic Usage:**
-
-```typescript
-DocAnyOf(
-    HttpStatus.OK,
-    {
-        statusCode: HttpStatus.OK,
-        messagePath: 'user.partial',
-        dto: UserPartialDto,
-    },
-    {
-        statusCode: HttpStatus.OK,
-        messagePath: 'user.full',
-        dto: UserFullDto,
-    }
-)
-```
-
-### DocAllOf
-
-Documents endpoint that must satisfy **all** provided schema definitions using OpenAPI's `allOf`. Useful for documenting responses that combine multiple schemas.
-
-**Parameters:**
-
-- `httpStatus: HttpStatus` - HTTP status code
-- `...documents: IDocOfOptions[]` - Required response schemas (all must be satisfied)
-  - `statusCode: number` - Status code
-  - `messagePath: string` - Message path for i18n
-  - `dto?: ClassConstructor` - Optional DTO class
-
-**Basic Usage:**
-
-```typescript
-DocAllOf(
-    HttpStatus.OK,
-    {
-        statusCode: HttpStatus.OK,
-        messagePath: 'user.base',
-        dto: UserBaseDto,
-    },
-    {
-        statusCode: HttpStatus.OK,
-        messagePath: 'user.extended',
-        dto: UserExtendedDto,
-    }
-)
+For a module-flow exception that is not already covered by a kit and that the endpoint documents in OpenAPI.
+
+### DocResponseError
+
+Internal kit emitter for responses of one HTTP status. Each entry is a `statusCode` plus its i18n `messagePath` (and optional `schema` for `data`, optional `baseSchema` defaulting to `ResponseSchema`). Paginated success uses `baseSchema: ResponsePaginationSchema`.
+
+It is a `MethodDecorator` that merges entries onto the handler under `DocResponseEntryMetaKey` and re-emits `ApiResponse` for that status, so entries from different primitives at one status compose instead of replacing each other. Deduping key: `httpStatus:statusCode:messagePath`.
+
+- One entry at a status emits a plain schema with field examples.
+- Two or more emit one shared response-envelope schema plus named OpenAPI `examples` keyed by `messagePath`, each value the full envelope (`statusCode`, `message`, `metadata`).
+- A `oneOf` of full envelopes is not used.
+
+Common kit `DocResponseError` calls live in `src/common/doc/constants/doc.constant.ts`:
+
+- `DocGlobalErrorResponses`
+- `DocPaginationErrorResponses`
+- `DocPaginationOffsetErrorResponses`
+- `DocPaginationCursorErrorResponses`
+- `DocFileErrorResponses`
+- `DocSerializationErrorResponses`
+- and related groups
+
+Module `*Protected` / auth kits live as `Doc<Module>ErrorResponses` in that module's `constants/<module>.constant.ts` and are spread into the decorator's `applyDecorators(...)`. Each entry is a bare `DocResponseError(...)` MethodDecorator; kit constants are never pre-composed `applyDecorators` blobs.
+
+## Who documents what
+
+### Request shape
+
+| Binding | OpenAPI source |
+|---|---|
+| `@Param('…', { schema })` / `@Query({ schema })` / `@Query('…', { schema })` / `@Body({ schema })` | zod via `standardSchemaConverter` in `src/swagger.ts` (`.meta` for description, example, required) |
+| Path placeholder a **guard** reads; the handler has no `@Param` | the owning Protected decorator (for example `ProjectProtected` emits `ApiParam('projectId')`) |
+| Multipart upload | `FileUploadSingle` / `FileUploadMultiple` / `FileUploadMultipleFields`: `ApiConsumes('multipart/form-data')` plus binary `ApiBody` from field name(s) plus upload error kit |
+| List query (`page` / `cursor` / `perPage` / `search` / `orderBy` + filters) | the list zod schema on `@Query({ schema })`, built from `PaginationOffsetQuerySchema` / `PaginationCursorQuerySchema` plus `.extend` |
+
+A hand-written schema object beside a zod schema is a mirror. Every field carries `.meta({ description, example })` on the zod schema. Do not call `faker.seed()`.
+
+### Success and response-kind errors
+
+| Runtime decorator | Success OpenAPI | Error kits it publishes |
+|---|---|---|
+| `@Response(messagePath, { schema?, cache? })` | Success envelope; HTTP status and body `statusCode` from `@HttpCode` or Nest method defaults (`POST` → 201, else 200) | `DocSerializationErrorResponses.serialization` |
+| `@ResponsePagination(messagePath, { schema, cache? })` | 200 page envelope with `baseSchema: ResponsePaginationSchema`; item schema is the row | Shared pagination errors plus both offset and cursor kits, plus serialization / pagination-shape / pagination-type failures |
+| `@ResponseFile({ extension? })` | Non-JSON produces for the extension | Export size / data caps from `DocFileErrorResponses` |
+| `FileUpload*` | Multipart consumes + binary body | Upload errors from `DocFileErrorResponses` |
+
+`IResponseOptions` carries only `schema` and `cache`. It does not carry `httpStatus` or `statusCode`. Override either status at runtime via `metadata` on the handler return. `@ResponsePagination` does not emit list `ApiQuery`s; those come from the zod query schema.
+
+### Auth and guard errors
+
+Each `*Protected` / auth decorator emits exactly the throw set of the guard class it installs, plus any security scheme (`ApiBearerAuth`, `ApiSecurity`). Where a decorator installs a different guard class depending on its arguments, each class takes its own kit.
+
+OpenAPI security scheme names are the module constants below. `ApiBearerAuth`, `ApiSecurity`, `DocumentBuilder.addBearerAuth`, and `DocumentBuilder.addApiKey` take those consts:
+
+| Const | Scheme value | Registered in |
+|---|---|---|
+| `AuthJwtAccessDocSecurityName` | `accessToken` | `src/swagger.ts` + `AuthJwtAccessProtected` |
+| `AuthJwtRefreshDocSecurityName` | `refreshToken` | `src/swagger.ts` + `AuthJwtRefreshProtected` |
+| `AuthSocialGoogleDocSecurityName` | `google` | `src/swagger.ts` + `AuthSocialGoogleProtected` |
+| `AuthSocialAppleDocSecurityName` | `apple` | `src/swagger.ts` + `AuthSocialAppleProtected` |
+| `ApiKeyDocSecurityName` | `xApiKey` | `src/swagger.ts` + `ApiKeyProtected` / `ApiKeySystemProtected` |
+
+Scheme values are camelCase. The API key transport header is `x-api-key` (`addApiKey` `name`).
+
+`auth.error.accessTokenUnauthorized` belongs to `AuthJwtAccessProtected`. A Protected decorator whose domain also throws when the principal is missing does not publish that 401 again.
+
+### Published errors
+
+One error has one source, from where the exception lives:
+
+| The exception lives in | Its entry belongs to |
+|---|---|
+| `src/common/` or `src/app/`, and any request can reach it | `@Doc()` |
+| `src/common/`, behind one runtime primitive | that primitive: pagination kits on `@ResponsePagination`, upload kits on `FileUpload*`, download kits on `@ResponseFile` |
+| a module, raised by a guard or an auth strategy | the matching `*Protected` / auth decorator |
+| a module, raised by a specific endpoint's flow and required in OpenAPI | `@DocErrors` on that handler |
+
+A module marked `@Global()` changes nothing about this. Its errors reach the kit only through a guard or auth strategy that gates them, or through `@DocErrors` when an endpoint opts in.
+
+```mermaid
+flowchart TB
+    DocPrim["@Doc()"]
+    Resp["@Response / @ResponsePagination / @ResponseFile"]
+    FileUp["FileUpload*"]
+    Prot["*Protected / auth"]
+    OptIn["@DocErrors"]
+    DocPrim --> Kit["DocResponseError via DocResponseEntryMetaKey"]
+    Resp --> Kit
+    FileUp --> Kit
+    Prot --> Kit
+    OptIn --> Kit
 ```
 
 ## Swagger JSON
 
-The ACK NestJS Boilerplate automatically generates the OpenAPI Swagger JSON documentation for your API. This file describes all endpoints, schemas, and metadata for integration, testing, or external documentation tools.
+The OpenAPI document describes endpoints, schemas, and metadata for integration and external tools.
 
 The Swagger document is built only when `app.env` is not `production`. In a production environment neither the `/docs` UI, the JSON endpoint, nor `generated/swagger.json` is produced.
 
+Building the document (and loading the Swagger UI) takes noticeably longer because the document carries many examples: per-status error kits emit named OpenAPI `examples` keyed by `messagePath`, and list, query, and response fields carry `.meta` examples.
+
 ### How to Get swagger.json
 
-There are two ways to obtain the Swagger JSON file, both available outside production only:
+Two ways, both outside production only:
 
 1. **Via URL (API Docs Endpoint):**
     - After starting the server, access: `/docs/json`
     - Example: `http://localhost:3000/docs/json`
+    - The path comes from `doc.jsonUrlPattern` (`{docPrefix}/json`), filled with `doc.prefix` in `src/swagger.ts`.
     - This endpoint serves the latest Swagger spec for the running app.
 
 2. **Via Generated File:**
-    - The file is auto-generated at: `generated/swagger.json`
-    - This file is written every time the app starts in a non-production environment.
-    - You can use this file for CI/CD, external tools, or static documentation.
+    - The file is written at: `generated/swagger.json`
+    - Written every time the app starts in a non-production environment.
+    - Use for CI/CD, external tools, or static documentation.
 
-Both methods provide the same OpenAPI spec. Use whichever fits your workflow (dynamic via URL or static via file).
+Both methods provide the same OpenAPI spec: one served live, one written to disk.
 
-## DTO Documentation
+## Schema Documentation
 
-All decorators from `@nestjs/swagger` are fully supported in this module. This section provides an example using `@ApiProperty`, one of the most commonly used decorators for DTO documentation.
+A DTO here is a zod schema plus the type inferred from it, and the OpenAPI schema object is produced from that same schema by [zod-openapi][ref-zod-openapi]. There is no separate annotation layer: the response and file decorators call `createSchema(schema)` (or equivalent) and hand the result to `@nestjs/swagger`.
 
-### ApiProperty
+Each `*.dto.ts` file declares one schema and its inferred type. Both carry a one-line JSDoc summary followed by `@public`; the same convention covers decorators, enums, exceptions, and constants.
 
-The `@ApiProperty` decorator from `@nestjs/swagger` documents DTO properties. It supports all standard Swagger/OpenAPI property options.
+### .meta()
 
-**Parameters:**
+Per-field OpenAPI metadata lives in `.meta()` on the field.
 
-For complete options reference, see [NestJS Swagger Types documentation][ref-nestjs-swagger-types].
-
-Common options:
+**Common keys:**
 - `description?: string` - Property description
-- `example?: any` - Example value
-- `required?: boolean` - Mark as required
-- `type?: Type | string` - Property type
-- `enum?: any[]` - Enum values
-- `minimum?: number` - Minimum value
-- `maximum?: number` - Maximum value
-- `minLength?: number` - Minimum string length
-- `maxLength?: number` - Maximum string length
-- `pattern?: string` - Regex pattern
-- `default?: any` - Default value
-- `nullable?: boolean` - Allow null
-- `readOnly?: boolean` - Read-only property
-- `writeOnly?: boolean` - Write-only property
+- `example?: unknown` - Example value
+- `deprecated?: boolean` - Mark the property deprecated
+
+Everything else the OpenAPI schema carries comes from the zod type itself: `.min()` / `.max()` become `minLength` / `maxLength` or `minimum` / `maximum`, `.regex()` becomes `pattern`, `z.enum()` becomes `enum`, `.optional()` keeps the field out of `required`, `.nullable()` sets the nullable type, and `.default()` becomes `default`.
 
 **Usage:**
 
 ```typescript
-export class UserChangePasswordRequestDto {
-    @ApiProperty({
-        description: "new string password, newPassword can't same with oldPassword",
-        example: 'aBcDe@Fgh!123',
-        required: true,
-        minLength: 8,
-        maxLength: 50,
-    })
-    @IsNotEmpty()
-    @IsString()
-    @IsPassword()
-    @MinLength(8)
-    @MaxLength(50)
-    newPassword: string;
+/**
+ * Validates the body for changing the signed-in user password.
+ * @public
+ */
+export const UserChangePasswordRequestSchema =
+    UserLoginVerifyTwoFactorRequestSchema.omit({ challengeToken: true })
+        .partial()
+        .extend({
+            newPassword: z
+                .string()
+                .min(8)
+                .max(50)
+                .regex(RequestPasswordStrengthRegex, {
+                    error: () => 'request.error.isPassword.strong',
+                })
+                .meta({
+                    description:
+                        "new string password, newPassword can't same with oldPassword",
+                    example: 'aBcDe@Fgh!123',
+                }),
+            oldPassword: z.string().min(1).meta({
+                description: 'old string password',
+                example: 'xYzAb@Cde!456',
+            }),
+        });
 
-    @ApiProperty({
-        description: 'old string password',
-        example: 'xYzAb@Cde!456',
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    oldPassword: string;
-}
+/**
+ * Body for changing the signed-in user password.
+ * @public
+ */
+export type UserChangePasswordRequestDto = z.infer<
+    typeof UserChangePasswordRequestSchema
+>;
 ```
 
-**With Inheritance:**
+**With Composition:**
+
+A derived schema inherits the `.meta()` of every field it keeps, so only the new field carries its own:
 
 ```typescript
-export class UserForgotPasswordResetRequestDto extends PickType(
-    UserChangePasswordRequestDto,
-    ['newPassword'] as const
-) {
-    @ApiProperty({
-        required: true,
-        description: 'Forgot password token',
-        example: 'AbCdEfGhIjKlMnOpQrSt',
-    })
-    @IsString()
-    @IsNotEmpty()
-    token: string;
-}
+export const UserForgotPasswordResetRequestSchema =
+    UserChangePasswordRequestSchema.pick({ newPassword: true }).extend({
+        method: UserLoginVerifyTwoFactorRequestSchema.shape.method.optional(),
+        code: UserLoginVerifyTwoFactorRequestSchema.shape.code,
+        backupCode: UserLoginVerifyTwoFactorRequestSchema.shape.backupCode,
+        token: z.string().min(1).meta({
+            description: 'Forgot password token',
+            example: faker.string.alphanumeric(20),
+        }),
+    });
+
+export type UserForgotPasswordResetRequestDto = z.infer<
+    typeof UserForgotPasswordResetRequestSchema
+>;
 ```
 
 ## Usage
 
 ### Complete Admin Endpoint
 
-```typescript
-export function UserAdminGetDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'get detail an user',
-        }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse<UserProfileResponseDto>('user.get', {
-            dto: UserProfileResponseDto,
-        })
-    );
-}
+Zod-bound path params reach OpenAPI from the schema on `@Param`. Auth and role kits live on the Protected decorators.
 
-@UserAdminGetDoc()
-@Get('/:id')
-async getUser(@Param('id') id: string) {
-    // implementation
+```typescript
+@Doc({ summary: 'get detail an user' })
+@Response('user.get', { schema: UserProfileResponseSchema })
+@TermPolicyAcceptanceProtected()
+@PolicyProtected({
+    subject: EnumPolicySubject.user,
+    action: [EnumPolicyAction.read],
+})
+@RoleProtected(EnumRoleType.admin)
+@UserProtected()
+@AuthJwtAccessProtected()
+@ApiKeyProtected()
+@RequestThrottle({ user: true })
+@Get('/get/:userId')
+async get(
+    @Param('userId', { schema: RequestMongoIdSchema }) userId: string
+): Promise<IResponseReturn<IUserProfile>> {
+    return this.userHttpService.getOneByAdmin(userId);
 }
 ```
 
 ### Complete Public Endpoint
 
 ```typescript
-export function UserPublicSignUpDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'User sign up',
-        }),
-        DocRequest({
-            bodyType: EnumDocRequestBodyType.json,
-            dto: UserSignUpRequestDto,
-        }),
-        DocAuth({
-            xApiKey: true,
-        }),
-        DocResponse('user.signUp', {
-            httpStatus: HttpStatus.CREATED,
-        })
-    );
-}
-
-@UserPublicSignUpDoc()
+@Doc({ summary: 'User sign up' })
+@Response('user.signUp')
+@FeatureFlagProtected('signUp')
+@ApiKeyProtected()
+@RequestThrottle({ route: EnumRequestThrottleRoute.strict })
 @Post('/sign-up')
-async signUp(@Body() dto: UserSignUpRequestDto) {
-    // implementation
+async signUp(
+    @Body({ schema: UserSignUpRequestSchema }) body: UserSignUpRequestDto
+): Promise<void> {
+    await this.userAuthHttpService.signUp(body);
 }
 ```
+
+Body Content-Type and field shapes come from the zod schema on `@Body`. Success HTTP status follows Nest's `POST` default (`201`) unless `@HttpCode` overrides it.
 
 ### Paginated List Endpoint
 
-```typescript
-export function UserAdminListDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'get all users',
-        }),
-        DocRequest({
-            queries: UserDocQueryList,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponsePaging<UserListResponseDto>('user.list', {
-            dto: UserListResponseDto,
-            availableSearch: ['name', 'email', 'username'],
-            availableOrder: ['createdAt', 'updatedAt', 'name']
-        })
-    );
-}
+List query OpenAPI comes only from the zod schema on `@Query({ schema })`. `@ResponsePagination` documents the page envelope and both pagination error kits; it does not emit `ApiQuery` for `page`, `cursor`, `perPage`, `search`, or `orderBy`.
 
-@UserAdminListDoc()
+```typescript
+@Doc({ summary: 'get all users' })
+@ResponsePagination('user.list', { schema: UserListResponseSchema })
+@TermPolicyAcceptanceProtected()
+@PolicyProtected({
+    subject: EnumPolicySubject.user,
+    action: [EnumPolicyAction.read],
+})
+@RoleProtected(EnumRoleType.admin)
+@UserProtected()
+@AuthJwtAccessProtected()
+@ApiKeyProtected()
+@RequestThrottle({ user: true })
 @Get('/list')
 async list(
-    @PaginationOffsetQuery({ availableSearch: UserDefaultAvailableSearch })
-    pagination: IPaginationQueryOffsetParams<
-        Prisma.UserSelect,
-        Prisma.UserWhereInput
-    >
-) {
-    // implementation
+    @Query({ schema: UserListRequestSchema }) query: UserListRequestDto
+): Promise<IResponsePaginationReturn<IUserList>> {
+    return this.userHttpService.getListOffsetByAdmin(query);
 }
 ```
+
+`UserListRequestSchema` extends `PaginationOffsetQuerySchema` with `search`, `orderBy`, and filter fields. Allow-list text in `.meta({ description })` uses the same constants the HTTP service passes to `PaginationQueryUtil`. Flow: [Pagination Documentation][ref-doc-pagination].
 
 ### File Upload Endpoint
 
 ```typescript
-export function UserSharedUploadPhotoProfileDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'upload photo profile',
-        }),
-        DocGuard({ termPolicy: true }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocRequestFile({
-            dto: FileUploadSingleRequestDto,
-        }),
-        DocResponse('user.uploadPhotoProfile')
-    );
-}
-
-@UserSharedUploadPhotoProfileDoc()
-@Post('/profile/upload/photo')
+@Doc({ summary: 'upload photo profile' })
+@Response('user.uploadPhotoProfile')
+@TermPolicyAcceptanceProtected()
+@UserProtected()
+@AuthJwtAccessProtected()
+@ApiKeyProtected()
+@FileUploadSingle()
+@RequestTimeout('1m')
+@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
+@HttpCode(HttpStatus.OK)
+@Post('/profile/photo/upload')
 async uploadPhotoProfile(
+    @AuthJwtPayload('userId') userId: string,
     @UploadedFile(
-        RequestRequiredPipe,
+        FileRequiredPipe(),
         FileExtensionPipe([
             EnumFileExtensionImage.jpeg,
             EnumFileExtensionImage.png,
@@ -718,20 +416,24 @@ async uploadPhotoProfile(
         ])
     )
     file: IFile
-) {
-    // implementation
+): Promise<void> {
+    await this.userProfileHttpService.uploadPhotoProfile(userId, file);
 }
 ```
 
-For more information about NestJS Swagger integration, see the [official NestJS documentation][ref-nestjs-swagger].
+`FileUploadSingle` publishes multipart consumes, the binary body field, and the upload error kit. `@Response` publishes the success envelope.
+
+See the [NestJS OpenAPI documentation][ref-nestjs-swagger].
 
 
 <!-- REFERENCES -->
 
 [ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
-[ref-nestjs-swagger-types]: https://docs.nestjs.com/openapi/types-and-parameters
+[ref-zod-openapi]: https://github.com/samchungy/zod-openapi
 
 [ref-doc-request-validation]: request-validation.md
 [ref-doc-response]: response.md
 [ref-doc-authentication]: authentication.md
 [ref-doc-authorization]: authorization.md
+[ref-doc-pagination]: pagination.md
+[ref-doc-file-upload]: file-upload.md

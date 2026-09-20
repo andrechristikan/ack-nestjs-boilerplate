@@ -1,3 +1,7 @@
+/**
+ * Status codes raised by the `feature-flag` module.
+ * @public
+ */
 export enum EnumFeatureFlagStatusCodeError {
     notFound = 50600,
     serviceUnavailable = 50601,
@@ -5,4 +9,5 @@ export enum EnumFeatureFlagStatusCodeError {
     predefinedKeyLengthExceeded = 50603,
     predefinedKeyEmpty = 50604,
     predefinedKeyTypeInvalid = 50605,
+    predefinedKeyNotFound = 50606,
 }

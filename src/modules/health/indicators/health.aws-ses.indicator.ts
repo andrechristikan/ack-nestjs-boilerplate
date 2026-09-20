@@ -1,9 +1,7 @@
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { Injectable } from '@nestjs/common';
-import {
-    HealthIndicatorResult,
-    HealthIndicatorService,
-} from '@nestjs/terminus';
+import { HealthIndicatorService } from '@nestjs/terminus';
+import type { HealthIndicatorResult } from '@nestjs/terminus';
 
 /**
  * Reports AWS SES reachability as a Terminus health indicator.

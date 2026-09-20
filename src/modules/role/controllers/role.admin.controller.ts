@@ -1,3 +1,6 @@
+import type { RoleAdminListRequestDto } from '@modules/role/dtos/request/role.admin-list.request.dto';
+import { RoleAdminListRequestSchema } from '@modules/role/dtos/request/role.admin-list.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     Body,
     Controller,
@@ -6,55 +9,43 @@ import {
     Param,
     Post,
     Put,
+    Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
-import { Response } from '@common/response/decorators/response.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import {
+    Response,
+    ResponsePagination,
+} from '@common/response/decorators/response.decorator';
+
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { RoleHttpService } from '@modules/role/services/role.http.service';
+import type {
+    IResponsePaginationReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
+
+import { RoleCreateRequestSchema } from '@modules/role/dtos/request/role.create.request.dto';
+import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
+import { RoleUpdateRequestSchema } from '@modules/role/dtos/request/role.update.request.dto';
+import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
+import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-} from '@modules/policy/enums/policy.enum';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleService } from '@modules/role/services/role.service';
-import {
-    RoleAdminCreateDoc,
-    RoleAdminDeleteDoc,
-    RoleAdminGetDoc,
-    RoleAdminListDoc,
-    RoleAdminUpdateDoc,
-} from '@modules/role/docs/role.admin.doc';
-import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
-import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
-import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
-import {
-    EnumActivityLogAction,
     EnumRoleType,
-    Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { RoleDto } from '@modules/role/dtos/role.dto';
-import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
+import { RoleSchema } from '@modules/role/dtos/role.dto';
+import type { RoleDto } from '@modules/role/dtos/role.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import {
-    PaginationOffsetQuery,
-    PaginationQueryFilterInEnum,
-} from '@common/pagination/decorators/pagination.decorator';
-import {
-    RoleDefaultAvailableSearch,
-    RoleDefaultType,
-} from '@modules/role/constants/role.list.constant';
-import {
-    IPaginationIn,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
+
+import { RoleListResponseSchema } from '@modules/role/dtos/response/role.list.response.dto';
+import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 
 @ApiTags('modules.admin.role')
 @Controller({
@@ -62,12 +53,12 @@ import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.respo
     path: '/role',
 })
 export class RoleAdminController {
-    constructor(private readonly roleService: RoleService) {}
+    constructor(private readonly roleHttpService: RoleHttpService) {}
 
-    @RoleAdminListDoc()
-    @Response('role.list')
+    @Doc({ summary: 'get list of roles' })
+    @ResponsePagination('role.list', { schema: RoleListResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read],
     })
@@ -75,25 +66,19 @@ export class RoleAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationOffsetQuery({
-            availableSearch: RoleDefaultAvailableSearch,
-        })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.RoleSelect,
-            Prisma.RoleWhereInput
-        >,
-        @PaginationQueryFilterInEnum<EnumRoleType>('type', RoleDefaultType)
-        type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
-        return this.roleService.getListOffsetByAdmin(pagination, type);
+        @Query({ schema: RoleAdminListRequestSchema })
+        query: RoleAdminListRequestDto
+    ): Promise<IResponsePaginationReturn<RoleListResponseDto>> {
+        return this.roleHttpService.getListOffsetByAdmin(query);
     }
 
-    @RoleAdminGetDoc()
-    @Response('role.get')
+    @Doc({ summary: 'get detail a role' })
+    @Response('role.get', { schema: RoleSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read],
     })
@@ -101,73 +86,74 @@ export class RoleAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/get/:roleId')
     async get(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleService.getOne(roleId);
+        return this.roleHttpService.getOne(roleId);
     }
 
-    @RoleAdminCreateDoc()
-    @Response('role.create')
+    @Doc({ summary: 'create a role' })
+    @Response('role.create', { schema: RoleSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminRoleCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Post('/create')
     async create(
-        @Body()
+        @Body({ schema: RoleCreateRequestSchema })
         body: RoleCreateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleService.createByAdmin(body);
+        return this.roleHttpService.createByAdmin(body);
     }
 
-    @RoleAdminUpdateDoc()
-    @Response('role.update')
+    @Doc({ summary: 'update data a role' })
+    @Response('role.update', { schema: RoleSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminRoleUpdate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Put('/update/:roleId')
     async update(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string,
-        @Body()
+        @Body({ schema: RoleUpdateRequestSchema })
         body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleService.updateByAdmin(roleId, body);
+        return this.roleHttpService.updateByAdmin(roleId, body);
     }
 
-    @RoleAdminDeleteDoc()
+    @Doc({ summary: 'delete data a role' })
     @Response('role.delete')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminRoleDelete)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Delete('/delete/:roleId')
     async delete(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string
     ): Promise<IResponseReturn<void>> {
-        return this.roleService.deleteByAdmin(roleId);
+        return this.roleHttpService.deleteByAdmin(roleId);
     }
 }

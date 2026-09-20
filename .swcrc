@@ -3,7 +3,8 @@
     "sourceMaps": true,
     "minify": false,
     "module": {
-        "type": "commonjs"
+        "type": "nodenext",
+        "resolveFully": true
     },
     "exclude": [
         "node_modules",
@@ -15,25 +16,10 @@
         ".nyc_output",
         "src/metadata.ts",
         "swagger.json",
-        "generated"
+        "^generated/"
     ],
     "jsc": {
         "baseUrl": "./",
-        "paths": {
-            "@app/*": ["src/app/*"],
-            "@common/*": ["src/common/*"],
-            "@configs/*": ["src/configs/*"],
-            "@config": ["src/configs/index.ts"],
-            "@modules/*": ["src/modules/*"],
-            "@routes/*": ["src/router/routes/*"],
-            "@router": ["src/router/router.module.ts"],
-            "@migration/*": ["src/migration/*"],
-            "@test/*": ["test/*"],
-            "@generated/*": ["generated/*"],
-            "@prisma/client": ["generated/prisma-client"],
-            "@queues/*": ["src/queues/*"],
-            "@package": ["package.json"]
-        },
         "target": "esnext",
         "parser": {
             "syntax": "typescript",

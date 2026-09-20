@@ -1,58 +1,43 @@
-import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import type { TermPolicyAdminListRequestDto } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
+import { TermPolicyAdminListRequestSchema } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
+import { AwsS3PresignResponseSchema } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import {
-    PaginationOffsetQuery,
-    PaginationQueryFilterInEnum,
-} from '@common/pagination/decorators/pagination.decorator';
-import {
-    IPaginationIn,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestMessageLanguageSchema } from '@common/request/validations/request.message-language.validation';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
-    ResponsePaging,
+    ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-import {
-    IResponsePagingReturn,
+
+import type {
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
+
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
-import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-} from '@modules/policy/enums/policy.enum';
+
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
-import {
-    TermPolicyDefaultAvailableOrderBy,
-    TermPolicyDefaultStatus,
-    TermPolicyDefaultType,
-} from '@modules/term-policy/constants/term-policy.list.constant';
+
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import {
-    TermPolicyAdminAddContentDoc,
-    TermPolicyAdminCreateDoc,
-    TermPolicyAdminDeleteDoc,
-    TermPolicyAdminGenerateContentPresignDoc,
-    TermPolicyAdminGetContentDoc,
-    TermPolicyAdminListDoc,
-    TermPolicyAdminPublishDoc,
-    TermPolicyAdminRemoveContentDoc,
-    TermPolicyAdminUpdateContentDoc,
-} from '@modules/term-policy/docs/term-policy.admin.doc';
-import { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
-import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
-import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
-import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
+import { TermPolicyContentPresignRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
+import type { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
+import { TermPolicyContentRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
+import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
+import { TermPolicyCreateRequestSchema } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import { TermPolicyRemoveContentRequestSchema } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
+import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
+import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import { TermPolicyContentHttpService } from '@modules/term-policy/services/term-policy.content.http.service';
+import { TermPolicyHttpService } from '@modules/term-policy/services/term-policy.http.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     Body,
@@ -65,15 +50,17 @@ import {
     Patch,
     Post,
     Put,
+    Query,
 } from '@nestjs/common';
+
 import { ApiTags } from '@nestjs/swagger';
 import {
-    EnumActivityLogAction,
+    EnumPolicyAction,
+    EnumPolicySubject,
     EnumRoleType,
-    EnumTermPolicyStatus,
-    EnumTermPolicyType,
-    Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+
+import type { TermPolicy } from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.termPolicy')
 @Controller({
@@ -81,12 +68,17 @@ import {
     path: '/term-policy',
 })
 export class TermPolicyAdminController {
-    constructor(private readonly termPolicyService: TermPolicyService) {}
+    constructor(
+        private readonly termPolicyHttpService: TermPolicyHttpService,
+        private readonly termPolicyContentHttpService: TermPolicyContentHttpService
+    ) {}
 
-    @TermPolicyAdminListDoc()
-    @ResponsePaging('termPolicy.list')
+    @Doc({ summary: 'Retrieve list of terms and policies for admin' })
+    @ResponsePagination('termPolicy.list', {
+        schema: TermPolicyResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read],
     })
@@ -94,74 +86,63 @@ export class TermPolicyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationOffsetQuery({
-            availableOrderBy: TermPolicyDefaultAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.TermPolicySelect,
-            Prisma.TermPolicyWhereInput
-        >,
-        @PaginationQueryFilterInEnum<EnumTermPolicyType>(
-            'type',
-            TermPolicyDefaultType
-        )
-        type?: Record<string, IPaginationIn>,
-        @PaginationQueryFilterInEnum<EnumTermPolicyStatus>(
-            'status',
-            TermPolicyDefaultStatus
-        )
-        status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicyResponseDto>> {
-        return this.termPolicyService.getListByAdmin(pagination, type, status);
+        @Query({ schema: TermPolicyAdminListRequestSchema })
+        query: TermPolicyAdminListRequestDto
+    ): Promise<IResponsePaginationReturn<TermPolicy>> {
+        return this.termPolicyHttpService.getListByAdmin(query);
     }
 
-    @TermPolicyAdminCreateDoc()
-    @Response('termPolicy.create')
+    @Doc({ summary: 'Create a new term or policy' })
+    @Response('termPolicy.create', { schema: TermPolicyResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Post('/create')
     async create(
-        @Body()
-        body: TermPolicyCreateRequestDto,
-        @AuthJwtPayload('userId') createdBy: string
-    ): Promise<IResponseReturn<TermPolicyResponseDto>> {
-        return this.termPolicyService.createByAdmin(body, createdBy);
+        @Body({ schema: TermPolicyCreateRequestSchema })
+        body: TermPolicyCreateRequestDto
+    ): Promise<IResponseReturn<TermPolicy>> {
+        return this.termPolicyHttpService.createByAdmin(body);
     }
 
-    @TermPolicyAdminDeleteDoc()
-    @Response('termPolicy.delete')
+    @Doc({ summary: 'Delete a term or policy by ID' })
+    @Response('termPolicy.delete', {
+        schema: TermPolicyResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyDelete)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Delete('/delete/:termPolicyId')
     async delete(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string
-    ): Promise<IResponseReturn<TermPolicyResponseDto>> {
-        return this.termPolicyService.deleteByAdmin(termPolicyId);
+    ): Promise<IResponseReturn<TermPolicy>> {
+        return this.termPolicyHttpService.deleteByAdmin(termPolicyId);
     }
 
-    @TermPolicyAdminGenerateContentPresignDoc()
-    @Response('termPolicy.generateContentPresign')
+    @Doc({ summary: 'Generate presign url for term or policy content upload' })
+    @Response('termPolicy.generateContentPresign', {
+        schema: AwsS3PresignResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.termPolicy,
         action: [
             EnumPolicyAction.read,
@@ -173,99 +154,99 @@ export class TermPolicyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
-    @Post('/generate/content/presign')
+    @Post('/content/presign/generate')
     async generate(
-        @Body() body: TermPolicyContentPresignRequestDto
-    ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
-        return this.termPolicyService.generateContentPresignByAdmin(body);
+        @Body({ schema: TermPolicyContentPresignRequestSchema })
+        body: TermPolicyContentPresignRequestDto
+    ): Promise<IResponseReturn<IAwsS3Presign>> {
+        return this.termPolicyContentHttpService.generateContentPresignByAdmin(
+            body
+        );
     }
 
-    @TermPolicyAdminUpdateContentDoc()
+    @Doc({ summary: 'Update content of a term or policy by ID' })
     @Response('termPolicy.updateContent')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyUpdateContent)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Put('/update/:termPolicyId/content/update')
+    @RequestThrottle({ user: true })
+    @Put('/content/:termPolicyId/update')
     async updateContent(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
-        @Body()
-        body: TermPolicyContentRequestDto,
-        @AuthJwtPayload('userId') updatedBy: string
+        @Body({ schema: TermPolicyContentRequestSchema })
+        body: TermPolicyContentRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyService.updateContentByAdmin(
+        return this.termPolicyContentHttpService.updateContentByAdmin(
             termPolicyId,
-            body,
-            updatedBy
+            body
         );
     }
 
-    @TermPolicyAdminAddContentDoc()
+    @Doc({ summary: 'Add content to a term or policy by ID' })
     @Response('termPolicy.addContent')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyAddContent)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Put('/update/:termPolicyId/content/add')
+    @RequestThrottle({ user: true })
+    @Put('/content/:termPolicyId/add')
     async addContent(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
-        @Body()
-        body: TermPolicyContentRequestDto,
-        @AuthJwtPayload('userId') updatedBy: string
+        @Body({ schema: TermPolicyContentRequestSchema })
+        body: TermPolicyContentRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyService.addContentByAdmin(
+        return this.termPolicyContentHttpService.addContentByAdmin(
             termPolicyId,
-            body,
-            updatedBy
+            body
         );
     }
 
-    @TermPolicyAdminRemoveContentDoc()
+    @Doc({ summary: 'Remove content of a term or policy by ID' })
     @Response('termPolicy.removeContent')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyRemoveContent)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Delete('/update/:termPolicyId/content/remove')
+    @RequestThrottle({ user: true })
+    @Delete('/content/:termPolicyId/remove')
     async removeContent(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
-        @Body()
-        body: TermPolicyRemoveContentRequestDto,
-        @AuthJwtPayload('userId') updatedBy: string
+        @Body({ schema: TermPolicyRemoveContentRequestSchema })
+        body: TermPolicyRemoveContentRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyService.removeContentByAdmin(
+        return this.termPolicyContentHttpService.removeContentByAdmin(
             termPolicyId,
-            body,
-            updatedBy
+            body
         );
     }
 
-    @TermPolicyAdminGetContentDoc()
-    @Response('termPolicy.getContent')
+    @Doc({ summary: 'Get content of a term or policy by ID and language' })
+    @Response('termPolicy.getContent', {
+        schema: AwsS3PresignResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read],
     })
@@ -273,34 +254,41 @@ export class TermPolicyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
-    @Post('/get/:termPolicyId/content/:language')
+    @RequestThrottle({ user: true })
+    @Get('/content/:termPolicyId/:language/get')
     async getContent(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
-        @Param('language', RequestRequiredPipe) language: EnumMessageLanguage
-    ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
-        return this.termPolicyService.getContentByAdmin(termPolicyId, language);
+        @Param('language', { schema: RequestMessageLanguageSchema })
+        language: EnumMessageLanguage
+    ): Promise<IResponseReturn<IAwsS3Presign>> {
+        return this.termPolicyContentHttpService.getContentByAdmin(
+            termPolicyId,
+            language
+        );
     }
 
-    @TermPolicyAdminPublishDoc()
+    @Doc({ summary: 'Publish a term or policy by ID' })
     @Response('termPolicy.publish')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.termPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyPublish)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Patch('/publish/:termPolicyId')
     async publish(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyService.publishByAdmin(termPolicyId, updatedBy);
+        return this.termPolicyHttpService.publishByAdmin(
+            termPolicyId,
+            updatedBy
+        );
     }
 }

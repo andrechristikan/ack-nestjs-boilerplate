@@ -1,21 +1,28 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { HelperService } from '@common/helper/services/helper.service';
-import {
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { PasswordHistoryListSelect } from '@modules/password-history/constants/password-history.constant';
+import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
+import type { IPasswordHistoryRepository } from '@modules/password-history/interfaces/password-history.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { PasswordHistory, Prisma } from '@generated/prisma-client';
+import {
+    EnumPasswordHistoryType,
+    Prisma,
+} from '@generated/prisma-client/client';
+import type { PasswordHistory } from '@generated/prisma-client/client';
 
 @Injectable()
-export class PasswordHistoryRepository {
+export class PasswordHistoryRepository implements IPasswordHistoryRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly helperService: HelperService
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async findWithPaginationOffsetByAdmin(
@@ -23,14 +30,10 @@ export class PasswordHistoryRepository {
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.PasswordHistorySelect,
-            Prisma.PasswordHistoryWhereInput
-        >
-    ): Promise<IResponsePagingReturn<IPasswordHistory>> {
+        }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
+    ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         return this.paginationService.offset<
-            IPasswordHistory,
-            Prisma.PasswordHistorySelect,
+            IPasswordHistoryList,
             Prisma.PasswordHistoryWhereInput
         >(this.databaseService.client.passwordHistory, {
             ...others,
@@ -38,9 +41,7 @@ export class PasswordHistoryRepository {
                 ...where,
                 userId,
             },
-            include: {
-                user: true,
-            },
+            select: PasswordHistoryListSelect,
         });
     }
 
@@ -49,14 +50,10 @@ export class PasswordHistoryRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<
-            Prisma.PasswordHistorySelect,
-            Prisma.PasswordHistoryWhereInput
-        >
-    ): Promise<IResponsePagingReturn<IPasswordHistory>> {
+        }: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
+    ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         return this.paginationService.cursor<
-            IPasswordHistory,
-            Prisma.PasswordHistorySelect,
+            IPasswordHistoryList,
             Prisma.PasswordHistoryWhereInput
         >(this.databaseService.client.passwordHistory, {
             ...others,
@@ -64,14 +61,12 @@ export class PasswordHistoryRepository {
                 ...where,
                 userId,
             },
-            include: {
-                user: true,
-            },
+            select: PasswordHistoryListSelect,
         });
     }
 
     async findActiveUser(userId: string): Promise<PasswordHistory[]> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.passwordHistory.findMany({
             where: {
                 userId,
@@ -81,6 +76,27 @@ export class PasswordHistoryRepository {
             },
             orderBy: {
                 createdAt: Prisma.SortOrder.desc,
+            },
+        });
+    }
+
+    async createInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        password: string,
+        type: EnumPasswordHistoryType,
+        expiredAt: Date,
+        createdAt: Date,
+        createdBy: string
+    ): Promise<PasswordHistory> {
+        return tx.passwordHistory.create({
+            data: {
+                userId,
+                password,
+                type,
+                expiredAt,
+                createdAt,
+                createdBy,
             },
         });
     }

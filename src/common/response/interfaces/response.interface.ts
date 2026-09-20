@@ -1,6 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
-import { IMessageProperties } from '@common/message/interfaces/message.interface';
-import {
+import type { StandardSchemaV1 } from '@standard-schema/spec';
+import type { IMessageProperties } from '@common/message/interfaces/message.interface';
+import type {
     IPaginationCursorReturn,
     IPaginationOffsetReturn,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -20,6 +21,7 @@ export interface IResponseCacheOptions {
 
 export interface IResponseOptions {
     cache?: IResponseCacheOptions | boolean;
+    schema?: StandardSchemaV1;
 }
 
 export interface IResponseReturn<T = unknown> {
@@ -27,9 +29,8 @@ export interface IResponseReturn<T = unknown> {
     data?: T;
 }
 
-export type IResponsePagingReturn<T> = (
-    | IPaginationOffsetReturn<T>
-    | IPaginationCursorReturn<T>
+export type IResponsePaginationReturn<T> = (
+    IPaginationOffsetReturn<T> | IPaginationCursorReturn<T>
 ) & {
     metadata?: IResponseMetadata;
 };

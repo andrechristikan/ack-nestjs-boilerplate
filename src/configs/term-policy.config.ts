@@ -5,10 +5,7 @@ export interface IConfigTermPolicy {
     contentPublicPath: string;
 }
 
-export default registerAs(
-    'termPolicy',
-    (): IConfigTermPolicy => ({
-        uploadContentPath: 'term-policies/{type}/v{version}',
-        contentPublicPath: 'term-policies/{type}/v{version}',
-    })
-);
+export default registerAs('termPolicy', (): IConfigTermPolicy => ({
+    uploadContentPath: 'term-policies/{type}/v{version}',
+    contentPublicPath: 'term-policies/{type}/v{version}',
+}));

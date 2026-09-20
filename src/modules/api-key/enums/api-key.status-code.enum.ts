@@ -1,3 +1,7 @@
+/**
+ * Status codes raised by the `api-key` module.
+ * @public
+ */
 export enum EnumApiKeyStatusCodeError {
     xApiKeyRequired = 50700,
     xApiKeyNotFound = 50701,
@@ -7,4 +11,5 @@ export enum EnumApiKeyStatusCodeError {
     expired = 50705,
     notFound = 50706,
     inactive = 50707,
+    startAtNotFuture = 50708,
 }

@@ -1,0 +1,7 @@
+{
+    "error": {
+        "serialization": "The server produced a response that does not match the schema it declares.",
+        "paginationShapeInvalid": "The server produced a paginated response with an invalid shape.",
+        "paginationTypeInvalid": "The server produced a paginated response with an unknown pagination type."
+    }
+}

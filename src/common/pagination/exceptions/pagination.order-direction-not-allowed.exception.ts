@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 
+/**
+ * Raised when the order direction is not one the route allows.
+ * @public
+ */
 export class PaginationOrderDirectionNotAllowedException extends AppBaseException {
     readonly module = 'pagination';
     readonly statusCode =

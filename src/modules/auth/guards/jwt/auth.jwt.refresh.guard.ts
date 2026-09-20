@@ -1,6 +1,6 @@
 import { AuthGuard } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
-import {
+import type {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
 } from '@modules/auth/interfaces/auth.interface';
@@ -8,14 +8,14 @@ import {
     AuthJwtRefreshGuardKey,
     AuthPayloadStoreKey,
 } from '@modules/auth/constants/auth.constant';
-import { AuthService } from '@modules/auth/services/auth.service';
+import { AuthDomain } from '@modules/auth/domains/auth.domain';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 /** Guard for JWT refresh token routes; stores the validated payload in the request store. */
 @Injectable()
 export class AuthJwtRefreshGuard extends AuthGuard(AuthJwtRefreshGuardKey) {
     constructor(
-        private readonly authService: AuthService,
+        private readonly authDomain: AuthDomain,
         private readonly requestStoreService: RequestStoreService
     ) {
         super();
@@ -27,7 +27,7 @@ export class AuthJwtRefreshGuard extends AuthGuard(AuthJwtRefreshGuardKey) {
         user: IAuthJwtRefreshTokenPayload,
         info: Error
     ): T {
-        const payload = this.authService.validateJwtRefreshGuard(
+        const payload = this.authDomain.validateJwtRefreshGuard(
             err,
             user,
             info

@@ -1,35 +1,15 @@
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abilities.response.dto';
-import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleDto } from '@modules/role/dtos/role.dto';
+import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Injectable } from '@nestjs/common';
-import { Role } from '@generated/prisma-client';
-import { ResponseUtil } from '@common/response/utils/response.util';
+import type { IRole } from '@modules/role/interfaces/role.interface';
 
 @Injectable()
 export class RoleUtil {
-    constructor(private readonly responseUtil: ResponseUtil) {}
-
-    mapList(roles: Role[]): RoleListResponseDto[] {
-        return this.responseUtil.serialize(RoleListResponseDto, roles);
-    }
-
-    mapOne(role: Role): RoleDto {
-        return this.responseUtil.serialize(RoleDto, role);
-    }
-
-    mapAbilities(role: Role): RoleAbilitiesResponseDto {
-        return this.responseUtil.serialize(RoleAbilitiesResponseDto, {
-            abilities: role.abilities,
-        });
-    }
-
-    mapActivityLogMetadata(role: Role): IActivityLogMetadata {
+    mapActivityLogMetadata(role: IRole, timestamp: Date): IActivityLogMetadata {
         return {
             roleId: role.id,
             roleName: role.name,
             roleType: role.type,
-            timestamp: role.updatedAt ?? role.createdAt,
+            timestamp,
         };
     }
 }

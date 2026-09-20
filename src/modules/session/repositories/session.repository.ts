@@ -1,31 +1,34 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperService } from '@common/helper/services/helper.service';
-import {
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import type {
     IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { ISession } from '@modules/session/interfaces/session.interface';
+import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { SessionListSelect } from '@modules/session/constants/session.constant';
+import type {
+    ISession,
+    ISessionList,
+    ISessionRef,
+} from '@modules/session/interfaces/session.interface';
+import { UserRefSelect } from '@modules/user/constants/user.constant';
+import type { ISessionRepository } from '@modules/session/interfaces/session.repository.interface';
 import { Injectable } from '@nestjs/common';
-import {
-    EnumActivityLogAction,
-    Prisma,
-    Session,
-} from '@generated/prisma-client';
-import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+import { Prisma } from '@generated/prisma-client/client';
+import type { Session } from '@generated/prisma-client/client';
 
 @Injectable()
-export class SessionRepository {
+export class SessionRepository implements ISessionRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil,
-        private readonly activityLogUtil: ActivityLogUtil
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async findWithPaginationOffsetByAdmin(
@@ -33,15 +36,11 @@ export class SessionRepository {
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.SessionSelect,
-            Prisma.SessionWhereInput
-        >,
+        }: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<ISession>> {
+    ): Promise<IResponsePaginationReturn<ISessionList>> {
         return this.paginationService.offset<
-            ISession,
-            Prisma.SessionSelect,
+            ISessionList,
             Prisma.SessionWhereInput
         >(this.databaseService.client.session, {
             ...others,
@@ -50,9 +49,7 @@ export class SessionRepository {
                 ...isRevoked,
                 userId,
             },
-            include: {
-                user: true,
-            },
+            select: SessionListSelect,
         });
     }
 
@@ -61,14 +58,10 @@ export class SessionRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<
-            Prisma.SessionSelect,
-            Prisma.SessionWhereInput
-        >
-    ): Promise<IResponsePagingReturn<ISession>> {
+        }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
+    ): Promise<IResponsePaginationReturn<ISessionList>> {
         return this.paginationService.cursor<
-            ISession,
-            Prisma.SessionSelect,
+            ISessionList,
             Prisma.SessionWhereInput
         >(this.databaseService.client.session, {
             ...others,
@@ -77,59 +70,15 @@ export class SessionRepository {
                 userId,
                 isRevoked: false,
             },
-            include: {
-                user: true,
-            },
-        });
-    }
-
-    async findActive(userId: string): Promise<
-        {
-            id: string;
-        }[]
-    > {
-        return this.databaseService.client.session.findMany({
-            where: {
-                userId,
-                isRevoked: false,
-                expiredAt: {
-                    gte: this.helperService.dateCreate(),
-                },
-            },
-            select: {
-                id: true,
-            },
-        });
-    }
-
-    async findActiveByDeviceOwnership(
-        userId: string,
-        deviceOwnershipId: string
-    ): Promise<
-        {
-            id: string;
-        }[]
-    > {
-        return this.databaseService.client.session.findMany({
-            where: {
-                userId,
-                isRevoked: false,
-                expiredAt: {
-                    gte: this.helperService.dateCreate(),
-                },
-                deviceOwnershipId,
-            },
-            select: {
-                id: true,
-            },
+            select: SessionListSelect,
         });
     }
 
     async findOneActive(
         userId: string,
         sessionId: string
-    ): Promise<Session | null> {
-        const today = this.helperService.dateCreate();
+    ): Promise<ISession | null> {
+        const today = this.helperDateService.create();
 
         return this.databaseService.client.session.findFirst({
             where: {
@@ -140,98 +89,197 @@ export class SessionRepository {
                 },
                 isRevoked: false,
             },
+            include: {
+                user: {
+                    select: UserRefSelect,
+                },
+                revokedBy: {
+                    select: UserRefSelect,
+                },
+            },
         });
+    }
+
+    async createInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        sessionId: string,
+        deviceOwnershipId: string,
+        jti: string,
+        expiredAt: Date,
+        { ipAddress, userAgent, geoLocation }: IRequestLog
+    ): Promise<Session> {
+        const plainUserAgent = this.databaseUtil.toPlainObject(userAgent);
+        const plainGeoLocation = this.databaseUtil.toPlainObject(geoLocation);
+
+        return tx.session.create({
+            data: {
+                id: sessionId,
+                userId,
+                jti,
+                expiredAt,
+                isRevoked: false,
+                ipAddress,
+                deviceOwnershipId,
+                userAgent: plainUserAgent,
+                geoLocation: plainGeoLocation,
+                createdBy: userId,
+            },
+        });
+    }
+
+    async updateJtiInTx(
+        tx: IDatabaseTransactionClient,
+        sessionId: string,
+        jti: string
+    ): Promise<boolean> {
+        const now = this.helperDateService.create();
+        const { count } = await tx.session.updateMany({
+            where: {
+                id: sessionId,
+                isRevoked: false,
+                expiredAt: {
+                    gte: now,
+                },
+            },
+            data: { jti },
+        });
+
+        return count > 0;
+    }
+
+    async revokeInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        sessionId: string,
+        revokedBy: string,
+        revokedAt: Date
+    ): Promise<boolean> {
+        const { count } = await tx.session.updateMany({
+            where: {
+                id: sessionId,
+                userId,
+                isRevoked: false,
+            },
+            data: {
+                isRevoked: true,
+                revokedAt,
+                revokedById: revokedBy,
+            },
+        });
+
+        return count > 0;
     }
 
     async revoke(
         userId: string,
         sessionId: string,
-        { ipAddress, userAgent, geoLocation }: IRequestLog
-    ): Promise<Session> {
-        return this.databaseService.client.session.update({
+        revokedBy: string,
+        revokedAt: Date
+    ): Promise<boolean> {
+        const { count } = await this.databaseService.client.session.updateMany({
             where: {
                 id: sessionId,
                 userId,
+                isRevoked: false,
             },
             data: {
                 isRevoked: true,
-                revokedAt: this.helperService.dateCreate(),
-                revokedBy: {
-                    connect: {
-                        id: userId,
-                    },
-                },
-                updatedBy: userId,
-                user: {
-                    update: {
-                        activityLogs: {
-                            create: {
-                                action: EnumActivityLogAction.userRevokeSession,
-                                description:
-                                    this.activityLogUtil.getDescription(
-                                        EnumActivityLogAction.userRevokeSession
-                                    ),
-                                ipAddress,
-                                userAgent:
-                                    this.databaseUtil.toPlainObject(userAgent),
-                                geoLocation:
-                                    this.databaseUtil.toPlainObject(
-                                        geoLocation
-                                    ),
-                                createdBy: userId,
-                            },
-                        },
-                    },
-                },
+                revokedAt,
+                revokedById: revokedBy,
             },
         });
+
+        return count > 0;
     }
 
     async revokeByAdmin(
         sessionId: string,
         revokedBy: string,
-        requestLog: IRequestLog
-    ): Promise<ISession> {
-        const { ipAddress, userAgent, geoLocation } = requestLog;
-
-        return this.databaseService.client.session.update({
+        revokedAt: Date
+    ): Promise<boolean> {
+        const { count } = await this.databaseService.client.session.updateMany({
             where: {
                 id: sessionId,
+                isRevoked: false,
             },
             data: {
                 isRevoked: true,
-                revokedAt: this.helperService.dateCreate(),
-                revokedBy: {
-                    connect: {
-                        id: revokedBy,
-                    },
-                },
-                updatedBy: revokedBy,
-                user: {
-                    update: {
-                        activityLogs: {
-                            create: {
-                                action: EnumActivityLogAction.userRevokeSessionByAdmin,
-                                description:
-                                    this.activityLogUtil.getDescription(
-                                        EnumActivityLogAction.userRevokeSessionByAdmin
-                                    ),
-                                ipAddress,
-                                userAgent:
-                                    this.databaseUtil.toPlainObject(userAgent),
-                                geoLocation:
-                                    this.databaseUtil.toPlainObject(
-                                        geoLocation
-                                    ),
-                                createdBy: revokedBy,
-                            },
-                        },
-                    },
-                },
-            },
-            include: {
-                user: true,
+                revokedAt,
+                revokedById: revokedBy,
             },
         });
+
+        return count > 0;
+    }
+
+    async revokeActiveByUser(
+        userId: string,
+        revokedBy: string,
+        revokedAt: Date
+    ): Promise<ISessionRef[]> {
+        return this.databaseService.withTransaction(async tx =>
+            this.revokeActiveByUserInTx(tx, userId, revokedBy, revokedAt)
+        );
+    }
+
+    async revokeActiveByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        revokedBy: string,
+        revokedAt: Date
+    ): Promise<ISessionRef[]> {
+        const sessions = await tx.session.findMany({
+            where: {
+                userId,
+                isRevoked: false,
+                expiredAt: { gte: revokedAt },
+            },
+            select: { id: true },
+        });
+        await tx.session.updateMany({
+            where: {
+                id: { in: sessions.map(session => session.id) },
+            },
+            data: {
+                isRevoked: true,
+                revokedAt,
+                revokedById: revokedBy,
+                updatedBy: revokedBy,
+            },
+        });
+
+        return sessions;
+    }
+
+    async revokeByDeviceOwnershipInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        deviceOwnershipId: string,
+        revokedBy: string,
+        revokedAt: Date
+    ): Promise<ISessionRef[]> {
+        const sessions = await tx.session.findMany({
+            where: {
+                userId,
+                deviceOwnershipId,
+                isRevoked: false,
+                expiredAt: { gte: revokedAt },
+            },
+            select: { id: true },
+        });
+        await tx.session.updateMany({
+            where: {
+                id: { in: sessions.map(session => session.id) },
+            },
+            data: {
+                isRevoked: true,
+                revokedAt,
+                revokedById: revokedBy,
+                updatedBy: revokedBy,
+            },
+        });
+
+        return sessions;
     }
 }

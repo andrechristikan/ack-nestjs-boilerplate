@@ -1,18 +1,19 @@
 # Logger Documentation
 
-This documentation explains the features and usage of **Logger Module**: Located at `src/common/logger`
+Logger lives in `src/common/logger`.
 
 ## Overview
 
-Comprehensive logging system using Pino with file rotation, sensitive data redaction, Sentry integration, and custom serializers for request/response logging. The system includes HTTP request/response logging, automatic sensitive data redaction, file rotation, configurable log levels, pretty printing for development, route exclusion for health checks, request ID tracking across services, Sentry error tracking, and memory usage and uptime debugging for non-production environments.
+Pino logs, with file rotation, redaction of sensitive fields, request/response serializers, URL masking, request IDs, and Sentry. Dev pretty-print; health routes excluded; memory and uptime fields outside production.
+
+`LoggerModule.forRoot()` registers `nestjs-pino` with two providers: `LoggerOptionService` assembles the pino options, and `LoggerUtil` (`src/common/logger/utils/logger.util.ts`) holds the serializers, the redaction walk, the URL masking, and the severity mapping every record passes through.
 
 ## Related Documents
 
-- [Configuration Documentation][ref-doc-configuration] - For logger configuration settings
-- [Environment Documentation][ref-doc-environment] - For logger environment variables
-- [Handling Error Documentation][ref-doc-handling-error] - For error logging integration
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - For logger middleware and security features
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - For request ID tracking across services 
+- [Configuration Documentation][ref-doc-configuration] - Logger config keys
+- [Environment Documentation][ref-doc-environment] - Logger env vars
+- [Handling Error Documentation][ref-doc-handling-error] - Filters that report to Sentry
+- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Request ID and logger middleware 
 
 ## Table of Contents
 
@@ -79,11 +80,11 @@ SENTRY_DSN=<your_sentry_dsn>
 
 | Variable | Description | Type | Default | Required |
 |----------|-------------|------|---------|----------|
-| `LOGGER_ENABLE` | Enable/disable logging | `boolean` | `true` | No |
-| `LOGGER_LEVEL` | Minimum log level | `string` | `debug` | No |
-| `LOGGER_INTO_FILE` | Write logs to files | `boolean` | `true` | No |
-| `LOGGER_PRETTIER` | Enable pretty-printing in console | `boolean` | `true` | No |
-| `LOGGER_AUTO` | Enable automatic HTTP request/response logging | `boolean` | `false` | No |
+| `LOGGER_ENABLE` | Enable/disable logging | `boolean` | `true` | Yes |
+| `LOGGER_LEVEL` | Minimum log level | `EnumLoggerLevel` | `debug` | Yes |
+| `LOGGER_INTO_FILE` | Write logs to files | `boolean` | `true` | Yes |
+| `LOGGER_PRETTIER` | Enable pretty-printing in console | `boolean` | `true` | Yes |
+| `LOGGER_AUTO` | Enable automatic HTTP request/response logging | `boolean` | `false` | Yes |
 | `SENTRY_DSN` | Sentry Data Source Name for error tracking | `string` | `null` | No |
 
 ### Configuration Interface
@@ -91,23 +92,23 @@ SENTRY_DSN=<your_sentry_dsn>
 | Option | Description | Default |
 |--------|-------------|---------|
 | `enable` | Enable/disable logging | `false` |
-| `level` | Minimum log level (`error`, `warn`, `info`, `verbose`, `debug`, `silly`) | `debug` |
+| `level` | Minimum log level, typed `EnumLoggerLevel` (`fatal`, `error`, `warn`, `info`, `debug`, `trace`) | `debug` |
 | `intoFile` | Write logs to files | `false` |
 | `filePath` | Directory path for log files | `/logs` |
 | `auto` | Enable automatic HTTP request/response logging | `false` |
 | `prettier` | Enable pretty-printing in console | `false` |
 | `sentry.dsn` | Sentry DSN for error tracking | `null` |
-| `sentry.timeoutInMs` | Sentry request timeout | `ms('10s')` |
+| `sentry.timeoutInMs` | Timeout value carried on the config; `Sentry.init` is configured from `sentry.dsn` | `ms('10s')` |
 
 ## Usage
 
-Use [NestJS][ref-nestjs] Logger throughout the application:
+Use [NestJS][ref-nestjs] Logger in application code:
 
 ```typescript
 import { Logger } from '@nestjs/common';
 
-export class UserService {
-    private readonly logger = new Logger(UserService.name);
+export class UserDomain {
+    private readonly logger = new Logger(UserDomain.name);
 
     async createUser(data: UserCreateRequestDto) {
         this.logger.log('Creating new user');
@@ -137,28 +138,34 @@ export class UserService {
 
 ### Log Levels
 
-Available log levels as defined in `EnumLoggerLevel`:
-
-```typescript
-this.logger.error('Error message');      // error level - Critical errors
-this.logger.warn('Warning message');     // warn level - Warning conditions
-this.logger.log('Info message');         // info level - General information
-this.logger.verbose('Verbose message');  // verbose level - Detailed information
-this.logger.debug('Debug message');      // debug level - Debug information
-```
+`EnumLoggerLevel` declares Pino's own level set. These six values are what `LOGGER_LEVEL` accepts:
 
 **Level Hierarchy (from highest to lowest priority):**
-1. `error` - Critical errors that need immediate attention
-2. `warn` - Warning conditions that should be reviewed
-3. `info` - General informational messages
-4. `verbose` - Detailed informational messages
+1. `fatal` - Unrecoverable failures that end the process or the job
+2. `error` - Critical errors that need immediate attention
+3. `warn` - Warning conditions that should be reviewed
+4. `info` - General informational messages
 5. `debug` - Debug-level messages for development
+6. `trace` - Fine-grained tracing, the most verbose level
 
-**Note:** Setting `LOGGER_LEVEL=warn` will log only `error` and `warn` messages, filtering out `info`, `verbose`, and `debug`.
+The `Logger` from `@nestjs/common` is backed by `nestjs-pino`, so its method names do not all match the level they emit:
+
+```typescript
+this.logger.fatal('Fatal message');      // fatal level
+this.logger.error('Error message');      // error level
+this.logger.warn('Warning message');     // warn level
+this.logger.log('Info message');         // info level  (method is log, not info)
+this.logger.debug('Debug message');      // debug level
+this.logger.verbose('Verbose message');  // trace level (method is verbose, not trace)
+```
+
+`log()` and `verbose()` are the two that differ. `verbose` and `silly` are Winston names; neither is a valid `LOGGER_LEVEL` value, and `LOGGER_LEVEL=verbose` is rejected by environment validation at startup.
+
+**Note:** Setting `LOGGER_LEVEL=warn` will log only `fatal`, `error`, and `warn` messages, filtering out `info`, `debug`, and `trace`.
 
 ### Log Severity
 
-The logger maps numeric Pino levels to severity strings as defined in `EnumLoggerSeverity`:
+`LoggerUtil.mapLevelToSeverity` maps numeric Pino levels to the `EnumLoggerSeverity` values, uppercased, and writes the result to the `severity` field:
 
 | Pino Level | Severity | Use Case |
 |------------|----------|----------|
@@ -232,15 +239,30 @@ export const LoggerSensitiveFields: string[] = [
     // Session & Cookies
     'cookie',
     'cookies',
+    'set-cookie',
+    'referer',
+
+    // Flow tokens, 2FA material, and sealed notification payloads
+    'inviteToken',
+    'challengeToken',
+    'backupCode',
+    'code',
+    'pendingSecret',
+    'encryptedPassword',
+    'encryptedLink',
+    'encryptedInviteAcceptLink',
+    'encryptedJoinRequestReviewLink',
+    'link',
 ];
 ```
 
 **Redaction Rules:**
-- Two passes redact, and they match differently:
-  - `sanitizeObject` (request/response `headers`, `query`, `params`, and `additionalData`) lowercases both the field name and the sensitive list, so it is **case-insensitive**: `Password`, `PASSWORD`, and `password` all match.
+- Three mechanisms redact, and they match differently:
+  - `LoggerUtil.redactValue` (request `query` and `headers`, response `headers`, and a record's `additionalData`) walks every key at every depth and compares it lowercased against the lowercased list, so it is **case-insensitive**: `Password`, `PASSWORD`, and `password` all match.
+  - Request `params` keep their names, and every value is replaced with `[REDACTED]`, whatever the name.
   - Pino's `redact.paths` (built as `LoggerSensitivePaths` combined with `LoggerSensitiveFields`) matches each path segment literally, so it is **case-sensitive**: only the exact spelling listed in `LoggerSensitiveFields` matches.
-- Fields with hyphens are wrapped in brackets (e.g., `req.headers["x-api-key"]`)
-- All matching fields are replaced with `[REDACTED]`
+- Fields with hyphens are wrapped in brackets in the pino paths (e.g., `req.headers["x-api-key"]`)
+- All matching fields are replaced with `LoggerRedactedValue` (`[REDACTED]`)
 
 ### Redaction Examples
 
@@ -302,10 +324,12 @@ Binary data (Buffers) are replaced with a placeholder:
 
 #### Object Depth Limitation
 
-Objects are sanitized up to a maximum depth of **5 levels** to prevent:
-- Performance issues with deeply nested objects
-- Circular reference problems
-- Excessive log size
+`LoggerUtil.redactValue` walks objects up to `LoggerRedactMaxDepth` (**5 levels**). A value nested deeper is replaced whole with `[REDACTED]`, so nothing past the cap is written unredacted. The cap also bounds:
+- Performance cost on deeply nested objects
+- Circular references
+- Log size
+
+String leaves are passed through `LoggerUtil.sanitizeMessage`, which strips ANSI codes and collapses whitespace.
 
 ## File Logging
 
@@ -336,7 +360,7 @@ logs/
 When `LOGGER_PRETTIER=false`, logs are written in JSON format:
 
 ```json
-{"severity":"INFO","context":"UserService","timestamp":1764577182750,"msg":"User created: user-123","service":{"name":"ACKNestJs","environment":"production","version":"8.0.0"},"level":30}
+{"severity":"INFO","context":"UserDomain","timestamp":1764577182750,"msg":"User created: user-123","service":{"name":"ACKNestJs","environment":"production","version":"9.0.0"},"level":30}
 ```
 
 ### Example Usage
@@ -365,20 +389,21 @@ LOGGER_AUTO=true
 
 When auto-logging is enabled, the following information is automatically captured:
 
-**Request:**
+**Request** (`LoggerUtil.serializeRequest`):
 - Request ID
 - HTTP method
-- URL and path
-- Route pattern
+- `route`: the matched route pattern (`baseUrl` plus the route path, such as `/api/v1/admin/user/:userId/device/list`); for a request that matched no route, the URL masked by `LoggerUtil.maskUrl`. The raw URL and path are not logged
 - User-Agent
 - Content-Type
-- Referer
+- Referer, masked by `LoggerUtil.maskUrl`
 - Remote address and port
 - Client IP address
 - Authenticated user ID
-- Query parameters (sanitized)
-- Route params (sanitized)
-- Request headers (sanitized)
+- Query parameters (redacted)
+- Route params (names only; every value is `[REDACTED]`)
+- Request headers (redacted)
+
+**URL masking.** `LoggerUtil.maskUrl` keeps the origin, drops the query string and fragment, and replaces every path segment that is not a route parameter name, a version segment (`v1`), or a static lowercase kebab-case word (`LoggerUrlStaticSegmentRegex`) with `[REDACTED]`. An ID or token in the path never reaches a log line.
 
 **Response:**
 - HTTP status code
@@ -388,14 +413,14 @@ When auto-logging is enabled, the following information is automatically capture
 
 ### Excluded Routes
 
-Routes excluded from auto-logging (defined in `logger.constant.ts`):
+Routes excluded from auto-logging, and from Sentry events and traces (defined in `logger.constant.ts`):
 
 ```typescript
 export const LoggerExcludedRoutes: string[] = [
     '/api/public/hello',
     '/api/public/hello/*',
-    '/api/health',
-    '/api/health/*',
+    '/api/system/health',
+    '/api/system/health/*',
     '/metrics',
     '/metrics/*',
     '/favicon.ico',
@@ -407,8 +432,8 @@ export const LoggerExcludedRoutes: string[] = [
 
 ### Pattern Matching Rules
 
-- **Exact match**: `/api/health` - matches only this exact path
-- **Wildcard suffix**: `/api/health/*` - matches `/api/health/status`, `/api/health/check`, etc.
+- **Exact match**: `/api/system/health` - matches only this exact path
+- **Wildcard suffix**: `/api/system/health/*` - matches `/api/system/health/database`, `/api/system/health/aws`, etc.
 - **Root path**: `/` - matches only the root endpoint
 - All patterns are **case-insensitive**
 
@@ -420,8 +445,8 @@ To exclude additional routes, modify the constant in `src/common/logger/constant
 export const LoggerExcludedRoutes: string[] = [
     '/api/public/hello',
     '/api/public/hello/*',
-    '/api/health',
-    '/api/health/*',
+    '/api/system/health',
+    '/api/system/health/*',
     '/metrics',
     '/metrics/*',
     '/favicon.ico',
@@ -457,11 +482,11 @@ The logger supports two output modes: Pretty mode for development and JSON mode 
 Development-friendly colored output with structured formatting using `pino-pretty`:
 
 ```
-INFO [2025-12-29 15:18:54.496 +0700]: [UserService] Creating new user
+INFO [2025-12-29 15:18:54.496 +0700]: [UserDomain] Creating new user
     service: {
       "name": "ACKNestJs",
       "environment": "local",
-      "version": "8.0.0"
+      "version": "9.0.0"
     }
     additionalData: {
       "userId": "user-123",
@@ -496,7 +521,7 @@ LOGGER_LEVEL=debug
 Production-optimized structured JSON for log aggregation and analysis tools:
 
 ```json
-{"severity":"INFO","context":"UserService","timestamp":1735461534496,"msg":"Creating new user","service":{"name":"ACKNestJs","environment":"production","version":"8.0.0"},"additionalData":{"userId":"user-123","action":"create"},"level":30}
+{"severity":"INFO","context":"UserDomain","timestamp":1735461534496,"msg":"Creating new user","service":{"name":"ACKNestJs","environment":"production","version":"9.0.0"},"additionalData":{"userId":"user-123","action":"create"},"level":30}
 ```
 
 **Features:**
@@ -573,7 +598,7 @@ If no request ID header is found, `genReqId` falls back to `request.id`, the UUI
 **Client sends request with correlation ID:**
 
 ```bash
-curl -H "x-correlation-id: req-abc-123" https://api.example.com/users
+curl -H "x-correlation-id: req-abc-123" http://localhost:3000/api/v1/shared/user/profile/get
 ```
 
 **Logger output:**
@@ -583,7 +608,7 @@ curl -H "x-correlation-id: req-abc-123" https://api.example.com/users
   "req": {
     "id": "req-abc-123",
     "method": "GET",
-    "url": "/users"
+    "route": "/api/v1/shared/user/profile/get"
   }
 }
 ```
@@ -592,17 +617,7 @@ curl -H "x-correlation-id: req-abc-123" https://api.example.com/users
 
 When making requests to other services, propagate the request ID:
 
-```typescript
-async callExternalService(requestId: string) {
-    const response = await this.httpService.get('https://external-api.com/data', {
-        headers: {
-            'x-correlation-id': requestId,
-        },
-    });
-    
-    return response.data;
-}
-```
+Outbound calls copy `x-correlation-id` from the inbound request so the next service logs the same id.
 
 ## Sentry Integration
 
@@ -615,14 +630,40 @@ Sentry is initialized at bootstrap by `src/instrument.ts` using `loggerConfigs.s
 
 Error-level logs are forwarded to Sentry Logs only; they are NOT duplicated as Sentry Issues.
 
-**Exceptions (Sentry Issues).** Exception reporting is done by the exception filters:
+**`SentryService`.** `src/common/sentry` holds the Sentry kit:
 
-- `AppBaseExceptionFilter`: reports `rawError ?? exception` for any `AppBaseException` with HTTP status >= 500.
-- `AppHttpFilter`: reports the `HttpException` for framework errors with HTTP status >= 500.
-- `AppGeneralFilter`: reports all unhandled exceptions (catch-all 500).
-- `QueueProcessorBase`: reports fatal queue job failures on the last retry attempt.
+- `SentryModule.forRoot()` is global, imports `@sentry/nestjs/setup`, and exports `SentryService`
+- Methods: `captureException(exception)`, `captureMessage(message, level)`, `log(level, message, attributes?)`, and `withScope(callback)`
+- Methods never throw: a Sentry SDK failure is logged and swallowed
+- `log` writes to Sentry Logs directly; its `attributes` bypass the pino redaction and are scrubbed only by `beforeSendLog`, so they carry no credential
+- `withScope` runs a callback against a fresh Sentry scope (used by `QueueProcessorBase.onFailed` to attach job attributes before `captureException`)
 
-A non-fatal `QueueException` is dropped in `beforeSend` and never becomes a Sentry Issue.
+**Exceptions (Sentry Issues).** Exception reporting goes through `SentryService.captureException`:
+
+- `AppBaseExceptionFilter`: reports `rawError ?? exception` for any `AppBaseException` with HTTP status >= 500
+- `AppHttpFilter`: reports the `HttpException` for framework errors with HTTP status >= 500
+- `AppGeneralFilter`: reports all unhandled exceptions (catch-all 500)
+- `QueueProcessorBase`: in `process`, writes BullMQ `job.log` lines (start, metadata-only input, finish or failure) and on catch calls Nest `Logger.error` once then rethrows; in `onFailed`, reports a failed job once when BullMQ will not retry it (final attempt, or immediately for an `UnrecoverableError`), and only when the error is fatal. Before `captureException`, `withScope` sets `job.id`, `job.name`, `job.attemptsMade`, and `job.maxAttempts`. A `QueueException` is reported only when `isFatal` is set
+- `AuthTwoFactorDomain`: reports a stored TOTP secret that fails to decrypt, before answering `409 twoFactorSecretUnavailable`
+
+`beforeSend` is the last filter every Issue passes through. It drops:
+
+- a non-fatal `QueueException`
+- an event whose `request.url` matches `LoggerExcludedRoutes`
+- an event whose response status code is below 500
+- an event at `info` or `debug` level
+
+Outside production it also attaches the original exception under `event.extra`. `tracesSampler` applies the same excluded-route match to transactions, checked against both the request URL and the span name with its HTTP method prefix removed, returning a `0` sample rate for them.
+
+**Scrubbing.** `instrument.ts` scrubs every payload before it leaves the process, with the same `LoggerSensitiveFields` list (case-insensitive) and the same URL masking as the logger:
+
+| Hook | What it scrubs |
+|---|---|
+| `beforeSend` (after the drops above), `beforeSendTransaction` | `request.url` masked and `request.query_string` removed; sensitive request headers redacted; every cookie value redacted; the request body redacted (below); the transaction name and every span description masked; trace context, span, and breadcrumb data scrubbed as in `beforeBreadcrumb` |
+| `beforeBreadcrumb` | URL keys (`LoggerSentryUrlKeys`) masked, query and fragment keys (`LoggerSentryQueryKeys`) removed, body keys (`LoggerSentryBodyKeys`) redacted, and sensitive `http.request.header.*` / `http.response.header.*` attributes redacted |
+| `beforeSendLog` | Log attributes redacted by key, then scrubbed as in `beforeBreadcrumb` |
+
+A request body is redacted by shape: an object is walked key by key up to `LoggerSentryRedactMaxDepth` (10) and replaced whole past it; a JSON string is parsed, redacted, and re-serialized (an unparseable one becomes `[REDACTED]`); an `application/x-www-form-urlencoded` string has the value of each sensitive key replaced; any other string is replaced whole with `[REDACTED]`.
 
 ### Sentry Configuration
 
@@ -640,15 +681,15 @@ The Sentry configuration is defined in `src/configs/logger.config.ts`:
 ```typescript
 sentry: {
     dsn: string | null;  // Sentry Data Source Name, null when SENTRY_DSN is unset
-    timeout: number;     // Request timeout in milliseconds (default: 10000ms = 10s)
+    timeoutInMs: number; // ms('10s')
 }
 ```
 
-**Default timeout:** 10 seconds (`10000ms`)
+`instrument.ts` is loaded first, through `node --import ./dist/instrument.js` in the start scripts and `import '@instrument'` at the top of `src/main.ts`. It reads `sentry.dsn` and skips `Sentry.init` entirely when it is `null`. The rest of the initializer options (sample rates, `normalizeDepth`, `maxValueLength`, `maxBreadcrumbs`, `attachStacktrace`, `sendDefaultPii`) are literals in `instrument.ts`, and the sample rates are the only ones that branch on `app.env`.
 
 ### Disabling Sentry
 
-To disable Sentry integration, remove or comment out the `SENTRY_DSN` environment variable:
+Sentry is off when `SENTRY_DSN` is unset or commented out:
 
 ```env
 # SENTRY_DSN=https://...

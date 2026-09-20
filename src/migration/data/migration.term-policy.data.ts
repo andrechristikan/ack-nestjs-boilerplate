@@ -1,8 +1,8 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import { EnumTermPolicyType } from '@generated/prisma-client';
+import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import { EnumTermPolicyType } from '@generated/prisma-client/client';
 
-const termPolicyData: TermPolicyCreateRequestDto[] = [
+const TermPolicyData: TermPolicyCreateRequestDto[] = [
     {
         type: EnumTermPolicyType.cookies,
         version: 1,
@@ -25,12 +25,12 @@ const termPolicyData: TermPolicyCreateRequestDto[] = [
     },
 ];
 
-export const migrationTermPolicyData: Record<
+export const MigrationTermPolicyData: Record<
     EnumAppEnvironment,
     TermPolicyCreateRequestDto[]
 > = {
-    [EnumAppEnvironment.local]: termPolicyData,
-    [EnumAppEnvironment.development]: termPolicyData,
-    [EnumAppEnvironment.staging]: termPolicyData,
-    [EnumAppEnvironment.production]: termPolicyData,
+    [EnumAppEnvironment.local]: TermPolicyData,
+    [EnumAppEnvironment.development]: TermPolicyData,
+    [EnumAppEnvironment.staging]: TermPolicyData,
+    [EnumAppEnvironment.production]: TermPolicyData,
 };

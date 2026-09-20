@@ -1,27 +1,25 @@
-import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { IsISO8601, IsNotEmpty } from 'class-validator';
-import { GreaterThanEqualOtherProperty } from '@common/request/validations/request.greater-than-other-property.validation';
-import { IsAfterNow } from '@common/request/validations/request.is-after-now.validation';
+import { z } from 'zod';
+import { ApiKeyDateRequestSchema } from '@modules/api-key/dtos/request/api-key.date.request.dto';
 
-export class ApiKeyUpdateDateRequestDto {
-    @ApiProperty({
-        description: 'Api Key start date',
-        example: faker.date.recent(),
-        required: false,
-    })
-    @IsNotEmpty()
-    @IsISO8601()
-    @IsAfterNow()
-    startAt: Date;
+/**
+ * Validates the body for changing the validity dates of an API key.
+ * @public
+ */
+export const ApiKeyUpdateDateRequestSchema =
+    ApiKeyDateRequestSchema.superRefine(({ startAt, endAt }, ctx) => {
+        if (endAt < startAt) {
+            ctx.addIssue({
+                code: 'custom',
+                path: ['endAt'],
+                message: 'request.error.greaterThanEqualOtherProperty.invalid',
+            });
+        }
+    });
 
-    @ApiProperty({
-        description: 'Api Key end date',
-        example: faker.date.recent(),
-        required: false,
-    })
-    @IsNotEmpty()
-    @IsISO8601()
-    @GreaterThanEqualOtherProperty('startAt')
-    endAt: Date;
-}
+/**
+ * Body for changing the validity dates of an API key.
+ * @public
+ */
+export type ApiKeyUpdateDateRequestDto = z.infer<
+    typeof ApiKeyUpdateDateRequestSchema
+>;

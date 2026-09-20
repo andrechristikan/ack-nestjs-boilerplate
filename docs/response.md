@@ -1,10 +1,14 @@
 # Response Documentation
 
-This documentation explains the features and usage of **Response Module**: Located at `src/common/response`
+The response envelope lives in `src/common/response`.
 
 ## Overview
 
-ACK NestJS Boilerplate standardizes API responses through decorators that automatically format responses, handle pagination, manage file downloads, and set custom headers. Each decorator uses an interceptor to transform data into consistent structures with metadata, status codes, and localized messages.
+Response decorators wrap the handler result with metadata, a status code, and a localized message. Separate decorators cover:
+
+- pagination
+- file download
+- custom headers
 
 ## Table of Contents
 
@@ -12,12 +16,12 @@ ACK NestJS Boilerplate standardizes API responses through decorators that automa
 - [Related Documents](#related-documents)
 - [Response Decorators](#response-decorators)
   - [@Response](#response)
-  - [@ResponsePaging](#responsepaging)
+  - [@ResponsePagination](#responsepagination)
   - [@ResponseFile](#responsefile)
 - [Serialization](#serialization)
-  - [ResponseUtil](#responseutil)
-  - [Opt-In with @Expose](#opt-in-with-expose)
-  - [Nested DTOs](#nested-dtos)
+  - [Declaring the Schema](#declaring-the-schema)
+  - [A Route That Returns No Data](#a-route-that-returns-no-data)
+  - [Nested Schemas](#nested-schemas)
   - [Hiding Fields](#hiding-fields)
   - [Serialization Flow](#serialization-flow)
 - [Response Structure](#response-structure)
@@ -28,11 +32,11 @@ ACK NestJS Boilerplate standardizes API responses through decorators that automa
 
 ## Related Documents
 
-- [Message Documentation][ref-doc-message] - For internationalization and error message translation
-- [Handling Error Documentation][ref-doc-handling-error] - For exception handling and response formatting
-- [Doc Documentation][ref-doc-doc] - For API documentation integration with DTOs
-- [File Upload Documentation][ref-doc-file-upload] - For file validation pipes
-- [Request Validation Documentation][ref-doc-request-validation] - For input-boundary DTO validation and serialization
+- [Language Message Documentation][ref-doc-message] - Success and error message paths
+- [Handling Error Documentation][ref-doc-handling-error] - Exception filters and error envelopes
+- [Doc Documentation][ref-doc-doc] - OpenAPI from response schemas; kit error responses only unless `@DocErrors` opts in
+- [File Upload Documentation][ref-doc-file-upload] - File response and upload pipes
+- [Request Validation Documentation][ref-doc-request-validation] - Input-boundary schemas (inbound mirror)
 
 ## Response Decorators
 
@@ -42,132 +46,133 @@ Standard API response decorator with optional caching.
 
 **Parameters:**
 - `messagePath` (string): Path to response message for localization
-- `options` (optional): Configuration options
+- `options` (optional): `IResponseOptions`
+  - `schema` (zod schema): The payload shape. Its absence declares a route that returns no data
   - `cache` (boolean | object): Enable caching
 
-**Interceptor:** `ResponseInterceptor` - transforms responses into standard format with metadata and localized messages via [MessageService][ref-doc-message]
+`IResponseOptions` carries only `schema` and `cache`. Success HTTP status and body `statusCode` both follow `@HttpCode` when present, otherwise Nest method defaults (`POST` → 201, else 200). Override either at runtime via `metadata` on the handler return. The decorator also documents the success envelope and `DocSerializationErrorResponses.serialization`.
+
+**Requirements:**
+- Handler returns `IResponseReturn<T>`
+- `ResponseInterceptor` reads `data` and `metadata` off that object, so a payload returned outside it reaches the envelope as no `data` at all
+
+**Interceptor:** `ResponseInterceptor` - serializes the payload against `options.schema`, then wraps it into the standard envelope with metadata and a localized message via [MessageService][ref-doc-message]
 
 **Usage:**
 
 ```typescript
-@Response('user.get')
-@Get('/:id')
-async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
-  return {
-    data: await this.userService.findById(id)
-  };
+@Response('user.get', { schema: UserProfileResponseSchema })
+@Get('/get/:userId')
+async get(
+  @Param('userId', { schema: RequestMongoIdSchema }) userId: string
+): Promise<IResponseReturn<UserProfileResponseDto>> {
+  return this.userHttpService.getOne(userId);
 }
 ```
 
 **Custom Status Code:**
 
+`@Post('/create')` has no `@HttpCode`, so Nest answers `201 Created`. The interceptor takes `httpStatus` from the Express response status unless the handler returns `metadata.httpStatus`.
+
 ```typescript
-@Response('user.create')
-@Post('/')
-async createUser(@Body() dto: CreateUserDto): Promise<IResponseReturn<UserDto>> {
-  try {
-    const data = await this.userService.create(dto);
-    
-    // Response: { statusCode: 201, message: "...", data: {...}, metadata: {...} }
-    return {
-      data,
-      metadata: {
-        statusCode: 201,
-        httpStatus: HttpStatus.CREATED
-      }
-    };
-  } catch {
-    // Response: { statusCode: 200, message: "...", data: {...}, metadata: {...} }
-    return {
-      data,
-      metadata: {
-        statusCode: 200,
-        httpStatus: HttpStatus.OK
-      }
-    };
-  }
+@Response('user.create', { schema: DatabaseIdResponseSchema })
+@Post('/create')
+async create(
+  @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto,
+  @AuthJwtPayload('userId') createdBy: string
+): Promise<IResponseReturn<DatabaseIdResponseDto>> {
+  return this.userHttpService.createByAdmin(body, createdBy);
 }
 ```
 
 **Custom Message:**
 
+The controller carries the message path and nothing else; the values that fill it come back from the HTTP service on `metadata.messageProperties`:
+
 ```typescript
-@Response('user.update')
-@Patch('/:id')
-async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto): Promise<IResponseReturn<UserDto>> {
-  const user = await this.userService.update(id, dto);
-  
+// notification.shared.controller.ts
+@Response('notification.markAllAsRead')
+@Post('/update/read')
+async markAllAsRead(
+  @AuthJwtPayload('userId') userId: string
+): Promise<IResponseReturn<void>> {
+  return this.notificationHttpService.markAllAsRead(userId);
+}
+
+// notification.http.service.ts
+async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
+  const count = await this.notificationDomain.markAllAsRead(userId);
+
   return {
-    data: user,
     metadata: {
-      messagePath: 'user.updateSuccess',
-      messageProperties: { name: user.name }
-    }
+      messageProperties: {
+        count,
+      },
+    },
   };
 }
 ```
 
-### @ResponsePaging
+`notification.markAllAsRead` resolves to `"{count} notifications marked as read."`, so `count` fills the placeholder.
 
-Paginated API response decorator with optional caching. Supports both offset-based and cursor-based pagination.
+`metadata` accepts a `messagePath` beside `messageProperties`. `ResponseInterceptor` reads the decorator's path first and then applies `responseMetadata?.messagePath ?? messagePath` (`src/common/response/interceptors/response.interceptor.ts`), so a handler that returns one replaces the path its route declared, and one that returns none keeps it. Every route in `src/` takes the second branch: the path on the decorator is the path that is sent.
+
+### @ResponsePagination
+
+Paginated API response decorator with optional caching. Supports both offset-based and cursor-based pagination. Strategy comes from the handler return via `EnumPaginationType`, not from decorator options.
 
 **Parameters:**
 - `messagePath` (string): Path to response message for localization
-- `options` (optional): Configuration options
+- `options`: Configuration options
+  - `schema` (zod schema): The shape of ONE item of the page; the interceptor wraps the page around it (required)
   - `cache` (boolean | object): Enable caching
 
-**Requirements:**
-- Request must include pagination parameters (see [Pagination Documentation][ref-doc-pagination])
-- Response must implement `IResponsePagingReturn<T>` interface
-- Must specify pagination `type`: `'offset'` or `'cursor'`
+`IResponseOptions` / pagination options carry **schema and cache only**. They do not carry:
 
-**Interceptor:** `ResponsePagingInterceptor` - validates pagination data, supports offset and cursor-based pagination, includes search/filter/sort metadata
+- `httpStatus`
+- `statusCode`
+- pagination `type`
+
+Success documents HTTP 200 with `baseSchema: ResponsePaginationSchema`. List `ApiQuery`s come from the zod query schema, not from this decorator. The decorator also publishes shared pagination error kits plus both offset and cursor kits.
+
+**Requirements:**
+- Handler returns `IResponsePaginationReturn<T>`
+- List query DTO on `@Query({ schema })`; HTTP service derives params via `PaginationQueryUtil` (see [Pagination Documentation][ref-doc-pagination])
+
+**Interceptor:** `ResponsePaginationInterceptor` - validates pagination data, supports offset and cursor-based pagination, includes search/filter/sort metadata from `PaginationStoreKey`
 
 **Offset-based Pagination:**
 
 ```typescript
-@ResponsePaging('user.list')
+@Doc({ summary: 'get all users' })
+@ResponsePagination('user.list', { schema: UserListResponseSchema })
 @Get('/list')
-async listUsers(
-  @PaginationOffsetQuery() query: IPaginationQuery
-): Promise<IResponsePagingReturn<UserDto>> {
-  const { data, totalPage, count } = await this.userService.findAll(query);
-  
-  return {
-    type: 'offset',
-    data,
-    totalPage,
-    page: query.page,
-    perPage: query.perPage,
-    count,
-    hasNext: query.page < totalPage,
-    hasPrevious: query.page > 1,
-    nextPage: query.page < totalPage ? query.page + 1 : undefined,
-    previousPage: query.page > 1 ? query.page - 1 : undefined
-  };
+async list(
+  @Query({ schema: UserListRequestSchema }) query: UserListRequestDto
+): Promise<IResponsePaginationReturn<IUserList>> {
+  return this.userHttpService.getListOffsetByAdmin(query);
 }
 ```
+
+`UserHttpService.getListOffsetByAdmin` runs `PaginationQueryUtil.offset`, merges the store patch, and forwards to the domain and repository. The page fields (`type`, `count`, `page`, `perPage`, `totalPage`, `hasNext`, `hasPrevious`, `nextPage`, `previousPage`) come from `PaginationService.offset`, which computes them in `offsetPage`: `page` is 1-based, so the first page reports `1`, and `totalPage` is `Math.ceil(count / perPage)`, so a page with no rows reports `0`.
+
+The handler's generic is the ROW type the repository returns, and the schema on the decorator is what shapes that row on the way out (see [Pagination Documentation][ref-doc-pagination]).
 
 **Cursor-based Pagination:**
 
 ```typescript
-@ResponsePaging('user.list')
+@Doc({ summary: 'list workspaces for member' })
+@ResponsePagination('workspace.list', { schema: WorkspaceResponseSchema })
 @Get('/list')
-async listUsers(
-  @PaginationCursorQuery() query: IPaginationQuery
-): Promise<IResponsePagingReturn<UserDto>> {
-  const { data, cursor, count, hasNext } = await this.userService.findAllCursor(query);
-  
-  return {
-    type: 'cursor',
-    data,
-    cursor,
-    perPage: query.perPage,
-    count,
-    hasNext
-  };
+async list(
+  @Query({ schema: WorkspaceListRequestSchema }) query: WorkspaceListRequestDto,
+  @AuthJwtPayload('userId') userId: string
+): Promise<IResponsePaginationReturn<WorkspaceResponseDto>> {
+  return this.workspaceHttpService.getListForMember(userId, query);
 }
 ```
+
+The page fields (`type`, `cursor` emitted as `nextCursor`, `perPage`, `hasNext`, optional `count`) come from `PaginationService.cursor`.
 
 ### @ResponseFile
 
@@ -176,204 +181,144 @@ File download response decorator that handles CSV and PDF file downloads with pr
 **Parameters:** None
 
 **Requirements:**
-- Response must implement `IResponseFileReturn` interface (union of `IResponseCsvReturn` | `IResponsePdfReturn`)
-- Must specify `extension`: `EnumFileExtensionDocument.csv` or `EnumFileExtensionDocument.pdf`
-- CSV data must be a string (pre-converted to CSV format)
-- PDF data must be a Buffer
-- Optional `filename` - if not provided, generates timestamped filename: `export-{timestamp}.{extension}`
+- Handler returns `IResponseFileReturn` (`IResponseCsvReturn` | `IResponsePdfReturn`)
+- `extension` is `EnumFileExtensionDocument.csv` or `EnumFileExtensionDocument.pdf`
+- CSV data is a string (already converted)
+- PDF data is a Buffer
+- Optional `filename` - if not provided, the interceptor fills the `response.filenameExportPattern` config (`export-{timestamp}.{extension}`) through `HelperStringService.fillPattern`, with the request timestamp and the literal `csv`, so the generated fallback is always a `.csv` name. A PDF download carries an explicit `filename`
 
-**Interceptor:** `ResponseFileInterceptor` - validates data based on extension type, converts to Buffer, sets content headers (Content-Type, Content-Disposition, Content-Length), returns StreamableFile
+**Interceptor:** `ResponseFileInterceptor` - validates data based on extension type, converts to Buffer, rejects a buffer larger than `file.maxSizeExportInBytes` (2 MB) with `FileExceedMaxSizeExportException` (422, `50105`), sets content headers (Content-Type, Content-Disposition, Content-Length), returns StreamableFile
 
-**CSV Export (Auto-generated Filename):**
+**CSV export:**
+
+`POST /admin/user/export` is the file-download route. `UserImportHttpService.exportByAdmin` maps rows to `UserExportResponseDto` and returns a CSV string. The interceptor fills the filename from `response.filenameExportPattern` (`export-{timestamp}.csv`) because this handler omits `filename`.
 
 ```typescript
+@Doc({ summary: 'export users via csv file' })
 @ResponseFile()
-@Get('/export/csv')
-async exportUsersCsv(): Promise<IResponseCsvReturn> {
-  const users = await this.userService.findAll();
-  const csvData = this.fileService.writeCsv(users);
-  
-  return {
-    data: csvData,
-    extension: EnumFileExtensionDocument.csv
-    // Filename will be: export-{timestamp}.csv
-  };
+@HttpCode(HttpStatus.OK)
+@Post('/export')
+async export(
+  @Query({ schema: UserExportRequestSchema }) query: UserExportRequestDto
+): Promise<IResponseFileReturn> {
+  return this.userImportHttpService.exportByAdmin(query);
 }
 ```
 
-**CSV with Custom Filename:**
-
-```typescript
-@ResponseFile()
-@Get('/export/users')
-async exportUsersCustom(): Promise<IResponseCsvReturn> {
-  const users = await this.userService.findAll();
-  const csvData = this.fileService.writeCsv(users);
-  
-  return {
-    data: csvData,
-    extension: EnumFileExtensionDocument.csv,
-    filename: 'users-export.csv'
-  };
-}
-```
-
-**CSV with Formatted Data:**
-
-```typescript
-@ResponseFile()
-@Get('/export/report')
-async exportUsersReport(): Promise<IResponseCsvReturn> {
-  const users = await this.userService.findAll();
-  
-  const formattedData = users.map(user => ({
-    Name: user.name,
-    Email: user.email,
-    'Created At': new Date(user.createdAt).toLocaleDateString(),
-    Status: user.isActive ? 'Active' : 'Inactive'
-  }));
-  
-  const csvData = this.fileService.writeCsv(formattedData);
-  
-  return {
-    data: csvData,
-    extension: EnumFileExtensionDocument.csv,
-    filename: 'user-report.csv'
-  };
-}
-```
-
-**PDF Export:**
-
-```typescript
-@ResponseFile()
-@Get('/export/pdf')
-async exportUsersPdf(): Promise<IResponsePdfReturn> {
-  const users = await this.userService.findAll();
-  
-  // Generate PDF using external library (e.g., pdfkit, puppeteer, jsPDF)
-  // Example: const pdfBuffer = await generatePdfReport(users);
-  const pdfBuffer = Buffer.from('...'); // Your PDF generation logic here
-  
-  return {
-    data: pdfBuffer,
-    extension: EnumFileExtensionDocument.pdf,
-    filename: 'users-report.pdf'
-  };
-}
-```
-
-**Dynamic Format Export:**
-
-```typescript
-@ResponseFile()
-@Get('/export')
-async exportUsers(@Query('format') format: 'csv' | 'pdf'): Promise<IResponseFileReturn> {
-  const users = await this.userService.findAll();
-  const timestamp = Date.now();
-  
-  if (format === 'pdf') {
-    // Generate PDF buffer using your preferred PDF library
-    const pdfBuffer = Buffer.from('...'); // Your PDF generation logic
-    return {
-      data: pdfBuffer,
-      extension: EnumFileExtensionDocument.pdf,
-      filename: `users-${timestamp}.pdf`
-    };
-  }
-  
-  const csvData = this.fileService.writeCsv(users);
-  return {
-    data: csvData,
-    extension: EnumFileExtensionDocument.csv,
-    filename: `users-${timestamp}.csv`
-  };
-}
-```
+`IResponsePdfReturn` is the other half of `IResponseFileReturn`: a `Buffer`, `EnumFileExtensionDocument.pdf`, and an explicit `filename`. The interceptor accepts that shape. CSV is the download this checkout serves.
 
 ## Serialization
 
-Response payloads are serialized in per-module mapper utilities (`*/utils/*.util.ts`) **before** they reach the controller. The `@Response` / `@ResponsePaging` interceptors only wrap the already-mapped `data` into the standard envelope — they do **not** strip or transform fields. Serialization is **opt-in**: only fields decorated with `@Expose()` survive; everything else is dropped (**fail-closed**). A newly added entity field never leaks into a response until it is explicitly exposed.
+A route declares its payload shape on the decorator, and the interceptor validates the handler's payload against that schema before the envelope is sent. Every response schema in `src/` is a `z.object` at the top level, so a key the schema does not declare is stripped: a column added to the Prisma model stays out of the response until someone declares it.
 
-> Input validation (`RequestModule`) uses the opposite mode (`excludeExtraneousValues: false`) — unknown input keys are rejected by `whitelist`, not silently dropped. See [Request Validation Documentation][ref-doc-request-validation]. Input and output serialization are distinct paths.
+A route whose payload is a list of rows over a fixed enum declares that list as a named array field of an object, and `@Response` carries the object schema. `GET /admin/analytic/workspaces/invite-funnel` sends `{ "statuses": [ { "status": …, "count": … } ] }` and `GET /user/analytic/workspace/member-roles` sends `{ "roles": [ … ] }`.
 
-### ResponseUtil
+Serialization is **fail-closed** in both directions. A payload that the schema rejects raises `ResponseSerializationException`, and so does a handler that returns data on a route which declared no schema.
 
-`ResponseUtil` (`src/common/response/utils/response.util.ts`) centralizes serialization. It is provided by the global `ResponseModule` and wraps `plainToInstance` with `excludeExtraneousValues: true` — the transform option is defined here **once** for the whole application. Never call `plainToInstance` directly on the response path; inject `ResponseUtil` and call `serialize`.
+> The inbound half is the mirror image: a request schema is `z.strictObject`, so an unknown key is rejected rather than dropped. See [Request Validation Documentation][ref-doc-request-validation].
+
+### Declaring the Schema
+
+`@Response` takes the schema of the whole payload; `@ResponsePagination` takes the schema of one item and wraps the page around it.
 
 ```typescript
-@Injectable()
-export class ResponseUtil {
-  serialize<T, V>(cls: ClassConstructor<T>, plain: V[]): T[];
-  serialize<T, V>(cls: ClassConstructor<T>, plain: V): T;
-  serialize<T, V>(cls: ClassConstructor<T>, plain: V | V[]): T | T[] {
-    return plainToInstance(cls, plain, {
-      excludeExtraneousValues: true,
-    });
-  }
+@Response('user.profile', { schema: UserProfileResponseSchema })
+@Get('/profile/get')
+async profile(
+  @AuthJwtPayload('userId') userId: string
+): Promise<IResponseReturn<IUserProfile>> {
+  return this.userProfileHttpService.getProfile(userId);
+}
+
+@ResponsePagination('device.list', { schema: DeviceOwnershipResponseSchema })
+@Get('/list')
+async list(
+  @Query({ schema: DeviceSharedListRequestSchema }) query: DeviceSharedListRequestDto,
+  @AuthJwtPayload('userId') userId: string,
+  @AuthJwtPayload('sessionId') sessionId: string
+): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
+  return this.deviceHttpService.getListCursor(userId, sessionId, query);
 }
 ```
 
-**Mapper usage** — inject `ResponseUtil`, call `serialize` (overloaded for single object and array):
+A schema file exports the schema constant and the type inferred from it, and composes from a base rather than restating fields:
 
 ```typescript
-@Injectable()
-export class DeviceUtil {
-  constructor(private readonly responseUtil: ResponseUtil) {}
+export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    deviceId: z.string().meta({
+        description: 'Device ownership ID',
+        example: faker.database.mongodbObjectId(),
+    }),
+    userId: z.string().meta({
+        description: 'User ID who owns the device',
+        example: faker.database.mongodbObjectId(),
+    }),
+    /* the nested device, owner, and revocation fields follow */
+});
 
-  mapList(devices: IDeviceOwnership[]): DeviceOwnershipResponseDto[] {
-    return this.responseUtil.serialize(DeviceOwnershipResponseDto, devices);
-  }
+export type DeviceOwnershipResponseDto = z.infer<
+    typeof DeviceOwnershipResponseSchema
+>;
+```
+
+The `.meta({ description, example })` on each field is what the OpenAPI document is generated from. See [Doc Documentation][ref-doc-doc].
+
+### A Route That Returns No Data
+
+`@Response(messagePath)` with no `schema` declares a route whose body carries `statusCode`, `message`, and `metadata` and nothing else. The handler may return `Promise<void>`, or `IResponseReturn<void>` when the service already returns the envelope (for example to pass `metadata` overrides).
+
+```typescript
+@Response('role.delete')
+@Delete('/delete/:roleId')
+async delete(
+  @Param('roleId', { schema: RequestMongoIdSchema }) roleId: string
+): Promise<IResponseReturn<void>> {
+  return this.roleHttpService.deleteByAdmin(roleId);
 }
 ```
 
-### Opt-In with @Expose
+### Nested Schemas
 
-Every field that should appear in the response **must** carry `@Expose()`. A declared field without `@Expose()` is dropped at serialization time.
-
-```typescript
-export class DeviceOwnershipResponseDto extends DatabaseResponseDto {
-  @ApiProperty({ description: 'Device ownership ID' })
-  @Expose()
-  deviceId: string;
-
-  @ApiProperty({ description: 'User ID who owns the device' })
-  @Expose()
-  userId: string;
-}
-```
-
-`@Transform(...)` and `@ApiProperty(...)` are independent — keep them as-is alongside `@Expose()`.
-
-### Nested DTOs
-
-`excludeExtraneousValues: true` propagates into nested `@Type(() => X)` properties. When a parent DTO is serialized, **every nested DTO must already carry `@Expose()` on its own fields** — otherwise the nested object comes back empty. Keep both `@Type` and `@Expose` on the parent property:
+A nested object is a named schema referenced from the parent, which keeps one definition per shape and lets the OpenAPI document reuse it:
 
 ```typescript
-@ApiProperty({ type: DeviceResponseDto })
-@Expose()
-@Type(() => DeviceResponseDto)
-device: DeviceResponseDto;
+device: DeviceResponseSchema.meta({
+    description: 'Device information',
+    example: { /* ... */ },
+}),
+revokedBy: UserRefResponseSchema.nullable().meta({
+    description: 'User who revoked the device ownership',
+    example: { /* ... */ },
+}),
 ```
+
+Stripping propagates: the nested schema strips its own undeclared keys the same way the parent does.
 
 ### Hiding Fields
 
-Under opt-in, a sensitive top-level field is hidden simply by **not** adding `@Expose()` — no `@Exclude()` needed (e.g. `password`, `hash`). `@Exclude()` plus `@ApiHideProperty()` is required for **subclass-hide**: when a subclass must hide a field that a parent class already `@Expose()`s, both are needed so the JSON and the Swagger schema agree.
+A field is hidden by leaving it out of the schema; there is no separate exclusion decorator. A shape that shows a field only on one route builds that route's schema from the shared one:
 
 ```typescript
-// Parent exposes isActive/startAt/endAt/name/type/key; create response hides isActive/startAt, keeps the rest, and adds `secret`.
-export class ApiKeyCreateResponseDto extends ApiKeyResponseDto {
-  @Expose()
-  secret: string;
+// The base api-key shape carries no secret. Creation and reset are the two routes that return
+// it, and they declare it by extending the base.
+export const ApiKeyCreateResponseSchema = ApiKeyResponseSchema.extend({
+    secret: z.string().meta({
+        description: 'Secret key of ApiKey, only show at once',
+        example: faker.string.alphanumeric(20),
+    }),
+});
+```
 
-  @ApiHideProperty()
-  @Exclude()
-  isActive: boolean;
+To drop a field a base declares, derive with `.omit()`:
 
-  @ApiHideProperty()
-  @Exclude()
-  startAt?: Date;
-}
+```typescript
+export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({ /* ... */ });
 ```
 
 ### Serialization Flow
@@ -381,18 +326,19 @@ export class ApiKeyCreateResponseDto extends ApiKeyResponseDto {
 ```text
 Service returns entity / interface (raw)
     ↓
-Module mapper util: responseUtil.serialize(SomeResponseDto, data)
+Controller returns { data } / { data: [] } as IResponseReturn / IResponsePaginationReturn
     ↓
-plainToInstance(cls, data, { excludeExtraneousValues: true })
+ResponseInterceptor reads the schema off ResponseSchemaMetaKey
     ↓
-Only @Expose() fields kept (nested @Type DTOs serialized recursively)
+schema['~standard'].validate(payload): undeclared keys stripped, a rejection raises
+ResponseSerializationException
     ↓
-Controller returns { data } / { data: [] }
+Envelope assembled: statusCode, localized message, metadata, data
     ↓
-ResponseInterceptor wraps into standard envelope + metadata + headers
+ResponseMetadataService.setHeaders mirrors the metadata onto response headers
 ```
 
-Metadata and headers are built by the shared `ResponseMetadataService` (`src/common/response/services/response.metadata.service.ts`): `create()` returns a `ResponseMetadataDto` from the request store, `setHeaders(response, metadata)` mirrors it to response headers. The three response interceptors and the four app filters call it instead of building metadata inline.
+Metadata and headers are built by the shared `ResponseMetadataService` (`src/common/response/services/response.metadata.service.ts`): `create()` returns a `ResponseMetadataDto` from the request store, `setHeaders(response, metadata)` mirrors it to response headers. The three response interceptors and the five app filters call it instead of building metadata inline.
 
 ## Response Structure
 
@@ -439,7 +385,7 @@ Metadata and headers are built by the shared `ResponseMetadataService` (`src/com
     count?: number;
     hasNext: boolean;
     hasPrevious: boolean;
-    orderBy: IPaginationOrderBy[];   // e.g. [{ createdAt: 'desc' }]
+    orderBy: string[];   // `field:direction` entries, e.g. ['createdAt:desc']
     availableSearch: string[];
     availableOrderBy: string[];
     
@@ -451,46 +397,42 @@ Metadata and headers are built by the shared `ResponseMetadataService` (`src/com
     
     // Cursor-specific fields (when type = 'cursor')
     nextCursor?: string;
-    previousCursor?: string;
+    previousCursor?: string;   // declared on the DTO, never populated
   };
   data: T[];
 }
 ```
 
+`metadata.orderBy` is a string array, symmetric with `availableOrderBy` beside it. `ResponsePaginationInterceptor` flattens the service-level `IPaginationOrderBy[]` (`[{ createdAt: 'desc' }]`) into `field:direction` entries (`['createdAt:desc']`), which is also the format the `orderBy` query parameter accepts. An empty order renders `[]`.
+
+Cursor pagination is forward-only. `ResponsePaginationInterceptor` assigns `nextCursor` from the service's `cursor` field and leaves `previousCursor` unassigned, so that key is always `undefined` and is dropped from the JSON body. `hasPrevious` is only assigned on the offset branch, so it stays `false` for every cursor response. Neither field carries the information a "previous page" control would need.
+
 ## Caching
 
-`@Response` and `@ResponsePaging` support optional caching via `ResponseCacheInterceptor` (extends NestJS CacheInterceptor with custom prefixes).
+`@Response` and `@ResponsePagination` support optional caching via `ResponseCacheInterceptor` (extends NestJS CacheInterceptor with custom prefixes).
 
 **Basic Caching:**
 
 ```typescript
-@Response('user.get', { cache: true })
-@Get('/:id')
-async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
-  return { data: await this.userService.findById(id) };
+@Response('hello.hello', {
+  cache: true,
+  schema: HelloResponseSchema,
+})
+@Get('/')
+async hello(): Promise<IResponseReturn<HelloResponseDto>> {
+  return this.helloHttpService.hello();
 }
 ```
 
 **Cache Key:**
 
 ```text
-Apis:*
+Apis:{key}
 ```
 
 **Custom Cache Configuration:**
 
-```typescript
-@Response('user.get', {
-  cache: {
-    key: 'user-detail',
-    ttl: 3600000 // milliseconds (1 hour)
-  }
-})
-@Get('/:id')
-async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
-  return { data: await this.userService.findById(id) };
-}
-```
+`cache` also accepts `{ key, ttl }`. `key` becomes `CacheKey`; `ttl` is milliseconds and becomes `CacheTTL`. `GET /public/hello` passes `cache: true`, so the interceptor default key from `response.keyPattern` (`Apis:{key}`) applies and TTL comes from `redis.cache.ttlInMs`.
 
 See [NestJS Cache Manager](https://docs.nestjs.com/techniques/caching) and [Cache Documentation][ref-doc-cache] for configuration.
 
@@ -512,7 +454,7 @@ The same store-sourced `language`, `version`, `requestId`, and `correlationId` f
 
 <!-- REFERENCES -->
 
-[ref-doc-message]: message.md
+[ref-doc-message]: language-message.md
 [ref-doc-handling-error]: handling-error.md
 [ref-doc-doc]: doc.md
 [ref-doc-file-upload]: file-upload.md

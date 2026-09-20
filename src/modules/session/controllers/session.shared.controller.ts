@@ -1,28 +1,28 @@
-import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
+import { SessionSharedListRequestSchema } from '@modules/session/dtos/request/session.shared-list.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
-    ResponsePaging,
+    ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
+
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
-import {
-    SessionSharedListDoc,
-    SessionSharedRevokeDoc,
-} from '@modules/session/docs/session.shared.doc';
-import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
-import { SessionService } from '@modules/session/services/session.service';
+
+import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
+import type { ISessionList } from '@modules/session/interfaces/session.interface';
+import { SessionHttpService } from '@modules/session/services/session.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { Controller, Delete, Get, Param } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
+
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.shared.user.session')
@@ -31,40 +31,37 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user/session',
 })
 export class SessionSharedController {
-    constructor(private readonly sessionService: SessionService) {}
+    constructor(private readonly sessionHttpService: SessionHttpService) {}
 
-    @SessionSharedListDoc()
-    @ResponsePaging('session.list')
+    @Doc({ summary: 'get all user Sessions' })
+    @ResponsePagination('session.list', { schema: SessionResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationCursorQuery({
-            availableOrderBy: SessionDefaultAvailableOrderBy,
-        })
-        pagination: IPaginationQueryCursorParams<
-            Prisma.SessionSelect,
-            Prisma.SessionWhereInput
-        >,
+        @Query({ schema: SessionSharedListRequestSchema })
+        query: SessionSharedListRequestDto,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponsePagingReturn<SessionResponseDto>> {
-        return this.sessionService.getListCursor(userId, pagination);
+    ): Promise<IResponsePaginationReturn<ISessionList>> {
+        return this.sessionHttpService.getListCursor(userId, query);
     }
 
-    @SessionSharedRevokeDoc()
+    @Doc({ summary: 'revoke user Session' })
     @Response('session.revoke')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Delete('/revoke/:sessionId')
     async revoke(
-        @Param('sessionId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('sessionId', { schema: RequestMongoIdSchema })
         sessionId: string,
         @AuthJwtPayload('userId') userId: string
     ): Promise<void> {
-        return this.sessionService.revoke(userId, sessionId);
+        await this.sessionHttpService.revoke(userId, sessionId);
     }
 }
