@@ -1,7 +1,8 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { TwoFactor } from '@generated/prisma-client/client';
+import { TwoFactorWithBackupCodesInclude } from '@modules/user/constants/user.constant';
+import type { IUserTwoFactor } from '@modules/user/interfaces/user.interface';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
 import type { IUserTwoFactorRepository } from '@modules/user/interfaces/user.two-factor-repository.interface';
@@ -51,7 +52,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         tx: IDatabaseTransactionClient,
         userId: string,
         createdBy: string
-    ): Promise<TwoFactor> {
+    ): Promise<IUserTwoFactor> {
         return tx.twoFactor.create({
             data: {
                 userId,
@@ -59,6 +60,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
                 requiredSetup: false,
                 createdBy,
             },
+            include: TwoFactorWithBackupCodesInclude,
         });
     }
 
@@ -82,13 +84,14 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
     async setupTwoFactor(
         userId: string,
         pendingSecretEncrypted: string
-    ): Promise<TwoFactor> {
+    ): Promise<IUserTwoFactor> {
         return this.databaseService.client.twoFactor.update({
             where: { userId },
             data: {
                 pendingSecret: pendingSecretEncrypted,
                 attempt: 0,
             },
+            include: TwoFactorWithBackupCodesInclude,
         });
     }
 
@@ -123,7 +126,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         userId: string,
         secretEncrypted: string,
         backupCodesHashed: string[]
-    ): Promise<TwoFactor> {
+    ): Promise<IUserTwoFactor> {
         return this.databaseService.withTransaction(async tx => {
             const now = this.helperDateService.create();
             const twoFactor = await tx.twoFactor.findUnique({
@@ -151,6 +154,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
                     updatedAt: now,
                     updatedBy: userId,
                 },
+                include: TwoFactorWithBackupCodesInclude,
             });
         });
     }
@@ -158,7 +162,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
     async disableTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<TwoFactor> {
+    ): Promise<IUserTwoFactor> {
         const now = this.helperDateService.create();
 
         return tx.twoFactor.update({
@@ -173,13 +177,14 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
                 updatedBy: userId,
                 updatedAt: now,
             },
+            include: TwoFactorWithBackupCodesInclude,
         });
     }
 
     async regenerateTwoFactorBackupCodes(
         userId: string,
         backupCodesHashed: string[]
-    ): Promise<TwoFactor> {
+    ): Promise<IUserTwoFactor> {
         const now = this.helperDateService.create();
 
         return this.databaseService.client.twoFactor.update({
@@ -194,13 +199,14 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
                 updatedBy: userId,
                 updatedAt: now,
             },
+            include: TwoFactorWithBackupCodesInclude,
         });
     }
 
     async resetTwoFactorByAdminInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<TwoFactor> {
+    ): Promise<IUserTwoFactor> {
         const now = this.helperDateService.create();
 
         return tx.twoFactor.update({
@@ -213,20 +219,23 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
                 pendingSecret: null,
                 updatedAt: now,
             },
+            include: TwoFactorWithBackupCodesInclude,
         });
     }
 
-    async increaseTwoFactorAttempt(userId: string): Promise<TwoFactor> {
+    async increaseTwoFactorAttempt(userId: string): Promise<IUserTwoFactor> {
         return this.databaseService.client.twoFactor.update({
             where: { userId },
             data: { attempt: { increment: 1 } },
+            include: TwoFactorWithBackupCodesInclude,
         });
     }
 
-    async resetTwoFactorAttempt(userId: string): Promise<TwoFactor> {
+    async resetTwoFactorAttempt(userId: string): Promise<IUserTwoFactor> {
         return this.databaseService.client.twoFactor.update({
             where: { userId },
             data: { attempt: 0 },
+            include: TwoFactorWithBackupCodesInclude,
         });
     }
 }

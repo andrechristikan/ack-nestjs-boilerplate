@@ -2,7 +2,7 @@ import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/p
 import { ProjectAdminListRequestSchema } from '@modules/project/dtos/request/project.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -83,7 +83,7 @@ export class ProjectAdminController {
     @RequestThrottle({ user: true })
     @Get('/get/:projectId')
     async get(
-        @Param('projectId', { schema: RequestMongoIdSchema })
+        @Param('projectId', { schema: RequestUuidSchema })
         projectId: string
     ): Promise<IResponseReturn<Project>> {
         return this.projectHttpService.getByIdForAdmin(projectId);

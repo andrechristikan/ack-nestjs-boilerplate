@@ -98,9 +98,7 @@ export const UserSchema = DatabaseResponseSchema.extend({
         description: 'Credential method of the last login',
         example: EnumUserLoginWith.credential,
     }),
-    termPolicy: UserTermPolicySchema.meta({
-        description: 'Term-policy acceptance flags for the user',
-    }),
+    ...UserTermPolicySchema.shape,
     photo: AwsS3ResponseSchema.omit({ size: true }).nullable().meta({
         description: 'Profile photo stored in S3',
     }),

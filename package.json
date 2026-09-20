@@ -37,6 +37,10 @@
         "lint:fix": "eslint --fix",
         "test": "TZ=UTC vitest run --passWithNoTests",
         "test:cov": "TZ=UTC vitest run --passWithNoTests --coverage",
+        "test:e2e": "TZ=UTC vitest run --config vitest.e2e.config.ts",
+        "test:e2e:env:up": "docker compose -f docker-compose.e2e.yml -p ack-nestjs-e2e up -d",
+        "test:e2e:env:down": "docker compose -f docker-compose.e2e.yml -p ack-nestjs-e2e down --volumes --remove-orphans",
+        "test:e2e:db:reset": "sh -c 'set -a; . ./.env.e2e; set +a; prisma migrate reset --force --skip-seed && pnpm migration:seed'",
         "package:upgrade": "npx npm-check-updates -u",
         "package:check": "npx npm-check-updates -i",
         "migration": "nest build migration --config nest-cli.json && node --import ./dist/instrument.js dist/migration.js",
@@ -119,6 +123,7 @@
     "devDependencies": {
         "@commitlint/cli": "^21.2.3",
         "@commitlint/config-conventional": "^21.2.3",
+        "@golevelup/ts-vitest": "^4.0.0",
         "@nestjs/cli": "^12.0.3",
         "@nestjs/schematics": "^12.0.3",
         "@nestjs/testing": "^12.0.3",

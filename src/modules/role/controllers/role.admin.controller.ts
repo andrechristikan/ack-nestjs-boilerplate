@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -89,7 +89,7 @@ export class RoleAdminController {
     @RequestThrottle({ user: true })
     @Get('/get/:roleId')
     async get(
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string
     ): Promise<IResponseReturn<RoleDto>> {
         return this.roleHttpService.getOne(roleId);
@@ -129,7 +129,7 @@ export class RoleAdminController {
     @RequestThrottle({ user: true })
     @Put('/update/:roleId')
     async update(
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
         @Body({ schema: RoleUpdateRequestSchema })
         body: RoleUpdateRequestDto
@@ -151,7 +151,7 @@ export class RoleAdminController {
     @RequestThrottle({ user: true })
     @Delete('/delete/:roleId')
     async delete(
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string
     ): Promise<IResponseReturn<void>> {
         return this.roleHttpService.deleteByAdmin(roleId);

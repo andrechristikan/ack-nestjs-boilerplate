@@ -34,6 +34,7 @@ export const MigrationPolicyData: Record<
     }[]
 > = {
     [EnumAppEnvironment.local]: PolicyData,
+    [EnumAppEnvironment.test]: PolicyData,
     [EnumAppEnvironment.development]: PolicyData,
     [EnumAppEnvironment.staging]: PolicyData,
     [EnumAppEnvironment.production]: PolicyData,

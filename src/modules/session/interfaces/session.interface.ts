@@ -1,9 +1,8 @@
 import type {
-    GeoLocation,
-    Prisma,
-    Session,
-    UserAgent,
-} from '@generated/prisma-client/client';
+    IRequestGeoLocation,
+    IRequestUserAgent,
+} from '@common/request/interfaces/request.interface';
+import type { Prisma, Session } from '@generated/prisma-client/client';
 import type { SessionListSelect } from '@modules/session/constants/session.constant';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 
@@ -30,8 +29,8 @@ export interface ISessionAnalyticSession {
     userId: string;
     ipAddress: string | null;
     createdAt: Date;
-    geoLocation: GeoLocation | null;
-    userAgent: UserAgent;
+    geoLocation: IRequestGeoLocation | null;
+    userAgent: IRequestUserAgent;
 }
 
 export interface ISessionAnalyticUserCount {

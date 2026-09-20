@@ -24,6 +24,7 @@ export const MigrationRoleData: Record<
     Prisma.RoleCreateInput[]
 > = {
     [EnumAppEnvironment.local]: RoleData,
+    [EnumAppEnvironment.test]: RoleData,
     [EnumAppEnvironment.development]: RoleData,
     [EnumAppEnvironment.staging]: RoleData,
     [EnumAppEnvironment.production]: RoleData,

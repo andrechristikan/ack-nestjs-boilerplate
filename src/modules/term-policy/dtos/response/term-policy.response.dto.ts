@@ -4,10 +4,9 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
-import { TermPolicyContentSchema } from '@modules/term-policy/dtos/term-policy.content.dto';
 
 /**
- * Base term-policy shape: the stored terms or policy row with its localized contents.
+ * Base term-policy shape: the stored terms or policy row; localized contents are fetched per language.
  * @public
  */
 export const TermPolicyResponseSchema = DatabaseResponseSchema.omit({
@@ -22,10 +21,6 @@ export const TermPolicyResponseSchema = DatabaseResponseSchema.omit({
         description: 'Status of terms or policy',
         example: EnumTermPolicyStatus.draft,
     }),
-    contents: z.array(TermPolicyContentSchema).meta({
-        description: 'Localized contents of the terms or policy',
-        example: [],
-    }),
     version: z.number().meta({
         description: 'Version of the terms or policy',
         example: 1,
@@ -37,7 +32,7 @@ export const TermPolicyResponseSchema = DatabaseResponseSchema.omit({
 });
 
 /**
- * Stored term policy with its localized contents.
+ * Stored term policy row.
  * @public
  */
 export type TermPolicyResponseDto = z.infer<typeof TermPolicyResponseSchema>;

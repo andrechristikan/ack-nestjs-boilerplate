@@ -8,11 +8,7 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponseFileReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumActivityLogAction,
-    EnumTermPolicyType,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
@@ -110,11 +106,10 @@ export class UserImportHttpService {
             status: user.status,
             countryId: user.countryId,
             photo: user.photo?.completedUrl ?? null,
-            termPolicyTermsOfService:
-                user.termPolicy[EnumTermPolicyType.termsOfService],
-            termPolicyPrivacy: user.termPolicy[EnumTermPolicyType.privacy],
-            termPolicyCookies: user.termPolicy[EnumTermPolicyType.cookies],
-            termPolicyMarketing: user.termPolicy[EnumTermPolicyType.marketing],
+            termPolicyTermsOfService: user.termsOfServiceAccepted,
+            termPolicyPrivacy: user.privacyAccepted,
+            termPolicyCookies: user.cookiesAccepted,
+            termPolicyMarketing: user.marketingAccepted,
             role: user.role.name,
         }));
 

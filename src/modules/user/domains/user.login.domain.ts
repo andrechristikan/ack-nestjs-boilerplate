@@ -392,8 +392,7 @@ export class UserLoginDomain {
         const recorded = await this.userTwoFactorRepository.verifyTwoFactorInTx(
             tx,
             user.id,
-            verified,
-            user.twoFactor?.backupCodes ?? []
+            verified
         );
         if (!recorded) {
             throw new AuthTwoFactorInvalidException();
@@ -407,8 +406,7 @@ export class UserLoginDomain {
     ): Promise<void> {
         const recorded = await this.userTwoFactorRepository.verifyTwoFactor(
             user.id,
-            verified,
-            user.twoFactor?.backupCodes ?? []
+            verified
         );
         if (!recorded) {
             throw new AuthTwoFactorInvalidException();

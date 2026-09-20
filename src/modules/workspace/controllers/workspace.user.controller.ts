@@ -8,7 +8,7 @@ import type { WorkspaceUserListRequestDto } from '@modules/workspace/dtos/reques
 import { WorkspaceUserListRequestSchema } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -374,7 +374,7 @@ export class WorkspaceUserController {
     async memberUpdateRole(
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() actorMember: WorkspaceMember,
-        @Param('workspaceMemberId', { schema: RequestMongoIdSchema })
+        @Param('workspaceMemberId', { schema: RequestUuidSchema })
         workspaceMemberId: string,
         @Body({ schema: WorkspaceMemberUpdateRoleRequestSchema })
         body: WorkspaceMemberUpdateRoleRequestDto
@@ -401,7 +401,7 @@ export class WorkspaceUserController {
     async memberRemove(
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() actorMember: WorkspaceMember,
-        @Param('workspaceMemberId', { schema: RequestMongoIdSchema })
+        @Param('workspaceMemberId', { schema: RequestUuidSchema })
         workspaceMemberId: string
     ): Promise<void> {
         await this.workspaceMemberHttpService.removeMember(
@@ -484,7 +484,7 @@ export class WorkspaceUserController {
     async inviteResend(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
-        @Param('workspaceInviteId', { schema: RequestMongoIdSchema })
+        @Param('workspaceInviteId', { schema: RequestUuidSchema })
         workspaceInviteId: string,
         @Body({ schema: WorkspaceInviteResendRequestSchema })
         body: WorkspaceInviteResendRequestDto
@@ -511,7 +511,7 @@ export class WorkspaceUserController {
     async inviteRevoke(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
-        @Param('workspaceInviteId', { schema: RequestMongoIdSchema })
+        @Param('workspaceInviteId', { schema: RequestUuidSchema })
         workspaceInviteId: string
     ): Promise<void> {
         await this.workspaceInviteHttpService.revokeInvite(
@@ -610,7 +610,7 @@ export class WorkspaceUserController {
     async joinRequestAccept(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
-        @Param('workspaceJoinRequestId', { schema: RequestMongoIdSchema })
+        @Param('workspaceJoinRequestId', { schema: RequestUuidSchema })
         workspaceJoinRequestId: string
     ): Promise<void> {
         await this.workspaceJoinRequestHttpService.acceptJoinRequest(
@@ -635,7 +635,7 @@ export class WorkspaceUserController {
     async joinRequestReject(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
-        @Param('workspaceJoinRequestId', { schema: RequestMongoIdSchema })
+        @Param('workspaceJoinRequestId', { schema: RequestUuidSchema })
         workspaceJoinRequestId: string,
         @Body({ schema: WorkspaceJoinRequestRejectRequestSchema })
         body: WorkspaceJoinRequestRejectRequestDto

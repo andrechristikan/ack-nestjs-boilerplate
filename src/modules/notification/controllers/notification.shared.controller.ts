@@ -2,7 +2,7 @@ import type { NotificationListRequestDto } from '@modules/notification/dtos/requ
 import { NotificationListRequestSchema } from '@modules/notification/dtos/request/notification.list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -96,7 +96,7 @@ export class NotificationSharedController {
     @Patch('/update/:notificationId/read')
     async markAsRead(
         @AuthJwtPayload('userId') userId: string,
-        @Param('notificationId', { schema: RequestMongoIdSchema })
+        @Param('notificationId', { schema: RequestUuidSchema })
         notificationId: string
     ): Promise<IResponseReturn<void>> {
         return this.notificationHttpService.markAsRead(userId, notificationId);

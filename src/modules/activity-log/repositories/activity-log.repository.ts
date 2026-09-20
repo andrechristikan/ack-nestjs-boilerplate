@@ -178,7 +178,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
                     metadata:
                         Object.keys(metadata).length > 0
                             ? (metadata as Prisma.InputJsonValue)
-                            : null,
+                            : Prisma.DbNull,
                     createdBy,
                 };
             }

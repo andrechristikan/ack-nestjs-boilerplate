@@ -175,7 +175,7 @@ export class ProjectRepository implements IProjectRepository {
         await tx.project.updateMany({
             where: {
                 workspaceId,
-                OR: ProjectActiveFilter,
+                ...ProjectActiveFilter,
             },
             data: {
                 deletedAt,

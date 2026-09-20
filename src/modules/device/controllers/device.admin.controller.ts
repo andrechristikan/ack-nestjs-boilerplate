@@ -2,7 +2,7 @@ import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/dev
 import { DeviceAdminListRequestSchema } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -68,7 +68,7 @@ export class DeviceAdminController {
     async list(
         @Query({ schema: DeviceAdminListRequestSchema })
         query: DeviceAdminListRequestDto,
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
         return this.deviceHttpService.getListOffsetByAdmin(userId, query);
@@ -95,9 +95,9 @@ export class DeviceAdminController {
     @Delete('/remove/:deviceOwnershipId')
     async remove(
         @AuthJwtPayload('userId') removedBy: string,
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
-        @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
+        @Param('deviceOwnershipId', { schema: RequestUuidSchema })
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
         return this.deviceHttpService.removeByAdmin(

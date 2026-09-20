@@ -12,6 +12,12 @@ export const UserTermPolicyContract: IUserTermPolicyContract = {
         [EnumTermPolicyType.privacy]: true,
         [EnumTermPolicyType.termsOfService]: true,
     },
+    columns: {
+        [EnumTermPolicyType.cookies]: 'cookiesAccepted',
+        [EnumTermPolicyType.marketing]: 'marketingAccepted',
+        [EnumTermPolicyType.privacy]: 'privacyAccepted',
+        [EnumTermPolicyType.termsOfService]: 'termsOfServiceAccepted',
+    },
     requiredTypes: [
         EnumTermPolicyType.termsOfService,
         EnumTermPolicyType.privacy,

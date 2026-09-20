@@ -44,11 +44,6 @@ export interface IUser extends User {
     twoFactor: IUserTwoFactor | null;
 }
 
-/** A user row plus its profile photo, as rendered in the admin list. */
-export interface IUserList extends IUser {
-    photo: UserPhoto | null;
-}
-
 /** A user row flattened for CSV export: only the role name and the photo are joined. */
 export interface IUserExport extends User {
     role: Pick<Role, 'name'>;
@@ -133,7 +128,7 @@ export interface IUserSignUpWorkspaceInvite {
     type: EnumUserSignUpWorkspaceContextType.invite;
     workspaceId: string;
     workspaceInviteId: string;
-    invitedByUserId: string;
+    invitedByUserId: string | null;
     workspaceMemberRole: EnumWorkspaceMemberRole;
     projectId: string | null;
     projectMemberRole: EnumProjectMemberRole | null;
@@ -168,8 +163,15 @@ export interface IUserCreateContract {
     logsActingAdmin: boolean;
 }
 
+export type IUserTermPolicyColumn =
+    | 'termsOfServiceAccepted'
+    | 'privacyAccepted'
+    | 'cookiesAccepted'
+    | 'marketingAccepted';
+
 export interface IUserTermPolicyContract {
     defaults: Record<EnumTermPolicyType, boolean>;
+    columns: Record<EnumTermPolicyType, IUserTermPolicyColumn>;
     requiredTypes: EnumTermPolicyType[];
 }
 

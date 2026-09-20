@@ -12,7 +12,10 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { Duration } from 'luxon';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
+import type {
+    IRequestGeoLocation,
+    IRequestUserAgent,
+} from '@common/request/interfaces/request.interface';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import {
     AnalyticDeviceProliferationAvailableOrderBy,
@@ -70,7 +73,7 @@ describe('AnalyticAnomalyDomain', () => {
         hasPrevious: false,
         data: [],
     };
-    const emptyAgent: UserAgent = {
+    const emptyAgent: IRequestUserAgent = {
         ua: null,
         browser: null,
         cpu: { architecture: null },
@@ -78,14 +81,14 @@ describe('AnalyticAnomalyDomain', () => {
         engine: { name: null, version: null },
         os: { name: null, version: null },
     };
-    const nyc: GeoLocation = {
+    const nyc: IRequestGeoLocation = {
         latitude: 40.7,
         longitude: -74,
         country: 'US',
         region: 'NY',
         city: 'New York',
     };
-    const london: GeoLocation = {
+    const london: IRequestGeoLocation = {
         latitude: 51.5,
         longitude: -0.1,
         country: 'GB',

@@ -54,6 +54,7 @@ pnpm-debug.log*
 # environment
 .env*
 !.env.example
+!.env.e2e.example
 config.yaml
 config.yml
 !.github/ISSUE_TEMPLATE/config.yml

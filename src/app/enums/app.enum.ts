@@ -7,4 +7,5 @@ export enum EnumAppEnvironment {
     staging = 'staging',
     development = 'development',
     local = 'local',
+    test = 'test',
 }

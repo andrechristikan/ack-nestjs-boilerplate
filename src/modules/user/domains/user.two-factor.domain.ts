@@ -7,7 +7,6 @@ import {
     EnumActivityLogAction,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { TwoFactor } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTwoFactorAlreadyEnabledException } from '@modules/auth/exceptions/auth.two-factor-already-enabled.exception';
@@ -34,6 +33,7 @@ import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.e
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import type {
     IUser,
+    IUserTwoFactor,
     IUserTwoFactorSetup,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -186,7 +186,7 @@ export class UserTwoFactorDomain {
         }
     }
 
-    getTwoFactorStatus(user: IUser): TwoFactor {
+    getTwoFactorStatus(user: IUser): IUserTwoFactor {
         return user.twoFactor!;
     }
 
@@ -226,8 +226,7 @@ export class UserTwoFactorDomain {
                     await this.userTwoFactorRepository.setupTwoFactorConsumingBackupCode(
                         user.id,
                         encryptedSecret,
-                        backupCodeVerified,
-                        user.twoFactor?.backupCodes ?? []
+                        backupCodeVerified
                     );
                 if (!isSetUp) {
                     throw new AuthTwoFactorInvalidException();
@@ -453,7 +452,7 @@ export class UserTwoFactorDomain {
         tx: IDatabaseTransactionClient,
         userId: string,
         createdBy: string
-    ): Promise<TwoFactor> {
+    ): Promise<IUserTwoFactor> {
         return this.userTwoFactorRepository.createDisabledInTx(
             tx,
             userId,
