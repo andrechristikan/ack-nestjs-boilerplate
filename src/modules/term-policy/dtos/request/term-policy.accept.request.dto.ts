@@ -1,16 +1,21 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { EnumTermPolicyType } from '@generated/prisma-client';
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { z } from 'zod';
+import { EnumTermPolicyType } from '@generated/prisma-client/client';
 
-export class TermPolicyAcceptRequestDto {
-    @ApiProperty({
+/**
+ * Validates the body for accepting the latest term policy of a type.
+ * @public
+ */
+export const TermPolicyAcceptRequestSchema = z.strictObject({
+    type: z.enum(EnumTermPolicyType).meta({
         description: 'Type of the terms policy',
         example: EnumTermPolicyType.privacy,
-        enum: EnumTermPolicyType,
-        required: true,
-    })
-    @IsString()
-    @IsEnum(EnumTermPolicyType)
-    @IsNotEmpty()
-    readonly type: EnumTermPolicyType;
-}
+    }),
+});
+
+/**
+ * Body for accepting the latest term policy of a type.
+ * @public
+ */
+export type TermPolicyAcceptRequestDto = z.infer<
+    typeof TermPolicyAcceptRequestSchema
+>;

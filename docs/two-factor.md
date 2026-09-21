@@ -2,24 +2,24 @@
 
 ## Overview
 
-Two-Factor Authentication (2FA) adds an additional security layer to user authentication using Time-based One-Time Password (TOTP) algorithm. This implementation supports both authenticator apps (Google Authenticator, Authy, etc.) and backup codes for account recovery.
+Login can require a TOTP (RFC 6238) from an authenticator app, plus one-time backup codes.
 
-**Key Features:**
-- TOTP-based verification (RFC 6238 compliant)
+- TOTP-based verification (RFC 6238)
 - 8 one-time backup codes for recovery
 - Admin-controlled force setup
-- AES-256 encryption for secret storage
+- AES-256-GCM encryption for secret storage, keyed by `AUTH_TWO_FACTOR_ENCRYPTION_KEY` and bound to the user ID
 - Challenge-based verification flow
 - Session revocation on security changes
 - Account protection with failed attempts tracking
-- **2FA protection on sensitive operations** (login, password change, password reset, disable 2FA)
+- 2FA on login, password change, password reset, disable 2FA, and backup code regeneration
 
 ## Related Documents
 
-- [Authentication Documentation][ref-doc-authentication] - JWT token management and login flows
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Rate limiting and security headers
-- [Cache Documentation][ref-doc-cache] - Redis implementation for challenge tokens
-- [Activity Log Documentation][ref-doc-activity-log] - Events tracking
+- [Authentication Documentation][ref-doc-authentication] - JWT, login, and sessions
+- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Rate limiting and headers
+- [Cache Documentation][ref-doc-cache] - Challenge tokens in Redis
+- [Activity Log Documentation][ref-doc-activity-log] - Security events
+- [Environment Documentation][ref-doc-environment] - `AUTH_TWO_FACTOR_*`
 
 ## Table of Contents
 
@@ -65,8 +65,8 @@ Located in `src/configs/auth.config.ts`:
 | `algorithm` | `sha1` | HMAC algorithm passed to `otplib` |
 | `issuer` | from `AUTH_TWO_FACTOR_ISSUER`, no code default | Displayed in authenticator apps |
 | `digits` | `6` | TOTP code length (standard) |
-| `periodInMs` | `ms('30s')` | TOTP time window, stored in ms; otplib receives seconds |
-| `window` | `1` | Backward-only tolerance: `epochTolerance` is `[window × (periodInMs / 1000), 0]`, so one 30 second step in the past is accepted and none in the future |
+| `periodInSeconds` | `ms('30s') / 1000` | TOTP time window in seconds, the unit otplib takes |
+| `window` | `1` | Backward-only tolerance: `epochTolerance` is `[window × periodInSeconds, 0]`, so one 30 second step in the past is accepted and none in the future |
 | `secretLength` | `32` | Base32 secret length |
 | `challengeTtlInMs` | `ms('5m')` | Challenge token TTL (5 minutes) |
 | `challengeKeyPattern` | `TwoFactor:Challenge:{token}` | Redis key pattern for challenge tokens |
@@ -75,14 +75,28 @@ Located in `src/configs/auth.config.ts`:
 | `backupCodes.length` | `10` | Characters per backup code (A-Z, 0-9) |
 | `maxAttempt` | `5` | Maximum failed verification attempts before lock |
 | `lockAttemptDurationInMs` | `ms('2m')` | Base lock duration in milliseconds (2 minutes) |
+| `encryption.key` | from `AUTH_TWO_FACTOR_ENCRYPTION_KEY` | Root secret for the stored TOTP secrets: exactly 64 base64url characters (48 random bytes), validated by `RequestEncryptionSecretSchema` |
+
+### Secret Storage
+
+`AuthTwoFactorDomain` seals every TOTP secret with `HelperEncryptionService.aes256Encrypt`, using:
+
+- `auth.twoFactor.encryption.key`
+- the purpose `auth.twoFactor.secret`
+- the user ID as authenticated data
+
+A secret copied onto another user's row fails to decrypt. `TwoFactor` holds two sealed values:
+
+- `pendingSecret`: written by every setup, never used to verify a login
+- `secret`: the confirmed authenticator; enable moves `pendingSecret` here and clears `pendingSecret`
+
+A code checked against a missing secret, or a secret that fails to decrypt, raises `409 twoFactorSecretUnavailable`. The decrypt failure is also reported to Sentry as an operator fault (a wrong key or a damaged value), not a user error. `pnpm generate:secret:encryption` generates the key (see [Installation][ref-doc-installation]).
 
 ## Security Features
 
 ### Failed Attempts Protection
 
-The system tracks failed 2FA verification attempts to protect against brute force attacks:
-
-**How it works:**
+Failed 2FA verification is counted to block brute-force guessing:
 - Each failed TOTP code or backup code verification increments the attempt counter
 - Counter is stored in the `TwoFactor.attempt` field
 - Counter resets to 0 when user successfully verifies with valid code or backup code
@@ -98,9 +112,8 @@ Attempt 4 (TOTP success) → attempt = 0 (reset)
 
 ### Temporary Lock Mechanism
 
-When a user reaches the maximum allowed attempts (5 failed verifications), the system temporarily locks 2FA verification with exponential backoff.
+When a user reaches the maximum allowed attempts (5 failed verifications), 2FA verification locks with exponential backoff.
 
-**How it works:**
 1. Lock check happens **before** verification attempt
 2. If locked, return error with `retryAfterSeconds` (HTTP 429)
 3. If not locked, proceed with verification
@@ -111,6 +124,8 @@ When a user reaches the maximum allowed attempts (5 failed verifications), the s
    - Return invalid code error (HTTP 401)
 5. Lock is stored in Redis cache with automatic expiration
 6. Lock duration increases exponentially based on attempt count
+
+A Redis failure while writing or clearing the lock is logged and the request continues; the attempt counter in the database still increments. A Redis failure while storing the login challenge answers 500, and a failure while deleting a used challenge is logged. Details: [Cache][ref-doc-cache].
 
 **Lock timing:**
 - Lock is set **after** the 5th failed attempt
@@ -153,14 +168,18 @@ After 7th failed attempt (attempt=7):
 
 ### Shared Endpoints (User Operations)
 **2FA Management:**
-- `GET /shared/user/2fa/status` - Check current 2FA status
-- `POST /shared/user/2fa/setup` - Get TOTP secret and otpauthUrl
+- `GET /shared/user/2fa/status/get` - Check current 2FA status
+- `POST /shared/user/2fa/setup` - Get TOTP secret and otpauthUrl (**requires an unused backup code while 2FA is enabled**)
 - `POST /shared/user/2fa/enable` - Enable 2FA with code verification
-- `DELETE /shared/user/2fa/disable` - **Disable 2FA (requires 2FA verification)**
-- `POST /shared/user/2fa/regenerate-backup-codes` - Regenerate backup codes
+- `DELETE /shared/user/2fa/disable` - **Disable 2FA (requires an authenticator code or a backup code)**
+- `POST /shared/user/2fa/backup-code/regenerate` - **Regenerate backup codes (requires an authenticator code)**
+
+`disable` accepts either method: the body carries `method` (`code` or `backupCodes`) with the matching `code` / `backupCode`. `backup-code/regenerate` takes a `code` field only and pins the method to `code` on the server, so a backup code cannot be used to rotate the backup codes. The credential being replaced never authorises its own replacement. Both routes run the same verification path as login, so both are subject to the attempt counter and the temporary lock.
+
+`setup` takes an optional `backupCode`. While 2FA is disabled the body may be empty. While 2FA is enabled a missing `backupCode` returns `400 twoFactorBackupCodeRequired`; a supplied one is verified under the attempt counter and the lock, and consumed in the same transaction that stores the new `pendingSecret`. The account keeps its confirmed `secret` and remaining backup codes until `enable` confirms the new authenticator, which is the recovery path when the confirmed secret is unreadable (`409 twoFactorSecretUnavailable`).
 
 **Password Operations (require 2FA if enabled):**
-- `PATCH /shared/user/change-password` - **Change password (requires 2FA verification if enabled)**
+- `PATCH /shared/user/password/change` - **Change password (requires 2FA verification if enabled)**
 
 ### Public Endpoints
 **Login Flow:**
@@ -174,9 +193,9 @@ After 7th failed attempt (attempt=7):
 - `PATCH /public/user/password/reset` - **Reset password (requires 2FA verification if enabled)**
 
 ### Admin Endpoints
-- `PATCH /admin/user/update/:userId/2fa/reset` - Force reset user's 2FA (clears lock and resets attempts)
+- `PATCH /admin/user/2fa/:userId/reset` - Force reset user's 2FA (clears lock and resets attempts)
 
-**Note:** See Swagger documentation for detailed request/response schemas.
+Request and response schemas for each route are in the Swagger document.
 
 ## Authentication Flows
 
@@ -189,18 +208,29 @@ sequenceDiagram
     participant API
     participant Database
 
-    User->>API: POST /user/2fa/setup
+    User->>API: POST /shared/user/2fa/setup {backupCode?}
+    alt 2FA enabled
+        API->>API: Reject a missing backupCode (400)
+        API->>API: Verify backupCode under the attempt counter and lock
+    end
     API->>API: Generate TOTP secret
-    API->>API: Encrypt secret (AES-256)
-    API->>Database: Save encrypted secret + IV
+    API->>API: Encrypt secret (AES-256-GCM, user ID as AAD)
+    API->>API: prepare userSetupTwoFactor
+    alt backupCode given
+        API->>Database: UserTwoFactorRepository transaction: consume the backup code<br/>(only while the stored codes are unchanged),<br/>save pendingSecret, reset attempt to 0
+    else No backupCode
+        API->>Database: One update: save pendingSecret, reset attempt to 0
+    end
+    API->>API: stage userSetupTwoFactor
     API->>User: Return secret + otpauthUrl
     Note over User: Frontend generates QR code from otpauthUrl
     User->>User: Scan QR with authenticator app
-    User->>API: POST /user/2fa/enable {code}
-    API->>API: Decrypt secret & verify code
+    User->>API: POST /shared/user/2fa/enable {code}
+    API->>API: Decrypt pendingSecret & verify code
     API->>API: Generate 8 backup codes
-    API->>Database: Hash & save backup codes
-    API->>Database: Set enabled=true, confirmedAt=now, lastUsedAt=now
+    API->>API: prepare userEnableTwoFactor
+    API->>Database: UserTwoFactorRepository transaction: move pendingSecret to secret,<br/>save hashed backup codes, set enabled=true, requiredSetup=false,<br/>confirmedAt (first enable only), lastUsedAt=now
+    API->>API: stage userEnableTwoFactor
     API->>User: Return backup codes
 ```
 
@@ -214,13 +244,16 @@ sequenceDiagram
     participant Cache
     participant Database
 
-    User->>API: POST /user/login/credential
+    User->>API: POST /public/user/login/credential
     API->>Database: Verify credentials
     API->>Database: Check twoFactor.enabled
     API->>API: Generate challenge token
     API->>Cache: Store challenge (5min TTL)
+    alt Redis failure
+        API->>User: Error (500)
+    end
     API->>User: Return challengeToken
-    User->>API: PATCH /user/login/2fa/verify {challengeToken, code}
+    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, code}
     API->>Cache: Validate challenge
     API->>Cache: Check if user is locked
     alt User Locked
@@ -231,6 +264,7 @@ sequenceDiagram
         API->>API: Verify TOTP code (one 30s step backward tolerance)
         alt Code Valid
             API->>Database: Reset attempt to 0
+            API->>Database: Update lastUsedAt
             API->>API: Generate JWT tokens
             API->>Database: Create session
             API->>Cache: Delete challenge
@@ -249,7 +283,7 @@ sequenceDiagram
 
 ### Admin Force Setup Flow
 
-Admin forces a user who already has 2FA enabled to set it up again on next login. The endpoint rejects a user whose 2FA is not enabled (`twoFactorNotEnabled`) and rejects the admin resetting their own account (`notSelf`).
+Admin forces a user who already has 2FA enabled to set it up again on next login. The endpoint rejects the admin resetting their own account (`notSelf`), an unknown user (`notFound`), a blocked user (`blockedInvalid`), and a user whose 2FA is not enabled (`twoFactorNotEnabled`).
 ```mermaid
 sequenceDiagram
     participant Admin
@@ -257,22 +291,24 @@ sequenceDiagram
     participant Database
     participant User
 
-    Admin->>API: PATCH /admin/user/update/:userId/2fa/reset
-    API->>Database: Set requiredSetup=true, clear secret + IV + backup codes
-    API->>Database: Revoke all user sessions
+    Admin->>API: PATCH /admin/user/2fa/:userId/reset
+    API->>Database: One transaction: set requiredSetup=true, attempt=0,<br/>clear secret, pendingSecret and backup codes,<br/>revoke all user sessions
+    API->>API: Purge every session key of the user from the session cache
+    API->>API: Stage the admin and user activity rows
     API->>User: Send reset notification email
     
     Note over User: User Next Login
-    User->>API: POST /user/login/credential
+    User->>API: POST /public/user/login/credential
     API->>API: Generate TOTP secret
-    API->>Database: Save encrypted secret
+    API->>Database: Save encrypted pendingSecret
     API->>User: Return secret + otpauthUrl + challengeToken
     User->>User: Scan QR code
-    User->>API: POST /user/login/2fa/enable {challengeToken, code}
-    API->>Database: Verify & save backup codes
+    User->>API: POST /public/user/login/2fa/enable {challengeToken, code}
+    API->>API: Verify code against pendingSecret
+    API->>Database: Move pendingSecret to secret, save backup codes
     API->>Database: Set requiredSetup=false, attempt=0
     API->>User: Return backup codes
-    User->>API: PATCH /user/login/2fa/verify {challengeToken, code}
+    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, code}
     API->>User: Return tokens
 ```
 
@@ -286,7 +322,9 @@ sequenceDiagram
     participant Cache
     participant Database
 
-    User->>API: PATCH /user/login/2fa/verify {backupCode}
+    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, backupCode}
+    API->>Cache: Validate challenge
+    API->>Database: Load user, reject unless active, verified,<br/>2FA enabled, and not awaiting forced setup
     API->>Cache: Check if user is locked
     alt User Locked
         API->>Cache: Get TTL (remaining lock time)
@@ -295,11 +333,15 @@ sequenceDiagram
         API->>Database: Get hashed backup codes
         API->>API: Hash input & compare
         alt Backup Code Valid
-            API->>Database: Remove used backup code
             API->>Database: Reset attempt to 0
-            API->>Database: Update lastUsedAt
+            API->>Database: Remove the used backup code and update lastUsedAt,<br/>only while the stored codes are unchanged
+            alt Stored codes changed concurrently
+                API->>User: Error: Invalid backup code (401)
+            end
+            API->>Database: Create session
+            API->>Cache: Delete challenge
             API->>User: Return access + refresh tokens
-            Note over User: The response carries tokens only.<br/>Remaining backup codes are read from<br/>GET /shared/user/2fa/status
+            Note over User: The response carries tokens only.<br/>Remaining backup codes are read from<br/>GET /shared/user/2fa/status/get
         else Backup Code Invalid
             API->>Database: Increment attempt counter
             API->>Database: Get updated attempt count
@@ -322,7 +364,7 @@ sequenceDiagram
     participant Cache
     participant Database
 
-    User->>API: PATCH /user/login/2fa/verify {code}
+    User->>API: PATCH /public/user/login/2fa/verify {code}
     API->>Cache: Check if user is locked
     
     alt User Already Locked
@@ -365,21 +407,24 @@ sequenceDiagram
     Note over User: User locked out or lost access
     User->>Admin: Request 2FA reset
     
-    Admin->>API: PATCH /admin/user/update/:userId/2fa/reset
-    API->>Database: Reset 2FA (set requiredSetup=true)
-    API->>Database: Clear attempt counter
-    API->>Cache: Clear lock (if exists)
-    API->>Database: Revoke all sessions
+    Admin->>API: PATCH /admin/user/2fa/:userId/reset
+    par
+        API->>Database: One transaction: reset 2FA (set requiredSetup=true),<br/>clear attempt counter, revoke all sessions
+    and
+        API->>Cache: Clear lock (if exists; a failure is logged)
+    end
+    API->>Cache: Delete every session key of the user
+    API->>API: Stage adminUserResetTwoFactor and userResetTwoFactorByAdmin
     API->>Admin: Success confirmation
     
     Admin->>User: 2FA has been reset
     
     Note over User: User must setup 2FA again on next login
-    User->>API: POST /user/login/credential
+    User->>API: POST /public/user/login/credential
     API->>User: Return secret + otpauthUrl + challengeToken
-    User->>API: POST /user/login/2fa/enable {code}
+    User->>API: POST /public/user/login/2fa/enable {code}
     API->>Database: Complete setup, attempt=0
-    User->>API: PATCH /user/login/2fa/verify {code}
+    User->>API: PATCH /public/user/login/2fa/verify {code}
     API->>User: Return tokens
 ```
 
@@ -395,11 +440,17 @@ sequenceDiagram
     participant Cache
     participant Database
 
-    User->>API: PATCH /shared/user/change-password<br/>{oldPassword, newPassword, code/backupCode, method}
+    User->>API: PATCH /shared/user/password/change<br/>{oldPassword, newPassword, code/backupCode, method}
     API->>Database: Verify old password
     alt Old Password Invalid
+        API->>Database: Increment password attempt counter
         API->>User: Error: Password not match (400)
     else Old Password Valid
+        API->>Database: Reset password attempt counter
+        API->>Database: Check new password against password history
+        alt New Password Reused Within Period
+            API->>User: Error: Password must be new (400)
+        end
         alt User has 2FA enabled
             API->>Cache: Check if user is locked
             alt User Locked
@@ -414,18 +465,24 @@ sequenceDiagram
                     API->>User: Error: Invalid 2FA (401)
                 else 2FA Valid
                     API->>Database: Reset attempt to 0
-                    API->>Database: Change password
-                    API->>Database: Revoke all sessions
+                    API->>Database: One transaction: change password, revoke all sessions,<br/>record the 2FA use
+                    API->>Cache: Delete every session key of the user
+                    API->>API: Stage userChangePassword and userVerifyTwoFactor
+                    API->>User: Send password-changed notification
                     API->>User: Success
                 end
             end
         else 2FA not enabled
-            API->>Database: Change password
-            API->>Database: Revoke all sessions
+            API->>Database: One transaction: change password, revoke all sessions
+            API->>Cache: Delete every session key of the user
+            API->>API: Stage userChangePassword
+            API->>User: Send password-changed notification
             API->>User: Success
         end
     end
 ```
+
+The password-history check is what makes the reuse window real: a password still held in history for `auth.password.periodInDays` is rejected before the 2FA step, so a user cannot rotate back to a recent password by passing 2FA.
 
 **Reset Password (Forgot Password):**
 ```mermaid
@@ -436,10 +493,15 @@ sequenceDiagram
     participant Database
 
     User->>API: PATCH /public/user/password/reset<br/>{token, newPassword, code/backupCode, method}
+    API->>API: Require the changePassword feature flag<br/>and its forgotAllowed metadata
     API->>Database: Verify reset token
     alt Token Invalid
-        API->>User: Error: Token invalid (404)
+        API->>User: Error: User not found (404)
     else Token Valid
+        API->>Database: Check new password against password history
+        alt New Password Reused Within Period
+            API->>User: Error: Password must be new (400)
+        end
         alt User has 2FA enabled
             API->>Cache: Check if user is locked
             alt User Locked
@@ -454,14 +516,18 @@ sequenceDiagram
                     API->>User: Error: Invalid 2FA (401)
                 else 2FA Valid
                     API->>Database: Reset attempt to 0
-                    API->>Database: Reset password
-                    API->>Database: Revoke all sessions
+                    API->>Database: One transaction: reset password, consume the reset token,<br/>revoke all sessions, record the 2FA use
+                    API->>Cache: Delete every session key of the user
+                    API->>API: Stage userResetPassword and userVerifyTwoFactor
+                    API->>User: Send password-reset notification
                     API->>User: Success
                 end
             end
         else 2FA not enabled
-            API->>Database: Reset password
-            API->>Database: Revoke all sessions
+            API->>Database: One transaction: reset password, consume the reset token,<br/>revoke all sessions
+            API->>Cache: Delete every session key of the user
+            API->>API: Stage userResetPassword
+            API->>User: Send password-reset notification
             API->>User: Success
         end
     end
@@ -476,6 +542,7 @@ sequenceDiagram
     participant Database
 
     User->>API: DELETE /shared/user/2fa/disable<br/>{code/backupCode, method}
+    API->>API: Reject when 2FA is not enabled (400 twoFactorNotEnabled)
     API->>Cache: Check if user is locked
     alt User Locked
         API->>User: Error: Temporarily locked (429)
@@ -489,9 +556,9 @@ sequenceDiagram
             API->>User: Error: Invalid 2FA (401)
         else 2FA Valid
             API->>Database: Reset attempt to 0
-            API->>Database: Disable 2FA
-            API->>Database: Clear secret, IV, backup codes
-            API->>Database: Revoke all sessions
+            API->>Database: One transaction: disable 2FA, clear secret,<br/>pendingSecret and backup codes, revoke all sessions
+            API->>Cache: Delete every session key of the user
+            API->>API: Stage userDisableTwoFactor
             API->>User: Success
         end
     end
@@ -507,8 +574,10 @@ sequenceDiagram
 | 400 | `twoFactorAlreadyEnabled` | 2FA already active |
 | 400 | `twoFactorRequiredSetup` | Must complete setup first |
 | 400 | `twoFactorNotRequiredSetup` | Setup already completed |
-| 400 | `twoFactorSetupRequired` | `POST /shared/user/2fa/setup` has not been called, so no secret or IV is stored yet |
+| 400 | `twoFactorSetupRequired` | No `pendingSecret` is stored: `POST /shared/user/2fa/setup` (or the forced-setup login) has not run |
 | 400 | `twoFactorMethodRequired` | `method` missing on a request that must verify 2FA |
+| 400 | `twoFactorBackupCodeRequired` | `POST /shared/user/2fa/setup` called while 2FA is enabled, without `backupCode` |
+| 409 | `twoFactorSecretUnavailable` | The secret a code is checked against is missing or fails to decrypt |
 | 401 | `twoFactorInvalid` | Invalid TOTP code or backup code |
 | 401 | `twoFactorChallengeInvalid` | Challenge token expired or invalid |
 | 429 | `twoFactorAttemptTemporaryLock` | Too many failed attempts, temporarily locked with `retryAfterSeconds` |
@@ -516,11 +585,11 @@ sequenceDiagram
 | 403 | `emailNotVerified` | Email not verified |
 | 404 | `notFound` | User not found |
 
-**Note on `twoFactorAttemptTemporaryLock`:** This error occurs when user tries to verify 2FA while locked. Response includes `retryAfterSeconds` indicating when user can retry. Lock is set automatically after the 5th failed attempt (when attempt counter reaches 5). Lock duration increases exponentially with each subsequent lockout.
+`twoFactorAttemptTemporaryLock` answers a verification attempted while the account is locked. The remaining lock time is interpolated into the localized `message` string (`Please try again after {retryAfterSeconds}s.`) and carries no separate response field. The lock is written once the attempt counter reaches 5, and each further lockout lasts exponentially longer.
 
 ## Contribution
 
-Special thanks to [ak2g][ref-contributor-ak2g] for main contributor for this feature.
+Thanks to [ak2g][ref-contributor-ak2g] for this feature.
 
 <!-- REFERENCES -->
 
@@ -528,5 +597,7 @@ Special thanks to [ak2g][ref-contributor-ak2g] for main contributor for this fea
 [ref-doc-security-and-middleware]: security-and-middleware.md
 [ref-doc-cache]: cache.md
 [ref-doc-activity-log]: activity-log.md
+[ref-doc-installation]: installation.md
+[ref-doc-environment]: environment.md
 
 [ref-contributor-ak2g]: https://github.com/ak2g

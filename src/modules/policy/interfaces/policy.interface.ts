@@ -1,8 +1,8 @@
-import { InferSubjects, MongoAbility } from '@casl/ability';
+import type { InferSubjects, MongoAbility } from '@casl/ability';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-} from '@modules/policy/enums/policy.enum';
+} from '@generated/prisma-client/client';
 
 export type IPolicyAbilitySubject = InferSubjects<EnumPolicySubject> | 'all';
 

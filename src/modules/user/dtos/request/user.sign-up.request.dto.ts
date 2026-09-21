@@ -1,61 +1,54 @@
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty, OmitType } from '@nestjs/swagger';
-import {
-    IsBoolean,
-    IsEnum,
-    IsNotEmpty,
-    IsString,
-    MaxLength,
-    MinLength,
-} from 'class-validator';
-import { IsPassword } from '@common/request/validations/request.is-password.validation';
-import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { EnumUserSignUpFrom } from '@generated/prisma-client';
+import { RequestPasswordStrengthRegex } from '@common/request/constants/request.constant';
+import { EnumUserSignUpFrom } from '@generated/prisma-client/client';
+import { UserCreateRequestSchema } from '@modules/user/dtos/request/user.create.request.dto';
 
-export class UserSignUpRequestDto extends OmitType(UserCreateRequestDto, [
-    'roleId',
-] as const) {
-    @ApiProperty({
-        description: 'string password',
-        example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string
-            .alphanumeric(5)
-            .toUpperCase()}@@!123`,
-        required: true,
-        maxLength: 50,
-        minLength: 8,
-    })
-    @IsNotEmpty()
-    @IsPassword()
-    @MinLength(8)
-    @MaxLength(50)
-    password: string;
-
-    @ApiProperty({
+/**
+ * Validates the body for signing up with email and password.
+ * @public
+ */
+export const UserSignUpRequestSchema = UserCreateRequestSchema.omit({
+    roleId: true,
+}).extend({
+    password: z
+        .string()
+        .min(8)
+        .max(50)
+        .regex(RequestPasswordStrengthRegex, {
+            error: () => 'request.error.isPassword.strong',
+        })
+        .meta({
+            description: 'string password',
+            example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string
+                .alphanumeric(5)
+                .toUpperCase()}@@!123`,
+        }),
+    marketing: z.boolean().meta({
         description: 'boolean marketing',
         example: true,
-        required: true,
-    })
-    @IsNotEmpty()
-    @IsBoolean()
-    marketing: boolean;
-
-    @ApiProperty({
+    }),
+    cookies: z.boolean().meta({
         description: 'boolean cookies',
         example: true,
-        required: true,
-    })
-    @IsNotEmpty()
-    @IsBoolean()
-    cookies: boolean;
-
-    @ApiProperty({
+    }),
+    from: z.enum([EnumUserSignUpFrom.mobile, EnumUserSignUpFrom.website]).meta({
         description: 'enum user sign up from',
         example: EnumUserSignUpFrom.mobile,
-        required: true,
-        enum: [EnumUserSignUpFrom.mobile, EnumUserSignUpFrom.website],
-    })
-    @IsNotEmpty()
-    @IsString()
-    @IsEnum([EnumUserSignUpFrom.mobile, EnumUserSignUpFrom.website])
-    from: EnumUserSignUpFrom;
-}
+    }),
+    inviteToken: z
+        .string()
+        .min(1)
+        .optional()
+        .meta({
+            description:
+                'Optional plain workspace invite token. When provided, the account joins the invited workspace instead of getting a personal one',
+            example: faker.string.alphanumeric(100),
+        }),
+});
+
+/**
+ * Body for signing up with email and password.
+ * @public
+ */
+export type UserSignUpRequestDto = z.infer<typeof UserSignUpRequestSchema>;

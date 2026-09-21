@@ -1,33 +1,52 @@
 # Status Codes
 
-This document catalogs every application `statusCode` in the boilerplate, grouped by module.
+Application `statusCode` values, grouped by module.
 
-`statusCode` is the field on `AppBaseException` / `ResponseErrorDto`. It is **not** an HTTP status — `httpStatus` is a separate field on the same error response. Clients should prefer `module` + `statusCodeKey` over the raw integer.
+`statusCode` is the field on `AppBaseException` / `ResponseErrorDto`. It is **not** an HTTP status.
 
-The machine registry is the `*.status-code.enum.ts` files under `src/`. This page is the human catalog. Allocation procedure lives in the project status-code rules. Error filter flow: [Handling Error](handling-error.md). i18n paths: [Message](message.md). Response shape: [Response](response.md).
+Related fields on the same error response:
+
+- `httpStatus`: separate field
+- `module` + `statusCodeKey`: identify an error more stably than the raw integer, which is why the envelope carries both
+
+The machine registry is the `*.status-code.enum.ts` files under `src/`. This page is the human catalog.
+
+- A new module takes the next free hundred in the block map below
+- Every status code is five digits; a new member inside an existing block takes the next sequential number with no gaps
+- Scan the `*.status-code.enum.ts` files under `src/` before allocating; reuse a member that already means what you need
+- Error filter flow: [Handling Error](handling-error.md)
+- i18n paths: [Language Message](language-message.md)
+- Response shape: [Response](response.md)
 
 ## Block map
 
 | Base | Module | Range | Members |
 |---|---|---|---|
 | `50000` | `app` | `50000` | 1 |
-| `50100` | `file` | `50100`–`50103` | 4 |
+| `50100` | `file` | `50100`–`50109` | 10 |
 | `50200` | `pagination` | `50200`–`50215` | 16 |
-| `50300` | `request` | `50300`–`50303` | 4 |
+| `50300` | `request` | `50300`–`50304` | 5 |
 | `50400` | `session` | `50400`–`50401` | 2 |
 | `50500` | `role` | `50500`–`50504` | 5 |
-| `50600` | `feature-flag` | `50600`–`50605` | 6 |
-| `50700` | `api-key` | `50700`–`50707` | 8 |
-| `50800` | `auth` | `50800`–`50814` | 15 |
-| `50900` | `country` | `50900`–`50903` | 4 |
-| `51000` | `user` | `51000`–`51026` | 27 |
-| `51100` | `policy` | `51100`–`51101` | 2 |
+| `50600` | `feature-flag` | `50600`–`50606` | 7 |
+| `50700` | `api-key` | `50700`–`50708` | 9 |
+| `50800` | `auth` | `50800`–`50816` | 17 |
+| `50900` | `country` | `50900`–`50902` | 3 |
+| `51000` | `user` | `51000`–`51027` | 28 |
+| `51100` | `policy` | `51100`–`51103` | 4 |
 | `51200` | `notification` | `51200`–`51203` | 4 |
 | `51300` | `device` | `51300` | 1 |
 | `51400` | `aws` | `51400` | 1 |
 | `51500` | `term-policy` | `51500`–`51508` | 9 |
+| `51600` | `workspace` | `51600`–`51620` | 21 |
+| `51700` | `project` | `51700`–`51707` | 8 |
+| `51800` | `database` | `51800` | 1 |
+| `51900` | `response` | `51900`–`51902` | 3 |
+| `52000` | `activity-log` | `52000` | 1 |
+| `52100` | `analytic` | `52100` | 1 |
+| `52200` | `helper` | `52200`–`52202` | 3 |
 
-Next free hundred: `51600` (verify by scanning enums before claiming).
+Next free hundred: `52300`. The enum files are the source; this map follows them.
 
 ## `app`
 
@@ -41,15 +60,21 @@ Next free hundred: `51600` (verify by scanning enums before claiming).
 |---|---|---|---|---|---|
 | `required` | `50100` | `required` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.required` | This field is required and cannot be left blank. |
 | `extensionInvalid` | `50101` | `extensionInvalid` | 415 (`UNSUPPORTED_MEDIA_TYPE`) | `file.error.extensionInvalid` | The file extension is invalid. |
-| `requiredExtractFirst` | `50102` | `requiredExtractFirst` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.requiredParseFirst` | Please parse the data before proceeding. |
+| `requiredExtractFirst` | `50102` | `requiredExtractFirst` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.requiredExtractFirst` | Please extract the data before proceeding. |
 | `exceedMaxDataImport` | `50103` | `exceedMaxDataImport` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.exceedMaxDataImport` | The number of data rows exceeds the maximum allowed for import. |
+| `exceedMaxDataExport` | `50104` | `exceedMaxDataExport` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.exceedMaxDataExport` | The number of data rows exceeds the maximum allowed for export. Please narrow the filter and try again. |
+| `exceedMaxSizeExport` | `50105` | `exceedMaxSizeExport` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.exceedMaxSizeExport` | The exported file exceeds the maximum allowed size. Please narrow the filter and try again. |
+| `exceedMaxSizeUpload` | `50106` | `exceedMaxSizeUpload` | 413 (`PAYLOAD_TOO_LARGE`) | `file.error.exceedMaxSizeUpload` | The uploaded file exceeds the maximum allowed size. |
+| `exceedMaxFiles` | `50107` | `exceedMaxFiles` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.exceedMaxFiles` | The number of uploaded files exceeds the maximum allowed. |
+| `fieldUnexpected` | `50108` | `fieldUnexpected` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.fieldUnexpected` | The uploaded file was sent to a field this endpoint does not accept. |
+| `multipartInvalid` | `50109` | `multipartInvalid` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.multipartInvalid` | The multipart request body is malformed. |
 
 ## `pagination`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
 | `orderByNotAllowed` | `50200` | `orderByNotAllowed` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.orderByNotAllowed` | The 'orderBy' field '{field}' is not allowed. Allowed fields are: {allowedFields}. |
-| `filterInvalidValue` | `50201` | `filterInvalidValue` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.filterInvalidValue` | '{property}' value provided is invalid. |
+| `filterInvalidValue` | `50201` | `filterInvalidValue` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.filterInvalidValue` or `pagination.error.filterInvalidValueEnum` | '{property}' value provided is invalid (enum variant uses the Enum messagePath). |
 | `invalidPerPage` | `50202` | `invalidPerPage` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidPerPage` | The 'perPage' parameter must be between 1 and {maxPerPage}. |
 | `invalidCursorPaginationParams` | `50203` | `invalidCursorPaginationParams` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidCursorPaginationParams` | Invalid cursor pagination parameters provided. |
 | `cursorTooLong` | `50204` | `cursorTooLong` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.cursorTooLong` | The cursor length must not exceed {maxCursorLength} characters. |
@@ -71,8 +96,20 @@ Next free hundred: `51600` (verify by scanning enums before claiming).
 |---|---|---|---|---|---|
 | `validation` | `50300` | `validation` | 422 (`UNPROCESSABLE_ENTITY`) | `request.error.validation` | There are validation errors. |
 | `timeout` | `50301` | `timeout` | 408 (`REQUEST_TIMEOUT`) | `http.clientError.requestTimeOut` | Request Timeout |
-| `paramRequired` | `50302` | `paramRequired` | 400 (`BAD_REQUEST`) | `request.error.paramRequired` | Required parameter is missing. |
-| `envForbidden` | `50303` | `envForbidden` | 403 (`FORBIDDEN`) | `http.clientError.forbidden` | Forbidden |
+| `envForbidden` | `50302` | `envForbidden` | 403 (`FORBIDDEN`) | `http.clientError.forbidden` | Forbidden |
+| `schemaMissing` | `50303` | `schemaMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.schemaMissing` | The request could not be validated. Please try again later. |
+| `contextMissing` | `50304` | `contextMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.contextMissing` | The request could not be processed. Please try again later. |
+
+`contextMissing` is thrown by `RequestContextMissingException` when a store parameter decorator or `@AuthJwtPayload()` finds no value that its guard or middleware writes, or when the named field of that value is absent. See [Security and Middleware](security-and-middleware.md#store-parameter-decorators).
+
+`50300` is the one code shared by more than one exception class, so it does not map to a single `httpStatus`, `messagePath`, or `module`:
+
+| exception | module | httpStatus | messagePath |
+|---|---|---|---|
+| `RequestValidationException` | `request` | 422 (`UNPROCESSABLE_ENTITY`) | `request.error.validation` |
+| `FileImportException` | `file` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.validationDto` |
+
+Read `module` together with `statusCode` when branching on this one: `FileImportException` reports `module: 'file'` while carrying a code from the `request` block.
 
 ## `session`
 
@@ -101,6 +138,7 @@ Next free hundred: `51600` (verify by scanning enums before claiming).
 | `predefinedKeyLengthExceeded` | `50603` | `predefinedKeyLengthExceeded` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyLengthExceeded` | Predefined key length exceeded the maximum allowed. |
 | `predefinedKeyEmpty` | `50604` | `predefinedKeyEmpty` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyEmpty` | Predefined key cannot be empty. |
 | `predefinedKeyTypeInvalid` | `50605` | `predefinedKeyTypeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyTypeInvalid` | Predefined key type is invalid. |
+| `predefinedKeyNotFound` | `50606` | `predefinedKeyNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyNotFound` | Predefined key is not registered as a feature flag. |
 
 ## `api-key`
 
@@ -114,6 +152,7 @@ Next free hundred: `51600` (verify by scanning enums before claiming).
 | `expired` | `50705` | `expired` | 400 (`BAD_REQUEST`) | `apiKey.error.expired` | This API key has expired. Would you like to create a new one? |
 | `notFound` | `50706` | `notFound` | 404 (`NOT_FOUND`) | `apiKey.error.notFound` | We couldn't locate this API key. Please check and try again. |
 | `inactive` | `50707` | `inactive` | 400 (`BAD_REQUEST`) | `apiKey.error.inactive` | This API key is currently inactive. |
+| `startAtNotFuture` | `50708` | `startAtNotFuture` | 400 (`BAD_REQUEST`) | `apiKey.error.startAtNotFuture` | The start date must be in the future. |
 
 ## `auth`
 
@@ -134,15 +173,16 @@ Next free hundred: `51600` (verify by scanning enums before claiming).
 | `twoFactorAttemptTemporaryLock` | `50812` | `twoFactorAttemptTemporaryLock` | 429 (`TOO_MANY_REQUESTS`) | `auth.error.twoFactorAttemptTemporaryLock` | Too many incorrect two-factor attempts. Two-factor authentication is temporarily locked. Please try again after {retryAfterSeconds}s. |
 | `twoFactorMethodRequired` | `50813` | `twoFactorMethodRequired` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorMethodRequired` | A two-factor authentication method is required. |
 | `twoFactorSetupRequired` | `50814` | `twoFactorSetupRequired` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorSetupRequired` | Start two-factor setup before confirming the code. |
+| `twoFactorSecretUnavailable` | `50815` | `twoFactorSecretUnavailable` | 409 (`CONFLICT`) | `auth.error.twoFactorSecretUnavailable` | Authenticator codes can't be checked for this account. Sign in with a backup code, then set up two-factor authentication again using another backup code. |
+| `twoFactorBackupCodeRequired` | `50816` | `twoFactorBackupCodeRequired` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorBackupCodeRequired` | Two-factor authentication is already enabled. Provide an unused backup code to set up a new authenticator. |
 
 ## `country`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
 | `notFound` | `50900` | `notFound` | 404 (`NOT_FOUND`) | `country.error.notFound` | Country not found. |
-| `isActive` | `50901` | `isActive` | — | `country.error.isActive` | — |
-| `inactive` | `50902` | `inactive` | — | `country.error.inactive` | — |
-| `exist` | `50903` | `exist` | — | `country.error.exist` | — |
+| `inactive` | `50901` | `inactive` | — | — | Reserved enum member; no exception or i18n path yet. |
+| `exist` | `50902` | `exist` | — | — | Reserved enum member; no exception or i18n path yet. |
 
 ## `user`
 
@@ -156,25 +196,26 @@ Next free hundred: `51600` (verify by scanning enums before claiming).
 | `statusInvalid` | `51005` | `statusInvalid` | — | `user.error.statusInvalid` | Invalid user status. |
 | `blockedInvalid` | `51006` | `blockedInvalid` | 400 (`BAD_REQUEST`) | `user.error.blockedInvalid` | This user account has been blocked. |
 | `inactiveForbidden` | `51007` | `inactiveForbidden` | 403 (`FORBIDDEN`) | `user.error.inactive` | This user is inactive. |
-| `deletedForbidden` | `51008` | `deletedForbidden` | — | `user.error.deletedForbidden` | — |
-| `blockedForbidden` | `51009` | `blockedForbidden` | 403 (`FORBIDDEN`) | `user.error.blocked` | This user account has been blocked. |
-| `passwordNotMatch` | `51010` | `passwordNotMatch` | 400 (`BAD_REQUEST`) | `auth.error.passwordNotMatch` | Passwords do not match. |
-| `passwordMustNew` | `51011` | `passwordMustNew` | 400 (`BAD_REQUEST`) | `auth.error.passwordMustNew` | New password must be different from previous passwords within the past {period} days. |
-| `passwordExpired` | `51012` | `passwordExpired` | 403 (`FORBIDDEN`) | `auth.error.passwordExpired` | Your password has expired. |
-| `passwordAttemptMax` | `51013` | `passwordAttemptMax` | 403 (`FORBIDDEN`) | `auth.error.passwordAttemptMax` | Maximum password attempts exceeded. |
-| `mobileNumberInvalid` | `51014` | `mobileNumberInvalid` | 400 (`BAD_REQUEST`) | `user.error.mobileNumberInvalid` | This mobile number is invalid. |
-| `usernameNotAllowed` | `51015` | `usernameNotAllowed` | 400 (`BAD_REQUEST`) | `user.error.usernameNotAllowed` | This username is not allowed. |
-| `usernameContainBadWord` | `51016` | `usernameContainBadWord` | 400 (`BAD_REQUEST`) | `user.error.usernameContainBadWord` | Username contains inappropriate words. |
-| `emailNotVerified` | `51017` | `emailNotVerified` | 403 (`FORBIDDEN`) | `user.error.emailNotVerified` | Email not verified. |
-| `passwordNotSet` | `51018` | `passwordNotSet` | 400 (`BAD_REQUEST`) | `auth.error.passwordNotSet` | Password has not been set for this account. |
-| `tokenInvalid` | `51019` | `tokenInvalid` | 400 (`BAD_REQUEST`) | `user.error.verificationTokenInvalid` | Verification token is invalid or expired. |
-| `emailAlreadyVerified` | `51020` | `emailAlreadyVerified` | 400 (`BAD_REQUEST`) | `user.error.emailAlreadyVerified` | This email has already been verified. |
-| `mobileNumberExist` | `51021` | `mobileNumberExist` | 409 (`CONFLICT`) | `user.error.mobileNumberExist` | This mobile number already exists. |
-| `verificationEmailResendLimitExceeded` | `51022` | `verificationEmailResendLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.verificationEmailResendLimitExceeded` | You have exceeded the limit for resending verification emails. Try again after {minutes} minutes. |
-| `forgotPasswordRequestLimitExceeded` | `51023` | `forgotPasswordRequestLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.forgotPasswordRequestLimitExceeded` | You have exceeded the limit for password reset requests. Try again after {minutes} minutes. |
-| `twoFactorMethodRequired` | `51024` | `twoFactorMethodRequired` | — | `user.error.twoFactorMethodRequired` | — |
-| `notFoundForbidden` | `51025` | `notFoundForbidden` | 403 (`FORBIDDEN`) | `user.error.notFound` | Sorry, we couldn't find the user you requested. |
-| `importEmailExist` | `51026` | `importEmailExist` | 409 (`CONFLICT`) | `user.error.importEmailExist` | There are existing users with the provided email addresses. Email: {emails} |
+| `blockedForbidden` | `51008` | `blockedForbidden` | 403 (`FORBIDDEN`) | `user.error.blocked` | This user account has been blocked. |
+| `passwordNotMatch` | `51009` | `passwordNotMatch` | 400 (`BAD_REQUEST`) | `auth.error.passwordNotMatch` | Passwords do not match. |
+| `passwordMustNew` | `51010` | `passwordMustNew` | 400 (`BAD_REQUEST`) | `auth.error.passwordMustNew` | New password must be different from previous passwords within the past {period} days. |
+| `passwordExpired` | `51011` | `passwordExpired` | 403 (`FORBIDDEN`) | `auth.error.passwordExpired` | Your password has expired. |
+| `passwordAttemptMax` | `51012` | `passwordAttemptMax` | 403 (`FORBIDDEN`) | `auth.error.passwordAttemptMax` | Maximum password attempts exceeded. |
+| `mobileNumberInvalid` | `51013` | `mobileNumberInvalid` | 400 (`BAD_REQUEST`) | `user.error.mobileNumberInvalid` | This mobile number is invalid. |
+| `usernameNotAllowed` | `51014` | `usernameNotAllowed` | 400 (`BAD_REQUEST`) | `user.error.usernameNotAllowed` | This username is not allowed. |
+| `usernameContainBadWord` | `51015` | `usernameContainBadWord` | 400 (`BAD_REQUEST`) | `user.error.usernameContainBadWord` | Username contains inappropriate words. |
+| `emailNotVerified` | `51016` | `emailNotVerified` | 403 (`FORBIDDEN`) | `user.error.emailNotVerified` | Email not verified. |
+| `passwordNotSet` | `51017` | `passwordNotSet` | 400 (`BAD_REQUEST`) | `auth.error.passwordNotSet` | Password has not been set for this account. |
+| `tokenInvalid` | `51018` | `tokenInvalid` | 400 (`BAD_REQUEST`) | `user.error.verificationTokenInvalid` | Verification token is invalid or expired. |
+| `emailAlreadyVerified` | `51019` | `emailAlreadyVerified` | 400 (`BAD_REQUEST`) | `user.error.emailAlreadyVerified` | This email has already been verified. |
+| `mobileNumberExist` | `51020` | `mobileNumberExist` | 409 (`CONFLICT`) | `user.error.mobileNumberExist` | This mobile number already exists. |
+| `verificationEmailResendLimitExceeded` | `51021` | `verificationEmailResendLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.verificationEmailResendLimitExceeded` | You have exceeded the limit for resending verification emails. Try again after {minutes} minutes. |
+| `forgotPasswordRequestLimitExceeded` | `51022` | `forgotPasswordRequestLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.forgotPasswordRequestLimitExceeded` | You have exceeded the limit for password reset requests. Try again after {minutes} minutes. |
+| `twoFactorMethodRequired` | `51023` | `twoFactorMethodRequired` | — | — | Reserved user enum member; live path uses auth `50813` + `auth.error.twoFactorMethodRequired`. |
+| `notFoundForbidden` | `51024` | `notFoundForbidden` | 403 (`FORBIDDEN`) | `user.error.notFound` | Sorry, we couldn't find the user you requested. |
+| `importEmailExist` | `51025` | `importEmailExist` | 409 (`CONFLICT`) | `user.error.importEmailExist` | There are existing users with the provided email addresses. Email: {emails} |
+| `importUsernameExist` | `51026` | `importUsernameExist` | 409 (`CONFLICT`) | `user.error.importUsernameExist` | There are existing users with the provided usernames. Username: {usernames} |
+| `notAuthenticated` | `51027` | `notAuthenticated` | 401 (`UNAUTHORIZED`) | `user.error.notAuthenticated` | This request does not carry an authenticated user. |
 
 ## `policy`
 
@@ -182,6 +223,8 @@ Next free hundred: `51600` (verify by scanning enums before claiming).
 |---|---|---|---|---|---|
 | `forbidden` | `51100` | `forbidden` | 403 (`FORBIDDEN`) | `policy.error.forbidden` | Sorry, you don't have the necessary permissions to perform this action. |
 | `predefinedNotFound` | `51101` | `predefinedNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `policy.error.predefinedNotFound` | Predefined abilities not setted. |
+| `notFound` | `51102` | `notFound` | 404 (`NOT_FOUND`) | `policy.error.notFound` | Sorry, we couldn't find the requested policy. |
+| `exist` | `51103` | `exist` | 409 (`CONFLICT`) | `policy.error.exist` | This role already grants a policy for that subject. |
 
 ## `notification`
 
@@ -218,9 +261,86 @@ Next free hundred: `51600` (verify by scanning enums before claiming).
 | `contentExist` | `51507` | `contentExist` | 409 (`CONFLICT`) | `termPolicy.error.contentExist` | This content already exists in the term policy. |
 | `contentEmpty` | `51508` | `contentEmpty` | 400 (`BAD_REQUEST`) | `termPolicy.error.contentEmpty` | Term policy content cannot be empty. |
 
+## `workspace`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `notFound` | `51600` | `notFound` | 404 (`NOT_FOUND`) | `workspace.error.notFound` | Sorry, we couldn't find the workspace. |
+| `memberForbidden` | `51601` | `memberForbidden` | 403 (`FORBIDDEN`) | `workspace.error.memberForbidden` | You are not a member of this workspace. |
+| `roleForbidden` | `51602` | `roleForbidden` | 403 (`FORBIDDEN`) | `workspace.error.roleForbidden` | You do not have the required role in this workspace. |
+| `inviteInvalid` | `51603` | `inviteInvalid` | 400 (`BAD_REQUEST`) | `workspace.error.inviteInvalid` | This workspace invite link is invalid or has expired. |
+| `capReached` | `51604` | `capReached` | 400 (`BAD_REQUEST`) | `workspace.error.capReached` | You have reached the maximum number of workspaces you can own. |
+| `slugAlreadyExists` | `51605` | `slugAlreadyExists` | 400 (`BAD_REQUEST`) | `workspace.error.slugAlreadyExists` | This workspace slug is already taken. |
+| `memberNotFound` | `51606` | `memberNotFound` | 404 (`NOT_FOUND`) | `workspace.error.memberNotFound` | Sorry, we couldn't find that workspace member. |
+| `lastOwner` | `51607` | `lastOwner` | 400 (`BAD_REQUEST`) | `workspace.error.lastOwner` | You are the last owner; transfer ownership before leaving. |
+| `memberPeerForbidden` | `51608` | `memberPeerForbidden` | 403 (`FORBIDDEN`) | `workspace.error.memberPeerForbidden` | You are not allowed to perform this action on this member. |
+| `inviteDuplicate` | `51609` | `inviteDuplicate` | 400 (`BAD_REQUEST`) | `workspace.error.inviteDuplicate` | There is already a pending invite for this email in this workspace. |
+| `inviteProjectMismatch` | `51610` | `inviteProjectMismatch` | 400 (`BAD_REQUEST`) | `workspace.error.inviteProjectMismatch` | This project does not belong to the current workspace. |
+| `inviteRoleRequired` | `51611` | `inviteRoleRequired` | 400 (`BAD_REQUEST`) | `workspace.error.inviteRoleRequired` | `projectMemberRole` is required when `projectId` is set, and must be omitted otherwise. |
+| `inviteNotFound` | `51612` | `inviteNotFound` | 404 (`NOT_FOUND`) | `workspace.error.inviteNotFound` | Sorry, we couldn't find that workspace invite. |
+| `inviteAlreadyProcessed` | `51613` | `inviteAlreadyProcessed` | 400 (`BAD_REQUEST`) | `workspace.error.inviteAlreadyProcessed` | This workspace invite is no longer pending. |
+| `notPublic` | `51614` | `notPublic` | 400 (`BAD_REQUEST`) | `workspace.error.notPublic` | This workspace is not accepting public join requests. |
+| `joinRequestAlreadyMember` | `51615` | `joinRequestAlreadyMember` | 400 (`BAD_REQUEST`) | `workspace.error.joinRequestAlreadyMember` | You are already a member of this workspace. |
+| `joinRequestDuplicate` | `51616` | `joinRequestDuplicate` | 400 (`BAD_REQUEST`) | `workspace.error.joinRequestDuplicate` | You already have a pending join request for this workspace. |
+| `joinRequestNotFound` | `51617` | `joinRequestNotFound` | 404 (`NOT_FOUND`) | `workspace.error.joinRequestNotFound` | Sorry, we couldn't find that workspace join request. |
+| `joinRequestAlreadyProcessed` | `51618` | `joinRequestAlreadyProcessed` | 400 (`BAD_REQUEST`) | `workspace.error.joinRequestAlreadyProcessed` | This workspace join request is no longer pending. |
+| `selfTransfer` | `51619` | `selfTransfer` | 400 (`BAD_REQUEST`) | `workspace.error.selfTransfer` | You cannot transfer ownership to yourself. |
+| `slugInvalid` | `51620` | `slugInvalid` | 400 (`BAD_REQUEST`) | `workspace.error.slugInvalid` | This workspace slug is not allowed; use letters, digits and hyphens only, within the allowed length. |
+
+## `project`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `notFound` | `51700` | `notFound` | 404 (`NOT_FOUND`) | `project.error.notFound` | Sorry, we couldn't find the project. |
+| `memberForbidden` | `51701` | `memberForbidden` | 403 (`FORBIDDEN`) | `project.error.memberForbidden` | You are not a member of this project. |
+| `roleForbidden` | `51702` | `roleForbidden` | 403 (`FORBIDDEN`) | `project.error.roleForbidden` | You do not have the required role in this project. |
+| `memberPeerForbidden` | `51703` | `memberPeerForbidden` | 403 (`FORBIDDEN`) | `project.error.memberPeerForbidden` | You are not allowed to perform this action on this member. |
+| `memberNotFound` | `51704` | `memberNotFound` | 404 (`NOT_FOUND`) | `project.error.memberNotFound` | Sorry, we couldn't find that project member. |
+| `memberAlreadyAssigned` | `51705` | `memberAlreadyAssigned` | 400 (`BAD_REQUEST`) | `project.error.memberAlreadyAssigned` | This user is already assigned to the project. |
+| `slugAlreadyExists` | `51706` | `slugAlreadyExists` | 400 (`BAD_REQUEST`) | `project.error.slugAlreadyExists` | This project slug is already taken in this workspace. |
+| `slugInvalid` | `51707` | `slugInvalid` | 400 (`BAD_REQUEST`) | `project.error.slugInvalid` | This project slug is not allowed; use letters, digits and hyphens only, within the allowed length. |
+
+## `database`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `uniqueValueGenerationFailed` | `51800` | `uniqueValueGenerationFailed` | 500 (`INTERNAL_SERVER_ERROR`) | `database.error.uniqueValueGenerationFailed` | We couldn't complete this action. Please try again. |
+
+## `response`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `serialization` | `51900` | `serialization` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.serialization` | The server produced a response that does not match the schema it declares. |
+| `paginationShapeInvalid` | `51901` | `paginationShapeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.paginationShapeInvalid` | The server produced a paginated response with an invalid shape. |
+| `paginationTypeInvalid` | `51902` | `paginationTypeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.paginationTypeInvalid` | The server produced a paginated response with an unknown pagination type. |
+
+## `activity-log`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `contractInvalid` | `52000` | `contractInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `activityLog.error.contractInvalid` | Activity log contract validation failed |
+
+## `analytic`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `invalidDateRange` | `52100` | `invalidDateRange` | 400 (`BAD_REQUEST`) | `analytic.error.invalidDateRange` | The start date must be before the end date. |
+
+## `helper`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `decryptFailed` | `52200` | `decryptFailed` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.decryptFailed` | We couldn't read protected data for this request. |
+| `encryptionSecretInvalid` | `52201` | `encryptionSecretInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.encryptionSecretInvalid` | We couldn't process protected data for this request. |
+| `patternTokenMissing` | `52202` | `patternTokenMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.patternTokenMissing` | We couldn't build a value for this request. Missing pattern token: {token} |
+
+`HelperDecryptFailedException` covers a malformed, tampered, or wrong-key payload; `HelperEncryptionSecretInvalidException` covers a root secret that is not canonical base64url of 48 bytes. `AuthTwoFactorDomain` turns a `decryptFailed` on a stored TOTP secret into `twoFactorSecretUnavailable` (409), and `NotificationEmailProcessor` turns it into a BullMQ `UnrecoverableError`.
+
+`HelperPatternTokenMissingException` carries the offending token in `messageProperties.token`. `HelperStringService.fillPattern` raises it when a `{token}` in the pattern has no entry in the values it was given, which makes a configured pattern and its call site disagree an error rather than a key holding the literal `{token}`.
+
 ## Related documents
 
 - [Handling Error](handling-error.md)
-- [Message](message.md)
+- [Language Message](language-message.md)
 - [Response](response.md)
 - [Request Validation](request-validation.md)

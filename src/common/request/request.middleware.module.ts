@@ -1,7 +1,9 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import type { ThrottlerModuleOptions } from '@nestjs/throttler';
 import { RequestRequestIdMiddleware } from '@common/request/middlewares/request.request-id.middleware';
 import { RequestRequestLogMiddleware } from '@common/request/middlewares/request.request-log.middleware';
 import { RequestHelmetMiddleware } from '@common/request/middlewares/request.helmet.middleware';
@@ -10,39 +12,49 @@ import { RequestCorsMiddleware } from '@common/request/middlewares/request.cors.
 import { RequestUrlVersionMiddleware } from '@common/request/middlewares/request.url-version.middleware';
 import { RequestResponseTimeMiddleware } from '@common/request/middlewares/request.response-time.middleware';
 import { RequestCustomLanguageMiddleware } from '@common/request/middlewares/request.custom-language.middleware';
+import { RequestWorkspaceMiddleware } from '@common/request/middlewares/request.workspace.middleware';
 import { RequestCompressionMiddleware } from '@common/request/middlewares/request.compression.middleware';
-import { RequestThrottlerStorageService } from '@common/request/services/request.throttler.service';
-import { RequestThrottlerModule } from '@common/request/request.throttler.module';
-import { RequestThrottlerGuard } from '@common/request/guards/request.throttler.guard';
-import { RequestThrottleByUserGuard } from '@common/request/guards/request.throttle-by-user.guard';
-import { SentryModule } from '@sentry/nestjs/setup';
+import { RequestThrottleStorageService } from '@common/request/services/request.throttle-storage.service';
+import { RequestThrottleModule } from '@common/request/request.throttle.module';
+import { RequestThrottleDefaultGuard } from '@common/request/guards/request.throttle-default.guard';
+import { RequestThrottleRouteGuard } from '@common/request/guards/request.throttle-route.guard';
 
 /**
- * Registers the Redis-backed throttler guard and applies the security/perf/monitoring middleware chain to all routes.
+ * Registers the Redis-backed throttler guards and applies the security/perf/monitoring middleware chain to all routes.
  */
 @Module({
     controllers: [],
-    exports: [RequestThrottleByUserGuard],
+    exports: [],
     providers: [
         {
             provide: APP_GUARD,
-            useClass: RequestThrottlerGuard,
+            useClass: RequestThrottleDefaultGuard,
         },
-        RequestThrottleByUserGuard,
+        {
+            provide: APP_GUARD,
+            useClass: RequestThrottleRouteGuard,
+        },
     ],
     imports: [
-        SentryModule.forRoot(),
         ThrottlerModule.forRootAsync({
-            imports: [ConfigModule, RequestThrottlerModule],
-            inject: [ConfigService, RequestThrottlerStorageService],
+            imports: [ConfigModule, RequestThrottleModule],
+            inject: [ConfigService, RequestThrottleStorageService],
             useFactory: (
                 config: ConfigService,
-                storage: RequestThrottlerStorageService
+                storage: RequestThrottleStorageService
             ): ThrottlerModuleOptions => ({
                 throttlers: [
                     {
-                        ttl: config.get<number>('request.throttle.ttlInMs')!,
-                        limit: config.get<number>('request.throttle.limit')!,
+                        name: 'default',
+                        ttl: config.get<number>(
+                            'request.throttle.default.ttlInMs'
+                        )!,
+                        limit: config.get<number>(
+                            'request.throttle.default.limit'
+                        )!,
+                        blockDuration: config.get<number>(
+                            'request.throttle.default.blockDurationInMs'
+                        )!,
                     },
                 ],
                 storage,
@@ -62,6 +74,7 @@ export class RequestMiddlewareModule implements NestModule {
                 RequestUrlVersionMiddleware,
                 RequestResponseTimeMiddleware,
                 RequestCustomLanguageMiddleware,
+                RequestWorkspaceMiddleware,
                 RequestCompressionMiddleware
             )
             .forRoutes('{*wildcard}');

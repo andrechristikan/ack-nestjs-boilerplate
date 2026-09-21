@@ -1,49 +1,46 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
+import type { IMigrationUserData } from '@migration/interfaces/migration.interface';
 
-const userData: {
-    country: string;
-    email: Lowercase<string>;
-    name: string;
-    role: string;
-    password: string;
-}[] = [
+export const MigrationUserSuperAdminId = '6aac171205d6fc2f45c6d616';
+
+const UserData: IMigrationUserData[] = [
     {
+        id: MigrationUserSuperAdminId,
         country: 'ID',
         email: 'superadmin@mail.com',
+        username: 'superadmin',
         name: 'Super Admin',
         role: 'superadmin',
         password: 'aaAA@123',
     },
     {
+        id: null,
         country: 'ID',
         email: 'admin@mail.com',
+        username: 'admin',
         name: 'Admin',
         role: 'admin',
         password: 'aaAA@123',
     },
 ];
 
-export const migrationUserData: Record<
+export const MigrationUserData: Record<
     EnumAppEnvironment,
-    {
-        country: string;
-        email: string;
-        name: string;
-        role: string;
-        password: string;
-    }[]
+    IMigrationUserData[]
 > = {
     [EnumAppEnvironment.local]: [
-        ...userData,
+        ...UserData,
         {
+            id: null,
             country: 'ID',
             email: 'user@mail.com',
+            username: 'user',
             name: 'User',
             role: 'user',
             password: 'aaAA@123',
         },
     ],
-    [EnumAppEnvironment.development]: userData,
-    [EnumAppEnvironment.staging]: userData,
-    [EnumAppEnvironment.production]: userData,
+    [EnumAppEnvironment.development]: UserData,
+    [EnumAppEnvironment.staging]: UserData,
+    [EnumAppEnvironment.production]: UserData,
 };

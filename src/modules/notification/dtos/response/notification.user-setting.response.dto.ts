@@ -1,15 +1,21 @@
-import { NotificationUserSettingDto } from '@modules/notification/dtos/notification.user-setting.dto';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
+import { z } from 'zod';
+import { NotificationUserSettingSchema } from '@modules/notification/dtos/notification.user-setting.dto';
 
-export class NotificationUserSettingResponseDto {
-    @ApiProperty({
-        required: true,
-        type: [NotificationUserSettingDto],
-        isArray: true,
+/**
+ * Shapes the notification settings returned for the signed-in user.
+ * @public
+ */
+export const NotificationUserSettingResponseSchema = z.object({
+    settings: z.array(NotificationUserSettingSchema).meta({
         description: 'List of user notification settings',
-    })
-    @Expose()
-    @Type(() => NotificationUserSettingDto)
-    settings: NotificationUserSettingDto[];
-}
+        example: [],
+    }),
+});
+
+/**
+ * Notification settings of the signed-in user.
+ * @public
+ */
+export type NotificationUserSettingResponseDto = z.infer<
+    typeof NotificationUserSettingResponseSchema
+>;

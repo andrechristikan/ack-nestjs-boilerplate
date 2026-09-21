@@ -1,25 +1,35 @@
 # Authorization Documentation
 
-This documentation explains the features and usage of: 
-- **UserProtected**: Located at `src/modules/user/decorators`
-- **RoleProtected**: Located at `src/modules/role/decorators`
-- **PolicyAbilityProtected**: Located at `src/modules/policy/decorators`
-- **TermPolicyAcceptanceProtected**: Located at `src/modules/term-policy/decorators`
+Decorator locations:
+
+- **UserProtected**: `src/modules/user/decorators`
+- **RoleProtected**: `src/modules/role/decorators`
+- **PolicyProtected**: `src/modules/policy/decorators`
+- **TermPolicyAcceptanceProtected**: `src/modules/term-policy/decorators`
+
+The workspace and project decorators (`WorkspaceProtected`, `WorkspaceMemberProtected`, `ProjectProtected`, `ProjectMemberProtected`) are summarised here and documented in full by [Workspace][ref-doc-workspace] and [Project][ref-doc-project].
 
 ## Overview
 
-This authorization system provides a comprehensive, layered security approach for ACK NestJs Boilerplate. It implements multiple protection levels including user authentication, role-based access control, policy-based permissions, and terms acceptance verification.
+Guards stack as:
 
-The system is built using NestJS guards and decorators, making it easy to apply different authorization levels to your route handlers with simple, declarative syntax.
+- user
+- role
+- policy
+- term-policy acceptance
+
+NestJS applies each layer on the route handler.
 
 ## Related Documents
 
-- [Configuration Documentation][ref-doc-configuration] - For Redis configuration settings
-- [Environment Documentation][ref-doc-environment] - For Redis environment variables
-- [Authentication Documentation][ref-doc-authentication] - For understand authentication system
-- [Activity Log Documentation][ref-doc-activity-log] - For tracking authorization-related user activities
-- [Term Policy Document][ref-doc-term-policy] - For managing user acceptance of terms and policies
-- [Device Documentation][ref-doc-device] - For device management and session invalidation
+- [Authentication Documentation][ref-doc-authentication] - JWT, sessions, and API keys
+- [Activity Log Documentation][ref-doc-activity-log] - Authz-related activity rows
+- [Term Policy Documentation][ref-doc-term-policy] - Acceptance gating
+- [Device Documentation][ref-doc-device] - Device revoke and sessions
+- [Workspace Documentation][ref-doc-workspace] - Workspace guards and `x-workspace-id`
+- [Project Documentation][ref-doc-project] - Project guards and owner bypass
+- [Feature Flag Documentation][ref-doc-feature-flag] - `@FeatureFlagProtected` in the stack
+- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Rate limits and headers
 
 ## Table of Contents
 
@@ -40,11 +50,11 @@ The system is built using NestJS guards and decorators, making it easy to apply 
   - [Guards](#guards-1)
     - [RoleGuard](#roleguard)
   - [Important Notes](#important-notes-1)
-- [Policy Ability Protected](#policy-ability-protected)
+- [Policy Protected](#policy-protected)
   - [Decorators](#decorators-2)
-    - [PolicyAbilityProtected() Decorator](#policyabilityprotected-decorator)
+    - [PolicyProtected() Decorator](#policyprotected-decorator)
   - [Guards](#guards-2)
-    - [PolicyAbilityGuard](#policyabilityguard)
+    - [PolicyGuard](#policyguard)
   - [CASL Integration](#casl-integration)
   - [Important Notes](#important-notes-2)
 - [Term Policy Acceptance Protected](#term-policy-acceptance-protected)
@@ -53,8 +63,8 @@ The system is built using NestJS guards and decorators, making it easy to apply 
   - [Guards](#guards-3)
     - [TermPolicyGuard](#termpolicyguard)
   - [Important Notes](#important-notes-3)
+- [Workspace and Project Protected](#workspace-and-project-protected)
 - [Creating Custom Roles](#creating-custom-roles)
-  - [Overview](#overview-1)
   - [How to Create a New Role](#how-to-create-a-new-role)
   - [Role Configuration](#role-configuration)
   - [Assigning Roles to Users](#assigning-roles-to-users)
@@ -62,32 +72,38 @@ The system is built using NestJS guards and decorators, making it easy to apply 
 
 ## Decorator Order
 
-NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method executes FIRST. The order encodes which gate rejects first, so reshuffling it changes the error a caller sees even when the application still boots. Keep this exact order, top to bottom in source:
+NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method executes FIRST. The order encodes which gate rejects first, so a reshuffle changes the error a caller sees even when the application still boots. Every route uses this order, top to bottom in source:
 
 ```typescript
-@ExampleDoc()                              // 1.  Swagger doc factory
-@Response('example.action')                // 2.  @Response / @ResponsePaging / @ResponseFile
+@Doc({ summary: '…' })                     // 1.  OpenAPI operation + global error kit
+@Response('example.action')                // 2.  @Response / @ResponsePagination / @ResponseFile
 @TermPolicyAcceptanceProtected()           // 3.  Term policy acceptance
-@PolicyAbilityProtected({ ... })           // 4.  CASL policy ability
+@PolicyProtected({ ... })                  // 4.  CASL policy ability
 @RoleProtected(EnumRoleType.admin)         // 5.  Role type
-@ActivityLog(EnumActivityLogAction.login)  // 6.  Activity log
-@UserProtected()                           // 7.  User status
-@AuthJwtAccessProtected()                  // 8.  JWT access or refresh
-@FeatureFlagProtected('exampleKey')        // 9.  Feature flag
-@ApiKeyProtected()                         // 10. API key
-@HttpCode(HttpStatus.OK)                   // 11. HTTP status, only when it differs from the default
-@Get('/endpoint')                          // 12. HTTP method, always last
+@ProjectMemberProtected(...)               // 6.  Project member role
+@ProjectProtected()                        // 7.  Project resolution from :projectId
+@WorkspaceMemberProtected(...)             // 8.  Workspace member role
+@WorkspaceProtected()                      // 9.  Workspace resolution from x-workspace-id
+@UserProtected()                           // 10. User status
+@FeatureFlagProtected('exampleKey')        // 11. Feature flag
+@AuthJwtAccessProtected()                  // 12. JWT access or refresh
+@ApiKeyProtected()                         // 13. API key
+@HttpCode(HttpStatus.OK)                   // 14. HTTP status, only when it differs from the default
+@Get('/endpoint')                          // 15. HTTP method, always last
 ```
 
-A route takes only the slots it needs; the relative order of the ones it takes never changes. Guard execution therefore runs `@ApiKeyProtected()` → `@FeatureFlagProtected()` → `@AuthJwtAccessProtected()` → `@UserProtected()` → `@RoleProtected()` → `@PolicyAbilityProtected()` → `@TermPolicyAcceptanceProtected()`.
+A route takes only the slots it needs; the relative order of the ones it takes never changes. Guard execution therefore runs `@ApiKeyProtected()` → `@AuthJwtAccessProtected()` → `@FeatureFlagProtected()` → `@UserProtected()` → `@WorkspaceProtected()` → `@WorkspaceMemberProtected()` → `@ProjectProtected()` → `@ProjectMemberProtected()` → `@RoleProtected()` → `@PolicyProtected()` → `@TermPolicyAcceptanceProtected()`.
 
 - A social-login guard (`@AuthSocialGoogleProtected()`) takes the JWT slot for that route.
-- `@ActivityLog()` binds an interceptor, not a guard, so it runs after every guard has passed. It still occupies slot 6 in source and requires `@AuthJwtAccessProtected()`.
-- A guard that depends on state an earlier guard sets must sit ABOVE that guard in source, so it runs after it.
+- `@RequestThrottle({ ... })` sits outside this order. It mounts an interceptor, so it runs after every guard whatever its position in the stack. Routes declare it below `@ApiKeyProtected()`, so the rate limit reads next to the guards protecting the same route. See [Security and Middleware][ref-doc-security-and-middleware].
+- Activity logging takes no slot. Domains build events with `ActivityLogDomain.prepare` and queue them with `ActivityLogDomain.stagePrepared`, and the global `ActivityLogInterceptor` writes them after the handler settles. See [Activity Log][ref-doc-activity-log].
+- A guard that depends on state an earlier guard sets sits ABOVE that guard in source, so it runs after it.
+- `@FeatureFlagProtected()` sits ABOVE `@AuthJwtAccessProtected()` so the flag guard sees `request.user`. Below it the guard always takes its anonymous branch, which makes `targetUserIds` and any rollout below 100% inert on that route.
+- The workspace and project slots are used by the `/user` scope. The `/admin` scope reaches the same resources through `@RoleProtected()` + `@PolicyProtected()` instead, and takes the workspace or project id from the path.
 
 ## User Protected
 
-`UserProtected` provides basic user authentication and verification. It ensures that only authenticated users can access protected routes and optionally validates whether the user's email has been verified.
+`UserProtected` applies `UserGuard`, which reads the JWT `userId` and loads the user. Email verification defaults to on.
 
 ### Decorators
 
@@ -100,41 +116,39 @@ A route takes only the slots it needs; the relative order of the ones it takes n
 
 **Usage:**
 
+`@UserProtected()` requires email verification. `@UserProtected(false)` skips that check. The default is `true`. Shared profile:
+
 ```typescript
+@TermPolicyAcceptanceProtected()
 @UserProtected()
 @AuthJwtAccessProtected()
-@Get('profile')
-getProfile(@UserCurrent() user: IUser) {
-  return user;
-}
-
-// Allow unverified users
-@UserProtected(false)
-@AuthJwtAccessProtected()
-@Get('dashboard')
-getDashboard(@UserCurrent() user: IUser) {
-  return { user };
+@Get('/profile/get')
+async profile(
+  @AuthJwtPayload('userId') userId: string
+): Promise<IResponseReturn<IUserProfile>> {
+  return this.userProfileHttpService.getProfile(userId);
 }
 ```
 
 #### UserCurrent Parameter Decorator
 
-Extracts the authenticated user object from the request context.
+Reads back the authenticated user `UserGuard` stored, or one of its fields when a field name is passed.
 
-**Returns:** `IUser | undefined`
+**Returns:** `IUser`, or the named field of it. Both are non-null: an empty store key, or a field holding `null`, throws `RequestContextMissingException` (500, `50304`).
 
 **Usage:**
 
+Refresh is a call site:
+
 ```typescript
 @UserProtected()
-@AuthJwtAccessProtected()
-@Get('me')
-getCurrentUser(@UserCurrent() user: IUser) {
-  return {
-    id: user.id,
-    email: user.email,
-    role: user.role
-  };
+@AuthJwtRefreshProtected()
+@Post('/refresh')
+async refresh(
+  @UserCurrent() user: IUser,
+  @AuthJwtToken() refreshToken: string
+): Promise<IResponseReturn<IAuthToken>> {
+  return this.userAuthHttpService.refresh(user, refreshToken);
 }
 ```
 
@@ -146,7 +160,7 @@ The guard implementation that performs the actual validation.
 
 The `UserProtected` decorator follows this validation sequence:
 
-1. **Authentication Check**: Verifies that `request.user` exists (populated by JWT strategy)
+1. **Authentication Check**: Verifies that the JWT strategy put a `userId` on `request.user`
 2. **User Lookup**: Retrieves user from database with role information
 3. **User Existence**: Ensures user record exists
 4. **Blocked Check**: Rejects a user whose status is `blocked`
@@ -159,8 +173,8 @@ The `UserProtected` decorator follows this validation sequence:
 ```mermaid
 flowchart TD
     Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT and populate request.user]
-    JwtGuard --> CheckAuth{request.user exists?}
-    CheckAuth -->|No| ErrorAuth[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
+    JwtGuard --> CheckAuth{request.user.userId present?}
+    CheckAuth -->|No| ErrorAuth[Throw UserNotAuthenticatedException<br/>401 Unauthorized]
     CheckAuth -->|Yes| LookupUser[Retrieve user from database<br/>with role information]
     
     LookupUser --> UserExists{User exists<br/>in database?}
@@ -191,13 +205,13 @@ flowchart TD
 
 ### Important Notes
 
-- `@UserProtected()` **requires** `@AuthJwtAccessProtected()` to be applied first (above in code)
+- `@UserProtected()` requires `@AuthJwtAccessProtected()` to run first, so JWT sits below `@UserProtected()` in source (nearest the method). Nest runs guards bottom-up.
 - `@AuthJwtAccessProtected()` populates `request.user` from JWT token. See [Authentication Documentation][ref-doc-authentication] for details
 - This decorator stores the validated user via `RequestStoreService.set(UserStoreKey, user)` (read back with `RequestStoreService.get(UserStoreKey)`, e.g. by `@UserCurrent()`), which is required by downstream guards
 
 ## Role Protected
 
-`RoleProtected` implements role-based access control (RBAC) to restrict route access based on user roles. It ensures that only users with specific role types can access protected endpoints.
+`RoleProtected` is RBAC: `RoleGuard` accepts only a role type listed on the decorator.
 
 ### Decorators
 
@@ -216,56 +230,40 @@ flowchart TD
 **Usage:**
 
 ```typescript
-// Single role requirement
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
-@Get('admin/dashboard')
-getAdminDashboard(@UserCurrent() user: IUser) {
-  return this.dashboardService.getAdminData();
-}
-
-// Multiple role requirements (user must have one of the specified roles)
-@RoleProtected(EnumRoleType.admin, EnumRoleType.superAdmin)
-@UserProtected()
-@AuthJwtAccessProtected()
-@Delete('users/:id')
-deleteUser(@Param('id') id: string) {
-  return this.userService.delete(id);
+@Get('/list')
+async list(
+  @Query({ schema: UserListRequestSchema }) query: UserListRequestDto
+): Promise<IResponsePaginationReturn<IUserList>> {
+  return this.userHttpService.getListOffsetByAdmin(query);
 }
 ```
+
+The decorator accepts more than one type (`@RoleProtected(EnumRoleType.admin, EnumRoleType.user)`). The caller needs one of the listed types. Admin user routes in this checkout pass `EnumRoleType.admin` alone.
+
+**`superAdmin` is absent from every `@RoleProtected()` list.** The guard returns before the required-role list is read for a `superAdmin`, so listing it would grant nothing.
 
 ### Getting Current Role
 
 To access the current user's role, use the `@UserCurrent()` decorator and access the `role` property:
 
-```typescript
-@RoleProtected(EnumRoleType.admin)
-@UserProtected()
-@AuthJwtAccessProtected()
-@Get('role-info')
-getRoleInfo(@UserCurrent() user: IUser) {
-  return {
-    roleType: user.role.type,
-    roleName: user.role.name,
-    abilities: user.role.abilities
-  };
-}
-```
+`@UserCurrent()` returns the stored `IUser`. The role on that object is what `UserGuard` loaded: `user.role.type`, `user.role.name`, and `user.role.policies`.
 
 ### Guards
 
 #### `RoleGuard`
 
-The guard implementation that validates user roles and populates role abilities.
+The guard implementation that validates user roles and stashes the role's policies.
 
 The `RoleProtected` decorator follows this validation sequence:
 
 1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) exists
-2. **Super Admin Bypass**: If user role is `superAdmin`, grants immediate access with empty abilities array
+2. **Super Admin Bypass**: If user role is `superAdmin`, grants immediate access with an empty policy array
 3. **Required Roles Check**: Validates that required roles are defined
 4. **Role Match**: Confirms user's role type matches one of the required roles
-5. **Abilities Population**: Stores role abilities via `RequestStoreService.set(RoleAbilityStoreKey, abilities)` for downstream use
+5. **Policy Population**: Stores `role.policies` via `RequestStoreService.set(PolicyStoreKey, policies)` for downstream use
 
 **Flow Diagram:**
 
@@ -278,14 +276,14 @@ flowchart TD
     CheckUser -->|No| ErrorUser[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
     CheckUser -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
     
-    CheckSuperAdmin -->|Yes| GrantSuperAdmin[Grant access with<br/>empty abilities array]
+    CheckSuperAdmin -->|Yes| GrantSuperAdmin[Grant access with<br/>empty policy array]
     CheckSuperAdmin -->|No| CheckRequired{Required roles<br/>defined?}
     
     CheckRequired -->|No| ErrorPredefined[Throw RolePredefinedNotFoundException<br/>500 Internal Server Error]
     CheckRequired -->|Yes| CheckRoleMatch{User role matches<br/>required roles?}
     
     CheckRoleMatch -->|No| ErrorForbidden[Throw RoleForbiddenException<br/>403 Forbidden]
-    CheckRoleMatch -->|Yes| SetAbilities[Store abilities via<br/>RequestStoreService.set RoleAbilityStoreKey, abilities]
+    CheckRoleMatch -->|Yes| SetAbilities[Store policies via<br/>RequestStoreService.set PolicyStoreKey, policies]
     
     GrantSuperAdmin --> Success([Access Granted])
     SetAbilities --> Success
@@ -297,25 +295,25 @@ flowchart TD
 
 ### Important Notes
 
-- `@RoleProtected()` **requires** `@AuthJwtAccessProtected()` and `@UserProtected()` to be applied
-- Decorators must be stacked in this order from top to bottom: `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
-- This decorator stores role abilities via `RequestStoreService.set(RoleAbilityStoreKey, abilities)` (read back with `RequestStoreService.get(RoleAbilityStoreKey)`), which is required by policy guards
-- Incorrect ordering will result in runtime errors
-- Users with `superAdmin` role type have unrestricted access to all `@RoleProtected` routes, regardless of the specified required roles. The guard returns an empty abilities array for super admins, as they bypass ability checks.
+- `@RoleProtected()` reads the user `@UserProtected()` stored, which in turn depends on `@AuthJwtAccessProtected()`
+- The stack reads top to bottom `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
+- This decorator stores the role's policies via `RequestStoreService.set(PolicyStoreKey, policies)` (read back with `RequestStoreService.get(PolicyStoreKey)`), which is what `PolicyGuard` evaluates
+- Without a stored user the guard throws `AuthJwtAccessTokenInvalidException` (401)
+- Users with `superAdmin` role type have unrestricted access to all `@RoleProtected` routes, regardless of the specified required roles. The guard returns an empty policy array for super admins, as they bypass the policy check.
 
 
-## Policy Ability Protected
+## Policy Protected
 
-`PolicyAbilityProtected` implements fine-grained, permission-based access control using CASL (an isomorphic authorization library). It allows you to define specific actions (read, create, update, delete, manage) that users can perform on specific subjects (resources like users, roles, settings, etc.).
+`PolicyProtected` is CASL. A policy names an action (`read`, `create`, `update`, `delete`, `manage`) on a subject (`user`, `role`, `session`, and the rest of `EnumPolicySubject`).
 
 ### Decorators
 
-#### PolicyAbilityProtected Decorator
+#### PolicyProtected Decorator
 
-**Method decorator** that applies `PolicyAbilityGuard` to route handlers.
+**Method decorator** that applies `PolicyGuard` to route handlers.
 
 **Parameters:**
-- `...requiredAbilities` (RoleAbilityRequestDto[]): One or more policy ability objects defining required permissions
+- `...requiredPolicies` (PolicyRequestDto[]): One or more `{ subject, action[] }` objects naming the required permissions
 
 **Available Policy Actions:**
 - `EnumPolicyAction.manage` - Full control over a subject
@@ -335,69 +333,79 @@ flowchart TD
 - `EnumPolicySubject.termPolicy` - Terms and policies
 - `EnumPolicySubject.featureFlag` - Feature flags
 - `EnumPolicySubject.device` - Device management
+- `EnumPolicySubject.workspace` - Workspace management
+- `EnumPolicySubject.project` - Project management
+- `EnumPolicySubject.analytic` - Admin analytic dashboard, anomaly, and fraud read routes
 
 **Usage:**
 
 ```typescript
-// Single ability requirement
-@PolicyAbilityProtected({
+@PolicyProtected({
   subject: EnumPolicySubject.user,
   action: [EnumPolicyAction.read]
 })
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
-@Get('users')
-getUsers() {
-  return this.userService.findAll();
+@Get('/list')
+async list(
+  @Query({ schema: UserListRequestSchema }) query: UserListRequestDto
+): Promise<IResponsePaginationReturn<IUserList>> {
+  return this.userHttpService.getListOffsetByAdmin(query);
 }
 
-// Multiple actions on single subject
-@PolicyAbilityProtected({
+@PolicyProtected({
   subject: EnumPolicySubject.user,
-  action: [EnumPolicyAction.update, EnumPolicyAction.delete]
+  action: [EnumPolicyAction.read, EnumPolicyAction.update]
 })
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
-@Put('users/:id')
-updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-  return this.userService.update(id, dto);
+@Patch('/update/:userId/status')
+async updateStatus(
+  @Param('userId', { schema: RequestMongoIdSchema }) userId: string,
+  @AuthJwtPayload('userId') updatedBy: string,
+  @Body({ schema: UserUpdateStatusRequestSchema }) body: UserUpdateStatusRequestDto
+): Promise<IResponseReturn<void>> {
+  return this.userHttpService.updateStatusByAdmin(userId, body, updatedBy);
 }
 
-// Multiple ability requirements (different subjects)
-@PolicyAbilityProtected(
+@PolicyProtected(
   {
-    subject: EnumPolicySubject.role,
+    subject: EnumPolicySubject.user,
     action: [EnumPolicyAction.read]
   },
   {
-    subject: EnumPolicySubject.user,
-    action: [EnumPolicyAction.manage]
+    subject: EnumPolicySubject.session,
+    action: [EnumPolicyAction.read, EnumPolicyAction.delete]
   }
 )
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
-@Post('users/:id/assign-role')
-assignRole(@Param('id') id: string, @Body() dto: AssignRoleDto) {
-  return this.userService.assignRole(id, dto.roleId);
+@Delete('/revoke/:sessionId')
+async revoke(
+  @Param('userId', { schema: RequestMongoIdSchema }) userId: string,
+  @Param('sessionId', { schema: RequestMongoIdSchema }) sessionId: string,
+  @AuthJwtPayload('userId') revokedBy: string
+): Promise<IResponseReturn<void>> {
+  return this.sessionHttpService.revokeByAdmin(userId, sessionId, revokedBy);
 }
 ```
 
 ### Guards
 
-#### `PolicyAbilityGuard`
+#### `PolicyGuard`
 
-The guard implementation that validates user abilities using CASL library.
+The guard reads the user and the stored policies off the request store and hands both to `PolicyDomain.validatePolicyGuard`, which evaluates them through CASL.
 
-The `PolicyAbilityProtected` decorator follows this validation sequence:
+The `PolicyProtected` decorator follows this validation sequence:
 
 1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) exists
 2. **Super Admin Bypass**: If user role is `superAdmin`, grants immediate access
-3. **Required Abilities Check**: Validates that required abilities are defined
-4. **Ability Creation**: Creates CASL ability rules from user's role abilities (`RequestStoreService.get(RoleAbilityStoreKey)`)
-5. **Permission Validation**: Checks if user abilities match all required abilities
+3. **Required Policies Check**: Validates that required policies are declared on the handler
+4. **Ability Creation**: Creates CASL ability rules from the stored policies (`RequestStoreService.get(PolicyStoreKey)`)
+5. **Permission Validation**: Checks that every required `(subject, action)` pair is allowed
 6. **Access Decision**: Grants or denies access based on permission match
 
 **Flow Diagram:**
@@ -416,7 +424,7 @@ flowchart TD
     CheckSuperAdmin -->|No| CheckRequired{Required abilities<br/>defined?}
     
     CheckRequired -->|No| ErrorPredefined[Throw PolicyPredefinedNotFoundException<br/>500 Internal Server Error]
-    CheckRequired -->|Yes| CreateAbilities[Create CASL ability rules<br/>from RequestStoreService.get RoleAbilityStoreKey]
+    CheckRequired -->|Yes| CreateAbilities[Create CASL ability rules<br/>from RequestStoreService.get PolicyStoreKey]
     
     CreateAbilities --> ValidateAbilities{All required abilities<br/>present in user abilities?}
     
@@ -433,30 +441,26 @@ flowchart TD
 
 ### CASL Integration
 
-The system uses [CASL][casl] (Code Access Security Library) to handle complex permission logic:
+The project uses [CASL][casl] for permission checks:
 
 **PolicyAbilityFactory:**
 
-- `createForUser()`: Builds CASL ability rules from user's assigned abilities
-- `handlerAbilities()`: Validates if user has all required abilities using CASL's `can()` method
-
-**How it works:**
-
-The factory creates a CASL ability instance that can check if a user can perform specific actions on specific subjects. Every required ability must be satisfied for access to be granted.
+- `createForUser(policies)`: Builds CASL ability rules from the role's stored policies
+- `handlerPolicies(userPolicies, policies)`: Returns true only when every required action on each subject is allowed, using CASL's `can()`
 
 ### Important Notes
 
-- `@PolicyAbilityProtected()` **requires** `@AuthJwtAccessProtected()`, `@RoleProtected()`, and `@UserProtected()` to be applied
-- Decorators must be stacked in this order from top to bottom: `@PolicyAbilityProtected()` → `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
-- Incorrect ordering will result in runtime errors
-- Users with `superAdmin` role type have unrestricted access to all `@PolicyAbilityProtected` routes, bypassing all ability checks.
-- All actions in a required ability must be present in the user's abilities. For example, if you require `[EnumPolicyAction.update, EnumPolicyAction.delete]` on the `EnumPolicySubject.user` subject, the user must have both actions, not just one.
+- `@PolicyProtected()` reads the policies `@RoleProtected()` stored and the user `@UserProtected()` stored, both of which depend on `@AuthJwtAccessProtected()`
+- The stack reads top to bottom `@PolicyProtected()` → `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
+- Without a stored user the guard throws `AuthJwtAccessTokenInvalidException` (401)
+- Users with `superAdmin` role type have unrestricted access to all `@PolicyProtected` routes, bypassing all ability checks.
+- Every action of a required policy has to be present in the user's policies. Requiring `[EnumPolicyAction.update, EnumPolicyAction.delete]` on the `EnumPolicySubject.user` subject grants access only when the user holds both actions, not just one.
 
 ## Term Policy Acceptance Protected
 
-`TermPolicyAcceptanceProtected` validates that users have accepted required legal terms and policies (such as Terms of Service, Privacy Policy, etc.) before allowing access to protected routes. This ensures legal compliance and user consent management.
+`TermPolicyAcceptanceProtected` rejects the request until the user has accepted the required policies (Terms of Service, Privacy Policy, and the rest of the set).
 
-For more detailed information about term policies, see [Term Policy Document][ref-doc-term-policy].
+Details: [Term Policy Documentation][ref-doc-term-policy].
 
 ### Decorators
 
@@ -476,37 +480,23 @@ For more detailed information about term policies, see [Term Policy Document][re
 **Usage:**
 
 ```typescript
-// Default: requires termsOfService and privacy acceptance
 @TermPolicyAcceptanceProtected()
 @UserProtected()
 @AuthJwtAccessProtected()
-@Get('premium-features')
-getPremiumFeatures() {
-  return this.featureService.getPremiumFeatures();
-}
-
-// Single term policy requirement
-@TermPolicyAcceptanceProtected(EnumTermPolicyType.marketing)
-@UserProtected()
-@AuthJwtAccessProtected()
-@Post('subscribe-newsletter')
-subscribeNewsletter(@Body() dto: SubscribeDto) {
-  return this.newsletterService.subscribe(dto);
-}
-
-// Multiple term policy requirements
-@TermPolicyAcceptanceProtected(
-  EnumTermPolicyType.termsOfService,
-  EnumTermPolicyType.privacy,
-  EnumTermPolicyType.cookies
-)
-@UserProtected()
-@AuthJwtAccessProtected()
-@Post('data-processing')
-processUserData(@Body() dto: ProcessDataDto) {
-  return this.dataService.process(dto);
+@Get('/acceptance/list')
+async listAccepted(
+  @Query({ schema: TermPolicyAcceptedListRequestSchema })
+  query: TermPolicyAcceptedListRequestDto,
+  @AuthJwtPayload('userId') userId: string
+): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
+  return this.termPolicyAcceptanceHttpService.getListUserAccepted(
+    userId,
+    query
+  );
 }
 ```
+
+The decorator takes optional `EnumTermPolicyType` arguments. With none, it requires `termsOfService` and `privacy`. Shared and admin routes in this checkout pass no arguments.
 
 ### Guards
 
@@ -552,48 +542,65 @@ flowchart TD
 
 ### Important Notes
 
-- `@TermPolicyAcceptanceProtected()` **requires** `@UserProtected()` and `@AuthJwtAccessProtected()` to be applied
+- `@TermPolicyAcceptanceProtected()` reads the user `@UserProtected()` stored, which depends on `@AuthJwtAccessProtected()`
 - Decorator order from top to bottom: `@TermPolicyAcceptanceProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`
 - For more details about `@AuthJwtAccessProtected()`, see [Authentication Documentation][ref-doc-authentication]
 - Without the required decorators the stored user is never populated, so the guard throws `AuthJwtAccessTokenInvalidException` (401 Unauthorized)
 - If no term policies are specified, it defaults to requiring `termsOfService` and `privacy` acceptance
-- All specified term policies must be accepted by the user for access to be granted
-- Incorrect decorator ordering will result in runtime errors
+- Access is granted only when the user has accepted every specified term policy
+
+## Workspace and Project Protected
+
+Four decorators scope a `/user` request to one workspace and, inside it, to one project. They occupy slots 6-9 of the stack above and are documented in full by the modules that own them.
+
+| Decorator | Guards it binds | Selects the resource from |
+|---|---|---|
+| `@WorkspaceProtected()` | `WorkspaceGuard` | The `x-workspace-id` header |
+| `@WorkspaceMemberProtected(...roles)` | `WorkspaceMemberGuard`, plus `WorkspaceRoleGuard` when roles are given | The membership of the resolved workspace |
+| `@ProjectProtected()` | `ProjectGuard` | The `:projectId` route param, constrained to the resolved workspace |
+| `@ProjectMemberProtected(...roles)` | `ProjectMemberGuard` with no arguments, `ProjectRoleGuard` with roles | The membership of the resolved project |
+
+Three properties matter wherever these appear:
+
+- **Each guard reads what the previous one stored and never re-fetches or re-authenticates.** Dropping one from the stack leaves the next reading an empty store key, which surfaces as a `notFound` or `forbidden` rather than a crash.
+- **A workspace `owner` is privileged.** It satisfies every workspace role, and it reaches every project in the workspace without holding a `ProjectMember` row.
+- **The `/admin` scope takes none of them.** Admin routes reach the same resources through `@RoleProtected()` + `@PolicyProtected()` and take the workspace or project id from the path.
+
+For the guard bodies, the exceptions and status codes each one throws, the store keys, and the `@WorkspaceCurrent()` / `@ProjectCurrent()` parameter decorators, see [Workspace][ref-doc-workspace] and [Project][ref-doc-project].
 
 ## Creating Custom Roles
 
-The boilerplate supports creating custom roles through the role management API. Each role can have a unique combination of permissions (abilities) that define what actions users with that role can perform on different resources.
+The boilerplate supports creating custom roles through the role management API. A role carries a set of policies, each naming one subject and the actions allowed on it.
 
-This feature allows you to create specialized roles beyond the default `superAdmin`, `admin`, and `user` types - for example, you could create roles like "ContentModerator", "Accountant", "CustomerSupport", etc., each with their own specific set of permissions.
+A custom role is any role other than `superAdmin`, `admin`, and `user`. Examples: ContentModerator, Accountant, CustomerSupport. Each role carries its own policies.
 
 ### How to Create a New Role
 
-Custom roles are created through the admin role management endpoints. The API documentation is available in your Swagger docs at `/docs`.
+A role and its policies are two separate admin surfaces: `POST /admin/role/create` creates the role, and `POST /admin/role/:roleId/policy/create` attaches one policy to it. The API documentation is available in your Swagger docs at `/docs`.
 
 **Basic steps:**
 
 1. Authenticate as an admin user
-2. Call the role creation endpoint
-3. Provide role details including name, type, description, and abilities
-4. The new role is immediately available for assignment to users
+2. Call the role creation endpoint with name, type, and description
+3. Call the policy creation endpoint once per subject the role may reach
+4. The role is available for assignment to users as soon as it exists
 
-**Example role creation request:**
+**Example role creation request** (`POST /admin/role/create`):
 
 ```json
 {
   "name": "contentmoderator",
   "description": "Role for moderating user-generated content",
-  "type": "admin",
-  "abilities": [
-    {
-      "subject": "user",
-      "action": ["read", "update"]
-    },
-    {
-      "subject": "activityLog",
-      "action": ["read"]
-    }
-  ]
+  "type": "admin"
+}
+```
+
+**Example policy creation request** (`POST /admin/role/:roleId/policy/create`), one call per subject:
+
+```json
+{
+  "subject": "user",
+  "action": ["read", "update"]
 }
 ```
 
@@ -604,16 +611,17 @@ Custom roles are created through the admin role management endpoints. The API do
 - **name**: Unique identifier for the role (alphanumeric, lowercase, 3-30 characters)
 - **description**: Optional description explaining the role's purpose (max 500 characters)
 - **type**: Role type from `EnumRoleType` (superAdmin, admin, or user)
-- **abilities**: Array of permission objects defining what the role can do
 
-**Ability Structure:**
+**Policy Structure:**
 
-Each ability consists of:
-- **subject**: The resource type (e.g., user, role, apiKey, session, termPolicy, activityLog)
+Each policy row consists of:
+- **subject**: The resource type (e.g., user, role, apiKey, session, termPolicy, activityLog, analytic)
 - **action**: Array of allowed actions (manage, read, create, update, delete)
 
+A role holds at most one policy per subject: creating a second policy for a subject already covered is rejected.
+
 **Available subjects and actions are defined in:**
-- `EnumPolicySubject`: all, apiKey, role, user, session, activityLog, passwordHistory, termPolicy, featureFlag, device
+- `EnumPolicySubject`: all, apiKey, role, user, session, activityLog, passwordHistory, termPolicy, featureFlag, device, workspace, project, analytic
 - `EnumPolicyAction`: manage, read, create, update, delete
 
 ### Assigning Roles to Users
@@ -625,25 +633,25 @@ Once a custom role is created, it can be assigned to users through:
 
 **How it works automatically:**
 
-- When a user is assigned a role, they immediately inherit all abilities defined for that role
-- The `RoleGuard` automatically loads the user's role and abilities during authentication
-- The `PolicyAbilityGuard` validates permissions based on the role's abilities
+- When a user is assigned a role, they immediately inherit every policy attached to that role
+- The `RoleGuard` loads the user's role and its policies during the request
+- The `PolicyGuard` validates permissions based on the role's policies
 - No application restart or additional configuration is needed
 
 **Permission enforcement flow:**
 
 ```mermaid
 flowchart LR
-    User[User logs in] --> LoadRole[Role & abilities loaded<br/>from database]
+    User[User logs in] --> LoadRole[Role & policies loaded<br/>from database]
     LoadRole --> RoleGuard[RoleGuard validates<br/>role type]
-    RoleGuard --> PolicyGuard[PolicyAbilityGuard validates<br/>specific permissions]
-    PolicyGuard --> Access[Access granted/denied<br/>based on abilities]
+    RoleGuard --> PolicyGuard[PolicyGuard validates<br/>specific permissions]
+    PolicyGuard --> Access[Access granted/denied<br/>based on policies]
 ```
 
 ### Important Notes
 
-- **Role names must be unique** - You cannot create two roles with the same name
-- **Roles cannot be deleted if in use** - You must first reassign users to different roles before deleting
+- **Role names are unique**: creating a second role with an existing name is rejected
+- **A role in use cannot be deleted**: deletion is rejected (`RoleUsedException`) while any user holds the role
 
 
 <!-- REFERENCES -->
@@ -651,8 +659,10 @@ flowchart LR
 [casl]: https://casl.js.org/
 
 [ref-doc-authentication]: authentication.md
-[ref-doc-configuration]: configuration.md
-[ref-doc-environment]: environment.md
+[ref-doc-security-and-middleware]: security-and-middleware.md
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-term-policy]: term-policy.md
 [ref-doc-device]: device.md
+[ref-doc-workspace]: workspace.md
+[ref-doc-project]: project.md
+[ref-doc-feature-flag]: feature-flag.md

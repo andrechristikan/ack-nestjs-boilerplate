@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { PipeTransform } from '@nestjs/common/interfaces';
-import { IFile } from '@common/file/interfaces/file.interface';
+import type { PipeTransform } from '@nestjs/common';
+import type { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileRequiredException } from '@common/file/exceptions/file.required.exception';

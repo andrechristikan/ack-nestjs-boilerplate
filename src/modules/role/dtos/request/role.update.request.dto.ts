@@ -1,49 +1,24 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import {
-    IsArray,
-    IsEnum,
-    IsNotEmpty,
-    IsOptional,
-    IsString,
-    MaxLength,
-    ValidateNested,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
-import { EnumRoleType } from '@generated/prisma-client';
+import { EnumRoleType } from '@generated/prisma-client/client';
 
-export class RoleUpdateRequestDto {
-    @ApiProperty({
+/**
+ * Validates the body for updating a role description and type.
+ * @public
+ */
+export const RoleUpdateRequestSchema = z.strictObject({
+    description: z.string().max(500).optional().meta({
         description: 'Description of role',
         example: faker.lorem.sentence(),
-        required: false,
-        maxLength: 500,
-    })
-    @IsString()
-    @IsOptional()
-    @MaxLength(500)
-    description?: string;
-
-    @ApiProperty({
+    }),
+    type: z.enum(EnumRoleType).meta({
         description: 'Representative for role type',
         example: EnumRoleType.admin,
-        required: true,
-        enum: EnumRoleType,
-    })
-    @IsEnum(EnumRoleType)
-    @IsNotEmpty()
-    type: EnumRoleType;
+    }),
+});
 
-    @ApiProperty({
-        required: true,
-        description: 'Ability list of role',
-        isArray: true,
-        type: [RoleAbilityRequestDto],
-    })
-    @Type(() => RoleAbilityRequestDto)
-    @IsNotEmpty()
-    @ValidateNested()
-    @IsArray()
-    abilities: RoleAbilityRequestDto[];
-}
+/**
+ * Body for updating a role description and type.
+ * @public
+ */
+export type RoleUpdateRequestDto = z.infer<typeof RoleUpdateRequestSchema>;

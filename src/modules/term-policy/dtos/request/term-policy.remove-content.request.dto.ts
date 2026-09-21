@@ -1,7 +1,17 @@
-import { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
-import { PickType } from '@nestjs/swagger';
+import { z } from 'zod';
+import { TermPolicyContentPresignRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
 
-export class TermPolicyRemoveContentRequestDto extends PickType(
-    TermPolicyContentPresignRequestDto,
-    ['language'] as const
-) {}
+/**
+ * Validates the body for removing one term policy content by language.
+ * @public
+ */
+export const TermPolicyRemoveContentRequestSchema =
+    TermPolicyContentPresignRequestSchema.pick({ language: true });
+
+/**
+ * Body for removing one term policy content by language.
+ * @public
+ */
+export type TermPolicyRemoveContentRequestDto = z.infer<
+    typeof TermPolicyRemoveContentRequestSchema
+>;

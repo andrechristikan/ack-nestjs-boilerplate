@@ -3,6 +3,7 @@
     "collection": "@nestjs/schematics",
     "sourceRoot": "src",
     "compilerOptions": {
+        "tsConfigPath": "tsconfig.build.json",
         "deleteOutDir": true,
         "watchAssets": true,
         "typeCheck": false,
@@ -22,11 +23,15 @@
             {
                 "include": "**/**/templates/*",
                 "outDir": "dist"
+            },
+            {
+                "include": "generated/prisma-client/*.node",
+                "outDir": "dist"
             }
         ]
     },
     "projects": {
-        "app": {
+        "application": {
             "type": "application",
             "root": "src",
             "entryFile": "main",

@@ -3,10 +3,10 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { passportJwtSecret } from 'jwks-rsa';
-import { Algorithm } from 'jsonwebtoken';
-import { IAuthJwtRefreshTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import type { Algorithm } from 'jsonwebtoken';
+import type { IAuthJwtRefreshTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import { AuthJwtRefreshGuardKey } from '@modules/auth/constants/auth.constant';
-import { AuthService } from '@modules/auth/services/auth.service';
+import { AuthDomain } from '@modules/auth/domains/auth.domain';
 
 /** Passport strategy validating refresh tokens via JWKS, default algorithm ES512. */
 @Injectable()
@@ -15,10 +15,10 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
     AuthJwtRefreshGuardKey
 ) {
     constructor(
-        private readonly authService: AuthService,
+        private readonly authDomain: AuthDomain,
         configService: ConfigService
     ) {
-        // @note: we don't validate jti here
+        // jti is not validated here.
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderWithScheme(
                 configService.get<string>('auth.jwt.prefix')!
@@ -46,10 +46,10 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
         });
     }
 
-    /** Runs after signature verification; delegates session/payload checks to AuthService. */
+    /** Runs after signature verification; delegates session/payload checks to AuthDomain. */
     async validate(
         data: IAuthJwtRefreshTokenPayload
     ): Promise<IAuthJwtRefreshTokenPayload> {
-        return this.authService.validateJwtRefreshStrategy(data);
+        return this.authDomain.validateJwtRefreshStrategy(data);
     }
 }

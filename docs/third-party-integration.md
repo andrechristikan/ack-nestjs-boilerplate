@@ -2,17 +2,19 @@
 
 ## Overview
 
-ACK NestJS Boilerplate integrates with various third-party services and providers to handle authentication, storage, email, caching, monitoring, and database operations. All integrations are configured through environment variables.
+Third-party clients are configured through environment variables. Each section below names the package and the env vars.
 
 ## Related Documents
 
-- [Configuration Documentation][ref-doc-configuration]
-- [Environment Documentation][ref-doc-environment]
-- [Authentication Documentation][ref-doc-authentication]
-- [File Upload Documentation][ref-doc-file-upload]
-- [Queue Documentation][ref-doc-queue]
-- [Cache Documentation][ref-doc-cache]
-- [Database Documentation][ref-doc-database]
+- [Configuration Documentation][ref-doc-configuration] - AWS, Firebase, Sentry config keys
+- [Environment Documentation][ref-doc-environment] - Credential env vars
+- [Authentication Documentation][ref-doc-authentication] - Google and Apple OAuth
+- [File Upload Documentation][ref-doc-file-upload] - Multipart upload and S3 presign
+- [Email Documentation][ref-doc-email] - SES templates and sync
+- [Notification Documentation][ref-doc-notification] - Push and email delivery
+- [Queue Documentation][ref-doc-queue] - BullMQ workers that call these services
+- [Cache Documentation][ref-doc-cache] - Redis used by cache and rate limits
+- [Database Documentation][ref-doc-database] - MongoDB connection expectations
 
 ## Table of Contents
 
@@ -20,6 +22,7 @@ ACK NestJS Boilerplate integrates with various third-party services and provider
 - [Related Documents](#related-documents)
 - [AWS Services](#aws-services)
   - [S3 Storage](#s3-storage)
+    - [Bucket setup](#bucket-setup)
   - [SES Email](#ses-email)
   - [Error Codes](#error-codes)
 - [Firebase](#firebase)
@@ -60,9 +63,37 @@ AWS_S3_PRIVATE_CDN=<your_aws_s3_private_cdn>
 
 **No-Op Mode:**
 
-If any of `AWS_S3_IAM_CREDENTIAL_KEY`, `AWS_S3_IAM_CREDENTIAL_SECRET`, or `AWS_S3_REGION` is not set, the S3 integration runs in no-op mode: it is disabled, logs a warning on startup, and S3 operations return safe defaults instead of failing.
+If any of these is not set, the S3 integration runs in no-op mode (disabled, logs a warning on startup, S3 operations return safe defaults instead of failing):
 
-For detailed behavior and implementation, see [File Upload][ref-doc-file-upload].
+- `AWS_S3_IAM_CREDENTIAL_KEY`
+- `AWS_S3_IAM_CREDENTIAL_SECRET`
+- `AWS_S3_REGION`
+
+For detailed upload and presign behavior, see [File Upload][ref-doc-file-upload].
+
+### Bucket setup
+
+`pnpm migration awsS3Config` is a migration command, not a database seed. It applies bucket policy and settings on AWS for both the public and private buckets. It writes no MongoDB rows.
+
+```bash
+pnpm migration awsS3Config --type seed
+```
+
+`--type remove` is a no-op for this command.
+
+Applied in this order (later steps depend on earlier ones):
+
+1. **Block public access** - Public access restrictions
+2. **Disable ACL** - Bucket-owner ownership controls
+3. **Bucket policy** - Read/write permissions for public vs private
+4. **CORS** - Cross-origin rules
+5. **Lifecycle** - Deletes incomplete multipart uploads
+
+**Public buckets:** public read (`s3:GetObject`), full IAM management access, CORS GET/HEAD from any origin and PUT/POST/DELETE from whitelisted origins.
+
+**Private buckets:** all public access blocked, CORS only for whitelisted origins, full IAM access for every operation.
+
+Needs valid AWS credentials, IAM permission to change those bucket settings, and the bucket names/ARNs in your environment.
 
 ### SES Email
 
@@ -87,9 +118,13 @@ AWS_SES_REGION=ap-southeast-3
 
 **No-Op Mode:**
 
-If any of `AWS_SES_IAM_CREDENTIAL_KEY`, `AWS_SES_IAM_CREDENTIAL_SECRET`, or `AWS_SES_REGION` is not set, the SES integration runs in no-op mode: it is disabled, logs a warning on startup, and email operations return safe defaults instead of failing.
+If any of these is not set, the SES integration runs in no-op mode (disabled, logs a warning on startup, email operations return safe defaults instead of failing):
 
-Email processing is handled through the queue system. See [Queue][ref-doc-queue] for details.
+- `AWS_SES_IAM_CREDENTIAL_KEY`
+- `AWS_SES_IAM_CREDENTIAL_SECRET`
+- `AWS_SES_REGION`
+
+Templates, the sync command, and send flow: [Email Documentation][ref-doc-email]. Queue wiring: [Notification][ref-doc-notification] and [Queue][ref-doc-queue].
 
 ### Error Codes
 
@@ -124,7 +159,7 @@ For notification details, see [Notification Documentation][ref-doc-notification]
 
 ## Sentry
 
-[Sentry][ref-sentry] provides error tracking and performance monitoring.
+[Sentry][ref-sentry] tracks errors and performance.
 
 **Packages:**
 - `@sentry/nestjs`
@@ -136,16 +171,16 @@ SENTRY_DSN=<your_sentry_dsn>
 ```
 
 **Features:**
-- Automatic error tracking
-- Performance monitoring
+- Automatic error tracking through `SentryService` (`src/common/sentry`), used by the exception filters and `QueueProcessorBase`
+- Performance monitoring and profiling
 - Queue job failure tracking (integrated in `QueueProcessorBase`)
-- Request context capture
+- Request context capture, scrubbed in `src/instrument.ts` before it leaves the process (URLs masked, sensitive headers, cookies, and body fields redacted). See [Logger][ref-doc-logger]
 
 Leave `SENTRY_DSN` empty to disable Sentry in development.
 
 ## Redis
 
-[Redis][ref-redis] serves as cache storage and queue backend.
+[Redis][ref-redis] is the cache store and the queue backend.
 
 **Packages:**
 - `@keyv/redis`
@@ -171,8 +206,8 @@ For cache implementation, see [Cache][ref-doc-cache]. For queue details, see [Qu
 [MongoDB][ref-mongodb] with [Prisma][ref-prisma] as the primary database.
 
 **Packages:**
-- `@prisma/client`
-- `prisma`
+- `@prisma/client` (runtime of the generated client)
+- `prisma` (CLI and the `prisma-client` generator, which writes the client into `src/generated/prisma-client`)
 
 **Environment Variables:**
 ```dotenv
@@ -252,8 +287,10 @@ For authentication flow details, see [Authentication][ref-doc-authentication].
 [ref-doc-environment]: environment.md
 [ref-doc-authentication]: authentication.md
 [ref-doc-file-upload]: file-upload.md
+[ref-doc-email]: email.md
 [ref-doc-queue]: queue.md
 [ref-doc-cache]: cache.md
 [ref-doc-database]: database.md
 [ref-doc-notification]: notification.md
 [ref-doc-vault]: vault.md
+[ref-doc-logger]: logger.md

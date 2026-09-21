@@ -1,54 +1,39 @@
-import {
-    PaginationOffsetQuery,
-    PaginationQueryFilterEqualBoolean,
-} from '@common/pagination/decorators/pagination.decorator';
-import {
-    IPaginationEqual,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
+import { DeviceAdminListRequestSchema } from '@modules/device/dtos/request/device.admin-list.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
-    ResponsePaging,
+    ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-import {
-    IResponsePagingReturn,
+
+import type {
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+
 import {
-    EnumActivityLogAction,
+    EnumPolicyAction,
+    EnumPolicySubject,
     EnumRoleType,
-    Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import {
-    DeviceAdminListDoc,
-    DeviceAdminRemoveDoc,
-} from '@modules/device/docs/device.admin.doc';
-import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
-import { DeviceService } from '@modules/device/services/device.service';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
-import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-} from '@modules/policy/enums/policy.enum';
+
+import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
+import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
+import { DeviceHttpService } from '@modules/device/services/device.http.service';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import {
-    Controller,
-    Delete,
-    Get,
-    HttpCode,
-    HttpStatus,
-    Param,
-} from '@nestjs/common';
+import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
+
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.admin.user.device')
@@ -57,12 +42,14 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user/:userId/device',
 })
 export class DeviceAdminController {
-    constructor(private readonly deviceService: DeviceService) {}
+    constructor(private readonly deviceHttpService: DeviceHttpService) {}
 
-    @DeviceAdminListDoc()
-    @ResponsePaging('device.list')
+    @Doc({ summary: 'admin get all user Devices' })
+    @ResponsePagination('device.list', {
+        schema: DeviceOwnershipResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected(
+    @PolicyProtected(
         {
             subject: EnumPolicySubject.user,
             action: [EnumPolicyAction.read],
@@ -76,29 +63,21 @@ export class DeviceAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.DeviceOwnershipSelect,
-            Prisma.DeviceOwnershipWhereInput
-        >,
-        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
-        userId: string,
-        @PaginationQueryFilterEqualBoolean('isRevoked')
-        isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
-        return this.deviceService.getListOffsetByAdmin(
-            userId,
-            pagination,
-            isRevoked
-        );
+        @Query({ schema: DeviceAdminListRequestSchema })
+        query: DeviceAdminListRequestDto,
+        @Param('userId', { schema: RequestMongoIdSchema })
+        userId: string
+    ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
+        return this.deviceHttpService.getListOffsetByAdmin(userId, query);
     }
 
-    @DeviceAdminRemoveDoc()
+    @Doc({ summary: 'admin remove user Device' })
     @Response('device.remove')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected(
+    @PolicyProtected(
         {
             subject: EnumPolicySubject.user,
             action: [EnumPolicyAction.read],
@@ -109,24 +88,19 @@ export class DeviceAdminController {
         }
     )
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminDeviceRemove)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
+    @RequestThrottle({ user: true })
     @Delete('/remove/:deviceOwnershipId')
     async remove(
         @AuthJwtPayload('userId') removedBy: string,
-        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
-        @Param(
-            'deviceOwnershipId',
-            RequestRequiredPipe,
-            RequestIsValidObjectIdPipe
-        )
+        @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
-        return this.deviceService.removeByAdmin(
+        return this.deviceHttpService.removeByAdmin(
             userId,
             deviceOwnershipId,
             removedBy

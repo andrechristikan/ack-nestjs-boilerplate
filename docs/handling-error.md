@@ -1,18 +1,19 @@
 # Handling Error Documentation
 
-This documentation explains the features and usage of **Exception Filter Module**: Located at `src/app/filters`
+Exception filters live in `src/app/filters`.
 
 ## Overview
 
-The error handling system provides comprehensive exception management using NestJS's exception filter mechanism. All errors are transformed into standardized HTTP responses with proper formatting, internationalization, and monitoring integration.
+Exception filters turn thrown errors into the same HTTP error body, with i18n messages and logging.
 
 ## Related Documents
 
-- [Response Documentation][ref-doc-response] - For standardized response structure
-- [Request Validation Documentation][ref-doc-request-validation] - For validation error handling
-- [Status Codes Documentation][ref-doc-status-codes] - Full catalog of application `statusCode` values by module
-- [Message Documentation][ref-doc-message] - For error message internationalization
-- [Logger Documentation][ref-doc-logger] - For error logging and monitoring
+- [Response Documentation][ref-doc-response] - Error envelope shape
+- [Request Validation Documentation][ref-doc-request-validation] - Validation error path
+- [Status Codes Documentation][ref-doc-status-codes] - Application `statusCode` catalog by module
+- [Language Message Documentation][ref-doc-message] - Error message i18n
+- [Logger Documentation][ref-doc-logger] - Error logging and Sentry
+- [Doc Documentation][ref-doc-doc] - OpenAPI kit errors from `@Doc`, `*Protected` / auth kits, and when used `@ResponsePagination` / `FileUpload*` / `@ResponseFile`; module-flow domain exceptions appear only when an endpoint opts in with `@DocErrors`
 
 ## Table of Contents
 
@@ -35,7 +36,7 @@ The error handling system provides comprehensive exception management using Nest
 
 ## Exception Filters
 
-ACK NestJS Boilerplate uses 5 specialized exception filters, registered globally as `APP_FILTER` providers in `src/app/app.module.ts`. The provider array order is:
+Five exception filters are registered globally as `APP_FILTER` providers in `src/app/app.module.ts`. The provider array order is:
 
 1. `AppGeneralFilter`
 2. `AppBaseExceptionFilter`
@@ -47,21 +48,27 @@ NestJS evaluates global filters in reverse of the registration array, so the mos
 
 1. **AppValidationImportFilter** - Handles `FileImportException`
 2. **AppValidationFilter** - Handles `RequestValidationException`
-3. **AppHttpFilter** - Handles framework `HttpException` (route 404s, throttler, etc.)
+3. **AppHttpFilter** - Handles framework `HttpException` (route 404s, rate-limit `ThrottlerException`, etc.)
 4. **AppBaseExceptionFilter** - Handles `AppBaseException` (every application error)
 5. **AppGeneralFilter** - Catches all unhandled exceptions
 
 `AppBaseException` does not extend `HttpException`, so the relative position of those two filters does not change which one catches a given error.
 
 **Processing flow**:
-```
-Exception thrown
-    ↓
-Match specific filter? (validation import/request, AppBaseException, framework HTTP)
-    ↓ No
-AppGeneralFilter (fallback)
-    ↓
-Standardized error response + Sentry (if applicable)
+
+```mermaid
+flowchart TD
+    E[Exception thrown] --> M{Matching filter?}
+    M -->|FileImportException| VI[AppValidationImportFilter]
+    M -->|RequestValidationException| V[AppValidationFilter]
+    M -->|HttpException| H[AppHttpFilter]
+    M -->|AppBaseException| B[AppBaseExceptionFilter]
+    M -->|none of the above| G[AppGeneralFilter]
+    VI --> R[Error envelope plus Sentry when that filter reports]
+    V --> R
+    H --> R
+    B --> R
+    G --> R
 ```
 
 **Common behavior**:
@@ -70,7 +77,7 @@ Standardized error response + Sentry (if applicable)
 - Resolve localized error message using [Message System][ref-doc-message]
 - Set response headers
 - Format into `ResponseErrorDto`
-- Send to Sentry (conditions vary by filter)
+- Log the error and report it through `SentryService.captureException` from `src/common/sentry` (conditions vary by filter). See [Logger][ref-doc-logger]
 
 ## Error Response Structure
 
@@ -121,8 +128,8 @@ All errors are formatted into `ResponseErrorDto`:
 | Field | Source | Fallback |
 |-------|--------|----------|
 | `language` | Request store `RequestLanguageStoreKey` | Config `message.language` |
-| `timestamp` | `HelperService.dateGetTimestamp()` | - |
-| `timezone` | `HelperService.dateGetZone()` | - |
+| `timestamp` | `HelperDateService.getTimestamp()` | - |
+| `timezone` | `HelperDateService.getZone()` | - |
 | `version` | Request store `RequestVersionStoreKey` | Config `app.urlVersion.version` |
 | `repoVersion` | Config `app.version` | - |
 | `requestId` | Request store `RequestIdStoreKey` | - |
@@ -141,6 +148,8 @@ x-repo-version: 1.0.0
 x-request-id: 550e8400-e29b-41d4-a716-446655440000
 x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 ```
+
+A rate-limited 429 also carries `Retry-After`, in seconds. It is set by whichever limiter blocks the request (`RequestThrottleDefaultGuard`, `RequestThrottleRouteGuard`, or `RequestThrottleUserInterceptor`) before the exception reaches any filter, and the filter preserves it. See [Security and Middleware][ref-doc-security-and-middleware].
 
 ## Exception Filters
 
@@ -197,11 +206,9 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 
 **Location**: `src/app/filters/app.http.filter.ts`
 
-**Catches**: `@Catch(HttpException)` - framework HTTP exceptions only (route 404s, throttler 429, payload limits, etc.)
+**Catches**: `@Catch(HttpException)` - framework HTTP exceptions only (route 404s, rate-limit `ThrottlerException` 429, payload limits, etc.)
 
 **Use case**: NestJS/framework `HttpException`s. Application code does not throw `HttpException`; every application error is an `AppBaseException` subclass handled by `AppBaseExceptionFilter`.
-
-**Path validation**: Redirects invalid paths (not starting with `globalPrefix` or `docPrefix`) to `{globalPrefix}/public/hello` with HTTP 308. The redirect returns before Sentry reporting and before the error envelope is built.
 
 **Message**: Resolves the message path `http.{statusCode}` via the [Message System][ref-doc-message]
 
@@ -220,13 +227,24 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 }
 ```
 
+**Rate-limited response**: a breached rate limit throws `ThrottlerException`, which is a framework `HttpException`, so this filter builds its envelope from `HttpStatus.TOO_MANY_REQUESTS` with no application status code involved. The response also carries a `Retry-After` header in seconds.
+```json
+{
+  "statusCode": 429,
+  "statusCodeKey": "tooManyRequests",
+  "module": "http",
+  "message": "Too Many Request",
+  "metadata": { ... }
+}
+```
+
 ### AppValidationFilter
 
 **Location**: `src/app/filters/app.validation.filter.ts`
 
 **Catches**: `@Catch(RequestValidationException)` - request validation errors
 
-**Use case**: Request body, query parameters, and path parameters validation failures using [class-validator][ref-class-validator]
+**Use case**: Request body, query parameters, and path parameters that fail their route's zod schema
 
 **Behavior**:
 - Formats field-specific validation errors
@@ -242,9 +260,9 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
   "message": "There are validation errors.",
   "errors": [
     {
-      "key": "isEmail",
+      "key": "invalidFormat",
       "property": "email",
-      "message": "email should be a valid email address."
+      "message": "email does not match the expected format."
     }
   ],
   "metadata": { ... }
@@ -259,7 +277,7 @@ See [Request Validation][ref-doc-request-validation] for details.
 
 **Catches**: `@Catch(FileImportException)` - file import validation errors
 
-**Use case**: CSV file import validation failures using [class-validator][ref-class-validator]
+**Use case**: CSV file import rows that fail their zod schema
 
 **Behavior**:
 - Formats row-level validation errors
@@ -278,9 +296,9 @@ See [Request Validation][ref-doc-request-validation] for details.
       "row": 2,
       "errors": [
         {
-          "key": "isEmail",
+          "key": "invalidFormat",
           "property": "email",
-          "message": "email should be a valid email address."
+          "message": "email does not match the expected format."
         }
       ]
     }
@@ -293,7 +311,14 @@ See [Request Validation][ref-doc-request-validation] for details.
 
 ## Usage
 
-Application code throws a dedicated exception class per error, each extending `AppBaseException`. Each class fixes its own `module`, `statusCode`, `statusCodeKey`, and `httpStatus`, and lives in the `exceptions/` folder of the module that owns its status-code enum.
+Application code throws a dedicated exception class per error, each extending `AppBaseException`. Each class fixes:
+
+- its own `module`
+- `statusCode`
+- `statusCodeKey`
+- `httpStatus`
+
+Each class lives in the `exceptions/` folder of the module that owns its status-code enum.
 
 ### Throwing an error
 
@@ -325,12 +350,16 @@ super('auth.error.passwordMustNew', { messageProperties: { period } });
 
 ### Error wrapping a cause
 
-For a caught error, pass the cause. It is reported to Sentry for 5xx errors and never serialized into the response body:
+For a caught error, pass the cause. It is reported to Sentry for 5xx errors and never serialized into the response body. A service that wraps a caught error lets a typed one through first, so a domain exception raised inside the `try` reaches the client with its own status code instead of the generic 500:
 
 ```typescript
 try {
   // ...
 } catch (err: unknown) {
+  if (err instanceof AppBaseException) {
+    throw err;
+  }
+
   throw new AppUnknownException(err);
 }
 ```
@@ -356,11 +385,12 @@ export class ExampleSomethingException extends AppBaseException {
 
 <!-- REFERENCES -->
 
-[ref-class-validator]: https://github.com/typestack/class-validator
 [ref-nestjs-exception-filters]: https://docs.nestjs.com/exception-filters
 
 [ref-doc-response]: response.md
 [ref-doc-request-validation]: request-validation.md
 [ref-doc-status-codes]: status-codes.md
-[ref-doc-message]: message.md
+[ref-doc-message]: language-message.md
 [ref-doc-logger]: logger.md
+[ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-doc]: doc.md

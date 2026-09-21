@@ -1,35 +1,36 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { EnumRoleType } from '@generated/prisma-client';
+import { z } from 'zod';
+import { faker } from '@faker-js/faker';
+import { EnumRoleType } from '@generated/prisma-client/client';
 
-export class AuthTokenResponseDto {
-    @ApiProperty({
+/**
+ * Token pair issued to a client after a successful authentication.
+ * @public
+ */
+export const AuthTokenResponseSchema = z.object({
+    tokenType: z.string().meta({
+        description: 'Token type prefix sent with the access token',
         example: 'Bearer',
-        required: true,
-    })
-    tokenType: string;
-
-    @ApiProperty({
+    }),
+    roleType: z.enum(EnumRoleType).meta({
+        description: 'Role type encoded in the issued tokens',
         example: EnumRoleType.user,
-        enum: EnumRoleType,
-        type: String,
-        required: true,
-    })
-    roleType: EnumRoleType;
-
-    @ApiProperty({
-        example: 3600,
+    }),
+    expiresIn: z.number().meta({
         description: 'timestamp in minutes',
-        required: true,
-    })
-    expiresIn: number;
+        example: 3600,
+    }),
+    accessToken: z.string().meta({
+        description: 'JWT access token',
+        example: faker.string.alphanumeric(64),
+    }),
+    refreshToken: z.string().meta({
+        description: 'JWT refresh token',
+        example: faker.string.alphanumeric(64),
+    }),
+});
 
-    @ApiProperty({
-        required: true,
-    })
-    accessToken: string;
-
-    @ApiProperty({
-        required: true,
-    })
-    refreshToken: string;
-}
+/**
+ * Token pair issued after a successful authentication.
+ * @public
+ */
+export type AuthTokenResponseDto = z.infer<typeof AuthTokenResponseSchema>;

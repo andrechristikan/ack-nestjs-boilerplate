@@ -1,54 +1,23 @@
-import { faker } from '@faker-js/faker';
-import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
-import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
-import { EnumApiKeyType } from '@generated/prisma-client';
+import { z } from 'zod';
+import { ApiKeyCreateBaseRequestSchema } from '@modules/api-key/dtos/request/api-key.create-base.request.dto';
 
-export class ApiKeyCreateRequestDto extends PartialType(
-    ApiKeyUpdateDateRequestDto
-) {
-    @ApiProperty({
-        description: 'Api Key name',
-        example: faker.company.name(),
-        required: true,
-    })
-    @IsNotEmpty()
-    @IsString()
-    @MaxLength(100)
-    name: string;
+/**
+ * Validates the body for creating an API key, including its date window.
+ * @public
+ */
+export const ApiKeyCreateRequestSchema =
+    ApiKeyCreateBaseRequestSchema.superRefine(({ startAt, endAt }, ctx) => {
+        if (startAt !== undefined && endAt !== undefined && endAt < startAt) {
+            ctx.addIssue({
+                code: 'custom',
+                path: ['endAt'],
+                message: 'request.error.greaterThanEqualOtherProperty.invalid',
+            });
+        }
+    });
 
-    @ApiProperty({
-        description: 'Api Key name',
-        example: EnumApiKeyType.default,
-        required: true,
-        enum: EnumApiKeyType,
-    })
-    @IsNotEmpty()
-    @IsEnum(EnumApiKeyType)
-    type: EnumApiKeyType;
-}
-
-export class ApiKeyCreateRawRequestDto extends OmitType(
-    ApiKeyCreateRequestDto,
-    ['startAt', 'endAt'] as const
-) {
-    @ApiProperty({
-        name: 'key',
-        example: faker.string.alphanumeric(10),
-        required: true,
-    })
-    @IsNotEmpty()
-    @IsString()
-    @MaxLength(50)
-    key: string;
-
-    @ApiProperty({
-        name: 'secret',
-        example: faker.string.alphanumeric(20),
-        required: true,
-    })
-    @IsNotEmpty()
-    @IsString()
-    @MaxLength(100)
-    secret: string;
-}
+/**
+ * Body for creating an API key.
+ * @public
+ */
+export type ApiKeyCreateRequestDto = z.infer<typeof ApiKeyCreateRequestSchema>;

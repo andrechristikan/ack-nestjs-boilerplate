@@ -2,10 +2,11 @@ import {
     RequestCorrelationIdStoreKey,
     RequestIdStoreKey,
 } from '@common/request/constants/request.constant';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { Injectable, NestMiddleware } from '@nestjs/common';
-import { NextFunction, Response } from 'express';
+import { Injectable } from '@nestjs/common';
+import type { NestMiddleware } from '@nestjs/common';
+import type { NextFunction, Response } from 'express';
 import { v7 as uuid } from 'uuid';
 
 /**

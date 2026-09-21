@@ -1,38 +1,43 @@
+import { Doc } from '@common/doc/decorators/doc.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { Response } from '@common/response/decorators/response.decorator';
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtPayload } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     AuthSocialAppleProtected,
     AuthSocialGoogleProtected,
 } from '@modules/auth/decorators/auth.social.decorator';
-import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
-import { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
+import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
+import type { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
-import {
-    AuthPublicLoginSocialAppleDoc,
-    AuthPublicLoginSocialGoogleDoc,
-    UserPublicForgotPasswordDoc,
-    UserPublicLoginCredentialDoc,
-    UserPublicLoginSetupTwoFactorDoc,
-    UserPublicLoginVerifyTwoFactorDoc,
-    UserPublicResetPasswordDoc,
-    UserPublicSendEmailVerificationDoc,
-    UserPublicSignUpDoc,
-    UserPublicVerifyEmailDoc,
-} from '@modules/user/docs/user.public.doc';
-import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
-import { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
-import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
-import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
-import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
-import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
-import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
-import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
-import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
-import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
-import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import { UserService } from '@modules/user/services/user.service';
+import { UserCreateSocialRequestSchema } from '@modules/user/dtos/request/user.create-social.request.dto';
+import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
+import { UserForgotPasswordResetRequestSchema } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
+import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
+import { UserForgotPasswordRequestSchema } from '@modules/user/dtos/request/user.forgot-password.request.dto';
+import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
+import { UserLoginSetupTwoFactorRequestSchema } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
+import type { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
+import { UserLoginVerifyTwoFactorRequestSchema } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
+import type { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
+import { UserLoginRequestSchema } from '@modules/user/dtos/request/user.login.request.dto';
+import type { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
+import { UserSendEmailVerificationRequestSchema } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
+import type { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
+import { UserSignUpRequestSchema } from '@modules/user/dtos/request/user.sign-up.request.dto';
+import type { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
+import { UserVerifyEmailRequestSchema } from '@modules/user/dtos/request/user.verify-email.request.dto';
+import type { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
+import { UserLoginResponseSchema } from '@modules/user/dtos/response/user.login.response.dto';
+import { UserTwoFactorEnableResponseSchema } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import type { IUserLoginOutcome } from '@modules/user/interfaces/user.interface';
+import { UserAuthHttpService } from '@modules/user/services/user.auth.http.service';
+import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
+import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor.http.service';
+import { UserVerificationHttpService } from '@modules/user/services/user.verification.http.service';
 import {
     Body,
     Controller,
@@ -42,7 +47,8 @@ import {
     Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumUserLoginWith } from '@generated/prisma-client';
+import { EnumUserLoginWith } from '@generated/prisma-client/client';
+import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.public.user')
 @Controller({
@@ -50,131 +56,165 @@ import { EnumUserLoginWith } from '@generated/prisma-client';
     path: '/user',
 })
 export class UserPublicController {
-    constructor(private readonly userService: UserService) {}
+    constructor(
+        private readonly userAuthHttpService: UserAuthHttpService,
+        private readonly userVerificationHttpService: UserVerificationHttpService,
+        private readonly userPasswordHttpService: UserPasswordHttpService,
+        private readonly userTwoFactorHttpService: UserTwoFactorHttpService
+    ) {}
 
-    @UserPublicLoginCredentialDoc()
-    @Response('user.loginCredential')
+    @Doc({ summary: 'login with credential' })
+    @Response('user.loginCredential', { schema: UserLoginResponseSchema })
     @FeatureFlagProtected('loginWithCredential')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @HttpCode(HttpStatus.OK)
     @Post('/login/credential')
     async loginWithCredential(
-        @Body() body: UserLoginRequestDto
-    ): Promise<IResponseReturn<UserLoginResponseDto>> {
-        return this.userService.loginCredential(body);
+        @Body({ schema: UserLoginRequestSchema })
+        body: UserLoginRequestDto
+    ): Promise<IResponseReturn<IUserLoginOutcome>> {
+        return this.userAuthHttpService.loginCredential(body);
     }
 
-    @AuthPublicLoginSocialGoogleDoc()
-    @Response('user.loginWithSocialGoogle')
+    @Doc({ summary: 'Login with social google' })
+    @Response('user.loginWithSocialGoogle', {
+        schema: UserLoginResponseSchema,
+    })
     @AuthSocialGoogleProtected()
     @FeatureFlagProtected('loginWithGoogle')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @HttpCode(HttpStatus.OK)
     @Post('/login/social/google')
     async loginWithGoogle(
         @AuthJwtPayload<IAuthSocialPayload>('email')
         email: string,
-        @Body() body: UserCreateSocialRequestDto
-    ): Promise<IResponseReturn<UserLoginResponseDto>> {
-        return this.userService.loginWithSocial(
+        @Body({ schema: UserCreateSocialRequestSchema })
+        body: UserCreateSocialRequestDto
+    ): Promise<IResponseReturn<IUserLoginOutcome>> {
+        return this.userAuthHttpService.loginWithSocial(
             email,
             EnumUserLoginWith.socialGoogle,
             body
         );
     }
 
-    @AuthPublicLoginSocialAppleDoc()
-    @Response('user.loginWithSocialApple')
+    @Doc({ summary: 'Login with social apple' })
+    @Response('user.loginWithSocialApple', {
+        schema: UserLoginResponseSchema,
+    })
     @AuthSocialAppleProtected()
     @FeatureFlagProtected('loginWithApple')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @HttpCode(HttpStatus.OK)
     @Post('/login/social/apple')
     async loginWithApple(
         @AuthJwtPayload<IAuthSocialPayload>('email')
         email: string,
-        @Body() body: UserCreateSocialRequestDto
-    ): Promise<IResponseReturn<UserLoginResponseDto>> {
-        return this.userService.loginWithSocial(
+        @Body({ schema: UserCreateSocialRequestSchema })
+        body: UserCreateSocialRequestDto
+    ): Promise<IResponseReturn<IUserLoginOutcome>> {
+        return this.userAuthHttpService.loginWithSocial(
             email,
             EnumUserLoginWith.socialApple,
             body
         );
     }
 
-    @UserPublicSignUpDoc()
+    @Doc({ summary: 'User sign up' })
     @Response('user.signUp')
     @FeatureFlagProtected('signUp')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @Post('/sign-up')
     async signUp(
-        @Body()
+        @Body({ schema: UserSignUpRequestSchema })
         body: UserSignUpRequestDto
     ): Promise<void> {
-        return this.userService.signUp(body);
+        await this.userAuthHttpService.signUp(body);
     }
 
-    @UserPublicVerifyEmailDoc()
+    @Doc({ summary: 'User Email Verification' })
     @Response('user.verifyEmail')
     @ApiKeyProtected()
-    @Patch('/verify/email')
-    async verifyEmail(@Body() body: UserVerifyEmailRequestDto): Promise<void> {
-        return this.userService.verifyEmail(body);
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @Patch('/email/verify')
+    async verifyEmail(
+        @Body({ schema: UserVerifyEmailRequestSchema })
+        body: UserVerifyEmailRequestDto
+    ): Promise<void> {
+        await this.userVerificationHttpService.verifyEmail(body);
     }
 
-    @UserPublicSendEmailVerificationDoc()
+    @Doc({ summary: 'User resend email verification' })
     @Response('user.sendEmailVerification')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @HttpCode(HttpStatus.OK)
-    @Post('/send/email')
+    @Post('/email/send')
     async sendEmailVerification(
-        @Body() body: UserSendEmailVerificationRequestDto
+        @Body({ schema: UserSendEmailVerificationRequestSchema })
+        body: UserSendEmailVerificationRequestDto
     ): Promise<void> {
-        return this.userService.sendVerificationEmail(body);
+        await this.userVerificationHttpService.sendVerificationEmail(body);
     }
 
-    @UserPublicForgotPasswordDoc()
+    @Doc({ summary: 'User forgot password' })
     @Response('user.forgotPassword')
-    @FeatureFlagProtected('changePassword.forgotAllowed')
+    @FeatureFlagProtected('changePassword')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @HttpCode(HttpStatus.OK)
     @Post('/password/forgot')
     async forgotPassword(
-        @Body() body: UserForgotPasswordRequestDto
+        @Body({ schema: UserForgotPasswordRequestSchema })
+        body: UserForgotPasswordRequestDto
     ): Promise<void> {
-        return this.userService.forgotPassword(body);
+        await this.userPasswordHttpService.forgotPassword(body);
     }
 
-    @UserPublicResetPasswordDoc()
+    @Doc({ summary: 'User reset password' })
     @Response('user.resetPassword')
-    @FeatureFlagProtected('changePassword.forgotAllowed')
+    @FeatureFlagProtected('changePassword')
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @Patch('/password/reset')
     async reset(
-        @Body() body: UserForgotPasswordResetRequestDto
+        @Body({ schema: UserForgotPasswordResetRequestSchema })
+        body: UserForgotPasswordResetRequestDto
     ): Promise<void> {
-        return this.userService.resetPassword(body);
+        await this.userPasswordHttpService.resetPassword(body);
     }
 
-    @UserPublicLoginVerifyTwoFactorDoc()
-    @Response('user.verifyTwoFactor')
+    @Doc({ summary: 'User verify two factor during login' })
+    @Response('user.verifyTwoFactor', { schema: AuthTokenResponseSchema })
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @Patch('/login/2fa/verify')
     async loginVerifyTwoFactor(
-        @Body() body: UserLoginVerifyTwoFactorRequestDto
-    ): Promise<IResponseReturn<AuthTokenResponseDto>> {
-        return this.userService.loginVerifyTwoFactor(body);
+        @Body({ schema: UserLoginVerifyTwoFactorRequestSchema })
+        body: UserLoginVerifyTwoFactorRequestDto
+    ): Promise<IResponseReturn<IAuthToken>> {
+        return this.userTwoFactorHttpService.loginVerifyTwoFactor(body);
     }
 
-    @UserPublicLoginSetupTwoFactorDoc()
-    @Response('user.loginSetupTwoFactor')
+    @Doc({
+        summary:
+            'User enable two factor during login after reset by admin. Required setup 2FA flow',
+    })
+    @Response('user.loginSetupTwoFactor', {
+        schema: UserTwoFactorEnableResponseSchema,
+    })
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @HttpCode(HttpStatus.OK)
     @Post('/login/2fa/enable')
     async verifyLoginTwoFactor(
-        @Body() body: UserLoginSetupTwoFactorRequestDto
+        @Body({ schema: UserLoginSetupTwoFactorRequestSchema })
+        body: UserLoginSetupTwoFactorRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userService.loginSetupTwoFactor(body);
+        return this.userTwoFactorHttpService.loginSetupTwoFactor(body);
     }
 }

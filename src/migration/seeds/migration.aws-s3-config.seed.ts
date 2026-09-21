@@ -1,7 +1,7 @@
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { Logger } from '@nestjs/common';
 import { Command } from 'nest-commander';
 
@@ -9,7 +9,7 @@ import { Command } from 'nest-commander';
  * Applies access/CORS/lifecycle policies to the public and private S3 buckets; removal is a no-op.
  */
 @Command({
-    name: 'aws-s3-config',
+    name: 'awsS3Config',
     description: 'Setting AWS S3 Configurations',
     allowUnknownOptions: false,
 })
@@ -26,7 +26,7 @@ export class MigrationAwsS3ConfigSeed
     private async setPrivateBucketPolicies(): Promise<void> {
         this.logger.log('Setting policies for private bucket...');
 
-        // @note: need to set policies in order and sequentially
+        // Applied sequentially: the policy calls are order-dependent.
         await this.awsS3Service.settingBlockPublicAccessConfiguration({
             access: EnumAwsS3Accessibility.private,
         });
@@ -49,7 +49,7 @@ export class MigrationAwsS3ConfigSeed
     private async setPublicBucketPolicies(): Promise<void> {
         this.logger.log('Setting policies for public bucket...');
 
-        // @note: need to set policies in order and sequentially
+        // Applied sequentially: the policy calls are order-dependent.
         await this.awsS3Service.settingBlockPublicAccessConfiguration({
             access: EnumAwsS3Accessibility.public,
         });

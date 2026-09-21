@@ -12,7 +12,7 @@ jobs:
 
         steps:
             - name: Git checkout
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
 
             - name: Get short sha commit
               id: git
@@ -21,7 +21,7 @@ jobs:
 
             - name: Get latest version
               id: version
-              uses: martinbeentjes/npm-get-version-action@main
+              uses: martinbeentjes/npm-get-version-action@v1
 
             - name: Log info
               run: |
@@ -30,7 +30,7 @@ jobs:
                   echo Version is: ${{ steps.version.outputs.current-version }}
 
             - name: Release
-              uses: softprops/action-gh-release@master
+              uses: softprops/action-gh-release@v3
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               with:

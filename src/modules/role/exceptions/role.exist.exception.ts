@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 
+/**
+ * Raised when a role with the same name already exists.
+ * @public
+ */
 export class RoleExistException extends AppBaseException {
     readonly module = 'role';
     readonly statusCode = EnumRoleStatusCodeError.exist;

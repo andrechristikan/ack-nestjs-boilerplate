@@ -1,6 +1,7 @@
-import { Injectable, NestMiddleware } from '@nestjs/common';
-import { NextFunction, Response } from 'express';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { Injectable } from '@nestjs/common';
+import type { NestMiddleware } from '@nestjs/common';
+import type { NextFunction, Response } from 'express';
+import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import compression from 'compression';
 
 /**

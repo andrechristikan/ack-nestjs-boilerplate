@@ -17,4 +17,11 @@ async function bootstrap(): Promise<void> {
     process.exit(0);
 }
 
-bootstrap();
+bootstrap().catch((error: unknown) => {
+    const detail =
+        error instanceof Error ? (error.stack ?? error.message) : String(error);
+
+    process.stderr.write(`[Bootstrap] Failed to start the migration\n`);
+    process.stderr.write(`${detail}\n`);
+    process.exit(1);
+});
