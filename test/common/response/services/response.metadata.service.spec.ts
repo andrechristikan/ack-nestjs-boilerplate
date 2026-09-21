@@ -27,7 +27,6 @@ describe('ResponseMetadataService', () => {
     let service: ResponseMetadataService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation(key => {
             const values: Record<string, unknown> = {
                 'message.language': EnumMessageLanguage.en,

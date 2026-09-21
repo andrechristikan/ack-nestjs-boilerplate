@@ -74,7 +74,6 @@ describe('NotificationAccountDomain', () => {
     ] as const;
 
     beforeEach(() => {
-        vi.resetAllMocks();
         userDomain.getOneActive.mockResolvedValue(user);
         databaseUtil.createId.mockReturnValue('notification-id');
         helperStringService.censor.mockReturnValue('+39******00');

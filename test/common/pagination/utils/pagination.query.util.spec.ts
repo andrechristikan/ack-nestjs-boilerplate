@@ -37,7 +37,6 @@ describe('PaginationQueryUtil', () => {
     let util: PaginationQueryUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         helperArrayService.unique.mockImplementation(values => [...values]);
 
         const moduleRef: TestingModule = await Test.createTestingModule({

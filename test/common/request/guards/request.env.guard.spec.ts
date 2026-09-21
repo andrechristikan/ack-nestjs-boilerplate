@@ -20,7 +20,6 @@ describe('RequestEnvGuard', () => {
     let guard: RequestEnvGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         context.getType.mockReturnValue('http');
         context.getHandler.mockReturnValue(handler);
         context.getClass.mockReturnValue(controller);

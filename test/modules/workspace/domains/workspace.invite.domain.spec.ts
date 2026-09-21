@@ -123,7 +123,6 @@ describe('WorkspaceInviteDomain', () => {
     let domain: WorkspaceInviteDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         vi.mocked(configService.get).mockImplementation((key: string) => {
             if (key === 'home.url') return 'https://example.com';
             if (key === 'workspace.invite.expiredInDays') return 7;

@@ -50,7 +50,6 @@ describe('ResponsePaginationInterceptor', () => {
     let interceptor: ResponsePaginationInterceptor<unknown>;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const httpContext =
             mock<ReturnType<ExecutionContext['switchToHttp']>>();
         httpContext.getResponse.mockReturnValue(response);

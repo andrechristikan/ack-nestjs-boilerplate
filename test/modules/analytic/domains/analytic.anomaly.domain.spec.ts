@@ -99,8 +99,6 @@ describe('AnalyticAnomalyDomain', () => {
     let domain: AnalyticAnomalyDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         configGet.mockImplementation((key: string) => {
             const values: Record<string, number> = {
                 'analytic.anomaly.impossibleTravel.minDistanceKm': 500,

@@ -25,7 +25,6 @@ describe('PaginationService', () => {
     let service: PaginationService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         helperHashService.sha256Hash.mockReturnValue(
             'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789'
         );

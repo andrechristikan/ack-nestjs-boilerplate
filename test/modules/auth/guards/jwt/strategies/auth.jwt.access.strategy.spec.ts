@@ -35,7 +35,6 @@ describe('AuthJwtAccessStrategy', () => {
     let strategy: AuthJwtAccessStrategy;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation((key: string) => config[key]);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [

@@ -41,7 +41,6 @@ describe('NotificationTermPolicyDomain', () => {
     let service: NotificationTermPolicyDomain;
 
     beforeEach(() => {
-        vi.resetAllMocks();
         Reflect.set(configService, 'get', vi.fn().mockReturnValue(1));
         databaseUtil.createId
             .mockReturnValueOnce('notification-1')

@@ -37,7 +37,6 @@ describe('ProjectDomain', () => {
     let domain: ProjectDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation((key: string) => {
             if (key === 'project.slugRegex') return /^[a-z-]+$/;
             if (key === 'project.slugPrefix') return 'project';

@@ -99,7 +99,6 @@ describe('RoleDomain', () => {
     let service: RoleDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         databaseUtil.createId.mockReturnValue('new-role-id');
         helperDateService.create.mockReturnValue(now);
         const moduleRef: TestingModule = await Test.createTestingModule({

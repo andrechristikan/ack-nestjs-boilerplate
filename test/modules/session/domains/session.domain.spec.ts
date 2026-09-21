@@ -66,7 +66,6 @@ describe('SessionDomain', () => {
     let service: SessionDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [

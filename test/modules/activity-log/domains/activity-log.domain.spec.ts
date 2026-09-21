@@ -31,7 +31,6 @@ describe('ActivityLogDomain', () => {
     let domain: ActivityLogDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         requestStore.clear();
         requestStoreService.get.mockImplementation(
             (key: string) => (requestStore.get(key) as never) ?? null

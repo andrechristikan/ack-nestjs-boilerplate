@@ -36,7 +36,6 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
     let guard: ApiKeyXApiKeyTypeGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 ApiKeyXApiKeyTypeGuard,

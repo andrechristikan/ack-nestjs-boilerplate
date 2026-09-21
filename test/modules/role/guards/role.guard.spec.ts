@@ -40,7 +40,6 @@ describe('RoleGuard', () => {
     let guard: RoleGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 RoleGuard,

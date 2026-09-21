@@ -8,8 +8,6 @@ import { createHealthIndicatorHarness } from '@test/modules/health/indicators/he
 describe('HealthAwsS3BucketIndicator', () => {
     const s3 = mock<AwsS3Service>();
 
-    beforeEach(() => vi.resetAllMocks());
-
     it('reports a bucket healthy with the exact key and accessibility', async () => {
         const { health, up } = createHealthIndicatorHarness();
         const indicator = new HealthAwsS3BucketIndicator(s3, health);

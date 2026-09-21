@@ -21,7 +21,6 @@ describe('WorkspaceQueueFactory', () => {
     let factory: WorkspaceQueueFactory;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation((key: string) => config[key]);
 
         const module: TestingModule = await Test.createTestingModule({

@@ -77,7 +77,6 @@ describe('NotificationEmailWorkspaceDomain', () => {
     let service: NotificationEmailWorkspaceDomain;
 
     beforeEach(() => {
-        vi.resetAllMocks();
         Reflect.set(
             configService,
             'get',

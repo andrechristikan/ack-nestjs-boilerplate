@@ -8,6 +8,10 @@ import { NotificationProcessorService } from '@modules/notification/services/not
 import { QueueException } from '@queues/exceptions/queue.exception';
 import { createQueueJob } from '@test/support/queue-job.mock';
 
+vi.mock('@common/sentry/services/sentry.service', () => ({
+    SentryService: class {},
+}));
+
 describe('QueueProcessorBase', () => {
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const notificationProcessorService: MockProxy<NotificationProcessorService> =
@@ -19,7 +23,6 @@ describe('QueueProcessorBase', () => {
     let processor: NotificationProcessor;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         sentryService.withScope.mockImplementation(callback => {
             callback(scope as never);
         });

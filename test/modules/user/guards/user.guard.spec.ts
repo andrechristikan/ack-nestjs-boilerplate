@@ -35,7 +35,6 @@ describe('UserGuard', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         userService.validateUserGuard.mockResolvedValue(user);
 
         const moduleRef: TestingModule = await Test.createTestingModule({

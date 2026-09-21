@@ -34,7 +34,6 @@ describe('AuthSocialDomain', () => {
     let service: AuthSocialDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation((key: string) => config[key]);
         vi.resetModules();
         const { AuthSocialDomain: AuthSocialDomainClass } =

@@ -38,8 +38,6 @@ describe('WorkspaceMemberGuard', () => {
     let guard: WorkspaceMemberGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceMemberGuard,

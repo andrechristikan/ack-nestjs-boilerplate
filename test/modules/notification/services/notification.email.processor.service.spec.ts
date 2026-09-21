@@ -342,8 +342,6 @@ describe('NotificationEmailProcessorService', () => {
     ];
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 NotificationEmailProcessorService,

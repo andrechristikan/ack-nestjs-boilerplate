@@ -22,7 +22,6 @@ describe('RequestCustomLanguageMiddleware', () => {
     let middleware: RequestCustomLanguageMiddleware;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         vi.mocked(configService.get).mockImplementation(key =>
             key === 'message.availableLanguage' ? ['en'] : 'en'
         );

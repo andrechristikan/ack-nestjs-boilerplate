@@ -7,8 +7,6 @@ import { createHealthIndicatorHarness } from '@test/modules/health/indicators/he
 describe('HealthAwsSESIndicator', () => {
     const ses = mock<AwsSESService>();
 
-    beforeEach(() => vi.resetAllMocks());
-
     it.each([
         [true, 'up'],
         [false, 'down'],

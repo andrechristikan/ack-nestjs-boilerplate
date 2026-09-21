@@ -35,7 +35,6 @@ describe('NotificationDomain', () => {
     let domain: NotificationDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         databaseService.withTransaction.mockImplementation(async callback =>
             callback(transactionClient)
         );

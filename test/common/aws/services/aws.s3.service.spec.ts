@@ -16,6 +16,7 @@ import {
     PutObjectCommand,
     UploadPartCommand,
     NotFound,
+    S3Client,
 } from '@aws-sdk/client-s3';
 
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
@@ -26,11 +27,6 @@ import type {
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { FileService } from '@common/file/services/file.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-
-const presignerMocks = vi.hoisted(() => ({ getSignedUrl: vi.fn() }));
-vi.mock('@aws-sdk/s3-request-presigner', () => ({
-    getSignedUrl: presignerMocks.getSignedUrl,
-}));
 
 describe('AwsS3Service', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
@@ -104,16 +100,11 @@ describe('AwsS3Service', () => {
 
     const initialized = (): AwsS3Service => {
         const service = createService();
-        Reflect.set(service, 's3Client', { send });
+        service.onModuleInit();
+        const client = Reflect.get(service, 's3Client') as S3Client;
+        vi.spyOn(client, 'send').mockImplementation(send);
         return service;
     };
-
-    beforeEach(() => {
-        vi.resetAllMocks();
-        presignerMocks.getSignedUrl.mockResolvedValue(
-            'https://signed.example.com'
-        );
-    });
 
     it('stays disabled without credentials and initializes with complete credentials', () => {
         const disabled = createService(false);
@@ -339,16 +330,29 @@ describe('AwsS3Service', () => {
             service.presignGetItem('dir/file.txt', publicOptions)
         ).resolves.toEqual(
             expect.objectContaining({
-                presignUrl: 'https://signed.example.com',
                 expiredInSeconds: 900,
             })
         );
-        await expect(
-            service.presignPutItem(
-                { key: 'dir/file.txt', size: 4 },
-                { ...publicOptions, forceUpdate: true, expiredInSeconds: 60 }
-            )
-        ).resolves.toEqual(expect.objectContaining({ expiredInSeconds: 60 }));
+        const read = await service.presignGetItem(
+            'dir/file.txt',
+            publicOptions
+        );
+        const readUrl = new URL(read!.presignUrl);
+        expect(readUrl.host).toContain('public-bucket');
+        expect(readUrl.pathname).toBe('/dir/file.txt');
+        expect(readUrl.searchParams.get('X-Amz-Expires')).toBe('900');
+        expect(readUrl.searchParams.get('X-Amz-Signature')).toBeTruthy();
+        const write = await service.presignPutItem(
+            { key: 'dir/file.txt', size: 4 },
+            { ...publicOptions, forceUpdate: true, expiredInSeconds: 60 }
+        );
+        expect(write).toEqual(
+            expect.objectContaining({ expiredInSeconds: 60 })
+        );
+        const writeUrl = new URL(write!.presignUrl);
+        expect(writeUrl.host).toContain('public-bucket');
+        expect(writeUrl.pathname).toBe('/dir/file.txt');
+        expect(writeUrl.searchParams.get('X-Amz-Expires')).toBe('60');
         await expect(
             service.presignPutItemPart(
                 {
@@ -360,7 +364,21 @@ describe('AwsS3Service', () => {
                 publicOptions
             )
         ).resolves.toEqual(expect.objectContaining({ partNumber: 1 }));
-        expect(presignerMocks.getSignedUrl).toHaveBeenCalledTimes(3);
+        const part = await service.presignPutItemPart(
+            {
+                key: 'dir/file.txt',
+                size: 4,
+                uploadId: 'upload-id',
+                partNumber: 2,
+            },
+            { ...publicOptions, expiredInSeconds: 120 }
+        );
+        const partUrl = new URL(part!.presignUrl);
+        expect(partUrl.host).toContain('public-bucket');
+        expect(partUrl.pathname).toBe('/dir/file.txt');
+        expect(partUrl.searchParams.get('partNumber')).toBe('2');
+        expect(partUrl.searchParams.get('uploadId')).toBe('upload-id');
+        expect(partUrl.searchParams.get('X-Amz-Expires')).toBe('120');
     });
 
     it('creates a presigned URL when an object is absent and rejects unexpected lookup failures', async () => {
@@ -371,6 +389,14 @@ describe('AwsS3Service', () => {
         await expect(
             service.presignGetItem('file.txt', publicOptions)
         ).resolves.toEqual(expect.objectContaining({ key: 'file.txt' }));
+        send.mockRejectedValueOnce(
+            new NotFound({ $metadata: {}, message: 'missing' })
+        );
+        const absent = await service.presignGetItem('file.txt', publicOptions);
+        const absentUrl = new URL(absent!.presignUrl);
+        expect(absentUrl.host).toContain('public-bucket');
+        expect(absentUrl.pathname).toBe('/file.txt');
+        expect(absentUrl.searchParams.get('X-Amz-Expires')).toBe('900');
         send.mockRejectedValueOnce(new Error('provider failure'));
         await expect(
             service.presignGetItem('file.txt', publicOptions)

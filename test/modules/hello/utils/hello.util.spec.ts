@@ -15,7 +15,6 @@ describe('HelloUtil', () => {
     let service: HelloUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation((key: string) => {
             const values = {
                 'app.name': 'ACK',

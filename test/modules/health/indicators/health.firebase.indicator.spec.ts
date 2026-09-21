@@ -4,10 +4,12 @@ import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { HealthFirebaseIndicator } from '@modules/health/indicators/health.firebase.indicator';
 import { createHealthIndicatorHarness } from '@test/modules/health/indicators/health.indicator.spec-helper';
 
+vi.mock('@common/firebase/services/firebase.service', () => ({
+    FirebaseService: class {},
+}));
+
 describe('HealthFirebaseIndicator', () => {
     const firebase = mock<FirebaseService>();
-
-    beforeEach(() => vi.resetAllMocks());
 
     it.each([
         [true, 'up'],

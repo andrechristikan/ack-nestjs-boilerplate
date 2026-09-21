@@ -30,7 +30,6 @@ describe('AnalyticWorkspaceUserDomain', () => {
     let domain: AnalyticWorkspaceUserDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         cache.getDashboard.mockResolvedValue(null);
         dateUtil.cacheToken.mockImplementation(date =>
             date ? date.toISOString() : '_'

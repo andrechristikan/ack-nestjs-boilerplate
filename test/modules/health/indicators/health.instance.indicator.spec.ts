@@ -10,7 +10,6 @@ describe('HealthInstanceIndicator', () => {
     const config = mock<ConfigService>();
 
     beforeEach(() => {
-        vi.resetAllMocks();
         vi.mocked(config.get).mockImplementation((key: string) => {
             if (key === 'health.memoryRssThresholdInBytes') return 100;
             if (key === 'health.memoryHeapThresholdInBytes') return 200;

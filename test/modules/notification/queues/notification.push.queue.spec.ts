@@ -21,7 +21,6 @@ describe('NotificationPushQueue', () => {
     let service: NotificationPushQueue;
 
     beforeEach(() => {
-        vi.resetAllMocks();
         Reflect.set(
             configService,
             'get',

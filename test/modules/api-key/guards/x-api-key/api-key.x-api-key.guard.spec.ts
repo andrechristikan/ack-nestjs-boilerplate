@@ -35,7 +35,6 @@ describe('ApiKeyXApiKeyGuard', () => {
     let guard: ApiKeyXApiKeyGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockReturnValue('x-api-key');
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [

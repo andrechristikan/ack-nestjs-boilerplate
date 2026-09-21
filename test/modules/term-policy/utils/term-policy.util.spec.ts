@@ -25,7 +25,6 @@ describe('TermPolicyUtil', () => {
     let util: TermPolicyUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const config: Record<string, string> = {
             'termPolicy.uploadContentPath': '/terms/{type}/{version}',
             'termPolicy.contentPublicPath': 'public/{type}/{version}',

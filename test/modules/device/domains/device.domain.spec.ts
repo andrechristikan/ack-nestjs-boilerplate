@@ -88,7 +88,6 @@ describe('DeviceDomain', () => {
     let service: DeviceDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         databaseService.withTransaction.mockImplementation(async callback =>
             callback(transactionClient)
         );

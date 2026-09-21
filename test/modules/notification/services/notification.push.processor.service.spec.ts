@@ -28,6 +28,10 @@ import { NotificationPushProcessorService } from '@modules/notification/services
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 import { createQueueJob } from '@test/support/queue-job.mock';
 
+vi.mock('@common/firebase/services/firebase.service', () => ({
+    FirebaseService: class {},
+}));
+
 describe('NotificationPushProcessorService', () => {
     const notificationPushSecurityDomain: MockProxy<NotificationPushSecurityDomain> =
         mock<NotificationPushSecurityDomain>();
@@ -223,8 +227,6 @@ describe('NotificationPushProcessorService', () => {
     ];
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 NotificationPushProcessorService,

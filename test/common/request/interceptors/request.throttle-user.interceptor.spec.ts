@@ -36,7 +36,6 @@ describe('RequestThrottleUserInterceptor', () => {
     let interceptor: RequestThrottleUserInterceptor;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         vi.mocked(configService.get).mockReturnValue(policy);
         request = mock<IRequestApp<{ userId: string }>>({
             user: { userId: 'user-id' },

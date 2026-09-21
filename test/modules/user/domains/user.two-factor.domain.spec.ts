@@ -47,6 +47,10 @@ import { UserUtil } from '@modules/user/utils/user.util';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 
+vi.mock('@common/sentry/services/sentry.service', () => ({
+    SentryService: class {},
+}));
+
 describe('UserTwoFactorDomain', () => {
     const userTwoFactorRepository: MockProxy<UserTwoFactorRepository> =
         mock<UserTwoFactorRepository>();
@@ -174,7 +178,6 @@ describe('UserTwoFactorDomain', () => {
     let service: UserTwoFactorDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         databaseService.withTransaction.mockImplementation(async callback =>
             callback(transactionClient)
         );

@@ -14,6 +14,10 @@ import type {
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 
+vi.mock('@common/firebase/services/firebase.service', () => ({
+    FirebaseService: class {},
+}));
+
 describe('NotificationPushSecurityDomain', () => {
     const firebaseService: MockProxy<FirebaseService> = mock<FirebaseService>();
     const notificationRepository: MockProxy<NotificationRepository> =
@@ -65,7 +69,6 @@ describe('NotificationPushSecurityDomain', () => {
     ] as const;
 
     beforeEach(() => {
-        vi.resetAllMocks();
         firebaseService.isInitialized.mockReturnValue(true);
         notificationRepository.updateProcessAt.mockResolvedValue(
             mock({ title: 'notification.title', body: 'notification.body' })

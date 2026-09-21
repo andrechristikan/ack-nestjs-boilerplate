@@ -13,7 +13,6 @@ describe('CountryDomain', () => {
     let service: CountryDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 CountryDomain,

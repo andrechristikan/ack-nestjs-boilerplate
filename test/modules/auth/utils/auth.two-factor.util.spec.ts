@@ -3,13 +3,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 
-import type { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
-
-const otplibMocks = vi.hoisted(() => ({
-    generateURI: vi.fn(() => 'otpauth://totp/ACK:user@example.com'),
-}));
-
-vi.mock(import('otplib'), () => otplibMocks);
+import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
 
 describe('AuthTwoFactorUtil', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
@@ -25,32 +19,30 @@ describe('AuthTwoFactorUtil', () => {
     let util: AuthTwoFactorUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        vi.resetModules();
         configGet.mockImplementation((key: string) => config[key]);
-        const { AuthTwoFactorUtil: AuthTwoFactorUtilClass } =
-            await import('@modules/auth/utils/auth.two-factor.util');
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
-                AuthTwoFactorUtilClass,
+                AuthTwoFactorUtil,
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
-        util = moduleRef.get(AuthTwoFactorUtilClass);
+        util = moduleRef.get(AuthTwoFactorUtil);
     });
 
     it('builds an authenticator URI with configured TOTP options', () => {
-        expect(util.createKeyUri('user@example.com', 'SECRET')).toBe(
-            'otpauth://totp/ACK:user@example.com'
+        const uri = new URL(
+            util.createKeyUri('user@example.com', 'JBSWY3DPEHPK3PXP')
         );
-        expect(otplibMocks.generateURI).toHaveBeenCalledWith({
-            issuer: 'ACK',
-            label: 'ACK:user@example.com',
-            secret: 'SECRET',
-            digits: 6,
-            period: 30,
-            strategy: 'totp',
-            algorithm: 'sha1',
-        });
+
+        expect(uri.protocol).toBe('otpauth:');
+        expect(uri.host).toBe('totp');
+        expect(decodeURIComponent(uri.pathname)).toBe(
+            '/ACK:ACK:user@example.com'
+        );
+        expect(uri.searchParams.get('secret')).toBe('JBSWY3DPEHPK3PXP');
+        expect(uri.searchParams.get('issuer')).toBe('ACK');
+        // defaults (6 digits, 30s, sha1) are omitted from the URI by otplib
+        expect(uri.searchParams.get('digits')).toBeNull();
+        expect(uri.searchParams.get('period')).toBeNull();
     });
 });

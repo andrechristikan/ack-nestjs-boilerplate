@@ -18,7 +18,6 @@ describe('FileCsvValidationPipe', () => {
     const metadata: ArgumentMetadata = { type: 'body' };
 
     beforeEach(() => {
-        vi.resetAllMocks();
         configGet.mockReturnValue(2);
     });
 

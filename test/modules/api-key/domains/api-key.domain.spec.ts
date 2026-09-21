@@ -59,7 +59,6 @@ describe('ApiKeyDomain', () => {
     let service: ApiKeyDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
         apiKeyUtil.mapActivityLogMetadata.mockReturnValue({
             apiKeyId: apiKey.id,

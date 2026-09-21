@@ -17,7 +17,6 @@ describe('ApiKeyCache', () => {
     let cache: ApiKeyCache;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockReturnValue('apikey:{key}');
 
         const moduleRef: TestingModule = await Test.createTestingModule({

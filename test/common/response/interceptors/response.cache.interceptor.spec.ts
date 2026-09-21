@@ -24,7 +24,6 @@ describe('ResponseCacheInterceptor', () => {
     let interceptor: ResponseCacheInterceptor;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         context = mock<ExecutionContext>();
         context.getHandler.mockReturnValue(handler);
         context.getClass.mockReturnValue(controller);

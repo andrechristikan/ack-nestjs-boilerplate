@@ -14,8 +14,6 @@ describe('FileExtensionPipe', () => {
     const fileService: MockProxy<FileService> = mock<FileService>();
     const metadata: ArgumentMetadata = { type: 'body' };
 
-    beforeEach(() => vi.resetAllMocks());
-
     async function createPipe() {
         const Pipe = FileExtensionPipe([EnumFileExtensionImage.png]);
         const moduleRef: TestingModule = await Test.createTestingModule({

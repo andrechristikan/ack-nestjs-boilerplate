@@ -11,8 +11,6 @@ describe('NotificationTemplateTermPolicyDomain', () => {
     const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
     const service = new NotificationTemplateTermPolicyDomain(awsSESService);
 
-    beforeEach(() => vi.resetAllMocks());
-
     it('imports, gets, and deletes the publish-term-policy template', async () => {
         const template =
             mock<Awaited<ReturnType<AwsSESService['getTemplate']>>>();

@@ -7,8 +7,6 @@ import { createHealthIndicatorHarness } from '@test/modules/health/indicators/he
 describe('HealthQueueIndicator', () => {
     const queue = mock<Queue>();
 
-    beforeEach(() => vi.resetAllMocks());
-
     it.each([undefined, 'connecting'])(
         'reports a non-ready client down',
         async status => {

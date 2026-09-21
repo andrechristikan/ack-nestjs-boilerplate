@@ -12,7 +12,6 @@ describe('FileCsvParsePipe', () => {
     let pipe: FileCsvParsePipe<{ id: string }>;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 FileCsvParsePipe,

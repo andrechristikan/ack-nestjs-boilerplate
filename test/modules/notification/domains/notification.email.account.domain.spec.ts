@@ -72,7 +72,6 @@ describe('NotificationEmailAccountDomain', () => {
     let service: NotificationEmailAccountDomain;
 
     beforeEach(() => {
-        vi.resetAllMocks();
         Reflect.set(
             configService,
             'get',

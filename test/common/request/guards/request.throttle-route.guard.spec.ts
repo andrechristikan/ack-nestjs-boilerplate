@@ -32,7 +32,6 @@ describe('RequestThrottleRouteGuard', () => {
     let guard: RequestThrottleRouteGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         context.getType.mockReturnValue('http');
         context.getHandler.mockReturnValue(login);
         context.getClass.mockReturnValue(UserController);

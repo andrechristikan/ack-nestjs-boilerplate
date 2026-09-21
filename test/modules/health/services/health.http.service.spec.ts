@@ -8,6 +8,14 @@ import { HealthDomain } from '@modules/health/domains/health.domain';
 import { HealthHttpService } from '@modules/health/services/health.http.service';
 import { HealthUtil } from '@modules/health/utils/health.util';
 
+vi.mock('@common/firebase/services/firebase.service', () => ({
+    FirebaseService: class {},
+}));
+
+vi.mock('@modules/health/indicators/health.sentry.indicator', () => ({
+    HealthSentryIndicator: class {},
+}));
+
 describe('HealthHttpService', () => {
     const domain: MockProxy<HealthDomain> = mock<HealthDomain>();
     const util: MockProxy<HealthUtil> = mock<HealthUtil>();
@@ -20,7 +28,6 @@ describe('HealthHttpService', () => {
     };
 
     beforeEach(() => {
-        vi.resetAllMocks();
         util.mapStatus.mockReturnValue('ok' as never);
     });
 

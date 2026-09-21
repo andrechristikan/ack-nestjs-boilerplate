@@ -61,10 +61,6 @@ describe('NotificationTemplateAccountDomain', () => {
         },
     ];
 
-    beforeEach(() => {
-        vi.resetAllMocks();
-    });
-
     it.each(cases)('imports the $name template', async entry => {
         await expect(entry.import()).resolves.toBe(true);
         expect(awsSESService.createTemplate).toHaveBeenCalledWith({

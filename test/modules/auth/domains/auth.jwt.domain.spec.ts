@@ -133,7 +133,6 @@ describe('AuthJwtDomain', () => {
     let jwtService: JwtService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation((key: string) => config[key]);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [

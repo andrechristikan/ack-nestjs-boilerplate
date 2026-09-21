@@ -59,6 +59,10 @@ import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.do
 import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
 
+vi.mock('@common/sentry/services/sentry.service', () => ({
+    SentryService: class {},
+}));
+
 describe('UserDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
@@ -157,7 +161,6 @@ describe('UserDomain', () => {
     let service: UserDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
         databaseService.withTransaction.mockImplementation(async callback =>
             callback(transactionClient)

@@ -19,7 +19,6 @@ describe('RequestWorkspaceMiddleware', () => {
     let middleware: RequestWorkspaceMiddleware;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         vi.mocked(configService.get).mockImplementation(key =>
             key === 'workspace.headerName' ? 'x-workspace-id' : 'workspaceId'
         );

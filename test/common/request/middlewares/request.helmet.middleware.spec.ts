@@ -21,7 +21,6 @@ describe('RequestHelmetMiddleware', () => {
     let middleware: RequestHelmetMiddleware;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         helmetMock.mockReturnValue(helmetMiddleware);
         vi.mocked(configService.get).mockImplementation(key => {
             if (key === 'request.helmet.maxAgeInSeconds') return 31536000;

@@ -37,7 +37,6 @@ describe('NotificationEmailQueue', () => {
     let service: NotificationEmailQueue;
 
     beforeEach(() => {
-        vi.resetAllMocks();
         Reflect.set(
             configService,
             'get',

@@ -108,7 +108,6 @@ describe('UserVerificationDomain', () => {
     let service: UserVerificationDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         databaseService.withTransaction.mockImplementation(async callback =>
             callback(transactionClient)
         );

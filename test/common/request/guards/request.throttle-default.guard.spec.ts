@@ -35,7 +35,6 @@ describe('RequestThrottleDefaultGuard', () => {
     let guard: RequestThrottleDefaultGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         context.getHandler.mockReturnValue(list);
         context.getClass.mockReturnValue(TestController);
         context.switchToHttp.mockReturnValue(httpContext);

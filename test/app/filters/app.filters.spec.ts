@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/nestjs';
 import { HttpException, HttpStatus, type ArgumentsHost } from '@nestjs/common';
 import type { HttpArgumentsHost } from '@nestjs/common/interfaces/features/arguments-host.interface.js';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -22,9 +21,8 @@ import { ResponseMetadataService } from '@common/response/services/response.meta
 import { SentryService } from '@common/sentry/services/sentry.service';
 import type { Response } from 'express';
 
-vi.mock(import('@sentry/nestjs'), async importOriginal => ({
-    ...(await importOriginal()),
-    captureException: vi.fn(),
+vi.mock('@common/sentry/services/sentry.service', () => ({
+    SentryService: class {},
 }));
 
 describe('Application error filters', () => {
@@ -40,13 +38,12 @@ describe('Application error filters', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const responseMetadataService: MockProxy<ResponseMetadataService> =
         mock<ResponseMetadataService>();
-    const sentryService = new SentryService();
+    const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const response: MockProxy<Response> = mock<Response>();
     const httpHost: MockProxy<HttpArgumentsHost> = mock<HttpArgumentsHost>();
     const host: MockProxy<ArgumentsHost> = mock<ArgumentsHost>();
 
     beforeEach(() => {
-        vi.resetAllMocks();
         messageService.setMessage.mockReturnValue('localized message');
         responseMetadataService.create.mockReturnValue(metadata);
         response.status.mockReturnValue(response);
@@ -79,7 +76,7 @@ describe('Application error filters', () => {
 
         await filter.catch(exception, host);
 
-        expect(Sentry.captureException).not.toHaveBeenCalled();
+        expect(sentryService.captureException).not.toHaveBeenCalled();
         expect(messageService.setMessage).toHaveBeenCalledWith(
             exception.messagePath,
             { customLanguage: 'en' }
@@ -107,7 +104,7 @@ describe('Application error filters', () => {
 
         await filter.catch(new AppUnknownException(cause), host);
 
-        expect(Sentry.captureException).toHaveBeenCalledWith(cause);
+        expect(sentryService.captureException).toHaveBeenCalledWith(cause);
         expect(response.status).toHaveBeenCalledWith(
             HttpStatus.INTERNAL_SERVER_ERROR
         );
@@ -119,7 +116,7 @@ describe('Application error filters', () => {
 
         await filter.catch(exception, host);
 
-        expect(Sentry.captureException).toHaveBeenCalledWith(exception);
+        expect(sentryService.captureException).toHaveBeenCalledWith(exception);
         expect(messageService.setMessage).toHaveBeenCalledWith(
             'http.serverError.internalServerError',
             { customLanguage: 'en' }
@@ -144,7 +141,7 @@ describe('Application error filters', () => {
             host
         );
 
-        expect(Sentry.captureException).not.toHaveBeenCalled();
+        expect(sentryService.captureException).not.toHaveBeenCalled();
         expect(response.status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
         expect(response.json).toHaveBeenCalledWith({
             statusCode: HttpStatus.NOT_FOUND,
@@ -169,7 +166,7 @@ describe('Application error filters', () => {
 
         await filter.catch(exception, host);
 
-        expect(Sentry.captureException).toHaveBeenCalledWith(exception);
+        expect(sentryService.captureException).toHaveBeenCalledWith(exception);
         expect(response.json).toHaveBeenCalledWith(
             expect.objectContaining({
                 statusCodeKey: 'customFailure',
@@ -200,7 +197,7 @@ describe('Application error filters', () => {
         expect(response.json).toHaveBeenCalledWith(
             expect.objectContaining({ errors: localizedErrors })
         );
-        expect(Sentry.captureException).not.toHaveBeenCalled();
+        expect(sentryService.captureException).not.toHaveBeenCalled();
     });
 
     it('renders localized per-row import errors without Sentry', async () => {
@@ -233,7 +230,7 @@ describe('Application error filters', () => {
         expect(response.json).toHaveBeenCalledWith(
             expect.objectContaining({ errors: localizedErrors })
         );
-        expect(Sentry.captureException).not.toHaveBeenCalled();
+        expect(sentryService.captureException).not.toHaveBeenCalled();
     });
 
     it('forwards message properties and data and lets request metadata win over exception metadata', async () => {
@@ -265,7 +262,7 @@ describe('Application error filters', () => {
                 metadata: { ...metadata, extra: 'kept' },
             })
         );
-        expect(Sentry.captureException).not.toHaveBeenCalled();
+        expect(sentryService.captureException).not.toHaveBeenCalled();
     });
 
     it('reports the exception itself for a 5xx without a raw cause', async () => {
@@ -276,13 +273,10 @@ describe('Application error filters', () => {
 
         await filter.catch(exception, host);
 
-        expect(Sentry.captureException).toHaveBeenCalledWith(exception);
+        expect(sentryService.captureException).toHaveBeenCalledWith(exception);
     });
 
-    it('still responds when Sentry throws while reporting', async () => {
-        vi.mocked(Sentry.captureException).mockImplementation(() => {
-            throw new Error('sentry down');
-        });
+    it('responds after handing each 5xx to the Sentry service', async () => {
         const baseFilter = await resolveFilter(AppBaseExceptionFilter);
         const httpFilter = await resolveFilter(AppHttpFilter);
         const generalFilter = await resolveFilter(AppGeneralFilter);
@@ -294,6 +288,7 @@ describe('Application error filters', () => {
         );
         await generalFilter.catch(new Error('y'), host);
 
+        expect(sentryService.captureException).toHaveBeenCalledTimes(3);
         expect(response.status).toHaveBeenCalledTimes(3);
         expect(response.json).toHaveBeenCalledTimes(3);
     });
@@ -317,7 +312,7 @@ describe('Application error filters', () => {
 
         await filter.catch(exception, host);
 
-        expect(Sentry.captureException).toHaveBeenCalledWith(exception);
+        expect(sentryService.captureException).toHaveBeenCalledWith(exception);
         expect(response.json).toHaveBeenCalledWith(
             expect.objectContaining({
                 statusCodeKey: 'badGateway',

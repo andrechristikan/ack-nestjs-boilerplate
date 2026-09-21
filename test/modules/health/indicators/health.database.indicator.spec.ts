@@ -19,7 +19,6 @@ describe('HealthDatabaseIndicator', () => {
     let indicator: HealthDatabaseIndicator;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         indicatorSession.up.mockReturnValue({
             database: { status: 'up' },
         } as unknown as ReturnType<typeof indicatorSession.up>);

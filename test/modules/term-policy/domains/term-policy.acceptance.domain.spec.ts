@@ -57,7 +57,6 @@ describe('TermPolicyAcceptanceDomain', () => {
     let service: TermPolicyAcceptanceDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
         databaseService.withTransaction.mockImplementation(async callback =>
             callback({} as IDatabaseTransactionClient)

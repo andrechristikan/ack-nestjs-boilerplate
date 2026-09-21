@@ -16,7 +16,6 @@ describe('DatabaseExtensionUtil', () => {
     let util: DatabaseExtensionUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         requestStoreService.get.mockReturnValue('actor-id');
         helperDateService.create.mockReturnValue(
             new Date('2026-01-01T00:00:00.000Z')

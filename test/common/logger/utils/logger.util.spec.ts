@@ -20,8 +20,6 @@ describe('LoggerUtil', () => {
     let util: LoggerUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [LoggerUtil],
         }).compile();

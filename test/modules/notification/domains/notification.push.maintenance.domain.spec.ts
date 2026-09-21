@@ -12,7 +12,6 @@ describe('NotificationPushMaintenanceDomain', () => {
     let service: NotificationPushMaintenanceDomain;
 
     beforeEach(() => {
-        vi.resetAllMocks();
         Reflect.set(
             configService,
             'get',

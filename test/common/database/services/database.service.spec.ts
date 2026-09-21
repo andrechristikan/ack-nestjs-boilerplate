@@ -20,7 +20,6 @@ describe('DatabaseService', () => {
     let service: DatabaseService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation((key: string) => {
             if (key === 'database.debug') return true;
             if (key === 'logger.prettier') return true;

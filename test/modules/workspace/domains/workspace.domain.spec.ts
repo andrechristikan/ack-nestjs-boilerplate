@@ -63,6 +63,10 @@ const workspace: Workspace = {
     deletedBy: null,
 };
 
+vi.mock('@common/sentry/services/sentry.service', () => ({
+    SentryService: class {},
+}));
+
 describe('WorkspaceDomain', () => {
     const workspaceRepository: MockProxy<WorkspaceRepository> =
         mock<WorkspaceRepository>();
@@ -146,7 +150,6 @@ describe('WorkspaceDomain', () => {
     let domain: WorkspaceDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         vi.mocked(configService.get).mockImplementation((key: string) => {
             if (key === 'workspace.maxWorkspacesPerUser') return 2;
             if (key === 'workspace.slugRegex') return /^[a-z0-9-]+$/;

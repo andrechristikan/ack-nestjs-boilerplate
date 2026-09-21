@@ -7,8 +7,6 @@ import { createHealthIndicatorHarness } from '@test/modules/health/indicators/he
 describe('HealthRedisIndicator', () => {
     const cache = mock<Cache>();
 
-    beforeEach(() => vi.resetAllMocks());
-
     it('reports healthy with the exact key', async () => {
         const { health, session, up } = createHealthIndicatorHarness();
         const indicator = new HealthRedisIndicator(cache, health);

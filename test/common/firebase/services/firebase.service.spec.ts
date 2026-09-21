@@ -54,9 +54,8 @@ describe('FirebaseService', () => {
     };
 
     beforeEach(() => {
-        vi.resetAllMocks();
-        firebaseMocks.cert.mockReturnValue({});
-        firebaseMocks.initializeApp.mockReturnValue({ name: 'app' });
+        firebaseMocks.cert.mockReturnValue({} as never);
+        firebaseMocks.initializeApp.mockReturnValue({ name: 'app' } as never);
         firebaseMocks.getMessaging.mockReturnValue(messaging);
     });
 

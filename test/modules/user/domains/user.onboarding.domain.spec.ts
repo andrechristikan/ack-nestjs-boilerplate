@@ -48,7 +48,6 @@ describe('UserOnboardingDomain', () => {
     let service: UserOnboardingDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         vi.mocked(configService.get).mockImplementation(
             (key: string) => configValues[key]
         );

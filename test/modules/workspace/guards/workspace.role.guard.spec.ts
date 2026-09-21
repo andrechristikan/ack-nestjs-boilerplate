@@ -29,7 +29,6 @@ describe('WorkspaceRoleGuard', () => {
     let guard: WorkspaceRoleGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         context.getHandler.mockReturnValue(handler);
 
         const module: TestingModule = await Test.createTestingModule({

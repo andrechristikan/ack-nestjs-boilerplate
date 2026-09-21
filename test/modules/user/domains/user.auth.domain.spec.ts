@@ -46,6 +46,10 @@ import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
 
+vi.mock('@common/sentry/services/sentry.service', () => ({
+    SentryService: class {},
+}));
+
 describe('UserAuthDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const userPasswordDomain: MockProxy<UserPasswordDomain> =
@@ -146,7 +150,6 @@ describe('UserAuthDomain', () => {
     let service: UserAuthDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         vi.mocked(configService.get).mockImplementation((key: string) => {
             const values = {
                 'user.default.role': 'User',

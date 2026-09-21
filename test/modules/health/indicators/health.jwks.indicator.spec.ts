@@ -7,8 +7,6 @@ describe('HealthJwksIndicator', () => {
     const get = vi.fn();
     const config = { get } as unknown as ConfigService;
 
-    beforeEach(() => vi.resetAllMocks());
-
     it('reports both configured token URIs up with exact keys', async () => {
         const { health, up } = createHealthIndicatorHarness();
         const indicator = new HealthJwksIndicator(config, health);

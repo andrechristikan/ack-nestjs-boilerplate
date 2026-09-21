@@ -14,7 +14,6 @@ describe('PasswordHistoryDomain', () => {
     let service: PasswordHistoryDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         passwordHistoryRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
             {
                 type: EnumPaginationType.offset,

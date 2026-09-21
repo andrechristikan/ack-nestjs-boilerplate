@@ -48,8 +48,6 @@ describe('AuthDomain', () => {
     let service: AuthDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthDomain,

@@ -43,7 +43,6 @@ describe('LoggerOptionService', () => {
     let service: LoggerOptionService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         config['app.env'] = EnumAppEnvironment.development;
         config['logger.auto'] = true;
         config['logger.enable'] = true;

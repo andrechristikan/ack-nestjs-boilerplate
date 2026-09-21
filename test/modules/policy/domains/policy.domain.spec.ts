@@ -103,7 +103,6 @@ describe('PolicyDomain', () => {
     let service: PolicyDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         policyAbilityFactory.createForUser.mockReturnValue(
             mock<ReturnType<PolicyAbilityFactory['createForUser']>>()
         );

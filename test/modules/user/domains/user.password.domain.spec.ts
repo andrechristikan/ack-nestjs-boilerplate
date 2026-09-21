@@ -50,6 +50,10 @@ import { UserDomain } from '@modules/user/domains/user.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 
+vi.mock('@common/sentry/services/sentry.service', () => ({
+    SentryService: class {},
+}));
+
 describe('UserPasswordDomain', () => {
     const userPasswordRepository: MockProxy<UserPasswordRepository> =
         mock<UserPasswordRepository>();
@@ -181,7 +185,6 @@ describe('UserPasswordDomain', () => {
     let service: UserPasswordDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         databaseService.withTransaction.mockImplementation(async callback =>
             callback(transactionClient)
         );

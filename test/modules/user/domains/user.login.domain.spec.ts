@@ -44,6 +44,10 @@ import { UserUtil } from '@modules/user/utils/user.util';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 
+vi.mock('@common/sentry/services/sentry.service', () => ({
+    SentryService: class {},
+}));
+
 describe('UserLoginDomain', () => {
     const userTwoFactorRepository: MockProxy<UserTwoFactorRepository> =
         mock<UserTwoFactorRepository>();
@@ -193,7 +197,6 @@ describe('UserLoginDomain', () => {
     let service: UserLoginDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         databaseService.withTransaction.mockImplementation(async callback =>
             callback(transactionClient)
         );

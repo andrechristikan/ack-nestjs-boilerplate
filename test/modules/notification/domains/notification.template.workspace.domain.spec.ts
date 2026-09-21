@@ -37,8 +37,6 @@ describe('NotificationTemplateWorkspaceDomain', () => {
         ],
     ] as const;
 
-    beforeEach(() => vi.resetAllMocks());
-
     it.each(cases)(
         'imports, gets, and deletes %s',
         async (suffix, name, subject, filename) => {

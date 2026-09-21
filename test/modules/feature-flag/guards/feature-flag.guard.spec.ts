@@ -36,7 +36,6 @@ describe('FeatureFlagGuard', () => {
     let guard: FeatureFlagGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation(
             (key: string) =>
                 ({

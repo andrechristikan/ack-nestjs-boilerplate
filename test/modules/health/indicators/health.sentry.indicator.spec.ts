@@ -8,8 +8,6 @@ vi.mock('@sentry/nestjs', () => ({ getClient: vi.fn() }));
 describe('HealthSentryIndicator', () => {
     const getClient = vi.mocked(Sentry.getClient);
 
-    beforeEach(() => vi.resetAllMocks());
-
     it.each([
         [undefined, 'Sentry client not initialized'],
         [{ getOptions: () => ({}) }, 'Sentry DSN not configured'],

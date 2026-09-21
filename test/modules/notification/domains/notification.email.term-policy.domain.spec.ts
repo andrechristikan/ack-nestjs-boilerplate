@@ -23,7 +23,6 @@ describe('NotificationEmailTermPolicyDomain', () => {
 
     beforeEach(() => {
         vi.useFakeTimers();
-        vi.resetAllMocks();
         Reflect.set(
             configService,
             'get',

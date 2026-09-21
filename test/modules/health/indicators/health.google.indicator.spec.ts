@@ -7,8 +7,6 @@ describe('HealthGoogleIndicator', () => {
     const get = vi.fn();
     const config = { get } as unknown as ConfigService;
 
-    beforeEach(() => vi.resetAllMocks());
-
     it('reports configured credentials up with the exact key', async () => {
         const { health, up } = createHealthIndicatorHarness();
         const indicator = new HealthGoogleIndicator(config, health);

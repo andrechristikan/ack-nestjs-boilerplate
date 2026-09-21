@@ -21,7 +21,6 @@ describe('AuthSocialGoogleGuard', () => {
     let guard: AuthSocialGoogleGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation((key: string) => config[key]);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [

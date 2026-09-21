@@ -29,7 +29,6 @@ describe('AnalyticCache', () => {
     let cache: AnalyticCache;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         vi.mocked(configService.get).mockImplementation(key =>
             config.get(key as string)
         );

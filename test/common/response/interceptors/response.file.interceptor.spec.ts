@@ -34,7 +34,6 @@ describe('ResponseFileInterceptor', () => {
     let interceptor: ResponseFileInterceptor;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const httpContext =
             mock<ReturnType<ExecutionContext['switchToHttp']>>();
         httpContext.getResponse.mockReturnValue(response);

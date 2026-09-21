@@ -41,8 +41,6 @@ describe('AwsSESService', () => {
         return service;
     };
 
-    beforeEach(() => vi.resetAllMocks());
-
     it('stays disabled without credentials and initializes with complete credentials', () => {
         const disabled = createService(false);
         disabled.onModuleInit();

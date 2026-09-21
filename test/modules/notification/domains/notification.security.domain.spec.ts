@@ -85,7 +85,6 @@ describe('NotificationSecurityDomain', () => {
     ] as const;
 
     beforeEach(() => {
-        vi.resetAllMocks();
         userDomain.getOneActive.mockResolvedValue(user);
         deviceDomain.getOwnershipsWithNotificationToken.mockResolvedValue([]);
         databaseUtil.createId.mockReturnValue('notification-id');

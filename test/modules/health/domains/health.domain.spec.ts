@@ -16,6 +16,14 @@ import { HealthRedisIndicator } from '@modules/health/indicators/health.redis.in
 import { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.indicator';
 import { HealthCheckService } from '@nestjs/terminus';
 
+vi.mock('@common/firebase/services/firebase.service', () => ({
+    FirebaseService: class {},
+}));
+
+vi.mock('@modules/health/indicators/health.sentry.indicator', () => ({
+    HealthSentryIndicator: class {},
+}));
+
 describe('HealthDomain', () => {
     const health: MockProxy<HealthCheckService> = mock<HealthCheckService>();
     const instance = mock<HealthInstanceIndicator>();
@@ -46,7 +54,6 @@ describe('HealthDomain', () => {
     );
 
     beforeEach(() => {
-        vi.resetAllMocks();
         health.check.mockImplementation(async checks => {
             for (const check of checks) {
                 if (typeof check === 'function') {

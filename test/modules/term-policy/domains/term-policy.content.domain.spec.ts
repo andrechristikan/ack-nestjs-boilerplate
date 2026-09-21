@@ -63,7 +63,6 @@ describe('TermPolicyContentDomain', () => {
     let service: TermPolicyContentDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [

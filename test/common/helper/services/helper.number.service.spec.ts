@@ -3,10 +3,6 @@ import { HelperNumberService } from '@common/helper/services/helper.number.servi
 describe('HelperNumberService', () => {
     const service = new HelperNumberService();
 
-    afterEach(() => {
-        vi.restoreAllMocks();
-    });
-
     describe('checkString', () => {
         it.each([
             ['123', true],
