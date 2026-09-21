@@ -80,9 +80,12 @@ describe('UserOnboardingDomain', () => {
     });
 
     it('builds personal workspace contexts with configured names and slug candidates', () => {
-        expect(service.buildPersonalWorkspaceContexts(['alice'])).toEqual([
-            personalContext,
-        ]);
+        const [context] = service.buildPersonalWorkspaceContexts(['alice']);
+
+        expect(context.type).toBe(EnumUserSignUpWorkspaceContextType.personal);
+        expect(context.workspaceId).toBe('workspace-id');
+        expect(context.slugCandidates).toEqual(['slug-a', 'slug-b']);
+        expect(context.name).toBe('alice workspace');
         expect(helperStringService.generateSlug).toHaveBeenCalledWith('ws', 12);
         expect(helperStringService.generateSlug).toHaveBeenCalledTimes(2);
     });

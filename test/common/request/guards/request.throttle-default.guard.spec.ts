@@ -1,4 +1,4 @@
-import type { ExecutionContext } from '@nestjs/common';
+import type { ExecutionContext, Type } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type {
     ThrottlerModuleOptions,
@@ -29,7 +29,8 @@ describe('RequestThrottleDefaultGuard', () => {
             },
         ],
     };
-    class TestController {}
+    const TestController =
+        function TestController() {} as unknown as Type<unknown>;
     function list() {}
     let guard: RequestThrottleDefaultGuard;
 

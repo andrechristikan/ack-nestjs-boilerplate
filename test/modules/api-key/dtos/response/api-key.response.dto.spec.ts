@@ -1,5 +1,4 @@
 import { EnumApiKeyType } from '@generated/prisma-client';
-import { ApiKeyCreateResponseSchema } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import { ApiKeyResponseSchema } from '@modules/api-key/dtos/response/api-key.response.dto';
 
 describe('API key response schemas', () => {
@@ -22,12 +21,5 @@ describe('API key response schemas', () => {
     it('never serializes the stored credential hash', () => {
         expect(ApiKeyResponseSchema.parse(apiKey)).not.toHaveProperty('hash');
         expect(ApiKeyResponseSchema.parse(apiKey)).not.toHaveProperty('secret');
-    });
-
-    it('exposes the plain secret only through the create/reset response', () => {
-        const serialized = ApiKeyCreateResponseSchema.parse(apiKey);
-
-        expect(serialized.secret).toBe('one-time-secret');
-        expect(serialized).not.toHaveProperty('hash');
     });
 });

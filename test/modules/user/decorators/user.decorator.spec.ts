@@ -22,50 +22,38 @@ vi.mock('nestjs-cls', () => ({
 }));
 
 vi.mock('@modules/user/guards/user.guard', () => ({
-    UserGuard: class UserGuard {},
+    UserGuard: vi.fn(),
 }));
 
 describe('UserProtected', () => {
     it('applies the user guard and sets the verified metadata, defaulting to true', () => {
-        class TestController {
-            @UserProtected()
-            handler(): void {}
+        const target = {};
+        const handler = vi.fn();
+        const handlerNotVerified = vi.fn();
+        UserProtected()(target, 'handler', { value: handler });
+        UserProtected(false)(target, 'handlerNotVerified', {
+            value: handlerNotVerified,
+        });
 
-            @UserProtected(false)
-            handlerNotVerified(): void {}
-        }
-
+        expect(Reflect.getMetadata(UserGuardIsVerifiedMetaKey, handler)).toBe(
+            true
+        );
         expect(
-            Reflect.getMetadata(
-                UserGuardIsVerifiedMetaKey,
-                TestController.prototype.handler
-            )
-        ).toBe(true);
-        expect(
-            Reflect.getMetadata(
-                UserGuardIsVerifiedMetaKey,
-                TestController.prototype.handlerNotVerified
-            )
+            Reflect.getMetadata(UserGuardIsVerifiedMetaKey, handlerNotVerified)
         ).toBe(false);
-        expect(
-            Reflect.getMetadata(
-                GUARDS_METADATA,
-                TestController.prototype.handler
-            )
-        ).toHaveLength(1);
+        expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toHaveLength(1);
     });
 });
 
 describe('UserCurrent', () => {
     /** Extracts the raw factory registered by `createParamDecorator` for direct unit testing. */
     const extractFactory = (): ((data: unknown, ctx: unknown) => unknown) => {
-        class TestController {
-            handler(@UserCurrent() _user: unknown): void {}
-        }
+        const target = { constructor: vi.fn() };
+        UserCurrent()(target, 'handler', 0);
 
         const args = Reflect.getMetadata(
             ROUTE_ARGS_METADATA,
-            TestController,
+            target.constructor,
             'handler'
         );
         const key = Object.keys(args)[0];
@@ -74,7 +62,7 @@ describe('UserCurrent', () => {
     };
 
     it('returns the user stored by UserGuard', () => {
-        const user = { id: 'user-id' };
+        const user = { id: 'user-id', name: null };
         const clsService: MockProxy<ClsService> = mock<ClsService>();
         clsService.get.mockReturnValue(user);
         vi.mocked(ClsServiceManager.getClsService).mockReturnValue(clsService);
@@ -82,6 +70,8 @@ describe('UserCurrent', () => {
         const factory = extractFactory();
 
         expect(factory(undefined, {})).toBe(user);
+        expect(factory(null, {})).toBe(user);
+        expect(factory('id', {})).toBe('user-id');
         expect(clsService.get).toHaveBeenCalledWith(UserStoreKey);
     });
 
@@ -93,6 +83,26 @@ describe('UserCurrent', () => {
         const factory = extractFactory();
 
         expect(() => factory(undefined, {})).toThrow(
+            RequestContextMissingException
+        );
+    });
+
+    it('rejects a null user context', () => {
+        const clsService: MockProxy<ClsService> = mock<ClsService>();
+        clsService.get.mockReturnValue(null);
+        vi.mocked(ClsServiceManager.getClsService).mockReturnValue(clsService);
+
+        expect(() => extractFactory()(undefined, {})).toThrow(
+            RequestContextMissingException
+        );
+    });
+
+    it.each([undefined, null])('rejects a missing selected field', value => {
+        const clsService: MockProxy<ClsService> = mock<ClsService>();
+        clsService.get.mockReturnValue({ id: value });
+        vi.mocked(ClsServiceManager.getClsService).mockReturnValue(clsService);
+
+        expect(() => extractFactory()('id', {})).toThrow(
             RequestContextMissingException
         );
     });

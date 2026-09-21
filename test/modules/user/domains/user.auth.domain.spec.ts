@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { ConfigService } from '@nestjs/config';
 
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
@@ -18,18 +19,25 @@ import {
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryDomain } from '@modules/country/domains/country.domain';
+import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import { UserPasswordNotSetException } from '@modules/user/exceptions/user.password-not-set.exception';
+import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
+import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
+import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.username-not-allowed.exception';
 import type {
     IUser,
     IUserLoginOutcome,
+    IUserSignUpWorkspaceContext,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserAuthDomain } from '@modules/user/domains/user.auth.domain';
@@ -124,6 +132,16 @@ describe('UserAuthDomain', () => {
         fingerprint: 'fingerprint',
         name: 'Browser',
     };
+    const workspaceContext = mock<IUserSignUpWorkspaceContext>();
+    const socialInput = {
+        username: 'social-user',
+        name: 'Social User',
+        countryId: 'country-id',
+        from: EnumUserLoginFrom.website,
+        device,
+        cookies: true,
+        marketing: false,
+    };
 
     let service: UserAuthDomain;
 
@@ -145,6 +163,16 @@ describe('UserAuthDomain', () => {
         userLoginDomain.refreshSession.mockResolvedValue(tokens);
         userLoginDomain.logout.mockResolvedValue(undefined);
         userVerificationDomain.markVerified.mockResolvedValue(undefined);
+        roleDomain.getByName.mockResolvedValue(user.role);
+        countryDomain.existsById.mockResolvedValue(true);
+        featureFlagCache.getMetadataByKeyAndCache.mockResolvedValue({
+            signUpAllowed: true,
+        });
+        userRepository.existsByEmail.mockResolvedValue(false);
+        userRepository.existsByUsername.mockResolvedValue(false);
+        userUtil.checkUsernamePattern.mockReturnValue(false);
+        userUtil.checkBadWord.mockResolvedValue(false);
+        databaseUtil.createId.mockReturnValue('new-user-id');
 
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
@@ -300,6 +328,139 @@ describe('UserAuthDomain', () => {
         });
     });
 
+    it('delegates workspace invitation eligibility', async () => {
+        await expect(
+            service.assertWorkspaceInvitationAllowed()
+        ).resolves.toBeUndefined();
+        expect(
+            userLoginDomain.assertWorkspaceInvitationAllowed
+        ).toHaveBeenCalledOnce();
+    });
+
+    describe('prepareSocialCreate', () => {
+        beforeEach(() => {
+            userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
+        });
+
+        it.each([
+            ['existing user', user, { signUpAllowed: true }],
+            ['disabled provider', null, { signUpAllowed: false }],
+            ['missing provider metadata', null, null],
+        ])('returns null for an %s', async (_case, found, metadata) => {
+            userRepository.findOneWithRoleByEmail.mockResolvedValue(found);
+            featureFlagCache.getMetadataByKeyAndCache.mockResolvedValue(
+                metadata
+            );
+
+            await expect(
+                service.prepareSocialCreate(
+                    user.email,
+                    EnumUserLoginWith.socialGoogle,
+                    socialInput,
+                    workspaceContext
+                )
+            ).resolves.toBeNull();
+        });
+
+        it('maps an Apple account and accepted optional policies into onboarding input', async () => {
+            const result = await service.prepareSocialCreate(
+                user.email,
+                EnumUserLoginWith.socialApple,
+                { ...socialInput, cookies: true, marketing: true },
+                workspaceContext
+            );
+
+            expect(
+                featureFlagCache.getMetadataByKeyAndCache
+            ).toHaveBeenCalledWith('loginWithApple');
+            expect(result).toMatchObject({
+                userId: 'new-user-id',
+                signUpWith: EnumUserSignUpWith.socialApple,
+                isVerified: true,
+                password: null,
+                verification: null,
+                workspaceContext,
+                createdBy: 'new-user-id',
+                termPolicy: {
+                    cookies: true,
+                    marketing: true,
+                },
+            });
+            expect(result?.acceptedTermPolicyTypes).toEqual(
+                expect.arrayContaining(['cookies', 'marketing'])
+            );
+        });
+
+        it('maps a Google account with nullable name and declined optional policies', async () => {
+            const result = await service.prepareSocialCreate(
+                user.email,
+                EnumUserLoginWith.socialGoogle,
+                {
+                    ...socialInput,
+                    name: undefined,
+                    cookies: false,
+                    marketing: false,
+                },
+                workspaceContext
+            );
+
+            expect(
+                featureFlagCache.getMetadataByKeyAndCache
+            ).toHaveBeenCalledWith('loginWithGoogle');
+            expect(result).toMatchObject({
+                name: null,
+                signUpWith: EnumUserSignUpWith.socialGoogle,
+            });
+        });
+
+        it('rejects social creation without the configured user role', async () => {
+            roleDomain.getByName.mockResolvedValue(null);
+
+            await expect(
+                service.prepareSocialCreate(
+                    user.email,
+                    EnumUserLoginWith.socialGoogle,
+                    socialInput,
+                    workspaceContext
+                )
+            ).rejects.toBeInstanceOf(RoleNotFoundException);
+        });
+
+        it.each([
+            [
+                'invalid pattern',
+                true,
+                false,
+                false,
+                UserUsernameNotAllowedException,
+            ],
+            [
+                'bad word',
+                false,
+                true,
+                false,
+                UserUsernameContainBadWordException,
+            ],
+            ['duplicate', false, false, true, UserUsernameExistException],
+        ])(
+            'rejects a social username with %s',
+            async (_case, invalid, badWord, exists, ExceptionClass) => {
+                userUtil.checkUsernamePattern.mockReturnValue(invalid);
+                userUtil.checkBadWord.mockResolvedValue(badWord);
+                userRepository.existsByUsername.mockResolvedValue(exists);
+
+                await expect(
+                    service.prepareSocialCreate(
+                        user.email,
+                        EnumUserLoginWith.socialGoogle,
+                        socialInput,
+                        workspaceContext
+                    )
+                ).rejects.toBeInstanceOf(ExceptionClass);
+            }
+        );
+    });
+
     describe('loginWithSocial', () => {
         it('verifies an existing unverified social user before login', async () => {
             const unverifiedUser = {
@@ -339,6 +500,184 @@ describe('UserAuthDomain', () => {
                 now
             );
         });
+
+        it('logs in an already verified social user without marking it again', async () => {
+            await service.loginWithSocial(
+                user.email,
+                EnumUserLoginWith.socialGoogle,
+                socialInput
+            );
+
+            expect(userVerificationDomain.markVerified).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            ['missing', null, UserNotFoundException],
+            [
+                'inactive',
+                { ...user, status: EnumUserStatus.inactive },
+                UserInactiveForbiddenException,
+            ],
+        ])('rejects a %s social user', async (_case, found, ExceptionClass) => {
+            userRepository.findOneWithRoleByEmail.mockResolvedValue(found);
+
+            await expect(
+                service.loginWithSocial(
+                    user.email,
+                    EnumUserLoginWith.socialGoogle,
+                    socialInput
+                )
+            ).rejects.toBeInstanceOf(ExceptionClass);
+        });
+    });
+
+    describe('prepareSignUp', () => {
+        const signUpInput = {
+            username: 'new-user',
+            email: 'new@example.com',
+            name: 'New User',
+            countryId: 'country-id',
+            password: 'plain-password',
+            from: EnumUserSignUpFrom.website,
+            cookies: true,
+            marketing: true,
+        };
+        const emailVerification = {
+            type: 'email' as const,
+            expiredAt: new Date('2026-01-01T01:00:00.000Z'),
+            expiredInMinutes: 60,
+            resendInMinutes: 10,
+            reference: 'VE-RANDOM',
+            token: 'plain-token',
+            hashedToken: 'hashed-token',
+            link: 'https://app.example.com/verify?token=plain-token',
+        };
+
+        beforeEach(() => {
+            authPasswordUtil.createPassword.mockReturnValue({
+                passwordHash: 'hash',
+                passwordCreated: now,
+                passwordExpired: user.passwordExpired!,
+                passwordPeriodExpired: user.passwordExpired!,
+            });
+            userVerificationDomain.verificationCreateVerification.mockReturnValue(
+                emailVerification
+            );
+        });
+
+        it('prepares credential onboarding and its email verification', async () => {
+            const result = await service.prepareSignUp(
+                signUpInput,
+                workspaceContext
+            );
+
+            expect(result.emailVerification).toBe(emailVerification);
+            expect(result.input).toMatchObject({
+                userId: 'new-user-id',
+                email: signUpInput.email,
+                name: signUpInput.name,
+                username: signUpInput.username,
+                signUpWith: EnumUserSignUpWith.credential,
+                isVerified: false,
+                workspaceContext,
+                createdBy: 'new-user-id',
+                verification: {
+                    reference: emailVerification.reference,
+                    token: emailVerification.hashedToken,
+                    to: signUpInput.email,
+                    isUsed: false,
+                },
+            });
+            expect(result.input.acceptedTermPolicyTypes).toEqual(
+                expect.arrayContaining(['cookies', 'marketing'])
+            );
+        });
+
+        it('normalizes an omitted name and declined optional policies', async () => {
+            const result = await service.prepareSignUp(
+                {
+                    ...signUpInput,
+                    name: undefined,
+                    cookies: false,
+                    marketing: false,
+                },
+                workspaceContext
+            );
+
+            expect(result.input.name).toBeNull();
+            expect(result.input.termPolicy.cookies).toBe(false);
+            expect(result.input.termPolicy.marketing).toBe(false);
+        });
+
+        it.each([
+            ['missing role', null, true, false, RoleNotFoundException],
+            [
+                'missing country',
+                user.role,
+                false,
+                false,
+                CountryNotFoundException,
+            ],
+            ['duplicate email', user.role, true, true, UserEmailExistException],
+        ])(
+            'rejects sign-up for a %s',
+            async (_case, role, countryExists, emailExists, ExceptionClass) => {
+                roleDomain.getByName.mockResolvedValue(role);
+                countryDomain.existsById.mockResolvedValue(countryExists);
+                userRepository.existsByEmail.mockResolvedValue(emailExists);
+
+                await expect(
+                    service.prepareSignUp(signUpInput, workspaceContext)
+                ).rejects.toBeInstanceOf(ExceptionClass);
+            }
+        );
+
+        it.each([
+            [
+                'invalid pattern',
+                true,
+                false,
+                false,
+                UserUsernameNotAllowedException,
+            ],
+            [
+                'bad word',
+                false,
+                true,
+                false,
+                UserUsernameContainBadWordException,
+            ],
+            ['duplicate', false, false, true, UserUsernameExistException],
+        ])(
+            'rejects sign-up with a username containing %s',
+            async (_case, invalid, badWord, exists, ExceptionClass) => {
+                userUtil.checkUsernamePattern.mockReturnValue(invalid);
+                userUtil.checkBadWord.mockResolvedValue(badWord);
+                userRepository.existsByUsername.mockResolvedValue(exists);
+
+                await expect(
+                    service.prepareSignUp(signUpInput, workspaceContext)
+                ).rejects.toBeInstanceOf(ExceptionClass);
+            }
+        );
+
+        it('shapes and queues a welcome notification', async () => {
+            helperDateService.formatToIso.mockReturnValue(
+                '2026-01-01T01:00:00.000Z'
+            );
+
+            await service.notifyWelcome(user.id, emailVerification);
+
+            expect(notificationQueue.sendWelcome).toHaveBeenCalledWith(
+                user.id,
+                {
+                    expiredAt: '2026-01-01T01:00:00.000Z',
+                    reference: emailVerification.reference,
+                    link: emailVerification.link,
+                    expiredInMinutes: 60,
+                }
+            );
+        });
     });
 
     describe('refreshInTx', () => {
@@ -368,6 +707,24 @@ describe('UserAuthDomain', () => {
                 'session-id',
                 'ownership-id'
             );
+        });
+
+        it('preserves a domain exception raised during logout', async () => {
+            userLoginDomain.logout.mockRejectedValue(
+                new UserNotFoundException()
+            );
+
+            await expect(
+                service.logout('user-id', 'session-id', 'ownership-id')
+            ).rejects.toBeInstanceOf(UserNotFoundException);
+        });
+
+        it('wraps an unexpected logout failure', async () => {
+            userLoginDomain.logout.mockRejectedValue(new Error('cache down'));
+
+            await expect(
+                service.logout('user-id', 'session-id', 'ownership-id')
+            ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });
 });

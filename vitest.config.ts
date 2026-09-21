@@ -14,7 +14,7 @@ export default defineConfig({
         globals: true,
         environment: 'node',
         setupFiles: ['test/setup.ts'],
-        isolate: false,
+        isolate: true,
         fsModuleCache: true,
         testTimeout: 5000,
         passWithNoTests: true,

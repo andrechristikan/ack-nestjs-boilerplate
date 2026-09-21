@@ -5,6 +5,7 @@ import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
 
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -174,6 +175,20 @@ describe('UserVerificationDomain', () => {
     });
 
     describe('verificationCreateVerification', () => {
+        it('creates references, OTPs, tokens, and expiry dates from configured values', () => {
+            expect(service.verificationCreateReference()).toBe('VE-RANDOM');
+            expect(service.verificationCreateOtp()).toBe('123456');
+            expect(service.verificationCreateToken()).toBe('RANDOM');
+            expect(service.verificationSetExpiredDate()).toBe(expiredAt);
+            expect(helperStringService.random).toHaveBeenCalledWith(6);
+            expect(helperNumberService.randomDigits).toHaveBeenCalledWith(6);
+            expect(helperStringService.random).toHaveBeenCalledWith(32);
+            expect(helperDateService.forward).toHaveBeenCalledWith(
+                now,
+                Duration.fromObject({ minutes: 60 })
+            );
+        });
+
         it('creates an email verification link', () => {
             const result = service.verificationCreateVerification(
                 EnumVerificationType.email
@@ -242,6 +257,26 @@ describe('UserVerificationDomain', () => {
             expect(
                 userVerificationRepository.markUsedInTx
             ).not.toHaveBeenCalled();
+        });
+
+        it('preserves a domain exception raised while consuming the token', async () => {
+            userVerificationRepository.markUsedInTx.mockRejectedValue(
+                new UserTokenInvalidException()
+            );
+
+            await expect(
+                service.verifyEmail('plain-token')
+            ).rejects.toBeInstanceOf(UserTokenInvalidException);
+        });
+
+        it('wraps an unexpected failure while consuming the token', async () => {
+            userVerificationRepository.markUsedInTx.mockRejectedValue(
+                new Error('database down')
+            );
+
+            await expect(
+                service.verifyEmail('plain-token')
+            ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });
 
@@ -317,5 +352,92 @@ describe('UserVerificationDomain', () => {
                 userVerificationRepository.createReplacingActive
             ).not.toHaveBeenCalled();
         });
+
+        it('allows resending at the configured boundary', async () => {
+            userVerificationRepository.findOneLatestByVerificationEmail.mockResolvedValue(
+                verification
+            );
+            helperDateService.forward.mockReturnValue(now);
+
+            await expect(
+                service.sendVerificationEmail(user.email)
+            ).resolves.toBeUndefined();
+        });
+
+        it('preserves a domain exception raised while replacing verification', async () => {
+            userVerificationRepository.createReplacingActive.mockRejectedValue(
+                new UserTokenInvalidException()
+            );
+
+            await expect(
+                service.sendVerificationEmail(user.email)
+            ).rejects.toBeInstanceOf(UserTokenInvalidException);
+        });
+
+        it('wraps an unexpected failure while replacing verification', async () => {
+            userVerificationRepository.createReplacingActive.mockRejectedValue(
+                new Error('database down')
+            );
+
+            await expect(
+                service.sendVerificationEmail(user.email)
+            ).rejects.toBeInstanceOf(AppUnknownException);
+        });
+    });
+
+    it('marks a user verified and stages its audit event', async () => {
+        await service.markVerified(user.id);
+
+        expect(userRepository.markVerified).toHaveBeenCalledWith(user.id, now);
+        expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+            undefined,
+        ]);
+    });
+
+    it('persists a prepared verification and stages its audit event', async () => {
+        const prepared = service.verificationCreateVerification(
+            EnumVerificationType.email
+        );
+
+        await service.persistVerificationEmail(user.id, user.email, prepared);
+
+        expect(
+            userVerificationRepository.createReplacingActive
+        ).toHaveBeenCalledWith(user.id, user.email, prepared, now);
+        expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+            undefined,
+        ]);
+    });
+
+    it('creates an onboarding verification in the caller transaction', async () => {
+        userVerificationRepository.createFromOnboardingInTx.mockResolvedValue(
+            verification
+        );
+        const onboardingVerification = {
+            reference: verification.reference,
+            token: verification.token,
+            type: EnumVerificationType.email,
+            to: user.email,
+            expiredAt,
+            verifiedAt: null,
+            isUsed: false,
+        };
+
+        await expect(
+            service.createFromOnboardingInTx(
+                transactionClient,
+                user.id,
+                onboardingVerification,
+                user.id
+            )
+        ).resolves.toBe(verification);
+        expect(
+            userVerificationRepository.createFromOnboardingInTx
+        ).toHaveBeenCalledWith(
+            transactionClient,
+            user.id,
+            onboardingVerification,
+            user.id
+        );
     });
 });

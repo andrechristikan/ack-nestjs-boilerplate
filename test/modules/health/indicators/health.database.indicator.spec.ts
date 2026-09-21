@@ -65,4 +65,15 @@ describe('HealthDatabaseIndicator', () => {
             'HealthDatabaseIndicator Failed - connection refused'
         );
     });
+
+    it('uses the unknown fallback for a non-error rejection', async () => {
+        databaseService.client.$queryRaw.mockRejectedValueOnce('failure');
+
+        await expect(indicator.isHealthy('database')).resolves.toEqual({
+            database: { status: 'down' },
+        });
+        expect(indicatorSession.down).toHaveBeenCalledWith(
+            'HealthDatabaseIndicator Failed - Unknown error'
+        );
+    });
 });
