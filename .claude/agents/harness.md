@@ -2,7 +2,7 @@
 name: harness
 description: >-
   Writes the AI configuration: .claude/** (CLAUDE.md, rules, agents, skills, hooks,
-  settings, evals), AGENTS.md, and .github/copilot-instructions.md, final state only, every
+  settings), AGENTS.md, and .github/copilot-instructions.md, final state only, every
   path and command verified against the checkout. Use when how Claude or Copilot works in
   this repository changes. Not for src/ or test/ (coder, tester), docs/ or the rest of
   .github/** (writer), or prisma/.

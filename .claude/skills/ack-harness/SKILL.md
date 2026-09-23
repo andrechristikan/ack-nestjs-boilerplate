@@ -2,7 +2,7 @@
 name: ack-harness
 description: >-
   Reworks the AI configuration, .claude/** (CLAUDE.md, rules, agents, skills, hooks,
-  settings, evals), AGENTS.md, and .github/copilot-instructions.md through the harness
+  settings), AGENTS.md, and .github/copilot-instructions.md through the harness
   agent from a settled requirement, final state only. Use when the owner wants to change
   how Claude or Copilot works in this repository. Not for src/, test/, docs/, or prisma/.
 disable-model-invocation: true

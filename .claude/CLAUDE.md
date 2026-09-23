@@ -7,8 +7,11 @@ depends on it, so build the correct shape and change every call site.
 
 ## Claude-specific
 
-Every session starts in plan mode (`permissions.defaultMode` in `.claude/settings.json`);
-`/ack-code` keeps its plan-first phase. The VS Code and Cursor extensions ignore `defaultMode`.
+Sessions start in `acceptEdits` (`permissions.defaultMode` in `.claude/settings.json`): a file
+edit applies without a prompt, and Bash runs under the `allow`, `ask`, and `deny` rules and the
+hooks. `/ack-code` plans first through superpowers. `/plan` and Shift+Tab enter plan mode on
+demand, and its files land in `.superpowers/plans/`. The VS Code and Cursor extensions ignore
+`defaultMode`.
 
 ### Skills
 
@@ -91,10 +94,9 @@ end-to-end flow. Nothing requires it.
   runs over the whole repository whatever is staged (`AGENTS.md`). A commit touching either
   tree goes through the hooks, and a red gate is fixed, not skipped.
 - `lint-staged` restages what prettier touches, so a granular commit series is not possible.
-- Working artifacts are gitignored: `.superpowers/` for specs and plans, plan mode's own
-  files under `.superpowers/plans/`, `generated/docs/` for agent reports and PR text,
-  `graphify-out/` for the graph. Do not cite them from `docs/`, `.claude/`, or a PR
-  description.
+- Working artifacts are gitignored: `.superpowers/` for specs and plans, `generated/docs/`
+  for agent reports and PR text, `graphify-out/` for the graph. Do not cite them from
+  `docs/`, `.claude/`, or a PR description.
 - Reply in English by default; match the language of the owner's turn. Artifacts stay English.
 - When something is wrong, say so with a recommendation. State the assumption you act on;
   ask when two readings would produce different work.

@@ -84,7 +84,6 @@ tmp/
 .claude/worktrees/
 .claude/todos.json
 .claude/scheduled-tasks/
-.claude/evals/results/
 
 ## Superpowers skill output (specs, plans, sdd notes) — never docs/
 .superpowers/

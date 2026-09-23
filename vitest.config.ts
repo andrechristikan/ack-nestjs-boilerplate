@@ -34,7 +34,6 @@ export default defineConfig({
                 'src/**/*.controller.ts',
                 'src/**/*.processor.ts',
                 'src/**/*.repository.ts',
-                'src/**/*.doc.ts',
                 'src/generated/**',
                 'src/migration/**',
                 'src/router/**',

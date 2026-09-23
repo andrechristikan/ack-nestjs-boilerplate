@@ -3,7 +3,7 @@
     "includeCoAuthoredBy": false,
     "plansDirectory": ".superpowers/plans",
     "permissions": {
-        "defaultMode": "plan",
+        "defaultMode": "acceptEdits",
         "allow": [
             "Read",
             "Edit",
