@@ -47,12 +47,12 @@ and is readable in BullBoard. One moment, one mechanism: a job or an event, not 
 
 `@QueueProcessor(EnumQueue.<member>, options?)` extends `QueueProcessorBase`
 (`src/queues/bases/queue.processor.base.ts`), whose constructor takes `SentryService`. The
-base owns `process(job)` (`:28`): job-log lines (start, input metadata without `job.data`,
+base owns `process(job)` (`:30`): job-log lines (start, input metadata without `job.data`,
 success with the returned `IQueueResponse`, one failure line) and the try / await / catch.
-Subclasses implement `protected abstract handle(job): Promise<IQueueResponse>` (`:91`) as a
+Subclasses implement `protected abstract handle(job): Promise<IQueueResponse>` (`:28`) as a
 dispatcher: switch on `job.name`, await a processor-service method (never a bare `return
 this.service.x()`), map a hopeless failure to BullMQ's `UnrecoverableError` there. The
-processor service owns no business rule; it calls a domain. `onFailed` (`:59`) reports to
+processor service owns no business rule; it calls a domain. `onFailed` (`:61`) reports to
 Sentry once, only when fatal: final attempt (`attemptsMade >= maxAttempts`),
 `UnrecoverableError`, or `QueueException.isFatal`. No per-processor logger and no
 log-and-rethrow. A job may run more than once; a handler is safe to repeat.

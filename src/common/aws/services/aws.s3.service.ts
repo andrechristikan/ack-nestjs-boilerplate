@@ -211,6 +211,31 @@ export class AwsS3Service implements OnModuleInit {
         return config;
     }
 
+    private buildUrls(
+        config: IAwsS3ConfigBucket,
+        key: string
+    ): { completedUrl: string; cdnUrl: string | null } {
+        const { baseUrl, cdnUrl } = config;
+        const completedUrl = this.helperStringService.fillPattern(
+            this.objectUrlPattern,
+            { baseUrl, key }
+        );
+
+        if (!cdnUrl) {
+            return { completedUrl, cdnUrl: null };
+        }
+
+        const cdnObjectUrl = this.helperStringService.fillPattern(
+            this.cdnUrlPattern,
+            { cdnUrl, key }
+        );
+
+        return {
+            completedUrl,
+            cdnUrl: cdnObjectUrl,
+        };
+    }
+
     onModuleInit(): void {
         if (!this.accessKeyId || !this.secretAccessKey || !this.region) {
             this.logger.warn(
@@ -235,31 +260,6 @@ export class AwsS3Service implements OnModuleInit {
 
     isInitialized(): boolean {
         return !!this.s3Client;
-    }
-
-    private buildUrls(
-        config: IAwsS3ConfigBucket,
-        key: string
-    ): { completedUrl: string; cdnUrl: string | null } {
-        const { baseUrl, cdnUrl } = config;
-        const completedUrl = this.helperStringService.fillPattern(
-            this.objectUrlPattern,
-            { baseUrl, key }
-        );
-
-        if (!cdnUrl) {
-            return { completedUrl, cdnUrl: null };
-        }
-
-        const cdnObjectUrl = this.helperStringService.fillPattern(
-            this.cdnUrlPattern,
-            { cdnUrl, key }
-        );
-
-        return {
-            completedUrl,
-            cdnUrl: cdnObjectUrl,
-        };
     }
 
     async checkConnection(): Promise<boolean> {

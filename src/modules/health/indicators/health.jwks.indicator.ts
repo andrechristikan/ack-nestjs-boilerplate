@@ -14,28 +14,6 @@ export class HealthJwksIndicator {
     ) {}
 
     /**
-     * Down when the access-token JWKS URI is empty or not a valid URL.
-     */
-    async isHealthyAccessToken(key: string): Promise<HealthIndicatorResult> {
-        const jwksUri = this.configService.get<string>(
-            'auth.jwt.accessToken.jwksUri'
-        );
-
-        return this.checkUri(key, jwksUri);
-    }
-
-    /**
-     * Down when the refresh-token JWKS URI is empty or not a valid URL.
-     */
-    async isHealthyRefreshToken(key: string): Promise<HealthIndicatorResult> {
-        const jwksUri = this.configService.get<string>(
-            'auth.jwt.refreshToken.jwksUri'
-        );
-
-        return this.checkUri(key, jwksUri);
-    }
-
-    /**
      * Down when the URI is empty or not a valid URL. Does not fetch.
      */
     private async checkUri(
@@ -62,5 +40,27 @@ export class HealthJwksIndicator {
 
             return indicator.down(`HealthJwksIndicator Failed - ${message}`);
         }
+    }
+
+    /**
+     * Down when the access-token JWKS URI is empty or not a valid URL.
+     */
+    async isHealthyAccessToken(key: string): Promise<HealthIndicatorResult> {
+        const jwksUri = this.configService.get<string>(
+            'auth.jwt.accessToken.jwksUri'
+        );
+
+        return this.checkUri(key, jwksUri);
+    }
+
+    /**
+     * Down when the refresh-token JWKS URI is empty or not a valid URL.
+     */
+    async isHealthyRefreshToken(key: string): Promise<HealthIndicatorResult> {
+        const jwksUri = this.configService.get<string>(
+            'auth.jwt.refreshToken.jwksUri'
+        );
+
+        return this.checkUri(key, jwksUri);
     }
 }

@@ -25,6 +25,8 @@ export abstract class QueueProcessorBase extends WorkerHost {
         }
     }
 
+    protected abstract handle(job: Job): Promise<IQueueResponse>;
+
     async process(job: Job): Promise<IQueueResponse> {
         const maxAttempts = job.opts.attempts ?? 1;
 
@@ -87,6 +89,4 @@ export abstract class QueueProcessorBase extends WorkerHost {
             sentryService.captureException(error);
         });
     }
-
-    protected abstract handle(job: Job): Promise<IQueueResponse>;
 }

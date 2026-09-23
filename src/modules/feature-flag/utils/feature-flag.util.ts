@@ -6,6 +6,15 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class FeatureFlagUtil {
+    /** Distinguishes string[] from number[] so an array value cannot silently change element type on update. */
+    private metadataValueType(value: IFeatureFlagMetadataValue): string {
+        if (Array.isArray(value)) {
+            return value.length > 0 ? `array:${typeof value[0]}` : 'array';
+        }
+
+        return typeof value;
+    }
+
     /** True only when both have identical keys and matching value types, with no empty/nullish value. */
     checkMetadataKey(
         oldMetadata: IFeatureFlagMetadata,
@@ -39,14 +48,5 @@ export class FeatureFlagUtil {
         }
 
         return true;
-    }
-
-    /** Distinguishes string[] from number[] so an array value cannot silently change element type on update. */
-    private metadataValueType(value: IFeatureFlagMetadataValue): string {
-        if (Array.isArray(value)) {
-            return value.length > 0 ? `array:${typeof value[0]}` : 'array';
-        }
-
-        return typeof value;
     }
 }

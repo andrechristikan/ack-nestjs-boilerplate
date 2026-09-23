@@ -31,6 +31,21 @@ export class RequestTimeoutInterceptor implements NestInterceptor {
         )!;
     }
 
+    private handleTimeoutRequest(
+        next: CallHandler,
+        timeoutMs: number
+    ): Observable<unknown> {
+        return next.handle().pipe(
+            timeout(timeoutMs),
+            catchError(err => {
+                if (err instanceof TimeoutError) {
+                    throw new RequestTimeoutException();
+                }
+                return throwError(() => err);
+            })
+        );
+    }
+
     intercept(
         context: ExecutionContext,
         next: CallHandler
@@ -58,20 +73,5 @@ export class RequestTimeoutInterceptor implements NestInterceptor {
         }
 
         return next.handle();
-    }
-
-    private handleTimeoutRequest(
-        next: CallHandler,
-        timeoutMs: number
-    ): Observable<unknown> {
-        return next.handle().pipe(
-            timeout(timeoutMs),
-            catchError(err => {
-                if (err instanceof TimeoutError) {
-                    throw new RequestTimeoutException();
-                }
-                return throwError(() => err);
-            })
-        );
     }
 }

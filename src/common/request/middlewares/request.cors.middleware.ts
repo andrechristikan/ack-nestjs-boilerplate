@@ -30,23 +30,6 @@ export class RequestCorsMiddleware implements NestMiddleware {
         )!;
     }
 
-    use(req: Request, res: Response, next: NextFunction): void {
-        const isCredentialsAllowed = this.shouldAllowCredentials();
-        const corsOptions: CorsOptions = {
-            origin: (origin, callback) =>
-                this.originValidator(origin, callback),
-            methods: this.allowedMethod,
-            allowedHeaders: this.allowedHeader,
-            exposedHeaders: this.exposedHeader,
-            preflightContinue: false,
-            credentials: isCredentialsAllowed,
-            optionsSuccessStatus: HttpStatus.NO_CONTENT,
-            maxAge: 86400,
-        };
-
-        cors(corsOptions)(req, res, next);
-    }
-
     private originValidator(
         origin: string | undefined,
         callback: (err: Error | null, allow?: boolean) => void
@@ -192,5 +175,22 @@ export class RequestCorsMiddleware implements NestMiddleware {
         }
 
         return false;
+    }
+
+    use(req: Request, res: Response, next: NextFunction): void {
+        const isCredentialsAllowed = this.shouldAllowCredentials();
+        const corsOptions: CorsOptions = {
+            origin: (origin, callback) =>
+                this.originValidator(origin, callback),
+            methods: this.allowedMethod,
+            allowedHeaders: this.allowedHeader,
+            exposedHeaders: this.exposedHeader,
+            preflightContinue: false,
+            credentials: isCredentialsAllowed,
+            optionsSuccessStatus: HttpStatus.NO_CONTENT,
+            maxAge: 86400,
+        };
+
+        cors(corsOptions)(req, res, next);
     }
 }

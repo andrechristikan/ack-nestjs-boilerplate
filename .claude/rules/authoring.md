@@ -63,8 +63,8 @@ short sentences, bullets for parallel items, tables only for real lookups, no AL
 pointer instead of a pasted snippet unless the snippet is the convention. No census counts, version numbers,
 or port lists that live in a file; point at the file. Anything ESLint, Prettier, `tsc`, commitlint, `engines`,
 or a hook enforces is not a rule; a lint-enforceable line the linter does not yet cover is one line plus an
-entry under "Move to ESLint" in `rules/code-style.md`. Verify every path, command, and flag against the
-checkout before writing it. `copilot-instructions.md` states nothing the rules do not.
+entry under a "Move to ESLint" heading in `rules/code-style.md`, created with its first entry. Verify every
+path, command, and flag against the checkout before writing it. `copilot-instructions.md` states nothing the rules do not.
 
 Budgets: `.claude/CLAUDE.md` ≤ 120 lines; `AGENTS.md` ≤ 80; `copilot-instructions.md` ≤ 60; a rule ≤ 80; an
 agent body ≤ 60 after frontmatter; a workflow `SKILL.md` ≤ 150 (long material in `references/`); a knowledge one ≤ 120.

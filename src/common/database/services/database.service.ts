@@ -26,36 +26,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
 
     /**
-     * Registers the log handlers before connecting, so a failure during connect is already logged.
-     */
-    async onModuleInit(): Promise<void> {
-        try {
-            await this.setupLogging();
-            await this.connect();
-        } catch (error: unknown) {
-            this.logger.error(error, 'Failed to initialize database service');
-            throw error;
-        }
-    }
-
-    /**
-     * Closes the connection on shutdown.
-     */
-    async onModuleDestroy(): Promise<void> {
-        await this.disconnect();
-    }
-
-    /**
-     * Opens a Prisma interactive transaction and runs `fn` on the tx-bound client; omitted `options` use Prisma's defaults (`maxWait` 2 s, `timeout` 5 s).
-     */
-    async withTransaction<T>(
-        fn: (tx: IDatabaseTransactionClient) => Promise<T>,
-        options?: IDatabaseTransactionOptions
-    ): Promise<T> {
-        return this.client.$transaction(async tx => fn(tx), options);
-    }
-
-    /**
      * Opens the connection and rethrows on failure, so boot fails loudly rather than serving a
      * process with no database.
      */
@@ -157,5 +127,35 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
      */
     private logInfo(event: Prisma.LogEvent): void {
         this.logger.log(event, 'A Prisma info event occurred');
+    }
+
+    /**
+     * Registers the log handlers before connecting, so a failure during connect is already logged.
+     */
+    async onModuleInit(): Promise<void> {
+        try {
+            await this.setupLogging();
+            await this.connect();
+        } catch (error: unknown) {
+            this.logger.error(error, 'Failed to initialize database service');
+            throw error;
+        }
+    }
+
+    /**
+     * Closes the connection on shutdown.
+     */
+    async onModuleDestroy(): Promise<void> {
+        await this.disconnect();
+    }
+
+    /**
+     * Opens a Prisma interactive transaction and runs `fn` on the tx-bound client; omitted `options` use Prisma's defaults (`maxWait` 2 s, `timeout` 5 s).
+     */
+    async withTransaction<T>(
+        fn: (tx: IDatabaseTransactionClient) => Promise<T>,
+        options?: IDatabaseTransactionOptions
+    ): Promise<T> {
+        return this.client.$transaction(async tx => fn(tx), options);
     }
 }

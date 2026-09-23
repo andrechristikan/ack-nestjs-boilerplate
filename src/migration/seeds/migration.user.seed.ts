@@ -121,9 +121,12 @@ export class MigrationUserSeed
             return;
         }
 
-        const superAdminEmails = this.users
-            .filter(user => user.id === MigrationUserSuperAdminId)
-            .map(user => user.email.toLowerCase());
+        const superAdminUsers = this.users.filter(
+            user => user.id === MigrationUserSuperAdminId
+        );
+        const superAdminEmails = superAdminUsers.map(user =>
+            user.email.toLowerCase()
+        );
         const legacySuperAdmin = existingUsers.find(
             user =>
                 superAdminEmails.includes(user.email) &&

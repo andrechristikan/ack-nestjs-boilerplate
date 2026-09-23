@@ -87,7 +87,8 @@ export class AuthJwtDomain {
     }
 
     private parseRequiredBase64DerPrivateKey(configKey: string): string {
-        const raw = this.configService.get<string>(configKey)?.trim();
+        const value = this.configService.get<string>(configKey);
+        const raw = value?.trim();
 
         if (!raw) {
             throw new Error(
@@ -113,7 +114,8 @@ export class AuthJwtDomain {
     }
 
     private parseRequiredBase64DerPublicKey(configKey: string): string {
-        const raw = this.configService.get<string>(configKey)?.trim();
+        const value = this.configService.get<string>(configKey);
+        const raw = value?.trim();
 
         if (!raw) {
             throw new Error(

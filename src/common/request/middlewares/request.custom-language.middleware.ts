@@ -27,6 +27,13 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
             this.configService.get<string>('message.language')!;
     }
 
+    private filterLanguage(customLanguage: string): string[] {
+        return this.helperArrayService.intersection(
+            [customLanguage],
+            this.availableLanguage
+        );
+    }
+
     async use(
         req: IRequestApp,
         _res: Response,
@@ -47,12 +54,5 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
         req.headers['x-custom-lang'] = customLang;
 
         next();
-    }
-
-    private filterLanguage(customLanguage: string): string[] {
-        return this.helperArrayService.intersection(
-            [customLanguage],
-            this.availableLanguage
-        );
     }
 }

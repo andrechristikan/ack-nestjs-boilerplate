@@ -37,17 +37,15 @@ beside a schema; no class DTO. Folders: `dtos/request/`, `dtos/response/`. Rule:
 
 ## A `this.` call lands in a `const` first
 
-Assign `this.x()` or `this.dep.x()` to a `const` before using the value as an argument, an
-object property, a condition, a ternary branch, part of a compound expression, a template, a
-spread, a `for…of` iterable, an index, or a `throw` operand. Inline stays allowed for
-`return this.x()`, an arrow whose whole body is the call, an array element, and
-`this.m.bind(this)`. Rule: `.claude/rules/code-style.md`.
+A call rooted at `this` (`this.x()`, `this.dep.x()`, awaited or not) is assigned to a `const`
+before its value is used; a ternary branch that needs one becomes `if` / `else`. Rule:
+`.claude/rules/code-style.md`.
 
 ## Imports
 
 Alias imports only, from `tsconfig.json` `paths` (`@app/*`, `@common/*`, `@configs/*`,
-`@modules/*`, `@router/*`, `@migration/*`, `@queues/*`, `@test/*`, `@generated/*`). No `./` or
-`../`, including inside the same module. A class Nest injects is a value import, not `import type`.
+`@modules/*`, `@router/*`, `@migration/*`, `@queues/*`, `@test/*`, `@generated/*`). A class
+Nest injects is a value import, not `import type`.
 
 ## Tests
 

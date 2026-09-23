@@ -47,6 +47,42 @@ export class ActivityLogRepository implements IActivityLogRepository {
         };
     }
 
+    private mapCreateManyData(
+        rows: IActivityLogCreate[]
+    ): Prisma.ActivityLogCreateManyInput[] {
+        return rows.map(
+            ({
+                userId,
+                createdBy,
+                workspaceId,
+                action,
+                description,
+                requestLog: { ipAddress, userAgent, geoLocation },
+                metadata,
+            }) => {
+                const plainUserAgent =
+                    this.databaseUtil.toPlainObject(userAgent);
+                const plainGeoLocation =
+                    this.databaseUtil.toPlainObject(geoLocation);
+
+                return {
+                    userId,
+                    workspaceId,
+                    action,
+                    ipAddress,
+                    userAgent: plainUserAgent,
+                    geoLocation: plainGeoLocation,
+                    description,
+                    metadata:
+                        Object.keys(metadata).length > 0
+                            ? (metadata as Prisma.InputJsonValue)
+                            : null,
+                    createdBy,
+                };
+            }
+        );
+    }
+
     async findUserScopedWithPaginationOffset(
         userId: string,
         {
@@ -147,42 +183,6 @@ export class ActivityLogRepository implements IActivityLogRepository {
                 },
             },
         });
-    }
-
-    private mapCreateManyData(
-        rows: IActivityLogCreate[]
-    ): Prisma.ActivityLogCreateManyInput[] {
-        return rows.map(
-            ({
-                userId,
-                createdBy,
-                workspaceId,
-                action,
-                description,
-                requestLog: { ipAddress, userAgent, geoLocation },
-                metadata,
-            }) => {
-                const plainUserAgent =
-                    this.databaseUtil.toPlainObject(userAgent);
-                const plainGeoLocation =
-                    this.databaseUtil.toPlainObject(geoLocation);
-
-                return {
-                    userId,
-                    workspaceId,
-                    action,
-                    ipAddress,
-                    userAgent: plainUserAgent,
-                    geoLocation: plainGeoLocation,
-                    description,
-                    metadata:
-                        Object.keys(metadata).length > 0
-                            ? (metadata as Prisma.InputJsonValue)
-                            : null,
-                    createdBy,
-                };
-            }
-        );
     }
 
     async createMany(rows: IActivityLogCreate[]): Promise<Prisma.BatchPayload> {

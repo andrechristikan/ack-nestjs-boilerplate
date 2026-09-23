@@ -4,6 +4,7 @@ import {
     EnumPaginationOrderDirectionType,
     EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
+import type { Prisma } from '@generated/prisma-client/client';
 
 export type IPaginationQueryFilter = Record<
     string,
@@ -42,6 +43,10 @@ export interface IPaginationQueryCursorOptions {
 export interface IPaginationQueryDefaultWhere {
     or?: Record<string, { contains?: string }>[];
     [key: string]: unknown;
+}
+
+export interface IPaginationSearchWhere {
+    OR: Array<Record<string, Prisma.StringFilter>>;
 }
 
 export interface IPaginationQueryReturn<

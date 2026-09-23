@@ -144,6 +144,49 @@ export class WorkspaceDomain {
         });
     }
 
+    private prepareOnboardingActivities(
+        inputs: IUserCreateWithWorkspaceInput[],
+        users: IUser[],
+        mode: EnumUserCreateMode,
+        adminPayloadAction?: IUserOnboardingAdminAction
+    ): IActivityLogStagedEvent[] {
+        const events: IActivityLogStagedEvent[] = [];
+        if (adminPayloadAction) {
+            const adminPayloadMetadata =
+                this.userOnboardingDomain.buildAdminPayloadMetadata(
+                    adminPayloadAction,
+                    users
+                );
+            const adminPayloadEvent = this.activityLogDomain.prepare({
+                action: adminPayloadAction,
+                metadata: adminPayloadMetadata,
+            });
+            events.push(adminPayloadEvent);
+        }
+
+        for (const [index, input] of inputs.entries()) {
+            const onboardingActivities =
+                this.userOnboardingDomain.buildOnboardingActivities(
+                    mode,
+                    input,
+                    users[index]
+                );
+
+            for (const activity of onboardingActivities) {
+                const activityEvent = this.activityLogDomain.prepare({
+                    action: activity.action,
+                    userId: activity.userId,
+                    createdBy: activity.createdBy,
+                    workspaceId: activity.workspaceId,
+                    metadata: activity.metadata,
+                });
+                events.push(activityEvent);
+            }
+        }
+
+        return events;
+    }
+
     async validateWorkspaceGuard(
         workspaceId: string | null
     ): Promise<Workspace> {
@@ -342,49 +385,6 @@ export class WorkspaceDomain {
         }
 
         throw new DatabaseUniqueValueGenerationFailedException();
-    }
-
-    private prepareOnboardingActivities(
-        inputs: IUserCreateWithWorkspaceInput[],
-        users: IUser[],
-        mode: EnumUserCreateMode,
-        adminPayloadAction?: IUserOnboardingAdminAction
-    ): IActivityLogStagedEvent[] {
-        const events: IActivityLogStagedEvent[] = [];
-        if (adminPayloadAction) {
-            const adminPayloadMetadata =
-                this.userOnboardingDomain.buildAdminPayloadMetadata(
-                    adminPayloadAction,
-                    users
-                );
-            const adminPayloadEvent = this.activityLogDomain.prepare({
-                action: adminPayloadAction,
-                metadata: adminPayloadMetadata,
-            });
-            events.push(adminPayloadEvent);
-        }
-
-        for (const [index, input] of inputs.entries()) {
-            const onboardingActivities =
-                this.userOnboardingDomain.buildOnboardingActivities(
-                    mode,
-                    input,
-                    users[index]
-                );
-
-            for (const activity of onboardingActivities) {
-                const activityEvent = this.activityLogDomain.prepare({
-                    action: activity.action,
-                    userId: activity.userId,
-                    createdBy: activity.createdBy,
-                    workspaceId: activity.workspaceId,
-                    metadata: activity.metadata,
-                });
-                events.push(activityEvent);
-            }
-        }
-
-        return events;
     }
 
     async createWorkspace(

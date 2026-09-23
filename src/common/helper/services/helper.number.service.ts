@@ -10,7 +10,9 @@ export class HelperNumberService {
 
     /** An n-digit decimal string with a non-zero first digit; valid for 1 to 14 digits. */
     randomDigits(length: number): string {
-        return this.randomInRange(10 ** (length - 1), 10 ** length).toString();
+        const value = this.randomInRange(10 ** (length - 1), 10 ** length);
+
+        return value.toString();
     }
 
     /** Integer in [ceil(min), floor(max)); throws RangeError when the range is empty or reaches 2^48. */

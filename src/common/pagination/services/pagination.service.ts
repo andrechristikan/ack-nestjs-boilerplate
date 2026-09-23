@@ -56,9 +56,11 @@ export class PaginationService {
     private fingerprint(where: unknown, orderBy: IPaginationOrderBy[]): string {
         const canonical = this.canonicalize({ where, orderBy });
 
-        return this.helperHashService
-            .sha256Hash(JSON.stringify(canonical))
-            .slice(0, PaginationCursorFingerprintLength);
+        const hash = this.helperHashService.sha256Hash(
+            JSON.stringify(canonical)
+        );
+
+        return hash.slice(0, PaginationCursorFingerprintLength);
     }
 
     private encodeCursor(data: IPaginationCursorValue): string {

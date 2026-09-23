@@ -46,6 +46,7 @@ import type {
     IPaginationQueryFilterResult,
     IPaginationQueryOffsetOptions,
     IPaginationQueryOffsetParams,
+    IPaginationSearchWhere,
 } from '@common/pagination/interfaces/pagination.interface';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { Prisma } from '@generated/prisma-client/client';
@@ -158,7 +159,7 @@ export class PaginationQueryUtil {
     private buildSearchObject(
         search: string,
         availableSearch: readonly string[]
-    ): { OR: Array<Record<string, Prisma.StringFilter>> } {
+    ): IPaginationSearchWhere {
         return {
             OR: availableSearch.map(field => ({
                 [field]: {
@@ -370,10 +371,10 @@ export class PaginationQueryUtil {
                 options.defaultPerPage
             );
             const search = dto.search?.trim();
-            const where =
-                search && availableSearch.length > 0
-                    ? this.buildSearchObject(search, availableSearch)
-                    : undefined;
+            let where: IPaginationSearchWhere | undefined;
+            if (search && availableSearch.length > 0) {
+                where = this.buildSearchObject(search, availableSearch);
+            }
             const orderBy = this.resolveOrderBy(dto.orderBy, availableOrderBy);
 
             return {
@@ -417,10 +418,10 @@ export class PaginationQueryUtil {
             );
             const cursor = this.validateAndSanitizeCursor(dto.cursor);
             const search = dto.search?.trim();
-            const where =
-                search && availableSearch.length > 0
-                    ? this.buildSearchObject(search, availableSearch)
-                    : undefined;
+            let where: IPaginationSearchWhere | undefined;
+            if (search && availableSearch.length > 0) {
+                where = this.buildSearchObject(search, availableSearch);
+            }
             const orderBy = this.resolveOrderBy(dto.orderBy, availableOrderBy);
             const cursorField =
                 options.cursorField ?? PaginationDefaultCursorField;

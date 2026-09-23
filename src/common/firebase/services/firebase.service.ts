@@ -44,6 +44,10 @@ export class FirebaseService implements OnModuleInit {
         this.privateKey = this.firebaseUtil.normalizePrivateKey(privateKey);
     }
 
+    private isInvalidTokenError(error: { code?: string } | null): boolean {
+        return FirebaseInvalidTokenCodes.includes(error?.code ?? '');
+    }
+
     async onModuleInit(): Promise<void> {
         if (!this.projectId || !this.clientEmail || !this.privateKey) {
             this.logger.warn(
@@ -72,10 +76,6 @@ export class FirebaseService implements OnModuleInit {
 
     isInitialized(): boolean {
         return !!this.app && !!this.messaging;
-    }
-
-    private isInvalidTokenError(error: { code?: string } | null): boolean {
-        return FirebaseInvalidTokenCodes.includes(error?.code ?? '');
     }
 
     async sendPush(

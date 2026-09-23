@@ -7,20 +7,20 @@ import { CommandRunner, Option } from 'nest-commander';
  * Base seed command: dispatches to `seed()` or `remove()` based on the required `--type` flag.
  */
 export abstract class MigrationSeedBase extends CommandRunner {
-    private readonly _logger: Logger = new Logger(MigrationSeedBase.name);
+    private readonly baseLogger: Logger = new Logger(MigrationSeedBase.name);
 
     async run(
         _passedParam: string[],
         options?: IMigrationOptions
     ): Promise<void> {
-        this._logger.log(`Running ${MigrationSeedBase.name} migration...`);
+        this.baseLogger.log(`Running ${MigrationSeedBase.name} migration...`);
 
         if (options?.type === EnumMigrationType.remove) {
             await this.remove();
         } else if (options?.type === EnumMigrationType.seed) {
             await this.seed();
         } else {
-            this._logger.warn(
+            this.baseLogger.warn(
                 `Please specify --type ${EnumMigrationType.seed} or ${EnumMigrationType.remove}`
             );
         }
