@@ -21,7 +21,7 @@ export abstract class MigrationSeedBase extends CommandRunner {
             await this.seed();
         } else {
             this._logger.warn(
-                `Please specify --type ${EnumMigrationType.seed} or ${EnumMigrationType.seed}`
+                `Please specify --type ${EnumMigrationType.seed} or ${EnumMigrationType.remove}`
             );
         }
     }
@@ -31,7 +31,7 @@ export abstract class MigrationSeedBase extends CommandRunner {
         choices: [EnumMigrationType.seed, EnumMigrationType.remove],
         required: true,
         name: 'type',
-        description: `Migration type: ${EnumMigrationType.seed} or ${EnumMigrationType.seed}`,
+        description: `Migration type: ${EnumMigrationType.seed} or ${EnumMigrationType.remove}`,
     })
     parseType(val: EnumMigrationType): EnumMigrationType | null {
         return val;
