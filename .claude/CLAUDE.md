@@ -91,9 +91,10 @@ end-to-end flow. Nothing requires it.
   runs over the whole repository whatever is staged (`AGENTS.md`). A commit touching either
   tree goes through the hooks, and a red gate is fixed, not skipped.
 - `lint-staged` restages what prettier touches, so a granular commit series is not possible.
-- Working artifacts are gitignored: `.superpowers/` for specs and plans, `generated/docs/`
-  for agent reports and PR text, `graphify-out/` for the graph. Do not cite them from
-  `docs/`, `.claude/`, or a PR description.
+- Working artifacts are gitignored: `.superpowers/` for specs and plans, plan mode's own
+  files under `.superpowers/plans/`, `generated/docs/` for agent reports and PR text,
+  `graphify-out/` for the graph. Do not cite them from `docs/`, `.claude/`, or a PR
+  description.
 - Reply in English by default; match the language of the owner's turn. Artifacts stay English.
 - When something is wrong, say so with a recommendation. State the assumption you act on;
   ask when two readings would produce different work.
