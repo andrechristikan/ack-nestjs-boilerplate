@@ -1,182 +1,80 @@
-# Authoring — where a sentence lives
+---
+paths:
+  - "docs/**"
+  - ".claude/**"
+  - ".github/**"
+  - "AGENTS.md"
+  - "README.md"
+  - "SECURITY.md"
+  - "CONTRIBUTING.md"
+  - "CODE_OF_CONDUCT.md"
+---
 
-The tree-by-tree placement map is in `.claude/agents/harness-writer.md` → "Where a
-sentence lives". What follows here is the rationale and mechanics for writing INSIDE those trees
-correctly, not the placement decision itself.
+# Authoring
 
-## The asymmetry (HARD)
+## Where a sentence lives
 
-**A rule MAY carry the minimum rationale needed to apply it correctly. A document MUST NOT
-carry an obligation.**
+| It says | It goes to |
+|---|---|
+| what code must or must not do | `.claude/rules/` |
+| an agent's role, scope, tools, limits, or working habits | `.claude/agents/` |
+| the ordered steps of one job | `.claude/skills/` |
+| project facts every tool needs: stack, layout, commands, gates | `AGENTS.md` |
+| Claude-only orientation: skills, agents, gotchas, etiquette | `.claude/CLAUDE.md` |
+| what Copilot needs beyond `AGENTS.md` | `.github/copilot-instructions.md` |
+| a deterministic block or check | a hook in `.claude/settings.json` |
+| how a feature works, for people | `docs/*.md` |
 
-This is deliberate and not symmetric. Rationale inside a rule prevents cargo-cult use: `rules/security.md` requires session invalidation after a password or role
-change, and the reason — an open session still holds the old privilege — must travel with
-the rule or it gets applied as a style preference. An obligation inside a document carries
-nothing: the model does not read `docs/` by default, and a human reading it is not writing
-code at that moment.
+A sentence that seems to belong in two files is two sentences. A rule may carry the one clause of rationale
+needed to apply it; a document carries no obligation.
 
-What does NOT move down into a rule: flow narrative, long code samples, catalogs. Those
-are `docs/`.
+## Final state only
 
-## Final state only (HARD)
+`docs/*.md`, the root people files, `.github/**`, `AGENTS.md`, and `.claude/**` describe how the project works
+now. Not in any of them: an issue, a bug, a fix, a change, a decision and its reasoning, a rejected
+alternative, a migration note, a date, a version, a changelog line, an owner quote or attribution. The test:
+would this sentence exist if the thing had always been this way? "previously", "no longer", "instead of", and
+"rather than" are banned where they contrast with an earlier state and fine where they contrast two options a
+reader is choosing between now. A negation that states a contract stays (`an admin route carries no workspace
+guard`); a negation that rebuts a former state goes (`the count is not stored on the model`). Rewrite it as
+what is (`activeSessionCount is computed per read`).
 
-**Binds `docs/*.md`, the root people files (`README.md`, `SECURITY.md`, `CONTRIBUTING.md`,
-`CODE_OF_CONDUCT.md`), `.github/**` except `copilot-instructions.md`, AND `.claude/**`
-alike.** Those trees describe how the project works
-NOW, and nothing else.
+## Documentation prose
 
-Never written in either tree: an issue, a bug, a bug fix, a defect that was repaired, a change,
-a decision and its reasoning, a rejected alternative, a migration note, a date, a version, or a
-changelog line.
+Binds `docs/*.md`, the root people files, and `.github/` markdown; YAML under `.github/` is repaired for stale
+facts, not rewritten as prose.
 
-**The ban is on comparing against a FORMER STATE, not on a vocabulary.** "previously", "used
-to", "no longer", "now", "instead of" and "rather than" are banned where they contrast this
-version of the system with an earlier one, and perfectly correct where they contrast two
-options a reader is choosing between right now: `a repository is injected as a class rather
-than behind a token` is a rule doing its job; `the repository is no longer injected behind a
-token` is a changelog line. Grep finds the word; only reading finds the violation.
+- Indicative mood. An obligation becomes a fact: `all three paths produce the same idempotency key`, not
+  `all paths have to produce identical keys`.
+- No `.claude/`, no rule cited by path, no working artifact (`.superpowers/`, `generated/`, `graphify-out/`,
+  `.claude/worktrees/`), no local-only git ref, no absolute filesystem path, no branch-compare framing
+  (`main`, `development`, `origin/*`, "against base"). A version identity the release is about may appear.
+- No em-dash; use a period, comma, semicolon, colon, or parentheses. No filler, no rhetorical question, no
+  synonym stacking. Bullets first; keep the existing section structure on a small correction.
+- A flow, a stack, or a hand-off is a mermaid diagram (`flowchart`, `sequenceDiagram`, `stateDiagram-v2`).
 
-**The test:** would this sentence exist if the thing had ALWAYS been this way? If it only makes
-sense because something used to be different, it is history. History lives in `git log`, in the
-PR or version description, and in the issue tracker.
+A PR description fills `.github/pull_request_template.md`; a version description is lean release notes. Both
+are public paste-ready prose under the same bans.
 
-### The negation trap
+## Harness files
 
-A sentence phrased as a fact can still be history. This is the form that survives every other
-check, so it gets its own test.
+`.claude/**`, `AGENTS.md`, and `copilot-instructions.md` are written for the model: imperative, present tense,
+short sentences, bullets for parallel items, tables only for real lookups, no ALL-CAPS emphasis. A `file:line`
+pointer instead of a pasted snippet unless the snippet is the convention. No census counts, version numbers,
+or port lists that live in a file; point at the file. Anything ESLint, Prettier, `tsc`, commitlint, `engines`,
+or a hook enforces is not a rule; a lint-enforceable line the linter does not yet cover is one line plus an
+entry under "Move to ESLint" in `rules/code-style.md`. Verify every path, command, and flag against the
+checkout before writing it. `copilot-instructions.md` states nothing the rules do not.
 
-- A negation that states a **CONTRACT** is a fact, and it stays. It tells the reader what to
-  send, what to expect, or what a guard will not do: `the refresh request carries no
-  fingerprint`; `an admin route carries no workspace guard`; `the cursor payload carries no
-  query`.
-- A negation that **REBUTS a former state or a corrected claim** is history wearing a fact's
-  clothes, and it goes: `there is no explicit $transaction wrapper around it`; `the session
-  count is not stored on the model`; `derived from platform, whether or not a token came with
-  the request`; `both paths pass the same action, so only createdBy differs`.
+Budgets: `.claude/CLAUDE.md` ≤ 120 lines; `AGENTS.md` ≤ 80; `copilot-instructions.md` ≤ 60; a rule ≤ 80; an
+agent body ≤ 60 after frontmatter; a workflow `SKILL.md` ≤ 150 (long material in `references/`); a knowledge one ≤ 120.
 
-The difference is who the sentence serves. The first serves a reader building against the
-system. The second serves only a reader who remembers what it used to say — and that reader
-should be reading the diff.
-
-**Rewrite, do not delete the information.** `the session count is not stored on the model`
-becomes `activeSessionCount is computed per read by a _count on sessions`. State what IS, drop
-the contrast.
-
-## Mood
-
-`docs/` is written in the indicative. Rewrite an obligation as a fact. Do not point at a
-rule file.
-
-- Wrong: `All paths MUST produce identical idempotency keys.`
-- Right: `All three paths produce the same idempotency key, which is what dedupes them.`
-
-Verification aid, not an oracle:
-
-    grep -nE '\b(MUST|NEVER|FORBIDDEN|ALWAYS)\b' docs/*.md README.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md .github/pull_request_template.md
-
-Two false-positive classes are excluded by READING, not by pattern: enum member names in
-tables (`ABILITY_FORBIDDEN`, `NOT_FOUND`), and identifiers inside code fences. The
-criterion is "no obligation SENTENCE in documentation prose".
-
-## No harness paths in documentation (HARD)
-
-**Binds `docs/*.md` and the root people files (`README.md`, `SECURITY.md`, `CONTRIBUTING.md`,
-`CODE_OF_CONDUCT.md`).** Never mention `.claude/`, `claude/`, or any path under the harness
-tree. Never cite a rule by path either (`rules/http.md`, `rules/dto.md`, and the same
-shape with or without a leading `.claude/`). A constraint that lives in a rule is stated as a
-fact in the document; the rule path is never cited. Agents load rules through
-`orientation.md`; humans reading these files do not need that map.
-
-Verification aid:
-
-    grep -nE '\.claude|/claude/|`rules/[a-z0-9-]+\.md`|Constraint when changing|The constraint when' docs/*.md README.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md
+A rule file opens with `paths:` as a YAML list unless it is one of the four unscoped ones. A skill's
+`SKILL.md` and an agent's `.md` open with YAML frontmatter whose `description` is a folded block scalar
+(`description: >-`); a plain scalar containing `: ` does not parse, and `.claude/hooks/roster.sh` reads the
+folded form.
 
 ## Language
 
-Every artifact is written in ENGLISH — code, identifiers, comments, commit messages,
-`docs/*.md`, `.claude/**`, `.superpowers/**`, PR and version descriptions. Reply language to
-the owner
-is `CLAUDE.md` → How to work here: English by default, match the language of the turn.
-Something the owner said reaches an artifact only as the RULE or the FACT it produced, in
-English — never as a quote, never with a date, and never attributed. "Final state only"
-governs that: an artifact carries what is true, not who decided it or when.
-
-Trigger phrases and examples inside `.claude/**` stay in English too. Routing still matches
-other languages semantically, so English examples cost nothing.
-
-## Working artifacts stay out of published trees (HARD)
-
-A working artifact exists to run a session. It is not the product.
-
-Working artifacts and machine-only paths:
-
-- `.superpowers/` specs and plans
-- `generated/` reports and description documents (the file being written is the output, not a source)
-- `graphify-out/`
-- `.claude/worktrees/` and `.worktrees/`
-- local-only git refs (`pr-desc/*`)
-- absolute filesystem paths
-
-A tree may be named as a destination: where a spec is written, where a PR or version
-description is written, what gitignores. A specific file, ref, or path from those trees is
-never cited as a source.
-
-This binds every published tree:
-
-| Tree | What it publishes |
-|---|---|
-| `docs/*.md`, the root people files, `.github/**` except `copilot-instructions.md` | the product |
-| `.claude/**` | how the project works |
-| `generated/docs/pr-*.md` | filled `.github/pull_request_template.md` (public PR body) |
-| `generated/docs/version-*.md` | a version or tag range (public release description) |
-
-A PR description follows the project pull-request template (same sections and checkbox
-labels). A version description is lean release notes. Both are public paste-ready prose.
-They never cite `.claude/**`, working artifacts, machine paths, or local-only git refs.
-A `.claude/**` path in the diff is one line in the hand-back.
-
-**No branch-compare framing in the document body (HARD).** Do not name which git branches
-or refs were compared (`main`, `develop`, `development`, `origin/*`, `pr-desc/*`,
-"merge into", "against base", and similar). A version identity the release is about
-(`v1.2.0`, `9.0.0`) may appear. Compare refs stay in the hand-back only.
-
-## Documentation prose (`docs/*.md`, root people files, `.github/` markdown)
-
-Binds `docs/*.md`, the root `README.md`, `SECURITY.md`, `CONTRIBUTING.md`,
-`CODE_OF_CONDUCT.md`, and `.github/pull_request_template.md`.
-
-YAML under `.github/` is not documentation prose. A claim there is still a fact about the
-checkout — a script name, an `engines` range, a path, a URL — and it is repaired when it is
-stale. Workflow logic is not rewritten as prose.
-
-- **No em-dash (`—`) in documentation prose.** Use a period, comma, semicolon, colon, or
-  parentheses. Plain hyphens in compound words (`dev-mode`, `in-memory`) are fine; do not
-  overuse them. The one exception is an existing structured list whose every entry already uses
-  `—` as a separator: match it rather than breaking the pattern on one line.
-- Simple, firm, and pointed. Bullets first, prose where prose is needed. Keep the existing
-  section structure intact rather than reorganizing around a small correction.
-- **No filler.** No throat-clearing (`it is important to note`, `in order to`, `this ensures
-  that`), no rhetorical questions, no synonym stacking. Name the thing and state what it does.
-- **A flow, a stack, or a hand-off is a mermaid diagram.** Prefer `flowchart`,
-  `sequenceDiagram`, or `stateDiagram-v2`. Do not invent a second diagram syntax.
-
-## What is NOT here
-
-Comment policy and class member layout are `rules/code-style.md`. Neither is restated here.
-
-## Frontmatter
-
-A skill's `SKILL.md` and an agent's `.md` open with YAML frontmatter, and its `description` is
-a folded block scalar, whatever the text:
-
-```yaml
----
-name: coder
-description: >-
-    Writes feature code under src/** against the project rules, test-first. …
----
-```
-
-A plain scalar containing `: ` does not parse under a strict YAML parser, and a skill or agent
-whose frontmatter does not parse has no name and no description for the loader. The
-`SessionStart` hook (`.claude/hooks/session-skills.sh`) reads the folded form.
+Every artifact is English: code, comments, commit messages, `docs/*.md`, `.claude/**`, `.superpowers/**`, PR
+and version text, trigger phrases and examples inside `.claude/**`. Reply language is `.claude/CLAUDE.md`.

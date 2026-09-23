@@ -1,7 +1,8 @@
 {
+    "$schema": "https://json.schemastore.org/claude-code-settings.json",
     "includeCoAuthoredBy": false,
     "permissions": {
-        "defaultMode": "bypassPermissions",
+        "defaultMode": "plan",
         "allow": [
             "Read",
             "Edit",
@@ -11,146 +12,37 @@
             "WebFetch",
             "WebSearch",
             "Agent(general-purpose)",
-            "Edit(docs/**)",
-            "Edit(prisma/**)",
-            "Bash(cd:*)",
-            "Bash(pwd)",
-            "Bash(ls:*)",
-            "Bash(tree:*)",
-            "Bash(find:*)",
-            "Bash(cat:*)",
-            "Bash(head:*)",
-            "Bash(tail:*)",
-            "Bash(grep:*)",
-            "Bash(rg:*)",
-            "Bash(awk:*)",
-            "Bash(sed:*)",
-            "Bash(jq:*)",
-            "Bash(wc:*)",
-            "Bash(sort:*)",
-            "Bash(uniq:*)",
-            "Bash(cut:*)",
-            "Bash(tr:*)",
-            "Bash(diff:*)",
-            "Bash(comm:*)",
-            "Bash(xargs:*)",
-            "Bash(tee:*)",
-            "Bash(echo:*)",
-            "Bash(printf:*)",
-            "Bash(date:*)",
-            "Bash(env:*)",
-            "Bash(export:*)",
-            "Bash(which:*)",
-            "Bash(file:*)",
-            "Bash(test:*)",
-            "Bash(true)",
-            "Bash(yes:*)",
-            "Bash(sleep:*)",
-            "Bash(ps:*)",
-            "Bash(pgrep:*)",
-            "Bash(pkill:*)",
-            "Bash(kill:*)",
-            "Bash(lsof:*)",
-            "Bash(nc:*)",
-            "Bash(mkdir:*)",
-            "Bash(touch:*)",
-            "Bash(cp:*)",
-            "Bash(mv:*)",
-            "Bash(rm:*)",
-            "Bash(rmdir:*)",
-            "Bash(chmod:*)",
-            "Bash(open:*)",
-            "Bash(pnpm:*)",
-            "Bash(npx:*)",
-            "Bash(node:*)",
-            "Bash(python3:*)",
-            "Bash(tsc:*)",
-            "Bash(nest:*)",
-            "Bash(prisma generate:*)",
-            "Bash(prisma format:*)",
-            "Bash(prisma validate:*)",
-            "Bash(graphify:*)",
-            "Bash(*graphify *)",
-            "Bash(curl:*)",
-            "Bash(docker ps:*)",
-            "Bash(docker logs:*)",
-            "Bash(docker exec:*)",
-            "Bash(docker inspect:*)",
-            "Bash(docker start:*)",
-            "Bash(docker stop:*)",
-            "Bash(docker restart:*)",
-            "Bash(docker-compose:*)",
-            "Bash(docker compose:*)",
-            "Bash(git status:*)",
-            "Bash(git diff:*)",
-            "Bash(git log:*)",
-            "Bash(git show:*)",
-            "Bash(git branch:*)",
-            "Bash(git blame:*)",
-            "Bash(git grep:*)",
-            "Bash(git ls-files:*)",
-            "Bash(git ls-tree:*)",
-            "Bash(git ls-remote:*)",
-            "Bash(git reflog:*)",
-            "Bash(git rev-parse:*)",
-            "Bash(git rev-list:*)",
-            "Bash(git merge-base:*)",
-            "Bash(git fetch:*)",
-            "Bash(git add:*)",
-            "Bash(git commit:*)",
-            "Bash(git checkout:*)",
-            "Bash(git switch:*)",
-            "Bash(git restore:*)",
-            "Bash(git stash:*)",
-            "Bash(git rm:*)",
-            "Bash(git mv:*)",
-            "Bash(git reset:*)",
-            "Bash(git worktree:*)",
-            "Bash(git -C:*)",
-            "Bash(git --no-pager:*)",
+            "Agent(explorer)",
+            "Agent(coder)",
+            "Agent(reviewer)",
+            "Agent(writer)",
+            "Agent(tester)",
+            "Agent(harness)",
             "Bash"
         ],
         "ask": [
             "Bash(git push:*)",
-            "Bash(git pull:*)",
-            "Bash(git remote add:*)",
-            "Bash(git remote set-url:*)",
             "Bash(git reset --hard:*)",
             "Bash(git clean:*)",
             "Bash(git stash drop:*)",
             "Bash(git stash clear:*)",
-            "Bash(gh pr create:*)",
-            "Bash(gh pr edit:*)",
             "Bash(gh pr merge:*)",
-            "Bash(gh pr close:*)",
-            "Bash(gh pr comment:*)",
-            "Bash(gh pr review:*)",
-            "Bash(gh issue create:*)",
-            "Bash(gh issue edit:*)",
-            "Bash(gh issue close:*)",
-            "Bash(gh issue comment:*)",
             "Bash(gh release:*)",
-            "Bash(gh repo:*)",
-            "Bash(gh workflow run:*)",
-            "Bash(gh api -X:*)",
-            "Bash(gh api --method:*)",
             "Bash(pnpm publish:*)",
-            "Bash(pnpm dlx:*)",
-            "Bash(pnpm vault:pull*)",
-            "Bash(pnpm run vault:pull*)",
-            "Bash(sh ci/vault/*)",
-            "Bash(ssh:*)",
-            "Bash(scp:*)",
-            "Bash(rsync:*)",
-            "Bash(curl -X:*)",
-            "Bash(curl -d:*)",
-            "Bash(curl --data:*)",
-            "Bash(curl -T:*)",
-            "Bash(curl -F:*)",
             "Bash(docker rm:*)",
             "Bash(docker volume rm:*)",
             "Bash(docker system prune:*)",
-            "Edit(~/.claude/**)"
+            "Bash(ssh:*)",
+            "Bash(scp:*)",
+            "Bash(rsync:*)",
+            "Bash(pnpm vault:pull*)",
+            "Bash(pnpm run vault:pull*)",
+            "Bash(sh ci/vault/*)",
+            "Edit(~/.claude/**)",
+            "Bash(git commit:*)",
+            "Bash(git add:*)",
+            "Bash(git stash:*)",
+            "Bash(git reset:*)"
         ],
         "deny": [
             "Bash(pnpm db:migrate*)",
@@ -179,6 +71,7 @@
             "Bash(mongosh:*)",
             "Bash(mongo:*)",
             "Bash(redis-cli:*)",
+            "Edit(docs/superpowers/**)",
             "Skill(caveman:caveman-compress)",
             "Skill(caveman:caveman-compress *)",
             "Skill(caveman:caveman-init)",
@@ -230,36 +123,46 @@
         "caveman@caveman": true,
         "avoid-ai-writing@conorbronsdon-skills": true
     },
-    "claudeMdExcludes": ["**/.claude/rules/*.md"],
     "hooks": {
         "PreToolUse": [
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.sh"
+                    }
+                ]
+            },
             {
                 "matcher": "Write|Edit",
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/deny-docs-superpowers.sh"
-                    }
-                ]
-            },
-            {
-                "matcher": "Bash",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/deny-npm-yarn.sh"
+                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-write.sh"
                     }
                 ]
             }
         ],
-        "PermissionRequest": [
+        "PostToolUse": [
             {
-                "matcher": "Bash",
+                "matcher": "Write|Edit",
                 "hooks": [
                     {
                         "type": "command",
-                        "if": "Bash(*graphify *)",
-                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/allow-graphify.sh"
+                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format.sh",
+                        "timeout": 120
+                    }
+                ]
+            }
+        ],
+        "Stop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/verify.sh",
+                        "timeout": 600
                     }
                 ]
             }
@@ -270,7 +173,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-skills.sh"
+                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/roster.sh"
                     }
                 ]
             }
