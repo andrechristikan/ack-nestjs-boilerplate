@@ -1,7 +1,6 @@
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationEqual,
@@ -43,7 +42,6 @@ import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/work
 export class UserRepository implements IUserRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly paginationService: PaginationService,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -300,12 +298,22 @@ export class UserRepository implements IUserRepository {
     }
 
     async updatePhotoProfile(userId: string, photo: IAwsS3): Promise<User> {
-        const plainPhoto = this.databaseUtil.toPlainObject(photo);
+        const photoData: Prisma.UserPhotoUncheckedCreateWithoutUserInput = {
+            bucket: photo.bucket,
+            key: photo.key,
+            cdnUrl: photo.cdnUrl,
+            completedUrl: photo.completedUrl,
+            mime: photo.mime,
+            extension: photo.extension,
+            access: photo.access,
+        };
 
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
-                photo: plainPhoto,
+                photo: {
+                    upsert: { create: photoData, update: photoData },
+                },
             },
         });
     }

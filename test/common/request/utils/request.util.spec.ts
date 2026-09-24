@@ -76,4 +76,15 @@ describe('RequestUtil', () => {
         expect(log.ipAddress).toBe('10.0.0.1');
         expect(log.geoLocation).toBeNull();
     });
+
+    it('builds request log with a null IP when the client address is not a valid IP', () => {
+        const request = mock<IncomingMessage>({
+            headers: { 'x-forwarded-for': 'not-an-ip' },
+        });
+
+        const log = service.buildRequestLog(request);
+
+        expect(log.ipAddress).toBeNull();
+        expect(log.geoLocation).toBeNull();
+    });
 });
