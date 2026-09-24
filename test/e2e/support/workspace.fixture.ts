@@ -1,8 +1,15 @@
 import type { INestApplication } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client';
-import type { Workspace, WorkspaceInvite } from '@generated/prisma-client';
+import {
+    EnumWorkspaceJoinRequestStatus,
+    EnumWorkspaceMemberRole,
+} from '@generated/prisma-client';
+import type {
+    Workspace,
+    WorkspaceInvite,
+    WorkspaceJoinRequest,
+} from '@generated/prisma-client';
 import { getPrismaClient } from '@test/e2e/support/prisma';
 
 /**
@@ -64,6 +71,54 @@ export async function createWorkspaceInvite(
     });
 
     return { invite, token };
+}
+
+/**
+ * Adds a real `WorkspaceMember` row directly through the app's Prisma client.
+ * `createPublicWorkspace` only sets `createdBy` on the workspace row — it does not itself
+ * create a membership — so a spec whose route requires the caller to be a member (guarded by
+ * `WorkspaceMemberProtected`) adds one explicitly with this helper.
+ */
+export async function addWorkspaceMember(
+    app: INestApplication,
+    workspaceId: string,
+    userId: string,
+    role: EnumWorkspaceMemberRole = EnumWorkspaceMemberRole.owner
+): Promise<void> {
+    const prisma = getPrismaClient(app);
+
+    await prisma.workspaceMember.create({
+        data: {
+            workspaceId,
+            userId,
+            role,
+            createdBy: userId,
+        },
+    });
+}
+
+/**
+ * Persists a real, pending `WorkspaceJoinRequest` row directly through the app's Prisma client.
+ * Specs exercising accept/reject/list seed the pending row directly instead of going through
+ * the create route, so each spec controls the requester and workspace state it needs.
+ */
+export async function createWorkspaceJoinRequestFixture(
+    app: INestApplication,
+    workspaceId: string,
+    userId: string,
+    overrides?: Partial<{ message: string }>
+): Promise<WorkspaceJoinRequest> {
+    const prisma = getPrismaClient(app);
+
+    return prisma.workspaceJoinRequest.create({
+        data: {
+            workspaceId,
+            userId,
+            status: EnumWorkspaceJoinRequestStatus.pending,
+            message: overrides?.message,
+            createdBy: userId,
+        },
+    });
 }
 
 /**
