@@ -174,14 +174,14 @@ describe('DatabaseService', () => {
                 query: '\\"SELECT  \\n value\\\\path\\"',
                 params: '[1]',
                 duration: 1001,
-                target: 'mongodb',
+                target: 'postgresql',
             });
             service['logQuery']({
                 timestamp: new Date('2026-01-01T00:00:00.000Z'),
                 query: 'SELECT 1',
                 params: '[]',
                 duration: 1,
-                target: 'mongodb',
+                target: 'postgresql',
             });
         });
 
@@ -209,14 +209,14 @@ describe('DatabaseService', () => {
                 query: 'SELECT 1',
                 params: '[]',
                 duration: 1,
-                target: 'mongodb',
+                target: 'postgresql',
             });
             service['logQuery']({
                 timestamp: new Date('2026-01-01T00:00:00.000Z'),
                 query: 42,
                 params: '[]',
                 duration: 1,
-                target: 'mongodb',
+                target: 'postgresql',
             } as unknown as Prisma.QueryEvent);
         });
     });
@@ -226,7 +226,7 @@ describe('DatabaseService', () => {
             const event: Prisma.LogEvent = {
                 timestamp: new Date('2026-01-01T00:00:00.000Z'),
                 message: 'event',
-                target: 'mongodb',
+                target: 'postgresql',
             };
             service['logError'](event);
             service['logWarn'](event);

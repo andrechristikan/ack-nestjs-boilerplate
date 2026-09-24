@@ -30,7 +30,7 @@ export const ProjectAdminListRequestSchema = PaginationOffsetQuerySchema.extend(
             }),
         workspaceId: RequestUuidSchema.optional().meta({
             description: 'Filter by workspaceId',
-            example: faker.database.mongodbObjectId(),
+            example: faker.string.uuid(),
         }),
     }
 );

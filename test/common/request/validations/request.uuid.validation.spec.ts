@@ -7,7 +7,7 @@ describe('RequestUuidSchema', () => {
         expect(RequestUuidSchema.parse(uuid)).toBe(uuid);
     });
 
-    it('rejects a MongoDB ObjectId', () => {
+    it('rejects a non-UUID identifier', () => {
         expect(() =>
             RequestUuidSchema.parse('507f1f77bcf86cd799439011')
         ).toThrow();

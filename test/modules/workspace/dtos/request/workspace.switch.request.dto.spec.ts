@@ -11,7 +11,7 @@ describe('WorkspaceSwitchRequestSchema', () => {
         { workspaceId: 'bad' },
         { workspaceId: '507f1f77bcf86cd799439011' },
         { workspaceId: uuidV7, unknown: true },
-    ])('rejects missing, malformed, ObjectId, or unknown input', input =>
+    ])('rejects missing, malformed, non-UUID, or unknown input', input =>
         expect(WorkspaceSwitchRequestSchema.safeParse(input).success).toBe(
             false
         )

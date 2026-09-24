@@ -13,7 +13,7 @@ describe('WorkspaceJoinRequestCreateRequestSchema', () => {
         { ...valid, workspaceId: '507f1f77bcf86cd799439011' },
         { ...valid, message: 'm'.repeat(501) },
         { ...valid, unknown: true },
-    ])('rejects malformed, ObjectId, or unknown input', input =>
+    ])('rejects malformed, non-UUID, or unknown input', input =>
         expect(
             WorkspaceJoinRequestCreateRequestSchema.safeParse(input).success
         ).toBe(false)

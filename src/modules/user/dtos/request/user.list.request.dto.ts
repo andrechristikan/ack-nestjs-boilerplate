@@ -37,11 +37,11 @@ export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
         }),
     roleId: RequestUuidSchema.optional().meta({
         description: 'Filter by roleId',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     countryId: RequestUuidSchema.optional().meta({
         description: 'Filter by countryId',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
 });
 

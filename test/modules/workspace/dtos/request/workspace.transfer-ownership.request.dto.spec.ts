@@ -11,7 +11,7 @@ describe('WorkspaceTransferOwnershipRequestSchema', () => {
         { targetUserId: 'bad' },
         { targetUserId: '507f1f77bcf86cd799439011' },
         { targetUserId: uuidV7, unknown: true },
-    ])('rejects malformed, ObjectId, or unknown input', input =>
+    ])('rejects malformed, non-UUID, or unknown input', input =>
         expect(
             WorkspaceTransferOwnershipRequestSchema.safeParse(input).success
         ).toBe(false)

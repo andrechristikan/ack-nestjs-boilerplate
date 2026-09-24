@@ -74,8 +74,8 @@ describe('DatabaseUtil', () => {
     });
 
     describe('toPlainObject / toPlainArray', () => {
-        it('toPlainObject returns Prisma.JsonNull for null', () => {
-            expect(util.toPlainObject(null)).toBe(Prisma.JsonNull);
+        it('toPlainObject returns Prisma.DbNull for null', () => {
+            expect(util.toPlainObject(null)).toBe(Prisma.DbNull);
         });
 
         it('toPlainObject deep-clones', () => {

@@ -15,7 +15,7 @@ describe('ProjectMemberAssignRequestSchema', () => {
         { ...valid, role: 'invalid' },
         { userId: valid.userId },
         { ...valid, unknown: true },
-    ])('rejects malformed, ObjectId, or unknown input', input =>
+    ])('rejects malformed, non-UUID, or unknown input', input =>
         expect(ProjectMemberAssignRequestSchema.safeParse(input).success).toBe(
             false
         )

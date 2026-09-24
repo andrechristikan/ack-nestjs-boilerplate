@@ -30,7 +30,7 @@ describe('UserCreateRequestSchema', () => {
         { ...valid, email: 'bad' },
         { ...valid, name: '' },
         { ...valid, unknown: true },
-    ])('rejects malformed, ObjectId, or unknown input', input => {
+    ])('rejects malformed, non-UUID, or unknown input', input => {
         expect(UserCreateRequestSchema.safeParse(input).success).toBe(false);
     });
 });
