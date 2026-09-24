@@ -48,16 +48,12 @@ export const DocWorkspaceRoleErrorResponses = {
 } as const;
 
 /**
- * Matches a `Workspace` that is not soft-deleted, including documents written before this field
- * was set explicitly at create time. Prisma's MongoDB connector compiles `{ deletedAt: null }`
- * alone into a query that also requires the field to be present (an `isSet` guard), so it silently
- * excludes any document where `deletedAt` was never persisted at all — as opposed to persisted and
- * explicitly `null`. This OR restores "active" semantics for that data, top-level or nested.
+ * Matches a `Workspace` that is not soft-deleted; spread it or list it under `AND` in an active-only read.
  * @public
  */
-export const WorkspaceActiveFilter: NonNullable<
-    Prisma.WorkspaceWhereInput['OR']
-> = [{ deletedAt: null }, { deletedAt: { isSet: false } }];
+export const WorkspaceActiveFilter = {
+    deletedAt: null,
+} as const satisfies Prisma.WorkspaceWhereInput;
 
 /**
  * Columns a user-scope workspace invite list read returns; the invite token is never among them.

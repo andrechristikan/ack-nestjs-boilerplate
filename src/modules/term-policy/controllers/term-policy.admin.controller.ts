@@ -6,7 +6,7 @@ import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestMessageLanguageSchema } from '@common/request/validations/request.message-language.validation';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -131,7 +131,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Delete('/delete/:termPolicyId')
     async delete(
-        @Param('termPolicyId', { schema: RequestMongoIdSchema })
+        @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicy>> {
         return this.termPolicyHttpService.deleteByAdmin(termPolicyId);
@@ -180,7 +180,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Put('/content/:termPolicyId/update')
     async updateContent(
-        @Param('termPolicyId', { schema: RequestMongoIdSchema })
+        @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto
@@ -205,7 +205,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Put('/content/:termPolicyId/add')
     async addContent(
-        @Param('termPolicyId', { schema: RequestMongoIdSchema })
+        @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto
@@ -230,7 +230,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Delete('/content/:termPolicyId/remove')
     async removeContent(
-        @Param('termPolicyId', { schema: RequestMongoIdSchema })
+        @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string,
         @Body({ schema: TermPolicyRemoveContentRequestSchema })
         body: TermPolicyRemoveContentRequestDto
@@ -257,7 +257,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Get('/content/:termPolicyId/:language/get')
     async getContent(
-        @Param('termPolicyId', { schema: RequestMongoIdSchema })
+        @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string,
         @Param('language', { schema: RequestMessageLanguageSchema })
         language: EnumMessageLanguage
@@ -282,7 +282,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Patch('/publish/:termPolicyId')
     async publish(
-        @Param('termPolicyId', { schema: RequestMongoIdSchema })
+        @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {

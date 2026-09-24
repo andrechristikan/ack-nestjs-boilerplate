@@ -80,15 +80,12 @@ export const DocProjectRoleErrorResponses = {
 } as const;
 
 /**
- * Matches a `Project` that is not soft-deleted, including documents written before this field
- * was set explicitly at create time. Prisma's MongoDB connector compiles `{ deletedAt: null }`
- * alone into a query that also requires the field to be present (an `isSet` guard), so it silently
- * excludes any document where `deletedAt` was never persisted at all — as opposed to persisted and
- * explicitly `null`. This OR restores "active" semantics for that data, top-level or nested.
+ * Matches a `Project` that is not soft-deleted; spread it or list it under `AND` in an active-only read.
  * @public
  */
-export const ProjectActiveFilter: NonNullable<Prisma.ProjectWhereInput['OR']> =
-    [{ deletedAt: null }, { deletedAt: { isSet: false } }];
+export const ProjectActiveFilter = {
+    deletedAt: null,
+} as const satisfies Prisma.ProjectWhereInput;
 
 /**
  * The only workspace role that sees and manages every project without a `ProjectMember` row.

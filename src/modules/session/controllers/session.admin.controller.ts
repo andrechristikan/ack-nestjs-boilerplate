@@ -2,7 +2,7 @@ import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/s
 import { SessionAdminListRequestSchema } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -66,7 +66,7 @@ export class SessionAdminController {
     async list(
         @Query({ schema: SessionAdminListRequestSchema })
         query: SessionAdminListRequestDto,
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         return this.sessionHttpService.getListOffsetByAdmin(userId, query);
@@ -92,9 +92,9 @@ export class SessionAdminController {
     @RequestThrottle({ user: true })
     @Delete('/revoke/:sessionId')
     async revoke(
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
-        @Param('sessionId', { schema: RequestMongoIdSchema })
+        @Param('sessionId', { schema: RequestUuidSchema })
         sessionId: string,
         @AuthJwtPayload('userId') revokedBy: string
     ): Promise<IResponseReturn<void>> {
@@ -125,7 +125,7 @@ export class SessionAdminController {
     @RequestThrottle({ user: true })
     @Delete('/revoke-all')
     async revokeAll(
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @AuthJwtPayload('userId') revokedBy: string
     ): Promise<IResponseReturn<void>> {

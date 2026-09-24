@@ -8,7 +8,8 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import type {
-    ITermPolicyContent,
+    ITermPolicy,
+    ITermPolicyContentCreate,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import {
@@ -41,7 +42,7 @@ export interface ITermPolicyRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>>;
-    findOneById(termPolicyId: string): Promise<TermPolicy | null>;
+    findOneById(termPolicyId: string): Promise<ITermPolicy | null>;
     findLatestPublishedByType(type: EnumTermPolicyType): Promise<{
         id: string;
         type: EnumTermPolicyType;
@@ -73,26 +74,24 @@ export interface ITermPolicyRepository {
     create(
         termPolicyId: string,
         { type, version }: TermPolicyCreateRequestDto,
-        contents: ITermPolicyContent[]
+        contents: ITermPolicyContentCreate[]
     ): Promise<TermPolicy>;
     delete(termPolicyId: string): Promise<TermPolicy>;
     updateContent(
         termPolicyId: string,
-        contents: ITermPolicyContent[],
-        content: ITermPolicyContent
+        content: ITermPolicyContentCreate
     ): Promise<TermPolicy>;
     addContent(
         termPolicyId: string,
-        newContent: ITermPolicyContent
+        newContent: ITermPolicyContentCreate
     ): Promise<TermPolicy>;
     removeContent(
         termPolicyId: string,
-        contents: ITermPolicyContent[],
         { language }: TermPolicyRemoveContentRequestDto
     ): Promise<TermPolicy>;
     publishInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
-        contents: ITermPolicyContent[]
+        contents: ITermPolicyContentCreate[]
     ): Promise<TermPolicy>;
 }

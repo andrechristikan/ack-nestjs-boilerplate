@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -117,7 +117,7 @@ export class ApiKeyAdminController {
     @RequestThrottle({ user: true })
     @Patch('/reset/:apiKeyId')
     async reset(
-        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
         return this.apiKeyHttpService.resetByAdmin(apiKeyId);
@@ -141,7 +141,7 @@ export class ApiKeyAdminController {
     async update(
         @Body({ schema: ApiKeyUpdateRequestSchema })
         body: ApiKeyUpdateRequestDto,
-        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKey>> {
         return this.apiKeyHttpService.updateByAdmin(apiKeyId, body);
@@ -165,7 +165,7 @@ export class ApiKeyAdminController {
     async updateDate(
         @Body({ schema: ApiKeyUpdateDateRequestSchema })
         body: ApiKeyUpdateDateRequestDto,
-        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKey>> {
         return this.apiKeyHttpService.updateDatesByAdmin(apiKeyId, body);
@@ -187,7 +187,7 @@ export class ApiKeyAdminController {
     @RequestThrottle({ user: true })
     @Patch('/update/:apiKeyId/status')
     async updateStatus(
-        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string,
         @Body({ schema: ApiKeyUpdateStatusRequestSchema })
         body: ApiKeyUpdateStatusRequestDto
@@ -211,7 +211,7 @@ export class ApiKeyAdminController {
     @RequestThrottle({ user: true })
     @Delete('/delete/:apiKeyId')
     async delete(
-        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKey>> {
         return this.apiKeyHttpService.deleteByAdmin(apiKeyId);

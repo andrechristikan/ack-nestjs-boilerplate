@@ -1,0 +1,312 @@
+import { ConfigService } from '@nestjs/config';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { generateSync } from 'otplib';
+
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { SentryService } from '@common/sentry/services/sentry.service';
+import { AuthTwoFactorSecretEncryptionPurpose } from '@modules/auth/constants/auth.constant';
+import {
+    EnumRoleType,
+    EnumUserGender,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
+    EnumUserStatus,
+} from '@generated/prisma-client';
+import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
+import { AuthTwoFactorDomain } from '@modules/auth/domains/auth.two-factor.domain';
+import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
+import type {
+    IUser,
+    IUserTwoFactor,
+} from '@modules/user/interfaces/user.interface';
+
+vi.mock('@common/sentry/services/sentry.service', () => ({
+    SentryService: class {},
+}));
+
+describe('AuthTwoFactorDomain', () => {
+    const helperEncryptionService: MockProxy<HelperEncryptionService> =
+        mock<HelperEncryptionService>();
+    const helperStringService: MockProxy<HelperStringService> =
+        mock<HelperStringService>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
+    const authTwoFactorUtil: MockProxy<AuthTwoFactorUtil> =
+        mock<AuthTwoFactorUtil>();
+    const sentryService: MockProxy<SentryService> = mock<SentryService>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const configGet = vi.mocked(configService.get);
+    const config: Record<string, unknown> = {
+        'auth.twoFactor.strategy': 'totp',
+        'auth.twoFactor.algorithm': 'sha1',
+        'auth.twoFactor.digits': 6,
+        'auth.twoFactor.periodInSeconds': 30,
+        'auth.twoFactor.window': 1,
+        'auth.twoFactor.secretLength': 20,
+        'auth.twoFactor.backupCodes.count': 2,
+        'auth.twoFactor.backupCodes.length': 10,
+        'auth.twoFactor.encryption.key': 'encryption-key',
+        'auth.twoFactor.maxAttempt': 5,
+    };
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    const twoFactor = {
+        id: 'two-factor-id',
+        userId: 'user-id',
+        secret: 'encrypted-secret',
+        pendingSecret: null,
+        enabled: true,
+        requiredSetup: false,
+        confirmedAt: now,
+        lastUsedAt: null,
+        attempt: 0,
+        createdAt: now,
+        createdBy: null,
+        updatedAt: now,
+        updatedBy: null,
+        backupCodes: [
+            {
+                id: 'backup-id-1',
+                twoFactorId: 'two-factor-id',
+                codeHash: 'hash-one',
+                usedAt: null,
+                createdAt: now,
+            },
+            {
+                id: 'backup-id-2',
+                twoFactorId: 'two-factor-id',
+                codeHash: 'hash-two',
+                usedAt: null,
+                createdAt: now,
+            },
+        ],
+    } satisfies IUserTwoFactor;
+    const user = {
+        id: 'user-id',
+        name: 'User',
+        username: 'user',
+        isVerified: true,
+        verifiedAt: now,
+        email: 'user@example.com',
+        roleId: 'role-id',
+        password: 'hash',
+        passwordExpired: null,
+        passwordCreated: now,
+        passwordAttempt: 0,
+        signUpAt: now,
+        signUpFrom: EnumUserSignUpFrom.website,
+        signUpWith: EnumUserSignUpWith.credential,
+        status: EnumUserStatus.active,
+        gender: EnumUserGender.male,
+        countryId: 'country-id',
+        lastLoginAt: null,
+        lastIPAddress: null,
+        lastLoginFrom: null,
+        lastLoginWith: null,
+        lastWorkspaceId: null,
+        lastWorkspaceChangedAt: null,
+        createdAt: now,
+        createdBy: null,
+        updatedAt: now,
+        updatedBy: null,
+        deletedAt: null,
+        deletedBy: null,
+        termsOfServiceAccepted: true,
+        privacyAccepted: true,
+        cookiesAccepted: false,
+        marketingAccepted: false,
+        role: {
+            id: 'role-id',
+            name: 'User',
+            description: null,
+            type: EnumRoleType.user,
+            createdAt: now,
+            createdBy: null,
+            updatedAt: now,
+            updatedBy: null,
+            policies: [],
+        },
+        twoFactor,
+    } satisfies IUser;
+
+    const plainSecret = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+    const validCode = (): string =>
+        generateSync({
+            secret: plainSecret,
+            strategy: 'totp',
+            algorithm: 'sha1',
+            digits: 6,
+            period: 30,
+        });
+
+    const wrongCode = (): string => {
+        const now = Math.floor(Date.now() / 1000);
+        const accepted = [-30, 0, 30].map(offset =>
+            generateSync({
+                secret: plainSecret,
+                strategy: 'totp',
+                algorithm: 'sha1',
+                digits: 6,
+                period: 30,
+                epoch: now + offset,
+            })
+        );
+        return ['000000', '111111'].find(c => !accepted.includes(c))!;
+    };
+
+    let service: AuthTwoFactorDomain;
+
+    beforeEach(() => {
+        helperEncryptionService.aes256Decrypt.mockReturnValue(plainSecret);
+        configGet.mockImplementation((key: string) => config[key]);
+
+        service = new AuthTwoFactorDomain(
+            configService,
+            helperEncryptionService,
+            helperStringService,
+            helperHashService,
+            authTwoFactorUtil,
+            sentryService
+        );
+    });
+
+    it('verifies a trimmed authenticator code with configured tolerance', async () => {
+        await expect(
+            service.verifyTwoFactor(twoFactor, {
+                method: EnumAuthTwoFactorMethod.code,
+                code: ` ${validCode()} `,
+            })
+        ).resolves.toEqual({
+            isValid: true,
+            method: EnumAuthTwoFactorMethod.code,
+        });
+    });
+
+    it('rejects an empty authenticator code before decrypting the secret', async () => {
+        await expect(
+            service.verifyTwoFactor(twoFactor, {
+                method: EnumAuthTwoFactorMethod.code,
+                code: '   ',
+            })
+        ).resolves.toEqual({
+            isValid: false,
+            method: EnumAuthTwoFactorMethod.code,
+        });
+        expect(helperEncryptionService.aes256Decrypt).not.toHaveBeenCalled();
+    });
+
+    it('rejects a nonempty authenticator code that does not verify', async () => {
+        await expect(
+            service.verifyTwoFactor(twoFactor, {
+                method: EnumAuthTwoFactorMethod.code,
+                code: wrongCode(),
+            })
+        ).resolves.toEqual({
+            isValid: false,
+            method: EnumAuthTwoFactorMethod.code,
+        });
+    });
+
+    it('returns the consumed hash for a valid normalized backup code', async () => {
+        helperHashService.sha256Hash.mockReturnValue('input-hash');
+        helperHashService.sha256Compare.mockImplementation(
+            hash => hash === 'hash-two'
+        );
+
+        await expect(
+            service.verifyTwoFactor(twoFactor, {
+                method: EnumAuthTwoFactorMethod.backupCodes,
+                backupCode: ' BACKUP02 ',
+            })
+        ).resolves.toEqual({
+            isValid: true,
+            method: EnumAuthTwoFactorMethod.backupCodes,
+            usedBackupCodeHash: 'hash-two',
+        });
+        expect(helperHashService.sha256Hash).toHaveBeenCalledWith('BACKUP02');
+    });
+
+    it('rejects backup verification when no active codes remain', async () => {
+        await expect(
+            service.verifyTwoFactor(
+                { ...twoFactor, backupCodes: [] },
+                {
+                    method: EnumAuthTwoFactorMethod.backupCodes,
+                    backupCode: 'BACKUP02',
+                }
+            )
+        ).resolves.toEqual({
+            isValid: false,
+            method: EnumAuthTwoFactorMethod.backupCodes,
+        });
+        expect(helperHashService.sha256Hash).not.toHaveBeenCalled();
+    });
+
+    it('rejects a backup code that matches no active hash', async () => {
+        helperHashService.sha256Hash.mockReturnValue('input-hash');
+        helperHashService.sha256Compare.mockReturnValue(false);
+
+        await expect(
+            service.verifyTwoFactor(twoFactor, {
+                method: EnumAuthTwoFactorMethod.backupCodes,
+                backupCode: 'UNKNOWN01',
+            })
+        ).resolves.toEqual({
+            isValid: false,
+            method: EnumAuthTwoFactorMethod.backupCodes,
+        });
+    });
+
+    it('generates uppercase backup codes and their hashes', () => {
+        helperStringService.randomUppercase
+            .mockReturnValueOnce('ABC123DEF4')
+            .mockReturnValueOnce('GHI567JKL8');
+        helperHashService.sha256Hash.mockImplementation(code => `hash:${code}`);
+
+        expect(service.generateBackupCodes()).toEqual({
+            codes: ['ABC123DEF4', 'GHI567JKL8'],
+            hashes: ['hash:ABC123DEF4', 'hash:GHI567JKL8'],
+        });
+    });
+
+    it('assembles an encrypted enrollment secret and authenticator URI', async () => {
+        helperEncryptionService.aes256Encrypt.mockReturnValue(
+            'encrypted-secret'
+        );
+        authTwoFactorUtil.createKeyUri.mockReturnValue('otpauth://totp/ACK');
+
+        const result = await service.setupTwoFactor(
+            'user-id',
+            'user@example.com'
+        );
+
+        expect(result.secret).toMatch(/^[A-Z2-7]+$/);
+        expect(result).toMatchObject({
+            encryptedSecret: 'encrypted-secret',
+            otpauthUrl: 'otpauth://totp/ACK',
+        });
+        expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
+            result.secret,
+            'encryption-key',
+            AuthTwoFactorSecretEncryptionPurpose,
+            'user-id'
+        );
+    });
+
+    it('reports an attempt lock at the configured inclusive boundary', () => {
+        expect(
+            service.checkAttempt({
+                ...user,
+                twoFactor: { ...twoFactor, attempt: 5 },
+            })
+        ).toBe(true);
+        expect(
+            service.checkAttempt({
+                ...user,
+                twoFactor: { ...twoFactor, attempt: 4 },
+            })
+        ).toBe(false);
+    });
+});

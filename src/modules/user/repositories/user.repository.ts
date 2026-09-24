@@ -1,7 +1,6 @@
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationEqual,
@@ -13,11 +12,16 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import { UserAdminListSelect } from '@modules/user/constants/user.constant';
+import {
+    UserAdminListSelect,
+    UserWithRoleInclude,
+} from '@modules/user/constants/user.constant';
+import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import type {
     IUser,
     IUserContact,
     IUserCreateWithWorkspaceInput,
+    IUserExport,
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
@@ -38,7 +42,6 @@ import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/work
 export class UserRepository implements IUserRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly paginationService: PaginationService,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -61,7 +64,11 @@ export class UserRepository implements IUserRepository {
             status: EnumUserStatus.active,
             lastWorkspaceId: input.workspaceContext.workspaceId,
             lastWorkspaceChangedAt,
-            termPolicy: input.termPolicy,
+            termsOfServiceAccepted:
+                input.termPolicy[EnumTermPolicyType.termsOfService],
+            privacyAccepted: input.termPolicy[EnumTermPolicyType.privacy],
+            cookiesAccepted: input.termPolicy[EnumTermPolicyType.cookies],
+            marketingAccepted: input.termPolicy[EnumTermPolicyType.marketing],
             createdBy: input.createdBy,
             deletedAt: null,
             ...(input.password
@@ -144,10 +151,7 @@ export class UserRepository implements IUserRepository {
     async findOneWithRoleByEmail(email: string): Promise<IUser | null> {
         return this.databaseService.client.user.findUnique({
             where: { email, deletedAt: null },
-            include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
-            },
+            include: UserWithRoleInclude,
         });
     }
 
@@ -155,9 +159,9 @@ export class UserRepository implements IUserRepository {
         return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null },
             include: {
-                role: { include: { policies: true } },
+                ...UserWithRoleInclude,
                 country: true,
-                twoFactor: true,
+                photo: true,
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -171,9 +175,9 @@ export class UserRepository implements IUserRepository {
         return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null, status: EnumUserStatus.active },
             include: {
-                role: { include: { policies: true } },
+                ...UserWithRoleInclude,
                 country: true,
-                twoFactor: true,
+                photo: true,
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -186,10 +190,7 @@ export class UserRepository implements IUserRepository {
     async findOneWithRoleById(id: string): Promise<IUser | null> {
         return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null },
-            include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
-            },
+            include: UserWithRoleInclude,
         });
     }
 
@@ -198,10 +199,7 @@ export class UserRepository implements IUserRepository {
             where: {
                 email: { in: emails },
             },
-            include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
-            },
+            include: UserWithRoleInclude,
         });
     }
 
@@ -210,10 +208,7 @@ export class UserRepository implements IUserRepository {
             where: {
                 username: { in: usernames },
             },
-            include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
-            },
+            include: UserWithRoleInclude,
         });
     }
 
@@ -222,7 +217,7 @@ export class UserRepository implements IUserRepository {
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null,
         take: number
-    ): Promise<IUser[]> {
+    ): Promise<IUserExport[]> {
         return this.databaseService.client.user.findMany({
             where: {
                 ...status,
@@ -231,8 +226,8 @@ export class UserRepository implements IUserRepository {
                 deletedAt: null,
             },
             include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
+                role: { select: { name: true } },
+                photo: true,
             },
             take,
         });
@@ -303,12 +298,22 @@ export class UserRepository implements IUserRepository {
     }
 
     async updatePhotoProfile(userId: string, photo: IAwsS3): Promise<User> {
-        const plainPhoto = this.databaseUtil.toPlainObject(photo);
+        const photoData: Prisma.UserPhotoUncheckedCreateWithoutUserInput = {
+            bucket: photo.bucket,
+            key: photo.key,
+            cdnUrl: photo.cdnUrl,
+            completedUrl: photo.completedUrl,
+            mime: photo.mime,
+            extension: photo.extension,
+            access: photo.access,
+        };
 
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
-                photo: plainPhoto,
+                photo: {
+                    upsert: { create: photoData, update: photoData },
+                },
             },
         });
     }
@@ -476,9 +481,7 @@ export class UserRepository implements IUserRepository {
                 status: EnumUserStatus.active,
             },
             data: {
-                termPolicy: {
-                    [type]: true,
-                },
+                [UserTermPolicyContract.columns[type]]: true,
             },
         });
     }
@@ -493,9 +496,7 @@ export class UserRepository implements IUserRepository {
                 status: EnumUserStatus.active,
             },
             data: {
-                termPolicy: {
-                    [type]: false,
-                },
+                [UserTermPolicyContract.columns[type]]: false,
             },
         });
     }

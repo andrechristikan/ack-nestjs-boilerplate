@@ -2,7 +2,7 @@ import type { ActivityLogAdminListRequestDto } from '@modules/activity-log/dtos/
 import { ActivityLogAdminListRequestSchema } from '@modules/activity-log/dtos/request/activity-log.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { ResponsePagination } from '@common/response/decorators/response.decorator';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 
@@ -57,7 +57,7 @@ export class ActivityLogAdminController {
     async listByUser(
         @Query({ schema: ActivityLogAdminListRequestSchema })
         query: ActivityLogAdminListRequestDto,
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogHttpService.getListOffsetByUser(userId, query);
@@ -87,9 +87,9 @@ export class ActivityLogAdminController {
     async listByWorkspace(
         @Query({ schema: ActivityLogAdminListRequestSchema })
         query: ActivityLogAdminListRequestDto,
-        @Param('workspaceId', { schema: RequestMongoIdSchema })
+        @Param('workspaceId', { schema: RequestUuidSchema })
         workspaceId: string,
-        @Query('userId', { schema: RequestMongoIdSchema.optional() })
+        @Query('userId', { schema: RequestUuidSchema.optional() })
         userId?: string
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogHttpService.getListOffsetByWorkspace(

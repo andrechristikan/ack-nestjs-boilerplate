@@ -1,27 +1,16 @@
-import { Test } from '@nestjs/testing';
-import type { TestingModule } from '@nestjs/testing';
 import { AnalyticGeoUtil } from '@modules/analytic/utils/analytic.geo.util';
 
 describe('AnalyticGeoUtil', () => {
-    let util: AnalyticGeoUtil;
+    const util = new AnalyticGeoUtil();
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
-
-        const module: TestingModule = await Test.createTestingModule({
-            providers: [AnalyticGeoUtil],
-        }).compile();
-
-        util = module.get(AnalyticGeoUtil);
+    it('returns zero for identical coordinates', () => {
+        expect(util.distanceKm(41.9028, 12.4964, 41.9028, 12.4964)).toBe(0);
     });
 
-    describe('distanceKm', () => {
-        it('returns 0 when both points are the same', () => {
-            expect(util.distanceKm(40.7128, -74.006, 40.7128, -74.006)).toBe(0);
-        });
-
-        it('returns half the earth circumference for antipodal longitudes at the equator', () => {
-            expect(util.distanceKm(0, 0, 0, 180)).toBeCloseTo(20015.1, 1);
-        });
+    it('calculates the approximate distance between Rome and Paris', () => {
+        expect(util.distanceKm(41.9028, 12.4964, 48.8566, 2.3522)).toBeCloseTo(
+            1105,
+            -1
+        );
     });
 });

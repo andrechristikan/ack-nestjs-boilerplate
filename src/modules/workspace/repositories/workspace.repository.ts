@@ -27,7 +27,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         return this.databaseService.client.workspace.findFirst({
             where: {
                 id: workspaceId,
-                OR: WorkspaceActiveFilter,
+                ...WorkspaceActiveFilter,
             },
         });
     }
@@ -37,7 +37,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             where: {
                 slug,
                 isPublic: true,
-                OR: WorkspaceActiveFilter,
+                ...WorkspaceActiveFilter,
             },
         });
     }
@@ -80,7 +80,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             where: {
                 AND: [
                     where ?? {},
-                    { OR: WorkspaceActiveFilter },
+                    WorkspaceActiveFilter,
                     { members: { some: { userId } } },
                 ],
             },

@@ -4,7 +4,7 @@ import type { WorkspaceAdminListRequestDto } from '@modules/workspace/dtos/reque
 import { WorkspaceAdminListRequestSchema } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -90,7 +90,7 @@ export class WorkspaceAdminController {
     @RequestThrottle({ user: true })
     @Get('/get/:workspaceId')
     async get(
-        @Param('workspaceId', { schema: RequestMongoIdSchema })
+        @Param('workspaceId', { schema: RequestUuidSchema })
         workspaceId: string
     ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceHttpService.getByIdForAdmin(workspaceId);
@@ -114,7 +114,7 @@ export class WorkspaceAdminController {
     async membersList(
         @Query({ schema: WorkspaceAdminMemberListRequestSchema })
         query: WorkspaceAdminMemberListRequestDto,
-        @Param('workspaceId', { schema: RequestMongoIdSchema })
+        @Param('workspaceId', { schema: RequestUuidSchema })
         workspaceId: string
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         return this.workspaceMemberHttpService.getMembersListForAdmin(

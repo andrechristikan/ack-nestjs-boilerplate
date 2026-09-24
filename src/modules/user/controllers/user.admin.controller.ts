@@ -55,7 +55,7 @@ import type {
 } from '@common/response/interfaces/response.interface';
 
 import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.response.dto';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserCreateRequestSchema } from '@modules/user/dtos/request/user.create.request.dto';
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
@@ -124,7 +124,7 @@ export class UserAdminController {
     @RequestThrottle({ user: true })
     @Get('/get/:userId')
     async get(
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponseReturn<IUserProfile>> {
         return this.userHttpService.getOne(userId);
@@ -165,7 +165,7 @@ export class UserAdminController {
     @RequestThrottle({ user: true })
     @Patch('/update/:userId/status')
     async updateStatus(
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string,
         @Body({ schema: UserUpdateStatusRequestSchema })
@@ -192,7 +192,7 @@ export class UserAdminController {
     @RequestThrottle({ user: true })
     @Put('/update/:userId/password')
     async updatePassword(
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
@@ -216,7 +216,7 @@ export class UserAdminController {
     @RequestThrottle({ user: true })
     @Patch('/2fa/:userId/reset')
     async resetTwoFactorByAdmin(
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<void> {

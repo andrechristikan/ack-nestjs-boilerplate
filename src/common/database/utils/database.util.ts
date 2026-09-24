@@ -39,12 +39,12 @@ export class DatabaseUtil {
 
     /**
      * Deep-clones `data` and casts it to a Prisma-compatible plain object.
-     * `null` is converted to JSON null because Prisma JSON writes reserve raw
-     * null for nullable-column ambiguity.
+     * `null` is converted to `Prisma.DbNull` (SQL NULL) because Prisma JSON
+     * writes reject raw null and `IS NULL` filters must match the stored value.
      */
     toPlainObject<T, N = Prisma.JsonObject>(data: T): N {
         if (data === null) {
-            return Prisma.JsonNull as N;
+            return Prisma.DbNull as N;
         }
 
         return structuredClone(data as unknown) as N;

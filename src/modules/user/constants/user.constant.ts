@@ -67,6 +67,31 @@ export const UserRefSelect = {
 } satisfies Prisma.UserSelect;
 
 /**
+ * Backup codes a two-factor read returns: only the ones not yet consumed.
+ * @public
+ */
+export const TwoFactorActiveBackupCodesFilter = {
+    usedAt: null,
+} satisfies Prisma.TwoFactorBackupCodeWhereInput;
+
+/**
+ * Relations joined to a two-factor row that carries its unused backup codes.
+ * @public
+ */
+export const TwoFactorWithBackupCodesInclude = {
+    backupCodes: { where: TwoFactorActiveBackupCodesFilter },
+} satisfies Prisma.TwoFactorInclude;
+
+/**
+ * Relations joined to a user row that carries its role, policies and two-factor state.
+ * @public
+ */
+export const UserWithRoleInclude = {
+    role: { include: { policies: true } },
+    twoFactor: { include: TwoFactorWithBackupCodesInclude },
+} satisfies Prisma.UserInclude;
+
+/**
  * Columns an admin user list read returns; the password hash is never among them.
  * @public
  */
@@ -93,7 +118,10 @@ export const UserAdminListSelect = {
     lastLoginWith: true,
     lastWorkspaceId: true,
     lastWorkspaceChangedAt: true,
-    termPolicy: true,
+    termsOfServiceAccepted: true,
+    privacyAccepted: true,
+    cookiesAccepted: true,
+    marketingAccepted: true,
     photo: true,
     createdAt: true,
     createdBy: true,
