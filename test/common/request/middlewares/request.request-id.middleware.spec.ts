@@ -26,7 +26,6 @@ describe('RequestRequestIdMiddleware', () => {
     let middleware: RequestRequestIdMiddleware;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         uuidState.values = ['generated-request-id'];
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [

@@ -17,7 +17,6 @@ describe('UserUtil', () => {
     let util: UserUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         vi.mocked(configService.get).mockImplementation((key: string) =>
             key === 'user.usernamePattern'
                 ? /^[a-z0-9-]+$/

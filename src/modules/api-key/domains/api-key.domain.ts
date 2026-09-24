@@ -47,19 +47,14 @@ export class ApiKeyDomain {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    private validateApiKey(
-        apiKey?: ApiKey | null,
-        includeActive: boolean = false
-    ): asserts apiKey is ApiKey {
+    private validateApiKey(apiKey?: ApiKey | null): asserts apiKey is ApiKey {
         if (!apiKey) {
             throw new ApiKeyNotFoundException();
         }
 
-        if (includeActive) {
-            const isActive = this.apiKeyUtil.isActive(apiKey);
-            if (!isActive) {
-                throw new ApiKeyInactiveException();
-            }
+        const isActive = this.apiKeyUtil.isActive(apiKey);
+        if (!isActive) {
+            throw new ApiKeyInactiveException();
         }
 
         return;
@@ -191,7 +186,7 @@ export class ApiKeyDomain {
 
     async updateByAdmin(id: string, name?: string): Promise<ApiKey> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
-        this.validateApiKey(apiKey, true);
+        this.validateApiKey(apiKey);
 
         const updatedAt = this.helperDateService.create();
         const events = [
@@ -226,7 +221,7 @@ export class ApiKeyDomain {
         this.validateStartAtIsFuture(startAt);
 
         const apiKey = await this.apiKeyRepository.findOneById(id);
-        this.validateApiKey(apiKey, true);
+        this.validateApiKey(apiKey);
 
         const newStartAt = this.helperDateService.create(startAt, {
             dayOf: EnumHelperDateDayOf.start,
@@ -256,7 +251,7 @@ export class ApiKeyDomain {
 
     async resetByAdmin(id: string): Promise<IApiKeyWithSecret> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
-        this.validateApiKey(apiKey, true);
+        this.validateApiKey(apiKey);
 
         const secret: string = this.apiKeyCredentialUtil.createSecret();
         const hash: string = this.apiKeyCredentialUtil.createHash(

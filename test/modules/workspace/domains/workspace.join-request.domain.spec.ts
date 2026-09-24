@@ -116,7 +116,6 @@ describe('WorkspaceJoinRequestDomain', () => {
     let domain: WorkspaceJoinRequestDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         databaseService.withTransaction.mockImplementation(async callback =>
             callback(transactionClient)
         );

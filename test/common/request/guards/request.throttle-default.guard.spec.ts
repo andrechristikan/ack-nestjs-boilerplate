@@ -1,4 +1,4 @@
-import type { ExecutionContext } from '@nestjs/common';
+import type { ExecutionContext, Type } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type {
     ThrottlerModuleOptions,
@@ -29,12 +29,12 @@ describe('RequestThrottleDefaultGuard', () => {
             },
         ],
     };
-    class TestController {}
+    const TestController =
+        function TestController() {} as unknown as Type<unknown>;
     function list() {}
     let guard: RequestThrottleDefaultGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         context.getHandler.mockReturnValue(list);
         context.getClass.mockReturnValue(TestController);
         context.switchToHttp.mockReturnValue(httpContext);

@@ -99,8 +99,6 @@ describe('AnalyticDashboardDomain', () => {
     let domain: AnalyticDashboardDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         analyticDateUtil.cacheToken.mockImplementation((date?: Date) =>
             date ? date.toISOString() : '_'
         );

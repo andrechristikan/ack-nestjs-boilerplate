@@ -3,10 +3,6 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 describe('HelperStringService', () => {
     const service = new HelperStringService();
 
-    afterEach(() => {
-        vi.restoreAllMocks();
-    });
-
     describe('random', () => {
         it('returns an alphanumeric string of the requested length', () => {
             expect(service.random(32)).toMatch(/^[A-Za-z0-9]{32}$/);

@@ -23,7 +23,6 @@ describe('TermPolicyGuard', () => {
         mock<ExecutionContext>();
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         termPolicyAcceptanceService.validateTermPolicyGuard.mockResolvedValue(
             undefined
         );

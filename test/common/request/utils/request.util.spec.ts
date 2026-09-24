@@ -1,28 +1,12 @@
 import { type IncomingMessage } from 'http';
-import { getClientIp } from '@supercharge/request-ip';
-import geoIp from 'geoip-lite';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestUtil } from '@common/request/utils/request.util';
 
-vi.mock(import('@supercharge/request-ip'), () => ({
-    getClientIp: vi.fn(),
-}));
-vi.mock('geoip-lite', () => ({
-    default: { lookup: vi.fn() },
-}));
-
 describe('RequestUtil', () => {
     const service = new RequestUtil();
-    const getClientIpMock = vi.mocked(getClientIp);
-    const geoLookup = vi.mocked(geoIp.lookup);
-
-    beforeEach(() => {
-        vi.resetAllMocks();
-    });
-
     it.each([
         ['203.0.113.1', 'socket-address', '203.0.113.1'],
         ['invalid', 'socket-address', 'socket-address'],
@@ -64,32 +48,32 @@ describe('RequestUtil', () => {
         });
     });
 
-    it('builds request log IP and geolocation at the owned module boundary', () => {
-        getClientIpMock.mockReturnValue('203.0.113.10');
-        geoLookup.mockReturnValue({
-            range: [0, 1],
-            country: 'IT',
-            region: 'RM',
-            eu: '1',
-            timezone: 'Europe/Rome',
-            city: 'Rome',
-            ll: [41.9, 12.5],
-            metro: 0,
-            area: 1,
-        });
-        const request: MockProxy<IncomingMessage> = mock<IncomingMessage>({
-            headers: { 'user-agent': 'test-agent' },
-        });
-
-        expect(service.buildRequestLog(request)).toMatchObject({
-            ipAddress: '203.0.113.10',
-            geoLocation: {
-                latitude: 41.9,
-                longitude: 12.5,
-                country: 'IT',
-                region: 'RM',
-                city: 'Rome',
+    it('builds request log IP and geolocation from a public client address', () => {
+        const request = mock<IncomingMessage>({
+            headers: {
+                'user-agent': 'test-agent',
+                'x-forwarded-for': '8.8.8.8',
             },
         });
+
+        const log = service.buildRequestLog(request);
+
+        expect(log.ipAddress).toBe('8.8.8.8');
+        expect(log.geoLocation).toMatchObject({
+            country: 'US',
+            latitude: expect.any(Number),
+            longitude: expect.any(Number),
+        });
+    });
+
+    it('builds request log without geolocation for a private address', () => {
+        const request = mock<IncomingMessage>({
+            headers: { 'x-forwarded-for': '10.0.0.1' },
+        });
+
+        const log = service.buildRequestLog(request);
+
+        expect(log.ipAddress).toBe('10.0.0.1');
+        expect(log.geoLocation).toBeNull();
     });
 });

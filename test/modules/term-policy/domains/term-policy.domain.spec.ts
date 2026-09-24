@@ -2,6 +2,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { FileService } from '@common/file/services/file.service';
@@ -12,12 +13,15 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
+    EnumActivityLogAction,
     type TermPolicyContent,
 } from '@generated/prisma-client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
+import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
+import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import type { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.interface';
@@ -72,7 +76,8 @@ describe('TermPolicyDomain', () => {
     let service: TermPolicyDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
+        databaseUtil.createId.mockReturnValue('new-term-id');
+        helperDateService.create.mockReturnValue(now);
         databaseService.withTransaction.mockImplementation(async callback =>
             callback({} as IDatabaseTransactionClient)
         );
@@ -169,5 +174,204 @@ describe('TermPolicyDomain', () => {
             { type: EnumTermPolicyType.privacy, version: 1 },
             'admin-id'
         );
+    });
+
+    it('maps public content without a matching language to undefined', () => {
+        const item = {
+            bucket: 'public-bucket',
+            key: 'public/privacy/1/fr.hbs',
+            cdnUrl: null,
+            completedUrl: 'https://public/fr.hbs',
+            mime: content.mime,
+            extension: content.extension,
+            access: EnumAwsS3Accessibility.public,
+            size: content.size,
+        };
+        fileService.extractFilenameFromPath.mockImplementation(
+            path => path.split('/').at(-1) ?? path
+        );
+
+        expect(service.mapPublicContent([item], [content])).toEqual([
+            { ...item, language: undefined },
+        ]);
+    });
+
+    it('delegates admin and published lists', async () => {
+        const pagination = { page: 1, perPage: 10 } as never;
+        const filter = { type: { in: [EnumTermPolicyType.privacy] } } as never;
+        const status = {
+            status: { in: [EnumTermPolicyStatus.published] },
+        } as never;
+        const result = { data: [], pagination: {} } as never;
+        termPolicyRepository.find.mockResolvedValue(result);
+        termPolicyRepository.findPublished.mockResolvedValue(result);
+
+        await expect(
+            service.getListByAdmin(pagination, filter, status)
+        ).resolves.toBe(result);
+        await expect(
+            service.getListPublished(pagination, filter)
+        ).resolves.toBe(result);
+    });
+
+    it('rejects a duplicate type and version', async () => {
+        termPolicyRepository.existsByVersionAndType.mockResolvedValue(true);
+
+        await expect(
+            service.createByAdmin({
+                contents: [],
+                type: draft.type,
+                version: draft.version,
+            })
+        ).rejects.toBeInstanceOf(TermPolicyExistException);
+    });
+
+    it('rejects duplicate content languages', async () => {
+        termPolicyRepository.existsByVersionAndType.mockResolvedValue(false);
+        termPolicyUtil.validateUniqueLanguages.mockReturnValue(false);
+
+        await expect(
+            service.createByAdmin({
+                contents: [],
+                type: draft.type,
+                version: draft.version,
+            })
+        ).rejects.toBeInstanceOf(TermPolicyLanguageDuplicateException);
+    });
+
+    it('creates a draft with mapped private content and activity', async () => {
+        const upload = {
+            language: content.language,
+            key: content.key,
+            size: content.size,
+        };
+        const mapped = {
+            bucket: content.bucket,
+            key: content.key,
+            cdnUrl: content.cdnUrl,
+            completedUrl: content.completedUrl,
+            mime: content.mime,
+            extension: content.extension,
+            access: content.access,
+            size: content.size,
+        };
+        termPolicyRepository.existsByVersionAndType.mockResolvedValue(false);
+        termPolicyUtil.validateUniqueLanguages.mockReturnValue(true);
+        awsS3Service.mapPresign.mockReturnValue(mapped);
+        termPolicyRepository.create.mockResolvedValue(draft);
+
+        await expect(
+            service.createByAdmin({
+                contents: [upload],
+                type: draft.type,
+                version: draft.version,
+            })
+        ).resolves.toBe(draft);
+        expect(termPolicyRepository.create).toHaveBeenCalledWith(
+            'new-term-id',
+            { contents: [upload], type: draft.type, version: draft.version },
+            [{ language: content.language, ...mapped }]
+        );
+        expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+            action: EnumActivityLogAction.adminTermPolicyCreate,
+            metadata: undefined,
+        });
+    });
+
+    it.each([
+        [
+            'typed',
+            new TermPolicyNotFoundException(),
+            TermPolicyNotFoundException,
+        ],
+        ['unknown', new Error('failure'), AppUnknownException],
+    ])('maps %s create failures', async (_name, error, expected) => {
+        termPolicyRepository.existsByVersionAndType.mockResolvedValue(false);
+        termPolicyUtil.validateUniqueLanguages.mockReturnValue(true);
+        awsS3Service.mapPresign.mockImplementation(() => {
+            throw error;
+        });
+
+        await expect(
+            service.createByAdmin({
+                contents: [
+                    {
+                        language: content.language,
+                        key: content.key,
+                        size: content.size,
+                    },
+                ],
+                type: draft.type,
+                version: draft.version,
+            })
+        ).rejects.toBeInstanceOf(expected);
+    });
+
+    it('rejects deleting an unknown policy', async () => {
+        termPolicyRepository.findOneById.mockResolvedValue(null);
+
+        await expect(service.deleteByAdmin('missing')).rejects.toBeInstanceOf(
+            TermPolicyNotFoundException
+        );
+    });
+
+    it('rejects deleting a published policy', async () => {
+        termPolicyRepository.findOneById.mockResolvedValue({
+            ...draft,
+            status: EnumTermPolicyStatus.published,
+        });
+
+        await expect(service.deleteByAdmin(draft.id)).rejects.toBeInstanceOf(
+            TermPolicyStatusInvalidException
+        );
+    });
+
+    it('deletes a draft and its private content', async () => {
+        termPolicyRepository.findOneById.mockResolvedValue(draft);
+        termPolicyUtil.getPath.mockReturnValue('private/privacy/1');
+        termPolicyRepository.delete.mockResolvedValue(draft);
+
+        await expect(service.deleteByAdmin(draft.id)).resolves.toBe(draft);
+        expect(awsS3Service.deleteDir).toHaveBeenCalledWith(
+            'private/privacy/1',
+            { access: EnumAwsS3Accessibility.private }
+        );
+        expect(activityLogDomain.stagePrepared).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+        [
+            'typed',
+            new TermPolicyNotFoundException(),
+            TermPolicyNotFoundException,
+        ],
+        ['unknown', new Error('failure'), AppUnknownException],
+    ])('maps %s delete failures', async (_name, error, expected) => {
+        termPolicyRepository.findOneById.mockResolvedValue(draft);
+        termPolicyUtil.getPath.mockImplementation(() => {
+            throw error;
+        });
+
+        await expect(service.deleteByAdmin(draft.id)).rejects.toBeInstanceOf(
+            expected
+        );
+    });
+
+    it.each([
+        [
+            'typed',
+            new TermPolicyNotFoundException(),
+            TermPolicyNotFoundException,
+        ],
+        ['unknown', new Error('failure'), AppUnknownException],
+    ])('maps %s publish failures', async (_name, error, expected) => {
+        termPolicyRepository.findOneById.mockResolvedValue(draft);
+        termPolicyUtil.getContentPublicPath.mockImplementation(() => {
+            throw error;
+        });
+
+        await expect(
+            service.publishByAdmin(draft.id, 'admin-id')
+        ).rejects.toBeInstanceOf(expected);
     });
 });

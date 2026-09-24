@@ -105,7 +105,6 @@ describe('AuthCache', () => {
     let service: AuthCache;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation((key: string) => config[key]);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [

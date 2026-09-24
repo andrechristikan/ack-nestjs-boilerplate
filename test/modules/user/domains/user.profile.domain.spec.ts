@@ -57,7 +57,6 @@ describe('UserProfileDomain', () => {
     let service: UserProfileDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         vi.mocked(configService.get).mockImplementation((key: string) => {
             const values = {
                 'user.uploadPhotoProfilePath': 'users/{userId}/photos',

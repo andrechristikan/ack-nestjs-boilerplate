@@ -35,7 +35,6 @@ describe('ActivityLogInterceptor', () => {
     let context: ExecutionContext;
 
     beforeEach(() => {
-        vi.resetAllMocks();
         activityLogDomain.flushStaged.mockResolvedValue(undefined);
         context = buildContext('http', request);
         interceptor = new ActivityLogInterceptor(activityLogDomain);

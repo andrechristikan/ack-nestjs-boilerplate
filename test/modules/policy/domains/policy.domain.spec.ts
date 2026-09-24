@@ -7,6 +7,7 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
+    EnumActivityLogAction,
     EnumUserGender,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -16,11 +17,14 @@ import {
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import { PolicyExistException } from '@modules/policy/exceptions/policy.exist.exception';
+import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
 import { PolicyPredefinedNotFoundException } from '@modules/policy/exceptions/policy.predefined-not-found.exception';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
 describe('PolicyDomain', () => {
@@ -99,7 +103,6 @@ describe('PolicyDomain', () => {
     let service: PolicyDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         policyAbilityFactory.createForUser.mockReturnValue(
             mock<ReturnType<PolicyAbilityFactory['createForUser']>>()
         );
@@ -169,5 +172,96 @@ describe('PolicyDomain', () => {
                 ]
             )
         ).toThrow(PolicyForbiddenException);
+    });
+
+    it('uses an empty policy set when the guard receives null policies', () => {
+        service.validatePolicyGuard(user, null, required);
+
+        expect(policyAbilityFactory.createForUser).toHaveBeenCalledWith([]);
+    });
+
+    it('rejects role-scoped reads when the role does not exist', async () => {
+        roleDomain.existsById.mockResolvedValue(false);
+
+        await expect(service.findManyByRole('missing')).rejects.toBeInstanceOf(
+            RoleNotFoundException
+        );
+    });
+
+    it('returns policies for an existing role', async () => {
+        roleDomain.existsById.mockResolvedValue(true);
+        policyRepository.findManyByRoleId.mockResolvedValue([policy]);
+
+        await expect(service.findManyByRole('role-id')).resolves.toEqual([
+            policy,
+        ]);
+    });
+
+    it('rejects duplicate policy creation', async () => {
+        roleDomain.existsById.mockResolvedValue(true);
+        policyRepository.existsByRoleIdAndSubject.mockResolvedValue(true);
+
+        await expect(
+            service.createByAdmin('role-id', required[0])
+        ).rejects.toBeInstanceOf(PolicyExistException);
+    });
+
+    it('creates a policy and stages its activity', async () => {
+        const event = mock<ReturnType<ActivityLogDomain['prepare']>>();
+        roleDomain.existsById.mockResolvedValue(true);
+        policyRepository.existsByRoleIdAndSubject.mockResolvedValue(false);
+        policyRepository.create.mockResolvedValue(policy);
+        activityLogDomain.prepare.mockReturnValue(event);
+
+        await expect(
+            service.createByAdmin('role-id', required[0])
+        ).resolves.toBe(policy);
+        expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+            action: EnumActivityLogAction.adminPolicyCreate,
+        });
+        expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([event]);
+    });
+
+    it.each([
+        [
+            'update',
+            (id: string) =>
+                service.updateByAdmin('role-id', id, {
+                    action: [EnumPolicyAction.read],
+                }),
+        ],
+        ['delete', (id: string) => service.deleteByAdmin('role-id', id)],
+    ])('rejects %s when the policy does not exist', async (_name, run) => {
+        roleDomain.existsById.mockResolvedValue(true);
+        policyRepository.existsByRoleIdAndId.mockResolvedValue(false);
+
+        await expect(run('missing')).rejects.toBeInstanceOf(
+            PolicyNotFoundException
+        );
+    });
+
+    it('updates a policy and stages its activity', async () => {
+        const data = { action: [EnumPolicyAction.read] };
+        roleDomain.existsById.mockResolvedValue(true);
+        policyRepository.existsByRoleIdAndId.mockResolvedValue(true);
+        policyRepository.update.mockResolvedValue(policy);
+
+        await expect(
+            service.updateByAdmin('role-id', policy.id, data)
+        ).resolves.toBe(policy);
+        expect(policyRepository.update).toHaveBeenCalledWith(policy.id, data);
+        expect(activityLogDomain.stagePrepared).toHaveBeenCalledOnce();
+    });
+
+    it('deletes a policy and stages its activity', async () => {
+        roleDomain.existsById.mockResolvedValue(true);
+        policyRepository.existsByRoleIdAndId.mockResolvedValue(true);
+        policyRepository.delete.mockResolvedValue(policy);
+
+        await expect(service.deleteByAdmin('role-id', policy.id)).resolves.toBe(
+            policy
+        );
+        expect(policyRepository.delete).toHaveBeenCalledWith(policy.id);
+        expect(activityLogDomain.stagePrepared).toHaveBeenCalledOnce();
     });
 });

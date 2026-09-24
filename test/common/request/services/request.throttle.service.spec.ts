@@ -24,7 +24,6 @@ describe('RequestThrottleService', () => {
     let service: RequestThrottleService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         vi.mocked(configService.get).mockReturnValue('X-RateLimit');
 
         const moduleRef: TestingModule = await Test.createTestingModule({

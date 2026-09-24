@@ -22,7 +22,6 @@ describe('NotificationEmailQueueFactory', () => {
     let factory: NotificationEmailQueueFactory;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation((key: string) => config[key]);
 
         const module: TestingModule = await Test.createTestingModule({

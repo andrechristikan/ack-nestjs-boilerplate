@@ -22,7 +22,6 @@ describe('MessageService', () => {
     let service: MessageService;
 
     beforeEach(() => {
-        vi.resetAllMocks();
         // translate echoes the path unless a case overrides it
         translate.mockImplementation(path => path);
         i18n.translate.mockImplementation(((path: string, options: unknown) =>

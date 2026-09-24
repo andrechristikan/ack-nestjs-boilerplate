@@ -27,7 +27,6 @@ describe('AuthJwtRefreshGuard', () => {
     let guard: AuthJwtRefreshGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtRefreshGuard,

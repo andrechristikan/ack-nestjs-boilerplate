@@ -24,6 +24,7 @@ $RECYCLE.BIN/
 
 # Tests
 /coverage
+/coverage-e2e
 /.nyc_output
 /.vitest
 

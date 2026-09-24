@@ -1,4 +1,4 @@
-import type { ExecutionContext } from '@nestjs/common';
+import type { ExecutionContext, Type } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
@@ -16,14 +16,13 @@ describe('RequestEnvGuard', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
     const handler = vi.fn();
-    class TestController {}
+    const controller = {} as Type<unknown>;
     let guard: RequestEnvGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         context.getType.mockReturnValue('http');
         context.getHandler.mockReturnValue(handler);
-        context.getClass.mockReturnValue(TestController);
+        context.getClass.mockReturnValue(controller);
         vi.mocked(configService.get).mockReturnValue(EnumAppEnvironment.local);
 
         const moduleRef: TestingModule = await Test.createTestingModule({
@@ -42,7 +41,7 @@ describe('RequestEnvGuard', () => {
         await expect(guard.canActivate(context)).resolves.toBe(true);
         expect(reflector.getAllAndOverride).toHaveBeenCalledWith(
             RequestEnvMetaKey,
-            [handler, TestController]
+            [handler, controller]
         );
     });
 

@@ -44,7 +44,6 @@ describe('RequestCorsMiddleware', () => {
     }
 
     beforeEach(() => {
-        vi.resetAllMocks();
         corsMocks.factory.mockImplementation(options => {
             capturedOptions = options ?? {};
             return vi.fn((_request, _response, next) => next());

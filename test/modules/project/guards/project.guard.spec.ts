@@ -26,7 +26,6 @@ describe('ProjectGuard', () => {
     let guard: ProjectGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         context.switchToHttp.mockReturnValue(httpArgumentsHost);
         httpArgumentsHost.getRequest.mockReturnValue({
             params: { projectId: 'project-id' },

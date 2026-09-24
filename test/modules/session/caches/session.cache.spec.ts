@@ -37,7 +37,6 @@ describe('SessionCache', () => {
     let service: SessionCache;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockReturnValue('session:{userId}:{sessionId}');
         helperStringService.fillPattern.mockImplementation((pattern, params) =>
             pattern

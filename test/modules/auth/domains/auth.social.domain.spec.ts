@@ -6,14 +6,15 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { AuthSocialDomain } from '@modules/auth/domains/auth.social.domain';
 
 const googleMocks = vi.hoisted(() => ({
+    OAuth2Client: vi.fn(function () {
+        return { verifyIdToken: googleMocks.verifyIdToken };
+    }),
     verifyIdToken: vi.fn(),
 }));
 const appleMocks = vi.hoisted(() => ({ verify: vi.fn() }));
 
 vi.mock('google-auth-library', () => ({
-    OAuth2Client: class {
-        verifyIdToken = googleMocks.verifyIdToken;
-    },
+    OAuth2Client: googleMocks.OAuth2Client,
 }));
 
 vi.mock('verify-apple-id-token', () => ({
@@ -33,7 +34,6 @@ describe('AuthSocialDomain', () => {
     let service: AuthSocialDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation((key: string) => config[key]);
         vi.resetModules();
         const { AuthSocialDomain: AuthSocialDomainClass } =

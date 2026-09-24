@@ -21,7 +21,6 @@ describe('RequestThrottleStorageService', () => {
     let service: RequestThrottleStorageService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         keyv.store = keyvStore;
         keyvStore.getClient.mockResolvedValue({
             eval: evalScript,

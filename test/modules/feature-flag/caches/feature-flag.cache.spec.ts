@@ -32,7 +32,6 @@ describe('FeatureFlagCache', () => {
     let service: FeatureFlagCache;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation(
             (key: string) =>
                 ({

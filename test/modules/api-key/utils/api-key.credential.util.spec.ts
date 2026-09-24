@@ -19,7 +19,6 @@ describe('ApiKeyCredentialUtil', () => {
     let service: ApiKeyCredentialUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockReturnValue(EnumAppEnvironment.production);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [

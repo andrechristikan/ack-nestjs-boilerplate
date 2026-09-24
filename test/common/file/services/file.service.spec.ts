@@ -12,7 +12,6 @@ describe('FileService', () => {
     let service: FileService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         helperStringService.random.mockReturnValue('random');
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [

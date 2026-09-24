@@ -1,4 +1,4 @@
-import type { ExecutionContext } from '@nestjs/common';
+import type { ExecutionContext, Type } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
@@ -26,12 +26,12 @@ describe('RequestThrottleRouteGuard', () => {
     const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
     const httpContext: MockProxy<ReturnType<ExecutionContext['switchToHttp']>> =
         mock<ReturnType<ExecutionContext['switchToHttp']>>();
-    class UserController {}
+    const UserController =
+        function UserController() {} as unknown as Type<unknown>;
     function login() {}
     let guard: RequestThrottleRouteGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         context.getType.mockReturnValue('http');
         context.getHandler.mockReturnValue(login);
         context.getClass.mockReturnValue(UserController);

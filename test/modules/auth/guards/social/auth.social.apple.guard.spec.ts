@@ -21,7 +21,6 @@ describe('AuthSocialAppleGuard', () => {
     let guard: AuthSocialAppleGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation((key: string) => config[key]);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [

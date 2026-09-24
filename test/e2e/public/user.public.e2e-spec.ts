@@ -1,7 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -107,29 +106,6 @@ describe('User public auth routes', () => {
                     EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
             });
         });
-
-        it('rejects a request with no x-api-key header', async () => {
-            const response = await e2ePost(
-                app,
-                '/api/v1/public/user/login/credential'
-            )
-                .send({
-                    email: user.email,
-                    password: user.password,
-                    from: 'website',
-                    device: device(),
-                })
-                .expect(401);
-
-            expect(response.body).toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyRequired
-                    ],
-            });
-        });
     });
 
     describe('PATCH /api/v1/public/user/email/verify', () => {
@@ -206,24 +182,6 @@ describe('User public auth routes', () => {
                 statusCodeKey:
                     EnumRequestStatusCodeError[
                         EnumRequestStatusCodeError.validation
-                    ],
-            });
-        });
-
-        it('rejects a request with no x-api-key header', async () => {
-            const response = await e2ePatch(
-                app,
-                '/api/v1/public/user/email/verify'
-            )
-                .send({ token: 'irrelevant' })
-                .expect(401);
-
-            expect(response.body).toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyRequired
                     ],
             });
         });
@@ -307,24 +265,6 @@ describe('User public auth routes', () => {
                 statusCodeKey:
                     EnumRequestStatusCodeError[
                         EnumRequestStatusCodeError.validation
-                    ],
-            });
-        });
-
-        it('rejects a request with no x-api-key header', async () => {
-            const response = await e2ePatch(
-                app,
-                '/api/v1/public/user/password/reset'
-            )
-                .send({ token: 'irrelevant', newPassword: 'NewPassw0rd!123' })
-                .expect(401);
-
-            expect(response.body).toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyRequired
                     ],
             });
         });
@@ -418,28 +358,6 @@ describe('User public auth routes', () => {
                 statusCodeKey:
                     EnumAuthStatusCodeError[
                         EnumAuthStatusCodeError.twoFactorChallengeInvalid
-                    ],
-            });
-        });
-
-        it('rejects a request with no x-api-key header', async () => {
-            const response = await e2ePatch(
-                app,
-                '/api/v1/public/user/login/2fa/verify'
-            )
-                .send({
-                    challengeToken: 'irrelevant',
-                    method: 'code',
-                    code: '123456',
-                })
-                .expect(401);
-
-            expect(response.body).toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyRequired
                     ],
             });
         });

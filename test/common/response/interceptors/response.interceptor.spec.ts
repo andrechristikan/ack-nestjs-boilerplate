@@ -43,7 +43,6 @@ describe('ResponseInterceptor', () => {
     let interceptor: ResponseInterceptor<unknown>;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const httpContext =
             mock<ReturnType<ExecutionContext['switchToHttp']>>();
         httpContext.getResponse.mockReturnValue(response);

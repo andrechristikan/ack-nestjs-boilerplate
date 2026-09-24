@@ -23,7 +23,6 @@ describe('RequestTimeoutInterceptor', () => {
     let interceptor: RequestTimeoutInterceptor;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         context.getType.mockReturnValue('http');
         context.getHandler.mockReturnValue(handler);
         vi.useFakeTimers();

@@ -57,7 +57,6 @@ describe('AuthUtil', () => {
     let util: AuthUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthUtil,

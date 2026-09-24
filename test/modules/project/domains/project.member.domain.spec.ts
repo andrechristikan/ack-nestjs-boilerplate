@@ -43,7 +43,6 @@ describe('ProjectMemberDomain', () => {
     let domain: ProjectMemberDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         requestStoreService.get.mockReturnValue(null);
 
         const module: TestingModule = await Test.createTestingModule({

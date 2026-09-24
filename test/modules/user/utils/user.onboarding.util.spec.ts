@@ -13,7 +13,6 @@ describe('UserOnboardingUtil', () => {
     let util: UserOnboardingUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         databaseUtil.isUniqueCollision.mockReturnValue(false);
 
         const moduleRef: TestingModule = await Test.createTestingModule({

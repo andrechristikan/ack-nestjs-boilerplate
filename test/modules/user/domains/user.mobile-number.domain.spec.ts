@@ -69,7 +69,6 @@ describe('UserMobileNumberDomain', () => {
     let service: UserMobileNumberDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         databaseService.withTransaction.mockImplementation(async callback =>
             callback(transactionClient)
         );

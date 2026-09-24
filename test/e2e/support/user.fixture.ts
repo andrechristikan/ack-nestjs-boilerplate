@@ -158,6 +158,81 @@ export async function createForgotPasswordToken(
 }
 
 /**
+ * Persists a real `UserMobileNumber` row directly through the app's Prisma client. The
+ * `POST /user/mobile-number/add` route cannot be used to build this fixture: its request
+ * schema's `countryId` field still validates a 24-hex ObjectId shape
+ * (`user.create.request.dto.ts`), which no real Postgres UUID ever matches, so the route
+ * always rejects a genuine `countryId` with a 422 — a confirmed `src/` defect, not a fixture
+ * gap. `phoneCode` defaults to Indonesia's own (`+62`) so it lines up with the country
+ * `createActiveUser` seeds by default.
+ */
+export async function createMobileNumberFixture(
+    app: INestApplication,
+    userId: string,
+    overrides?: Partial<{
+        countryId: string;
+        phoneCode: string;
+        number: string;
+    }>
+): Promise<{
+    id: string;
+    countryId: string;
+    phoneCode: string;
+    number: string;
+}> {
+    const prisma = getPrismaClient(app);
+
+    const countryId =
+        overrides?.countryId ??
+        (
+            await prisma.country.findFirstOrThrow({
+                where: { alpha2Code: 'ID' },
+            })
+        ).id;
+    const phoneCode = overrides?.phoneCode ?? '62';
+    const suffix = randomUUID().replaceAll('-', '').slice(0, 10);
+    const number = overrides?.number ?? `8${suffix}`;
+
+    const mobileNumber = await prisma.userMobileNumber.create({
+        data: {
+            userId,
+            countryId,
+            phoneCode,
+            number,
+            createdBy: userId,
+        },
+    });
+
+    return {
+        id: mobileNumber.id,
+        countryId: mobileNumber.countryId,
+        phoneCode: mobileNumber.phoneCode,
+        number: mobileNumber.number,
+    };
+}
+
+/**
+ * Persists the disabled `TwoFactor` row every real onboarding flow creates through
+ * `UserTwoFactorDomain.createDisabledInTx`. `createActiveUser` bypasses onboarding (a direct
+ * Prisma insert), so a fixture user starts with no `TwoFactor` row at all — and every
+ * two-factor route reads or `update`s that row unconditionally (never an `upsert`), so it 500s
+ * without one. A spec exercising a not-yet-enabled 2FA route seeds this first.
+ */
+export async function createDisabledTwoFactorFixture(
+    app: INestApplication,
+    userId: string
+): Promise<void> {
+    await getPrismaClient(app).twoFactor.create({
+        data: {
+            userId,
+            enabled: false,
+            requiredSetup: false,
+            createdBy: userId,
+        },
+    });
+}
+
+/**
  * Enables real, confirmed 2FA (TOTP) for the fixture user using the app's own encryption
  * service, and returns the plaintext secret a spec needs to derive a valid code.
  */

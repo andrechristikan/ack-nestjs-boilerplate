@@ -42,7 +42,6 @@ describe('PolicyGuard', () => {
     let guard: PolicyGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 PolicyGuard,

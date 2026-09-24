@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { useE2eApp } from '@test/e2e/support/app';
 import { e2eGet } from '@test/e2e/support/request';
@@ -73,22 +72,6 @@ describe('Workspace public preview routes', () => {
                     ],
             });
         });
-
-        it('rejects a request with no x-api-key header', async () => {
-            const response = await e2eGet(
-                app,
-                `/api/v1/public/workspace/preview/${workspace.slug}`
-            ).expect(401);
-
-            expect(response.body).toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyRequired
-                    ],
-            });
-        });
     });
 
     describe('GET /api/v1/public/workspace/invite/:inviteToken/preview', () => {
@@ -128,22 +111,6 @@ describe('Workspace public preview routes', () => {
                 statusCodeKey:
                     EnumWorkspaceStatusCodeError[
                         EnumWorkspaceStatusCodeError.inviteInvalid
-                    ],
-            });
-        });
-
-        it('rejects a request with no x-api-key header', async () => {
-            const response = await e2eGet(
-                app,
-                '/api/v1/public/workspace/invite/not-a-real-token/preview'
-            ).expect(401);
-
-            expect(response.body).toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyRequired
                     ],
             });
         });

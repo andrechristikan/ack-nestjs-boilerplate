@@ -12,8 +12,6 @@ describe('RequestStoreService', () => {
     let service: RequestStoreService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 RequestStoreService,

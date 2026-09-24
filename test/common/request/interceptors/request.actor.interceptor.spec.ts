@@ -18,7 +18,6 @@ describe('RequestActorInterceptor', () => {
     let interceptor: RequestActorInterceptor;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         next.handle.mockReturnValue(of('result'));
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [

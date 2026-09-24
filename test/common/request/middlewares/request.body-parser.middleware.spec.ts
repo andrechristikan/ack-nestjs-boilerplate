@@ -26,7 +26,6 @@ describe('RequestBodyParserMiddleware', () => {
     let middleware: RequestBodyParserMiddleware;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         vi.mocked(configService.get).mockImplementation(key => {
             const values: Record<string, number> = {
                 'request.body.json.limitInBytes': 1_000,

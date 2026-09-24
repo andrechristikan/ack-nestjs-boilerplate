@@ -30,7 +30,6 @@ describe('AuthJwtAccessGuard', () => {
     let guard: AuthJwtAccessGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtAccessGuard,

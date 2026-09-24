@@ -1,8 +1,7 @@
-import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { generateSecret, verifySync } from 'otplib';
+import { generateSync } from 'otplib';
 
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -24,10 +23,8 @@ import type {
     IUserTwoFactor,
 } from '@modules/user/interfaces/user.interface';
 
-vi.mock('otplib', () => ({
-    generateSecret: vi.fn(() => 'TOTPSECRET'),
-    generateURI: vi.fn(() => 'otpauth://totp/ACK:user@example.com'),
-    verifySync: vi.fn(() => ({ valid: true, delta: 0 })),
+vi.mock('@common/sentry/services/sentry.service', () => ({
+    SentryService: class {},
 }));
 
 describe('AuthTwoFactorDomain', () => {
@@ -134,50 +131,56 @@ describe('AuthTwoFactorDomain', () => {
         twoFactor,
     } satisfies IUser;
 
+    const plainSecret = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+    const validCode = (): string =>
+        generateSync({
+            secret: plainSecret,
+            strategy: 'totp',
+            algorithm: 'sha1',
+            digits: 6,
+            period: 30,
+        });
+
+    const wrongCode = (): string => {
+        const now = Math.floor(Date.now() / 1000);
+        const accepted = [-30, 0, 30].map(offset =>
+            generateSync({
+                secret: plainSecret,
+                strategy: 'totp',
+                algorithm: 'sha1',
+                digits: 6,
+                period: 30,
+                epoch: now + offset,
+            })
+        );
+        return ['000000', '111111'].find(c => !accepted.includes(c))!;
+    };
+
     let service: AuthTwoFactorDomain;
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
-        helperEncryptionService.aes256Decrypt.mockReturnValue('plain-secret');
+    beforeEach(() => {
+        helperEncryptionService.aes256Decrypt.mockReturnValue(plainSecret);
         configGet.mockImplementation((key: string) => config[key]);
-        vi.mocked(generateSecret).mockReturnValue('TOTPSECRET');
-        vi.mocked(verifySync).mockReturnValue({ valid: true, delta: 0 });
 
-        const moduleRef: TestingModule = await Test.createTestingModule({
-            providers: [
-                AuthTwoFactorDomain,
-                { provide: ConfigService, useValue: configService },
-                {
-                    provide: HelperEncryptionService,
-                    useValue: helperEncryptionService,
-                },
-                { provide: HelperStringService, useValue: helperStringService },
-                { provide: HelperHashService, useValue: helperHashService },
-                { provide: AuthTwoFactorUtil, useValue: authTwoFactorUtil },
-                { provide: SentryService, useValue: sentryService },
-            ],
-        }).compile();
-        service = moduleRef.get(AuthTwoFactorDomain);
+        service = new AuthTwoFactorDomain(
+            configService,
+            helperEncryptionService,
+            helperStringService,
+            helperHashService,
+            authTwoFactorUtil,
+            sentryService
+        );
     });
 
     it('verifies a trimmed authenticator code with configured tolerance', async () => {
         await expect(
             service.verifyTwoFactor(twoFactor, {
                 method: EnumAuthTwoFactorMethod.code,
-                code: ' 123456 ',
+                code: ` ${validCode()} `,
             })
         ).resolves.toEqual({
             isValid: true,
             method: EnumAuthTwoFactorMethod.code,
-        });
-        expect(verifySync).toHaveBeenCalledWith({
-            token: '123456',
-            secret: 'plain-secret',
-            algorithm: 'sha1',
-            strategy: 'totp',
-            digits: 6,
-            period: 30,
-            epochTolerance: [30, 0],
         });
     });
 
@@ -195,12 +198,10 @@ describe('AuthTwoFactorDomain', () => {
     });
 
     it('rejects a nonempty authenticator code that does not verify', async () => {
-        vi.mocked(verifySync).mockReturnValue({ valid: false });
-
         await expect(
             service.verifyTwoFactor(twoFactor, {
                 method: EnumAuthTwoFactorMethod.code,
-                code: '123456',
+                code: wrongCode(),
             })
         ).resolves.toEqual({
             isValid: false,
@@ -281,13 +282,13 @@ describe('AuthTwoFactorDomain', () => {
             'user@example.com'
         );
 
+        expect(result.secret).toMatch(/^[A-Z2-7]+$/);
         expect(result).toMatchObject({
-            secret: 'TOTPSECRET',
             encryptedSecret: 'encrypted-secret',
             otpauthUrl: 'otpauth://totp/ACK',
         });
         expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
-            'TOTPSECRET',
+            result.secret,
             'encryption-key',
             AuthTwoFactorSecretEncryptionPurpose,
             'user-id'

@@ -44,7 +44,6 @@ describe('UserImportDomain', () => {
     let domain: UserImportDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         vi.mocked(configService.get).mockImplementation(
             (key: string) => configValues[key]
         );

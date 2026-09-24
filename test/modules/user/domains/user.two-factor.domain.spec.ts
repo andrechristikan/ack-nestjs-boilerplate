@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -18,9 +19,13 @@ import {
 } from '@generated/prisma-client';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTwoFactorBackupCodeRequiredException } from '@modules/auth/exceptions/auth.two-factor-backup-code-required.exception';
+import { AuthTwoFactorAlreadyEnabledException } from '@modules/auth/exceptions/auth.two-factor-already-enabled.exception';
 import { AuthTwoFactorChallengeInvalidException } from '@modules/auth/exceptions/auth.two-factor-challenge-invalid.exception';
 import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
+import { AuthTwoFactorNotRequiredSetupException } from '@modules/auth/exceptions/auth.two-factor-not-required-setup.exception';
+import { AuthTwoFactorRequiredSetupException } from '@modules/auth/exceptions/auth.two-factor-required-setup.exception';
 import { AuthTwoFactorSetupRequiredException } from '@modules/auth/exceptions/auth.two-factor-setup-required.exception';
+import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
 import type {
     IAuthToken,
     IAuthTwoFactorVerifyResult,
@@ -29,6 +34,9 @@ import { AuthCache } from '@modules/auth/caches/auth.cache';
 import { AuthTwoFactorDomain } from '@modules/auth/domains/auth.two-factor.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
+import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
+import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
+import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -38,6 +46,10 @@ import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domai
 import { UserUtil } from '@modules/user/utils/user.util';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+
+vi.mock('@common/sentry/services/sentry.service', () => ({
+    SentryService: class {},
+}));
 
 describe('UserTwoFactorDomain', () => {
     const userTwoFactorRepository: MockProxy<UserTwoFactorRepository> =
@@ -166,7 +178,6 @@ describe('UserTwoFactorDomain', () => {
     let service: UserTwoFactorDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         databaseService.withTransaction.mockImplementation(async callback =>
             callback(transactionClient)
         );
@@ -250,6 +261,71 @@ describe('UserTwoFactorDomain', () => {
             ).rejects.toBeInstanceOf(AuthTwoFactorChallengeInvalidException);
             expect(userRepository.findOneWithRoleById).not.toHaveBeenCalled();
         });
+
+        it.each([
+            ['missing user', null, UserNotFoundException],
+            [
+                'inactive user',
+                { ...user, status: EnumUserStatus.inactive },
+                UserInactiveForbiddenException,
+            ],
+            [
+                'unverified user',
+                { ...user, isVerified: false },
+                UserEmailNotVerifiedException,
+            ],
+            [
+                'disabled factor',
+                { ...user, twoFactor: { ...user.twoFactor!, enabled: false } },
+                AuthTwoFactorNotEnabledException,
+            ],
+            [
+                'required setup',
+                {
+                    ...user,
+                    twoFactor: { ...user.twoFactor!, requiredSetup: true },
+                },
+                AuthTwoFactorRequiredSetupException,
+            ],
+        ])(
+            'rejects login verification for a %s',
+            async (_case, found, ExceptionClass) => {
+                userRepository.findOneWithRoleById.mockResolvedValue(found);
+
+                await expect(
+                    service.loginVerifyTwoFactor('challenge-token', {
+                        method: EnumAuthTwoFactorMethod.code,
+                        code: '123456',
+                    })
+                ).rejects.toBeInstanceOf(ExceptionClass);
+            }
+        );
+
+        it('wraps an unexpected verification completion failure', async () => {
+            userLoginDomain.recordTwoFactorVerification.mockRejectedValue(
+                new Error('database down')
+            );
+
+            await expect(
+                service.loginVerifyTwoFactor('challenge-token', {
+                    method: EnumAuthTwoFactorMethod.code,
+                    code: '123456',
+                })
+            ).rejects.toBeInstanceOf(AppUnknownException);
+        });
+
+        it('preserves a domain verification completion failure', async () => {
+            userLoginDomain.recordTwoFactorVerification.mockRejectedValue(
+                new AuthTwoFactorInvalidException()
+            );
+
+            await expect(
+                service.loginVerifyTwoFactor('challenge-token', {
+                    method: EnumAuthTwoFactorMethod.code,
+                    code: '123456',
+                })
+            ).rejects.toBeInstanceOf(AuthTwoFactorInvalidException);
+        });
     });
 
     describe('loginSetupTwoFactor', () => {
@@ -287,6 +363,107 @@ describe('UserTwoFactorDomain', () => {
                 setupRequiredUser.twoFactor!.pendingSecret,
                 backupCodes.hashes
             );
+        });
+
+        it('rejects a missing setup challenge', async () => {
+            authCache.getChallenge.mockResolvedValue(null);
+
+            await expect(
+                service.loginSetupTwoFactor('missing', '123456')
+            ).rejects.toBeInstanceOf(AuthTwoFactorChallengeInvalidException);
+        });
+
+        it.each([
+            ['missing user', null, UserNotFoundException],
+            [
+                'inactive user',
+                { ...user, status: EnumUserStatus.inactive },
+                UserInactiveForbiddenException,
+            ],
+            [
+                'unverified user',
+                { ...user, isVerified: false },
+                UserEmailNotVerifiedException,
+            ],
+            [
+                'disabled factor',
+                { ...user, twoFactor: { ...user.twoFactor!, enabled: false } },
+                AuthTwoFactorNotEnabledException,
+            ],
+            [
+                'completed setup',
+                {
+                    ...user,
+                    twoFactor: { ...user.twoFactor!, requiredSetup: false },
+                },
+                AuthTwoFactorNotRequiredSetupException,
+            ],
+        ])(
+            'rejects login setup for a %s',
+            async (_case, found, ExceptionClass) => {
+                userRepository.findOneWithRoleById.mockResolvedValue(found);
+
+                await expect(
+                    service.loginSetupTwoFactor('challenge-token', '123456')
+                ).rejects.toBeInstanceOf(ExceptionClass);
+            }
+        );
+
+        it('rejects login setup without a pending secret', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...user,
+                twoFactor: {
+                    ...user.twoFactor!,
+                    requiredSetup: true,
+                    pendingSecret: null,
+                },
+            });
+
+            await expect(
+                service.loginSetupTwoFactor('challenge-token', '123456')
+            ).rejects.toBeInstanceOf(AuthTwoFactorSetupRequiredException);
+        });
+
+        it('wraps an unexpected setup completion failure', async () => {
+            const setupRequiredUser = {
+                ...user,
+                twoFactor: {
+                    ...user.twoFactor!,
+                    requiredSetup: true,
+                    pendingSecret: 'pending-secret',
+                },
+            } satisfies IUser;
+            userRepository.findOneWithRoleById.mockResolvedValue(
+                setupRequiredUser
+            );
+            userTwoFactorRepository.enableTwoFactor.mockRejectedValue(
+                new Error('database down')
+            );
+
+            await expect(
+                service.loginSetupTwoFactor('challenge-token', '123456')
+            ).rejects.toBeInstanceOf(AppUnknownException);
+        });
+
+        it('preserves a domain setup completion failure', async () => {
+            const setupRequiredUser = {
+                ...user,
+                twoFactor: {
+                    ...user.twoFactor!,
+                    requiredSetup: true,
+                    pendingSecret: 'pending-secret',
+                },
+            } satisfies IUser;
+            userRepository.findOneWithRoleById.mockResolvedValue(
+                setupRequiredUser
+            );
+            userTwoFactorRepository.enableTwoFactor.mockRejectedValue(
+                new AuthTwoFactorInvalidException()
+            );
+
+            await expect(
+                service.loginSetupTwoFactor('challenge-token', '123456')
+            ).rejects.toBeInstanceOf(AuthTwoFactorInvalidException);
         });
     });
 
@@ -329,6 +506,61 @@ describe('UserTwoFactorDomain', () => {
                 service.setupTwoFactor(user, null)
             ).rejects.toBeInstanceOf(AuthTwoFactorBackupCodeRequiredException);
             expect(authTwoFactorDomain.setupTwoFactor).not.toHaveBeenCalled();
+        });
+
+        it('consumes a verified backup code while replacing an enabled authenticator', async () => {
+            authTwoFactorDomain.setupTwoFactor.mockResolvedValue({
+                secret: 'plain-secret',
+                otpauthUrl: 'otpauth://totp/user',
+                encryptedSecret: 'encrypted-secret',
+            });
+            userTwoFactorRepository.setupTwoFactorConsumingBackupCode.mockResolvedValue(
+                true
+            );
+
+            await service.setupTwoFactor(user, 'BACKUP1');
+
+            expect(
+                userTwoFactorRepository.setupTwoFactorConsumingBackupCode
+            ).toHaveBeenCalledWith(
+                user.id,
+                'encrypted-secret',
+                twoFactorVerified
+            );
+        });
+
+        it('rejects setup when the verified backup code was concurrently consumed', async () => {
+            authTwoFactorDomain.setupTwoFactor.mockResolvedValue({
+                secret: 'plain-secret',
+                otpauthUrl: 'otpauth://totp/user',
+                encryptedSecret: 'encrypted-secret',
+            });
+            userTwoFactorRepository.setupTwoFactorConsumingBackupCode.mockResolvedValue(
+                false
+            );
+
+            await expect(
+                service.setupTwoFactor(user, 'BACKUP1')
+            ).rejects.toBeInstanceOf(AuthTwoFactorInvalidException);
+        });
+
+        it('wraps an unexpected setup persistence failure', async () => {
+            const disabledUser = {
+                ...user,
+                twoFactor: { ...user.twoFactor!, enabled: false },
+            } satisfies IUser;
+            authTwoFactorDomain.setupTwoFactor.mockResolvedValue({
+                secret: 'plain-secret',
+                otpauthUrl: 'otpauth://totp/user',
+                encryptedSecret: 'encrypted-secret',
+            });
+            userTwoFactorRepository.setupTwoFactor.mockRejectedValue(
+                new Error('database down')
+            );
+
+            await expect(
+                service.setupTwoFactor(disabledUser, null)
+            ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });
 
@@ -377,6 +609,48 @@ describe('UserTwoFactorDomain', () => {
             expect(
                 userLoginDomain.handleTwoFactorValidation
             ).not.toHaveBeenCalled();
+        });
+
+        it('rejects enabling an already enabled authenticator without pending setup', async () => {
+            await expect(
+                service.enableTwoFactor(user, '123456')
+            ).rejects.toBeInstanceOf(AuthTwoFactorAlreadyEnabledException);
+        });
+
+        it('wraps an unexpected enable persistence failure', async () => {
+            const pendingUser = {
+                ...user,
+                twoFactor: {
+                    ...user.twoFactor!,
+                    enabled: false,
+                    pendingSecret: 'pending-secret',
+                },
+            } satisfies IUser;
+            userTwoFactorRepository.enableTwoFactor.mockRejectedValue(
+                new Error('database down')
+            );
+
+            await expect(
+                service.enableTwoFactor(pendingUser, '123456')
+            ).rejects.toBeInstanceOf(AppUnknownException);
+        });
+
+        it('preserves a domain enable persistence failure', async () => {
+            const pendingUser = {
+                ...user,
+                twoFactor: {
+                    ...user.twoFactor!,
+                    enabled: false,
+                    pendingSecret: 'pending-secret',
+                },
+            } satisfies IUser;
+            userTwoFactorRepository.enableTwoFactor.mockRejectedValue(
+                new AuthTwoFactorInvalidException()
+            );
+
+            await expect(
+                service.enableTwoFactor(pendingUser, '123456')
+            ).rejects.toBeInstanceOf(AuthTwoFactorInvalidException);
         });
     });
 
@@ -430,6 +704,32 @@ describe('UserTwoFactorDomain', () => {
                 userLoginDomain.handleTwoFactorValidation
             ).not.toHaveBeenCalled();
         });
+
+        it('wraps an unexpected disable failure', async () => {
+            userTwoFactorRepository.disableTwoFactorInTx.mockRejectedValue(
+                new Error('database down')
+            );
+
+            await expect(
+                service.disableTwoFactor(user, {
+                    method: EnumAuthTwoFactorMethod.code,
+                    code: '123456',
+                })
+            ).rejects.toBeInstanceOf(AppUnknownException);
+        });
+
+        it('preserves a domain disable failure', async () => {
+            userTwoFactorRepository.disableTwoFactorInTx.mockRejectedValue(
+                new AuthTwoFactorInvalidException()
+            );
+
+            await expect(
+                service.disableTwoFactor(user, {
+                    method: EnumAuthTwoFactorMethod.code,
+                    code: '123456',
+                })
+            ).rejects.toBeInstanceOf(AuthTwoFactorInvalidException);
+        });
     });
 
     describe('regenerateTwoFactorBackupCodes', () => {
@@ -449,6 +749,37 @@ describe('UserTwoFactorDomain', () => {
             expect(
                 userTwoFactorRepository.regenerateTwoFactorBackupCodes
             ).toHaveBeenCalledWith(user.id, backupCodes.hashes);
+        });
+
+        it('rejects regeneration while two-factor is disabled', async () => {
+            const disabledUser = {
+                ...user,
+                twoFactor: { ...user.twoFactor!, enabled: false },
+            } satisfies IUser;
+
+            await expect(
+                service.regenerateTwoFactorBackupCodes(disabledUser, '123456')
+            ).rejects.toBeInstanceOf(AuthTwoFactorNotEnabledException);
+        });
+
+        it('wraps an unexpected regeneration failure', async () => {
+            userTwoFactorRepository.regenerateTwoFactorBackupCodes.mockRejectedValue(
+                new Error('database down')
+            );
+
+            await expect(
+                service.regenerateTwoFactorBackupCodes(user, '123456')
+            ).rejects.toBeInstanceOf(AppUnknownException);
+        });
+
+        it('preserves a domain regeneration failure', async () => {
+            userTwoFactorRepository.regenerateTwoFactorBackupCodes.mockRejectedValue(
+                new AuthTwoFactorInvalidException()
+            );
+
+            await expect(
+                service.regenerateTwoFactorBackupCodes(user, '123456')
+            ).rejects.toBeInstanceOf(AuthTwoFactorInvalidException);
         });
     });
 
@@ -486,11 +817,65 @@ describe('UserTwoFactorDomain', () => {
             ).rejects.toBeInstanceOf(UserBlockedInvalidException);
             expect(sessionDomain.revokeActiveByUserInTx).not.toHaveBeenCalled();
         });
+
+        it('throws UserNotFoundException when the target user is missing', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue(null);
+
+            await expect(
+                service.resetTwoFactorByAdmin(user.id, 'admin-id')
+            ).rejects.toBeInstanceOf(UserNotFoundException);
+        });
+
+        it('throws AuthTwoFactorNotEnabledException when the target has no enabled factor', async () => {
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...user,
+                twoFactor: { ...user.twoFactor!, enabled: false },
+            });
+
+            await expect(
+                service.resetTwoFactorByAdmin(user.id, 'admin-id')
+            ).rejects.toBeInstanceOf(AuthTwoFactorNotEnabledException);
+        });
+
+        it('wraps an unexpected administrator reset failure', async () => {
+            userTwoFactorRepository.resetTwoFactorByAdminInTx.mockRejectedValue(
+                new Error('database down')
+            );
+
+            await expect(
+                service.resetTwoFactorByAdmin(user.id, 'admin-id')
+            ).rejects.toBeInstanceOf(AppUnknownException);
+        });
+
+        it('preserves a domain administrator reset failure', async () => {
+            userTwoFactorRepository.resetTwoFactorByAdminInTx.mockRejectedValue(
+                new AuthTwoFactorInvalidException()
+            );
+
+            await expect(
+                service.resetTwoFactorByAdmin(user.id, 'admin-id')
+            ).rejects.toBeInstanceOf(AuthTwoFactorInvalidException);
+        });
     });
 
     describe('getTwoFactorStatus', () => {
         it('returns the user two-factor record', () => {
             expect(service.getTwoFactorStatus(user)).toBe(user.twoFactor);
         });
+    });
+
+    it('creates disabled two-factor state in the caller transaction', async () => {
+        userTwoFactorRepository.createDisabledInTx.mockResolvedValue(
+            user.twoFactor!
+        );
+
+        await expect(
+            service.createDisabledInTx(transactionClient, user.id, user.id)
+        ).resolves.toBe(user.twoFactor);
+        expect(userTwoFactorRepository.createDisabledInTx).toHaveBeenCalledWith(
+            transactionClient,
+            user.id,
+            user.id
+        );
     });
 });

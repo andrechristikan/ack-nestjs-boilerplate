@@ -29,7 +29,6 @@ describe('RequestRequestLogMiddleware', () => {
     let middleware: RequestRequestLogMiddleware;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         requestUtil.buildRequestLog.mockReturnValue(requestLog);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [

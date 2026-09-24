@@ -1,5 +1,5 @@
 import { CACHE_KEY_METADATA } from '@nestjs/cache-manager';
-import type { CallHandler, ExecutionContext } from '@nestjs/common';
+import type { CallHandler, ExecutionContext, Type } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost, Reflector } from '@nestjs/core';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -18,16 +18,15 @@ describe('ResponseCacheInterceptor', () => {
     const cacheGet = vi.mocked(cache.get);
     const configGet = vi.mocked(configService.get);
     const handler = vi.fn();
-    class TestController {}
+    const controller = {} as Type<unknown>;
     let context: MockProxy<ExecutionContext>;
 
     let interceptor: ResponseCacheInterceptor;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         context = mock<ExecutionContext>();
         context.getHandler.mockReturnValue(handler);
-        context.getClass.mockReturnValue(TestController);
+        context.getClass.mockReturnValue(controller);
         configGet.mockReturnValue('Apis:{key}');
 
         const moduleRef: TestingModule = await Test.createTestingModule({

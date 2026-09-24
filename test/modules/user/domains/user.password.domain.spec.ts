@@ -5,12 +5,14 @@ import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
 
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
@@ -36,6 +38,7 @@ import { UserForgotPasswordRequestLimitExceededException } from '@modules/user/e
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import { UserPasswordMustNewException } from '@modules/user/exceptions/user.password-must-new.exception';
+import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserPasswordRepository } from '@modules/user/repositories/user.password.repository';
@@ -46,6 +49,10 @@ import { UserUtil } from '@modules/user/utils/user.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
+
+vi.mock('@common/sentry/services/sentry.service', () => ({
+    SentryService: class {},
+}));
 
 describe('UserPasswordDomain', () => {
     const userPasswordRepository: MockProxy<UserPasswordRepository> =
@@ -178,7 +185,6 @@ describe('UserPasswordDomain', () => {
     let service: UserPasswordDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         databaseService.withTransaction.mockImplementation(async callback =>
             callback(transactionClient)
         );
@@ -288,6 +294,73 @@ describe('UserPasswordDomain', () => {
                 link: 'https://app.example.com/reset-password?token=RANDOM',
             });
         });
+
+        it('creates each forgot-password primitive from configured lengths and duration', () => {
+            expect(service.forgotPasswordCreateReference()).toBe('FP-RANDOM');
+            expect(service.forgotPasswordCreateToken()).toBe('RANDOM');
+            expect(service.forgotPasswordSetExpiredDate()).toBe(expiredAt);
+            expect(helperStringService.random).toHaveBeenCalledWith(6);
+            expect(helperStringService.random).toHaveBeenCalledWith(32);
+            expect(helperDateService.forward).toHaveBeenCalledWith(
+                now,
+                Duration.fromObject({ minutes: 60 })
+            );
+        });
+    });
+
+    it('delegates password-attempt reset to the user domain', async () => {
+        userDomain.resetPasswordAttempt.mockResolvedValue(user);
+
+        await expect(service.resetPasswordAttempt(user.id)).resolves.toBe(user);
+    });
+
+    describe('reachMaxPasswordAttempt', () => {
+        it('deactivates the user, revokes access, and finalizes audit state', async () => {
+            const revokeEvents = [mock<IActivityLogStagedEvent>()];
+            sessionDomain.prepareRevokeAllSelf.mockReturnValue(revokeEvents);
+
+            await service.reachMaxPasswordAttempt(user.id);
+
+            expect(
+                userDomain.deactivateForMaxPasswordAttemptInTx
+            ).toHaveBeenCalledWith(transactionClient, user.id);
+            expect(sessionDomain.revokeActiveByUserInTx).toHaveBeenCalledWith(
+                transactionClient,
+                user.id,
+                user.id,
+                now
+            );
+            expect(deviceDomain.revokeAllByUserInTx).toHaveBeenCalledWith(
+                transactionClient,
+                user.id,
+                user.id,
+                now
+            );
+            expect(sessionDomain.finalizeRevokeAll).toHaveBeenCalledWith(
+                user.id,
+                revokeEvents
+            );
+        });
+
+        it('preserves a domain failure while deactivating the user', async () => {
+            userDomain.deactivateForMaxPasswordAttemptInTx.mockRejectedValue(
+                new UserNotFoundException()
+            );
+
+            await expect(
+                service.reachMaxPasswordAttempt(user.id)
+            ).rejects.toBeInstanceOf(UserNotFoundException);
+        });
+
+        it('wraps an unexpected failure while deactivating the user', async () => {
+            userDomain.deactivateForMaxPasswordAttemptInTx.mockRejectedValue(
+                new Error('database down')
+            );
+
+            await expect(
+                service.reachMaxPasswordAttempt(user.id)
+            ).rejects.toBeInstanceOf(AppUnknownException);
+        });
     });
 
     describe('updatePasswordByAdmin', () => {
@@ -351,9 +424,48 @@ describe('UserPasswordDomain', () => {
             ).rejects.toBeInstanceOf(UserBlockedInvalidException);
             expect(authPasswordUtil.createPassword).not.toHaveBeenCalled();
         });
+
+        it('throws UserNotFoundException when the target user is missing', async () => {
+            userRepository.findOneById.mockResolvedValue(null);
+
+            await expect(
+                service.updatePasswordByAdmin(user.id, 'admin-id')
+            ).rejects.toBeInstanceOf(UserNotFoundException);
+        });
+
+        it('preserves a domain failure during the administrator update', async () => {
+            userDomain.updatePasswordInTx.mockRejectedValue(
+                new UserNotFoundException()
+            );
+
+            await expect(
+                service.updatePasswordByAdmin(user.id, 'admin-id')
+            ).rejects.toBeInstanceOf(UserNotFoundException);
+        });
+
+        it('wraps an unexpected administrator update failure', async () => {
+            userDomain.updatePasswordInTx.mockRejectedValue(
+                new Error('database down')
+            );
+
+            await expect(
+                service.updatePasswordByAdmin(user.id, 'admin-id')
+            ).rejects.toBeInstanceOf(AppUnknownException);
+        });
     });
 
     describe('changePassword', () => {
+        it('rejects a credential user at the password-attempt limit', async () => {
+            authPasswordUtil.checkPasswordAttempt.mockReturnValue(true);
+
+            await expect(
+                service.changePassword(user, {
+                    oldPassword: 'old-password',
+                    newPassword: 'new-password',
+                })
+            ).rejects.toBeInstanceOf(UserPasswordAttemptMaxException);
+        });
+
         it('rejects an incorrect old password and records the failed attempt', async () => {
             authPasswordUtil.validatePassword.mockReturnValue(false);
 
@@ -416,6 +528,49 @@ describe('UserPasswordDomain', () => {
                 user.id
             );
         });
+
+        it('changes a social-only account password without old-password or two-factor checks', async () => {
+            const socialUser = { ...user, password: null, twoFactor: null };
+
+            await service.changePassword(socialUser, {
+                oldPassword: '',
+                newPassword: 'new-password',
+            });
+
+            expect(authPasswordUtil.validatePassword).not.toHaveBeenCalled();
+            expect(
+                userLoginDomain.handleTwoFactorValidation
+            ).not.toHaveBeenCalled();
+            expect(
+                userLoginDomain.recordTwoFactorVerificationInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('preserves a domain failure while changing the password', async () => {
+            userDomain.updatePasswordInTx.mockRejectedValue(
+                new UserNotFoundException()
+            );
+
+            await expect(
+                service.changePassword(user, {
+                    oldPassword: 'old-password',
+                    newPassword: 'new-password',
+                })
+            ).rejects.toBeInstanceOf(UserNotFoundException);
+        });
+
+        it('wraps an unexpected password change failure', async () => {
+            userDomain.updatePasswordInTx.mockRejectedValue(
+                new Error('database down')
+            );
+
+            await expect(
+                service.changePassword(user, {
+                    oldPassword: 'old-password',
+                    newPassword: 'new-password',
+                })
+            ).rejects.toBeInstanceOf(AppUnknownException);
+        });
     });
 
     describe('forgotPassword', () => {
@@ -463,6 +618,45 @@ describe('UserPasswordDomain', () => {
             expect(
                 userPasswordRepository.createReplacingUnused
             ).not.toHaveBeenCalled();
+        });
+
+        it('throws UserNotFoundException for an unknown active email', async () => {
+            userRepository.findOneActiveByEmail.mockResolvedValue(null);
+
+            await expect(
+                service.forgotPassword(user.email)
+            ).rejects.toBeInstanceOf(UserNotFoundException);
+        });
+
+        it('allows resend exactly at the configured boundary', async () => {
+            userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
+                forgotPassword
+            );
+            helperDateService.forward.mockReturnValue(now);
+
+            await expect(
+                service.forgotPassword(user.email)
+            ).resolves.toBeUndefined();
+        });
+
+        it('preserves a domain failure while persisting the request', async () => {
+            userPasswordRepository.createReplacingUnused.mockRejectedValue(
+                new UserNotFoundException()
+            );
+
+            await expect(
+                service.forgotPassword(user.email)
+            ).rejects.toBeInstanceOf(UserNotFoundException);
+        });
+
+        it('wraps an unexpected request persistence failure', async () => {
+            userPasswordRepository.createReplacingUnused.mockRejectedValue(
+                new Error('database down')
+            );
+
+            await expect(
+                service.forgotPassword(user.email)
+            ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });
 
@@ -514,6 +708,66 @@ describe('UserPasswordDomain', () => {
             expect(notificationQueue.sendResetPassword).toHaveBeenCalledWith(
                 user.id
             );
+        });
+
+        it('rejects a recently used reset password', async () => {
+            authPasswordUtil.checkPasswordPeriod.mockReturnValue(
+                oldPasswordHistory
+            );
+
+            await expect(
+                service.resetPassword({
+                    token: 'reset-token',
+                    newPassword: 'reused-password',
+                })
+            ).rejects.toBeInstanceOf(UserPasswordMustNewException);
+        });
+
+        it('resets an account without enabled two-factor without recording verification', async () => {
+            userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
+                {
+                    ...forgotPassword,
+                    user: { ...user, twoFactor: null },
+                }
+            );
+
+            await service.resetPassword({
+                token: 'reset-token',
+                newPassword: 'new-password',
+            });
+
+            expect(
+                userLoginDomain.handleTwoFactorValidation
+            ).not.toHaveBeenCalled();
+            expect(
+                userLoginDomain.recordTwoFactorVerificationInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('preserves a domain failure while resetting the password', async () => {
+            userDomain.updatePasswordInTx.mockRejectedValue(
+                new UserNotFoundException()
+            );
+
+            await expect(
+                service.resetPassword({
+                    token: 'reset-token',
+                    newPassword: 'new-password',
+                })
+            ).rejects.toBeInstanceOf(UserNotFoundException);
+        });
+
+        it('wraps an unexpected reset failure', async () => {
+            userDomain.updatePasswordInTx.mockRejectedValue(
+                new Error('database down')
+            );
+
+            await expect(
+                service.resetPassword({
+                    token: 'reset-token',
+                    newPassword: 'new-password',
+                })
+            ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });
 });

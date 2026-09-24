@@ -19,7 +19,6 @@ describe('HealthDatabaseIndicator', () => {
     let indicator: HealthDatabaseIndicator;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         indicatorSession.up.mockReturnValue({
             database: { status: 'up' },
         } as unknown as ReturnType<typeof indicatorSession.up>);
@@ -63,6 +62,17 @@ describe('HealthDatabaseIndicator', () => {
 
         expect(indicatorSession.down).toHaveBeenCalledWith(
             'HealthDatabaseIndicator Failed - connection refused'
+        );
+    });
+
+    it('uses the unknown fallback for a non-error rejection', async () => {
+        databaseService.client.$queryRaw.mockRejectedValueOnce('failure');
+
+        await expect(indicator.isHealthy('database')).resolves.toEqual({
+            database: { status: 'down' },
+        });
+        expect(indicatorSession.down).toHaveBeenCalledWith(
+            'HealthDatabaseIndicator Failed - Unknown error'
         );
     });
 });

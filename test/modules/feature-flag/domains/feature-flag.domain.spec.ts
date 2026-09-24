@@ -39,7 +39,6 @@ describe('FeatureFlagDomain', () => {
     let service: FeatureFlagDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 FeatureFlagDomain,

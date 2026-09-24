@@ -6,6 +6,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
+    EnumActivityLogAction,
     EnumRoleType,
     EnumUserGender,
     EnumUserSignUpFrom,
@@ -17,6 +18,7 @@ import {
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RolePredefinedNotFoundException } from '@modules/role/exceptions/role.predefined-not-found.exception';
 import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
@@ -97,7 +99,8 @@ describe('RoleDomain', () => {
     let service: RoleDomain;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
+        databaseUtil.createId.mockReturnValue('new-role-id');
+        helperDateService.create.mockReturnValue(now);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 RoleDomain,
@@ -170,5 +173,119 @@ describe('RoleDomain', () => {
             RoleUsedException
         );
         expect(roleRepository.delete).not.toHaveBeenCalled();
+    });
+
+    it('delegates admin and system lists', async () => {
+        const pagination = { page: 1, perPage: 10 } as never;
+        const filter = { type: { in: [EnumRoleType.admin] } } as never;
+        const result = { data: [], pagination: {} } as never;
+        roleRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
+            result
+        );
+        roleRepository.findWithPaginationCursorBySystem.mockResolvedValue(
+            result
+        );
+
+        await expect(
+            service.getListOffsetByAdmin(pagination, filter)
+        ).resolves.toBe(result);
+        await expect(
+            service.getListCursorBySystem(pagination, filter)
+        ).resolves.toBe(result);
+    });
+
+    it('delegates existence and identity reads', async () => {
+        roleRepository.existsById.mockResolvedValue(true);
+        roleRepository.findOneById.mockResolvedValue(role);
+        roleRepository.findOneByName.mockResolvedValue(role);
+
+        await expect(service.existsById(role.id)).resolves.toBe(true);
+        await expect(service.getById(role.id)).resolves.toBe(role);
+        await expect(service.getByName(role.name)).resolves.toBe(role);
+    });
+
+    it('rejects an unknown role identity read', async () => {
+        roleRepository.findOneWithPoliciesById.mockResolvedValue(null);
+
+        await expect(service.getOne('missing')).rejects.toBeInstanceOf(
+            RoleNotFoundException
+        );
+    });
+
+    it('returns a role with policies', async () => {
+        const withPolicies = { ...role, policies: [policy] };
+        roleRepository.findOneWithPoliciesById.mockResolvedValue(withPolicies);
+
+        await expect(service.getOne(role.id)).resolves.toBe(withPolicies);
+    });
+
+    it('creates a role with activity metadata', async () => {
+        const data = {
+            name: 'editor' as Lowercase<string>,
+            type: EnumRoleType.user,
+            description: 'Editor role',
+        };
+        const created = { ...role, id: 'new-role-id', ...data, policies: [] };
+        const metadata = { roleId: 'new-role-id' } as never;
+        roleRepository.existsByName.mockResolvedValue(false);
+        roleRepository.create.mockResolvedValue(created);
+        roleUtil.mapActivityLogMetadata.mockReturnValue(metadata);
+
+        await expect(service.createByAdmin(data)).resolves.toBe(created);
+        expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+            { id: 'new-role-id', name: data.name, type: data.type },
+            now
+        );
+        expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+            action: EnumActivityLogAction.adminRoleCreate,
+            metadata,
+        });
+        expect(activityLogDomain.stagePrepared).toHaveBeenCalledOnce();
+    });
+
+    it('rejects updating an unknown role', async () => {
+        roleRepository.findOneById.mockResolvedValue(null);
+
+        await expect(
+            service.updateByAdmin('missing', {
+                type: EnumRoleType.user,
+            })
+        ).rejects.toBeInstanceOf(RoleNotFoundException);
+    });
+
+    it('updates a role and records its new type', async () => {
+        const data = {
+            type: EnumRoleType.user,
+        };
+        const updated = { ...role, ...data, policies: [] };
+        roleRepository.findOneById.mockResolvedValue(role);
+        roleRepository.update.mockResolvedValue(updated);
+
+        await expect(service.updateByAdmin(role.id, data)).resolves.toBe(
+            updated
+        );
+        expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+            { id: role.id, name: role.name, type: data.type },
+            now
+        );
+    });
+
+    it('rejects deleting an unknown role', async () => {
+        roleRepository.findOneById.mockResolvedValue(null);
+        roleRepository.isUsedById.mockResolvedValue(false);
+
+        await expect(service.deleteByAdmin('missing')).rejects.toBeInstanceOf(
+            RoleNotFoundException
+        );
+    });
+
+    it('deletes an unused role and stages its activity', async () => {
+        roleRepository.findOneById.mockResolvedValue(role);
+        roleRepository.isUsedById.mockResolvedValue(false);
+        roleRepository.delete.mockResolvedValue(role);
+
+        await expect(service.deleteByAdmin(role.id)).resolves.toBe(role);
+        expect(roleRepository.delete).toHaveBeenCalledWith(role.id);
+        expect(activityLogDomain.stagePrepared).toHaveBeenCalledOnce();
     });
 });

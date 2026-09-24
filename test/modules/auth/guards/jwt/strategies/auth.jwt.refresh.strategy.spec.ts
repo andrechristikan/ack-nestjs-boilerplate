@@ -32,7 +32,6 @@ describe('AuthJwtRefreshStrategy', () => {
     let strategy: AuthJwtRefreshStrategy;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockImplementation((key: string) => config[key]);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [

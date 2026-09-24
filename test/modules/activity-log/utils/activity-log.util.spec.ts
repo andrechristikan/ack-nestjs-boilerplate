@@ -14,7 +14,6 @@ describe('ActivityLogUtil', () => {
     let util: ActivityLogUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         databaseUtil.toPlainObject.mockImplementation(data => data);
 
         const moduleRef: TestingModule = await Test.createTestingModule({

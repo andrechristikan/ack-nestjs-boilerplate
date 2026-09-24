@@ -11,6 +11,10 @@ import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.consta
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
 
+vi.mock('@common/sentry/services/sentry.service', () => ({
+    SentryService: class {},
+}));
+
 describe('WorkspaceGuard', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const workspaceDomain: MockProxy<WorkspaceDomain> = mock<WorkspaceDomain>();
@@ -51,7 +55,6 @@ describe('WorkspaceGuard', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         configGet.mockReturnValue('workspace-header');
         guard = await compile();
     });

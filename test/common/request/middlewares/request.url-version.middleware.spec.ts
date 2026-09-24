@@ -37,10 +37,6 @@ describe('RequestUrlVersionMiddleware', () => {
         return moduleRef.get(RequestUrlVersionMiddleware);
     }
 
-    beforeEach(() => {
-        vi.resetAllMocks();
-    });
-
     it('extracts the version from a versioned API URL', async () => {
         const middleware = await createMiddleware(true);
         const request: MockProxy<IRequestApp> = mock<IRequestApp>({
