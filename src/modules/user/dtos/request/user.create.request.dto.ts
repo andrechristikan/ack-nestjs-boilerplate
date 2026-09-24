@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { validateEmail } from '@common/request/validations/request.custom-email.validation';
 import { UserClaimUsernameRequestSchema } from '@modules/user/dtos/request/user.claim-username.request.dto';
 
@@ -27,24 +28,18 @@ export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
             example: faker.internet.email(),
         })
         .transform(value => value as Lowercase<string>),
-    roleId: z
-        .string()
-        .regex(/^[0-9a-fA-F]{24}$/)
-        .meta({
-            description: 'Identifier of the role to assign',
-            example: faker.string.uuid(),
-        }),
+    roleId: RequestUuidSchema.meta({
+        description: 'Identifier of the role to assign',
+        example: faker.string.uuid(),
+    }),
     name: z.string().min(1).max(100).optional().meta({
         description: 'Display name of the user to create',
         example: faker.person.fullName(),
     }),
-    countryId: z
-        .string()
-        .regex(/^[0-9a-fA-F]{24}$/)
-        .meta({
-            description: 'Identifier of the user country',
-            example: faker.string.uuid(),
-        }),
+    countryId: RequestUuidSchema.meta({
+        description: 'Identifier of the user country',
+        example: faker.string.uuid(),
+    }),
 });
 
 /**

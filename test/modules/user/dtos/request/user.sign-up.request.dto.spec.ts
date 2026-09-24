@@ -5,7 +5,7 @@ describe('UserSignUpRequestSchema', () => {
     const valid = {
         username: 'newcomer',
         email: 'USER@example.com',
-        countryId: '507f1f77bcf86cd799439011',
+        countryId: '01890a5d-ac96-774b-bcce-b302099a8057',
         password: 'Strong1!',
         marketing: true,
         cookies: false,
@@ -26,6 +26,7 @@ describe('UserSignUpRequestSchema', () => {
 
     it.each([
         { ...valid, password: 'weak' },
+        { ...valid, countryId: '507f1f77bcf86cd799439011' },
         { ...valid, inviteToken: '' },
         { ...valid, from: 'admin' },
         { ...valid, unknown: true },

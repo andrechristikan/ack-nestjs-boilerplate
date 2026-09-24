@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { validateEmail } from '@common/request/validations/request.custom-email.validation';
 import {
     EnumProjectMemberRole,
@@ -37,15 +38,11 @@ export const WorkspaceInviteCreateRequestSchema = z.strictObject({
                 'Workspace role granted once the invite is accepted; owner can never be invited',
             example: EnumWorkspaceMemberRole.member,
         }),
-    projectId: z
-        .string()
-        .regex(/^[0-9a-fA-F]{24}$/)
-        .optional()
-        .meta({
-            description:
-                'Project to also join; must belong to the current workspace. Requires projectRole',
-            example: faker.string.uuid(),
-        }),
+    projectId: RequestUuidSchema.optional().meta({
+        description:
+            'Project to also join; must belong to the current workspace. Requires projectRole',
+        example: faker.string.uuid(),
+    }),
     projectRole: z.enum(EnumProjectMemberRole).optional().meta({
         description:
             'Project role granted on accept; required when projectId is set, otherwise omitted',

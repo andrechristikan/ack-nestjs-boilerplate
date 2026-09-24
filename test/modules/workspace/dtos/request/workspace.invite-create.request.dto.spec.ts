@@ -16,7 +16,7 @@ describe('WorkspaceInviteCreateRequestSchema', () => {
         expect(
             WorkspaceInviteCreateRequestSchema.safeParse({
                 ...valid,
-                projectId: 'a'.repeat(24),
+                projectId: '01890a5d-ac96-774b-bcce-b302099a8057',
                 projectRole: EnumProjectMemberRole.member,
             }).success
         ).toBe(true));
@@ -24,6 +24,7 @@ describe('WorkspaceInviteCreateRequestSchema', () => {
         { ...valid, email: 'bad' },
         { ...valid, workspaceRole: EnumWorkspaceMemberRole.owner },
         { ...valid, projectId: 'bad' },
+        { ...valid, projectId: '507f1f77bcf86cd799439011' },
         { ...valid, unknown: true },
     ])('rejects invalid or unknown input', input =>
         expect(
