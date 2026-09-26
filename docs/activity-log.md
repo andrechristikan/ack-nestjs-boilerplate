@@ -221,7 +221,7 @@ Each flushed log contains:
 - **userId** - the user the entry belongs to: the JWT user for a `payload` action, the staged `userId` for a `target` action
 - **user** - the same user as `userId`, embedded on read
 - **createdBy** - the user who performed the action (see [Actor and target rows](#actor-and-target-rows)); nullable in the response
-- **action** - `EnumActivityLogAction`, a Prisma enum; a new member reaches MongoDB through `pnpm db:migrate`
+- **action** - `EnumActivityLogAction`, a Prisma enum; a new member reaches PostgreSQL through `pnpm db:migrate`
 - **description** - localized text from `ActivityLogUtil.getDescription` (`activityLog.<action>`)
 - **ipAddress** - from the request store `IRequestLog` (may be null)
 - **userAgent** - from the request store `IRequestLog` (JSON)

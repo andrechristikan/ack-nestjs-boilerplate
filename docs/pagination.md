@@ -286,8 +286,8 @@ export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
         example: `${UserDefaultAvailableOrderBy[0]}:desc`,
     }),
     status: z.string().optional().meta({ … }),
-    roleId: RequestMongoIdSchema.optional().meta({ … }),
-    countryId: RequestMongoIdSchema.optional().meta({ … }),
+    roleId: RequestUuidSchema.optional().meta({ … }),
+    countryId: RequestUuidSchema.optional().meta({ … }),
 });
 ```
 

@@ -13,7 +13,7 @@ aligned to it.
 `ack-nestjs-boilerplate` is an opinionated, production-shaped NestJS starter. It is a
 boilerplate: no external client depends on it, so the clean design wins over compatibility.
 
-- NestJS 12, TypeScript strict, Node `>= 24.11`, PNPM `>= 10.25`, pinned to `pnpm@11.25.0`
+- NestJS 12, TypeScript strict, Node `>= 24.11`, PNPM `>= 10.25`, pinned to `pnpm@12.5.1`
 - PNPM only. `npm` and `yarn` are blocked by engines and the preinstall guard.
 - Prisma 6 with MongoDB 8 replica set. MongoDB transactions require the replica set.
 - Redis for cache and BullMQ, with separate cache and queue Redis URLs.

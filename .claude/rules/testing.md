@@ -14,7 +14,7 @@ kind for every assertion it makes.
 | Kind | Subject | I/O | What it proves |
 |---|---|---|---|
 | **Unit** | One class: a domain, HTTP or processor service, util, cache, queue, guard, pipe, interceptor, filter, DTO, exception | Collaborators doubled (`mock<T>()` / `mockDeep<T>()`) | The class's behaviour |
-| **Integration** | One adapter: a repository, or another class whose job is a real engine | Prisma and MongoDB (replica set), or Redis, are real | The query or command against that engine |
+| **Integration** | One adapter: a repository, or another class whose job is a real engine | Prisma and PostgreSQL, or Redis, are real | The query or command against that engine |
 | **E2E** | One transport path: an HTTP route or a consumed job | The running app | Wiring from the edge through guards, pipes, interceptors, domain, and persistence |
 
 This repository's suite is **unit**. `pnpm test` and `pnpm test:cov` collect `test/**/*.spec.ts`
@@ -35,7 +35,7 @@ Every DI collaborator is a double. The subject is the one class that is real
 - An HTTP or processor service spec doubles the domain. It never reaches a repository.
 - A repository is the double, never the subject. Constructing `UserRepository` and stubbing
   `databaseService.client` is still a unit spec of the adapter: it freezes a Prisma `where` /
-  `select` shape and does not prove the query against MongoDB. Those files sit outside the
+  `select` shape and does not prove the query against PostgreSQL. Those files sit outside the
   coverage set.
 - A controller and a processor are route or job delegation. They have no unit spec.
 - OpenAPI composition on runtime decorators (`@Doc`, `@Response*`, `*Protected`, `FileUpload*`) has no unit spec.
@@ -46,7 +46,7 @@ and repairs a confirmed no-flow bug through `coder`.
 
 ### Integration
 
-The adapter is the subject. Prisma and the MongoDB replica set are real. Doubling
+The adapter is the subject. Prisma and PostgreSQL are real. Doubling
 `DatabaseService.client` makes the file a unit spec of the repository, which this suite does
 not write.
 

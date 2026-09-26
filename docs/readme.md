@@ -17,7 +17,7 @@ This project aligns with the [Twelve-Factor App][ref-12factor] methodology.
 | Codebase | Single repo, one codebase tracked in Git, multiple deploys via env |
 | Dependencies | All dependencies declared in `package.json`, enforced with PNPM lockfile |
 | Config | All configuration via environment variables, validated at startup via `AppEnvSchema` |
-| Backing Services | MongoDB, Redis, AWS S3/SES, Firebase; treated as attached resources via env config |
+| Backing Services | PostgreSQL, Redis, AWS S3/SES, Firebase; treated as attached resources via env config |
 | Build, Release, Run | Build (`pnpm build`) is strictly separated from runtime |
 | Processes | Stateless app processes; session and cache state stored in Redis, not in-memory |
 | Port Binding | App self-contained via NestJS HTTP server, port exposed via `HTTP_PORT` env |
@@ -59,7 +59,7 @@ Install and configure the project.
 
 ### Core
 
-5. [Database][ref-doc-database]; Prisma + MongoDB replica set, transactions, and the Database Module
+5. [Database][ref-doc-database]; Prisma + PostgreSQL, transactions, and the Database Module
 6. [Authentication][ref-doc-authentication]; JWT (ES256/ES512), session lifecycle, API key auth
 7. [Authorization][ref-doc-authorization]; `UserProtected`, `RoleProtected`, `PolicyProtected`, `TermPolicyAcceptanceProtected`, `WorkspaceProtected`, `ProjectProtected`
 8. [Device][ref-doc-device]; Device fingerprinting, `DeviceOwnership`, max 1 session per device

@@ -4,7 +4,7 @@ Auth lives in `src/modules/auth`. Sessions live in `src/modules/session`. API ke
 
 ## Overview
 
-Credential login, JWT access/refresh (ES256/ES512), Redis plus Mongo sessions, Google/Apple social login, and API keys.
+Credential login, JWT access/refresh (ES256/ES512), Redis plus PostgreSQL sessions, Google/Apple social login, and API keys.
 
 - **Password:** bcrypt hash, expiration, rotation, attempt limits, history, and reset/change/temporary-password flows that invalidate sessions.
 - **JWT:** access and refresh tokens, `jti` checked against the session on each request.
@@ -311,7 +311,7 @@ Both rows are written on every lockout, including one where the user had no acti
 The transaction runs once:
 
 - A domain exception raised inside it travels out as it is.
-- Every other failure, a MongoDB write conflict (`P2034`) included, answers 500 (`AppUnknownException`). On that path nothing is purged and no row is staged, and the attempt counter stays at the limit, so the next login runs the lockout again.
+- Every other failure, a transaction write conflict (`P2034`) included, answers 500 (`AppUnknownException`). On that path nothing is purged and no row is staged, and the attempt counter stays at the limit, so the next login runs the lockout again.
 
 ```mermaid
 sequenceDiagram

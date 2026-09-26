@@ -202,7 +202,7 @@ Fraud routes live under `/admin/analytic/fraud`. Each signal exposes a summary a
 | `GET` | `/admin/analytic/fraud/backup-code-new-device/list` | Offset-paginated backup-code-new-device rows |
 | `GET` | `/admin/analytic/fraud/api-key-burst` | API-key burst summary (`windowMs`) |
 | `GET` | `/admin/analytic/fraud/api-key-burst/list` | Offset-paginated API-key burst rows |
-| `GET` | `/admin/analytic/fraud/risk-score/:userId` | Fraud risk score for one user (Mongo id path param) |
+| `GET` | `/admin/analytic/fraud/risk-score/:userId` | Fraud risk score for one user (UUID path param) |
 | `GET` | `/admin/analytic/fraud/risk-scores` | Offset-paginated fraud risk scores |
 
 ### Admin anomaly
