@@ -10,13 +10,14 @@ import type { Prisma, WorkspaceMember } from '@generated/prisma-client/client';
 import type {
     IWorkspaceMember,
     IWorkspaceMemberWithRole,
+    IWorkspaceMemberWithRolePolicies,
 } from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IWorkspaceMemberRepository {
     findOneWithRoleByWorkspaceAndUser(
         workspaceId: string,
         userId: string
-    ): Promise<IWorkspaceMemberWithRole | null>;
+    ): Promise<IWorkspaceMemberWithRolePolicies | null>;
     findOneByWorkspaceAndUser(
         workspaceId: string,
         userId: string

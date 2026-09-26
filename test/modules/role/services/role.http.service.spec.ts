@@ -16,8 +16,6 @@ import {
 } from '@modules/role/constants/role.list.constant';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
-import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { IRoleSharedList } from '@modules/role/interfaces/role.interface';
 import { RoleHttpService } from '@modules/role/services/role.http.service';
 
 describe('RoleHttpService', () => {
@@ -145,6 +143,28 @@ describe('RoleHttpService', () => {
             expect(result.data).toEqual([listedRole]);
         });
 
+        it('preserves the description of each role', async () => {
+            paginationQueryUtil.offset.mockReturnValue({
+                params: offsetParams,
+                storePatch: offsetStorePatch,
+            } as never);
+            paginationQueryUtil.inEnum.mockReturnValue(undefined);
+            roleDomain.getListOffsetByAdmin.mockResolvedValue({
+                type: EnumPaginationType.offset,
+                count: 1,
+                perPage: 20,
+                page: 1,
+                totalPage: 1,
+                hasNext: false,
+                hasPrevious: false,
+                data: [{ ...roleRow, description: 'Full access' }],
+            });
+
+            const result = await service.getListOffsetByAdmin({});
+
+            expect(result.data[0]?.description).toBe('Full access');
+        });
+
         it('applies no scope filter when the query carries none', async () => {
             paginationQueryUtil.offset.mockReturnValue({
                 params: offsetParams,
@@ -244,38 +264,40 @@ describe('RoleHttpService', () => {
         });
     });
 
-    describe('getListShared', () => {
-        it('orders by the cursor allow-list, filters by the requested scope and returns the page unchanged', async () => {
+    describe('getListOffsetByShared', () => {
+        it('orders by the offset allow-list, filters by the requested scope and maps the policy count', async () => {
             const query = { scope: EnumRoleScope.workspace };
-            const page: IResponsePaginationReturn<IRoleSharedList> = {
-                type: EnumPaginationType.cursor,
-                count: 1,
-                perPage: 20,
-                hasNext: false,
-                cursor: undefined,
-                data: [
-                    {
-                        id: 'role-id',
-                        key: 'owner',
-                        name: 'Owner',
-                        createdAt: now,
-                    },
-                ],
+            const sharedRow = {
+                ...roleRow,
+                scope: EnumRoleScope.workspace,
+                key: 'owner',
+                name: 'Owner',
+                description: 'Owns the workspace',
             };
-            paginationQueryUtil.cursor.mockReturnValue({
-                params: cursorParams,
-                storePatch: cursorStorePatch,
+            paginationQueryUtil.offset.mockReturnValue({
+                params: offsetParams,
+                storePatch: offsetStorePatch,
             } as never);
             paginationQueryUtil.equalString.mockReturnValue({
                 where: { scope: { equals: 'workspace' } },
                 storeFilter: { scope: 'workspace' },
             } as never);
-            roleDomain.getListCursorShared.mockResolvedValue(page);
+            roleDomain.getListOffsetByShared.mockResolvedValue({
+                type: EnumPaginationType.offset,
+                count: 1,
+                perPage: 20,
+                page: 1,
+                totalPage: 1,
+                hasNext: false,
+                hasPrevious: false,
+                data: [sharedRow],
+            });
 
-            const result = await service.getListShared(query);
+            const result = await service.getListOffsetByShared(query);
 
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                availableOrderBy: RoleCursorAvailableOrderBy,
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
+                availableSearch: RoleDefaultAvailableSearch,
+                availableOrderBy: RoleDefaultAvailableOrderBy,
             });
             expect(paginationQueryUtil.equalString).toHaveBeenCalledWith(
                 Prisma.RoleScalarFieldEnum.scope,
@@ -284,15 +306,24 @@ describe('RoleHttpService', () => {
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 {
-                    ...cursorStorePatch,
+                    ...offsetStorePatch,
                     filters: { scope: 'workspace' },
                 }
             );
-            expect(roleDomain.getListCursorShared).toHaveBeenCalledWith(
-                cursorParams,
+            expect(roleDomain.getListOffsetByShared).toHaveBeenCalledWith(
+                offsetParams,
                 { scope: { equals: 'workspace' } }
             );
-            expect(result).toBe(page);
+            expect(result.data).toEqual([
+                {
+                    ...listedRole,
+                    scope: EnumRoleScope.workspace,
+                    key: 'owner',
+                    name: 'Owner',
+                    description: 'Owns the workspace',
+                },
+            ]);
+            expect(result.data[0]).not.toHaveProperty('_count');
         });
     });
 

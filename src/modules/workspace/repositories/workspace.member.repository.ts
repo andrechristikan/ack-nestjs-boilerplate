@@ -10,7 +10,7 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumRoleScope, Prisma } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
-import { RoleShortSelect } from '@modules/role/constants/role.constant';
+import { RoleSelect } from '@modules/role/constants/role.constant';
 import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 import {
@@ -20,6 +20,7 @@ import {
 import type {
     IWorkspaceMember,
     IWorkspaceMemberWithRole,
+    IWorkspaceMemberWithRolePolicies,
 } from '@modules/workspace/interfaces/workspace.interface';
 import type { IWorkspaceMemberRepository } from '@modules/workspace/interfaces/workspace.member-repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -56,7 +57,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
     async findOneWithRoleByWorkspaceAndUser(
         workspaceId: string,
         userId: string
-    ): Promise<IWorkspaceMemberWithRole | null> {
+    ): Promise<IWorkspaceMemberWithRolePolicies | null> {
         return this.databaseService.client.workspaceMember.findFirst({
             where: {
                 workspaceId,
@@ -87,7 +88,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
                 id: workspaceMemberId,
                 workspaceId,
             },
-            include: WorkspaceMemberRoleInclude,
+            include: { role: { select: RoleSelect } },
         });
     }
 
@@ -161,7 +162,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
                     select: UserRefSelect,
                 },
                 role: {
-                    select: RoleShortSelect,
+                    select: RoleSelect,
                 },
             },
         });
@@ -192,7 +193,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
                     select: UserRefSelect,
                 },
                 role: {
-                    select: RoleShortSelect,
+                    select: RoleSelect,
                 },
             },
         });

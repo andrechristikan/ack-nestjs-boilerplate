@@ -96,7 +96,7 @@ Fields:
 
 ### Roles
 
-The member and invite roles are rows of the shared `Role` model, with scope `workspace` and keys `owner`, `admin`, `member` (`EnumRoleWorkspaceKey`). Member and invite reads return `role: { id, key, name }`. Role assignment validates the scope: a role of another scope is rejected with `RoleScopeMismatchException` (400, `50501`). See [Authorization][ref-doc-authorization].
+The member and invite roles are rows of the shared `Role` model, with scope `workspace` and keys `owner`, `admin`, `member` (`EnumRoleWorkspaceKey`). Member and invite reads return `role: { id, scope, key, name }` (`RoleRefResponseSchema`). Role assignment validates the scope: a role of another scope is rejected with `RoleScopeMismatchException` (400, `50501`). See [Authorization][ref-doc-authorization].
 
 ### Enums
 
@@ -113,7 +113,7 @@ The member and invite roles are rows of the shared `Role` model, with scope `wor
 
 1. `RequestWorkspaceMiddleware` copies the `x-workspace-id` header into the request store under the key from `workspace.storeKey` (`workspaceId`), or `null` when the header is absent. It performs no validation.
 2. `WorkspaceGuard` reads that key, loads the active workspace, and stores the row under `WorkspaceStoreKey`. A missing header and an unknown id both throw `WorkspaceNotFoundException` (404, `51600`).
-3. `WorkspaceMemberGuard` then confirms the caller's membership, stores the `WorkspaceMember` row with its role, and overwrites the policy store with the policies of that workspace role.
+3. `WorkspaceMemberGuard` then confirms the caller's membership, stores the `WorkspaceMember` row with its role, and writes the policies of that workspace role under `WorkspaceMemberPolicyStoreKey`.
 
 `POST /user/workspace/switch` takes the target id from the body, re-runs the same two checks the guards would have run (the workspace resolves and is active, the caller is a member of it), then records the choice on `user.lastWorkspaceId` and `lastWorkspaceChangedAt`. It does **not** change how a request is scoped: the client still has to send `x-workspace-id` on every workspace-scoped call.
 
@@ -139,13 +139,13 @@ Requires `x-workspace-id` to resolve to an existing, non-deleted workspace, thro
 
 **Method decorator**. Takes no arguments. Stack it above `@WorkspaceProtected()`. It applies `WorkspaceMemberGuard`.
 
-- `WorkspaceMemberGuard` confirms the user loaded by `UserGuard` has a `WorkspaceMember` row in the resolved workspace, and stores it with its role under `WorkspaceMemberStoreKey`. No membership throws `WorkspaceMemberForbiddenException` (403, `51601`).
-- The guard overwrites `PolicyStoreKey` with the policies of the member's workspace role, so the platform role of the caller plays no part on a workspace route.
+- `WorkspaceMemberGuard` confirms the user loaded by `UserGuard` has a `WorkspaceMember` row in the resolved workspace, and stores it with its minimal role (`id`, `scope`, `key`, `name`, no policies) under `WorkspaceMemberStoreKey`. No membership throws `WorkspaceMemberForbiddenException` (403, `51601`).
+- The guard stores the policies of the member's workspace role under `WorkspaceMemberPolicyStoreKey`. `PolicyDomain.getEffectivePolicies` reads that key ahead of the platform policies, so the platform role of the caller plays no part on a workspace route.
 - What a member may do is decided by `@PolicyProtected()` against those policies. A route with no `@PolicyProtected()` is open to every member.
 
 ### `WorkspaceCurrent()` / `WorkspaceMemberCurrent()`
 
-**Parameter decorators** that read back the `Workspace` and `WorkspaceMember` the guards stored.
+**Parameter decorators** that read back the `Workspace` and the `WorkspaceMember` with its role that the guards stored.
 
 - Each takes an optional field name typed against its model: `@WorkspaceCurrent()` returns the whole row, `@WorkspaceCurrent('id')` returns that field
 - Both return a non-null value, so a route that reads one without the matching guard, or names a field holding `null`, answers `RequestContextMissingException` (500, `50304`)
@@ -286,6 +286,8 @@ Constraints:
 - the project must belong to this workspace (`WorkspaceInviteProjectMismatchException`, 400, `51609`)
 - a second pending invite to the same address in the same workspace throws `WorkspaceInviteDuplicateException` (400, `51608`)
 - the `owner` role is rejected as `workspaceRoleId` (`WorkspaceOwnerRoleNotAssignableException`, 400, `51620`)
+
+**Response.** Create and resend both return `WorkspaceInviteResponseDto`, built by `WorkspaceUtil.mapInvite`. The hashed token is not part of it, and `workspaceRole` and `projectRole` each hold `{ id, scope, key, name }` (`RoleRefResponseSchema`).
 
 **Expiry** comes from the request's `expiryDuration` (`EnumWorkspaceInviteExpiry`), defaulting to `workspace.invite.expiredInDays` (7).
 

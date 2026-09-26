@@ -1,7 +1,5 @@
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -20,8 +18,7 @@ import { Injectable } from '@nestjs/common';
 export class ProjectRepository implements IProjectRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly paginationService: PaginationService
     ) {}
 
     async findActiveByIdAndWorkspace(
@@ -105,34 +102,21 @@ export class ProjectRepository implements IProjectRepository {
         );
     }
 
-    async create(
+    async createInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
         { name, description }: ProjectCreateRequestDto,
-        slugCandidates: string[]
+        slug: string
     ): Promise<Project> {
-        for (const slug of slugCandidates) {
-            try {
-                return await this.databaseService.client.project.create({
-                    data: {
-                        workspaceId,
-                        name,
-                        slug,
-                        description,
-                        deletedAt: null,
-                    },
-                });
-            } catch (error: unknown) {
-                const isSlugCollision = this.databaseUtil.isUniqueCollision(
-                    error,
-                    'slug'
-                );
-                if (!isSlugCollision) {
-                    throw error;
-                }
-            }
-        }
-
-        throw new DatabaseUniqueValueGenerationFailedException();
+        return tx.project.create({
+            data: {
+                workspaceId,
+                name,
+                slug,
+                description,
+                deletedAt: null,
+            },
+        });
     }
 
     async updateDetails(

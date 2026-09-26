@@ -2,7 +2,7 @@ import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/
 import { ProjectMemberListRequestSchema } from '@modules/project/dtos/request/project.member-list.request.dto';
 import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/project.user-list.request.dto';
 import { ProjectUserListRequestSchema } from '@modules/project/dtos/request/project.user-list.request.dto';
-import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
@@ -30,7 +30,6 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 
 import { ProjectCreateRequestSchema } from '@modules/project/dtos/request/project.create.request.dto';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
@@ -159,7 +158,7 @@ export class ProjectUserController {
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.read],
     })
-    @ProjectMemberProtected({ required: false })
+    @ProjectMemberProtected()
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -187,7 +186,7 @@ export class ProjectUserController {
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.update],
     })
-    @ProjectMemberProtected({ required: false })
+    @ProjectMemberProtected()
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -221,7 +220,7 @@ export class ProjectUserController {
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.update],
     })
-    @ProjectMemberProtected({ required: false })
+    @ProjectMemberProtected()
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -284,7 +283,7 @@ export class ProjectUserController {
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.read],
     })
-    @ProjectMemberProtected({ required: false })
+    @ProjectMemberProtected()
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -305,14 +304,6 @@ export class ProjectUserController {
     @Doc({
         summary:
             'assign a workspace member to a project with a project role; assigning the admin role requires the project member manage policy',
-    })
-    @DocErrors(HttpStatus.NOT_FOUND, {
-        statusCode: EnumRoleStatusCodeError.notFound,
-        messagePath: 'role.error.notFound',
-    })
-    @DocErrors(HttpStatus.BAD_REQUEST, {
-        statusCode: EnumRoleStatusCodeError.scopeMismatch,
-        messagePath: 'role.error.scopeMismatch',
     })
     @Response('project.member.assign', { schema: ProjectMemberResponseSchema })
     @TermPolicyAcceptanceProtected()
@@ -346,14 +337,6 @@ export class ProjectUserController {
     @Doc({
         summary:
             'update a project member role; setting or touching the admin role requires the project member manage policy',
-    })
-    @DocErrors(HttpStatus.NOT_FOUND, {
-        statusCode: EnumRoleStatusCodeError.notFound,
-        messagePath: 'role.error.notFound',
-    })
-    @DocErrors(HttpStatus.BAD_REQUEST, {
-        statusCode: EnumRoleStatusCodeError.scopeMismatch,
-        messagePath: 'role.error.scopeMismatch',
     })
     @Response('project.member.updateRole')
     @TermPolicyAcceptanceProtected()

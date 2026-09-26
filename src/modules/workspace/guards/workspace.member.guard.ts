@@ -1,6 +1,6 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { Workspace } from '@generated/prisma-client/client';
-import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
+import { WorkspaceMemberPolicyStoreKey } from '@modules/policy/constants/policy.constant';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import {
@@ -13,8 +13,9 @@ import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
 /**
  * Confirms the already-authenticated user (loaded by `UserGuard`, which must run before this guard)
- * is a member of the workspace resolved by `WorkspaceGuard`, stores the membership, and overwrites
- * the policy store with the policies of the member's workspace role. Never re-fetches or re-authenticates.
+ * is a member of the workspace resolved by `WorkspaceGuard`, stores the membership with its role
+ * (without policies), and the role's policies under the workspace policy key. Never
+ * re-fetches or re-authenticates.
  */
 @Injectable()
 export class WorkspaceMemberGuard implements CanActivate {
@@ -28,14 +29,19 @@ export class WorkspaceMemberGuard implements CanActivate {
             this.requestStoreService.get<Workspace>(WorkspaceStoreKey);
         const user = this.requestStoreService.get<IUser>(UserStoreKey);
 
-        const member =
-            await this.workspaceMemberDomain.validateWorkspaceMemberGuard(
-                workspace?.id ?? null,
-                user?.id ?? null
-            );
+        const {
+            role: { policies, ...role },
+            ...member
+        } = await this.workspaceMemberDomain.validateWorkspaceMemberGuard(
+            workspace?.id ?? null,
+            user?.id ?? null
+        );
 
-        this.requestStoreService.set(WorkspaceMemberStoreKey, member);
-        this.requestStoreService.set(PolicyStoreKey, member.role.policies);
+        this.requestStoreService.set(WorkspaceMemberStoreKey, {
+            ...member,
+            role,
+        });
+        this.requestStoreService.set(WorkspaceMemberPolicyStoreKey, policies);
 
         return true;
     }

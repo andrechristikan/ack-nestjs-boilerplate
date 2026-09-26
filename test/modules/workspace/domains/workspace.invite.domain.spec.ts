@@ -67,6 +67,7 @@ const invite: IWorkspaceInviteWithRole = {
     workspaceRoleId: 'member-role-id',
     workspaceRole: {
         id: 'member-role-id',
+        scope: EnumRoleScope.workspace,
         key: EnumRoleWorkspaceKey.member,
         name: 'Member',
     },
@@ -74,6 +75,7 @@ const invite: IWorkspaceInviteWithRole = {
     projectRoleId: 'project-member-role-id',
     projectRole: {
         id: 'project-member-role-id',
+        scope: EnumRoleScope.project,
         key: EnumRoleProjectKey.member,
         name: 'Project Member',
     },

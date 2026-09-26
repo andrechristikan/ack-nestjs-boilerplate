@@ -75,7 +75,7 @@ A caller's effective policies on a project route are the policies of the workspa
 - `@@unique([projectId, userId])`, `@@index([userId])`, `@@index([projectId, roleId, joinedAt, id])`, `@@index([projectId, joinedAt, id])`
 - No soft-delete columns: removing a member is a hard delete of the row.
 
-The project role keys are `admin`, `member`, `viewer` (`EnumRoleProjectKey`). Member responses return `role: { id, key, name }`. Assigning a role of another scope is rejected with `RoleScopeMismatchException` (400, `50501`).
+The project role keys are `admin`, `member`, `viewer` (`EnumRoleProjectKey`). Member responses return `role: { id, scope, key, name }` (`RoleRefResponseSchema`). Assigning a role of another scope is rejected with `RoleScopeMismatchException` (400, `50501`).
 
 **Active filter.** `ProjectActiveFilter` (`src/modules/project/constants/project.constant.ts`) is `{ deletedAt: null }`. Every active-only read spreads it into its `where`.
 
@@ -117,9 +117,9 @@ Mounted under `/admin`. Gated by `@PolicyProtected({ subject: project, action: [
 The guards run in this order, first to last: `ApiKeyXApiKeyGuard` → JWT → `FeatureFlagGuard` → `UserGuard` → `WorkspaceGuard` → `WorkspaceMemberGuard` → `ProjectGuard` → `ProjectMemberGuard` → `PolicyGuard` → `TermPolicyGuard`. Each guard reads what the previous one stored and never re-fetches.
 
 - **`ProjectGuard`** reads the `projectId` route param and the workspace `WorkspaceGuard` resolved, then loads the project **constrained to that workspace and to non-deleted rows**. A missing param, a soft-deleted project, and a project belonging to a different workspace all collapse into the same `ProjectNotFoundException` (404, `51700`). Cross-workspace probing therefore cannot distinguish "not yours" from "does not exist".
-- **`WorkspaceMemberGuard`** overwrites the policy store with the workspace role's policies.
-- **`ProjectMemberGuard`** appends the project role's policies to the store. With `{ required: false }` a caller with no `ProjectMember` row passes with the workspace policies alone.
-- **`PolicyGuard`** decides against the combined store.
+- **`WorkspaceMemberGuard`** writes the workspace role's policies under `WorkspaceMemberPolicyStoreKey`.
+- **`ProjectMemberGuard`** writes the project role's policies under `ProjectMemberPolicyStoreKey`. With `{ required: false }` a caller with no `ProjectMember` row passes with the workspace policies alone.
+- **`PolicyGuard`** decides against the composed policies: workspace (or platform) plus project.
 
 A workspace `admin` does not inherit project read or update: its workspace role grants only project `create` and `delete`. The `owner` role grants `manage` on `project` and `projectMember`, which is what lets it act on every project without a membership row.
 
@@ -137,14 +137,14 @@ Reads the `projectId` **route parameter** (there is no project header) and resol
 
 **Method decorator**. Stack it above `@ProjectProtected()`. It applies `ProjectMemberGuard` in one of two modes:
 
-- **Strict (the default, `@ProjectMemberProtected()`)** demands a real `ProjectMember` row and stores it under `ProjectMemberStoreKey`. No row throws `ProjectMemberForbiddenException` (403, `51701`). This is the form used by `member leave`, which has nothing to remove without a row.
+- **Strict (the default, `@ProjectMemberProtected()`)** demands a real `ProjectMember` row and stores it with its minimal role (`id`, `scope`, `key`, `name`, no policies) under `ProjectMemberStoreKey`. No row throws `ProjectMemberForbiddenException` (403, `51701`). This is the form used by `member leave`, which has nothing to remove without a row.
 - **`{ required: false }`** lets a caller with no row through with the workspace policies alone, so a workspace role that holds the capability (the `owner`) still passes `@PolicyProtected()`. Every policy-gated project route except delete uses this form.
 
-In both modes the guard appends the project role's policies to the policy store when a row exists.
+In both modes, when a row exists, the guard stores the project role's policies under `ProjectMemberPolicyStoreKey`, which `PolicyDomain.getEffectivePolicies` appends to the workspace policies.
 
 #### `ProjectCurrent()` / `ProjectMemberCurrent()`
 
-**Parameter decorators** that read back the `Project` and `ProjectMember` the guards stored. Each takes an optional field name typed against its model and returns the whole row without one. Both return a non-null value.
+**Parameter decorators** that read back the `Project` and the `ProjectMember` with its role (`IProjectMemberWithRole`) the guards stored. Each takes an optional field name typed against its model and returns the whole row without one. Both return a non-null value.
 
 - `ProjectCurrent()` on a route without `@ProjectProtected()` answers `RequestContextMissingException` (500, `50304`).
 - `ProjectMemberCurrent()` is valid only on a route carrying the strict `@ProjectMemberProtected()`. A `{ required: false }` route can hold no member row, so the read answers `RequestContextMissingException` (500, `50304`) there. `ProjectMemberDomain.leaveProject` receives the row itself; the caller's missing membership is already refused by the guard with `ProjectMemberForbiddenException` (403, `51701`).

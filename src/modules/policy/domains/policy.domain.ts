@@ -1,6 +1,10 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
-import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
+import {
+    PolicyStoreKey,
+    ProjectMemberPolicyStoreKey,
+    WorkspaceMemberPolicyStoreKey,
+} from '@modules/policy/constants/policy.constant';
 import { PolicyImmutableException } from '@modules/policy/exceptions/policy.immutable.exception';
 import { PolicyExistException } from '@modules/policy/exceptions/policy.exist.exception';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
@@ -56,9 +60,35 @@ export class PolicyDomain {
         }
     }
 
+    /**
+     * Composes the policies the current request is judged by: the workspace role policies when the
+     * workspace member guard ran, the platform role policies otherwise, followed by the project
+     * role policies when the project member guard ran. `null` when no guard stored any.
+     */
+    getEffectivePolicies(): Policy[] | null {
+        const platform =
+            this.requestStoreService.get<Policy[]>(PolicyStoreKey) ?? null;
+        const workspace =
+            this.requestStoreService.get<Policy[]>(
+                WorkspaceMemberPolicyStoreKey
+            ) ?? null;
+        const project =
+            this.requestStoreService.get<Policy[]>(
+                ProjectMemberPolicyStoreKey
+            ) ?? null;
+
+        const base = workspace ?? platform;
+        if (base === null && project === null) {
+            return null;
+        }
+
+        return [...(base ?? []), ...(project ?? [])];
+    }
+
     can(action: EnumPolicyAction, subject: EnumPolicySubject): boolean {
-        const policies = this.requestStoreService.get<Policy[]>(PolicyStoreKey);
-        const ability = this.policyAbilityFactory.createForUser(policies ?? []);
+        const ability = this.policyAbilityFactory.createForUser(
+            this.getEffectivePolicies() ?? []
+        );
 
         return ability.can(action, subject);
     }

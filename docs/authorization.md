@@ -200,33 +200,35 @@ flowchart TD
 
 - `@UserProtected()` requires `@AuthJwtAccessProtected()` to run first, so JWT sits below `@UserProtected()` in source (nearest the method). Nest runs guards bottom-up.
 - `@AuthJwtAccessProtected()` populates `request.user` from JWT token. See [Authentication Documentation][ref-doc-authentication] for details
-- This decorator stores the validated user via `RequestStoreService.set(UserStoreKey, user)` (read back with `RequestStoreService.get(UserStoreKey)`, e.g. by `@UserCurrent()`) and the platform role's policies via `RequestStoreService.set(PolicyStoreKey, user.role.policies)`, both required by downstream guards
+- This decorator stores the validated user via `RequestStoreService.set(UserStoreKey, user)` (read back with `RequestStoreService.get(UserStoreKey)`, e.g. by `@UserCurrent()`) and the platform role's policies via `RequestStoreService.set(PolicyStoreKey, user.role.policies)`; `PolicyStoreKey` holds platform policies only
 
 ## Roles and the Policy Store
 
 One `Role` model covers every level. A role has a `scope` (`platform`, `workspace`, or `project`), an immutable `key`, and a `name` and `description` an admin edits. The pair `(scope, key)` is unique. The role a user, a workspace member, or a project member holds is a foreign key (`roleId`) to that model, and each role owns the policies that define what it may do.
 
-No decorator gates a route by role. The role reaches a route through the policy store: an array of `Policy` rows kept in the request store under `PolicyStoreKey`, which `PolicyGuard` reads.
+No decorator gates a route by role. The role reaches a route through the policy store: arrays of `Policy` rows kept in the request store under one key per scope, which `PolicyGuard` reads through `PolicyDomain.getEffectivePolicies`.
 
-| Guard | Effect on `PolicyStoreKey` |
+| Guard | Store key written |
 |---|---|
-| `UserGuard` | Writes the policies of the user's platform role |
-| `WorkspaceMemberGuard` | Overwrites the store with the policies of the member's workspace role |
-| `ProjectMemberGuard` | Appends the policies of the member's project role to what the workspace guard wrote |
-| `PolicyGuard` | Reads the store and decides |
+| `UserGuard` | `PolicyStoreKey`: the policies of the user's platform role |
+| `WorkspaceMemberGuard` | `WorkspaceMemberPolicyStoreKey`: the policies of the member's workspace role |
+| `ProjectMemberGuard` | `ProjectMemberPolicyStoreKey`: the policies of the member's project role |
+| `PolicyGuard` | Reads the three keys through `PolicyDomain.getEffectivePolicies` and decides |
+
+`getEffectivePolicies` composes `[...(workspace ?? platform), ...project]`: the workspace role's policies when the workspace member guard ran, the platform role's policies otherwise, followed by the project role's policies when the project member guard ran. It returns `null` when no guard stored any.
 
 ```mermaid
 flowchart TD
     User[UserGuard<br/>platform role policies] --> Route{Route scope}
     Route -->|/admin| Policy[PolicyGuard]
-    Route -->|/user workspace| WS[WorkspaceMemberGuard<br/>workspace role policies replace the store]
+    Route -->|/user workspace| WS[WorkspaceMemberGuard<br/>workspace role policies stored]
     WS --> PM{Project route?}
     PM -->|No| Policy
-    PM -->|Yes| PG[ProjectMemberGuard<br/>project role policies appended]
+    PM -->|Yes| PG[ProjectMemberGuard<br/>project role policies stored]
     PG --> Policy
 ```
 
-Reading the current role: `@UserCurrent()` returns the stored `IUser`, whose `role` carries `id`, `scope`, `key`, `name`, and `policies`. `@WorkspaceMemberCurrent()` and `@ProjectMemberCurrent()` return the membership row with its role.
+Reading the current role: `@UserCurrent()` returns the stored `IUser`, whose `role` carries `id`, `scope`, `key`, `name`, and `policies`. `@WorkspaceMemberCurrent()` returns the workspace member with its role (`id`, `scope`, `key`, `name`, no policies). `@ProjectMemberCurrent()` returns the project member with its role (`id`, `scope`, `key`, `name`, no policies).
 
 A domain that has to branch on a capability calls `PolicyDomain.can(action, subject)`. It builds a CASL ability from the policy store of the current request and answers `true` or `false`.
 
@@ -334,7 +336,7 @@ The `PolicyProtected` decorator follows this validation sequence:
 
 1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) exists
 2. **Required Policies Check**: Validates that required policies are declared on the handler
-3. **Ability Creation**: Creates CASL ability rules from the stored policies (`RequestStoreService.get(PolicyStoreKey)`)
+3. **Ability Creation**: Creates CASL ability rules from the effective policies (`PolicyDomain.getEffectivePolicies()`)
 4. **Permission Validation**: Checks that every required `(subject, action)` pair is allowed
 5. **Access Decision**: Grants or denies access based on permission match
 
@@ -351,7 +353,7 @@ flowchart TD
     CheckUser -->|Yes| CheckRequired{Required abilities<br/>defined?}
 
     CheckRequired -->|No| ErrorPredefined[Throw PolicyPredefinedNotFoundException<br/>500 Internal Server Error]
-    CheckRequired -->|Yes| CreateAbilities[Create CASL ability rules<br/>from RequestStoreService.get PolicyStoreKey]
+    CheckRequired -->|Yes| CreateAbilities[Create CASL ability rules<br/>from PolicyDomain.getEffectivePolicies]
 
     CreateAbilities --> ValidateAbilities{All required abilities<br/>present in stored policies?}
 
@@ -529,10 +531,10 @@ The keys live in `EnumRolePlatformKey`, `EnumRoleWorkspaceKey`, and `EnumRolePro
 
 A role and its policies are two admin surfaces:
 
-- `GET /admin/role/list` and `GET /admin/role/get/:roleId` read roles, and the list filters by `scope` (comma-delimited).
+- `GET /admin/role/list` and `GET /admin/role/get/:roleId` read roles, and the list filters by `scope` (comma-delimited). The admin, system, and shared lists return `RoleListResponseDto`: `id`, `name`, `description` (nullable), `scope`, `key`, the timestamps, and a numeric `policies` count in place of the policy rows.
 - `PUT /admin/role/update/:roleId` edits `name` and `description` only. The `key` and `scope` never change.
 - `GET /admin/role/:roleId/policy/list`, `POST .../policy/create`, `PUT .../policy/update/:policyId`, and `DELETE .../policy/delete/:policyId` manage the policies of one role. The API documentation is in Swagger under the configured `doc.prefix`.
-- `GET /shared/role/list?scope=workspace|project` returns the catalog a client picks a role from, as `{ id, key, name }` rows.
+- `GET /shared/role/list` returns the catalog a client picks a role from, offset paginated. The query takes a required `scope` (`workspace` or `project`), `page`, `perPage`, `search`, and `orderBy` (`createdAt`, `name`). Each row carries the policy count, so workspace and project members see how many policies a role holds.
 
 **Example policy creation request** (`POST /admin/role/:roleId/policy/create`), one call per subject:
 
@@ -561,7 +563,7 @@ Request bodies name a role by UUID and the API checks the role's scope against t
 | Workspace invite | `workspaceRoleId`, optional `projectRoleId` | `workspace` and `project` |
 | Project member assign and role change | `roleId` | `project` |
 
-A role of another scope is rejected with `RoleScopeMismatchException` (400, `50501`). Responses that carry a role return `role: { id, key, name }`.
+A role of another scope is rejected with `RoleScopeMismatchException` (400, `50501`). Responses of other modules that embed a role return `role: { id, scope, key, name }` (`RoleRefResponseSchema`).
 
 A user or member inherits every policy of the assigned role on the next request. No restart or extra configuration is involved.
 

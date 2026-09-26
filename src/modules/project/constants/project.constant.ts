@@ -60,7 +60,7 @@ export const ProjectActiveFilter = {
 } as const satisfies Prisma.ProjectWhereInput;
 
 /**
- * Relations the member guard read loads: the project role with its policies.
+ * Relations the project member guard read loads: the project role with its policies.
  * @public
  */
 export const ProjectMemberRoleInclude = {

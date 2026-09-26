@@ -1,14 +1,18 @@
 import type { Prisma, ProjectMember } from '@generated/prisma-client/client';
-import type { IRoleShort } from '@modules/role/interfaces/role.interface';
+import type { IRole } from '@modules/role/interfaces/role.interface';
 import type { ProjectMemberRoleInclude } from '@modules/project/constants/project.constant';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 
 export interface IProjectMember extends ProjectMember {
     user: IUserRef;
-    role: IRoleShort;
+    role: IRole;
 }
 
-export type IProjectMemberWithRole = Prisma.ProjectMemberGetPayload<{
+export interface IProjectMemberWithRole extends ProjectMember {
+    role: IRole;
+}
+
+export type IProjectMemberWithRolePolicies = Prisma.ProjectMemberGetPayload<{
     include: typeof ProjectMemberRoleInclude;
 }>;
 

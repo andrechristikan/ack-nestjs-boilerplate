@@ -11,10 +11,7 @@ import {
     EnumPolicySubject,
     type Policy,
 } from '@generated/prisma-client';
-import {
-    PolicyRequiredMetaKey,
-    PolicyStoreKey,
-} from '@modules/policy/constants/policy.constant';
+import { PolicyRequiredMetaKey } from '@modules/policy/constants/policy.constant';
 import { PolicyGuard } from '@modules/policy/guards/policy.guard';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
@@ -65,9 +62,8 @@ describe('PolicyGuard', () => {
         ];
         const storedUser = { id: 'user-id' };
         reflector.get.mockReturnValue(required);
-        requestStoreGet
-            .mockReturnValueOnce(storedUser)
-            .mockReturnValueOnce(policies);
+        requestStoreGet.mockReturnValueOnce(storedUser);
+        policyDomain.getEffectivePolicies.mockReturnValue(policies);
         policyDomain.validatePolicyGuard.mockReturnValue(true);
 
         await expect(guard.canActivate(context)).resolves.toBe(true);
@@ -76,7 +72,7 @@ describe('PolicyGuard', () => {
             handler
         );
         expect(requestStoreGet).toHaveBeenNthCalledWith(1, UserStoreKey);
-        expect(requestStoreGet).toHaveBeenNthCalledWith(2, PolicyStoreKey);
+        expect(policyDomain.getEffectivePolicies).toHaveBeenCalledTimes(1);
         expect(policyDomain.validatePolicyGuard).toHaveBeenCalledWith(
             storedUser,
             policies,
@@ -100,6 +96,7 @@ describe('PolicyGuard', () => {
         const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
         reflector.get.mockReturnValue(undefined);
         requestStoreGet.mockReturnValue(null);
+        policyDomain.getEffectivePolicies.mockReturnValue(null);
         policyDomain.validatePolicyGuard.mockReturnValue(true);
 
         await guard.canActivate(context);

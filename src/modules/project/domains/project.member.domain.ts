@@ -8,22 +8,20 @@ import {
     EnumRoleScope,
     Prisma,
 } from '@generated/prisma-client/client';
-import type {
-    Project,
-    ProjectMember,
-    WorkspaceMember,
-} from '@generated/prisma-client/client';
+import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
+import { ProjectMemberLastAdminException } from '@modules/project/exceptions/project.member-last-admin.exception';
 import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
 import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import type {
     IProjectMember,
     IProjectMemberWithRole,
+    IProjectMemberWithRolePolicies,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
 import { RoleDomain } from '@modules/role/domains/role.domain';
@@ -55,11 +53,19 @@ export class ProjectMemberDomain {
         }
     }
 
+    private async assertNotLastAdmin(projectId: string): Promise<void> {
+        const adminCount =
+            await this.projectMemberRepository.countAdmins(projectId);
+        if (adminCount <= 1) {
+            throw new ProjectMemberLastAdminException();
+        }
+    }
+
     async validateProjectMemberGuard(
         projectId: string | null,
         userId: string | null,
         required: boolean
-    ): Promise<IProjectMemberWithRole | null> {
+    ): Promise<IProjectMemberWithRolePolicies | null> {
         if (!userId) {
             throw new AuthJwtAccessTokenInvalidException();
         } else if (!projectId) {
@@ -187,6 +193,12 @@ export class ProjectMemberDomain {
             EnumRoleScope.project
         );
         this.assertProjectMemberPeerAllowed(targetMember.role.key, role.key);
+        if (
+            targetMember.role.key === EnumRoleProjectKey.admin &&
+            role.key !== EnumRoleProjectKey.admin
+        ) {
+            await this.assertNotLastAdmin(project.id);
+        }
 
         const events = [
             this.activityLogDomain.prepare({
@@ -232,6 +244,9 @@ export class ProjectMemberDomain {
         }
 
         this.assertProjectMemberPeerAllowed(targetMember.role.key);
+        if (targetMember.role.key === EnumRoleProjectKey.admin) {
+            await this.assertNotLastAdmin(project.id);
+        }
 
         const events = [
             this.activityLogDomain.prepare({
@@ -258,7 +273,14 @@ export class ProjectMemberDomain {
         this.activityLogDomain.stagePrepared(events);
     }
 
-    async leaveProject(project: Project, member: ProjectMember): Promise<void> {
+    async leaveProject(
+        project: Project,
+        member: IProjectMemberWithRole
+    ): Promise<void> {
+        if (member.role.key === EnumRoleProjectKey.admin) {
+            await this.assertNotLastAdmin(project.id);
+        }
+
         const events = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberLeft,

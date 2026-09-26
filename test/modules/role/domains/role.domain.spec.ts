@@ -54,12 +54,7 @@ describe('RoleDomain', () => {
         updatedAt: now,
         updatedBy: null,
     } satisfies Role;
-    const roleShort = {
-        id: role.id,
-        scope: role.scope,
-        key: role.key,
-        name: role.name,
-    } satisfies IRole;
+    const roleShort = { ...role } satisfies IRole;
 
     let service: RoleDomain;
 
@@ -108,20 +103,20 @@ describe('RoleDomain', () => {
         });
     });
 
-    describe('getListCursorShared', () => {
+    describe('getListOffsetByShared', () => {
         it('passes the pagination and the scope filter through to the repository', async () => {
             const pagination = { limit: 20 } as never;
             const filter = { scope: EnumRoleScope.project } as never;
             const result = { data: [], pagination: {} } as never;
-            roleRepository.findWithPaginationCursorShared.mockResolvedValue(
+            roleRepository.findWithPaginationOffsetByShared.mockResolvedValue(
                 result
             );
 
             await expect(
-                service.getListCursorShared(pagination, filter)
+                service.getListOffsetByShared(pagination, filter)
             ).resolves.toBe(result);
             expect(
-                roleRepository.findWithPaginationCursorShared
+                roleRepository.findWithPaginationOffsetByShared
             ).toHaveBeenCalledWith(pagination, filter);
         });
     });

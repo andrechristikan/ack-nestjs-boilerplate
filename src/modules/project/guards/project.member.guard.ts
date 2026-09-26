@@ -1,6 +1,6 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import type { Policy, Project } from '@generated/prisma-client/client';
-import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
+import type { Project } from '@generated/prisma-client/client';
+import { ProjectMemberPolicyStoreKey } from '@modules/policy/constants/policy.constant';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import {
@@ -15,9 +15,9 @@ import { Reflector } from '@nestjs/core';
 
 /**
  * Loads the caller's membership of the project resolved by `ProjectGuard`, which must run before
- * this guard, and appends the project role's policies to the policy store the workspace guard
- * wrote. `@ProjectMemberProtected()` (strict, the default) rejects a caller with no `ProjectMember`
- * row; `@ProjectMemberProtected({ required: false })` lets that caller through with the workspace
+ * this guard, stores the membership with its role (without policies), and stores the role's policies under the project policy key. `@ProjectMemberProtected()`
+ * (strict, the default) rejects a caller with no `ProjectMember` row;
+ * `@ProjectMemberProtected({ required: false })` lets that caller through with the workspace
  * policies alone.
  */
 @Injectable()
@@ -38,24 +38,25 @@ export class ProjectMemberGuard implements CanActivate {
         const project = this.requestStoreService.get<Project>(ProjectStoreKey);
         const user = this.requestStoreService.get<IUser>(UserStoreKey);
 
-        const member =
+        const result =
             await this.projectMemberDomain.validateProjectMemberGuard(
                 project?.id ?? null,
                 user?.id ?? null,
                 required
             );
-        if (!member) {
+        if (!result) {
             return true;
         }
 
-        const workspacePolicies =
-            this.requestStoreService.get<Policy[]>(PolicyStoreKey) ?? [];
-
-        this.requestStoreService.set(ProjectMemberStoreKey, member);
-        this.requestStoreService.set(PolicyStoreKey, [
-            ...workspacePolicies,
-            ...member.role.policies,
-        ]);
+        const {
+            role: { policies, ...role },
+            ...member
+        } = result;
+        this.requestStoreService.set(ProjectMemberStoreKey, {
+            ...member,
+            role,
+        });
+        this.requestStoreService.set(ProjectMemberPolicyStoreKey, policies);
 
         return true;
     }

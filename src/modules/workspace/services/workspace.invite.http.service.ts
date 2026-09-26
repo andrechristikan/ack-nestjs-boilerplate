@@ -16,13 +16,11 @@ import type { WorkspaceInviteListRequestDto } from '@modules/workspace/dtos/requ
 import type { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
 import type { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
+import type { WorkspaceInviteResponseDto } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
-import type {
-    IWorkspaceInviteList,
-    IWorkspaceInviteWithRole,
-} from '@modules/workspace/interfaces/workspace.interface';
+import type { IWorkspaceInviteList } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -82,14 +80,14 @@ export class WorkspaceInviteHttpService {
             projectRoleId,
             expiryDuration,
         }: WorkspaceInviteCreateRequestDto
-    ): Promise<IResponseReturn<IWorkspaceInviteWithRole>> {
+    ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
         const invite = await this.workspaceInviteDomain.createInvite(
             workspace,
             actorId,
             { email, workspaceRoleId, projectId, projectRoleId, expiryDuration }
         );
 
-        return { data: invite };
+        return { data: this.workspaceUtil.mapInvite(invite) };
     }
 
     async resendInvite(
@@ -97,7 +95,7 @@ export class WorkspaceInviteHttpService {
         actorId: string,
         workspaceInviteId: string,
         { expiryDuration }: WorkspaceInviteResendRequestDto
-    ): Promise<IResponseReturn<IWorkspaceInviteWithRole>> {
+    ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
         const invite = await this.workspaceInviteDomain.resendInvite(
             workspace,
             actorId,
@@ -105,7 +103,7 @@ export class WorkspaceInviteHttpService {
             expiryDuration
         );
 
-        return { data: invite };
+        return { data: this.workspaceUtil.mapInvite(invite) };
     }
 
     async revokeInvite(

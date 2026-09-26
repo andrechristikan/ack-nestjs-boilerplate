@@ -103,7 +103,7 @@ async profile(
 
 ### DocErrors
 
-Public escape hatch for endpoint-specific module-flow errors an endpoint opts into the OpenAPI document. Controllers do not call `DocResponseError` directly; they use `@DocErrors`.
+Public escape hatch for endpoint-specific module-flow errors an endpoint opts into the OpenAPI document. `DocResponseError` is the internal builder; `@DocErrors` is the decorator form an endpoint uses.
 
 **Parameters:**
 

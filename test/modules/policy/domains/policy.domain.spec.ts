@@ -18,7 +18,11 @@ import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum'
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
-import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
+import {
+    PolicyStoreKey,
+    ProjectMemberPolicyStoreKey,
+    WorkspaceMemberPolicyStoreKey,
+} from '@modules/policy/constants/policy.constant';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyImmutableException } from '@modules/policy/exceptions/policy.immutable.exception';
 import { PolicyExistException } from '@modules/policy/exceptions/policy.exist.exception';
@@ -429,6 +433,68 @@ describe('PolicyDomain', () => {
             await expect(run()).rejects.toBeInstanceOf(RoleNotFoundException);
         });
     });
+    describe('getEffectivePolicies', () => {
+        const platformPolicy = { ...policy, id: 'platform-policy-id' };
+        const workspacePolicy = { ...policy, id: 'workspace-policy-id' };
+        const projectPolicy = { ...policy, id: 'project-policy-id' };
+        const storeKeys = (
+            store: Record<string, Policy[] | undefined>
+        ): void => {
+            requestStoreService.get.mockImplementation(
+                (key: unknown) => store[key as string] as never
+            );
+        };
+
+        it('returns the platform policies when no member guard ran', () => {
+            storeKeys({ [PolicyStoreKey]: [platformPolicy] });
+
+            expect(service.getEffectivePolicies()).toEqual([platformPolicy]);
+        });
+
+        it('replaces the platform policies with the workspace role policies', () => {
+            storeKeys({
+                [PolicyStoreKey]: [platformPolicy],
+                [WorkspaceMemberPolicyStoreKey]: [workspacePolicy],
+            });
+
+            expect(service.getEffectivePolicies()).toEqual([workspacePolicy]);
+        });
+
+        it('appends the project role policies to the workspace role policies', () => {
+            storeKeys({
+                [PolicyStoreKey]: [platformPolicy],
+                [WorkspaceMemberPolicyStoreKey]: [workspacePolicy],
+                [ProjectMemberPolicyStoreKey]: [projectPolicy],
+            });
+
+            expect(service.getEffectivePolicies()).toEqual([
+                workspacePolicy,
+                projectPolicy,
+            ]);
+        });
+
+        it('keeps an empty workspace role list instead of falling back to the platform policies', () => {
+            storeKeys({
+                [PolicyStoreKey]: [platformPolicy],
+                [WorkspaceMemberPolicyStoreKey]: [],
+            });
+
+            expect(service.getEffectivePolicies()).toEqual([]);
+        });
+
+        it('returns null when no guard stored any policies', () => {
+            storeKeys({});
+
+            expect(service.getEffectivePolicies()).toBeNull();
+        });
+
+        it('returns the project policies alone when only the project guard stored any', () => {
+            storeKeys({ [ProjectMemberPolicyStoreKey]: [projectPolicy] });
+
+            expect(service.getEffectivePolicies()).toEqual([projectPolicy]);
+        });
+    });
+
     describe('can', () => {
         const storePolicies = (
             rows: Pick<Policy, 'subject' | 'action'>[] | null
@@ -505,6 +571,26 @@ describe('PolicyDomain', () => {
                     EnumPolicyAction.delete,
                     EnumPolicySubject.workspace
                 )
+            ).toBe(true);
+        });
+
+        it('grants a check that only the project role policies carry', () => {
+            requestStoreService.get.mockImplementation((key: unknown) => {
+                if (key === WorkspaceMemberPolicyStoreKey) return [] as never;
+                if (key === ProjectMemberPolicyStoreKey) {
+                    return [
+                        {
+                            ...policy,
+                            subject: EnumPolicySubject.project,
+                            action: [EnumPolicyAction.manage],
+                        },
+                    ] as never;
+                }
+                return undefined as never;
+            });
+
+            expect(
+                service.can(EnumPolicyAction.read, EnumPolicySubject.project)
             ).toBe(true);
         });
 

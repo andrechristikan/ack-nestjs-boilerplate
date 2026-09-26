@@ -18,7 +18,6 @@ import type { RoleSystemListRequestDto } from '@modules/role/dtos/request/role.s
 import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import type { RoleDto } from '@modules/role/dtos/role.dto';
-import type { IRoleSharedList } from '@modules/role/interfaces/role.interface';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { Injectable } from '@nestjs/common';
 
@@ -106,12 +105,13 @@ export class RoleHttpService {
         };
     }
 
-    async getListShared(
+    async getListOffsetByShared(
         query: RoleSharedListRequestDto
-    ): Promise<IResponsePaginationReturn<IRoleSharedList>> {
+    ): Promise<IResponsePaginationReturn<RoleListResponseDto>> {
         const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.RoleWhereInput>(query, {
-                availableOrderBy: RoleCursorAvailableOrderBy,
+            this.paginationQueryUtil.offset<Prisma.RoleWhereInput>(query, {
+                availableSearch: RoleDefaultAvailableSearch,
+                availableOrderBy: RoleDefaultAvailableOrderBy,
             });
         const scope = this.paginationQueryUtil.equalString(
             Prisma.RoleScalarFieldEnum.scope,
@@ -125,7 +125,21 @@ export class RoleHttpService {
             },
         });
 
-        return this.roleDomain.getListCursorShared(params, scope?.where);
+        const { data, ...others } = await this.roleDomain.getListOffsetByShared(
+            params,
+            scope?.where
+        );
+        const roles: RoleListResponseDto[] = data.map(
+            ({ _count, ...role }) => ({
+                ...role,
+                policies: _count.policies,
+            })
+        );
+
+        return {
+            data: roles,
+            ...others,
+        };
     }
 
     async getOne(id: string): Promise<IResponseReturn<RoleDto>> {

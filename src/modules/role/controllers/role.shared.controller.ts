@@ -6,8 +6,8 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { RoleSharedListRequestSchema } from '@modules/role/dtos/request/role.shared-list.request.dto';
 import type { RoleSharedListRequestDto } from '@modules/role/dtos/request/role.shared-list.request.dto';
-import { RoleShortSchema } from '@modules/role/dtos/role.short.dto';
-import type { RoleShortDto } from '@modules/role/dtos/role.short.dto';
+import { RoleListResponseSchema } from '@modules/role/dtos/response/role.list.response.dto';
+import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleHttpService } from '@modules/role/services/role.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -23,7 +23,7 @@ export class RoleSharedController {
     constructor(private readonly roleHttpService: RoleHttpService) {}
 
     @Doc({ summary: 'get the workspace or project role catalog' })
-    @ResponsePagination('role.sharedList', { schema: RoleShortSchema })
+    @ResponsePagination('role.sharedList', { schema: RoleListResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -33,7 +33,7 @@ export class RoleSharedController {
     async list(
         @Query({ schema: RoleSharedListRequestSchema })
         query: RoleSharedListRequestDto
-    ): Promise<IResponsePaginationReturn<RoleShortDto>> {
-        return this.roleHttpService.getListShared(query);
+    ): Promise<IResponsePaginationReturn<RoleListResponseDto>> {
+        return this.roleHttpService.getListOffsetByShared(query);
     }
 }

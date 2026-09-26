@@ -4,9 +4,9 @@ import {
     WorkspaceMemberStoreKey,
     WorkspaceStoreKey,
 } from '@modules/workspace/constants/workspace.constant';
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
 import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
-import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import {
     UseGuards,
     applyDecorators,
@@ -62,7 +62,7 @@ export const WorkspaceCurrent = createParamDecorator<
 
 /**
  * Requires the caller to be a member of the workspace resolved by `@WorkspaceProtected()`. Stack
- * above it. The guard also loads the caller's workspace role policies into the policy store.
+ * above it. The guard also stores the caller's workspace role policies under the workspace policy key.
  * @public
  */
 export function WorkspaceMemberProtected(): MethodDecorator {

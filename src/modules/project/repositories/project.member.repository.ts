@@ -3,14 +3,16 @@ import { DatabaseService } from '@common/database/services/database.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import { EnumRoleScope, Prisma } from '@generated/prisma-client/client';
 import type { ProjectMember } from '@generated/prisma-client/client';
 import { ProjectMemberRoleInclude } from '@modules/project/constants/project.constant';
 import type {
     IProjectMember,
     IProjectMemberWithRole,
+    IProjectMemberWithRolePolicies,
 } from '@modules/project/interfaces/project.interface';
-import { RoleShortSelect } from '@modules/role/constants/role.constant';
+import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
+import { RoleSelect } from '@modules/role/constants/role.constant';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 import type { IProjectMemberRepository } from '@modules/project/interfaces/project.member-repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -37,7 +39,7 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
     async findOneWithRoleByProjectAndUser(
         projectId: string,
         userId: string
-    ): Promise<IProjectMemberWithRole | null> {
+    ): Promise<IProjectMemberWithRolePolicies | null> {
         return this.databaseService.client.projectMember.findFirst({
             where: {
                 projectId,
@@ -56,7 +58,19 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
                 id: projectMemberId,
                 projectId,
             },
-            include: ProjectMemberRoleInclude,
+            include: { role: { select: RoleSelect } },
+        });
+    }
+
+    async countAdmins(projectId: string): Promise<number> {
+        return this.databaseService.client.projectMember.count({
+            where: {
+                projectId,
+                role: {
+                    scope: EnumRoleScope.project,
+                    key: EnumRoleProjectKey.admin,
+                },
+            },
         });
     }
 
@@ -81,7 +95,7 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
                     select: UserRefSelect,
                 },
                 role: {
-                    select: RoleShortSelect,
+                    select: RoleSelect,
                 },
             },
         });
@@ -105,7 +119,7 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
                     select: UserRefSelect,
                 },
                 role: {
-                    select: RoleShortSelect,
+                    select: RoleSelect,
                 },
             },
         });
@@ -130,7 +144,7 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
                     select: UserRefSelect,
                 },
                 role: {
-                    select: RoleShortSelect,
+                    select: RoleSelect,
                 },
             },
         });

@@ -3,6 +3,10 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 
+import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
@@ -11,6 +15,7 @@ import {
     EnumActivityLogAction,
     EnumPolicyAction,
     EnumPolicySubject,
+    EnumRoleScope,
     type Prisma,
     type Project,
     type WorkspaceMember,
@@ -18,6 +23,12 @@ import {
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
+import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
+import type { IProjectMember } from '@modules/project/interfaces/project.interface';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
+import type { IRole } from '@modules/role/interfaces/role.interface';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectSlugAlreadyExistsException } from '@modules/project/exceptions/project.slug-already-exists.exception';
 import { ProjectSlugInvalidException } from '@modules/project/exceptions/project.slug-invalid.exception';
@@ -36,6 +47,12 @@ describe('ProjectDomain', () => {
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const projectMemberDomain: MockProxy<ProjectMemberDomain> =
+        mock<ProjectMemberDomain>();
+    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
+    const tx = mock<IDatabaseTransactionClient>();
     const configGet = vi.mocked(configService.get);
     const project = mock<Project>({
         id: 'project-id',
@@ -54,6 +71,10 @@ describe('ProjectDomain', () => {
             if (key === 'project.slugMaxAttempts') return 2;
             return undefined;
         });
+        databaseService.withTransaction.mockImplementation(async callback =>
+            callback(tx)
+        );
+        databaseUtil.isUniqueCollision.mockReturnValue(false);
         helperStringService.generateSlug
             .mockReturnValueOnce('first-slug')
             .mockReturnValueOnce('second-slug');
@@ -70,6 +91,10 @@ describe('ProjectDomain', () => {
                     useValue: helperStringService,
                 },
                 { provide: ConfigService, useValue: configService },
+                { provide: DatabaseService, useValue: databaseService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
+                { provide: ProjectMemberDomain, useValue: projectMemberDomain },
+                { provide: RoleDomain, useValue: roleDomain },
             ],
         }).compile();
 
@@ -137,23 +162,112 @@ describe('ProjectDomain', () => {
         }
     );
 
-    it('creates a project and stages its activity', async () => {
-        projectRepository.create.mockResolvedValue(project);
-        await expect(
-            domain.createProject('workspace-id', 'actor-id', {
-                name: 'Project',
-            })
-        ).resolves.toBe(project);
-        expect(projectRepository.create).toHaveBeenCalledWith(
-            'workspace-id',
-            { name: 'Project' },
-            ['first-slug', 'second-slug']
-        );
-        expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-            action: EnumActivityLogAction.projectCreated,
-            userId: 'actor-id',
-            createdBy: 'actor-id',
-            workspaceId: 'workspace-id',
+    describe('createProject', () => {
+        const adminRole = mock<IRole>({ id: 'admin-role-id' });
+
+        beforeEach(() => {
+            roleDomain.getByScopeAndKeyInTx.mockResolvedValue(adminRole);
+            projectRepository.createInTx.mockResolvedValue(project);
+            projectMemberDomain.createInTx.mockResolvedValue(
+                mock<IProjectMember>()
+            );
+        });
+
+        it('creates the project and its creator admin member in one transaction, then stages activity', async () => {
+            await expect(
+                domain.createProject('workspace-id', 'actor-id', {
+                    name: 'Project',
+                })
+            ).resolves.toBe(project);
+            expect(databaseService.withTransaction).toHaveBeenCalledOnce();
+            expect(roleDomain.getByScopeAndKeyInTx).toHaveBeenCalledWith(
+                tx,
+                EnumRoleScope.project,
+                EnumRoleProjectKey.admin
+            );
+            expect(projectRepository.createInTx).toHaveBeenCalledWith(
+                tx,
+                'workspace-id',
+                { name: 'Project' },
+                'first-slug'
+            );
+            expect(projectMemberDomain.createInTx).toHaveBeenCalledWith(
+                tx,
+                'project-id',
+                'actor-id',
+                'admin-role-id',
+                'actor-id'
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.projectCreated,
+                userId: 'actor-id',
+                createdBy: 'actor-id',
+                workspaceId: 'workspace-id',
+            });
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.projectMemberAssigned,
+                userId: 'actor-id',
+                createdBy: 'actor-id',
+                workspaceId: 'workspace-id',
+                metadata: { targetUserId: 'actor-id' },
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledOnce();
+        });
+
+        it('fails without staging activity when the admin role is missing', async () => {
+            roleDomain.getByScopeAndKeyInTx.mockResolvedValue(null);
+            await expect(
+                domain.createProject('workspace-id', 'actor-id', {
+                    name: 'Project',
+                })
+            ).rejects.toBeInstanceOf(RoleNotFoundException);
+            expect(projectRepository.createInTx).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('retries the next slug candidate on a slug collision', async () => {
+            const collision = new Error('collision');
+            databaseService.withTransaction
+                .mockRejectedValueOnce(collision)
+                .mockImplementationOnce(async callback => callback(tx));
+            databaseUtil.isUniqueCollision.mockReturnValueOnce(true);
+            await expect(
+                domain.createProject('workspace-id', 'actor-id', {
+                    name: 'Project',
+                })
+            ).resolves.toBe(project);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(projectRepository.createInTx).toHaveBeenCalledWith(
+                tx,
+                'workspace-id',
+                { name: 'Project' },
+                'second-slug'
+            );
+        });
+
+        it('rethrows a non-collision failure', async () => {
+            const failure = new Error('boom');
+            databaseService.withTransaction.mockRejectedValue(failure);
+            await expect(
+                domain.createProject('workspace-id', 'actor-id', {
+                    name: 'Project',
+                })
+            ).rejects.toBe(failure);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('fails after exhausting every slug candidate', async () => {
+            databaseService.withTransaction.mockRejectedValue(
+                new Error('collision')
+            );
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
+            await expect(
+                domain.createProject('workspace-id', 'actor-id', {
+                    name: 'Project',
+                })
+            ).rejects.toBeInstanceOf(
+                DatabaseUniqueValueGenerationFailedException
+            );
         });
     });
 

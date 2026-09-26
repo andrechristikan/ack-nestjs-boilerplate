@@ -10,7 +10,10 @@ import {
     EnumPolicySubject,
     EnumRoleScope,
 } from '@generated/prisma-client';
-import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
+import {
+    PolicyStoreKey,
+    WorkspaceMemberPolicyStoreKey,
+} from '@modules/policy/constants/policy.constant';
 import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import {
@@ -19,7 +22,7 @@ import {
 } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
-import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
+import type { IWorkspaceMemberWithRolePolicies } from '@modules/workspace/interfaces/workspace.interface';
 
 describe('WorkspaceMemberGuard', () => {
     const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> =
@@ -40,7 +43,7 @@ describe('WorkspaceMemberGuard', () => {
             updatedBy: null,
         },
     ];
-    const member: IWorkspaceMemberWithRole = {
+    const member: IWorkspaceMemberWithRolePolicies = {
         id: 'member-id',
         workspaceId: 'workspace-id',
         userId: 'user-id',
@@ -85,7 +88,7 @@ describe('WorkspaceMemberGuard', () => {
         guard = module.get(WorkspaceMemberGuard);
     });
 
-    it('validates and stores the current membership', async () => {
+    it('validates and stores the membership with its role stripped of policies', async () => {
         const workspace = { id: 'workspace-id' };
         const user = { id: 'user-id' };
         requestStoreService.get.mockImplementation((key: unknown) => {
@@ -101,13 +104,15 @@ describe('WorkspaceMemberGuard', () => {
         expect(
             workspaceMemberDomain.validateWorkspaceMemberGuard
         ).toHaveBeenCalledWith('workspace-id', 'user-id');
+        const { policies: _policies, ...role } = member.role;
         expect(requestStoreService.set).toHaveBeenCalledWith(
             WorkspaceMemberStoreKey,
-            member
+            { ...member, role }
         );
+        expect(requestStoreService.set).toHaveBeenCalledTimes(2);
     });
 
-    it('overwrites the policy store with the policies of the workspace role', async () => {
+    it('stores the workspace role policies under the workspace policy key and leaves the platform key alone', async () => {
         requestStoreService.get.mockImplementation((key: unknown) => {
             if (key === WorkspaceStoreKey) return { id: 'workspace-id' };
             if (key === UserStoreKey) return { id: 'user-id' };
@@ -120,8 +125,12 @@ describe('WorkspaceMemberGuard', () => {
         await guard.canActivate(context);
 
         expect(requestStoreService.set).toHaveBeenCalledWith(
-            PolicyStoreKey,
+            WorkspaceMemberPolicyStoreKey,
             policies
+        );
+        expect(requestStoreService.set).not.toHaveBeenCalledWith(
+            PolicyStoreKey,
+            expect.anything()
         );
     });
 
@@ -135,7 +144,7 @@ describe('WorkspaceMemberGuard', () => {
         await guard.canActivate(context);
 
         expect(requestStoreService.set).toHaveBeenCalledWith(
-            PolicyStoreKey,
+            WorkspaceMemberPolicyStoreKey,
             []
         );
     });

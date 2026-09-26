@@ -9,10 +9,22 @@ import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-c
 export const PolicyRequiredMetaKey = 'PolicyRequiredMetaKey';
 
 /**
- * Request-store key holding the caller's role policies, written by the user guard (the platform role's policies) and overwritten by the member guards, read by the policy guard.
+ * Request-store key holding the caller's platform role policies, written by the user guard.
  * @public
  */
 export const PolicyStoreKey = 'PolicyStore';
+
+/**
+ * Request-store key holding the policies of the caller's workspace role, written by the workspace member guard.
+ * @public
+ */
+export const WorkspaceMemberPolicyStoreKey = 'WorkspaceMemberPolicyStore';
+
+/**
+ * Request-store key holding the policies of the caller's project role, written by the project member guard.
+ * @public
+ */
+export const ProjectMemberPolicyStoreKey = 'ProjectMemberPolicyStore';
 
 /**
  * Policy guard error kit for `@PolicyProtected`.

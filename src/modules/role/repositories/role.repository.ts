@@ -10,15 +10,11 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
     IRole,
-    IRoleSharedList,
     IRoleUpdate,
     IRoleWithPolicies,
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
-import {
-    RoleSelect,
-    RoleSharedListSelect,
-} from '@modules/role/constants/role.constant';
+import { RoleSelect } from '@modules/role/constants/role.constant';
 import type { IRoleRepository } from '@modules/role/interfaces/role.repository.interface';
 import { Injectable } from '@nestjs/common';
 import type { EnumRoleScope, Prisma } from '@generated/prisma-client/client';
@@ -70,15 +66,15 @@ export class RoleRepository implements IRoleRepository {
         });
     }
 
-    async findWithPaginationCursorShared(
+    async findWithPaginationOffsetByShared(
         {
             where,
             ...params
-        }: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
+        }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
         scope?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePaginationReturn<IRoleSharedList>> {
-        return this.paginationService.cursor<
-            IRoleSharedList,
+    ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
+        return this.paginationService.offset<
+            IRoleWithPolicyCount,
             Prisma.RoleWhereInput
         >(this.databaseService.client.role, {
             ...params,
@@ -86,7 +82,7 @@ export class RoleRepository implements IRoleRepository {
                 ...where,
                 ...scope,
             },
-            select: RoleSharedListSelect,
+            include: { _count: { select: { policies: true } } },
         });
     }
 

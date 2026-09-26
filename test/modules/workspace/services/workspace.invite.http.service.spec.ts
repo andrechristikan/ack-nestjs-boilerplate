@@ -7,7 +7,10 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumWorkspaceInviteStatus } from '@generated/prisma-client/client';
+import {
+    EnumRoleScope,
+    EnumWorkspaceInviteStatus,
+} from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
 import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
@@ -16,6 +19,7 @@ import type { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/req
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
 import type { WorkspaceInviteListRequestDto } from '@modules/workspace/dtos/request/workspace.invite-list.request.dto';
 import type { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
+import type { WorkspaceInviteResponseDto } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import type {
     IWorkspaceInviteList,
@@ -50,11 +54,13 @@ describe('WorkspaceInviteHttpService', () => {
     } satisfies Workspace;
     const workspaceRole = {
         id: 'workspace-role-id',
+        scope: EnumRoleScope.workspace,
         key: EnumRoleWorkspaceKey.member,
         name: 'Member',
     };
     const projectRole = {
         id: 'project-role-id',
+        scope: EnumRoleScope.project,
         key: EnumRoleProjectKey.viewer,
         name: 'Viewer',
     };
@@ -79,6 +85,24 @@ describe('WorkspaceInviteHttpService', () => {
         updatedAt: now,
         updatedBy: 'inviter-id',
     } satisfies IWorkspaceInviteWithRole;
+    const inviteResponse: WorkspaceInviteResponseDto = {
+        id: invite.id,
+        workspaceId: invite.workspaceId,
+        email: invite.email,
+        workspaceRole: invite.workspaceRole,
+        projectId: invite.projectId,
+        projectRole: invite.projectRole,
+        reference: invite.reference,
+        expiredAt: invite.expiredAt,
+        status: invite.status,
+        invitedByUserId: invite.invitedByUserId,
+        acceptedAt: invite.acceptedAt,
+        acceptedByUserId: invite.acceptedByUserId,
+        createdAt: invite.createdAt,
+        createdBy: invite.createdBy,
+        updatedAt: invite.updatedAt,
+        updatedBy: invite.updatedBy,
+    };
     const inviteListItem = {
         id: 'invite-id',
         workspaceId: 'workspace-id',
@@ -206,7 +230,7 @@ describe('WorkspaceInviteHttpService', () => {
     });
 
     describe('createInvite', () => {
-        it('delegates to the domain and wraps the created invite', async () => {
+        it('delegates to the domain and returns the invite the util maps', async () => {
             const dto = {
                 email: 'invitee@example.com',
                 workspaceRoleId: workspaceRole.id,
@@ -215,6 +239,7 @@ describe('WorkspaceInviteHttpService', () => {
                 expiryDuration: EnumWorkspaceInviteExpiry.sevenDays,
             } satisfies WorkspaceInviteCreateRequestDto;
             workspaceInviteDomain.createInvite.mockResolvedValue(invite);
+            workspaceUtil.mapInvite.mockReturnValue(inviteResponse);
 
             const result = await service.createInvite(
                 workspace,
@@ -222,7 +247,8 @@ describe('WorkspaceInviteHttpService', () => {
                 dto
             );
 
-            expect(result).toEqual({ data: invite });
+            expect(result).toEqual({ data: inviteResponse });
+            expect(workspaceUtil.mapInvite).toHaveBeenCalledWith(invite);
             expect(workspaceInviteDomain.createInvite).toHaveBeenCalledWith(
                 workspace,
                 'actor-id',
@@ -238,11 +264,12 @@ describe('WorkspaceInviteHttpService', () => {
     });
 
     describe('resendInvite', () => {
-        it('delegates to the domain and wraps the resent invite', async () => {
+        it('delegates to the domain and returns the invite the util maps', async () => {
             const dto = {
                 expiryDuration: EnumWorkspaceInviteExpiry.sevenDays,
             } satisfies WorkspaceInviteResendRequestDto;
             workspaceInviteDomain.resendInvite.mockResolvedValue(invite);
+            workspaceUtil.mapInvite.mockReturnValue(inviteResponse);
 
             const result = await service.resendInvite(
                 workspace,
@@ -251,7 +278,8 @@ describe('WorkspaceInviteHttpService', () => {
                 dto
             );
 
-            expect(result).toEqual({ data: invite });
+            expect(result).toEqual({ data: inviteResponse });
+            expect(workspaceUtil.mapInvite).toHaveBeenCalledWith(invite);
             expect(workspaceInviteDomain.resendInvite).toHaveBeenCalledWith(
                 workspace,
                 'actor-id',

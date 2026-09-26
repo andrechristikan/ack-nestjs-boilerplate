@@ -1,4 +1,4 @@
-import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { Response } from '@common/response/decorators/response.decorator';
@@ -9,7 +9,6 @@ import {
 } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { PolicySchema } from '@modules/policy/dtos/policy.dto';
 import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
@@ -27,7 +26,6 @@ import {
     Controller,
     Delete,
     Get,
-    HttpStatus,
     Param,
     Post,
     Put,
@@ -62,10 +60,6 @@ export class PolicyAdminController {
     }
 
     @Doc({ summary: 'grant a policy to a role' })
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumPolicyStatusCodeError.immutable,
-        messagePath: 'policy.error.immutable',
-    })
     @Response('policy.create', { schema: PolicySchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -87,10 +81,6 @@ export class PolicyAdminController {
     }
 
     @Doc({ summary: 'update the action list of a role policy' })
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumPolicyStatusCodeError.immutable,
-        messagePath: 'policy.error.immutable',
-    })
     @Response('policy.update', { schema: PolicySchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -114,10 +104,6 @@ export class PolicyAdminController {
     }
 
     @Doc({ summary: 'revoke a policy from a role' })
-    @DocErrors(HttpStatus.FORBIDDEN, {
-        statusCode: EnumPolicyStatusCodeError.immutable,
-        messagePath: 'policy.error.immutable',
-    })
     @Response('policy.delete')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({

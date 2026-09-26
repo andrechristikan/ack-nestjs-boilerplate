@@ -17,6 +17,7 @@ import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/aut
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
+import { ProjectMemberLastAdminException } from '@modules/project/exceptions/project.member-last-admin.exception';
 import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
 import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
 import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
@@ -24,6 +25,7 @@ import { ProjectNotFoundException } from '@modules/project/exceptions/project.no
 import type {
     IProjectMember,
     IProjectMemberWithRole,
+    IProjectMemberWithRolePolicies,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
 import { RoleDomain } from '@modules/role/domains/role.domain';
@@ -45,7 +47,7 @@ function buildRole(key: EnumRoleProjectKey): IRole {
 function buildMemberWithRole(
     key: EnumRoleProjectKey,
     overrides: Partial<ProjectMember> = {}
-): IProjectMemberWithRole {
+): IProjectMemberWithRolePolicies {
     const at = new Date('2026-01-01T00:00:00.000Z');
     const role = buildRole(key);
 
@@ -577,12 +579,98 @@ describe('ProjectMemberDomain', () => {
         });
     });
 
+    describe('updateMemberRole last admin', () => {
+        it('rejects demoting the last admin', async () => {
+            setCanManage(true);
+            projectMemberRepository.findByIdAndProject.mockResolvedValue(
+                buildMemberWithRole(EnumRoleProjectKey.admin)
+            );
+            roleDomain.resolve.mockResolvedValue(
+                buildRole(EnumRoleProjectKey.viewer)
+            );
+            projectMemberRepository.countAdmins.mockResolvedValue(1);
+
+            await expect(
+                domain.updateMemberRole(
+                    project,
+                    'actor-id',
+                    'target-member-id',
+                    'viewer-role-id'
+                )
+            ).rejects.toBeInstanceOf(ProjectMemberLastAdminException);
+            expect(projectMemberRepository.updateRole).not.toHaveBeenCalled();
+        });
+
+        it('allows demoting an admin when another admin remains', async () => {
+            setCanManage(true);
+            projectMemberRepository.findByIdAndProject.mockResolvedValue(
+                buildMemberWithRole(EnumRoleProjectKey.admin)
+            );
+            roleDomain.resolve.mockResolvedValue(
+                buildRole(EnumRoleProjectKey.viewer)
+            );
+            projectMemberRepository.countAdmins.mockResolvedValue(2);
+
+            await domain.updateMemberRole(
+                project,
+                'actor-id',
+                'target-member-id',
+                'viewer-role-id'
+            );
+
+            expect(projectMemberRepository.updateRole).toHaveBeenCalledWith(
+                'target-member-id',
+                'viewer-role-id'
+            );
+        });
+
+        it('allows re-assigning the admin role to the last admin without counting', async () => {
+            setCanManage(true);
+            projectMemberRepository.findByIdAndProject.mockResolvedValue(
+                buildMemberWithRole(EnumRoleProjectKey.admin)
+            );
+            roleDomain.resolve.mockResolvedValue(
+                buildRole(EnumRoleProjectKey.admin)
+            );
+
+            await domain.updateMemberRole(
+                project,
+                'actor-id',
+                'target-member-id',
+                'admin-role-id'
+            );
+
+            expect(projectMemberRepository.countAdmins).not.toHaveBeenCalled();
+            expect(projectMemberRepository.updateRole).toHaveBeenCalled();
+        });
+
+        it('does not count admins when the target is not an admin', async () => {
+            setCanManage(false);
+            projectMemberRepository.findByIdAndProject.mockResolvedValue(
+                buildMemberWithRole(EnumRoleProjectKey.member)
+            );
+            roleDomain.resolve.mockResolvedValue(
+                buildRole(EnumRoleProjectKey.viewer)
+            );
+
+            await domain.updateMemberRole(
+                project,
+                'actor-id',
+                'target-member-id',
+                'viewer-role-id'
+            );
+
+            expect(projectMemberRepository.countAdmins).not.toHaveBeenCalled();
+        });
+    });
+
     describe('removeMember', () => {
         it('removes the member and stages activity', async () => {
             setCanManage(true);
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 buildMemberWithRole(EnumRoleProjectKey.admin)
             );
+            projectMemberRepository.countAdmins.mockResolvedValue(2);
 
             await domain.removeMember(project, 'actor-id', 'target-member-id');
 
@@ -626,6 +714,33 @@ describe('ProjectMemberDomain', () => {
             expect(policyDomain.can).not.toHaveBeenCalled();
         });
 
+        it('rejects removing the last admin', async () => {
+            setCanManage(true);
+            projectMemberRepository.findByIdAndProject.mockResolvedValue(
+                buildMemberWithRole(EnumRoleProjectKey.admin)
+            );
+            projectMemberRepository.countAdmins.mockResolvedValue(1);
+
+            await expect(
+                domain.removeMember(project, 'actor-id', 'target-member-id')
+            ).rejects.toBeInstanceOf(ProjectMemberLastAdminException);
+            expect(projectMemberRepository.countAdmins).toHaveBeenCalledWith(
+                'project-id'
+            );
+            expect(projectMemberRepository.removeMember).not.toHaveBeenCalled();
+        });
+
+        it('does not count admins when removing a non-admin member', async () => {
+            setCanManage(true);
+            projectMemberRepository.findByIdAndProject.mockResolvedValue(
+                buildMemberWithRole(EnumRoleProjectKey.viewer)
+            );
+
+            await domain.removeMember(project, 'actor-id', 'target-member-id');
+
+            expect(projectMemberRepository.countAdmins).not.toHaveBeenCalled();
+        });
+
         it('rejects an actor without manage on projectMember removing an admin', async () => {
             setCanManage(false);
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
@@ -653,14 +768,22 @@ describe('ProjectMemberDomain', () => {
     });
 
     describe('leaveProject', () => {
-        it('removes the member and stages the leave activity', async () => {
-            const member = mock<ProjectMember>({
-                id: 'member-id',
-                userId: 'user-id',
-            });
+        function buildLeaver(key: EnumRoleProjectKey): IProjectMemberWithRole {
+            return {
+                ...buildMemberWithRole(key, {
+                    id: 'member-id',
+                    userId: 'user-id',
+                }),
+            };
+        }
 
-            await domain.leaveProject(project, member);
+        it('removes a non-admin member and stages the leave activity', async () => {
+            await domain.leaveProject(
+                project,
+                buildLeaver(EnumRoleProjectKey.member)
+            );
 
+            expect(projectMemberRepository.countAdmins).not.toHaveBeenCalled();
             expect(projectMemberRepository.removeMember).toHaveBeenCalledWith(
                 'member-id'
             );
@@ -670,6 +793,34 @@ describe('ProjectMemberDomain', () => {
                 createdBy: 'user-id',
                 workspaceId: 'workspace-id',
             });
+        });
+
+        it('lets an admin leave when another admin remains', async () => {
+            projectMemberRepository.countAdmins.mockResolvedValue(2);
+
+            await domain.leaveProject(
+                project,
+                buildLeaver(EnumRoleProjectKey.admin)
+            );
+
+            expect(projectMemberRepository.countAdmins).toHaveBeenCalledWith(
+                'project-id'
+            );
+            expect(projectMemberRepository.removeMember).toHaveBeenCalledWith(
+                'member-id'
+            );
+        });
+
+        it('rejects the last admin leaving', async () => {
+            projectMemberRepository.countAdmins.mockResolvedValue(1);
+
+            await expect(
+                domain.leaveProject(
+                    project,
+                    buildLeaver(EnumRoleProjectKey.admin)
+                )
+            ).rejects.toBeInstanceOf(ProjectMemberLastAdminException);
+            expect(projectMemberRepository.removeMember).not.toHaveBeenCalled();
         });
     });
 });

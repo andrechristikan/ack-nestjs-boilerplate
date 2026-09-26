@@ -23,6 +23,7 @@
         "memberNotFound": "Sorry, we couldn't find that project member.",
         "memberAlreadyAssigned": "This user is already assigned to the project.",
         "slugAlreadyExists": "This project slug is already taken in this workspace.",
+        "memberLastAdmin": "You cannot remove, demote or leave as the last project admin; assign another admin first.",
         "slugInvalid": "This project slug is not allowed; use letters, digits and hyphens only, within the allowed length."
     }
 }

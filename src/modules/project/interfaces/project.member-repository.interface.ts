@@ -6,6 +6,7 @@ import type { ProjectMember } from '@generated/prisma-client/client';
 import type {
     IProjectMember,
     IProjectMemberWithRole,
+    IProjectMemberWithRolePolicies,
 } from '@modules/project/interfaces/project.interface';
 
 export interface IProjectMemberRepository {
@@ -16,11 +17,12 @@ export interface IProjectMemberRepository {
     findOneWithRoleByProjectAndUser(
         projectId: string,
         userId: string
-    ): Promise<IProjectMemberWithRole | null>;
+    ): Promise<IProjectMemberWithRolePolicies | null>;
     findByIdAndProject(
         projectMemberId: string,
         projectId: string
     ): Promise<IProjectMemberWithRole | null>;
+    countAdmins(projectId: string): Promise<number>;
     findWithPaginationCursor(
         projectId: string,
         {

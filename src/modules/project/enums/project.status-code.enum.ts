@@ -10,4 +10,5 @@ export enum EnumProjectStatusCodeError {
     memberAlreadyAssigned = 51704,
     slugAlreadyExists = 51705,
     slugInvalid = 51706,
+    memberLastAdmin = 51707,
 }

@@ -71,12 +71,12 @@ export const ProjectCurrent = createParamDecorator<
 );
 
 /**
- * Loads the caller's project membership and appends the project role's policies to the policy
- * store. Stack above `@ProjectProtected()` and `@WorkspaceMemberProtected()`. The default is strict:
- * a caller with no `ProjectMember` row is rejected with `memberForbidden`, which is what project
- * leave needs. Pass `{ required: false }` on a policy-gated route: a caller with no row passes
- * through with the workspace policies alone, so a workspace role that holds the capability still
- * decides.
+ * Loads the caller's project membership and stores the project role's policies under the dedicated
+ * `ProjectMemberPolicyStoreKey`, which `PolicyDomain` merges with the workspace policies. Stack
+ * above `@ProjectProtected()` and `@WorkspaceMemberProtected()`. The default is strict: a caller
+ * with no `ProjectMember` row is rejected with `memberForbidden`. Pass `{ required: false }` only
+ * on a policy-gated route that a workspace role must reach without a row (project delete): a
+ * caller with no row passes through with the workspace policies alone.
  * @public
  */
 export function ProjectMemberProtected(options?: {

@@ -15,7 +15,6 @@ import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.e
 import { RoleScopeMismatchException } from '@modules/role/exceptions/role.scope-mismatch.exception';
 import type {
     IRole,
-    IRoleSharedList,
     IRoleUpdate,
     IRoleWithPolicies,
     IRoleWithPolicyCount,
@@ -66,11 +65,11 @@ export class RoleDomain {
         );
     }
 
-    async getListCursorShared(
-        pagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
+    async getListOffsetByShared(
+        pagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
         scope?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePaginationReturn<IRoleSharedList>> {
-        return this.roleRepository.findWithPaginationCursorShared(
+    ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
+        return this.roleRepository.findWithPaginationOffsetByShared(
             pagination,
             scope
         );

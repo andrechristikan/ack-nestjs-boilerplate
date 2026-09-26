@@ -3,7 +3,7 @@ import type {
     Workspace,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import type { IRoleShort } from '@modules/role/interfaces/role.interface';
+import type { IRole } from '@modules/role/interfaces/role.interface';
 import type {
     WorkspaceInviteRoleInclude,
     WorkspaceInviteUserListSelect,
@@ -14,12 +14,17 @@ import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.en
 
 export interface IWorkspaceMember extends WorkspaceMember {
     user: IUserRef;
-    role: IRoleShort;
+    role: IRole;
 }
 
-export type IWorkspaceMemberWithRole = Prisma.WorkspaceMemberGetPayload<{
-    include: typeof WorkspaceMemberRoleInclude;
-}>;
+export interface IWorkspaceMemberWithRole extends WorkspaceMember {
+    role: IRole;
+}
+
+export type IWorkspaceMemberWithRolePolicies =
+    Prisma.WorkspaceMemberGetPayload<{
+        include: typeof WorkspaceMemberRoleInclude;
+    }>;
 
 export type IWorkspaceInviteWithRole = Prisma.WorkspaceInviteGetPayload<{
     include: typeof WorkspaceInviteRoleInclude;
@@ -91,7 +96,7 @@ export interface IWorkspaceInvitePreview {
 export interface IWorkspaceInvitePreviewSummary {
     workspaceName: string;
     inviterName: string;
-    workspaceRole: IRoleShort;
+    workspaceRole: IRole;
     expiredAt: Date;
 }
 

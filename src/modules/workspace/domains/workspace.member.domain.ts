@@ -26,6 +26,7 @@ import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/wo
 import type {
     IWorkspaceMember,
     IWorkspaceMemberWithRole,
+    IWorkspaceMemberWithRolePolicies,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
@@ -71,7 +72,7 @@ export class WorkspaceMemberDomain {
     async validateWorkspaceMemberGuard(
         workspaceId: string | null,
         userId: string | null
-    ): Promise<IWorkspaceMemberWithRole> {
+    ): Promise<IWorkspaceMemberWithRolePolicies> {
         if (!userId) {
             throw new AuthJwtAccessTokenInvalidException();
         } else if (!workspaceId) {

@@ -12,21 +12,35 @@ describe('RoleSharedListRequestSchema', () => {
         ['a missing scope', {}],
         ['a comma-delimited scope', { scope: 'workspace,project' }],
         ['an unknown scope', { scope: 'tenant' }],
-        ['an unknown key', { scope: 'workspace', search: 'admin' }],
-        ['an orderBy key', { scope: 'workspace', orderBy: 'createdAt:asc' }],
+        ['an unknown key', { scope: 'workspace', unknown: 'x' }],
+        ['a cursor key', { scope: 'workspace', cursor: 'abc' }],
     ])('rejects %s', (_name, query) => {
         expect(RoleSharedListRequestSchema.safeParse(query).success).toBe(
             false
         );
     });
 
-    it('keeps the cursor and perPage of the pagination kit', () => {
+    it('keeps the page and perPage of the offset pagination kit', () => {
         expect(
             RoleSharedListRequestSchema.parse({
                 scope: 'project',
-                cursor: 'abc',
+                page: '2',
                 perPage: '25',
             })
-        ).toEqual({ scope: 'project', cursor: 'abc', perPage: 25 });
+        ).toEqual({ scope: 'project', page: 2, perPage: 25 });
+    });
+
+    it('accepts search and orderBy', () => {
+        expect(
+            RoleSharedListRequestSchema.parse({
+                scope: 'workspace',
+                search: 'own',
+                orderBy: ['createdAt:desc', 'name:asc'],
+            })
+        ).toEqual({
+            scope: 'workspace',
+            search: 'own',
+            orderBy: ['createdAt:desc', 'name:asc'],
+        });
     });
 });

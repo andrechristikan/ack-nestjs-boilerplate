@@ -8,7 +8,6 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
     IRole,
-    IRoleSharedList,
     IRoleUpdate,
     IRoleWithPolicies,
     IRoleWithPolicyCount,
@@ -30,13 +29,13 @@ export interface IRoleRepository {
         }: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
         scope?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>>;
-    findWithPaginationCursorShared(
+    findWithPaginationOffsetByShared(
         {
             where,
             ...params
-        }: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
+        }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
         scope?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePaginationReturn<IRoleSharedList>>;
+    ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>>;
     findOneWithPoliciesById(id: string): Promise<IRoleWithPolicies | null>;
     findOneById(id: string): Promise<IRole | null>;
     findManyByIds(ids: string[]): Promise<IRole[]>;

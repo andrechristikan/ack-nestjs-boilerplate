@@ -6,7 +6,7 @@ import type { WorkspaceMemberListRequestDto } from '@modules/workspace/dtos/requ
 import { WorkspaceMemberListRequestSchema } from '@modules/workspace/dtos/request/workspace.member-list.request.dto';
 import type { WorkspaceUserListRequestDto } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
 import { WorkspaceUserListRequestSchema } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
-import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
@@ -37,7 +37,6 @@ import {
 
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 
@@ -66,13 +65,12 @@ import type { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/requ
 import { WorkspaceUpdateRequestSchema } from '@modules/workspace/dtos/request/workspace.update.request.dto';
 import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
 import { WorkspaceInviteResponseSchema } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
+import type { WorkspaceInviteResponseDto } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
 import { WorkspaceJoinRequestResponseSchema } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
-import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import type {
     IWorkspaceInviteList,
-    IWorkspaceInviteWithRole,
     IWorkspaceMember,
     IWorkspaceMemberWithRole,
 } from '@modules/workspace/interfaces/workspace.interface';
@@ -391,21 +389,6 @@ export class WorkspaceUserController {
     }
 
     @Doc({ summary: 'update a member role in the current workspace' })
-    @DocErrors(HttpStatus.NOT_FOUND, {
-        statusCode: EnumRoleStatusCodeError.notFound,
-        messagePath: 'role.error.notFound',
-    })
-    @DocErrors(
-        HttpStatus.BAD_REQUEST,
-        {
-            statusCode: EnumRoleStatusCodeError.scopeMismatch,
-            messagePath: 'role.error.scopeMismatch',
-        },
-        {
-            statusCode: EnumWorkspaceStatusCodeError.ownerRoleNotAssignable,
-            messagePath: 'workspace.error.ownerRoleNotAssignable',
-        }
-    )
     @Response('workspace.member.updateRole')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -492,21 +475,6 @@ export class WorkspaceUserController {
         summary:
             'invite a member to the current workspace by email; token is hashed at rest',
     })
-    @DocErrors(HttpStatus.NOT_FOUND, {
-        statusCode: EnumRoleStatusCodeError.notFound,
-        messagePath: 'role.error.notFound',
-    })
-    @DocErrors(
-        HttpStatus.BAD_REQUEST,
-        {
-            statusCode: EnumRoleStatusCodeError.scopeMismatch,
-            messagePath: 'role.error.scopeMismatch',
-        },
-        {
-            statusCode: EnumWorkspaceStatusCodeError.ownerRoleNotAssignable,
-            messagePath: 'workspace.error.ownerRoleNotAssignable',
-        }
-    )
     @Response('workspace.invite.create', {
         schema: WorkspaceInviteResponseSchema,
     })
@@ -528,7 +496,7 @@ export class WorkspaceUserController {
         @AuthJwtPayload('userId') userId: string,
         @Body({ schema: WorkspaceInviteCreateRequestSchema })
         body: WorkspaceInviteCreateRequestDto
-    ): Promise<IResponseReturn<IWorkspaceInviteWithRole>> {
+    ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
         return this.workspaceInviteHttpService.createInvite(
             workspace,
             userId,
@@ -564,7 +532,7 @@ export class WorkspaceUserController {
         workspaceInviteId: string,
         @Body({ schema: WorkspaceInviteResendRequestSchema })
         body: WorkspaceInviteResendRequestDto
-    ): Promise<IResponseReturn<IWorkspaceInviteWithRole>> {
+    ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
         return this.workspaceInviteHttpService.resendInvite(
             workspace,
             userId,

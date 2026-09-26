@@ -6,12 +6,15 @@ import type {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
-import type { Project, ProjectMember } from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
 import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
 import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
 import type { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
-import type { IProjectMember } from '@modules/project/interfaces/project.interface';
+import type {
+    IProjectMember,
+    IProjectMemberWithRole,
+} from '@modules/project/interfaces/project.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';
@@ -93,7 +96,10 @@ export class ProjectMemberHttpService {
         );
     }
 
-    async leaveProject(project: Project, member: ProjectMember): Promise<void> {
+    async leaveProject(
+        project: Project,
+        member: IProjectMemberWithRole
+    ): Promise<void> {
         await this.projectMemberDomain.leaveProject(project, member);
     }
 }

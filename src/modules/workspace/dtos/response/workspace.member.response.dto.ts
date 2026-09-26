@@ -3,7 +3,8 @@ import { faker } from '@faker-js/faker';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
-import { RoleShortSchema } from '@modules/role/dtos/role.short.dto';
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import { RoleRefResponseSchema } from '@modules/role/dtos/response/role.ref.response.dto';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
 /**
@@ -46,10 +47,11 @@ export const WorkspaceMemberResponseSchema = DatabaseResponseSchema.omit({
             },
         },
     }),
-    role: RoleShortSchema.meta({
+    role: RoleRefResponseSchema.meta({
         description: 'Workspace role of the member',
         example: {
             id: faker.string.uuid(),
+            scope: EnumRoleScope.workspace,
             key: EnumRoleWorkspaceKey.member,
             name: 'Member',
         },

@@ -26,7 +26,10 @@ import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/except
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceOwnerRoleNotAssignableException } from '@modules/workspace/exceptions/workspace.owner-role-not-assignable.exception';
 import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/workspace.self-transfer.exception';
-import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceMemberWithRole,
+    IWorkspaceMemberWithRolePolicies,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 
@@ -63,15 +66,7 @@ const buildMember = ({
     userId,
     workspaceId: 'workspace-id',
     roleId: `${key}-role-id`,
-    role: {
-        ...buildRole(key),
-        description: null,
-        createdAt: now,
-        createdBy: null,
-        updatedAt: now,
-        updatedBy: null,
-        policies: [],
-    },
+    role: buildRole(key),
     joinedAt: now,
     createdAt: now,
     createdBy: null,
@@ -133,6 +128,19 @@ describe('WorkspaceMemberDomain', () => {
     });
 
     describe('validateWorkspaceMemberGuard', () => {
+        const memberWithPolicies: IWorkspaceMemberWithRolePolicies = {
+            ...member,
+            role: {
+                ...member.role,
+                description: null,
+                createdAt: now,
+                createdBy: null,
+                updatedAt: now,
+                updatedBy: null,
+                policies: [],
+            },
+        };
+
         it('rejects member validation without a user', async () => {
             await expect(
                 domain.validateWorkspaceMemberGuard('workspace-id', null)
@@ -157,24 +165,24 @@ describe('WorkspaceMemberDomain', () => {
 
         it('returns the member with its role after asserting the role scope is workspace', async () => {
             memberRepository.findOneWithRoleByWorkspaceAndUser.mockResolvedValue(
-                member
+                memberWithPolicies
             );
 
             await expect(
                 domain.validateWorkspaceMemberGuard('workspace-id', 'user-id')
-            ).resolves.toBe(member);
+            ).resolves.toBe(memberWithPolicies);
             expect(
                 memberRepository.findOneWithRoleByWorkspaceAndUser
             ).toHaveBeenCalledWith('workspace-id', 'user-id');
             expect(roleDomain.assertScope).toHaveBeenCalledWith(
-                member.role,
+                memberWithPolicies.role,
                 EnumRoleScope.workspace
             );
         });
 
         it('propagates a role scope mismatch from the role domain', async () => {
             memberRepository.findOneWithRoleByWorkspaceAndUser.mockResolvedValue(
-                member
+                memberWithPolicies
             );
             roleDomain.assertScope.mockImplementation(() => {
                 throw new RoleScopeMismatchException();

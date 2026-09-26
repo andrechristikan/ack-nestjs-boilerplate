@@ -1,9 +1,5 @@
 import type { EnumRoleScope } from '@generated/prisma-client/client';
-import type { Policy, Prisma, Role } from '@generated/prisma-client/client';
-import type {
-    RoleSharedListSelect,
-    RoleShortSelect,
-} from '@modules/role/constants/role.constant';
+import type { Policy, Role } from '@generated/prisma-client/client';
 
 export interface IRole {
     id: string;
@@ -24,11 +20,3 @@ export interface IRoleUpdate {
     name: string;
     description?: string;
 }
-
-export type IRoleSharedList = Prisma.RoleGetPayload<{
-    select: typeof RoleSharedListSelect;
-}>;
-
-export type IRoleShort = Prisma.RoleGetPayload<{
-    select: typeof RoleShortSelect;
-}>;

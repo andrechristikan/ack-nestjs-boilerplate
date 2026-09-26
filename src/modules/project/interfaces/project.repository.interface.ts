@@ -35,10 +35,11 @@ export interface IProjectRepository {
         }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
         workspaceId?: string
     ): Promise<IResponsePaginationReturn<Project>>;
-    create(
+    createInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
         { name, description }: ProjectCreateRequestDto,
-        slugCandidates: string[]
+        slug: string
     ): Promise<Project>;
     updateDetails(
         projectId: string,
