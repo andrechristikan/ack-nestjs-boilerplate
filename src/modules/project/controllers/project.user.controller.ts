@@ -4,7 +4,7 @@ import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/pr
 import { ProjectUserListRequestSchema } from '@modules/project/dtos/request/project.user-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -326,7 +326,7 @@ export class ProjectUserController {
     async memberUpdateRole(
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
-        @Param('projectMemberId', { schema: RequestMongoIdSchema })
+        @Param('projectMemberId', { schema: RequestUuidSchema })
         projectMemberId: string,
         @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
         body: ProjectMemberUpdateRoleRequestDto
@@ -358,7 +358,7 @@ export class ProjectUserController {
     async memberRemove(
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
-        @Param('projectMemberId', { schema: RequestMongoIdSchema })
+        @Param('projectMemberId', { schema: RequestUuidSchema })
         projectMemberId: string
     ): Promise<void> {
         await this.projectMemberHttpService.removeMember(

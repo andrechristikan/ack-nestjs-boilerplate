@@ -1,4 +1,7 @@
-import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
+import type {
+    IRequestGeoLocation,
+    IRequestUserAgent,
+} from '@common/request/interfaces/request.interface';
 import { Injectable } from '@nestjs/common';
 import { hostname } from 'os';
 
@@ -8,11 +11,11 @@ export class RequestContextService {
         return hostname();
     }
 
-    resolveCity(geoLocation: GeoLocation | null): string {
+    resolveCity(geoLocation: IRequestGeoLocation | null): string {
         return geoLocation?.city ?? 'Unknown Location';
     }
 
-    resolveDevice(userAgent: UserAgent): string {
+    resolveDevice(userAgent: IRequestUserAgent): string {
         const { device, os, browser } = userAgent;
 
         if (device?.vendor && device?.model) {

@@ -195,32 +195,13 @@ export class MigrationWorkspaceSeed
                 return;
             }
 
-            await this.databaseService.withTransaction(
-                async tx => {
-                    await tx.activityLog.deleteMany({
-                        where: {
-                            workspaceId: {
-                                in: workspaceIds,
-                            },
-                        },
-                    });
-                    await tx.workspaceMember.deleteMany({
-                        where: {
-                            workspaceId: {
-                                in: workspaceIds,
-                            },
-                        },
-                    });
-                    await tx.workspace.deleteMany({
-                        where: {
-                            id: {
-                                in: workspaceIds,
-                            },
-                        },
-                    });
+            await this.databaseService.client.workspace.deleteMany({
+                where: {
+                    id: {
+                        in: workspaceIds,
+                    },
                 },
-                { timeout: this.seedTransactionTimeoutInMs }
-            );
+            });
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing workspaces');
             throw error;

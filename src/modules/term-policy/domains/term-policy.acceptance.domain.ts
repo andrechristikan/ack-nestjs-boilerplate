@@ -14,6 +14,7 @@ import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/ter
 import { TermPolicyRequiredInvalidException } from '@modules/term-policy/exceptions/term-policy.required-invalid.exception';
 import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
+import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
@@ -38,8 +39,6 @@ export class TermPolicyAcceptanceDomain {
             throw new AuthJwtAccessTokenInvalidException();
         }
 
-        const { termPolicy } = user;
-
         const defaultTermPolicies = [
             EnumTermPolicyType.termsOfService,
             EnumTermPolicyType.privacy,
@@ -49,7 +48,11 @@ export class TermPolicyAcceptanceDomain {
                 ? defaultTermPolicies
                 : requiredTermPolicies;
 
-        if (!requiredTermPolicies.every(type => termPolicy[type])) {
+        if (
+            !requiredTermPolicies.every(
+                type => user[UserTermPolicyContract.columns[type]]
+            )
+        ) {
             throw new TermPolicyRequiredInvalidException();
         }
     }

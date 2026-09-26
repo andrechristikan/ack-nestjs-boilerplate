@@ -129,7 +129,7 @@ import {
 } from '@generated/prisma-client/client';
 
 import { AnalyticFraudSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-summary.response.dto';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 
 import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
@@ -1901,7 +1901,7 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/fraud/risk-score/:userId')
     async riskScore(
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponseReturn<IAnalyticFraudRiskScore>> {
         return this.analyticFraudHttpService.riskScore(userId);

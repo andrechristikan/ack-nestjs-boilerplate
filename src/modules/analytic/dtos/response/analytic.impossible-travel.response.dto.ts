@@ -8,15 +8,15 @@ import { faker } from '@faker-js/faker';
 export const AnalyticImpossibleTravelResponseSchema = z.object({
     userId: z.string().meta({
         description: 'Identifier of the user who moved',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     fromSessionId: z.string().meta({
         description: 'Identifier of the session the travel started from',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     toSessionId: z.string().meta({
         description: 'Identifier of the session the travel ended at',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     distanceKm: z.number().meta({
         description: 'Distance between the two sessions in kilometers',

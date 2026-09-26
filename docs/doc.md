@@ -340,7 +340,7 @@ Zod-bound path params reach OpenAPI from the schema on `@Param`. Auth and role k
 @RequestThrottle({ user: true })
 @Get('/get/:userId')
 async get(
-    @Param('userId', { schema: RequestMongoIdSchema }) userId: string
+    @Param('userId', { schema: RequestUuidSchema }) userId: string
 ): Promise<IResponseReturn<IUserProfile>> {
     return this.userHttpService.getOneByAdmin(userId);
 }

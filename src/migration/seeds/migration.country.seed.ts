@@ -58,6 +58,7 @@ export class MigrationCountrySeed
                                 updatedBy: MigrationUserSuperAdminId,
                             },
                             update: {
+                                ...country,
                                 updatedBy: MigrationUserSuperAdminId,
                             },
                         });

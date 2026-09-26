@@ -501,10 +501,12 @@ export class WorkspaceInviteDomain {
                 userId: userId,
                 createdBy: userId,
                 workspaceId: invite.workspaceId,
-                metadata: { targetUserId: invite.invitedByUserId },
+                metadata: invite.invitedByUserId
+                    ? { targetUserId: invite.invitedByUserId }
+                    : {},
             }),
         ];
-        if (invite.invitedByUserId !== userId) {
+        if (invite.invitedByUserId && invite.invitedByUserId !== userId) {
             const workspaceInviteAcceptedByInviteeEvent =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
@@ -556,7 +558,9 @@ export class WorkspaceInviteDomain {
 
         const [workspace, inviter] = await Promise.all([
             this.workspaceRepository.findActiveById(invite.workspaceId),
-            this.userDomain.getNameById(invite.invitedByUserId),
+            invite.invitedByUserId
+                ? this.userDomain.getNameById(invite.invitedByUserId)
+                : null,
         ]);
         if (!workspace) {
             throw new WorkspaceInviteInvalidException();

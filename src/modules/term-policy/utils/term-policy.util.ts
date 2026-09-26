@@ -4,11 +4,13 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
-import type { ITermPolicyContent } from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumTermPolicyType, Prisma } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
+import { EnumTermPolicyType } from '@generated/prisma-client/client';
+import type {
+    TermPolicy,
+    TermPolicyContent,
+} from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyUtil {
@@ -61,15 +63,6 @@ export class TermPolicyUtil {
         return fullPath;
     }
 
-    checkContentExist(
-        contents: Prisma.JsonArray,
-        language: EnumMessageLanguage
-    ): boolean {
-        return !!(contents as unknown as ITermPolicyContent[]).find(
-            c => c.language === language
-        );
-    }
-
     getContentPublicPath(type: EnumTermPolicyType, version: number): string {
         return this.helperStringService.fillPattern(this.contentPublicPath, {
             type,
@@ -90,9 +83,9 @@ export class TermPolicyUtil {
     }
 
     getContentByLanguage(
-        contents: ITermPolicyContent[],
+        contents: TermPolicyContent[],
         language: EnumMessageLanguage
-    ): ITermPolicyContent | null {
+    ): TermPolicyContent | null {
         return contents.find(c => c.language === language) ?? null;
     }
 }

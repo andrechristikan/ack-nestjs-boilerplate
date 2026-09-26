@@ -3,7 +3,6 @@ import { HelperEncryptionService } from '@common/helper/services/helper.encrypti
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
-import type { TwoFactor } from '@generated/prisma-client/client';
 import { AuthTwoFactorSecretEncryptionPurpose } from '@modules/auth/constants/auth.constant';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTwoFactorSecretUnavailableException } from '@modules/auth/exceptions/auth.two-factor-secret-unavailable.exception';
@@ -15,7 +14,10 @@ import type {
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import type {
+    IUser,
+    IUserTwoFactor,
+} from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { generateSecret, verifySync } from 'otplib';
@@ -159,7 +161,7 @@ export class AuthTwoFactorDomain {
 
     /** Verifies a TOTP code against the confirmed secret, or a backup code; a consumed backup code is returned removed in newBackupCodes. */
     async verifyTwoFactor(
-        twoFactor: TwoFactor,
+        twoFactor: IUserTwoFactor,
         { method, code, backupCode }: IAuthTwoFactorVerify
     ): Promise<IAuthTwoFactorVerifyResult> {
         const normalizedCode =
@@ -190,8 +192,11 @@ export class AuthTwoFactorDomain {
             };
         }
 
+        const activeBackupCodes = twoFactor.backupCodes.filter(
+            backupCode => !backupCode.usedAt
+        );
         const backupValidation = this.verifyBackupCode(
-            twoFactor.backupCodes,
+            activeBackupCodes.map(backupCode => backupCode.codeHash),
             normalizedCode
         );
         if (!backupValidation.isValid) {
@@ -201,13 +206,11 @@ export class AuthTwoFactorDomain {
             };
         }
 
-        const updatedTwoFactorBackupCodes = [...twoFactor.backupCodes];
-        updatedTwoFactorBackupCodes.splice(backupValidation.index, 1);
-
         return {
             isValid: true,
             method: method!,
-            newBackupCodes: updatedTwoFactorBackupCodes,
+            usedBackupCodeHash:
+                activeBackupCodes[backupValidation.index].codeHash,
         };
     }
 

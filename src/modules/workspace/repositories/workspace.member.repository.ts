@@ -67,9 +67,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
             where: {
                 userId,
                 role: EnumWorkspaceMemberRole.owner,
-                workspace: {
-                    OR: WorkspaceActiveFilter,
-                },
+                workspace: WorkspaceActiveFilter,
             },
         });
     }

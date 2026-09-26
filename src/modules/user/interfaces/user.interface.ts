@@ -15,7 +15,9 @@ import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/acti
 import type {
     Country,
     Prisma,
+    Role,
     TwoFactor,
+    TwoFactorBackupCode,
     User,
     UserMobileNumber,
     UserPhoto,
@@ -33,9 +35,19 @@ import type { IDeviceIdentity } from '@modules/device/interfaces/device.interfac
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 
+export interface IUserTwoFactor extends TwoFactor {
+    backupCodes: TwoFactorBackupCode[];
+}
+
 export interface IUser extends User {
     role: IRoleWithPolicies;
-    twoFactor: TwoFactor | null;
+    twoFactor: IUserTwoFactor | null;
+}
+
+/** A user row flattened for CSV export: only the role name and the photo are joined. */
+export interface IUserExport extends User {
+    role: Pick<Role, 'name'>;
+    photo: UserPhoto | null;
 }
 
 export type IUserList = Prisma.UserGetPayload<{
@@ -68,6 +80,7 @@ export interface IUserMobileNumber extends UserMobileNumber {
 export interface IUserProfile extends IUser {
     mobileNumbers: IUserMobileNumber[];
     country: Country;
+    photo: UserPhoto | null;
 }
 
 export interface IUserForgotPasswordCreate {
@@ -115,7 +128,7 @@ export interface IUserSignUpWorkspaceInvite {
     type: EnumUserSignUpWorkspaceContextType.invite;
     workspaceId: string;
     workspaceInviteId: string;
-    invitedByUserId: string;
+    invitedByUserId: string | null;
     workspaceMemberRole: EnumWorkspaceMemberRole;
     projectId: string | null;
     projectMemberRole: EnumProjectMemberRole | null;
@@ -150,8 +163,15 @@ export interface IUserCreateContract {
     logsActingAdmin: boolean;
 }
 
+export type IUserTermPolicyColumn =
+    | 'termsOfServiceAccepted'
+    | 'privacyAccepted'
+    | 'cookiesAccepted'
+    | 'marketingAccepted';
+
 export interface IUserTermPolicyContract {
     defaults: Record<EnumTermPolicyType, boolean>;
+    columns: Record<EnumTermPolicyType, IUserTermPolicyColumn>;
     requiredTypes: EnumTermPolicyType[];
 }
 

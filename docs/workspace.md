@@ -50,7 +50,7 @@ The module covers four things: the workspace itself and its membership roles, in
 
 | Field | Type | Notes |
 |---|---|---|
-| `id` | `String` | ObjectId |
+| `id` | `String` | UUIDv7, `@db.Uuid`, database-generated |
 | `name` | `String` | |
 | `slug` | `String` | Globally unique |
 | `description` | `String?` | |
@@ -104,7 +104,7 @@ Fields:
 | `EnumWorkspaceJoinRejectReason` | `notAFit`, `incompleteProfile`, `spam`, `unknownRequester`, `wrongWorkspace`, `memberLimitReached`, `other` |
 | `EnumWorkspaceInviteExpiry` | `threeDays` (3), `sevenDays` (7), `twoWeeks` (14), `oneMonth` (30) |
 
-**Active filter.** `WorkspaceActiveFilter` is `[{ deletedAt: null }, { deletedAt: { isSet: false } }]`. Prisma's MongoDB connector compiles a bare `{ deletedAt: null }` into a query that also requires the field to be present, silently excluding rows written before the field existed. Every active-only read uses the `OR` form.
+**Active filter.** `WorkspaceActiveFilter` is `{ deletedAt: null }`. Every active-only read spreads it into its `where`.
 
 ## Selecting the Active Workspace
 

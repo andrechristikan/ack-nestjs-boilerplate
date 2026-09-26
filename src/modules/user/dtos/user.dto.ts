@@ -41,7 +41,7 @@ export const UserSchema = DatabaseResponseSchema.extend({
     }),
     roleId: z.string().meta({
         description: 'Identifier of the role assigned to the user',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     role: RoleSchema.meta({
         description: 'Role assigned to the user',
@@ -76,7 +76,7 @@ export const UserSchema = DatabaseResponseSchema.extend({
     }),
     countryId: z.string().meta({
         description: 'Identifier of the user country',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     gender: z.enum(EnumUserGender).nullable().meta({
         description: 'Gender of the user',
@@ -98,9 +98,7 @@ export const UserSchema = DatabaseResponseSchema.extend({
         description: 'Credential method of the last login',
         example: EnumUserLoginWith.credential,
     }),
-    termPolicy: UserTermPolicySchema.meta({
-        description: 'Term-policy acceptance flags for the user',
-    }),
+    ...UserTermPolicySchema.shape,
     photo: AwsS3ResponseSchema.omit({ size: true }).nullable().meta({
         description: 'Profile photo stored in S3',
     }),

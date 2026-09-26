@@ -58,9 +58,9 @@ This project follows a [Code of Conduct][ref-code-of-conduct]. By participating,
 |------|---------|
 | Node.js | >= 24.15.0 |
 | pnpm | >= 10.25.0 (pin `pnpm@12.5.1`) |
-| Docker | v28.5.x+ (recommended for local MongoDB, Redis, JWKS, BullBoard) |
+| Docker | v28.5.x+ (recommended for local PostgreSQL, Redis, JWKS, BullBoard) |
 | Docker Compose | v2.40.x+ |
-| MongoDB | v8+ replica set (Compose locally, or Atlas without Docker) |
+| PostgreSQL | v18 (Compose locally, or a managed instance without Docker) |
 | Redis | v8+ (Compose locally, or ElastiCache without Docker) |
 
 ### Steps
@@ -78,10 +78,10 @@ pnpm generate:secret --direct-insert
 # Generate the Prisma client and src/generated/package/package.ts
 pnpm generate
 
-# Start infrastructure (MongoDB + Redis + JWKS server + BullBoard)
+# Start infrastructure (PostgreSQL + Redis + JWKS server + BullBoard)
 docker-compose up -d
 
-# Push the schema (needs the MongoDB replica set above already running)
+# Apply the Prisma migrations (needs the PostgreSQL instance above already running)
 pnpm db:migrate
 
 # Run in development mode
@@ -185,7 +185,7 @@ The Checklist covers lint, typecheck, boot, seed/env, layering, status codes, an
 Open an issue using the **Bug Report** template. Include:
 
 - Description, steps to reproduce, expected vs actual behavior
-- Environment (Node, pnpm, Mongo setup, Docker vs manual, project version or commit)
+- Environment (Node, pnpm, PostgreSQL setup, Docker vs manual, project version or commit)
 - Relevant logs, API request/response, or error identity when useful
 
 ---

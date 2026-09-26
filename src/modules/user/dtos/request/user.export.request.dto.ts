@@ -12,11 +12,11 @@ export const UserExportRequestSchema = z.strictObject({
         }),
     roleId: z.string().optional().meta({
         description: 'Filter by roleId',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     countryId: z.string().optional().meta({
         description: 'Filter by countryId',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
 });
 

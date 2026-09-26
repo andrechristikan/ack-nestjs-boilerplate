@@ -46,8 +46,8 @@ One deliberate exception: a workspace `owner` reaches every project in the works
 
 | Field | Type | Notes |
 |---|---|---|
-| `id` | `String` | ObjectId |
-| `workspaceId` | `String` | ObjectId, relation to `Workspace` |
+| `id` | `String` | UUIDv7, `@db.Uuid`, database-generated |
+| `workspaceId` | `String` | `@db.Uuid`, relation to `Workspace` |
 | `name` | `String` | |
 | `slug` | `String` | Unique per workspace |
 | `description` | `String?` | |
@@ -64,9 +64,9 @@ One deliberate exception: a workspace `owner` reaches every project in the works
 
 | Field | Type | Notes |
 |---|---|---|
-| `id` | `String` | ObjectId |
-| `projectId` | `String` | ObjectId |
-| `userId` | `String` | ObjectId |
+| `id` | `String` | UUIDv7, `@db.Uuid`, database-generated |
+| `projectId` | `String` | `@db.Uuid` |
+| `userId` | `String` | `@db.Uuid` |
 | `role` | `EnumProjectMemberRole` | Required, no default |
 | `joinedAt` | `DateTime` | Defaults to now |
 | `createdAt` / `createdBy` | `DateTime` / `String?` | |
@@ -77,7 +77,7 @@ One deliberate exception: a workspace `owner` reaches every project in the works
 
 `EnumProjectMemberRole`: `admin`, `member`, `viewer`.
 
-**Active filter.** `ProjectActiveFilter` (`src/modules/project/constants/project.constant.ts`) is `[{ deletedAt: null }, { deletedAt: { isSet: false } }]`. Prisma's MongoDB connector compiles a bare `{ deletedAt: null }` into a query that also requires the field to be present, which silently drops rows written before the field existed. Every active-only read uses the `OR` form instead.
+**Active filter.** `ProjectActiveFilter` (`src/modules/project/constants/project.constant.ts`) is `{ deletedAt: null }`. Every active-only read spreads it into its `where`.
 
 ## Endpoints
 

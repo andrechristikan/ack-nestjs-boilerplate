@@ -241,9 +241,6 @@ importers:
       body-parser:
         specifier: ^2.3.0
         version: 2.3.0(supports-color@10.2.2)
-      bson:
-        specifier: ^7.3.3
-        version: 7.3.3
       bullmq:
         specifier: ^6.3.8
         version: 6.3.8(ioredis@5.11.1(supports-color@10.2.2))
@@ -3059,10 +3056,6 @@ packages:
     resolution: {integrity: sha512-ZC5Bd0LgJXgwGqUknZY/vkUQ04r8NXnJZ3yYi4vDmSiZmC/pdSN0NbNRPxZpbtO4uAfDUAFffO8IZoM3Gj8IkA==}
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
-
-  bson@7.3.3:
-    resolution: {integrity: sha512-oz3LwE3qGEhTCSyhzQRLY3Bj1NLOsjFMf6tcmY5J8M+3R7EVcmoBfSHWvjUK3yXCLDUsGpIuB3aQL4nDZ1EV/g==}
-    engines: {node: '>=20.19.0'}
 
   buffer-equal-constant-time@1.0.1:
     resolution: {integrity: sha512-zRpUiDwd/xk6ADqPMATG8vc9VPrkck7T07OIx0gnjmJAnHnTVXNQG3vfvWNuiZIkwu9KrKdA1iJKfsfTVxE6NA==}
@@ -8750,8 +8743,6 @@ snapshots:
       node-releases: 2.0.27
       update-browserslist-db: 1.2.2(browserslist@4.28.1)
     optional: true
-
-  bson@7.3.3: {}
 
   buffer-equal-constant-time@1.0.1: {}
 

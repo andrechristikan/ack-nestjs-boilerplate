@@ -81,7 +81,11 @@ export class FeatureFlagDomain {
         }
 
         if (userId) {
-            if (featureFlag.targetUserIds.includes(userId)) {
+            if (
+                featureFlag.targetUsers.some(
+                    targetUser => targetUser.userId === userId
+                )
+            ) {
                 return;
             }
 

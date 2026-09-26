@@ -83,7 +83,7 @@ does not sweep this tree. Name every file you checked in the hand-back.
 |---|---|
 | a `pnpm` script or CLI command | `package.json` `scripts`; `.github/workflows/*.yml` |
 | Node or PNPM engine | `package.json` `engines` / `packageManager`; `ci/dockerfile`; `ci/dockerfile.local`; workflow `NODE_VERSION` |
-| a port or compose service | `docker-compose.yml`; `ci/mongo/**`; `ci/jwks-server/**`; `ci/vault/**` |
+| a port or compose service | `docker-compose.yml`; `ci/jwks-server/**`; `ci/vault/**` |
 | `pnpm generate` or a secret/package generator | `scripts/**`; both dockerfiles; workflows that run `pnpm generate` |
 | the Nest build or start graph | `nest-cli.json`; `tsconfig.json`; `tsconfig.build.json` |
 | the unit suite or knip | `vitest.config.ts`; `knip.json`; `.github/workflows/test.yml` |

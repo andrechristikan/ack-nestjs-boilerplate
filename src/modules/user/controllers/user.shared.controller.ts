@@ -11,7 +11,7 @@ import {
     RequestTimeout,
 } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -263,7 +263,7 @@ export class UserSharedController {
     @Put('/mobile-number/:mobileNumberId/update')
     async updateMobileNumber(
         @AuthJwtPayload('userId') userId: string,
-        @Param('mobileNumberId', { schema: RequestMongoIdSchema })
+        @Param('mobileNumberId', { schema: RequestUuidSchema })
         mobileNumberId: string,
         @Body({ schema: UserUpdateMobileNumberRequestSchema })
         body: UserUpdateMobileNumberRequestDto
@@ -287,7 +287,7 @@ export class UserSharedController {
     @Delete('/mobile-number/:mobileNumberId/delete')
     async deleteMobileNumber(
         @AuthJwtPayload('userId') userId: string,
-        @Param('mobileNumberId', { schema: RequestMongoIdSchema })
+        @Param('mobileNumberId', { schema: RequestUuidSchema })
         mobileNumberId: string
     ): Promise<IResponseReturn<IUserMobileNumber>> {
         return this.userMobileNumberHttpService.deleteMobileNumber(

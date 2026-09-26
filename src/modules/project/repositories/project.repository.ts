@@ -32,7 +32,7 @@ export class ProjectRepository implements IProjectRepository {
             where: {
                 id: projectId,
                 workspaceId,
-                OR: ProjectActiveFilter,
+                ...ProjectActiveFilter,
             },
         });
     }
@@ -76,7 +76,7 @@ export class ProjectRepository implements IProjectRepository {
                     AND: [
                         where ?? {},
                         { workspaceId },
-                        { OR: ProjectActiveFilter },
+                        ProjectActiveFilter,
                         ...(memberUserId
                             ? [{ members: { some: { userId: memberUserId } } }]
                             : []),
@@ -175,7 +175,7 @@ export class ProjectRepository implements IProjectRepository {
         await tx.project.updateMany({
             where: {
                 workspaceId,
-                OR: ProjectActiveFilter,
+                ...ProjectActiveFilter,
             },
             data: {
                 deletedAt,

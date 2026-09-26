@@ -7,7 +7,7 @@
 [![NestJs][nestjs-shield]][ref-nestjs]
 [![NodeJs][nodejs-shield]][ref-nodejs]
 [![Typescript][typescript-shield]][ref-typescript]
-[![MongoDB][mongodb-shield]][ref-mongodb]
+[![PostgreSQL][postgresql-shield]][ref-postgresql]
 [![JWT][jwt-shield]][ref-jwt]
 [![Vitest][vitest-shield]][ref-vitest]
 [![PNPM][pnpm-shield]][ref-pnpm]
@@ -15,7 +15,7 @@
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), TOTP/2FA, and RBAC. It runs Prisma on **MongoDB** (replica set required), uses native ESM, and stays modular with a repository layer for data access.
+[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), TOTP/2FA, and RBAC. It runs Prisma on **PostgreSQL**, uses native ESM, and stays modular with a repository layer for data access.
 
 _[Request a feature][ref-ack-issues] or [report a bug][ref-ack-issues]._
 
@@ -59,7 +59,6 @@ A good fit when you are building:
 
 ## Important
 
-- MongoDB must run as a replica set; Prisma transactions need it.
 - When `APP_ENV` is `production`, Swagger is off, and Sentry Logs only get `warn`, `error`, and `fatal` (other environments send every level).
 - Protection decorators follow a fixed stack. Use only the ones you need, and keep that relative order. Activity logging is separate: domains stage events, and a global interceptor writes them.
     ```typescript
@@ -87,7 +86,6 @@ A good fit when you are building:
 
 ## TODO
 
-- [ ] Move to PostgreSQL
 - [ ] Move to a monorepo (backend application and a separate documentation website)
 
 ### Next Features
@@ -104,8 +102,8 @@ You will get more out of this project if you already know:
 
 1. **[NestJs Fundamentals][ref-nestjs]** - Decorators, modules, services, and dependency injection
 2. **[TypeScript][ref-typescript]** - Strong typing, interfaces, and generics
-3. **[Prisma ORM][ref-prisma]** - Schema design, `prisma db push`, and type-safe queries
-4. **[MongoDB][ref-mongodb]** - NoSQL basics, especially **replica sets** for transactions
+3. **[Prisma ORM][ref-prisma]** - Schema design, `prisma migrate dev`, and type-safe queries
+4. **[PostgreSQL][ref-postgresql]** - Relational basics, including transactions
 5. **[Redis][ref-redis]** - Caching, session storage, and queues
 6. **Repository Design Pattern** - Keeping data access behind a clear layer
 7. **SOLID Principles** - Clean architecture and dependencies
@@ -123,7 +121,7 @@ Versions this project expects:
 | PNPM           | >= 10.25.0 (pin `pnpm@12.5.1`) |
 | TypeScript     | v6.0.x   |
 | Prisma         | v6.19.x  |
-| MongoDB        | v8+ (compose: `mongo:latest`)        |
+| PostgreSQL     | v18 (compose: `postgres:18`)         |
 | Redis          | v8+ (compose: `redis:latest`)   |
 | Docker         | v28.5.x+ |
 | Docker Compose | v2.40.x+ |
@@ -157,7 +155,7 @@ See [package.json][ref-package-json] for the full list.
 
 ### 📊 Database & Storage
 
-- **Prisma on MongoDB** - Type-safe queries with replica-set transactions
+- **Prisma on PostgreSQL** - Type-safe queries with relational transactions
 - **Redis cache** - Shared across instances, with configurable TTLs
 - **AWS S3** - Presigned upload and download for public and private buckets
 - **Offset & cursor pagination** - List endpoints that still feel fast as data grows
@@ -188,7 +186,7 @@ See [package.json][ref-package-json] for the full list.
 - **i18n** - Localized messages via `x-custom-lang`
 - **Vitest** - Unit suite under `test/`; `pnpm test:cov` aims for full coverage
 - **Lint & hooks** - ESLint (incl. security), Prettier, cspell, knip, Husky, and commitlint
-- **Docker Compose** - MongoDB replica set, Redis, BullBoard, and JWKS locally; optional `apis` and `vault` profiles
+- **Docker Compose** - PostgreSQL, Redis, BullBoard, and JWKS locally; optional `apis` and `vault` profiles
 - **HashiCorp Vault** - Optional secret sync into `.env` ([docs][ref-doc-vault])
 - **Docs** - 30+ guides, including the [status code catalog][ref-doc-status-codes]
 
@@ -210,10 +208,10 @@ pnpm generate:secret --direct-insert
 # Generate the Prisma client and src/generated/package/package.ts
 pnpm generate
 
-# Start infrastructure (MongoDB + Redis + BullBoard + JWKS)
+# Start infrastructure (PostgreSQL + Redis + BullBoard + JWKS)
 docker-compose up -d
 
-# Push the schema (MongoDB replica set must already be up)
+# Apply the Prisma migrations (PostgreSQL must already be up)
 pnpm db:migrate
 
 # Run the API on the host
@@ -226,17 +224,16 @@ Want the API inside Compose too? Use the `apis` profile: `docker-compose --profi
 
 ## Database
 
-This boilerplate uses **MongoDB** (`prisma/schema.prisma` `provider = "mongodb"`). Prisma transactions need a replica set.
+This boilerplate uses **PostgreSQL** (`prisma/schema.prisma` `provider = "postgresql"`).
 
-- Schema sync: `pnpm db:migrate` (`prisma db push`)
-- No `prisma migrate` history; shape changes go through `db push`
-- ObjectId helpers, transactions, and seeds assume MongoDB
+- Schema sync: `pnpm db:migrate` (`prisma migrate dev`), tracked as migration files under `prisma/migrations/`
+- UUID primary keys, transactions, and seeds assume PostgreSQL
 
-PostgreSQL is on the [TODO](#todo). Setup and seeding: [Database Documentation][ref-doc-database].
+Setup and seeding: [Database Documentation][ref-doc-database].
 
 ## Installation
 
-Docker is the recommended setup. Step-by-step (Compose first, then Atlas + Redis if you cannot use Docker): [Installation][ref-doc-installation].
+Docker is the recommended setup. Step-by-step (Compose first, then a managed PostgreSQL instance and Redis if you cannot use Docker): [Installation][ref-doc-installation].
 
 ## License
 
@@ -285,7 +282,7 @@ If this boilerplate helped you, buy me a coffee to keep this project alive.
 [nestjs-shield]: https://img.shields.io/badge/nestjs-%23E0234E.svg?style=for-the-badge&logo=nestjs&logoColor=white
 [nodejs-shield]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
 [typescript-shield]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
-[mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
+[postgresql-shield]: https://img.shields.io/badge/PostgreSQL-white?style=for-the-badge&logo=postgresql&logoColor=336791
 [jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
 [vitest-shield]: https://img.shields.io/badge/-vitest-%236E9F18?style=for-the-badge&logo=vitest&logoColor=white
 [pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
@@ -314,7 +311,7 @@ If this boilerplate helped you, buy me a coffee to keep this project alive.
 
 [ref-nestjs]: http://nestjs.com
 [ref-prisma]: https://www.prisma.io
-[ref-mongodb]: https://docs.mongodb.com/
+[ref-postgresql]: https://www.postgresql.org/docs/
 [ref-redis]: https://redis.io
 [ref-bullmq]: https://bullmq.io
 [ref-nodejs]: https://nodejs.org/

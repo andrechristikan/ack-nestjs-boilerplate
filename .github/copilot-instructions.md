@@ -4,7 +4,7 @@ Inline suggestion rules for **ack-nestjs-boilerplate**, digested from `.claude/r
 surrounding files; keep suggestions short. When this file and a rule disagree, the rule wins.
 
 **Stack:** NestJS 12 · TypeScript 6 strict · native ESM (`"type": "module"`, `verbatimModuleSyntax`) ·
-Node ≥ 24.15 · PNPM only · Prisma 6 → MongoDB (replica set) · Redis (cache `db:0`, BullMQ `db:1`) ·
+Node ≥ 24.15 · PNPM only · Prisma 6 → PostgreSQL · Redis (cache `db:0`, BullMQ `db:1`) ·
 zod 4 + `zod-openapi` · nestjs-i18n · Pino · Sentry · Vitest.
 
 ---
@@ -66,7 +66,7 @@ Prisma from `@generated/prisma-client/client`, never `…/internal`. Node built-
 
 - A DTO is a **zod schema + `z.infer` type**. **One `*.dto.ts` file = exactly one schema** and its type; nested shapes inline; shared checks from `src/common/request/validations/`.
 - Request schema: `z.strictObject`, every field constrained and `.meta({ description, example })`. Response schema: `z.object` (undeclared keys are stripped).
-- `@Body({ schema })`, `@Param('id', { schema: RequestMongoIdSchema })`. A route returning data declares `@Response(path, { schema })`.
+- `@Body({ schema })`, `@Param('id', { schema: RequestUuidSchema })`. A route returning data declares `@Response(path, { schema })`.
 
 ## Nulls
 
@@ -141,5 +141,5 @@ One class per file under `exceptions/`, extends `AppBaseException`; enum `Enum<M
 - `prisma/schema.prisma` may be edited; never run `db:migrate`, `db:studio` or `migration:*`.
 - Never stage or commit unless asked. PNPM only.
 - No backward compatibility — correct shape, update every call site, including CI, docker, compose, and `package.json` scripts when those name the change.
-- Specs under `test/**/*.spec.ts` are **unit** (Vitest, `vitest-mock-extended`): every collaborator is a double. A domain spec mocks the repository; a repository is not a unit subject. Integration (real Prisma/Mongo) and e2e (running app) are not this suite. Controllers, processors, repositories, and contracts are outside the coverage set; the doc kit in `src/common/doc/` is inside it. `isolate: false`, `fsModuleCache: true`, `pool: forks`. Nest `Logger` is muted in `test/setup.ts` (no-ops on the class; not `vi.mock('@nestjs/common')` and not a `console` spy). A behaviour lands red-first. `.github/workflows/test.yml` is `workflow_dispatch`.
+- Specs under `test/**/*.spec.ts` are **unit** (Vitest, `vitest-mock-extended`): every collaborator is a double. A domain spec mocks the repository; a repository is not a unit subject. Integration (real Prisma/PostgreSQL) and e2e (running app) are not this suite. Controllers, processors, repositories, and contracts are outside the coverage set; the doc kit in `src/common/doc/` is inside it. `isolate: false`, `fsModuleCache: true`, `pool: forks`. Nest `Logger` is muted in `test/setup.ts` (no-ops on the class; not `vi.mock('@nestjs/common')` and not a `console` spy). A behaviour lands red-first. `.github/workflows/test.yml` is `workflow_dispatch`.
 - English for code, comments, commits, docs. Verify with `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`.
