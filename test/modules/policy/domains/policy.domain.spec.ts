@@ -15,22 +15,44 @@ import {
     type Policy,
 } from '@generated/prisma-client';
 import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
+import { RequestLanguageStoreKey } from '@common/request/constants/request.constant';
 import {
+    PolicyAbilityStoreKey,
     PolicyStoreKey,
     ProjectMemberPolicyStoreKey,
     WorkspaceMemberPolicyStoreKey,
 } from '@modules/policy/constants/policy.constant';
+import {
+    ProjectMemberStoreKey,
+    ProjectStoreKey,
+} from '@modules/project/constants/project.constant';
+import {
+    WorkspaceMemberStoreKey,
+    WorkspaceStoreKey,
+} from '@modules/workspace/constants/workspace.constant';
+import { UserStoreKey } from '@modules/user/constants/user.constant';
+import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyImmutableException } from '@modules/policy/exceptions/policy.immutable.exception';
 import { PolicyExistException } from '@modules/policy/exceptions/policy.exist.exception';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
-import { PolicyPredefinedNotFoundException } from '@modules/policy/exceptions/policy.predefined-not-found.exception';
+import { EnumPolicyRuleInvalidReason } from '@modules/policy/enums/policy.rule-invalid-reason.enum';
+import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
+import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
+import type {
+    IPolicyAbility,
+    IPolicyAbilityRule,
+    IPolicyPlaceholderContext,
+    IPolicyRequestContext,
+    IPolicySubjectInput,
+} from '@modules/policy/interfaces/policy.interface';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import type { IRole } from '@modules/role/interfaces/role.interface';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -42,6 +64,10 @@ describe('PolicyDomain', () => {
         roleId: 'role-id',
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
+        conditions: null,
+        inverted: false,
+        reason: null,
+        priority: 1,
         createdAt: now,
         createdBy: null,
         updatedAt: now,
@@ -107,12 +133,29 @@ describe('PolicyDomain', () => {
         key: EnumRolePlatformKey.superAdmin,
         name: 'Super Admin',
     };
-    const required = [
-        {
-            subject: EnumPolicySubject.user,
-            action: [EnumPolicyAction.read, EnumPolicyAction.update],
-        },
-    ];
+    const ruleRequest: PolicyCreateRequestDto = {
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read],
+        priority: 2,
+    };
+    const ruleUpdate: PolicyUpdateRequestDto = {
+        action: [EnumPolicyAction.read],
+        inverted: true,
+        reason: 'why',
+        priority: 3,
+    };
+    const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
+        ...policy,
+        ...overrides,
+    });
+    const placeholderContext: IPolicyPlaceholderContext = {
+        user: { id: 'user-id', roleId: 'role-id', role: { key: 'admin' } },
+        workspace: { id: 'workspace-1' },
+        workspaceMember: null,
+        project: null,
+        projectMember: null,
+        language: 'en',
+    };
     const policyRepository: MockProxy<PolicyRepository> =
         mock<PolicyRepository>();
     const policyAbilityFactory: MockProxy<PolicyAbilityFactory> =
@@ -122,14 +165,16 @@ describe('PolicyDomain', () => {
         mock<ActivityLogDomain>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const ability: MockProxy<IPolicyAbility> = mock<IPolicyAbility>();
 
     let service: PolicyDomain;
 
     beforeEach(async () => {
-        policyAbilityFactory.createForUser.mockReturnValue(
-            mock<ReturnType<PolicyAbilityFactory['createForUser']>>()
-        );
-        policyAbilityFactory.handlerPolicies.mockReturnValue(true);
+        vi.resetAllMocks();
+        databaseUtil.isUniqueCollision.mockReturnValue(false);
+        policyAbilityFactory.build.mockReturnValue(ability);
+        requestStoreService.get.mockReturnValue(null);
 
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
@@ -141,6 +186,7 @@ describe('PolicyDomain', () => {
                 { provide: PolicyRepository, useValue: policyRepository },
                 { provide: RoleDomain, useValue: roleDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: DatabaseUtil, useValue: databaseUtil },
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
@@ -151,120 +197,397 @@ describe('PolicyDomain', () => {
         service = moduleRef.get(PolicyDomain);
     });
 
-    it('rejects a request without an authenticated user', () => {
-        expect(() =>
-            service.validatePolicyGuard(null, [policy], required)
-        ).toThrow(AuthJwtAccessTokenInvalidException);
-    });
+    describe('buildForRequest', () => {
+        const buildContext = (
+            overrides: Partial<IPolicyRequestContext> = {}
+        ): IPolicyRequestContext => ({
+            platform: null,
+            workspace: null,
+            project: null,
+            placeholders: placeholderContext,
+            ...overrides,
+        });
 
-    it('rejects a super administrator whose role holds no policies', () => {
-        policyAbilityFactory.handlerPolicies.mockReturnValue(false);
+        it('composes platform, then workspace, then project rules in order', () => {
+            const platform = buildPolicy({ id: 'platform', priority: 1 });
+            const workspace = buildPolicy({ id: 'workspace', priority: 1 });
+            const project = buildPolicy({ id: 'project', priority: 1 });
+            service.buildForRequest(
+                buildContext({
+                    platform: [platform],
+                    workspace: [
+                        buildPolicy({
+                            ...workspace,
+                            subject: EnumPolicySubject.workspace,
+                        }),
+                    ],
+                    project: [
+                        buildPolicy({
+                            ...project,
+                            subject: EnumPolicySubject.project,
+                        }),
+                    ],
+                })
+            );
 
-        expect(() =>
-            service.validatePolicyGuard(
+            expect(policyAbilityFactory.build).toHaveBeenCalledWith([
+                expect.objectContaining({ subject: 'User' }),
+                expect.objectContaining({ subject: 'Workspace' }),
+                expect.objectContaining({ subject: 'Project' }),
+            ]);
+        });
+
+        it('keeps a later inverted rule after the allow it narrows', () => {
+            service.buildForRequest(
+                buildContext({
+                    workspace: [buildPolicy({ priority: 1 })],
+                    project: [
+                        buildPolicy({
+                            priority: 1,
+                            inverted: true,
+                            reason: 'narrowed',
+                        }),
+                    ],
+                })
+            );
+
+            expect(policyAbilityFactory.build).toHaveBeenCalledWith([
+                expect.objectContaining({ inverted: false }),
+                expect.objectContaining({
+                    inverted: true,
+                    reason: 'narrowed',
+                }),
+            ]);
+        });
+
+        it('builds an empty ability when no source carries policies', () => {
+            service.buildForRequest(buildContext());
+
+            expect(policyAbilityFactory.build).toHaveBeenCalledWith([]);
+        });
+
+        it('maps a policy row onto an ability rule with its actions, inversion and reason', () => {
+            service.buildForRequest(
+                buildContext({
+                    platform: [
+                        buildPolicy({
+                            action: [EnumPolicyAction.read],
+                            inverted: true,
+                            reason: 'why',
+                        }),
+                    ],
+                })
+            );
+
+            expect(policyAbilityFactory.build).toHaveBeenCalledWith([
                 {
-                    ...user,
-                    role: {
-                        ...user.role,
-                        key: EnumRolePlatformKey.superAdmin,
-                        policies: [],
-                    },
+                    subject: 'User',
+                    action: [EnumPolicyAction.read],
+                    conditions: null,
+                    inverted: true,
+                    reason: 'why',
                 },
-                [],
-                required
-            )
-        ).toThrow(PolicyForbiddenException);
-    });
+            ] satisfies IPolicyAbilityRule[]);
+        });
 
-    it('allows any requirement when the stored policies grant manage on all', () => {
-        const realFactory = new PolicyAbilityFactory();
-        policyAbilityFactory.createForUser.mockImplementation(rows =>
-            realFactory.createForUser(rows)
-        );
-        policyAbilityFactory.handlerPolicies.mockImplementation(
-            (ability, policies) =>
-                realFactory.handlerPolicies(ability, policies)
-        );
+        it('resolves the placeholders of a rule against the request context', () => {
+            service.buildForRequest(
+                buildContext({
+                    workspace: [
+                        buildPolicy({
+                            conditions: { workspaceId: '${workspace.id}' },
+                        }),
+                    ],
+                })
+            );
 
-        expect(
-            service.validatePolicyGuard(
-                user,
-                [
-                    {
-                        ...policy,
-                        subject: EnumPolicySubject.all,
-                        action: [EnumPolicyAction.manage],
-                    },
-                ],
-                required
-            )
-        ).toBe(true);
-    });
+            expect(policyAbilityFactory.build).toHaveBeenCalledWith([
+                expect.objectContaining({
+                    conditions: { workspaceId: 'workspace-1' },
+                }),
+            ]);
+        });
 
-    it.each([
-        ['a regular role', EnumRolePlatformKey.user],
-        ['a super administrator role', EnumRolePlatformKey.superAdmin],
-    ])(
-        'rejects %s on a route with no required policy metadata',
-        (_name, key) => {
-            expect(() =>
-                service.validatePolicyGuard(
-                    { ...user, role: { ...user.role, key } },
-                    [policy],
-                    []
-                )
-            ).toThrow(PolicyPredefinedNotFoundException);
-        }
-    );
+        it('drops an allow rule whose placeholder cannot be resolved', () => {
+            service.buildForRequest(
+                buildContext({
+                    project: [
+                        buildPolicy({ conditions: { id: '${project.id}' } }),
+                    ],
+                })
+            );
 
-    it('allows a user holding every required action', () => {
-        expect(service.validatePolicyGuard(user, [policy], required)).toBe(
-            true
-        );
-    });
+            expect(policyAbilityFactory.build).toHaveBeenCalledWith([]);
+        });
 
-    it('rejects when any required action is absent', () => {
-        policyAbilityFactory.handlerPolicies.mockReturnValue(false);
-        expect(() =>
-            service.validatePolicyGuard(
-                user,
-                [policy],
-                [
-                    {
-                        subject: EnumPolicySubject.user,
-                        action: [
-                            EnumPolicyAction.read,
-                            EnumPolicyAction.delete,
+        it('keeps an inverted rule whose placeholder cannot be resolved as an unconditional deny', () => {
+            service.buildForRequest(
+                buildContext({
+                    project: [
+                        buildPolicy({
+                            conditions: { id: '${project.id}' },
+                            inverted: true,
+                            reason: 'blocked',
+                        }),
+                    ],
+                })
+            );
+
+            expect(policyAbilityFactory.build).toHaveBeenCalledWith([
+                {
+                    subject: 'User',
+                    action: policy.action,
+                    conditions: null,
+                    inverted: true,
+                    reason: 'blocked',
+                },
+            ] satisfies IPolicyAbilityRule[]);
+        });
+
+        it.each([
+            ['an array', []],
+            ['a string', 'x'],
+        ])(
+            'treats stored conditions that are %s as unresolvable',
+            (_name, conditions) => {
+                service.buildForRequest(
+                    buildContext({
+                        platform: [
+                            buildPolicy({ conditions }),
+                            buildPolicy({
+                                conditions,
+                                inverted: true,
+                                priority: 2,
+                            }),
                         ],
-                    },
-                ]
-            )
-        ).toThrow(PolicyForbiddenException);
-    });
+                    })
+                );
 
-    it('denies a user whose stored policies lack the required action under the real factory', () => {
-        const realFactory = new PolicyAbilityFactory();
-        policyAbilityFactory.createForUser.mockImplementation(rows =>
-            realFactory.createForUser(rows)
-        );
-        policyAbilityFactory.handlerPolicies.mockImplementation(
-            (ability, policies) =>
-                realFactory.handlerPolicies(ability, policies)
+                expect(policyAbilityFactory.build).toHaveBeenCalledWith([
+                    expect.objectContaining({
+                        conditions: null,
+                        inverted: true,
+                    }),
+                ]);
+            }
         );
 
-        expect(() =>
-            service.validatePolicyGuard(
-                user,
-                [{ ...policy, action: [EnumPolicyAction.read] }],
-                required
-            )
-        ).toThrow(PolicyForbiddenException);
+        it('stores and returns the built ability', () => {
+            const result = service.buildForRequest(buildContext());
+
+            expect(result).toBe(ability);
+            expect(requestStoreService.set).toHaveBeenCalledWith(
+                PolicyAbilityStoreKey,
+                ability
+            );
+        });
     });
 
-    it('uses an empty policy set when the guard receives null policies', () => {
-        service.validatePolicyGuard(user, null, required);
+    describe('getCurrentAbility', () => {
+        const stubStore = (entries: Record<string, unknown>): void => {
+            requestStoreService.get.mockImplementation(
+                (key: unknown) => (entries[key as string] ?? null) as never
+            );
+        };
 
-        expect(policyAbilityFactory.createForUser).toHaveBeenCalledWith([]);
+        it('returns the stored ability without building another', () => {
+            stubStore({ [PolicyAbilityStoreKey]: ability });
+
+            const result = service.getCurrentAbility();
+
+            expect(result).toBe(ability);
+            expect(policyAbilityFactory.build).not.toHaveBeenCalled();
+            expect(requestStoreService.set).not.toHaveBeenCalled();
+        });
+
+        it('builds once from the guard store entries and stores the ability', () => {
+            const platform = buildPolicy({ id: 'platform' });
+            const workspace = buildPolicy({ id: 'workspace' });
+            const project = buildPolicy({ id: 'project' });
+            stubStore({
+                [PolicyStoreKey]: [platform],
+                [WorkspaceMemberPolicyStoreKey]: [workspace],
+                [ProjectMemberPolicyStoreKey]: [project],
+            });
+
+            const result = service.getCurrentAbility();
+
+            expect(result).toBe(ability);
+            expect(policyAbilityFactory.build).toHaveBeenCalledTimes(1);
+            expect(policyAbilityFactory.build).toHaveBeenCalledWith([
+                expect.objectContaining({ subject: 'User' }),
+                expect.objectContaining({ subject: 'User' }),
+                expect.objectContaining({ subject: 'User' }),
+            ]);
+            expect(requestStoreService.set).toHaveBeenCalledTimes(1);
+            expect(requestStoreService.set).toHaveBeenCalledWith(
+                PolicyAbilityStoreKey,
+                ability
+            );
+        });
+
+        it('builds the rule from the placeholder context read out of the request store', () => {
+            stubStore({
+                [PolicyStoreKey]: [
+                    buildPolicy({ conditions: { id: '${user.id}' } }),
+                ],
+                [UserStoreKey]: user,
+                [WorkspaceStoreKey]: { id: 'workspace-1' },
+                [WorkspaceMemberStoreKey]: {
+                    id: 'wm-1',
+                    roleId: 'wm-role',
+                    role: { key: 'owner' },
+                },
+                [ProjectStoreKey]: { id: 'project-1' },
+                [ProjectMemberStoreKey]: {
+                    id: 'pm-1',
+                    roleId: 'pm-role',
+                    role: { key: 'viewer' },
+                },
+                [RequestLanguageStoreKey]: 'en',
+            });
+
+            service.getCurrentAbility();
+
+            expect(policyAbilityFactory.build).toHaveBeenCalledWith([
+                expect.objectContaining({
+                    conditions: { id: 'user-id' },
+                }),
+            ]);
+        });
+
+        it('builds from empty rules when the store holds nothing', () => {
+            stubStore({});
+
+            const result = service.getCurrentAbility();
+
+            expect(result).toBe(ability);
+            expect(policyAbilityFactory.build).toHaveBeenCalledWith([]);
+        });
+    });
+
+    describe('can', () => {
+        beforeEach(() => {
+            requestStoreService.get
+                .calledWith(PolicyAbilityStoreKey)
+                .mockReturnValue(ability);
+        });
+
+        it.each([true, false])(
+            'answers %s from the current ability for the registry model of an enum subject',
+            allowed => {
+                ability.can.mockReturnValue(allowed);
+
+                const result = service.can(
+                    EnumPolicyAction.read,
+                    EnumPolicySubject.project
+                );
+
+                expect(result).toBe(allowed);
+                expect(ability.can).toHaveBeenCalledWith(
+                    EnumPolicyAction.read,
+                    'Project'
+                );
+            }
+        );
+
+        it('checks the subject-tagged record when the input carries one', () => {
+            const record = {
+                id: 'workspace-1',
+                createdBy: null,
+                isPublic: false,
+                deletedAt: null,
+            };
+            let target: unknown;
+            ability.can.mockImplementation((_action, subject) => {
+                target = subject;
+                return true;
+            });
+            const input = {
+                subject: EnumPolicySubject.workspace,
+                record,
+            } as IPolicySubjectInput;
+
+            const result = service.can(EnumPolicyAction.update, input);
+
+            expect(result).toBe(true);
+            expect(target).toMatchObject(record);
+            expect(target).toHaveProperty('__caslSubjectType__', 'Workspace');
+        });
+
+        it('returns false without consulting the ability when the action is not registered for the subject', () => {
+            const result = service.can(
+                EnumPolicyAction.manage,
+                EnumPolicySubject.workspaceMember
+            );
+
+            expect(result).toBe(false);
+            expect(ability.can).not.toHaveBeenCalled();
+        });
+
+        it('checks the all subject through its manage action', () => {
+            ability.can.mockReturnValue(true);
+
+            const result = service.can(
+                EnumPolicyAction.manage,
+                EnumPolicySubject.all
+            );
+
+            expect(result).toBe(true);
+            expect(ability.can).toHaveBeenCalledWith(
+                EnumPolicyAction.manage,
+                'all'
+            );
+        });
+    });
+
+    describe('assertCan', () => {
+        beforeEach(() => {
+            requestStoreService.get
+                .calledWith(PolicyAbilityStoreKey)
+                .mockReturnValue(ability);
+        });
+
+        it('passes when the ability allows the action', () => {
+            ability.can.mockReturnValue(true);
+
+            expect(() =>
+                service.assertCan(
+                    EnumPolicyAction.read,
+                    EnumPolicySubject.project
+                )
+            ).not.toThrow();
+        });
+
+        it.each([
+            [
+                'the ability denies the action',
+                EnumPolicyAction.delete,
+                EnumPolicySubject.project,
+            ],
+            [
+                'the action is not registered for the subject',
+                EnumPolicyAction.manage,
+                EnumPolicySubject.workspaceMember,
+            ],
+        ])(
+            'throws PolicyForbiddenException when %s',
+            (_name, action, subject) => {
+                ability.can.mockReturnValue(false);
+
+                try {
+                    service.assertCan(action, subject);
+                    throw new Error('expected throw');
+                } catch (error) {
+                    expect(error).toBeInstanceOf(PolicyForbiddenException);
+                    expect(error).toMatchObject({
+                        module: 'policy',
+                        statusCode: EnumPolicyStatusCodeError.forbidden,
+                        messagePath: 'policy.error.forbidden',
+                    });
+                }
+            }
+        );
     });
 
     it('rejects role-scoped reads when the role does not exist', async () => {
@@ -284,60 +607,452 @@ describe('PolicyDomain', () => {
         ]);
     });
 
-    it('rejects duplicate policy creation', async () => {
-        roleDomain.getById.mockResolvedValue(role);
-        policyRepository.existsByRoleIdAndSubject.mockResolvedValue(true);
+    describe('createByAdmin', () => {
+        const workspaceRole = {
+            id: 'workspace-role-id',
+            scope: EnumRoleScope.workspace,
+            key: 'owner',
+            name: 'Owner',
+        };
+        const projectRole = {
+            id: 'project-role-id',
+            scope: EnumRoleScope.project,
+            key: 'admin',
+            name: 'Project admin',
+        };
+        const workspacePair = { workspaceId: '${workspace.id}' };
+        const projectPair = { projectId: '${project.id}' };
 
-        await expect(
-            service.createByAdmin('role-id', required[0])
-        ).rejects.toBeInstanceOf(PolicyExistException);
-    });
+        it.each([
+            [
+                'an action outside the subject registry',
+                role,
+                EnumPolicySubject.workspaceMember,
+                [EnumPolicyAction.create],
+                null,
+                false,
+                EnumPolicyRuleInvalidReason.actionNotAllowed,
+            ],
+            [
+                'the all subject on an API write',
+                role,
+                EnumPolicySubject.all,
+                [EnumPolicyAction.manage],
+                null,
+                false,
+                EnumPolicyRuleInvalidReason.roleScopeInvalid,
+            ],
+            [
+                'a workspace subject on a project role',
+                projectRole,
+                EnumPolicySubject.workspace,
+                [EnumPolicyAction.read],
+                { id: '${workspace.id}' },
+                false,
+                EnumPolicyRuleInvalidReason.roleScopeInvalid,
+            ],
+            [
+                'a platform subject on a project role',
+                projectRole,
+                EnumPolicySubject.user,
+                [EnumPolicyAction.read],
+                null,
+                false,
+                EnumPolicyRuleInvalidReason.roleScopeInvalid,
+            ],
+            [
+                'a workspace rule without conditions',
+                workspaceRole,
+                EnumPolicySubject.workspaceMember,
+                [EnumPolicyAction.update],
+                null,
+                false,
+                EnumPolicyRuleInvalidReason.scopeMissing,
+            ],
+            [
+                'a scope pair only under OR',
+                workspaceRole,
+                EnumPolicySubject.workspaceMember,
+                [EnumPolicyAction.update],
+                { OR: [workspacePair] },
+                false,
+                EnumPolicyRuleInvalidReason.scopeMissing,
+            ],
+            [
+                'a scope pair whose value is not the placeholder',
+                workspaceRole,
+                EnumPolicySubject.workspaceMember,
+                [EnumPolicyAction.update],
+                { workspaceId: 'other' },
+                false,
+                EnumPolicyRuleInvalidReason.scopeMissing,
+            ],
+            [
+                'a project create combined with another action and no pair',
+                workspaceRole,
+                EnumPolicySubject.project,
+                [EnumPolicyAction.create, EnumPolicyAction.read],
+                null,
+                false,
+                EnumPolicyRuleInvalidReason.scopeMissing,
+            ],
+            [
+                'a workspace role analytic rule without the scope pair',
+                workspaceRole,
+                EnumPolicySubject.analytic,
+                [EnumPolicyAction.read],
+                null,
+                false,
+                EnumPolicyRuleInvalidReason.scopeMissing,
+            ],
+        ])(
+            'rejects %s before any write or activity',
+            async (
+                _name,
+                targetRole,
+                subject,
+                action,
+                conditions,
+                inverted,
+                reason
+            ) => {
+                roleDomain.getById.mockResolvedValue(targetRole);
 
-    it('creates a policy and stages its activity', async () => {
-        const event = mock<ReturnType<ActivityLogDomain['prepare']>>();
-        roleDomain.getById.mockResolvedValue(role);
-        policyRepository.existsByRoleIdAndSubject.mockResolvedValue(false);
-        policyRepository.create.mockResolvedValue(policy);
-        activityLogDomain.prepare.mockReturnValue(event);
-
-        await expect(
-            service.createByAdmin('role-id', required[0])
-        ).resolves.toBe(policy);
-        expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-            action: EnumActivityLogAction.adminPolicyCreate,
-        });
-        expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([event]);
-    });
-
-    it.each([
-        [
-            'update',
-            (id: string) =>
-                service.updateByAdmin('role-id', id, {
-                    action: [EnumPolicyAction.read],
-                }),
-        ],
-        ['delete', (id: string) => service.deleteByAdmin('role-id', id)],
-    ])('rejects %s when the policy does not exist', async (_name, run) => {
-        roleDomain.getById.mockResolvedValue(role);
-        policyRepository.existsByRoleIdAndId.mockResolvedValue(false);
-
-        await expect(run('missing')).rejects.toBeInstanceOf(
-            PolicyNotFoundException
+                await expect(
+                    service.createByAdmin('role-id', {
+                        subject,
+                        action,
+                        conditions: conditions ?? undefined,
+                        inverted,
+                        priority: 2,
+                    })
+                ).rejects.toMatchObject({
+                    module: 'policy',
+                    statusCode: EnumPolicyStatusCodeError.invalidRule,
+                    reason,
+                });
+                expect(
+                    policyRepository.existsByRoleIdAndPriority
+                ).not.toHaveBeenCalled();
+                expect(policyRepository.create).not.toHaveBeenCalled();
+                expect(activityLogDomain.prepare).not.toHaveBeenCalled();
+                expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            }
         );
+
+        const acceptedRules: [
+            string,
+            IRole,
+            EnumPolicySubject,
+            EnumPolicyAction[],
+            PolicyCreateRequestDto['conditions'] | null,
+            boolean,
+        ][] = [
+            [
+                'a scope pair inside a top-level AND',
+                workspaceRole,
+                EnumPolicySubject.workspaceMember,
+                [EnumPolicyAction.update],
+                { AND: [workspacePair, { userId: 'x' }] },
+                false,
+            ],
+            [
+                'an inverted rule without a scope pair',
+                workspaceRole,
+                EnumPolicySubject.workspaceMember,
+                [EnumPolicyAction.update],
+                null,
+                true,
+            ],
+            [
+                'a project create with no scope pair',
+                workspaceRole,
+                EnumPolicySubject.project,
+                [EnumPolicyAction.create],
+                null,
+                false,
+            ],
+            [
+                'a project member create keyed on projectId only',
+                projectRole,
+                EnumPolicySubject.projectMember,
+                [EnumPolicyAction.create],
+                projectPair,
+                false,
+            ],
+            [
+                'a platform role rule with no scope pair',
+                role,
+                EnumPolicySubject.workspaceMember,
+                [EnumPolicyAction.update],
+                null,
+                false,
+            ],
+            [
+                'an analytic rule scoped to the workspace',
+                workspaceRole,
+                EnumPolicySubject.analytic,
+                [EnumPolicyAction.read],
+                workspacePair,
+                false,
+            ],
+            [
+                'a platform role analytic rule with no scope pair',
+                role,
+                EnumPolicySubject.analytic,
+                [EnumPolicyAction.read],
+                null,
+                false,
+            ],
+            [
+                'a role relation filtered by key',
+                role,
+                EnumPolicySubject.workspaceMember,
+                [EnumPolicyAction.update],
+                { role: { is: { key: 'x' } } },
+                false,
+            ],
+            [
+                'a role relation filtered by scope and key together',
+                role,
+                EnumPolicySubject.workspaceMember,
+                [EnumPolicyAction.update],
+                { role: { is: { scope: 'workspace', key: 'x' } } },
+                false,
+            ],
+            [
+                'operators, OR and NOT over allowed columns',
+                role,
+                EnumPolicySubject.workspaceMember,
+                [EnumPolicyAction.update],
+                {
+                    OR: [{ userId: { in: ['a', 'b'] } }, { roleId: null }],
+                    NOT: { id: { equals: 'x' } },
+                },
+                false,
+            ],
+            [
+                'a non-array-required operator whose operand is an array of literals',
+                role,
+                EnumPolicySubject.workspaceMember,
+                [EnumPolicyAction.update],
+                { userId: { equals: ['a', 'b'] } },
+                false,
+            ],
+        ];
+
+        it.each(acceptedRules)(
+            'accepts %s',
+            async (
+                _name,
+                targetRole,
+                subject,
+                action,
+                conditions,
+                inverted
+            ) => {
+                roleDomain.getById.mockResolvedValue(targetRole);
+                policyRepository.existsByRoleIdAndPriority.mockResolvedValue(
+                    false
+                );
+                policyRepository.create.mockResolvedValue(policy);
+
+                await expect(
+                    service.createByAdmin('role-id', {
+                        subject,
+                        action,
+                        conditions: conditions ?? undefined,
+                        inverted,
+                        priority: 2,
+                    })
+                ).resolves.toBe(policy);
+            }
+        );
+
+        it('rejects a priority already held by the role', async () => {
+            roleDomain.getById.mockResolvedValue(role);
+            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(true);
+
+            await expect(
+                service.createByAdmin('role-id', ruleRequest)
+            ).rejects.toBeInstanceOf(PolicyExistException);
+            expect(
+                policyRepository.existsByRoleIdAndPriority
+            ).toHaveBeenCalledWith('role-id', 2, null);
+            expect(policyRepository.create).not.toHaveBeenCalled();
+        });
+
+        it('creates a policy and stages its activity', async () => {
+            const event = mock<ReturnType<ActivityLogDomain['prepare']>>();
+            roleDomain.getById.mockResolvedValue(role);
+            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
+            policyRepository.create.mockResolvedValue(policy);
+            activityLogDomain.prepare.mockReturnValue(event);
+
+            await expect(
+                service.createByAdmin('role-id', ruleRequest)
+            ).resolves.toBe(policy);
+            expect(policyRepository.create).toHaveBeenCalledWith(
+                'role-id',
+                ruleRequest
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminPolicyCreate,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                event,
+            ]);
+        });
+
+        it('throws PolicyExistException when the write collides on priority and stages nothing', async () => {
+            const error = new Error('unique');
+            roleDomain.getById.mockResolvedValue(role);
+            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
+            policyRepository.create.mockRejectedValue(error);
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
+
+            await expect(
+                service.createByAdmin('role-id', ruleRequest)
+            ).rejects.toBeInstanceOf(PolicyExistException);
+            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
+                error,
+                'priority'
+            );
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('rethrows any other write error and stages nothing', async () => {
+            const error = new Error('boom');
+            roleDomain.getById.mockResolvedValue(role);
+            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
+            policyRepository.create.mockRejectedValue(error);
+
+            await expect(
+                service.createByAdmin('role-id', ruleRequest)
+            ).rejects.toBe(error);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
     });
 
-    it('updates a policy and stages its activity', async () => {
-        const data = { action: [EnumPolicyAction.read] };
-        roleDomain.getById.mockResolvedValue(role);
-        policyRepository.existsByRoleIdAndId.mockResolvedValue(true);
-        policyRepository.update.mockResolvedValue(policy);
+    describe('updateByAdmin', () => {
+        it('rejects when the policy does not exist on the role', async () => {
+            roleDomain.getById.mockResolvedValue(role);
+            policyRepository.findOneByRoleIdAndId.mockResolvedValue(null);
 
-        await expect(
-            service.updateByAdmin('role-id', policy.id, data)
-        ).resolves.toBe(policy);
-        expect(policyRepository.update).toHaveBeenCalledWith(policy.id, data);
-        expect(activityLogDomain.stagePrepared).toHaveBeenCalledOnce();
+            await expect(
+                service.updateByAdmin('role-id', 'missing', ruleUpdate)
+            ).rejects.toBeInstanceOf(PolicyNotFoundException);
+            expect(policyRepository.update).not.toHaveBeenCalled();
+        });
+
+        it('validates the rule against the stored subject', async () => {
+            roleDomain.getById.mockResolvedValue(role);
+            policyRepository.findOneByRoleIdAndId.mockResolvedValue({
+                ...policy,
+                subject: EnumPolicySubject.workspaceMember,
+            });
+
+            await expect(
+                service.updateByAdmin('role-id', policy.id, {
+                    action: [EnumPolicyAction.create],
+                    priority: 1,
+                })
+            ).rejects.toMatchObject({
+                reason: EnumPolicyRuleInvalidReason.actionNotAllowed,
+            });
+            expect(policyRepository.update).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('allows the same priority as the policy itself', async () => {
+            roleDomain.getById.mockResolvedValue(role);
+            policyRepository.findOneByRoleIdAndId.mockResolvedValue(policy);
+            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
+            policyRepository.update.mockResolvedValue(policy);
+
+            await service.updateByAdmin('role-id', policy.id, {
+                action: [EnumPolicyAction.read],
+                priority: policy.priority,
+            });
+
+            expect(
+                policyRepository.existsByRoleIdAndPriority
+            ).toHaveBeenCalledWith('role-id', policy.priority, policy.id);
+        });
+
+        it('rejects a priority held by another policy of the role, excluding itself', async () => {
+            roleDomain.getById.mockResolvedValue(role);
+            policyRepository.findOneByRoleIdAndId.mockResolvedValue(policy);
+            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(true);
+
+            await expect(
+                service.updateByAdmin('role-id', policy.id, ruleUpdate)
+            ).rejects.toBeInstanceOf(PolicyExistException);
+            expect(
+                policyRepository.existsByRoleIdAndPriority
+            ).toHaveBeenCalledWith('role-id', 3, policy.id);
+            expect(policyRepository.update).not.toHaveBeenCalled();
+        });
+
+        it('updates a policy and stages its activity', async () => {
+            const event = mock<ReturnType<ActivityLogDomain['prepare']>>();
+            roleDomain.getById.mockResolvedValue(role);
+            policyRepository.findOneByRoleIdAndId.mockResolvedValue(policy);
+            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
+            policyRepository.update.mockResolvedValue(policy);
+            activityLogDomain.prepare.mockReturnValue(event);
+
+            await expect(
+                service.updateByAdmin('role-id', policy.id, ruleUpdate)
+            ).resolves.toBe(policy);
+            expect(policyRepository.update).toHaveBeenCalledWith(
+                policy.id,
+                ruleUpdate
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminPolicyUpdate,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                event,
+            ]);
+        });
+
+        it('throws PolicyExistException when the write collides on priority and stages nothing', async () => {
+            roleDomain.getById.mockResolvedValue(role);
+            policyRepository.findOneByRoleIdAndId.mockResolvedValue(policy);
+            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
+            policyRepository.update.mockRejectedValue(new Error('unique'));
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
+
+            await expect(
+                service.updateByAdmin('role-id', policy.id, ruleUpdate)
+            ).rejects.toBeInstanceOf(PolicyExistException);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('rethrows any other write error and stages nothing', async () => {
+            const error = new Error('boom');
+            roleDomain.getById.mockResolvedValue(role);
+            policyRepository.findOneByRoleIdAndId.mockResolvedValue(policy);
+            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
+            policyRepository.update.mockRejectedValue(error);
+
+            await expect(
+                service.updateByAdmin('role-id', policy.id, ruleUpdate)
+            ).rejects.toBe(error);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('deleteByAdmin', () => {
+        it('rejects when the policy does not exist', async () => {
+            roleDomain.getById.mockResolvedValue(role);
+            policyRepository.existsByRoleIdAndId.mockResolvedValue(false);
+
+            await expect(
+                service.deleteByAdmin('role-id', 'missing')
+            ).rejects.toBeInstanceOf(PolicyNotFoundException);
+        });
     });
 
     it('deletes a policy and stages its activity', async () => {
@@ -356,14 +1071,16 @@ describe('PolicyDomain', () => {
         it.each([
             [
                 'create',
-                () => service.createByAdmin(superAdminRole.id, required[0]),
+                () => service.createByAdmin(superAdminRole.id, ruleRequest),
             ],
             [
                 'update',
                 () =>
-                    service.updateByAdmin(superAdminRole.id, policy.id, {
-                        action: [EnumPolicyAction.read],
-                    }),
+                    service.updateByAdmin(
+                        superAdminRole.id,
+                        policy.id,
+                        ruleUpdate
+                    ),
             ],
             [
                 'delete',
@@ -378,7 +1095,10 @@ describe('PolicyDomain', () => {
                     PolicyImmutableException
                 );
                 expect(
-                    policyRepository.existsByRoleIdAndSubject
+                    policyRepository.existsByRoleIdAndPriority
+                ).not.toHaveBeenCalled();
+                expect(
+                    policyRepository.findOneByRoleIdAndId
                 ).not.toHaveBeenCalled();
                 expect(
                     policyRepository.existsByRoleIdAndId
@@ -399,215 +1119,40 @@ describe('PolicyDomain', () => {
                 ...superAdminRole,
                 scope,
             });
-            policyRepository.existsByRoleIdAndSubject.mockResolvedValue(false);
+            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
             policyRepository.create.mockResolvedValue(policy);
 
             await expect(
-                service.createByAdmin('role-id', required[0])
+                service.createByAdmin('role-id', {
+                    subject: EnumPolicySubject.projectMember,
+                    action: [EnumPolicyAction.update],
+                    conditions: { projectId: '${project.id}' },
+                    priority: 2,
+                })
             ).resolves.toBe(policy);
         });
 
         it('lets a non super administrator platform role through', async () => {
             roleDomain.getById.mockResolvedValue(role);
-            policyRepository.existsByRoleIdAndSubject.mockResolvedValue(false);
+            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
             policyRepository.create.mockResolvedValue(policy);
 
             await expect(
-                service.createByAdmin('role-id', required[0])
+                service.createByAdmin('role-id', ruleRequest)
             ).resolves.toBe(policy);
         });
 
         it.each([
-            ['create', () => service.createByAdmin('missing', required[0])],
+            ['create', () => service.createByAdmin('missing', ruleRequest)],
             [
                 'update',
-                () =>
-                    service.updateByAdmin('missing', policy.id, {
-                        action: [EnumPolicyAction.read],
-                    }),
+                () => service.updateByAdmin('missing', policy.id, ruleUpdate),
             ],
             ['delete', () => service.deleteByAdmin('missing', policy.id)],
         ])('rejects %s on a missing role', async (_name, run) => {
             roleDomain.getById.mockResolvedValue(null);
 
             await expect(run()).rejects.toBeInstanceOf(RoleNotFoundException);
-        });
-    });
-    describe('getEffectivePolicies', () => {
-        const platformPolicy = { ...policy, id: 'platform-policy-id' };
-        const workspacePolicy = { ...policy, id: 'workspace-policy-id' };
-        const projectPolicy = { ...policy, id: 'project-policy-id' };
-        const storeKeys = (
-            store: Record<string, Policy[] | undefined>
-        ): void => {
-            requestStoreService.get.mockImplementation(
-                (key: unknown) => store[key as string] as never
-            );
-        };
-
-        it('returns the platform policies when no member guard ran', () => {
-            storeKeys({ [PolicyStoreKey]: [platformPolicy] });
-
-            expect(service.getEffectivePolicies()).toEqual([platformPolicy]);
-        });
-
-        it('replaces the platform policies with the workspace role policies', () => {
-            storeKeys({
-                [PolicyStoreKey]: [platformPolicy],
-                [WorkspaceMemberPolicyStoreKey]: [workspacePolicy],
-            });
-
-            expect(service.getEffectivePolicies()).toEqual([workspacePolicy]);
-        });
-
-        it('appends the project role policies to the workspace role policies', () => {
-            storeKeys({
-                [PolicyStoreKey]: [platformPolicy],
-                [WorkspaceMemberPolicyStoreKey]: [workspacePolicy],
-                [ProjectMemberPolicyStoreKey]: [projectPolicy],
-            });
-
-            expect(service.getEffectivePolicies()).toEqual([
-                workspacePolicy,
-                projectPolicy,
-            ]);
-        });
-
-        it('keeps an empty workspace role list instead of falling back to the platform policies', () => {
-            storeKeys({
-                [PolicyStoreKey]: [platformPolicy],
-                [WorkspaceMemberPolicyStoreKey]: [],
-            });
-
-            expect(service.getEffectivePolicies()).toEqual([]);
-        });
-
-        it('returns null when no guard stored any policies', () => {
-            storeKeys({});
-
-            expect(service.getEffectivePolicies()).toBeNull();
-        });
-
-        it('returns the project policies alone when only the project guard stored any', () => {
-            storeKeys({ [ProjectMemberPolicyStoreKey]: [projectPolicy] });
-
-            expect(service.getEffectivePolicies()).toEqual([projectPolicy]);
-        });
-    });
-
-    describe('can', () => {
-        const storePolicies = (
-            rows: Pick<Policy, 'subject' | 'action'>[] | null
-        ): void => {
-            const stored = rows?.map(row => ({ ...policy, ...row })) ?? null;
-            requestStoreService.get
-                .calledWith(PolicyStoreKey)
-                .mockReturnValue(stored);
-        };
-
-        beforeEach(() => {
-            const realFactory = new PolicyAbilityFactory();
-            policyAbilityFactory.createForUser.mockImplementation(rows =>
-                realFactory.createForUser(rows)
-            );
-        });
-
-        it('grants a read when the stored policies carry manage on that subject', () => {
-            storePolicies([
-                {
-                    subject: EnumPolicySubject.project,
-                    action: [EnumPolicyAction.manage],
-                },
-            ]);
-
-            expect(
-                service.can(EnumPolicyAction.read, EnumPolicySubject.project)
-            ).toBe(true);
-        });
-
-        it('denies a read when the stored policies carry only other actions on that subject', () => {
-            storePolicies([
-                {
-                    subject: EnumPolicySubject.project,
-                    action: [EnumPolicyAction.create, EnumPolicyAction.delete],
-                },
-            ]);
-
-            expect(
-                service.can(EnumPolicyAction.read, EnumPolicySubject.project)
-            ).toBe(false);
-        });
-
-        it('denies manage when the stored policies list its actions without manage', () => {
-            storePolicies([
-                {
-                    subject: EnumPolicySubject.projectMember,
-                    action: [
-                        EnumPolicyAction.create,
-                        EnumPolicyAction.update,
-                        EnumPolicyAction.delete,
-                    ],
-                },
-            ]);
-
-            expect(
-                service.can(
-                    EnumPolicyAction.manage,
-                    EnumPolicySubject.projectMember
-                )
-            ).toBe(false);
-        });
-
-        it('grants any subject when the stored policies carry manage on all', () => {
-            storePolicies([
-                {
-                    subject: EnumPolicySubject.all,
-                    action: [EnumPolicyAction.manage],
-                },
-            ]);
-
-            expect(
-                service.can(
-                    EnumPolicyAction.delete,
-                    EnumPolicySubject.workspace
-                )
-            ).toBe(true);
-        });
-
-        it('grants a check that only the project role policies carry', () => {
-            requestStoreService.get.mockImplementation((key: unknown) => {
-                if (key === WorkspaceMemberPolicyStoreKey) return [] as never;
-                if (key === ProjectMemberPolicyStoreKey) {
-                    return [
-                        {
-                            ...policy,
-                            subject: EnumPolicySubject.project,
-                            action: [EnumPolicyAction.manage],
-                        },
-                    ] as never;
-                }
-                return undefined as never;
-            });
-
-            expect(
-                service.can(EnumPolicyAction.read, EnumPolicySubject.project)
-            ).toBe(true);
-        });
-
-        it('denies every check when the store holds no policies', () => {
-            storePolicies(null);
-
-            expect(
-                service.can(EnumPolicyAction.read, EnumPolicySubject.project)
-            ).toBe(false);
-        });
-
-        it('denies every check when the stored policy list is empty', () => {
-            storePolicies([]);
-
-            expect(
-                service.can(EnumPolicyAction.manage, EnumPolicySubject.all)
-            ).toBe(false);
         });
     });
 });

@@ -192,14 +192,14 @@ Roles are rows of one `Role` table. `scope` (`platform`, `workspace`, `project`)
 
 The keys live in `EnumRolePlatformKey`, `EnumRoleWorkspaceKey`, and `EnumRoleProjectKey`. Role admin routes update `name` and `description` only; a role is never created or deleted through the API.
 
-**Seeded policies.** The `policy` seed writes one row per `(role, subject)` carrying the actions the role grants. It reads the roles by `(scope, key)` first and aborts without writing when one is missing, and each row is an upsert on `(roleId, subject)`, so re-running it is safe.
+**Seeded policies.** The `policy` seed writes each role's ordered rules, numbered from 1 in seed order as `priority`. A rule carries `subject`, `action[]`, `conditions`, `inverted`, and `reason`. It reads the roles by `(scope, key)` first and aborts without writing when one is missing, and each row is an upsert on `(roleId, priority)`, so re-running it is safe. Rows of a seeded role whose `priority` is not in the seed are deleted. Workspace and project rules on a scoped subject carry the scope condition (for example `workspaceId: ${workspace.id}`), so a rule reaches the active workspace or project only.
 
 | Role | Seeded policies |
 |---|---|
 | platform `superAdmin` | `manage` on `all` |
 | platform `admin` | every action on `activityLog`, `analytic`, `apiKey`, `device`, `featureFlag`, `passwordHistory`, `role`, `session`, `termPolicy`, `user`; `read` on `workspace` and `project` |
 | platform `user` | none |
-| workspace `owner` | `manage` on `workspace`, `workspaceInvite`, `project`, `projectMember`; `update` and `delete` on `workspaceMember`; `update` on `workspaceJoinRequest`; `read` on `analytic` |
+| workspace `owner` | `manage` on `workspace`; `update` and `delete` on `workspaceMember`; `manage` on `workspaceInvite`; `update` on `workspaceJoinRequest`; `create`, then `read`, `update`, and `delete` on `project`; `create`, `update`, and `delete` on `projectMember`; `read` on `analytic` |
 | workspace `admin` | `read` and `update` on `workspace`; `update` and `delete` on `workspaceMember`; `manage` on `workspaceInvite`; `update` on `workspaceJoinRequest`; `create` and `delete` on `project`; `read` on `analytic` |
 | workspace `member` | `read` on `workspace` |
 | project `admin` | `read` and `update` on `project`; `create`, `update`, and `delete` on `projectMember` |
@@ -282,7 +282,7 @@ Every model in `prisma/schema.prisma` maps to a PostgreSQL table through `@@map`
 |---|---|---|
 | `ApiKey` | `api_keys` | API key credentials for machine access |
 | `Role` | `roles` | Roles |
-| `Policy` | `policies` | The `(subject, action[])` rows a role grants, evaluated through CASL |
+| `Policy` | `policies` | The ordered rules a role holds (`subject`, `action[]`, `conditions`, `inverted`, `reason`, `priority`), unique per `(roleId, priority)`, evaluated through CASL |
 | `Country` | `countries` | Country reference data |
 | `UserMobileNumber` | `user_mobile_numbers` | A user's mobile numbers and their verification state |
 | `User` | `users` | User accounts |

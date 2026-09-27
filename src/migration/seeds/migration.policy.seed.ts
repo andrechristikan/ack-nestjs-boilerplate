@@ -5,6 +5,7 @@ import { MigrationPolicyData } from '@migration/data/migration.policy.data';
 import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
 import type { IMigrationPolicyData } from '@migration/interfaces/migration.interface';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import { Prisma } from '@generated/prisma-client/client';
 import type { EnumRoleScope } from '@generated/prisma-client/client';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -61,6 +62,10 @@ export class MigrationPolicySeed
                 )!.id,
                 subject: policy.subject,
                 action: policy.action,
+                conditions: policy.conditions ?? Prisma.DbNull,
+                inverted: policy.inverted,
+                reason: policy.reason,
+                priority: policy.priority,
             }))
         );
 
@@ -72,9 +77,9 @@ export class MigrationPolicySeed
                     for (const row of rows) {
                         await tx.policy.upsert({
                             where: {
-                                roleId_subject: {
+                                roleId_priority: {
                                     roleId: row.roleId,
-                                    subject: row.subject,
+                                    priority: row.priority,
                                 },
                             },
                             create: {
@@ -83,7 +88,25 @@ export class MigrationPolicySeed
                                 updatedBy: MigrationUserSuperAdminId,
                             },
                             update: {
+                                subject: row.subject,
+                                action: row.action,
+                                conditions: row.conditions,
+                                inverted: row.inverted,
+                                reason: row.reason,
                                 updatedBy: MigrationUserSuperAdminId,
+                            },
+                        });
+                    }
+
+                    for (const role of roles) {
+                        await tx.policy.deleteMany({
+                            where: {
+                                roleId: role.id,
+                                priority: {
+                                    notIn: rows
+                                        .filter(row => row.roleId === role.id)
+                                        .map(row => row.priority),
+                                },
                             },
                         });
                     }

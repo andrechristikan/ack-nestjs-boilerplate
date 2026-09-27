@@ -43,7 +43,7 @@ export class ProjectMemberDomain {
     ): void {
         const canManageMembers = this.policyDomain.can(
             EnumPolicyAction.manage,
-            EnumPolicySubject.projectMember
+            EnumPolicySubject.workspace
         );
         if (
             !canManageMembers &&

@@ -12,8 +12,8 @@ import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decora
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { PolicySchema } from '@modules/policy/dtos/policy.dto';
 import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
-import { PolicyRequestSchema } from '@modules/policy/dtos/request/policy.request.dto';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import { PolicyCreateRequestSchema } from '@modules/policy/dtos/request/policy.create.request.dto';
+import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
 import { PolicyUpdateRequestSchema } from '@modules/policy/dtos/request/policy.update.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import { PolicyListResponseSchema } from '@modules/policy/dtos/response/policy.list.response.dto';
@@ -59,7 +59,7 @@ export class PolicyAdminController {
         return this.policyHttpService.listByRole(roleId);
     }
 
-    @Doc({ summary: 'grant a policy to a role' })
+    @Doc({ summary: 'grant a rule to a role' })
     @Response('policy.create', { schema: PolicySchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -74,13 +74,13 @@ export class PolicyAdminController {
     async create(
         @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
-        @Body({ schema: PolicyRequestSchema })
-        body: PolicyRequestDto
+        @Body({ schema: PolicyCreateRequestSchema })
+        body: PolicyCreateRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
         return this.policyHttpService.createByAdmin(roleId, body);
     }
 
-    @Doc({ summary: 'update the action list of a role policy' })
+    @Doc({ summary: 'update the full rule of a role policy' })
     @Response('policy.update', { schema: PolicySchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({

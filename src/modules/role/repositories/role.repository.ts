@@ -14,7 +14,10 @@ import type {
     IRoleWithPolicies,
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
-import { RoleSelect } from '@modules/role/constants/role.constant';
+import {
+    RolePoliciesInclude,
+    RoleSelect,
+} from '@modules/role/constants/role.constant';
 import type { IRoleRepository } from '@modules/role/interfaces/role.repository.interface';
 import { Injectable } from '@nestjs/common';
 import type { EnumRoleScope, Prisma } from '@generated/prisma-client/client';
@@ -91,7 +94,7 @@ export class RoleRepository implements IRoleRepository {
     ): Promise<IRoleWithPolicies | null> {
         return this.databaseService.client.role.findUnique({
             where: { id },
-            include: { policies: true },
+            include: RolePoliciesInclude,
         });
     }
 
@@ -144,7 +147,7 @@ export class RoleRepository implements IRoleRepository {
         return this.databaseService.client.role.update({
             where: { id },
             data,
-            include: { policies: true },
+            include: RolePoliciesInclude,
         });
     }
 }

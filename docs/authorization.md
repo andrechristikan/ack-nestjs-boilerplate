@@ -206,16 +206,16 @@ flowchart TD
 
 One `Role` model covers every level. A role has a `scope` (`platform`, `workspace`, or `project`), an immutable `key`, and a `name` and `description` an admin edits. The pair `(scope, key)` is unique. The role a user, a workspace member, or a project member holds is a foreign key (`roleId`) to that model, and each role owns the policies that define what it may do.
 
-No decorator gates a route by role. The role reaches a route through the policy store: arrays of `Policy` rows kept in the request store under one key per scope, which `PolicyGuard` reads through `PolicyDomain.getEffectivePolicies`.
+No decorator gates a route by role. The role reaches a route through the policy store: arrays of `Policy` rows kept in the request store under one key per scope, which `PolicyDomain` composes into one CASL ability.
 
 | Guard | Store key written |
 |---|---|
 | `UserGuard` | `PolicyStoreKey`: the policies of the user's platform role |
 | `WorkspaceMemberGuard` | `WorkspaceMemberPolicyStoreKey`: the policies of the member's workspace role |
 | `ProjectMemberGuard` | `ProjectMemberPolicyStoreKey`: the policies of the member's project role |
-| `PolicyGuard` | Reads the three keys through `PolicyDomain.getEffectivePolicies` and decides |
+| `PolicyGuard` | Asks `PolicyDomain`, which reads the three keys, builds the ability once, and stores it under `PolicyAbilityStoreKey` |
 
-`getEffectivePolicies` composes `[...(workspace ?? platform), ...project]`: the workspace role's policies when the workspace member guard ran, the platform role's policies otherwise, followed by the project role's policies when the project member guard ran. It returns `null` when no guard stored any.
+`PolicyDomain.buildForRequest` composes `[...platform, ...workspace, ...project]`, each key contributing only when its guard ran. Within a role the rules run in ascending `priority`. CASL gives a later rule precedence over an earlier one, so a workspace rule overrides a platform rule and a project rule overrides both. The ability is built lazily on the first permission check of the request and reused for every later check in that request.
 
 ```mermaid
 flowchart TD
@@ -230,7 +230,7 @@ flowchart TD
 
 Reading the current role: `@UserCurrent()` returns the stored `IUser`, whose `role` carries `id`, `scope`, `key`, `name`, and `policies`. `@WorkspaceMemberCurrent()` returns the workspace member with its role (`id`, `scope`, `key`, `name`, no policies). `@ProjectMemberCurrent()` returns the project member with its role (`id`, `scope`, `key`, `name`, no policies).
 
-A domain that has to branch on a capability calls `PolicyDomain.can(action, subject)`. It builds a CASL ability from the policy store of the current request and answers `true` or `false`.
+A domain that has to branch on a capability calls `PolicyDomain.can(action, input)`, which answers `true` or `false` from the current request's ability. `input` is a subject, or `{ subject, record }` to test the rule conditions against one record. An action the subject registry does not enforce for that subject answers `false`. `PolicyDomain.assertCan(action, input)` throws `PolicyForbiddenException` (403, `51100`) instead.
 
 `superAdmin` holds a persisted policy `manage` on `all`. That row is what lets it pass every `PolicyGuard`, and the policies of the `superAdmin` role cannot be created, updated, or deleted (`PolicyImmutableException`, 403, `51104`). The platform `admin` role holds an explicit subject list, not `all`.
 
@@ -330,15 +330,15 @@ async revoke(
 
 #### `PolicyGuard`
 
-The guard reads the user and the stored policies off the request store and hands both to `PolicyDomain.validatePolicyGuard`, which evaluates them through CASL.
+The guard reads the stored user before anything else, then the handler's required policies, and calls `PolicyDomain.assertCan` for each required `(subject, action)` pair against the request's ability. Reading the stored user here duplicates a check the auth guard chain already performs; the guard keeps it as defense-in-depth on this auth-adjacent gate.
 
 The `PolicyProtected` decorator follows this validation sequence:
 
-1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) exists
+1. **Stored User Check**: Reads the user `UserGuard` stored under `UserStoreKey`; a missing entry throws `AuthJwtAccessTokenInvalidException`
 2. **Required Policies Check**: Validates that required policies are declared on the handler
-3. **Ability Creation**: Creates CASL ability rules from the effective policies (`PolicyDomain.getEffectivePolicies()`)
-4. **Permission Validation**: Checks that every required `(subject, action)` pair is allowed
-5. **Access Decision**: Grants or denies access based on permission match
+3. **Ability Resolution**: `PolicyDomain.getCurrentAbility()` returns the stored ability, or builds it from the platform, workspace, and project policies on the first call
+4. **Permission Validation**: `PolicyDomain.assertCan` checks each required `(subject, action)` pair against the subject registry and the ability
+5. **Access Decision**: Grants access, or throws `PolicyForbiddenException` on the first pair that is denied
 
 **Flow Diagram:**
 
@@ -347,47 +347,96 @@ flowchart TD
     Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT token]
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate user, store platform policies]
     UserGuard --> Members[ Workspace and project member guards<br/>replace or extend the stored policies]
-    Members --> CheckUser{Stored user UserStoreKey<br/>exists?}
+    Members --> CheckStoredUser{Stored user UserStoreKey<br/>present?}
 
-    CheckUser -->|No| ErrorUser[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
-    CheckUser -->|Yes| CheckRequired{Required abilities<br/>defined?}
+    CheckStoredUser -->|No| ErrorAuth[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
+    CheckStoredUser -->|Yes| CheckRequired{Required abilities<br/>defined?}
 
     CheckRequired -->|No| ErrorPredefined[Throw PolicyPredefinedNotFoundException<br/>500 Internal Server Error]
-    CheckRequired -->|Yes| CreateAbilities[Create CASL ability rules<br/>from PolicyDomain.getEffectivePolicies]
+    CheckRequired -->|Yes| CreateAbilities[Get the request ability<br/>PolicyDomain.getCurrentAbility]
 
-    CreateAbilities --> ValidateAbilities{All required abilities<br/>present in stored policies?}
+    CreateAbilities --> ValidateAbilities{Registry enforces and ability<br/>allows every required action?}
 
     ValidateAbilities -->|No| ErrorForbidden[Throw PolicyForbiddenException<br/>403 Forbidden]
     ValidateAbilities -->|Yes| GrantAccess[Grant access]
 
     GrantAccess --> Success([Access Granted])
 
-    ErrorUser --> End([Request Rejected])
+    ErrorAuth --> End([Request Rejected])
     ErrorPredefined --> End
     ErrorForbidden --> End
 ```
 
 ### CASL Integration
 
-The project uses [CASL][casl] for permission checks:
+The project uses [CASL][casl] with `@casl/prisma`. The ability is a typed Prisma ability created by `createPrismaAbility`, so a stored condition is a Prisma where-input.
+
+**Rule model.** A `Policy` row is one ordered rule:
+
+| Field | Meaning |
+|---|---|
+| `subject` | A value of `EnumPolicySubject`. It maps onto the Prisma model of the same name; `all` and `analytic` have no model |
+| `action` | One or more of `manage`, `read`, `create`, `update`, `delete` |
+| `conditions` | A Prisma where-input as JSON, or `null` for the whole subject |
+| `inverted` | `true` makes the rule a CASL `cannot` |
+| `reason` | Optional text (max 500) carried by an inverted rule |
+| `priority` | Integer of 1 or more. Evaluation order within the role, lowest first. `(roleId, priority)` is unique |
 
 **PolicyAbilityFactory:**
 
-- `createForUser(policies)`: Builds CASL ability rules from the stored policies
-- `handlerPolicies(userPolicies, policies)`: Returns true only when every required action on each subject is allowed, using CASL's `can()`
+- `build(rules)`: Creates the Prisma ability from ordered ability rules. An inverted rule becomes a `cannot` carrying its reason
 
 **PolicyDomain:**
 
-- `validatePolicyGuard(user, policies, requiredPolicies)`: The guard's decision
-- `can(action, subject)`: A boolean check against the current request's policy store, for a domain that branches on a capability
+- `buildForRequest(context)`: Composes the platform, workspace, and project rules, resolves placeholders, builds the ability, and stores it under `PolicyAbilityStoreKey`
+- `getCurrentAbility()`: The stored ability, or one built from the guards' store entries on first use
+- `can(action, input)` and `assertCan(action, input)`: A boolean check and a throwing check against the subject registry and the current ability. `input` is an `EnumPolicySubject` or `{ subject, record }`
+- `createByAdmin` and `updateByAdmin`: Validate the rule inline before it is stored (see Write rules)
+
+**Subject registry.** `PolicySubjectRegistry` in `src/modules/policy/constants/policy.constant.ts` holds one entry for each of the 17 `EnumPolicySubject` values:
+
+| Field | Meaning |
+|---|---|
+| `modelName` | The CASL subject type: the Prisma model of the subject, or `all` / `analytic` |
+| `actions` | The actions the platform enforces for the subject |
+| `conditionPaths` | The columns (and `role.key`) a stored condition may filter on |
+| `scopePlaceholder` | `${workspace.id}`, `${project.id}`, or `null` |
+
+| Subject | Model | Enforced actions | Condition paths |
+|---|---|---|---|
+| `all` | none | `manage` | none |
+| `analytic` | none | `read` | none |
+| `workspace` | `Workspace` | `read`, `update`, `delete`, `manage` | `id`, `createdBy`, `isPublic`, `deletedAt` |
+| `workspaceMember` | `WorkspaceMember` | `update`, `delete` | `id`, `workspaceId`, `userId`, `roleId`, `role.key` |
+| `workspaceInvite` | `WorkspaceInvite` | `create`, `manage` | `id`, `workspaceId`, `projectId`, `status`, `invitedByUserId`, `acceptedByUserId` |
+| `workspaceJoinRequest` | `WorkspaceJoinRequest` | `update` | `id`, `workspaceId`, `userId`, `status`, `reviewedByUserId` |
+| `project` | `Project` | `read`, `create`, `update`, `delete` | `id`, `workspaceId`, `createdBy`, `deletedAt` |
+| `projectMember` | `ProjectMember` | `create`, `update`, `delete` | `id`, `projectId`, `userId`, `roleId`, `role.key` |
+| `activityLog`, `apiKey`, `device`, `featureFlag`, `passwordHistory`, `role`, `session`, `termPolicy`, `user` | the model of the same name | every action | none |
+
+**Placeholders.** A condition value that equals one of these tokens is replaced by the request context value before the ability is built: `${user.id}`, `${user.roleId}`, `${user.role.key}`, `${workspace.id}`, `${workspaceMember.id}`, `${workspaceMember.roleId}`, `${workspaceMember.role.key}`, `${project.id}`, `${projectMember.id}`, `${projectMember.roleId}`, `${projectMember.role.key}`, `${request.language}`. A placeholder with no value in the request context fails closed: an allowing rule that holds it is dropped, and an inverted rule that holds it stays as an unconditional deny.
+
+**Scope conditions.** Each workspace-level and project-level subject ties its rules to the active boundary through a scope key set to a placeholder:
+
+| Subject | Level | Condition key | Placeholder |
+|---|---|---|---|
+| `workspace` | workspace | `id` | `${workspace.id}` |
+| `workspaceMember` | workspace | `workspaceId` | `${workspace.id}` |
+| `workspaceInvite` | workspace | `workspaceId` | `${workspace.id}` |
+| `workspaceJoinRequest` | workspace | `workspaceId` | `${workspace.id}` |
+| `project` | project | `id` | `${project.id}` |
+| `projectMember` | project | `projectId` | `${project.id}` |
+| `analytic` | workspace | `workspaceId` | `${workspace.id}` |
+
+`scopedCondition(subject, action, extra?)` in `src/modules/policy/utils/policy.scope.util.ts` builds that condition for the seed data: the subject's scope key resolved from its registry placeholder, followed by `extra`. A subject with no scope placeholder, and a lone `create` on `project` (no project exists yet), carry no scope pair.
 
 ### Important Notes
 
-- `@PolicyProtected()` reads the policies the user and member guards stored and the user `@UserProtected()` stored, all of which depend on `@AuthJwtAccessProtected()`
+- `@PolicyProtected()` reads the policies the user and member guards stored, all of which depend on `@AuthJwtAccessProtected()`
 - The stack reads top to bottom `@PolicyProtected()` → `@ProjectMemberProtected()` → `@WorkspaceMemberProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
-- Without a stored user the guard throws `AuthJwtAccessTokenInvalidException` (401)
 - `superAdmin` passes every `@PolicyProtected` route through its persisted `manage` on `all` policy. CASL treats `manage` as every action and `all` as every subject.
-- Every action of a required policy has to be present in the stored policies. Requiring `[EnumPolicyAction.update, EnumPolicyAction.delete]` on the `EnumPolicySubject.user` subject grants access only when the caller holds both actions, not just one.
+- The guard asks by subject type, so a rule's `conditions` narrow the rows a query may reach and are not evaluated by the guard. A domain that passes `{ subject, record }` to `can` gets the conditions evaluated against that record.
+- Every action of a required policy has to be allowed by the ability. Requiring `[EnumPolicyAction.update, EnumPolicyAction.delete]` on the `EnumPolicySubject.user` subject grants access only when the ability allows both actions, not just one.
 
 ## Term Policy Acceptance Protected
 
@@ -496,7 +545,7 @@ Four decorators scope a `/user` request to one workspace and, inside it, to one 
 Three properties matter wherever these appear:
 
 - **Each guard reads what the previous one stored and never re-fetches or re-authenticates.** Dropping one from the stack leaves the next reading an empty store key, which surfaces as a `notFound` or `forbidden` rather than a crash.
-- **`@ProjectMemberProtected()` is strict by default.** A caller with no `ProjectMember` row is rejected with `ProjectMemberForbiddenException`. With `{ required: false }` that caller passes with the workspace policies alone, so a workspace role that holds the capability (the `owner` holds `project` and `projectMember` `manage`) still decides. Project leave uses the strict form.
+- **`@ProjectMemberProtected()` is strict by default.** A caller with no `ProjectMember` row is rejected with `ProjectMemberForbiddenException`. With `{ required: false }` that caller passes with the workspace policies alone, so a workspace role that holds the capability (the `owner` holds explicit `project` and `projectMember` actions) still decides. Project leave uses the strict form.
 - **The `/admin` scope takes none of them.** Admin routes reach the same resources through `@PolicyProtected()` and take the workspace or project id from the path.
 
 For the guard bodies, the exceptions and status codes each one throws, the store keys, and the `@WorkspaceCurrent()` / `@ProjectCurrent()` parameter decorators, see [Workspace][ref-doc-workspace] and [Project][ref-doc-project].
@@ -513,14 +562,14 @@ The seeded catalog is fixed. Roles are neither created nor deleted through the A
 | `workspace` | `owner`, `admin`, `member` |
 | `project` | `admin`, `member`, `viewer` |
 
-The keys live in `EnumRolePlatformKey`, `EnumRoleWorkspaceKey`, and `EnumRoleProjectKey`. Seeded policies per role:
+The keys live in `EnumRolePlatformKey`, `EnumRoleWorkspaceKey`, and `EnumRoleProjectKey`. Seeded rules per role, numbered by `priority` in the order listed. Workspace and project rules on a scoped subject carry the scope condition, except a lone `create` on `project`:
 
 | Role | Policies |
 |---|---|
 | platform `superAdmin` | `manage` on `all` |
-| platform `admin` | every action on `activityLog`, `analytic`, `apiKey`, `device`, `featureFlag`, `passwordHistory`, `role`, `session`, `termPolicy`, `user`; `read` on `workspace` and `project` |
+| platform `admin` | every action on `activityLog`, `apiKey`, `device`, `featureFlag`, `passwordHistory`, `role`, `session`, `termPolicy`, `user`; `read` on `analytic`, `workspace`, and `project` |
 | platform `user` | none |
-| workspace `owner` | `manage` on `workspace`, `workspaceInvite`, `project`, `projectMember`; `update` and `delete` on `workspaceMember`; `update` on `workspaceJoinRequest`; `read` on `analytic` |
+| workspace `owner` | `manage` on `workspace`; `update` and `delete` on `workspaceMember`; `manage` on `workspaceInvite`; `update` on `workspaceJoinRequest`; `create`, then `read`, `update`, and `delete` on `project`; `create`, `update`, and `delete` on `projectMember`; `read` on `analytic` |
 | workspace `admin` | `read` and `update` on `workspace`; `update` and `delete` on `workspaceMember`; `manage` on `workspaceInvite`; `update` on `workspaceJoinRequest`; `create` and `delete` on `project`; `read` on `analytic` |
 | workspace `member` | `read` on `workspace` |
 | project `admin` | `read` and `update` on `project`; `create`, `update`, and `delete` on `projectMember` |
@@ -533,24 +582,42 @@ A role and its policies are two admin surfaces:
 
 - `GET /admin/role/list` and `GET /admin/role/get/:roleId` read roles, and the list filters by `scope` (comma-delimited). The admin, system, and shared lists return `RoleListResponseDto`: `id`, `name`, `description` (nullable), `scope`, `key`, the timestamps, and a numeric `policies` count in place of the policy rows.
 - `PUT /admin/role/update/:roleId` edits `name` and `description` only. The `key` and `scope` never change.
-- `GET /admin/role/:roleId/policy/list`, `POST .../policy/create`, `PUT .../policy/update/:policyId`, and `DELETE .../policy/delete/:policyId` manage the policies of one role. The API documentation is in Swagger under the configured `doc.prefix`.
+- `GET /admin/role/:roleId/policy/list`, `POST .../policy/create`, `PUT .../policy/update/:policyId`, and `DELETE .../policy/delete/:policyId` manage the policies of one role, and the list returns them in ascending `priority`. The API documentation is in Swagger under the configured `doc.prefix`.
 - `GET /shared/role/list` returns the catalog a client picks a role from, offset paginated. The query takes a required `scope` (`workspace` or `project`), `page`, `perPage`, `search`, and `orderBy` (`createdAt`, `name`). Each row carries the policy count, so workspace and project members see how many policies a role holds.
 
-**Example policy creation request** (`POST /admin/role/:roleId/policy/create`), one call per subject:
+**Example policy creation request** (`POST /admin/role/:roleId/policy/create`), one rule per call:
 
 ```json
 {
-  "subject": "user",
-  "action": ["read", "update"]
+  "subject": "project",
+  "action": ["read", "update"],
+  "priority": 3,
+  "conditions": { "id": "${project.id}" }
 }
 ```
 
-A role holds at most one policy per subject: creating a second policy for a subject already covered is rejected. The `superAdmin` role rejects every policy write.
+`PUT .../policy/update/:policyId` takes the same body without `subject`, which is fixed at creation, and replaces the whole rule. The body is strict: an unknown field is rejected.
 
 **Policy Structure:**
 
 - **subject**: The resource type from `EnumPolicySubject`: all, apiKey, role, user, session, activityLog, passwordHistory, termPolicy, featureFlag, device, workspace, project, analytic, workspaceMember, workspaceInvite, workspaceJoinRequest, projectMember
-- **action**: Array of allowed actions from `EnumPolicyAction`: manage, read, create, update, delete
+- **action**: Array of actions from `EnumPolicyAction`: manage, read, create, update, delete
+- **priority**: Required integer of 1 or more, unique within the role
+- **conditions**: Optional Prisma where-input object
+- **inverted**: Optional boolean, `false` when absent
+- **reason**: Optional text of up to 500 characters
+
+**Write rules.** A role holds one rule per `priority`: a create or update that reuses a `priority` of the same role is rejected with `PolicyExistException` (409, `51103`), including when two concurrent writes collide on the unique index. The `superAdmin` role rejects every policy write. A rule that breaks a storage rule is rejected with `PolicyRuleInvalidException` (422, `51105`), whose message is `policy.error.invalidRule.<reason>`:
+
+| Reason | Raised when |
+|---|---|
+| `actionNotAllowed` | an action is not enforced for the subject in the registry |
+| `roleScopeInvalid` | the subject is `all`, or a project role receives a subject that is not project-level |
+| `scopeMissing` | a workspace or project role grants a scoped subject without the scope condition, unless the rule is inverted or is a lone `create` on `project` |
+| `placeholderInvalid` | a condition holds a `${...}` token outside the allow list, a placeholder that is only part of a string value, or `__proto__`, `constructor`, or `prototype` at any depth |
+| `conditionInvalid` | conditions are set on a subject with no condition paths, or a key is not an allowed column, or a filter operator or value shape is unsupported |
+
+Supported scalar operators are `equals`, `not`, `in`, `notIn`, `lt`, `lte`, `gt`, `gte`, `contains`, `startsWith`, and `endsWith`. The logical keys are `AND`, `OR`, and `NOT`. `WorkspaceMember` and `ProjectMember` conditions may filter through the `role` relation on `key` with `is` and `isNot`.
 
 ### Assigning Roles
 
@@ -578,7 +645,7 @@ flowchart LR
 ### Important Notes
 
 - **Role keys are immutable**: the `(scope, key)` pair identifies a catalog role, and the role admin API neither creates nor deletes roles
-- **A workspace `owner` reaches every project of its workspace** through the `project` and `projectMember` policies its workspace role holds, so no `ProjectMember` row is needed
+- **A workspace `owner` reaches every project of its workspace** through the explicit `project` and `projectMember` actions its workspace role holds, so no `ProjectMember` row is needed
 
 
 <!-- REFERENCES -->

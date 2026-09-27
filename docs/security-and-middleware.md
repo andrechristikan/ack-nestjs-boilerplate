@@ -468,6 +468,7 @@ Feature modules own the rest of the keys, each declared in its own `constants/` 
 | `PolicyStoreKey` | `UserGuard` | the platform role's policies |
 | `WorkspaceMemberPolicyStoreKey` | `WorkspaceMemberGuard` | the policies of the caller's workspace role |
 | `ProjectMemberPolicyStoreKey` | `ProjectMemberGuard` | the policies of the caller's project role |
+| `PolicyAbilityStoreKey` | `PolicyDomain` | the CASL ability built once per request from the three policy keys, on the first permission check |
 | `WorkspaceStoreKey` | `WorkspaceGuard` | the resolved `Workspace` |
 | `WorkspaceMemberStoreKey` | `WorkspaceMemberGuard` | the caller's `WorkspaceMember` row with its minimal role (`id`, `scope`, `key`, `name`) |
 | `ProjectStoreKey` | `ProjectGuard` | the resolved `Project` |

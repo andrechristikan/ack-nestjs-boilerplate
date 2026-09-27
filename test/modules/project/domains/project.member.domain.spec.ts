@@ -214,7 +214,7 @@ describe('ProjectMemberDomain', () => {
     });
 
     describe('assignMember', () => {
-        it('resolves the role in the project scope, assigns the member and stages activity when the actor holds manage on projectMember', async () => {
+        it('resolves the role in the project scope, assigns the member and stages activity when the actor holds manage on workspace', async () => {
             setCanManage(true);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.admin)
@@ -243,7 +243,7 @@ describe('ProjectMemberDomain', () => {
             );
             expect(policyDomain.can).toHaveBeenCalledWith(
                 EnumPolicyAction.manage,
-                EnumPolicySubject.projectMember
+                EnumPolicySubject.workspace
             );
             expect(projectMemberRepository.create).toHaveBeenCalledWith(
                 project.id,
@@ -292,7 +292,7 @@ describe('ProjectMemberDomain', () => {
             expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
         });
 
-        it('rejects an actor without manage on projectMember assigning an admin role', async () => {
+        it('rejects an actor without manage on workspace assigning an admin role', async () => {
             setCanManage(false);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.admin)
@@ -316,7 +316,7 @@ describe('ProjectMemberDomain', () => {
         });
 
         it.each([EnumRoleProjectKey.member, EnumRoleProjectKey.viewer])(
-            'lets an actor without manage on projectMember assign the %s role',
+            'lets an actor without manage on workspace assign the %s role',
             async key => {
                 setCanManage(false);
                 roleDomain.resolve.mockResolvedValue(buildRole(key));
@@ -517,7 +517,7 @@ describe('ProjectMemberDomain', () => {
             }
         );
 
-        it('rejects an actor without manage on projectMember changing the role of an existing admin', async () => {
+        it('rejects an actor without manage on workspace changing the role of an existing admin', async () => {
             setCanManage(false);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.member)
@@ -537,7 +537,7 @@ describe('ProjectMemberDomain', () => {
             expect(projectMemberRepository.updateRole).not.toHaveBeenCalled();
         });
 
-        it('rejects an actor without manage on projectMember promoting a peer to admin', async () => {
+        it('rejects an actor without manage on workspace promoting a peer to admin', async () => {
             setCanManage(false);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.admin)
@@ -556,7 +556,7 @@ describe('ProjectMemberDomain', () => {
             ).rejects.toBeInstanceOf(ProjectMemberPeerForbiddenException);
         });
 
-        it('lets an actor without manage on projectMember move a member between non-admin roles', async () => {
+        it('lets an actor without manage on workspace move a member between non-admin roles', async () => {
             setCanManage(false);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.viewer)
@@ -741,7 +741,7 @@ describe('ProjectMemberDomain', () => {
             expect(projectMemberRepository.countAdmins).not.toHaveBeenCalled();
         });
 
-        it('rejects an actor without manage on projectMember removing an admin', async () => {
+        it('rejects an actor without manage on workspace removing an admin', async () => {
             setCanManage(false);
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 buildMemberWithRole(EnumRoleProjectKey.admin)
@@ -753,7 +753,7 @@ describe('ProjectMemberDomain', () => {
             expect(projectMemberRepository.removeMember).not.toHaveBeenCalled();
         });
 
-        it('lets an actor without manage on projectMember remove a non-admin member', async () => {
+        it('lets an actor without manage on workspace remove a non-admin member', async () => {
             setCanManage(false);
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 buildMemberWithRole(EnumRoleProjectKey.viewer)

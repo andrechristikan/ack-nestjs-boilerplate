@@ -8,4 +8,5 @@ export enum EnumPolicyStatusCodeError {
     notFound = 51102,
     exist = 51103,
     immutable = 51104,
+    invalidRule = 51105,
 }

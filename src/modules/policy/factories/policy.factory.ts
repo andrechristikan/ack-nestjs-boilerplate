@@ -1,47 +1,27 @@
-import { AbilityBuilder, createMongoAbility } from '@casl/ability';
-import type { ExtractSubjectType } from '@casl/ability';
-import { Injectable } from '@nestjs/common';
-import { EnumPolicyAction } from '@generated/prisma-client/client';
-import type { Policy } from '@generated/prisma-client/client';
+import { createPrismaAbility } from '@casl/prisma';
+import type { EnumPolicyAction } from '@generated/prisma-client/client';
 import type {
+    IPolicyAbility,
     IPolicyAbilityRule,
     IPolicyAbilitySubject,
 } from '@modules/policy/interfaces/policy.interface';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import { Injectable } from '@nestjs/common';
 
-/**
- * Builds and evaluates CASL ability rules for policy checks.
- */
+/** Builds the typed Prisma CASL ability from ordered policy rules. */
 @Injectable()
 export class PolicyAbilityFactory {
-    createForUser(policies: Policy[]): IPolicyAbilityRule {
-        const { can, build } = new AbilityBuilder<IPolicyAbilityRule>(
-            createMongoAbility
-        );
+    /** Later rules take precedence over earlier ones, and an inverted rule becomes a `cannot` carrying its reason. */
+    build(rules: IPolicyAbilityRule[]): IPolicyAbility {
+        const rawRules = rules.map(rule => ({
+            action: rule.action,
+            subject: rule.subject,
+            conditions: rule.conditions ?? undefined,
+            inverted: rule.inverted,
+            reason: rule.reason ?? undefined,
+        }));
 
-        for (const policy of policies) {
-            can(policy.action, policy.subject);
-        }
-
-        return build({
-            // Read https://casl.js.org/v6/en/guide/subject-type-detection#use-classes-as-subject-types for details
-            detectSubjectType: (item: {
-                constructor: ExtractSubjectType<IPolicyAbilitySubject>;
-            }) => item.constructor,
-        });
-    }
-
-    /**
-     * Returns true only when the user holds every required action on each subject.
-     */
-    handlerPolicies(
-        userPolicies: IPolicyAbilityRule,
-        policies: PolicyRequestDto[]
-    ): boolean {
-        return policies.every((policy: PolicyRequestDto) =>
-            policy.action.every((action: EnumPolicyAction) =>
-                userPolicies.can(action, policy.subject)
-            )
+        return createPrismaAbility<[EnumPolicyAction, IPolicyAbilitySubject]>(
+            rawRules
         );
     }
 }

@@ -1,6 +1,6 @@
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
@@ -22,7 +22,7 @@ export class PolicyHttpService {
 
     async createByAdmin(
         roleId: string,
-        body: PolicyRequestDto
+        body: PolicyCreateRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
         const created = await this.policyDomain.createByAdmin(roleId, body);
 

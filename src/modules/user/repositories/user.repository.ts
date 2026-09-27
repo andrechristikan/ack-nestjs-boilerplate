@@ -26,6 +26,7 @@ import type {
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserRepository } from '@modules/user/interfaces/user.repository.interface';
+import { RolePoliciesInclude } from '@modules/role/constants/role.constant';
 import { Injectable } from '@nestjs/common';
 import {
     EnumTermPolicyType,
@@ -257,7 +258,7 @@ export class UserRepository implements IUserRepository {
         const user = await tx.user.create({
             data: createData,
             include: {
-                role: { include: { policies: true } },
+                role: { include: RolePoliciesInclude },
             },
         });
 

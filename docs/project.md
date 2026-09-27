@@ -12,7 +12,7 @@ Projects carry their own membership with three roles (rows of the shared `Role` 
 - `member`
 - `viewer`
 
-A caller's effective policies on a project route are the policies of the workspace role plus those of the project role. A workspace `owner` holds `project` and `projectMember` `manage` through its workspace role, so it reaches every project in the workspace without holding a `ProjectMember` row.
+A caller's effective policies on a project route are the policies of the workspace role plus those of the project role. A workspace `owner` holds explicit `project` and `projectMember` actions through its workspace role, so it reaches every project in the workspace without holding a `ProjectMember` row.
 
 ## Related Documents
 
@@ -89,7 +89,7 @@ Mounted under `/user`. **Every route below requires the `x-workspace-id` header*
 
 | Method | Path | Gate |
 |---|---|---|
-| `GET` | `/user/project/list` | Any workspace member. A caller whose workspace role holds `project:[read]` (the `owner`) sees every project; everyone else sees only projects they belong to |
+| `GET` | `/user/project/list` | Any workspace member. A caller who holds `workspace:[manage]` (the `owner`) sees every project; everyone else sees only projects they belong to |
 | `POST` | `/user/project/create` | `project:[create]` (workspace `admin` and `owner`) |
 | `GET` | `/user/project/get/:projectId` | `project:[read]` from the project role or the workspace role |
 | `PUT` | `/user/project/update/:projectId` | `project:[update]` from the project role (`admin`) or the workspace role (`owner`) |
@@ -119,9 +119,9 @@ The guards run in this order, first to last: `ApiKeyXApiKeyGuard` → JWT → `F
 - **`ProjectGuard`** reads the `projectId` route param and the workspace `WorkspaceGuard` resolved, then loads the project **constrained to that workspace and to non-deleted rows**. A missing param, a soft-deleted project, and a project belonging to a different workspace all collapse into the same `ProjectNotFoundException` (404, `51700`). Cross-workspace probing therefore cannot distinguish "not yours" from "does not exist".
 - **`WorkspaceMemberGuard`** writes the workspace role's policies under `WorkspaceMemberPolicyStoreKey`.
 - **`ProjectMemberGuard`** writes the project role's policies under `ProjectMemberPolicyStoreKey`. With `{ required: false }` a caller with no `ProjectMember` row passes with the workspace policies alone.
-- **`PolicyGuard`** decides against the composed policies: workspace (or platform) plus project.
+- **`PolicyGuard`** decides against the composed policies: platform, then workspace, then project, so a later level takes precedence.
 
-A workspace `admin` does not inherit project read or update: its workspace role grants only project `create` and `delete`. The `owner` role grants `manage` on `project` and `projectMember`, which is what lets it act on every project without a membership row.
+A workspace `admin` does not inherit project read or update: its workspace role grants only project `create` and `delete`. The `owner` role grants `create`, `read`, `update`, and `delete` on `project` and `create`, `update`, and `delete` on `projectMember`, which is what lets it act on every project without a membership row.
 
 ### Guards and Decorators
 
@@ -140,7 +140,7 @@ Reads the `projectId` **route parameter** (there is no project header) and resol
 - **Strict (the default, `@ProjectMemberProtected()`)** demands a real `ProjectMember` row and stores it with its minimal role (`id`, `scope`, `key`, `name`, no policies) under `ProjectMemberStoreKey`. No row throws `ProjectMemberForbiddenException` (403, `51701`). This is the form used by `member leave`, which has nothing to remove without a row.
 - **`{ required: false }`** lets a caller with no row through with the workspace policies alone, so a workspace role that holds the capability (the `owner`) still passes `@PolicyProtected()`. Every policy-gated project route except delete uses this form.
 
-In both modes, when a row exists, the guard stores the project role's policies under `ProjectMemberPolicyStoreKey`, which `PolicyDomain.getEffectivePolicies` appends to the workspace policies.
+In both modes, when a row exists, the guard stores the project role's policies under `ProjectMemberPolicyStoreKey`, which `PolicyDomain` composes after the platform and workspace policies.
 
 #### `ProjectCurrent()` / `ProjectMemberCurrent()`
 
@@ -172,11 +172,11 @@ A project member must already be a workspace member. `assignMember` resolves the
 | Assign | Peer rule on the requested role. Throws `ProjectMemberAlreadyAssignedException` (400, `51704`) when the user already belongs |
 | Update role | Peer rule on **both** the target's current role and the new role. Unknown member throws `ProjectMemberNotFoundException` (404, `51703`) |
 | Remove | Peer rule on the target's role. Removing yourself throws `ProjectMemberPeerForbiddenException` (403, `51702`); use leave instead. The row is hard-deleted |
-| Leave | No peer or role check. The caller's own row is hard-deleted |
+| Leave | No peer check. The last project `admin` is rejected. The caller's own row is hard-deleted |
 
-**Peer rule.** `assertProjectMemberPeerAllowed` throws `ProjectMemberPeerForbiddenException` (403, `51702`) when the actor lacks `projectMember:[manage]` and any role involved in the operation is `admin`. A project `admin` can therefore manage `member` and `viewer` rows, but can neither create another `admin` nor act on an existing one. Only a caller holding `projectMember:[manage]` (the workspace `owner`) can.
+**Peer rule.** `assertProjectMemberPeerAllowed` throws `ProjectMemberPeerForbiddenException` (403, `51702`) when the actor lacks `workspace:[manage]` and any role involved in the operation is `admin`. A project `admin` can therefore manage `member` and `viewer` rows, but can neither create another `admin` nor act on an existing one. Only a caller holding `workspace:[manage]` (the workspace `owner`) can.
 
-**There is no last-admin protection on leave.** Nothing counts remaining admins, so the last project `admin` can leave and the project can be left with no members at all. The workspace `owner` still reaches it through its `projectMember:[manage]` policy.
+**Last-admin protection.** Removing, demoting, or leaving as the only project `admin` throws `ProjectMemberLastAdminException` (`51707`). `assertNotLastAdmin` counts the remaining admins first.
 
 Each membership change is a single write on `ProjectMemberRepository` (`create`, `updateRole`, `removeMember`) with no transaction. Its activity rows are prepared before the write and staged after it. Assign, update role, and remove write an actor row for the caller carrying `targetUserId`, and a target row for the affected member carrying `actorUserId`, with `createdBy` set to the caller:
 
@@ -218,11 +218,12 @@ Deleting the **workspace** soft-deletes its still-active projects in the same tr
 |---|---|---|---|
 | `notFound` | `51700` | 404 | Unknown, soft-deleted, or out-of-workspace project |
 | `memberForbidden` | `51701` | 403 | Caller holds no `ProjectMember` row on a strict route |
-| `memberPeerForbidden` | `51702` | 403 | Operation involves an `admin` and the actor lacks `projectMember:[manage]`, or self-removal |
+| `memberPeerForbidden` | `51702` | 403 | Operation involves an `admin` and the actor lacks `workspace:[manage]`, or self-removal |
 | `memberNotFound` | `51703` | 404 | Target member row does not exist in this project |
 | `memberAlreadyAssigned` | `51704` | 400 | User already belongs to the project |
 | `slugAlreadyExists` | `51705` | 400 | Slug already taken in this workspace |
 | `slugInvalid` | `51706` | 400 | Slug fails the pattern or the length cap |
+| `memberLastAdmin` | `51707` | 400 | Removal, demotion, or leave of the only project `admin` |
 
 Full catalog: [Status Codes][ref-doc-status-codes].
 

@@ -7,7 +7,12 @@
         "forbidden": "Sorry, you don't have the necessary permissions to perform this action.",
         "predefinedNotFound": "Predefined policies not setted.",
         "notFound": "Sorry, we couldn't find the requested policy.",
-        "exist": "This role already grants a policy for that subject.",
+        "exist": "This role already has a policy at that priority.",
+        "invalidRule": {
+            "actionNotAllowed": "This action is not valid for that subject.",
+            "roleScopeInvalid": "This subject cannot be granted to a role of that scope.",
+            "scopeMissing": "The rule must carry the workspace or project scope condition for its subject."
+        },
         "immutable": "The policies of the super administrator role cannot be changed."
     }
 }

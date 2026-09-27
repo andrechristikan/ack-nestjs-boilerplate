@@ -97,13 +97,13 @@ rule contract requires.
 
 | File | Today | Target state |
 | --- | --- | --- |
-| `factories/policy.factory.ts` | `PolicyAbilityFactory.createForUser()` builds an `AbilityBuilder<IPolicyAbilityRule>` from flat `Policy[]` rows with one `can(action, subject)` call per row — no conditions, no ordering. | Iterates rows in ascending `priority`, calling `can(action, subject, conditions)` or `cannot(...)` per `inverted`, and passes `PolicySubjectRegistry[subject].modelName` to `detectSubjectType` so a loaded Prisma record resolves to its registry subject instead of the enum string. |
-| `guards/policy.guard.ts` | `canActivate` reads `PolicyRequiredMetaKey` metadata plus CLS-stored `user`/`policies`, and delegates to `PolicyDomain.validatePolicyGuard`, which short-circuits `true` for `superAdmin`. | `canActivate` reads the same metadata and calls `PolicyDomain.assertCan` once per required `(subject, action)` pair. The `superAdmin` short-circuit is removed — `superAdmin` gets a persisted `manage`/`all` rule and evaluates through the same ability as every other role (see [Ability Lifecycle](#ability-lifecycle)). |
+| `factories/policy.factory.ts` | `PolicyAbilityFactory.createForUser()` builds an `AbilityBuilder<IPolicyAbilityRule>` from flat `Policy[]` rows with one `can(action, subject)` call per row — no conditions, no ordering. | Iterates rows in ascending `priority`, calling `can(action, subject, conditions)` or `cannot(...)` per `inverted`, and maps each row's subject through `abilitySubjectOf` — the registry's Prisma model, or the virtual subject's own name — before adding the rule. |
+| `guards/policy.guard.ts` | `canActivate` reads `PolicyRequiredMetaKey` metadata plus CLS-stored `user`/`policies`, and delegates to `PolicyDomain.validatePolicyGuard`, which short-circuits `true` for `superAdmin`. | `canActivate` reads the same metadata, keeps an explicit user check as defense-in-depth, and calls `PolicyDomain.assertCan` once per required `(subject, action)` pair. The `superAdmin` short-circuit is removed — `superAdmin` gets a persisted `manage`/`all` rule and evaluates through the same ability as every other role (see [Ability Lifecycle](#ability-lifecycle)). |
 | `decorators/policy.decorator.ts` | `@PolicyProtected(...requiredPolicies: PolicyRequestDto[])` applies `UseGuards(PolicyGuard)` + `SetMetadata(PolicyRequiredMetaKey, requiredPolicies)`. | Unchanged at the call site — `PolicyRequestDto` keeps its `{ subject, action }` shape. Only what the guard does with that metadata changes; no controller decorator usage needs to be rewritten. |
 | `domains/policy.domain.ts` | `PolicyDomain` is admin CRUD orchestration (create/update/delete a role's policy rows) plus `validatePolicyGuard`. | Gains the ability-lifecycle surface — `buildForRequest`, `getCurrentAbility`, `can`, `assertCan`, `toWhere` (see [Ability Lifecycle](#ability-lifecycle)) — used by guards and by feature domains directly. `validatePolicyGuard` is replaced by `assertCan`. |
-| `interfaces/policy.interface.ts` | `IPolicyAbilityRule = MongoAbility<[EnumPolicyAction, IPolicyAbilitySubject]>`; `IPolicyAbilitySubject` is the flat `EnumPolicySubject`. | Adds `IPolicyAbility` (the request-scoped `PrismaAbility` alias used by `PolicyDomain`) and `IPolicySubjectInput` (an enum subject or a loaded record paired with its registry subject) alongside the existing rule type. |
+| `interfaces/policy.interface.ts` | `IPolicyAbilityRule = MongoAbility<[EnumPolicyAction, IPolicyAbilitySubject]>`; `IPolicyAbilitySubject` is the flat `EnumPolicySubject`. | Adds `IPolicyAbility` (the request-scoped `PrismaAbility` alias used by `PolicyDomain`), `IPolicySubjectInput` (an enum subject or a loaded record paired with its registry subject), `IPolicyScopePair` (the condition key and placeholder tying a rule to its boundary), and `IPolicyRuleSubject` (a Prisma model name or the `all`/`analytic` virtuals) alongside the existing rule type. |
 | `interfaces/policy.repository.interface.ts`, `repositories/policy.repository.ts` | Read/write `Policy` rows keyed by `(roleId, subject)`; `action` is a typed `EnumPolicyAction[]` column. | Read/write the same rows ordered by `priority`, keyed by `(roleId, priority)`; `action` stays a typed `EnumPolicyAction[]` column, and the repository also persists `conditions`, `inverted`, `reason`, and `priority` (see [Stored Rule Contract](#stored-rule-contract)). |
-| — (new) `PolicySubjectRegistry`, `PolicyConditionPlaceholderUtil` | Do not exist. | New files inside `src/modules/policy/` — the registry maps each `EnumPolicySubject` to its Prisma model name, valid action list, and condition paths ([Subjects](#subjects)); the placeholder util resolves and validates `${...}` condition placeholders before persistence and before ability construction ([PostgreSQL and Prisma Conditions](#postgresql-and-prisma-conditions)). |
+| — (new) `PolicySubjectRegistry`, `policy.condition.util.ts` | Do not exist. | New files inside `src/modules/policy/` — the registry maps each `EnumPolicySubject` to its Prisma model, valid action list, and scope pair ([Subjects](#subjects)); `policy.condition.util.ts` holds placeholder resolution and scope helpers: `resolvePlaceholders`, `scopePairOf`, `scopedCondition`, and `hasScopePair` ([PostgreSQL and Prisma Conditions](#postgresql-and-prisma-conditions)). |
 
 What does **not** change: `controllers/policy.admin.controller.ts` and
 `controllers/policy.system.controller.ts` keep their existing routes and request/response DTO
@@ -279,105 +279,122 @@ Subjects use camelCase model-aligned names rather than colon-delimited values. F
 `workspaceInvite` maps directly to `WorkspaceInvite`; `workspace:invite` would require an
 additional enum-to-model translation without changing the permission boundary.
 
-`PolicySubjectRegistry` maps every enum value to its Prisma model name, valid action list,
-condition paths, and mandatory scope placeholder. Enum values remain camelCase; Prisma model
-names remain PascalCase. This avoids using an enum string as a model constructor or a Prisma
-delegate, and — unlike deriving everything mechanically from the subject name — it lets rule
-validation reject an action that is not registered for its subject, checked against the single
-`EnumPolicyAction` vocabulary from [Actions](#actions).
+`PolicySubjectRegistry` maps every enum value to its Prisma model, valid action list, condition
+columns, and mandatory scope pair. Enum values remain camelCase; Prisma model names remain
+PascalCase. This avoids using an enum string as a model constructor or a Prisma delegate, and —
+unlike deriving everything mechanically from the subject name — it lets rule validation reject an
+action that is not registered for its subject, checked against the single `EnumPolicyAction`
+vocabulary from [Actions](#actions).
 
-Every subject definition also carries a `scopePlaceholder`, naming the placeholder condition its
-stored rules must include (see
+Every subject definition also carries a `scope` pair — the condition key and placeholder tying
+its stored rules to the active workspace or project (see
 [Scoping Placeholder Conventions](#scoping-placeholder-conventions) below for the normative rule
 and its one exception, `project:create`):
 
 ```ts
+type IPolicyScopePair = {
+    key: 'id' | 'workspaceId' | 'projectId';
+    placeholder: '${workspace.id}' | '${project.id}';
+};
+
 type IPolicySubjectDefinition = {
-    modelName: Prisma.ModelName;
+    // Prisma model the subject resolves to; null for the `all` wildcard and `analytic`.
+    model: Prisma.ModelName | null;
     actions: readonly EnumPolicyAction[];
-    conditionPaths: readonly string[];
-    scopePlaceholder: '${workspace.id}' | '${project.id}' | null;
+    // The condition pair tying a scoped-role rule to the active workspace or project.
+    scope: IPolicyScopePair | null;
 };
 
 const PolicySubjectRegistry = {
     workspace: {
-        modelName: 'Workspace',
+        model: Prisma.ModelName.Workspace,
         actions: [
             EnumPolicyAction.read,
             EnumPolicyAction.update,
             EnumPolicyAction.delete,
             EnumPolicyAction.manage,
         ],
-        conditionPaths: ['id', 'createdBy', 'isPublic', 'deletedAt'],
-        scopePlaceholder: '${workspace.id}',
+        scope: {
+            key: Prisma.WorkspaceScalarFieldEnum.id,
+            placeholder: '${workspace.id}',
+        },
     },
     workspaceMember: {
-        modelName: 'WorkspaceMember',
+        model: Prisma.ModelName.WorkspaceMember,
         actions: [EnumPolicyAction.update, EnumPolicyAction.delete],
-        conditionPaths: ['id', 'workspaceId', 'userId', 'roleId', 'role.key'],
-        scopePlaceholder: '${workspace.id}',
+        scope: {
+            key: Prisma.WorkspaceMemberScalarFieldEnum.workspaceId,
+            placeholder: '${workspace.id}',
+        },
     },
     workspaceInvite: {
-        modelName: 'WorkspaceInvite',
+        model: Prisma.ModelName.WorkspaceInvite,
         actions: [EnumPolicyAction.create, EnumPolicyAction.manage],
-        conditionPaths: [
-            'id',
-            'workspaceId',
-            'projectId',
-            'status',
-            'invitedByUserId',
-            'acceptedByUserId',
-        ],
-        scopePlaceholder: '${workspace.id}',
+        scope: {
+            key: Prisma.WorkspaceInviteScalarFieldEnum.workspaceId,
+            placeholder: '${workspace.id}',
+        },
     },
     workspaceJoinRequest: {
-        modelName: 'WorkspaceJoinRequest',
+        model: Prisma.ModelName.WorkspaceJoinRequest,
         actions: [EnumPolicyAction.update],
-        conditionPaths: [
-            'id',
-            'workspaceId',
-            'userId',
-            'status',
-            'reviewedByUserId',
-        ],
-        scopePlaceholder: '${workspace.id}',
+        scope: {
+            key: Prisma.WorkspaceJoinRequestScalarFieldEnum.workspaceId,
+            placeholder: '${workspace.id}',
+        },
     },
     project: {
-        modelName: 'Project',
+        model: Prisma.ModelName.Project,
         actions: [
             EnumPolicyAction.read,
             EnumPolicyAction.create,
             EnumPolicyAction.update,
             EnumPolicyAction.delete,
         ],
-        conditionPaths: ['id', 'workspaceId', 'createdBy', 'deletedAt'],
-        // Mandatory `${project.id}` -> `projectId` condition, in addition to the workspace
+        // Mandatory `${project.id}` -> `id` condition, in addition to the workspace
         // scope a project inherits transitively through `workspaceId` — waived only for
         // `create` (see §5 exception).
-        scopePlaceholder: '${project.id}',
+        scope: {
+            key: Prisma.ProjectScalarFieldEnum.id,
+            placeholder: '${project.id}',
+        },
     },
     projectMember: {
-        modelName: 'ProjectMember',
+        model: Prisma.ModelName.ProjectMember,
         actions: [
             EnumPolicyAction.create,
             EnumPolicyAction.update,
             EnumPolicyAction.delete,
         ],
-        conditionPaths: ['id', 'projectId', 'userId', 'roleId', 'role.key'],
         // Mandatory `${project.id}` -> `projectId` condition. `create` (assigning a member) is
         // the exception noted in §5: the permission itself is the only gate for "can assign any
         // member in the project," so a `create` rule carries the `projectId` scope but no
         // member-instance (`id`) condition.
-        scopePlaceholder: '${project.id}',
+        scope: {
+            key: Prisma.ProjectMemberScalarFieldEnum.projectId,
+            placeholder: '${project.id}',
+        },
     },
 } as const satisfies Record<string, IPolicySubjectDefinition>;
 ```
+
+Scope keys are assigned from the generated client scalar-field enums for the corresponding
+Prisma model. Workspace and project resources use `id`; workspace-scoped member, invite, and
+join-request resources use their model's `workspaceId`; project members use
+`Prisma.ProjectMemberScalarFieldEnum.projectId`. The virtual `analytic` subject uses
+`Prisma.WorkspaceMemberScalarFieldEnum.workspaceId` for its workspace boundary because it has no
+Prisma model of its own. This makes a scope-key typo a compile-time error while the stored
+condition remains the same string key. Condition columns are derived from the generated client
+(`Prisma.<Model>ScalarFieldEnum`), so scope keys cannot drift from `schema.prisma`. `all` and
+`analytic` are virtual subjects (`model: null`); `abilitySubjectOf(subject)`
+resolves an enum subject to its registry model, or to the virtual's own name, when an ability
+rule is built or checked.
 
 The registry includes definitions for every existing platform subject before rule validation is
 enabled for that subject. Rule validation rejects an action that is not registered for its
 subject. Relation paths use Prisma relation syntax and are listed explicitly.
 
-A subject's `scopePlaceholder` also drives role-scope validation: platform roles may hold any
+A subject's `scope` pair also drives role-scope validation: platform roles may hold any
 subject and are exempt from the mandatory scope pair (the platform `admin` holds `read` on
 `workspace` and `project` without a scope condition); workspace roles hold platform-level,
 workspace-level, and project-level subjects (the workspace `owner` holds project rules); project
@@ -409,17 +426,19 @@ Scoped Role Rules" prose; it is a normative rule:
   `${project.id}` placeholder, populated from the request's `:projectId` route param. This is in
   addition to the workspace scope a project rule already carries transitively, because a project
   belongs to a workspace.
-- Conditions are generated and checked in three steps:
+- Conditions are generated and processed in three steps:
   1. Seeds and the rule DTO build the stored `conditions` through
      `scopedCondition(subject, action, extra?)`, which returns `{ [key]: placeholder, ...extra }`
-     from `PolicySubjectRegistry`. For example, a `workspaceMember` rule is stored as
-     `{ "workspaceId": "${workspace.id}" }`.
+     from the subject's registry scope pair (`scopePairOf`). For example, a `workspaceMember`
+     rule is stored as `{ "workspaceId": "${workspace.id}" }`.
   2. Rule validation requires every non-inverted rule of a scoped subject to carry
      `conditions[key] === placeholder` at the top level or inside a top-level `AND`. A pair
-     nested under `OR` or `NOT` does not count. Inverted rules are exempt.
-  3. At request time `PolicyConditionPlaceholderUtil` replaces the placeholder with the resolved
-     id, so CASL receives `{ "workspaceId": "<uuid>" }`. Nothing is injected implicitly: the
-     stored rule is the single source of truth, and `toWhere` reuses the same condition.
+     nested under `OR` or `NOT` does not count. Inverted rules are exempt. Other condition keys
+     and operators are stored as provided by the trusted policy author.
+  3. At request time `resolvePlaceholders` (in `policy.condition.util.ts`) replaces the
+     placeholder with the resolved id, so CASL receives `{ "workspaceId": "<uuid>" }`. Nothing
+     is injected implicitly: the stored rule is the single source of truth, and `toWhere`
+     reuses the same condition.
 - The mandatory scope pair is waived only for `project:create`. The ability is built from the
   caller's role in the workspace `WorkspaceProtected` already verified, and creation takes its
   `workspaceId` from that same context, so a `workspaceId` condition on the new row could never
@@ -430,7 +449,7 @@ Scoped Role Rules" prose; it is a normative rule:
   carry no action, so they have no condition to validate. Listing is a query concern —
   visibility and membership filter the result set directly — not a policy decision.
 
-The placeholder allow-list `PolicyConditionPlaceholderUtil` resolves is:
+The placeholder allow-list `resolvePlaceholders` accepts is:
 
 - `${user.id}`
 - `${user.roleId}`
@@ -513,23 +532,18 @@ A relation condition is represented with Prisma operators:
 }
 ```
 
-`PolicyConditionPlaceholderUtil` traverses an object or array and replaces only complete string
-values from the placeholder allow-list in
-[Scoping Placeholder Conventions](#scoping-placeholder-conventions) above, which also states the
-`workspaceId`/`projectId` mandatory-key rule that governs which of those placeholders a given
-subject's rules must use.
-
-The validator rejects unknown placeholders, partial interpolation, prototype-pollution keys,
-condition columns that do not belong to the target model, unsupported relation paths, unsupported
-Prisma operators, and values incompatible with the target field. Conditions are JSON data, not
-executable expressions.
+`resolvePlaceholders` traverses an object or array and replaces recognized complete string values
+from the placeholder list in [Scoping Placeholder Conventions](#scoping-placeholder-conventions).
+Other condition strings remain unchanged. The policy author is responsible for supplying a
+condition that the target Prisma `WhereInput` and CASL adapter can evaluate. Conditions are JSON
+data, not executable expressions.
 
 The adapter builds `PrismaAbility` with `createPrismaAbility`. It uses the subject's derived model name
 when deriving `accessibleBy(ability, action)[modelName]`. Repository queries compose that result
 with business predicates through `AND`, including active-row and workspace/project predicates.
 They never spread an authorization filter into another `where` object.
 
-Object checks use `subject(modelName(subject), record)` with a loaded, typed record.
+Object checks use `subject(abilitySubjectOf(subject), record)` with a loaded, typed record.
 They do not rely on `constructor` detection for Prisma plain objects.
 
 ### Leveraging a condition in practice
@@ -545,7 +559,7 @@ A `workspaceMember` `update` rule scoped to the active workspace is stored as:
 }
 ```
 
-`PolicyConditionPlaceholderUtil` resolves `${workspace.id}` from the request context before the
+`resolvePlaceholders` resolves `${workspace.id}` from the request context before the
 rule is added to the ability, so the ability the request actually evaluates against carries the
 literal id, e.g. `{ "workspaceId": "3f2b..." }`. An object check against a record from a
 different workspace fails even though the caller otherwise holds the `update` action on
@@ -559,17 +573,19 @@ ability.can('update', subject('WorkspaceMember', memberFromActiveWorkspace)); //
 
 ### Turning a condition into a Prisma filter
 
-The same rule, read through `toWhere`, becomes the `where` clause a list query composes with its
-own predicates instead of a second in-memory pass over every row:
+The same rule, read through `toWhere`, becomes the `where` clause a query or mutation composes
+with its own predicates instead of a second in-memory pass over every row — here an update whose
+`update` action is registered for `workspaceMember`:
 
 ```ts
-const authorizationWhere = this.policyDomain.toWhere('read', EnumPolicySubject.workspaceMember);
+const authorizationWhere = this.policyDomain.toWhere('update', EnumPolicySubject.workspaceMember);
 // => { workspaceId: { equals: "3f2b..." } }
 
-await this.databaseService.client.workspaceMember.findMany({
+await this.databaseService.client.workspaceMember.updateMany({
     where: {
-        AND: [authorizationWhere, { deletedAt: null }],
+        AND: [authorizationWhere, { id: memberId }],
     },
+    data,
 });
 ```
 
@@ -674,20 +690,29 @@ The target guard drops the raw-row lookup and the super-admin special case, and 
 
 ```ts
 // guards/policy.guard.ts — target
-async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredPolicies = this.reflector.get<PolicyRequestDto[]>(
+canActivate(context: ExecutionContext): boolean {
+    // An explicit user check stays ahead of the metadata and ability work as a
+    // defense-in-depth measure on this auth-adjacent guard.
+    const user = this.requestStoreService.get<IUser>(UserStoreKey);
+    if (!user) {
+        throw new AuthJwtAccessTokenInvalidException();
+    }
+
+    const policyMetadata = this.reflector.get<IPolicyRequired[]>(
         PolicyRequiredMetaKey,
-        context.getHandler(),
-    ) ?? [];
+        context.getHandler()
+    );
+    const requiredPolicies = policyMetadata ?? [];
     if (requiredPolicies.length === 0) {
         throw new PolicyPredefinedNotFoundException();
     }
 
     for (const { subject, action } of requiredPolicies) {
-        for (const oneAction of action) {
-            this.policyDomain.assertCan(oneAction, { subject });
+        for (const one of action) {
+            this.policyDomain.assertCan(one, subject);
         }
     }
+
     return true;
 }
 ```
@@ -1050,7 +1075,6 @@ first — a failure here means an authorization decision can be silently wrong.
 | `PolicyAbilityFactory.createForUser` | Record from a different workspace against a `workspaceId`-scoped rule | Condition mismatch denies — scoping placeholder actually constrains the ability |
 | `PolicyDomain.buildForRequest` | Platform, workspace, and project rules for one user | Composition order is platform → workspace → project; a narrower rule can override a broader one |
 | `PolicyGuard.canActivate` | `superAdmin` role, no special-cased bypass in code | Evaluates through the seeded `manage`/`all` rule like any other role, not a hardcoded short-circuit |
-| `PolicyConditionPlaceholderUtil.resolve` | Unknown placeholder, partial interpolation, prototype-pollution key (`__proto__`) | Rejects all three — no unvalidated value reaches a Prisma `where` |
 | Rule validation (`PolicyDomain` create/update path) | Workspace- or project-scoped subject rule with no `workspaceId`/`projectId` condition | Rejected, except the `project:create` waiver and the member-instance-free `projectMember:create` rule |
 
 ### Tier 2 — High (core data-shaping and business invariants)
@@ -1077,8 +1101,8 @@ first — a failure here means an authorization decision can be silently wrong.
 
 | Method | Description | What it tests |
 | --- | --- | --- |
-| Rule DTO validation | `conditions` containing an unlisted field or unsupported Prisma operator | Rejected at the DTO boundary, before reaching the domain |
-| `PolicySubjectRegistry` shape check | Iterate every `EnumPolicySubject` member | Each has a registry entry with `modelName`, `actions`, `conditionPaths`, `scopePlaceholder` |
+| Rule DTO validation | `conditions` is not a JSON object | Rejected at the DTO boundary, before reaching the domain |
+| `PolicySubjectRegistry` shape check | Iterate every `EnumPolicySubject` member | Each has a registry entry with `model`, `actions`, and `scope`; concrete scope keys use the corresponding generated Prisma scalar-field enum member |
 | Seed data catalog | Every seeded role/scope pair | Maps only to actions valid for its scope (no platform action on a workspace role, etc.) |
 
 ## Acceptance Checklist
@@ -1088,9 +1112,10 @@ first — a failure here means an authorization decision can be silently wrong.
   `workspaceId`, or `projectId` field.
 - The fixed role catalog is seeded once, with unique keys inside each scope.
 - PostgreSQL schema stores ordered CASL rules and permits multiple rules for one role/subject.
-- Conditions use validated Prisma `WhereInput` semantics.
-- The subject registry separately covers workspace, workspace member, workspace invite, workspace
-  join request, project, and project member resources before they accept persisted rules.
+- Conditions are stored as trusted JSON in the Prisma `WhereInput` dialect and are evaluated by
+  CASL and Prisma at request time.
+- The subject registry covers workspace, workspace member, workspace invite, workspace join
+  request, project, and project member resources with their valid actions and scope pairs.
 - Every permission uses `EnumPolicyAction` (`manage`, `read`, `create`, `update`, `delete`);
   privileged operations such as ownership transfer and invite resend/revoke map to `manage`. The
   registry rejects invalid action/subject pairs, and the persisted `action` column is a typed
@@ -1113,6 +1138,9 @@ first — a failure here means an authorization decision can be silently wrong.
   subject.
 - Workspace-scoped and project-scoped subject rules carry their mandatory `workspaceId`/
   `projectId` condition, except the documented `project:create` exception.
+- Registry scope keys use generated Prisma scalar-field enum members for the target model, with
+  the virtual `analytic` subject using the generated `workspaceId` member from a workspace-scoped
+  model.
 - Operations without a subject require no policy metadata: no subject, no action, no condition.
 - Workspace and project user controllers expose a read-only effective-permissions endpoint whose
   response matches the caller's live ability.

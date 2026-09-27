@@ -61,6 +61,11 @@ model Policy {
   subject EnumPolicySubject
   action  EnumPolicyAction[]
 
+  conditions Json?
+  inverted   Boolean @default(false)
+  reason     String?
+  priority   Int
+
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
   updatedAt DateTime @updatedAt
@@ -68,7 +73,8 @@ model Policy {
 
   role Role @relation("RolePolicy", fields: [roleId], references: [id], onDelete: Cascade)
 
-  @@unique(fields: [roleId, subject])
+  @@unique(fields: [roleId, priority])
+  @@index(fields: [roleId, subject, priority])
   @@map("policies")
 }
 

@@ -144,15 +144,15 @@ export class ProjectDomain {
         );
     }
 
-    /** Lists projects in the workspace: a caller holding the project read policy sees every project, everyone else sees only the ones they hold a `ProjectMember` row for. */
+    /** Lists projects in the workspace: a caller holding workspace manage sees every project, everyone else sees only the ones they hold a `ProjectMember` row for. */
     async getListForMember(
         workspaceId: string,
         workspaceMember: WorkspaceMember,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
     ): Promise<IResponsePaginationReturn<Project>> {
         const canReadAllProjects = this.policyDomain.can(
-            EnumPolicyAction.read,
-            EnumPolicySubject.project
+            EnumPolicyAction.manage,
+            EnumPolicySubject.workspace
         );
         const memberUserId = canReadAllProjects ? null : workspaceMember.userId;
 

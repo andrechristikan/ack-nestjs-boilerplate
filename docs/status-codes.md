@@ -33,7 +33,7 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `50800` | `auth` | `50800`–`50816` | 17 |
 | `50900` | `country` | `50900`–`50902` | 3 |
 | `51000` | `user` | `51000`–`51027` | 28 |
-| `51100` | `policy` | `51100`–`51104` | 5 |
+| `51100` | `policy` | `51100`–`51105` | 6 |
 | `51200` | `notification` | `51200`–`51203` | 4 |
 | `51300` | `device` | `51300` | 1 |
 | `51400` | `aws` | `51400` | 1 |
@@ -221,8 +221,19 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `forbidden` | `51100` | `forbidden` | 403 (`FORBIDDEN`) | `policy.error.forbidden` | Sorry, you don't have the necessary permissions to perform this action. |
 | `predefinedNotFound` | `51101` | `predefinedNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `policy.error.predefinedNotFound` | Predefined policies not setted. |
 | `notFound` | `51102` | `notFound` | 404 (`NOT_FOUND`) | `policy.error.notFound` | Sorry, we couldn't find the requested policy. |
-| `exist` | `51103` | `exist` | 409 (`CONFLICT`) | `policy.error.exist` | This role already grants a policy for that subject. |
+| `exist` | `51103` | `exist` | 409 (`CONFLICT`) | `policy.error.exist` | This role already has a policy at that priority. |
 | `immutable` | `51104` | `immutable` | 403 (`FORBIDDEN`) | `policy.error.immutable` | The policies of the super administrator role cannot be changed. |
+| `invalidRule` | `51105` | `invalidRule` | 422 (`UNPROCESSABLE_ENTITY`) | `policy.error.invalidRule.<reason>` | One message per reason, listed below. |
+
+`invalidRule` carries a `reason` that selects the message:
+
+| reason | description |
+|---|---|
+| `actionNotAllowed` | This action is not valid for that subject. |
+| `roleScopeInvalid` | This subject cannot be granted to a role of that scope. |
+| `scopeMissing` | The rule must carry the workspace or project scope condition for its subject. |
+| `placeholderInvalid` | The rule conditions use a placeholder that is unknown, partial or unsafe. |
+| `conditionInvalid` | The rule conditions reference a column, relation path or operator that the subject does not support. |
 
 ## `notification`
 

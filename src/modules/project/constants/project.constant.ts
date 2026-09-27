@@ -1,6 +1,7 @@
 import { Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import { RolePoliciesInclude } from '@modules/role/constants/role.constant';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
@@ -64,5 +65,5 @@ export const ProjectActiveFilter = {
  * @public
  */
 export const ProjectMemberRoleInclude = {
-    role: { include: { policies: true } },
+    role: { include: RolePoliciesInclude },
 } as const satisfies Prisma.ProjectMemberInclude;

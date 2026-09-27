@@ -122,12 +122,12 @@ describe('ProjectDomain', () => {
 
     it.each([
         {
-            name: 'a workspace role holding the project read policy',
+            name: 'a workspace role holding workspace manage',
             canRead: true,
             expectedUserId: null,
         },
         {
-            name: 'a workspace role without the project read policy',
+            name: 'a workspace role without workspace manage',
             canRead: false,
             expectedUserId: 'user-id',
         },
@@ -153,8 +153,8 @@ describe('ProjectDomain', () => {
                 )
             ).resolves.toBe(page);
             expect(policyDomain.can).toHaveBeenCalledWith(
-                EnumPolicyAction.read,
-                EnumPolicySubject.project
+                EnumPolicyAction.manage,
+                EnumPolicySubject.workspace
             );
             expect(
                 projectRepository.findWithPaginationCursorForWorkspace

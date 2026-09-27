@@ -4,6 +4,7 @@ import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { EnumPolicyAction, EnumPolicySubject } from '@generated/prisma-client';
 import { PolicyRequiredMetaKey } from '@modules/policy/constants/policy.constant';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import type { IPolicyRequired } from '@modules/policy/interfaces/policy.interface';
 
 vi.mock('@modules/policy/guards/policy.guard', () => ({
     PolicyGuard: vi.fn(),
@@ -12,7 +13,7 @@ vi.mock('@modules/policy/guards/policy.guard', () => ({
 describe('policy decorators', () => {
     it('registers the policy guard and required policy metadata', () => {
         const handler = vi.fn();
-        const required = {
+        const required: IPolicyRequired = {
             subject: EnumPolicySubject.user,
             action: [EnumPolicyAction.read],
         };

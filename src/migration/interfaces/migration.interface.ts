@@ -4,6 +4,7 @@ import type {
     EnumRoleScope,
 } from '@generated/prisma-client/client';
 import { EnumMigrationType } from '@migration/enums/migration.enum';
+import type { IPolicyConditions } from '@modules/policy/interfaces/policy.interface';
 import type { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 
 export interface IMigrationOptions {
@@ -20,11 +21,17 @@ export interface IMigrationUserData {
     password: string;
 }
 
+export interface IMigrationPolicyRule {
+    subject: EnumPolicySubject;
+    action: EnumPolicyAction[];
+    conditions: IPolicyConditions | null;
+    inverted: boolean;
+    reason: string | null;
+    priority: number;
+}
+
 export interface IMigrationPolicyData {
     scope: EnumRoleScope;
     key: string;
-    policies: {
-        subject: EnumPolicySubject;
-        action: EnumPolicyAction[];
-    }[];
+    policies: IMigrationPolicyRule[];
 }

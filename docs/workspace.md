@@ -140,7 +140,7 @@ Requires `x-workspace-id` to resolve to an existing, non-deleted workspace, thro
 **Method decorator**. Takes no arguments. Stack it above `@WorkspaceProtected()`. It applies `WorkspaceMemberGuard`.
 
 - `WorkspaceMemberGuard` confirms the user loaded by `UserGuard` has a `WorkspaceMember` row in the resolved workspace, and stores it with its minimal role (`id`, `scope`, `key`, `name`, no policies) under `WorkspaceMemberStoreKey`. No membership throws `WorkspaceMemberForbiddenException` (403, `51601`).
-- The guard stores the policies of the member's workspace role under `WorkspaceMemberPolicyStoreKey`. `PolicyDomain.getEffectivePolicies` reads that key ahead of the platform policies, so the platform role of the caller plays no part on a workspace route.
+- The guard stores the policies of the member's workspace role under `WorkspaceMemberPolicyStoreKey`. `PolicyDomain` composes that key after the platform policies, so on a workspace route the workspace role's rules take precedence over the platform role's.
 - What a member may do is decided by `@PolicyProtected()` against those policies. A route with no `@PolicyProtected()` is open to every member.
 
 ### `WorkspaceCurrent()` / `WorkspaceMemberCurrent()`
@@ -253,7 +253,7 @@ Mounted under `/admin`. Gated by `@PolicyProtected({ subject: workspace, action:
 |---|---|
 | `member` | `workspace:[read]`. Lists members, invites, and join requests, and leaves |
 | `admin` | `workspace:[read, update]`, `workspaceMember:[update, delete]`, `workspaceInvite:[manage]`, `workspaceJoinRequest:[update]`, `project:[create, delete]`, `analytic:[read]` |
-| `owner` | `workspace:[manage]`, `workspaceMember:[update, delete]`, `workspaceInvite:[manage]`, `workspaceJoinRequest:[update]`, `project:[manage]`, `projectMember:[manage]`, `analytic:[read]` |
+| `owner` | `workspace:[manage]`, `workspaceMember:[update, delete]`, `workspaceInvite:[manage]`, `workspaceJoinRequest:[update]`, `project:[create, read, update, delete]`, `projectMember:[create, update, delete]`, `analytic:[read]` |
 
 Ownership transfer needs `workspace:[manage]` and workspace deletion needs `workspace:[delete]`, which only `owner` holds. The `owner` role is not assignable through a member role update or an invite (`WorkspaceOwnerRoleNotAssignableException`, 400, `51620`); ownership moves through the transfer route.
 

@@ -94,7 +94,7 @@ export class ProjectUserController {
 
     @Doc({
         summary:
-            'list projects in the current workspace; a workspace role holding the project read policy sees all, others only assigned projects',
+            'list projects in the current workspace; a workspace role holding workspace:manage sees all, others only assigned projects',
     })
     @ResponsePagination('project.list', {
         schema: ProjectResponseSchema,
@@ -158,7 +158,7 @@ export class ProjectUserController {
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.read],
     })
-    @ProjectMemberProtected()
+    @ProjectMemberProtected({ required: false })
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -186,7 +186,7 @@ export class ProjectUserController {
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.update],
     })
-    @ProjectMemberProtected()
+    @ProjectMemberProtected({ required: false })
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -220,7 +220,7 @@ export class ProjectUserController {
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.update],
     })
-    @ProjectMemberProtected()
+    @ProjectMemberProtected({ required: false })
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -283,7 +283,7 @@ export class ProjectUserController {
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.read],
     })
-    @ProjectMemberProtected()
+    @ProjectMemberProtected({ required: false })
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
