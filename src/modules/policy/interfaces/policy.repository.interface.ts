@@ -5,11 +5,6 @@ import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy
 export interface IPolicyRepository {
     findManyByRoleId(roleId: string): Promise<Policy[]>;
     findOneByRoleIdAndId(roleId: string, id: string): Promise<Policy | null>;
-    existsByRoleIdAndPriority(
-        roleId: string,
-        priority: number,
-        excludeId: string | null
-    ): Promise<boolean>;
     existsByRoleIdAndId(roleId: string, id: string): Promise<boolean>;
     create(roleId: string, dto: PolicyCreateRequestDto): Promise<Policy>;
     update(id: string, dto: PolicyUpdateRequestDto): Promise<Policy>;

@@ -65,7 +65,6 @@ export class MigrationPolicySeed
                 conditions: policy.conditions ?? Prisma.DbNull,
                 inverted: policy.inverted,
                 reason: policy.reason,
-                priority: policy.priority,
             }))
         );
 
@@ -74,39 +73,16 @@ export class MigrationPolicySeed
         try {
             await this.databaseService.withTransaction(
                 async tx => {
+                    await tx.policy.deleteMany({
+                        where: { roleId: { in: roles.map(role => role.id) } },
+                    });
+
                     for (const row of rows) {
-                        await tx.policy.upsert({
-                            where: {
-                                roleId_priority: {
-                                    roleId: row.roleId,
-                                    priority: row.priority,
-                                },
-                            },
-                            create: {
+                        await tx.policy.create({
+                            data: {
                                 ...row,
                                 createdBy: MigrationUserSuperAdminId,
                                 updatedBy: MigrationUserSuperAdminId,
-                            },
-                            update: {
-                                subject: row.subject,
-                                action: row.action,
-                                conditions: row.conditions,
-                                inverted: row.inverted,
-                                reason: row.reason,
-                                updatedBy: MigrationUserSuperAdminId,
-                            },
-                        });
-                    }
-
-                    for (const role of roles) {
-                        await tx.policy.deleteMany({
-                            where: {
-                                roleId: role.id,
-                                priority: {
-                                    notIn: rows
-                                        .filter(row => row.roleId === role.id)
-                                        .map(row => row.priority),
-                                },
                             },
                         });
                     }

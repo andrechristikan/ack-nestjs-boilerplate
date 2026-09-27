@@ -15,7 +15,6 @@ import {
     type Policy,
 } from '@generated/prisma-client';
 import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { RequestLanguageStoreKey } from '@common/request/constants/request.constant';
@@ -37,7 +36,6 @@ import { UserStoreKey } from '@modules/user/constants/user.constant';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyImmutableException } from '@modules/policy/exceptions/policy.immutable.exception';
-import { PolicyExistException } from '@modules/policy/exceptions/policy.exist.exception';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
 import { EnumPolicyRuleInvalidReason } from '@modules/policy/enums/policy.rule-invalid-reason.enum';
 import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
@@ -67,7 +65,6 @@ describe('PolicyDomain', () => {
         conditions: null,
         inverted: false,
         reason: null,
-        priority: 1,
         createdAt: now,
         createdBy: null,
         updatedAt: now,
@@ -136,13 +133,11 @@ describe('PolicyDomain', () => {
     const ruleRequest: PolicyCreateRequestDto = {
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read],
-        priority: 2,
     };
     const ruleUpdate: PolicyUpdateRequestDto = {
         action: [EnumPolicyAction.read],
         inverted: true,
         reason: 'why',
-        priority: 3,
     };
     const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
         ...policy,
@@ -165,14 +160,12 @@ describe('PolicyDomain', () => {
         mock<ActivityLogDomain>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const ability: MockProxy<IPolicyAbility> = mock<IPolicyAbility>();
 
     let service: PolicyDomain;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        databaseUtil.isUniqueCollision.mockReturnValue(false);
         policyAbilityFactory.build.mockReturnValue(ability);
         requestStoreService.get.mockReturnValue(null);
 
@@ -186,7 +179,6 @@ describe('PolicyDomain', () => {
                 { provide: PolicyRepository, useValue: policyRepository },
                 { provide: RoleDomain, useValue: roleDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
-                { provide: DatabaseUtil, useValue: databaseUtil },
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
@@ -208,10 +200,10 @@ describe('PolicyDomain', () => {
             ...overrides,
         });
 
-        it('composes platform, then workspace, then project rules in order', () => {
-            const platform = buildPolicy({ id: 'platform', priority: 1 });
-            const workspace = buildPolicy({ id: 'workspace', priority: 1 });
-            const project = buildPolicy({ id: 'project', priority: 1 });
+        it('composes platform, then workspace, then project rules', () => {
+            const platform = buildPolicy({ id: 'platform' });
+            const workspace = buildPolicy({ id: 'workspace' });
+            const project = buildPolicy({ id: 'project' });
             service.buildForRequest(
                 buildContext({
                     platform: [platform],
@@ -237,13 +229,12 @@ describe('PolicyDomain', () => {
             ]);
         });
 
-        it('keeps a later inverted rule after the allow it narrows', () => {
+        it('keeps an inverted rule after the allow it narrows', () => {
             service.buildForRequest(
                 buildContext({
-                    workspace: [buildPolicy({ priority: 1 })],
+                    workspace: [buildPolicy()],
                     project: [
                         buildPolicy({
-                            priority: 1,
                             inverted: true,
                             reason: 'narrowed',
                         }),
@@ -357,7 +348,6 @@ describe('PolicyDomain', () => {
                             buildPolicy({
                                 conditions,
                                 inverted: true,
-                                priority: 2,
                             }),
                         ],
                     })
@@ -724,16 +714,12 @@ describe('PolicyDomain', () => {
                         action,
                         conditions: conditions ?? undefined,
                         inverted,
-                        priority: 2,
                     })
                 ).rejects.toMatchObject({
                     module: 'policy',
                     statusCode: EnumPolicyStatusCodeError.invalidRule,
                     reason,
                 });
-                expect(
-                    policyRepository.existsByRoleIdAndPriority
-                ).not.toHaveBeenCalled();
                 expect(policyRepository.create).not.toHaveBeenCalled();
                 expect(activityLogDomain.prepare).not.toHaveBeenCalled();
                 expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
@@ -852,9 +838,6 @@ describe('PolicyDomain', () => {
                 inverted
             ) => {
                 roleDomain.getById.mockResolvedValue(targetRole);
-                policyRepository.existsByRoleIdAndPriority.mockResolvedValue(
-                    false
-                );
                 policyRepository.create.mockResolvedValue(policy);
 
                 await expect(
@@ -863,29 +846,14 @@ describe('PolicyDomain', () => {
                         action,
                         conditions: conditions ?? undefined,
                         inverted,
-                        priority: 2,
                     })
                 ).resolves.toBe(policy);
             }
         );
 
-        it('rejects a priority already held by the role', async () => {
-            roleDomain.getById.mockResolvedValue(role);
-            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(true);
-
-            await expect(
-                service.createByAdmin('role-id', ruleRequest)
-            ).rejects.toBeInstanceOf(PolicyExistException);
-            expect(
-                policyRepository.existsByRoleIdAndPriority
-            ).toHaveBeenCalledWith('role-id', 2, null);
-            expect(policyRepository.create).not.toHaveBeenCalled();
-        });
-
         it('creates a policy and stages its activity', async () => {
             const event = mock<ReturnType<ActivityLogDomain['prepare']>>();
             roleDomain.getById.mockResolvedValue(role);
-            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
             policyRepository.create.mockResolvedValue(policy);
             activityLogDomain.prepare.mockReturnValue(event);
 
@@ -904,27 +872,9 @@ describe('PolicyDomain', () => {
             ]);
         });
 
-        it('throws PolicyExistException when the write collides on priority and stages nothing', async () => {
-            const error = new Error('unique');
-            roleDomain.getById.mockResolvedValue(role);
-            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
-            policyRepository.create.mockRejectedValue(error);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
-
-            await expect(
-                service.createByAdmin('role-id', ruleRequest)
-            ).rejects.toBeInstanceOf(PolicyExistException);
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                error,
-                'priority'
-            );
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
         it('rethrows any other write error and stages nothing', async () => {
             const error = new Error('boom');
             roleDomain.getById.mockResolvedValue(role);
-            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
             policyRepository.create.mockRejectedValue(error);
 
             await expect(
@@ -955,7 +905,6 @@ describe('PolicyDomain', () => {
             await expect(
                 service.updateByAdmin('role-id', policy.id, {
                     action: [EnumPolicyAction.create],
-                    priority: 1,
                 })
             ).rejects.toMatchObject({
                 reason: EnumPolicyRuleInvalidReason.actionNotAllowed,
@@ -964,41 +913,10 @@ describe('PolicyDomain', () => {
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
 
-        it('allows the same priority as the policy itself', async () => {
-            roleDomain.getById.mockResolvedValue(role);
-            policyRepository.findOneByRoleIdAndId.mockResolvedValue(policy);
-            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
-            policyRepository.update.mockResolvedValue(policy);
-
-            await service.updateByAdmin('role-id', policy.id, {
-                action: [EnumPolicyAction.read],
-                priority: policy.priority,
-            });
-
-            expect(
-                policyRepository.existsByRoleIdAndPriority
-            ).toHaveBeenCalledWith('role-id', policy.priority, policy.id);
-        });
-
-        it('rejects a priority held by another policy of the role, excluding itself', async () => {
-            roleDomain.getById.mockResolvedValue(role);
-            policyRepository.findOneByRoleIdAndId.mockResolvedValue(policy);
-            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(true);
-
-            await expect(
-                service.updateByAdmin('role-id', policy.id, ruleUpdate)
-            ).rejects.toBeInstanceOf(PolicyExistException);
-            expect(
-                policyRepository.existsByRoleIdAndPriority
-            ).toHaveBeenCalledWith('role-id', 3, policy.id);
-            expect(policyRepository.update).not.toHaveBeenCalled();
-        });
-
         it('updates a policy and stages its activity', async () => {
             const event = mock<ReturnType<ActivityLogDomain['prepare']>>();
             roleDomain.getById.mockResolvedValue(role);
             policyRepository.findOneByRoleIdAndId.mockResolvedValue(policy);
-            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
             policyRepository.update.mockResolvedValue(policy);
             activityLogDomain.prepare.mockReturnValue(event);
 
@@ -1017,24 +935,10 @@ describe('PolicyDomain', () => {
             ]);
         });
 
-        it('throws PolicyExistException when the write collides on priority and stages nothing', async () => {
-            roleDomain.getById.mockResolvedValue(role);
-            policyRepository.findOneByRoleIdAndId.mockResolvedValue(policy);
-            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
-            policyRepository.update.mockRejectedValue(new Error('unique'));
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
-
-            await expect(
-                service.updateByAdmin('role-id', policy.id, ruleUpdate)
-            ).rejects.toBeInstanceOf(PolicyExistException);
-            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
-        });
-
         it('rethrows any other write error and stages nothing', async () => {
             const error = new Error('boom');
             roleDomain.getById.mockResolvedValue(role);
             policyRepository.findOneByRoleIdAndId.mockResolvedValue(policy);
-            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
             policyRepository.update.mockRejectedValue(error);
 
             await expect(
@@ -1095,9 +999,6 @@ describe('PolicyDomain', () => {
                     PolicyImmutableException
                 );
                 expect(
-                    policyRepository.existsByRoleIdAndPriority
-                ).not.toHaveBeenCalled();
-                expect(
                     policyRepository.findOneByRoleIdAndId
                 ).not.toHaveBeenCalled();
                 expect(
@@ -1119,7 +1020,6 @@ describe('PolicyDomain', () => {
                 ...superAdminRole,
                 scope,
             });
-            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
             policyRepository.create.mockResolvedValue(policy);
 
             await expect(
@@ -1127,14 +1027,12 @@ describe('PolicyDomain', () => {
                     subject: EnumPolicySubject.projectMember,
                     action: [EnumPolicyAction.update],
                     conditions: { projectId: '${project.id}' },
-                    priority: 2,
                 })
             ).resolves.toBe(policy);
         });
 
         it('lets a non super administrator platform role through', async () => {
             roleDomain.getById.mockResolvedValue(role);
-            policyRepository.existsByRoleIdAndPriority.mockResolvedValue(false);
             policyRepository.create.mockResolvedValue(policy);
 
             await expect(

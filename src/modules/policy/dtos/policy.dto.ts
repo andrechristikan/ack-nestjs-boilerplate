@@ -7,7 +7,7 @@ import {
 import type { Prisma } from '@generated/prisma-client/client';
 
 /**
- * Base policy shape: one ordered CASL rule stored for a role.
+ * Base policy shape: one CASL rule stored for a role.
  * @public
  */
 export const PolicySchema = DatabaseResponseSchema.omit({
@@ -45,22 +45,14 @@ export const PolicySchema = DatabaseResponseSchema.omit({
         default: false,
         example: false,
     }),
-    reason: z
-        .string()
-        .max(500)
-        .meta({
-            description: 'Why an inverted rule denies',
-            example: 'Owners cannot be removed',
-        })
-        .nullable(),
-    priority: z.number().int().min(1).max(100).meta({
-        description: 'Evaluation order within the role, lowest first',
-        example: 1,
+    reason: z.string().max(500).nullable().meta({
+        description: 'Why an inverted rule denies',
+        example: 'Owners cannot be removed',
     }),
 });
 
 /**
- * Stored policy: one ordered rule with its subject, actions, conditions, inversion, reason and priority.
+ * Stored policy: one rule with its subject, actions, conditions, inversion and reason.
  * @public
  */
 export type PolicyDto = z.infer<typeof PolicySchema>;

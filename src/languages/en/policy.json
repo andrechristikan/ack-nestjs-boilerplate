@@ -7,7 +7,6 @@
         "forbidden": "Sorry, you don't have the necessary permissions to perform this action.",
         "predefinedNotFound": "Predefined policies not setted.",
         "notFound": "Sorry, we couldn't find the requested policy.",
-        "exist": "This role already has a policy at that priority.",
         "invalidRule": {
             "actionNotAllowed": "This action is not valid for that subject.",
             "roleScopeInvalid": "This subject cannot be granted to a role of that scope.",

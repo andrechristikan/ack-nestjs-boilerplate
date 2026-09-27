@@ -14,7 +14,6 @@ describe('PolicySchema', () => {
         conditions: { workspaceId: '${workspace.id}' },
         inverted: false,
         reason: null,
-        priority: 1,
         createdAt: now,
         createdBy: null,
         updatedAt: now,
@@ -36,7 +35,6 @@ describe('PolicySchema', () => {
                 'conditions',
                 'inverted',
                 'reason',
-                'priority',
                 'createdAt',
                 'createdBy',
                 'updatedAt',
@@ -44,26 +42,18 @@ describe('PolicySchema', () => {
             ].sort()
         );
         expect(parsed.conditions).toEqual({ workspaceId: '${workspace.id}' });
-        expect(parsed.priority).toBe(1);
         expect(parsed.inverted).toBe(false);
+        expect(parsed.reason).toBeNull();
     });
 
-    it('parses null conditions and a set reason', () => {
+    it('parses null conditions and an inverted rule', () => {
         const parsed = PolicySchema.parse({
             ...policy,
             conditions: null,
             inverted: true,
-            reason: 'blocked',
         });
 
         expect(parsed.conditions).toBeNull();
-        expect(parsed.reason).toBe('blocked');
-    });
-
-    it('accepts the INT4 maximum priority', () => {
-        const parsed = PolicySchema.parse({ ...policy, priority: 99 });
-
-        expect(parsed.priority).toBe(99);
     });
 
     it('declares conditions nullable so the OpenAPI shape admits null', () => {
@@ -71,15 +61,10 @@ describe('PolicySchema', () => {
     });
 
     it.each([
-        { priority: undefined },
-        { priority: 1.5 },
-        { priority: 2147483648 },
         { inverted: undefined },
         { conditions: undefined },
         { conditions: [] },
         { conditions: 'x' },
-        { reason: 'r'.repeat(501) },
-        { reason: undefined },
     ])('rejects a row with %o', override => {
         expect(PolicySchema.safeParse({ ...policy, ...override }).success).toBe(
             false

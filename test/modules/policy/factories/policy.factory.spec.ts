@@ -69,7 +69,7 @@ describe('PolicyAbilityFactory', () => {
             expect(ability.can(EnumPolicyAction.read, 'User')).toBe(false);
         });
 
-        it('lets a later inverted rule deny an earlier allow', () => {
+        it('lets an inverted rule deny an allow regardless of input order', () => {
             const ability = factory.build([
                 buildRule(),
                 buildRule({ inverted: true }),
@@ -78,13 +78,13 @@ describe('PolicyAbilityFactory', () => {
             expect(ability.can(EnumPolicyAction.read, 'User')).toBe(false);
         });
 
-        it('lets a later allow win over an earlier inverted rule', () => {
+        it('keeps an inverted rule authoritative regardless of input order', () => {
             const ability = factory.build([
                 buildRule({ inverted: true }),
                 buildRule(),
             ]);
 
-            expect(ability.can(EnumPolicyAction.read, 'User')).toBe(true);
+            expect(ability.can(EnumPolicyAction.read, 'User')).toBe(false);
         });
 
         it('matches an object against the rule conditions', () => {
@@ -143,6 +143,17 @@ describe('PolicyAbilityFactory', () => {
             ).toBe(true);
         });
 
+        it('keeps the rules it was given untouched', () => {
+            const rules = [buildRule({ conditions: { id: 'x' } })];
+            const snapshot = structuredClone(rules);
+
+            const ability = factory.build(rules);
+
+            expect(rules).toEqual(snapshot);
+            expect(ability.rules).toHaveLength(1);
+            expect(ability.rules).not.toBe(rules);
+        });
+
         it('carries the reason of an inverted rule', () => {
             const ability = factory.build([
                 buildRule({ inverted: true, reason: 'blocked' }),
@@ -159,17 +170,6 @@ describe('PolicyAbilityFactory', () => {
             expect(
                 ability.relevantRuleFor(EnumPolicyAction.read, 'User')?.reason
             ).toBeUndefined();
-        });
-
-        it('keeps the rules it was given untouched', () => {
-            const rules = [buildRule({ conditions: { id: 'x' } })];
-            const snapshot = structuredClone(rules);
-
-            const ability = factory.build(rules);
-
-            expect(rules).toEqual(snapshot);
-            expect(ability.rules).toHaveLength(1);
-            expect(ability.rules).not.toBe(rules);
         });
 
         it('expands a rule with several actions into one check per action', () => {

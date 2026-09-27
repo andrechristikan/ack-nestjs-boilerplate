@@ -64,7 +64,6 @@ model Policy {
   conditions Json?
   inverted   Boolean @default(false)
   reason     String?
-  priority   Int
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
@@ -73,8 +72,7 @@ model Policy {
 
   role Role @relation("RolePolicy", fields: [roleId], references: [id], onDelete: Cascade)
 
-  @@unique(fields: [roleId, priority])
-  @@index(fields: [roleId, subject, priority])
+  @@index(fields: [roleId, subject])
   @@map("policies")
 }
 

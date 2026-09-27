@@ -42,7 +42,6 @@ describe('UserGuard', () => {
         conditions: null,
         inverted: false,
         reason: null,
-        priority: 1,
         createdAt: now,
         createdBy: null,
         updatedAt: now,

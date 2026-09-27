@@ -385,7 +385,7 @@ The route prefix decides the strategy, not the endpoint:
 | `/admin/**` | offset |
 | `/user`, `/shared`, `/system`, `/public` | cursor |
 
-There is no per-endpoint exception list. The policy lists (`/admin/role/:roleId/policy/list` and `/system/role/:roleId/policy/list`) return the whole set under `@Response`, so they take no pagination at all.
+`GET /shared/role/list` is offset: it returns `count`, `page`, and `totalPage`, and takes `page`, `perPage`, `search`, and `orderBy` (`createdAt`, `name`). The policy lists (`/admin/role/:roleId/policy/list` and `/system/role/:roleId/policy/list`) return the whole set under `@Response`, so they take no pagination at all.
 
 Two consequences a client has to plan around:
 

@@ -1,5 +1,4 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { RequestLanguageStoreKey } from '@common/request/constants/request.constant';
 import {
     PolicyAbilityStoreKey,
@@ -19,7 +18,6 @@ import {
 } from '@modules/workspace/constants/workspace.constant';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import { PolicyImmutableException } from '@modules/policy/exceptions/policy.immutable.exception';
-import { PolicyExistException } from '@modules/policy/exceptions/policy.exist.exception';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
 import { PolicyRuleInvalidException } from '@modules/policy/exceptions/policy.rule-invalid.exception';
@@ -70,7 +68,6 @@ export class PolicyDomain {
         private readonly policyRepository: PolicyRepository,
         private readonly roleDomain: RoleDomain,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -143,18 +140,6 @@ export class PolicyDomain {
         // TODO: Validate condition keys and operators when policy authors are no longer trusted.
     }
 
-    private rethrowWriteError(error: unknown): never {
-        const isPriorityCollision = this.databaseUtil.isUniqueCollision(
-            error,
-            'priority'
-        );
-        if (isPriorityCollision) {
-            throw new PolicyExistException();
-        }
-
-        throw error;
-    }
-
     private toAbilityRule(
         policy: Policy,
         placeholders: IPolicyPlaceholderContext
@@ -186,9 +171,9 @@ export class PolicyDomain {
 
     /**
      * Builds the ability the current request is judged by and stores it. Platform rules come
-     * first, workspace rules second and project rules third, each in ascending `priority`; a
-     * later rule takes precedence over an earlier one. A rule whose placeholder has no value in
-     * the context is dropped when it allows and kept as an unconditional deny when inverted.
+     * first, workspace rules second and project rules third. Inverted rules are authoritative
+     * when their conditions match. A rule whose placeholder has no value in the context is
+     * dropped when it allows and kept as an unconditional deny when inverted.
      */
     buildForRequest(context: IPolicyRequestContext): IPolicyAbility {
         const policies = [
@@ -305,27 +290,13 @@ export class PolicyDomain {
             inverted: dto.inverted ?? false,
         });
 
-        const exist = await this.policyRepository.existsByRoleIdAndPriority(
-            roleId,
-            dto.priority,
-            null
-        );
-        if (exist) {
-            throw new PolicyExistException();
-        }
-
         const events = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.adminPolicyCreate,
             }),
         ];
 
-        let created: Policy;
-        try {
-            created = await this.policyRepository.create(roleId, dto);
-        } catch (error: unknown) {
-            this.rethrowWriteError(error);
-        }
+        const created = await this.policyRepository.create(roleId, dto);
 
         this.activityLogDomain.stagePrepared(events);
 
@@ -354,27 +325,13 @@ export class PolicyDomain {
             inverted: dto.inverted ?? false,
         });
 
-        const exist = await this.policyRepository.existsByRoleIdAndPriority(
-            roleId,
-            dto.priority,
-            id
-        );
-        if (exist) {
-            throw new PolicyExistException();
-        }
-
         const events = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.adminPolicyUpdate,
             }),
         ];
 
-        let updated: Policy;
-        try {
-            updated = await this.policyRepository.update(id, dto);
-        } catch (error: unknown) {
-            this.rethrowWriteError(error);
-        }
+        const updated = await this.policyRepository.update(id, dto);
 
         this.activityLogDomain.stagePrepared(events);
 

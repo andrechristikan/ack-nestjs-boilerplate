@@ -7,12 +7,15 @@ import type {
 } from '@modules/policy/interfaces/policy.interface';
 import { Injectable } from '@nestjs/common';
 
-/** Builds the typed Prisma CASL ability from ordered policy rules. */
+/** Builds the typed Prisma CASL ability from policy rules. */
 @Injectable()
 export class PolicyAbilityFactory {
-    /** Later rules take precedence over earlier ones, and an inverted rule becomes a `cannot` carrying its reason. */
+    /** Inverted rules are added after allows so a matching deny is authoritative. */
     build(rules: IPolicyAbilityRule[]): IPolicyAbility {
-        const rawRules = rules.map(rule => ({
+        const rawRules = [
+            ...rules.filter(rule => !rule.inverted),
+            ...rules.filter(rule => rule.inverted),
+        ].map(rule => ({
             action: rule.action,
             subject: rule.subject,
             conditions: rule.conditions ?? undefined,

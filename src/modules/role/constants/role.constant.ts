@@ -12,9 +12,9 @@ export const RoleSelect = {
 } as const;
 
 /**
- * Prisma include loading a role's policies in ascending `priority`, the order CASL evaluates them in.
+ * Prisma include loading a role's policies.
  * @public
  */
 export const RolePoliciesInclude = {
-    policies: { orderBy: { priority: Prisma.SortOrder.asc } },
+    policies: true,
 } as const satisfies Prisma.RoleInclude;

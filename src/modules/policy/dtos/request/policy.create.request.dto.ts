@@ -2,14 +2,12 @@ import { z } from 'zod';
 import { PolicySchema } from '@modules/policy/dtos/policy.dto';
 
 /**
- * Request shape naming one ordered rule: subject, actions and priority, with optional
- * conditions, inversion and reason.
+ * Request shape naming one rule: subject, actions and optional conditions and inversion.
  * @public
  */
 export const PolicyCreateRequestSchema = PolicySchema.pick({
     subject: true,
     action: true,
-    priority: true,
     inverted: true,
 })
     .partial({ inverted: true })
@@ -27,7 +25,7 @@ export const PolicyCreateRequestSchema = PolicySchema.pick({
     .strict();
 
 /**
- * Body granting one ordered rule to a role.
+ * Body granting one rule to a role.
  * @public
  */
 export type PolicyCreateRequestDto = z.infer<typeof PolicyCreateRequestSchema>;

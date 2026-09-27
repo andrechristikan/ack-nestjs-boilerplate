@@ -92,17 +92,17 @@ change is part of this work because full CASL rules cannot be represented by the
 
 The subject-level model above lands as concrete changes to the files under
 `src/modules/policy/`. Nothing moves out of the module; the factory, guard, decorator, and
-domain keep their current names and responsibilities, but each grows the behavior the ordered
-rule contract requires.
+domain keep their current names and responsibilities, but each supports the simple v1 rule
+contract.
 
 | File | Today | Target state |
 | --- | --- | --- |
-| `factories/policy.factory.ts` | `PolicyAbilityFactory.createForUser()` builds an `AbilityBuilder<IPolicyAbilityRule>` from flat `Policy[]` rows with one `can(action, subject)` call per row — no conditions, no ordering. | Iterates rows in ascending `priority`, calling `can(action, subject, conditions)` or `cannot(...)` per `inverted`, and maps each row's subject through `abilitySubjectOf` — the registry's Prisma model, or the virtual subject's own name — before adding the rule. |
+| `factories/policy.factory.ts` | `PolicyAbilityFactory.createForUser()` builds an `AbilityBuilder<IPolicyAbilityRule>` from flat `Policy[]` rows with one `can(action, subject)` call per row — no conditions. | Adds each rule's `conditions`, `inverted` flag, and optional `reason`, mapping its subject through `abilitySubjectOf` — the registry's Prisma model, or the virtual subject's own name. Inverted rules are added after allows so a matching deny is authoritative. |
 | `guards/policy.guard.ts` | `canActivate` reads `PolicyRequiredMetaKey` metadata plus CLS-stored `user`/`policies`, and delegates to `PolicyDomain.validatePolicyGuard`, which short-circuits `true` for `superAdmin`. | `canActivate` reads the same metadata, keeps an explicit user check as defense-in-depth, and calls `PolicyDomain.assertCan` once per required `(subject, action)` pair. The `superAdmin` short-circuit is removed — `superAdmin` gets a persisted `manage`/`all` rule and evaluates through the same ability as every other role (see [Ability Lifecycle](#ability-lifecycle)). |
-| `decorators/policy.decorator.ts` | `@PolicyProtected(...requiredPolicies: PolicyRequestDto[])` applies `UseGuards(PolicyGuard)` + `SetMetadata(PolicyRequiredMetaKey, requiredPolicies)`. | Unchanged at the call site — `PolicyRequestDto` keeps its `{ subject, action }` shape. Only what the guard does with that metadata changes; no controller decorator usage needs to be rewritten. |
+| `decorators/policy.decorator.ts` | `@PolicyProtected(...requiredPolicies: PolicyRequestDto[])` applies `UseGuards(PolicyGuard)` + `SetMetadata(PolicyRequiredMetaKey, requiredPolicies)`. | Unchanged at the call site — policy metadata still names only `{ subject, action }`. |
 | `domains/policy.domain.ts` | `PolicyDomain` is admin CRUD orchestration (create/update/delete a role's policy rows) plus `validatePolicyGuard`. | Gains the ability-lifecycle surface — `buildForRequest`, `getCurrentAbility`, `can`, `assertCan`, `toWhere` (see [Ability Lifecycle](#ability-lifecycle)) — used by guards and by feature domains directly. `validatePolicyGuard` is replaced by `assertCan`. |
 | `interfaces/policy.interface.ts` | `IPolicyAbilityRule = MongoAbility<[EnumPolicyAction, IPolicyAbilitySubject]>`; `IPolicyAbilitySubject` is the flat `EnumPolicySubject`. | Adds `IPolicyAbility` (the request-scoped `PrismaAbility` alias used by `PolicyDomain`), `IPolicySubjectInput` (an enum subject or a loaded record paired with its registry subject), `IPolicyScopePair` (the condition key and placeholder tying a rule to its boundary), and `IPolicyRuleSubject` (a Prisma model name or the `all`/`analytic` virtuals) alongside the existing rule type. |
-| `interfaces/policy.repository.interface.ts`, `repositories/policy.repository.ts` | Read/write `Policy` rows keyed by `(roleId, subject)`; `action` is a typed `EnumPolicyAction[]` column. | Read/write the same rows ordered by `priority`, keyed by `(roleId, priority)`; `action` stays a typed `EnumPolicyAction[]` column, and the repository also persists `conditions`, `inverted`, `reason`, and `priority` (see [Stored Rule Contract](#stored-rule-contract)). |
+| `interfaces/policy.repository.interface.ts`, `repositories/policy.repository.ts` | Read/write `Policy` rows keyed by `(roleId, subject)`; `action` is a typed `EnumPolicyAction[]` column. | Read/write policy rows with typed `action`, optional `conditions`, `inverted`, and explanatory `reason`; no priority metadata is stored. |
 | — (new) `PolicySubjectRegistry`, `policy.condition.util.ts` | Do not exist. | New files inside `src/modules/policy/` — the registry maps each `EnumPolicySubject` to its Prisma model, valid action list, and scope pair ([Subjects](#subjects)); `policy.condition.util.ts` holds placeholder resolution and scope helpers: `resolvePlaceholders`, `scopePairOf`, `scopedCondition`, and `hasScopePair` ([PostgreSQL and Prisma Conditions](#postgresql-and-prisma-conditions)). |
 
 What does **not** change: `controllers/policy.admin.controller.ts` and
@@ -142,11 +142,11 @@ the key does not grant permission by itself.
 
 The existing `Role` model becomes the common policy parent for `platform`, `workspace`, and
 `project` scopes. Sharing the model is appropriate because every role is the same concept: a
-named, assignable collection of ordered CASL rules. Reusing the current platform-only shape
+named, assignable collection of CASL rules. Reusing the current platform-only shape
 without an explicit scope is not appropriate. Workspace roles are assignable only to workspace
 members, project roles are assignable only to project members, and platform roles are assignable
-only to users. `Policy` continues to point to `Role`, so all scopes use the same rule validation,
-ordering, and evaluation path.
+only to users. `Policy` continues to point to `Role`, so all scopes use the same rule validation
+and evaluation path.
 
 The expected Prisma shape is:
 
@@ -384,8 +384,8 @@ join-request resources use their model's `workspaceId`; project members use
 `Prisma.ProjectMemberScalarFieldEnum.projectId`. The virtual `analytic` subject uses
 `Prisma.WorkspaceMemberScalarFieldEnum.workspaceId` for its workspace boundary because it has no
 Prisma model of its own. This makes a scope-key typo a compile-time error while the stored
-condition remains the same string key. Condition columns are derived from the generated client
-(`Prisma.<Model>ScalarFieldEnum`), so scope keys cannot drift from `schema.prisma`. `all` and
+condition remains the same string key. Scope keys are derived from the generated client
+(`Prisma.<Model>ScalarFieldEnum`), so they cannot drift from `schema.prisma`. `all` and
 `analytic` are virtual subjects (`model: null`); `abilitySubjectOf(subject)`
 resolves an enum subject to its registry model, or to the virtual's own name, when an ability
 rule is built or checked.
@@ -466,10 +466,9 @@ The placeholder allow-list `resolvePlaceholders` accepts is:
 
 ## Stored Rule Contract
 
-One policy row represents one ordered CASL rule. A rule has one subject and one or more
-actions. A subject array is expanded into multiple rule rows by the policy domain before
-persistence; it is not stored in a scalar database column. This keeps queries, indexes, and
-rule ordering unambiguous.
+One policy row represents one CASL rule. A rule has one subject, one or more actions, optional
+conditions, an optional inversion, and optional explanatory reason metadata. The v1 contract
+deliberately has no priority or field-level permission metadata.
 
 ```ts
 interface IPolicyRuleStorage {
@@ -478,35 +477,26 @@ interface IPolicyRuleStorage {
     conditions: Prisma.JsonValue | null;
     inverted: boolean;
     reason: string | null;
-    priority: number;
 }
 ```
 
 `action` is `EnumPolicyAction[]` — the single action vocabulary from [Actions](#actions) means
 the column stays a typed Prisma enum array; no `String[]` migration is needed. The policy domain
-validates both the (subject, action) pair against `PolicySubjectRegistry` and the `conditions`
-shape against the subject's model before persistence — an invalid pair is rejected outright, not
-merely inert.
+validates the (subject, action) pair against `PolicySubjectRegistry` before persistence. Conditions
+are trusted JSON in v1 and are passed through to CASL after placeholder resolution.
 
 The Prisma `Policy` model keeps `action EnumPolicyAction[]` and gains `conditions Json?`,
-`inverted Boolean @default(false)`, `reason String?`, and `priority Int`. The unique constraint
-on `(roleId, subject)` is replaced with `@@unique([roleId, priority])` and an index on
-`[roleId, subject, priority]`.
-
-CASL evaluates rules in order. The policy repository reads rules by `priority` ascending, and
-the policy domain assigns a stable priority when creating, moving, or replacing a rule. A role
-can therefore have an allow rule and a later deny rule for the same subject.
+`inverted Boolean @default(false)`, and `reason String?`. The old subject uniqueness is replaced
+with an index on `[roleId, subject]`, allowing multiple rules for the same subject.
 
 Ability composition is deterministic: platform rules are added first, workspace rules second,
-and project rules third; each source is ordered by ascending `priority`. CASL gives the later
-matching rule precedence, so a project rule can narrow a workspace rule and a workspace rule can
-narrow a platform rule. An absent narrower rule does not revoke a broader allow; a narrowing role
-uses an explicit inverted rule.
+and project rules third. Within the composed set, allow rules are added before inverted rules, so
+an inverted rule is authoritative whenever it matches. An absent narrower rule does not revoke a
+broader allow; a narrowing role uses an explicit inverted rule.
 
-The role-policy API exposes a rule request DTO with one subject, action array, optional
-conditions, optional inverted flag, optional reason, and an explicit priority. A bulk
-replace endpoint may accept an array of that DTO to make ordering transactional. The existing
-single-row endpoints retain the same semantics through the new DTO.
+The role-policy API exposes a rule request DTO with one subject, action array, optional conditions,
+optional inverted flag, and optional reason. The existing single-row endpoints retain these
+semantics through the create and update DTOs.
 
 ## PostgreSQL and Prisma Conditions
 
@@ -554,8 +544,7 @@ A `workspaceMember` `update` rule scoped to the active workspace is stored as:
 {
     "subject": "workspaceMember",
     "action": ["update"],
-    "conditions": { "workspaceId": "${workspace.id}" },
-    "priority": 10
+    "conditions": { "workspaceId": "${workspace.id}" }
 }
 ```
 
@@ -919,7 +908,7 @@ Project and project-member listing are gated by workspace and project membership
 role carries a `projectMember` `read` rule.
 
 Role administration uses the existing `role` subject. Platform administrators can read the
-complete preset catalog and update role display metadata and ordered policy rows. Role creation,
+complete preset catalog and update role display metadata and policy rows. Role creation,
 deletion, key changes, and scope changes are not exposed. Workspace owners, workspace admins,
 and project admins cannot administer roles or policies.
 
@@ -961,8 +950,8 @@ The initial policy seed is explicit rather than derived from every enum member.
   role matrix (`projectMember:create` is the §5 exception: `projectId` condition only, no
   member-instance condition).
 
-The seed upsert key changes from `(roleId, subject)` to `(roleId, priority)`. Seed updates
-replace managed rules deterministically and preserve priorities.
+The seed replaces the managed policy rows for the fixed roles and recreates them from the
+declarative rule catalog. There is no priority-based identity or ordering.
 
 ## Delivery Plan
 
@@ -989,17 +978,17 @@ replace managed rules deterministically and preserve priorities.
 
 ### Phase 3: Schema, DTO, and Seed Migration
 
-- Add rule columns, priority constraint/indexes, the new `EnumPolicySubject` values, and
-  generated client updates. `Policy.action` stays `EnumPolicyAction[]`, stored as-is; the policy
-  domain validates the (subject, action) pair against `PolicySubjectRegistry`.
+- Add `conditions` and `inverted`, the new `EnumPolicySubject` values, and generated client
+  updates. `Policy.action` stays `EnumPolicyAction[]`, stored as-is; the policy domain validates
+  the (subject, action) pair against `PolicySubjectRegistry`.
 - Replace the one-subject-per-row DTO and response shape with the rule DTO.
 - Update repository reads, writes, policy routes, seed data, and schema migration.
-- Migrate existing rows to deterministic priorities and seed the super-admin `manage/all` rule.
+- Seed the super-admin `manage/all` rule and the fixed scoped-role rules.
 
 ### Phase 4: Typed Prisma Ability
 
-- Add the subject scope map, condition validator, placeholder resolver, and typed Prisma ability.
-- Build normal and inverted rules in priority order.
+- Add the subject scope map, placeholder resolver, and typed Prisma ability.
+- Build allow rules first and inverted rules second so inverted rules are authoritative.
 - Store and reuse one request-scoped ability.
 - Keep static `@PolicyProtected()` checks working through `PolicyGuard`.
 
@@ -1034,11 +1023,11 @@ replace managed rules deterministically and preserve priorities.
 
 ## Test Matrix
 
-- Rule DTO validation: enum values, priority, Prisma operators, relation paths, placeholders,
-  role-scope validation from the registry, mandatory scope-placeholder presence per scoped
+- Rule DTO validation: enum values and trusted JSON conditions; role-scope validation from the registry,
+  mandatory scope-placeholder presence per scoped
   subject (with the `project:create` waiver and the member-instance-free `projectMember:create`
-  rule), and unsafe object keys.
-- Ability factory: allow, deny, ordered precedence, condition resolution, `manage/all`, and
+  rule).
+- Ability factory: allow, deny-authoritative inversion, condition resolution, `manage/all`, and
   immutable CASL rule arrays.
 - Policy domain: request-scoped reuse, `can`, `assertCan`, object subjects, and Prisma `where`
   generation.
@@ -1052,8 +1041,7 @@ replace managed rules deterministically and preserve priorities.
   leave, member/invite/join-request list, invite claim, join-request create) stay membership- or
   authentication-only, and a plain workspace member can list members, invites, and join
   requests.
-- Seed data: platform, workspace, and project role sets map to valid subjects, scopes, actions,
-  and priorities.
+- Seed data: platform, workspace, and project role sets map to valid subjects, scopes, and actions.
 
 Run unit checks with `pnpm test policy`, `pnpm test role`, `pnpm test workspace`, and
 `pnpm test project`. Run `pnpm typecheck`, `pnpm lint`, and `pnpm spell` after each completed
@@ -1071,7 +1059,7 @@ first — a failure here means an authorization decision can be silently wrong.
 | --- | --- | --- |
 | `PolicyGuard.canActivate` | Required policy absent from ability | Guard rejects the request instead of falling through |
 | `PolicyDomain.assertCan` | Ability denies the action | Throws `PolicyForbiddenException`, does not return `false` silently |
-| `PolicyAbilityFactory.createForUser` | Later inverted rule vs. earlier allow, same subject | Deny-after-allow precedence — rules apply in ascending `priority` order |
+| `PolicyAbilityFactory.createForUser` | Inverted rule vs. allow, same subject, in either input order | Matching inverted rules remain authoritative |
 | `PolicyAbilityFactory.createForUser` | Record from a different workspace against a `workspaceId`-scoped rule | Condition mismatch denies — scoping placeholder actually constrains the ability |
 | `PolicyDomain.buildForRequest` | Platform, workspace, and project rules for one user | Composition order is platform → workspace → project; a narrower rule can override a broader one |
 | `PolicyGuard.canActivate` | `superAdmin` role, no special-cased bypass in code | Evaluates through the seeded `manage`/`all` rule like any other role, not a hardcoded short-circuit |
@@ -1083,7 +1071,7 @@ first — a failure here means an authorization decision can be silently wrong.
 | --- | --- | --- |
 | `PolicyDomain.toWhere` | Subject with an active-scope condition | Produces the exact Prisma `WhereInput` the repository will `AND` into its query |
 | Rule validation (`PolicyDomain` create/update path) | Action not registered for the subject in `PolicySubjectRegistry` | Rejects the action/subject pair instead of persisting it unchecked |
-| Seed upsert (`policy.seed.ts` or equivalent) | Re-running the seed after a rule's `fields`/`conditions` changed | Replaces the row deterministically by `(roleId, priority)`, no duplicate rows |
+| Policy seed (`policy.seed.ts` or equivalent) | Re-running the seed after a rule's conditions changed | Replaces the managed policy set without priority-based identity |
 | Role assignment domain (`User`/`WorkspaceMember`/`ProjectMember` role write) | Assigning a workspace-scoped role to a `ProjectMember.roleId` (wrong scope) | Rejected — scope validation runs before the write, not just at read time |
 | `WorkspaceDomain` ownership transfer / last-owner check | Attempt to remove or demote the sole `owner` after the CASL migration | Last-owner invariant still blocks the operation regardless of the caller's CASL grant |
 | `getEffectivePermissions` | Role with a narrow rule set vs. a role with a broad one, same subject | Returned action list matches exactly what `can()` would allow for each action — no extra, no missing |
@@ -1092,7 +1080,7 @@ first — a failure here means an authorization decision can be silently wrong.
 
 | Method | Description | What it tests |
 | --- | --- | --- |
-| `PolicyRepository` read path | Rows for one role fetched in bulk | Returned ordered by ascending `priority`, not insertion order |
+| `PolicyRepository` read path | Rows for one role fetched in bulk | Returns the role's policy rows without requiring priority ordering |
 | `PolicyDomain.getCurrentAbility` | Called twice within the same request | Returns the same cached ability instance — no rebuild, no duplicate rule fetch |
 | Guard stacking (`WorkspaceGuard`/`ProjectGuard` + `PolicyGuard`) | Cross-workspace project id in the route | Boundary guard rejects before `PolicyGuard` runs — CASL never sees an out-of-boundary record |
 | Membership-only operations (workspace switch, workspace/project leave) | Caller has no matching CASL rule at all | Operation still succeeds — these routes carry no policy metadata by design |
@@ -1111,7 +1099,11 @@ first — a failure here means an authorization decision can be silently wrong.
   metadata, policies, and assignments. It has no `EnumRoleType`, `isSystem`, `isOwner`,
   `workspaceId`, or `projectId` field.
 - The fixed role catalog is seeded once, with unique keys inside each scope.
-- PostgreSQL schema stores ordered CASL rules and permits multiple rules for one role/subject.
+- PostgreSQL schema stores the v1 rule contract: `subject`, `action`, `conditions`, `inverted`,
+  and optional `reason`.
+  Multiple rules are permitted for one role/subject.
+- Policy create/update accepts only the v1 rule contract; priority and field-level
+  permissions are intentionally outside the first version.
 - Conditions are stored as trusted JSON in the Prisma `WhereInput` dialect and are evaluated by
   CASL and Prisma at request time.
 - The subject registry covers workspace, workspace member, workspace invite, workspace join

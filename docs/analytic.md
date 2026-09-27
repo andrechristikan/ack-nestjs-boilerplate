@@ -245,7 +245,7 @@ A signal that the database cannot group and page in one query computes its rows,
 
 Every route declares its payload on `@Response` or `@ResponsePagination`. Schemas live in `src/modules/analytic/dtos/response/`. Handlers return `IResponseReturn<T>` or `IResponsePaginationReturn<T>`; the response interceptors serialize `data` against the declared schema. Flow: [Response](response.md).
 
-Each endpoint carries `@Doc({ summary })` plus `@Response` / `@ResponsePagination`. Query parameters reach OpenAPI from the zod schema on `@Query({ schema })`. Published OpenAPI errors are kit-only; domain exceptions such as `AnalyticInvalidDateRangeException` appear in OpenAPI only when an endpoint opts in with `@DocErrors`. Flow: [Doc](doc.md).
+Each endpoint carries `@Doc({ summary })` plus `@Response` / `@ResponsePagination`. Query parameters reach OpenAPI from the zod schema on `@Query({ schema })`. Published OpenAPI errors are kit-only; domain exceptions such as `AnalyticInvalidDateRangeException` do not appear in OpenAPI. Flow: [Doc](doc.md).
 
 ## Caching and config
 

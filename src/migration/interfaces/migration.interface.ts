@@ -27,7 +27,6 @@ export interface IMigrationPolicyRule {
     conditions: IPolicyConditions | null;
     inverted: boolean;
     reason: string | null;
-    priority: number;
 }
 
 export interface IMigrationPolicyData {

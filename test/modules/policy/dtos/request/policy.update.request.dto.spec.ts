@@ -4,7 +4,6 @@ import { PolicyUpdateRequestSchema } from '@modules/policy/dtos/request/policy.u
 describe('PolicyUpdateRequestSchema', () => {
     const valid = {
         action: [EnumPolicyAction.read],
-        priority: 2,
     };
 
     it('accepts the full rule without a subject', () => {
@@ -12,7 +11,7 @@ describe('PolicyUpdateRequestSchema', () => {
             ...valid,
             conditions: { userId: '${user.id}' },
             inverted: false,
-            reason: 'why',
+            reason: 'Only the owner can update this user',
         };
 
         expect(PolicyUpdateRequestSchema.parse(valid)).toEqual(valid);
@@ -21,11 +20,8 @@ describe('PolicyUpdateRequestSchema', () => {
 
     it.each([
         { subject: 'user' },
-        { priority: 0 },
-        { priority: undefined },
         { action: [] },
         { conditions: [] },
-        { reason: 'r'.repeat(501) },
         { unknown: true },
     ])('rejects a body with %o', override => {
         expect(

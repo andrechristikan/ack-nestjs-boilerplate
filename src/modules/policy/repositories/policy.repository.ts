@@ -13,7 +13,6 @@ export class PolicyRepository implements IPolicyRepository {
     async findManyByRoleId(roleId: string): Promise<Policy[]> {
         return this.databaseService.client.policy.findMany({
             where: { roleId },
-            orderBy: { priority: Prisma.SortOrder.asc },
         });
     }
 
@@ -24,22 +23,6 @@ export class PolicyRepository implements IPolicyRepository {
         return this.databaseService.client.policy.findFirst({
             where: { id, roleId },
         });
-    }
-
-    async existsByRoleIdAndPriority(
-        roleId: string,
-        priority: number,
-        excludeId: string | null
-    ): Promise<boolean> {
-        const count = await this.databaseService.client.policy.count({
-            where: {
-                roleId,
-                priority,
-                ...(excludeId !== null && { id: { not: excludeId } }),
-            },
-        });
-
-        return count > 0;
     }
 
     async existsByRoleIdAndId(roleId: string, id: string): Promise<boolean> {
@@ -58,7 +41,6 @@ export class PolicyRepository implements IPolicyRepository {
             conditions,
             inverted,
             reason,
-            priority,
         }: PolicyCreateRequestDto
     ): Promise<Policy> {
         return this.databaseService.client.policy.create({
@@ -69,20 +51,13 @@ export class PolicyRepository implements IPolicyRepository {
                 conditions: conditions ?? Prisma.DbNull,
                 inverted: inverted ?? false,
                 reason: reason ?? null,
-                priority,
             },
         });
     }
 
     async update(
         id: string,
-        {
-            action,
-            conditions,
-            inverted,
-            reason,
-            priority,
-        }: PolicyUpdateRequestDto
+        { action, conditions, inverted, reason }: PolicyUpdateRequestDto
     ): Promise<Policy> {
         return this.databaseService.client.policy.update({
             where: { id },
@@ -91,7 +66,6 @@ export class PolicyRepository implements IPolicyRepository {
                 conditions: conditions ?? Prisma.DbNull,
                 inverted: inverted ?? false,
                 reason: reason ?? null,
-                priority,
             },
         });
     }
