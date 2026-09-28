@@ -9,41 +9,51 @@ depends on it, so build the correct shape and change every call site.
 
 Sessions start in `acceptEdits` (`permissions.defaultMode` in `.claude/settings.json`): a file
 edit applies without a prompt, and Bash runs under the `allow`, `ask`, and `deny` rules and the
-hooks. `/ack-code` plans first through superpowers. `/plan` and Shift+Tab enter plan mode on
-demand, and its files land in `.superpowers/plans/`. The VS Code and Cursor extensions ignore
-`defaultMode`.
+hooks. `/ack-plan` plans first through superpowers; `/ack-build` builds an approved plan or a
+pin. `/plan` and Shift+Tab enter plan mode on demand, and its files land in
+`.superpowers/plans/`. The VS Code and Cursor extensions ignore `defaultMode`.
 
 ### Skills
 
 Type the name; nothing chains automatically. Each skill ends with a Next line. Do not start
 a skill the owner did not name.
 
-- `/ack-code`: every `src/` and run-surface change, test-first, seeds included.
+- `/ack-plan`: settles a `src/` change in the session: interrogation, explorer, brainstorming,
+  writing-plans, owner approval; ends with a plan path.
+- `/ack-build`: builds an approved plan or a pin test-first through coder and reviewer, seeds
+  and the run surface included; review after every task.
+- `/ack-review`: judges a named scope at a chosen depth through reviewer, four checks, verdict
+  PASS or FAIL; findings come back as pins.
+- `/ack-debug`: pins a symptom with the owner, finds its cause through debugger, and ends
+  with a pin for `/ack-build` or a request for `/ack-plan`.
 - `/ack-spec`: create or repair unit, integration, or e2e tests for code that exists.
 - `/ack-doc`: `docs/*.md`, `README.md`, `SECURITY.md`, `CONTRIBUTING.md`,
   `CODE_OF_CONDUCT.md`, and `.github/**` except `copilot-instructions.md`.
 - `/ack-pr`: GitHub pull requests end to end: description, create, comment, review replies,
   version notes. Merge stays an ask and is never done unasked.
-- `/ack-harness`: `.claude/**`, `AGENTS.md`, `.github/copilot-instructions.md`.
+- `/ack-harness`: `.claude/**`, `AGENTS.md`, `.github/copilot-instructions.md`; `diagnose`
+  reads a session transcript first.
 
 Knowledge skills (`ack-add-module`, `ack-add-status-code`, `ack-add-queue`, `ack-add-seed`,
 `ack-add-notification`) hold procedures, load on demand, and are not user-invocable.
 
 Workflow skills call `superpowers:*` skills as steps. Superpowers, caveman, and
-avoid-ai-writing are plugins installed once per machine; enabling them in
+humanizer are plugins installed once per machine; enabling them in
 `.claude/settings.json` does not install them:
 
 - `claude plugin install superpowers@claude-plugins-official`
 - `claude plugin marketplace add JuliusBrussee/caveman`, then
   `claude plugin install caveman@caveman`
-- `claude plugin marketplace add conorbronsdon/avoid-ai-writing`, then
-  `claude plugin install avoid-ai-writing@conorbronsdon-skills`
+- `claude plugin marketplace add blader/humanizer`, then
+  `claude plugin install humanizer@humanizer`
 
 ### Agents
 
 Skills dispatch the agents in `.claude/agents/`:
 
 - `explorer`: locates code, reads a third-party contract, assesses approaches.
+- `debugger`: reproduces a pinned symptom and finds its root cause with evidence; reports a
+  pin, does not fix.
 - `coder`: implements a named `src/` change test-first, seeds included, and repairs the run
   surface the change makes stale.
 - `tester`: writes or repairs tests under `test/` for code that exists; does not edit `src/`.

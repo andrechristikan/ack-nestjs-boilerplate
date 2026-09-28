@@ -19,6 +19,7 @@
             "Agent(writer)",
             "Agent(tester)",
             "Agent(harness)",
+            "Agent(debugger)",
             "Bash"
         ],
         "ask": [
@@ -122,7 +123,7 @@
     "enabledPlugins": {
         "superpowers@claude-plugins-official": true,
         "caveman@caveman": true,
-        "avoid-ai-writing@conorbronsdon-skills": true
+        "humanizer@humanizer": true
     },
     "hooks": {
         "PreToolUse": [

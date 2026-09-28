@@ -8,7 +8,7 @@ paths:
 
 A spec succeeds when it fails on a behaviour change. Three kinds: unit (one class, collaborators doubled),
 integration (one adapter against a real engine), e2e (one transport path through the running app). This tree
-holds unit specs; integration and e2e need a run surface `ack-code` adds first. Load tests are not this suite.
+holds unit specs; integration and e2e need a run surface `ack-build` adds first. Load tests are not this suite.
 
 ## Where specs live and how the suite runs
 

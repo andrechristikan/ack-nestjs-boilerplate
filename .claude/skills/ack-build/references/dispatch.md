@@ -1,4 +1,4 @@
-# ack-code dispatch templates
+# ack-build dispatch templates
 
 Every dispatch carries these lines verbatim after the template body:
 
@@ -26,13 +26,27 @@ router, app), `dto.md` (dtos, request, response, pagination), `database.md`
 ```
 Agent: explorer
 Mode: locate | contract | assess
-Requirement: <the settled paragraph from step 1>
+Requirement: <the settled paragraph>
 Scope: <modules or paths the requirement names>
 Question: <what the session cannot answer from the code it has read>
 Deliver: a location table (file:line per touch point), the third-party contract quoted
 with its source, two or three approaches with trade-offs and a recommendation, and every
 open question the owner has to settle.
 Rules to read: <paths from the list above>
+```
+
+## Debugger
+
+```
+Agent: debugger
+Symptom: input <..>; observed <..>; expected <..>; surfaces at <route, spec, log line, or job>
+Scope: <modules or paths the symptom touches>
+Decision: <the owner's answer to a previous NEEDS_DECISION, or none>
+Rules to read: <paths from the list above>
+Report: the reproduction command and its decisive line; each hypothesis with the
+  evidence that confirmed or killed it; the root cause at file:line; the pin (files,
+  cause, change); whether the change alters a flow; NEEDS_DECISION with the options
+  when two fixes are equal or three hypotheses failed. Do not fix anything.
 ```
 
 ## Coder
@@ -64,12 +78,14 @@ Report: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED; files changed; the 
 
 ```
 Agent: reviewer
-Depth: rules and boot | end to end through guards, services, repository, processors
-Scope: <files and modules the work changed, from git status --short>
-Requirement: <the settled paragraph, or the plan path>
-Checks: every rule file that binds a changed path, named in the report; boot
-  (`pnpm start:dev` until the routes mount, then stop it) when depth includes boot;
-  `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`; not the full `pnpm test`.
+Depth: task | plan | docs | harness | rules and boot | end to end through guards, services, repository, processors
+Scope: <files and modules from git status --short, a plan path, docs files, or harness files, as the depth needs>
+Requirement: <the task brief, the plan path, or the settled paragraph>
+Checks: at task, rules and boot, and end to end: every rule file that binds a changed
+  path, named in the report; boot (pnpm start:dev until the routes mount, then stop it)
+  when the depth includes it; pnpm typecheck, pnpm lint, pnpm deadcode, pnpm spell. At
+  plan, docs, and harness: only what the depth names in .claude/agents/reviewer.md.
+  Never the full pnpm test.
 Report: only what affects correctness or the stated requirement, each with file:line and
   the rule or requirement it breaks; the rule files read; the surfaces checked and found
   clean. Do not fix anything.
@@ -86,7 +102,7 @@ Change: <what landed, in one paragraph, with the files under src/ that prove it>
 Acceptance: every claim in scope classified ACCURATE, STALE, MISSING, PHANTOM,
   CONTRADICTS, or CONFLICT; the first five repaired in place; CONFLICT reported with the
   evidence for both sides and left unresolved. Final state only. Run
-  avoid-ai-writing in edit mode on every markdown file touched; not on YAML.
+  humanizer in file mode on every markdown file touched; not on YAML.
 Rules to read: .claude/rules/authoring.md
 Report: findings by class, files changed, every CONFLICT with its evidence.
 ```

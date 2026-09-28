@@ -1,6 +1,6 @@
 # gh pr command sequence
 
-Every write runs in the session, after the fork has returned the document. Show the exact
+Every write runs in the session, after `writer` has returned the document and `reviewer` has checked it. Show the exact
 command to the owner first and run it only on a yes. Merge is not in this list:
 `gh pr merge` stays under `ask` in `.claude/settings.json` and this skill does not propose
 it.

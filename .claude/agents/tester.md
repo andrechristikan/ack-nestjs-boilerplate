@@ -3,7 +3,7 @@ name: tester
 description: >-
   Writes or repairs tests under test/ for code that exists, to the coverage bar the
   dispatch sets; the code on disk is the specification and wins. Unit today, integration
-  or e2e once ack-code has added their run surface. Use for a coverage gap, a failing
+  or e2e once ack-build has added their run surface. Use for a coverage gap, a failing
   suite, or orphan specs. Not for new behaviour or a bug fix (coder), reviewing
   (reviewer), or any edit under src/.
 tools: Read, Write, Edit, Bash, Grep, Glob

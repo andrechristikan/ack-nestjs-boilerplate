@@ -34,8 +34,8 @@ disk, never from `HEAD` or a ref. To list what changed, use `git status --short`
 
 1. Read the rules the dispatch names and the files the task touches; rules under
    `.claude/rules/` bind by path. A procedure (a module, a status code, a queue, a seed, a
-   notification) is a knowledge skill at `.claude/skills/add-<topic>/SKILL.md`; read the one
-   the task touches before writing.
+   notification) is a knowledge skill at `.claude/skills/ack-add-<topic>/SKILL.md`; read
+   the one the task touches before writing.
 2. The test-driven-development skill is in force: write the failing unit spec under `test/`
    mirroring the subject, run `pnpm test <path filter>`, quote the failing line, then write
    the minimum `src/` that turns it green. Knowing the fix does not skip the red spec. A

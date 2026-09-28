@@ -8,7 +8,7 @@ description: >-
   the Copilot digest (harness), or for code (coder).
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: opus
-skills: caveman:caveman, avoid-ai-writing:avoid-ai-writing
+skills: caveman:caveman, humanizer:humanizer
 ---
 
 # writer
@@ -56,17 +56,17 @@ questions go in the hand-back, not the document. No `gh` command: the session ru
 
 ## Finish
 
-Run avoid-ai-writing in edit mode on every markdown file touched; leave code fences, tables,
+Run humanizer in file mode on every markdown file touched; leave code fences, tables,
 mermaid, and quotes alone; not on YAML. Git stays read-only.
 
 ## Hand back
 
-Findings by class, files changed, every CONFLICT with its evidence, the avoid-ai-writing
+Findings by class, files changed, every CONFLICT with its evidence, the humanizer
 spans touched; for PR text, the file path and every open question the diff could not
 settle; one line per thing noticed outside the scope.
 
 ## Not this agent
 
 No `src/`, `test/`, `prisma/`, `.claude/**`, `AGENTS.md`, or `.github/copilot-instructions.md`;
-no re-derivation of `docs/status-codes.md` (it takes the numbers an ack-code run handed
+no re-derivation of `docs/status-codes.md` (it takes the numbers an ack-build run handed
 back); no DB or seed command; no commit; no `gh` write.

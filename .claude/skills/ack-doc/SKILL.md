@@ -4,7 +4,8 @@ description: >-
   Checks docs/*.md, README.md, SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, and
   .github/** except copilot-instructions.md against the checkout through writer and
   repairs what is stale, final state only. Use when the owner asks to update or verify the
-  docs. Not for a PR description (ack-pr), src/ (ack-code), or .claude/** (ack-harness).
+  docs. Not for a PR description (ack-pr), src/ (ack-plan, ack-build), or .claude/**
+  (ack-harness).
 disable-model-invocation: true
 context: fork
 agent: general-purpose
@@ -37,7 +38,7 @@ and `.github/**` except `copilot-instructions.md`; name them in the dispatch eit
 | `.github/ISSUE_TEMPLATE/*` | advisory URL, contributing path, docs path |
 | `.github/dependabot.yml` | lockfile ecosystem against `package.json` |
 
-`docs/status-codes.md` is the human catalog; it is updated from the numbers an `/ack-code`
+`docs/status-codes.md` is the human catalog; it is updated from the numbers an `/ack-build`
 run handed back, not re-derived here.
 
 ## 2. Dispatch `writer`
@@ -50,22 +51,38 @@ Acceptance: every claim classified ACCURATE, STALE, MISSING, PHANTOM, CONTRADICT
   CONFLICT; the first five repaired in place against the code on disk; CONFLICT left
   unresolved and reported with the evidence for both sides. Final state only. Indicative
   mood, no em-dash, mermaid for a flow, a stack, or a hand-off; keep the page's section
-  structure. Run avoid-ai-writing in edit mode on every markdown file touched; YAML is
+  structure. Run humanizer in file mode on every markdown file touched; YAML is
   repaired for stale facts only.
 Rules to read: .claude/rules/authoring.md
 Report: findings by class, files changed, every CONFLICT with its evidence, the
-  avoid-ai-writing spans touched.
+  humanizer spans touched.
 ```
 
 Add the working-tree line and the no-questions line from
-`../ack-code/references/dispatch.md`. Git stays read-only.
+`../ack-build/references/dispatch.md`. Git stays read-only.
 
-## 3. Read what comes back
+## 3. Review, through `reviewer`
+
+Dispatch `reviewer` at `Depth: docs` (template `../ack-build/references/dispatch.md`,
+Reviewer). Scope: the files `writer` changed. Requirement: every claim matches the code on
+disk under `.claude/rules/authoring.md` Documentation prose.
+
+Every finding passes `superpowers:receiving-code-review` here: open the code and the doc,
+confirm or reject with a reason. A confirmed STALE or PHANTOM goes back to `writer` in one
+repair dispatch, then one scoped re-review. A CONFLICT is not repaired and joins the
+owner's list. Rejected findings and what stays open are lines in the hand-back.
+
+## 4. Read what comes back
 
 Every CONFLICT goes to the owner as a list with the evidence for both sides. When the
 evidence says the code is wrong (a guard removed by a commit that does not mention it, a
 doc newer than the change, a disagreement about authorization, credentials, or session
-invalidation), that is a suspected defect for `/ack-code`, not a doc edit.
+invalidation), that is a suspected defect for `/ack-plan`, not a doc edit.
+
+## 5. Verify
+
+Invoke `superpowers:verification-before-completion`. The hand-back reports each dispatch
+with what it produced, and each CONFLICT with its evidence, not a claim.
 
 ## Boundaries
 
@@ -75,9 +92,10 @@ seed command. Commits go through `ask`; propose the subject only.
 ## Hand back
 
 Findings by class, files repaired, every CONFLICT unresolved with its evidence, the
-avoid-ai-writing spans touched, and one line per thing noticed outside the scope.
+humanizer spans touched, every reviewer finding and its state (fixed, rejected with the
+reason, open), and one line per thing noticed outside the scope.
 
 ## Next
 
-`/ack-code` for a CONFLICT resolved as the code being wrong. `/ack-pr` once the branch is
+`/ack-plan` for a CONFLICT resolved as the code being wrong. `/ack-pr` once the branch is
 settled.
