@@ -7,7 +7,6 @@ import { PolicySubjectRegistry } from '@modules/policy/constants/policy.constant
 import type {
     IPolicyConditions,
     IPolicyPlaceholderContext,
-    IPolicyResolved,
     IPolicyScopePair,
 } from '@modules/policy/interfaces/policy.interface';
 
@@ -16,44 +15,28 @@ export function isPlainJsonObject(value: unknown): value is IPolicyConditions {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-/** Sentinel returned by the placeholder resolver when a placeholder has no value in the context. */
-export const PolicyConditionUnresolved = Symbol('unresolved');
-
 /** Resolves a stored condition placeholder to a value from the request context, or `null` when the context carries none. */
 const PolicyConditionPlaceholderResolvers: Record<
     string,
-    (context: IPolicyPlaceholderContext) => string | null
+    (context: IPolicyPlaceholderContext) => string | undefined
 > = {
-    '${user.id}': context => context.user?.id ?? null,
-    '${user.roleId}': context => context.user?.roleId ?? null,
-    '${user.role.key}': context => context.user?.role.key ?? null,
-    '${workspace.id}': context => context.workspace?.id ?? null,
-    '${workspaceMember.id}': context => context.workspaceMember?.id ?? null,
-    '${workspaceMember.roleId}': context =>
-        context.workspaceMember?.roleId ?? null,
-    '${workspaceMember.role.key}': context =>
-        context.workspaceMember?.role.key ?? null,
-    '${project.id}': context => context.project?.id ?? null,
-    '${projectMember.id}': context => context.projectMember?.id ?? null,
-    '${projectMember.roleId}': context => context.projectMember?.roleId ?? null,
-    '${projectMember.role.key}': context =>
-        context.projectMember?.role.key ?? null,
-    '${request.language}': context => context.language,
+    '${user.id}': context => context.user?.id,
+    '${workspace.id}': context => context.workspace?.id,
+    '${workspaceMember.id}': context => context.workspaceMember?.id,
+    '${project.id}': context => context.project?.id,
+    '${projectMember.id}': context => context.projectMember?.id,
 };
 
 function resolveNode(
     node: Prisma.JsonValue,
     context: IPolicyPlaceholderContext
-): IPolicyResolved {
+): Prisma.JsonValue | undefined {
     if (typeof node === 'string') {
         if (!Object.hasOwn(PolicyConditionPlaceholderResolvers, node)) {
             return node;
         }
 
-        return (
-            PolicyConditionPlaceholderResolvers[node](context) ??
-            PolicyConditionUnresolved
-        );
+        return PolicyConditionPlaceholderResolvers[node](context);
     }
 
     if (node === null || typeof node !== 'object') {
@@ -64,8 +47,8 @@ function resolveNode(
         const items: Prisma.JsonValue[] = [];
         for (const item of node) {
             const resolved = resolveNode(item, context);
-            if (resolved === PolicyConditionUnresolved) {
-                return PolicyConditionUnresolved;
+            if (resolved === undefined) {
+                return undefined;
             }
 
             items.push(resolved);
@@ -81,8 +64,8 @@ function resolveNode(
         }
 
         const resolved = resolveNode(child, context);
-        if (resolved === PolicyConditionUnresolved) {
-            return PolicyConditionUnresolved;
+        if (resolved === undefined) {
+            return undefined;
         }
 
         entries[key] = resolved;
@@ -135,28 +118,4 @@ export function scopedCondition(
     }
 
     return { [pair.key]: pair.placeholder, ...extra };
-}
-
-/** True when the scope pair sits at the top level of the conditions or inside a top-level `AND` branch. */
-export function hasScopePair(
-    conditions: IPolicyConditions | null,
-    pair: IPolicyScopePair
-): boolean {
-    if (conditions === null) {
-        return false;
-    }
-
-    if (conditions[pair.key] === pair.placeholder) {
-        return true;
-    }
-
-    const branches = conditions.AND;
-    if (!Array.isArray(branches)) {
-        return false;
-    }
-
-    return branches.some(
-        branch =>
-            isPlainJsonObject(branch) && branch[pair.key] === pair.placeholder
-    );
 }

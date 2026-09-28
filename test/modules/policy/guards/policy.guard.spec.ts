@@ -185,6 +185,28 @@ describe('PolicyGuard', () => {
         );
     });
 
+    it('propagates the reason carried by a denying assertCan', () => {
+        reflector.get.mockReturnValue([
+            {
+                subject: EnumPolicySubject.user,
+                action: [EnumPolicyAction.read],
+            },
+        ] satisfies IPolicyRequired[]);
+        policyDomain.assertCan.mockImplementation(() => {
+            throw new PolicyForbiddenException('blocked by rule');
+        });
+
+        try {
+            guard.canActivate(context);
+            throw new Error('expected throw');
+        } catch (error) {
+            expect(error).toBeInstanceOf(PolicyForbiddenException);
+            expect(error).toMatchObject({
+                metadata: { reason: 'blocked by rule' },
+            });
+        }
+    });
+
     it('propagates a denying assertCan without returning true', () => {
         reflector.get.mockReturnValue([
             {

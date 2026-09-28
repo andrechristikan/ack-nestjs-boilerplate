@@ -7,7 +7,6 @@ import type {
     IPolicyScopePair,
 } from '@modules/policy/interfaces/policy.interface';
 import {
-    hasScopePair,
     isPlainJsonObject,
     resolvePlaceholders,
     scopePairOf,
@@ -16,34 +15,18 @@ import {
 
 describe('PolicyConditionUtil', () => {
     const context: IPolicyPlaceholderContext = {
-        user: { id: 'user-1', roleId: 'user-role-1', role: { key: 'admin' } },
+        user: { id: 'user-1' },
         workspace: { id: 'workspace-1' },
-        workspaceMember: {
-            id: 'wm-1',
-            roleId: 'wm-role-1',
-            role: { key: 'owner' },
-        },
+        workspaceMember: { id: 'wm-1' },
         project: { id: 'project-1' },
-        projectMember: {
-            id: 'pm-1',
-            roleId: 'pm-role-1',
-            role: { key: 'viewer' },
-        },
-        language: 'en',
+        projectMember: { id: 'pm-1' },
     };
     const placeholders = [
         '${user.id}',
-        '${user.roleId}',
-        '${user.role.key}',
         '${workspace.id}',
         '${workspaceMember.id}',
-        '${workspaceMember.roleId}',
-        '${workspaceMember.role.key}',
         '${project.id}',
         '${projectMember.id}',
-        '${projectMember.roleId}',
-        '${projectMember.role.key}',
-        '${request.language}',
     ];
     const workspacePair: IPolicyScopePair = {
         key: 'workspaceId',
@@ -68,17 +51,10 @@ describe('PolicyConditionUtil', () => {
     describe('resolvePlaceholders', () => {
         it.each([
             ['${user.id}', 'user-1'],
-            ['${user.roleId}', 'user-role-1'],
-            ['${user.role.key}', 'admin'],
             ['${workspace.id}', 'workspace-1'],
             ['${workspaceMember.id}', 'wm-1'],
-            ['${workspaceMember.roleId}', 'wm-role-1'],
-            ['${workspaceMember.role.key}', 'owner'],
             ['${project.id}', 'project-1'],
             ['${projectMember.id}', 'pm-1'],
-            ['${projectMember.roleId}', 'pm-role-1'],
-            ['${projectMember.role.key}', 'viewer'],
-            ['${request.language}', 'en'],
         ])('replaces %s with %s', (placeholder, expected) => {
             const result = resolvePlaceholders({ field: placeholder }, context);
 
@@ -93,7 +69,6 @@ describe('PolicyConditionUtil', () => {
                         {
                             role: {
                                 is: {
-                                    key: '${user.role.key}',
                                     tags: ['${project.id}', 'plain'],
                                 },
                             },
@@ -108,7 +83,7 @@ describe('PolicyConditionUtil', () => {
                     { workspaceId: 'workspace-1' },
                     {
                         role: {
-                            is: { key: 'admin', tags: ['project-1', 'plain'] },
+                            is: { tags: ['project-1', 'plain'] },
                         },
                     },
                 ],
@@ -183,7 +158,6 @@ describe('PolicyConditionUtil', () => {
             ['user', { ...context, user: null }, '${user.id}'],
             ['workspace', { ...context, workspace: null }, '${workspace.id}'],
             ['project', { ...context, project: null }, '${project.id}'],
-            ['language', { ...context, language: null }, '${request.language}'],
         ])(
             'returns null for the whole rule when the %s context value is missing',
             (_name, missing, placeholder) => {
@@ -205,7 +179,6 @@ describe('PolicyConditionUtil', () => {
                     workspaceMember: null,
                     project: null,
                     projectMember: null,
-                    language: null,
                 };
 
                 expect(
@@ -324,42 +297,6 @@ describe('PolicyConditionUtil', () => {
                     { a: 1 }
                 )
             ).toEqual({ a: 1 });
-        });
-    });
-
-    describe('hasScopePair', () => {
-        it('accepts the pair at the top level', () => {
-            expect(
-                hasScopePair({ workspaceId: '${workspace.id}' }, workspacePair)
-            ).toBe(true);
-        });
-
-        it('accepts the pair inside a top-level AND branch', () => {
-            expect(
-                hasScopePair(
-                    { AND: [{ workspaceId: '${workspace.id}' }, { id: 'x' }] },
-                    workspacePair
-                )
-            ).toBe(true);
-        });
-
-        it('rejects null conditions', () => {
-            expect(hasScopePair(null, workspacePair)).toBe(false);
-        });
-
-        it('rejects a pair nested under OR', () => {
-            expect(
-                hasScopePair(
-                    { OR: [{ workspaceId: '${workspace.id}' }] },
-                    workspacePair
-                )
-            ).toBe(false);
-        });
-
-        it('rejects a pair whose value is not the placeholder', () => {
-            expect(hasScopePair({ workspaceId: 'other' }, workspacePair)).toBe(
-                false
-            );
         });
     });
 });

@@ -3,7 +3,5 @@
  * @public
  */
 export enum EnumPolicyRuleInvalidReason {
-    actionNotAllowed = 'actionNotAllowed',
     roleScopeInvalid = 'roleScopeInvalid',
-    scopeMissing = 'scopeMissing',
 }

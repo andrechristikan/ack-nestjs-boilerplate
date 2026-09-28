@@ -293,7 +293,7 @@ export class WorkspaceUserController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.workspace,
-        action: [EnumPolicyAction.manage],
+        action: [EnumPolicyAction.update],
     })
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -481,7 +481,7 @@ export class WorkspaceUserController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.workspaceInvite,
-        action: [EnumPolicyAction.manage],
+        action: [EnumPolicyAction.create],
     })
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -514,7 +514,7 @@ export class WorkspaceUserController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.workspaceInvite,
-        action: [EnumPolicyAction.manage],
+        action: [EnumPolicyAction.update],
     })
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -546,7 +546,7 @@ export class WorkspaceUserController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.workspaceInvite,
-        action: [EnumPolicyAction.manage],
+        action: [EnumPolicyAction.delete],
     })
     @WorkspaceMemberProtected()
     @WorkspaceProtected()

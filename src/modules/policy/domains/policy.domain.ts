@@ -1,9 +1,7 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { RequestLanguageStoreKey } from '@common/request/constants/request.constant';
 import {
     PolicyAbilityStoreKey,
     PolicyStoreKey,
-    PolicySubjectRegistry,
     ProjectMemberPolicyStoreKey,
     WorkspaceMemberPolicyStoreKey,
     abilitySubjectOf,
@@ -26,17 +24,14 @@ import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import type {
     IPolicyAbility,
     IPolicyAbilityRule,
+    IPolicyAbilitySubject,
     IPolicyConditions,
     IPolicyPlaceholderContext,
     IPolicyRequestContext,
-    IPolicySubjectDefinition,
-    IPolicySubjectInput,
 } from '@modules/policy/interfaces/policy.interface';
 import {
-    hasScopePair,
     isPlainJsonObject,
     resolvePlaceholders,
-    scopePairOf,
 } from '@modules/policy/utils/policy.condition.util';
 import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
@@ -47,7 +42,7 @@ import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum'
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { Injectable } from '@nestjs/common';
-import { subject } from '@casl/ability';
+import { ForbiddenError, subject } from '@casl/ability';
 import {
     EnumActivityLogAction,
     EnumPolicyAction,
@@ -69,7 +64,21 @@ export class PolicyDomain {
         private readonly roleDomain: RoleDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly requestStoreService: RequestStoreService
-    ) {}
+    ) {
+        ForbiddenError.setDefaultMessage(() => '');
+    }
+
+    private toCaslSubject(
+        name: EnumPolicySubject,
+        record?: object
+    ): IPolicyAbilitySubject {
+        const abilitySubject = abilitySubjectOf(name);
+        if (record === undefined) {
+            return abilitySubject;
+        }
+
+        return subject(abilitySubject, record);
+    }
 
     private async validateRoleExists(roleId: string): Promise<IRole> {
         const role = await this.roleDomain.getById(roleId);
@@ -92,48 +101,15 @@ export class PolicyDomain {
         return role;
     }
 
-    private validateRule(
-        role: IRole,
-        rule: {
-            subject: EnumPolicySubject;
-            action: EnumPolicyAction[];
-            conditions: IPolicyConditions | null;
-            inverted: boolean;
-        }
-    ): void {
-        const definition: IPolicySubjectDefinition =
-            PolicySubjectRegistry[rule.subject];
-
+    private validateRule(rule: {
+        subject: EnumPolicySubject;
+        action: EnumPolicyAction[];
+        conditions: IPolicyConditions | null;
+        inverted: boolean;
+    }): void {
         if (rule.subject === EnumPolicySubject.all) {
             throw new PolicyRuleInvalidException(
                 EnumPolicyRuleInvalidReason.roleScopeInvalid
-            );
-        }
-
-        const isActionRegistered = rule.action.every(action =>
-            definition.actions.includes(action)
-        );
-        if (!isActionRegistered) {
-            throw new PolicyRuleInvalidException(
-                EnumPolicyRuleInvalidReason.actionNotAllowed
-            );
-        }
-
-        const scopePair = scopePairOf(rule.subject, rule.action);
-        const isProjectLevel = scopePair?.placeholder === '${project.id}';
-        if (role.scope === EnumRoleScope.project && !isProjectLevel) {
-            throw new PolicyRuleInvalidException(
-                EnumPolicyRuleInvalidReason.roleScopeInvalid
-            );
-        }
-
-        const requiresScopePair =
-            role.scope !== EnumRoleScope.platform &&
-            !rule.inverted &&
-            scopePair !== null;
-        if (requiresScopePair && !hasScopePair(rule.conditions, scopePair)) {
-            throw new PolicyRuleInvalidException(
-                EnumPolicyRuleInvalidReason.scopeMissing
             );
         }
 
@@ -145,23 +121,17 @@ export class PolicyDomain {
         placeholders: IPolicyPlaceholderContext
     ): IPolicyAbilityRule | null {
         const { conditions } = policy;
+        const resolved =
+            conditions === null || !isPlainJsonObject(conditions)
+                ? null
+                : resolvePlaceholders(conditions, placeholders);
 
-        let resolved: IPolicyConditions | null = null;
-        let isResolvable = true;
-        if (conditions !== null) {
-            const isConditionsObject = isPlainJsonObject(conditions);
-            if (isConditionsObject) {
-                resolved = resolvePlaceholders(conditions, placeholders);
-            }
-            isResolvable = resolved !== null;
-        }
-
-        if (!isResolvable && !policy.inverted) {
+        if (conditions !== null && resolved === null && !policy.inverted) {
             return null;
         }
 
         return {
-            subject: abilitySubjectOf(policy.subject),
+            subject: policy.subject,
             action: policy.action,
             conditions: resolved,
             inverted: policy.inverted,
@@ -218,9 +188,6 @@ export class PolicyDomain {
         const projectMember = this.requestStoreService.get<
             NonNullable<IPolicyPlaceholderContext['projectMember']>
         >(ProjectMemberStoreKey);
-        const language = this.requestStoreService.get<string>(
-            RequestLanguageStoreKey
-        );
         const platform = this.requestStoreService.get<Policy[]>(PolicyStoreKey);
         const workspacePolicies = this.requestStoreService.get<Policy[]>(
             WorkspaceMemberPolicyStoreKey
@@ -239,36 +206,46 @@ export class PolicyDomain {
                 workspaceMember,
                 project,
                 projectMember,
-                language,
             },
         });
     }
 
     /**
-     * Whether the current ability allows `action` on the subject, or on the given record. An
-     * action the registry does not enforce for the subject is never allowed.
+     * Whether the current ability allows `action` on the subject, or on the given record.
      */
-    can(action: EnumPolicyAction, input: IPolicySubjectInput): boolean {
-        const subjectName = typeof input === 'string' ? input : input.subject;
-        const definition: IPolicySubjectDefinition =
-            PolicySubjectRegistry[subjectName];
-        if (!definition.actions.includes(action)) {
-            return false;
-        }
-
-        const abilitySubject = abilitySubjectOf(subjectName);
+    can(
+        action: EnumPolicyAction,
+        subjectName: EnumPolicySubject,
+        record?: object
+    ): boolean {
         const ability = this.getCurrentAbility();
-        if (typeof input === 'string') {
-            return ability.can(action, abilitySubject);
-        }
 
-        return ability.can(action, subject(abilitySubject, input.record));
+        return ability.can(action, this.toCaslSubject(subjectName, record));
     }
 
-    assertCan(action: EnumPolicyAction, input: IPolicySubjectInput): void {
-        const isAllowed = this.can(action, input);
-        if (!isAllowed) {
-            throw new PolicyForbiddenException();
+    /**
+     * Throws `PolicyForbiddenException` when the current ability denies `action` on the
+     * subject, carrying the matched rule's `reason` when one is present.
+     */
+    assertCan(
+        action: EnumPolicyAction,
+        subjectName: EnumPolicySubject,
+        record?: object
+    ): void {
+        const ability = this.getCurrentAbility();
+
+        try {
+            ForbiddenError.from(ability).throwUnlessCan(
+                action,
+                this.toCaslSubject(subjectName, record)
+            );
+        } catch (error) {
+            if (!(error instanceof ForbiddenError)) {
+                throw error;
+            }
+
+            const reason = error.message || undefined;
+            throw new PolicyForbiddenException(reason);
         }
     }
 
@@ -282,8 +259,8 @@ export class PolicyDomain {
         roleId: string,
         dto: PolicyCreateRequestDto
     ): Promise<Policy> {
-        const role = await this.validateRoleWritable(roleId);
-        this.validateRule(role, {
+        await this.validateRoleWritable(roleId);
+        this.validateRule({
             subject: dto.subject,
             action: dto.action,
             conditions: dto.conditions ?? null,
@@ -308,7 +285,7 @@ export class PolicyDomain {
         id: string,
         dto: PolicyUpdateRequestDto
     ): Promise<Policy> {
-        const role = await this.validateRoleWritable(roleId);
+        await this.validateRoleWritable(roleId);
 
         const stored = await this.policyRepository.findOneByRoleIdAndId(
             roleId,
@@ -318,7 +295,7 @@ export class PolicyDomain {
             throw new PolicyNotFoundException();
         }
 
-        this.validateRule(role, {
+        this.validateRule({
             subject: stored.subject,
             action: dto.action,
             conditions: dto.conditions ?? null,

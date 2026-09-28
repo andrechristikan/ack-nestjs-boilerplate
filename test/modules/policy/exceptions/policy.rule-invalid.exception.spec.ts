@@ -6,7 +6,7 @@ import { PolicyRuleInvalidException } from '@modules/policy/exceptions/policy.ru
 describe('PolicyRuleInvalidException', () => {
     it('exposes module, status code, key and http status', () => {
         const exception = new PolicyRuleInvalidException(
-            EnumPolicyRuleInvalidReason.scopeMissing
+            EnumPolicyRuleInvalidReason.roleScopeInvalid
         );
 
         expect(exception.module).toBe('policy');
@@ -17,10 +17,10 @@ describe('PolicyRuleInvalidException', () => {
         expect(exception.httpStatus).toBe(HttpStatus.UNPROCESSABLE_ENTITY);
     });
 
-    it('holds exactly the three rejection reasons', () => {
-        expect(Object.values(EnumPolicyRuleInvalidReason).sort()).toEqual(
-            ['actionNotAllowed', 'roleScopeInvalid', 'scopeMissing'].sort()
-        );
+    it('holds exactly one rejection reason', () => {
+        expect(Object.values(EnumPolicyRuleInvalidReason)).toEqual([
+            'roleScopeInvalid',
+        ]);
     });
 
     it.each(Object.values(EnumPolicyRuleInvalidReason))(

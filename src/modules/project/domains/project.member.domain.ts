@@ -42,8 +42,8 @@ export class ProjectMemberDomain {
         ...roleKeysInvolved: string[]
     ): void {
         const canManageMembers = this.policyDomain.can(
-            EnumPolicyAction.manage,
-            EnumPolicySubject.workspace
+            EnumPolicyAction.update,
+            EnumPolicySubject.projectMember
         );
         if (
             !canManageMembers &&

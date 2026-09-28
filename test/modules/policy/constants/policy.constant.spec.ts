@@ -1,8 +1,4 @@
-import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumPolicySubject, Prisma } from '@generated/prisma-client/client';
 import { PolicySubjectRegistry } from '@modules/policy/constants/policy.constant';
 
 describe('PolicySubjectRegistry', () => {
@@ -20,13 +16,11 @@ describe('PolicySubjectRegistry', () => {
     ];
 
     it.each(subjects)(
-        'defines a complete entry for the %s subject',
+        'defines a model and scope entry for the %s subject, and nothing else',
         subject => {
             const definition = PolicySubjectRegistry[subject];
 
-            expect(definition.actions.length).toBeGreaterThan(0);
-            expect(definition).toHaveProperty('model');
-            expect(definition).toHaveProperty('scope');
+            expect(Object.keys(definition).sort()).toEqual(['model', 'scope']);
         }
     );
 
@@ -52,72 +46,44 @@ describe('PolicySubjectRegistry', () => {
     it.each([
         [
             EnumPolicySubject.workspace,
-            [
-                EnumPolicyAction.read,
-                EnumPolicyAction.update,
-                EnumPolicyAction.delete,
-                EnumPolicyAction.manage,
-            ],
             { key: 'id', placeholder: '${workspace.id}' },
         ],
         [
             EnumPolicySubject.workspaceMember,
-            [EnumPolicyAction.update, EnumPolicyAction.delete],
             { key: 'workspaceId', placeholder: '${workspace.id}' },
         ],
         [
             EnumPolicySubject.workspaceInvite,
-            [EnumPolicyAction.create, EnumPolicyAction.manage],
             { key: 'workspaceId', placeholder: '${workspace.id}' },
         ],
         [
             EnumPolicySubject.workspaceJoinRequest,
-            [EnumPolicyAction.update],
             { key: 'workspaceId', placeholder: '${workspace.id}' },
         ],
         [
             EnumPolicySubject.project,
-            [
-                EnumPolicyAction.read,
-                EnumPolicyAction.create,
-                EnumPolicyAction.update,
-                EnumPolicyAction.delete,
-            ],
             { key: 'id', placeholder: '${project.id}' },
         ],
         [
             EnumPolicySubject.projectMember,
-            [
-                EnumPolicyAction.create,
-                EnumPolicyAction.update,
-                EnumPolicyAction.delete,
-            ],
             { key: 'projectId', placeholder: '${project.id}' },
         ],
-    ])('carries the spec catalog for %s', (subject, actions, scope) => {
+    ])('carries the scope pair for %s', (subject, scope) => {
         const definition = PolicySubjectRegistry[subject];
 
-        expect([...definition.actions]).toEqual(actions);
         expect(definition.scope).toEqual(scope);
     });
 
-    it.each(platformSubjects)(
-        'gives %s the full action enum, no scope and no conditions',
-        subject => {
-            const definition = PolicySubjectRegistry[subject];
+    it.each(platformSubjects)('gives %s no scope', subject => {
+        const definition = PolicySubjectRegistry[subject];
 
-            expect([...definition.actions]).toEqual(
-                Object.values(EnumPolicyAction)
-            );
-            expect(definition.scope).toBeNull();
-        }
-    );
+        expect(definition.scope).toBeNull();
+    });
 
-    it('gives analytic a workspace-scoped, read-only entry', () => {
+    it('gives analytic a workspace-scoped entry with no model', () => {
         const definition = PolicySubjectRegistry[EnumPolicySubject.analytic];
 
         expect(definition.model).toBeNull();
-        expect([...definition.actions]).toEqual([EnumPolicyAction.read]);
         expect(definition.scope).toEqual({
             key: 'workspaceId',
             placeholder: '${workspace.id}',
@@ -142,11 +108,10 @@ describe('PolicySubjectRegistry', () => {
         );
     });
 
-    it('gives all only the manage action', () => {
+    it('gives all no model and no scope', () => {
         const definition = PolicySubjectRegistry[EnumPolicySubject.all];
 
         expect(definition.model).toBeNull();
-        expect([...definition.actions]).toEqual([EnumPolicyAction.manage]);
         expect(definition.scope).toBeNull();
     });
 });

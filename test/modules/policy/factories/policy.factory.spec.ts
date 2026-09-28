@@ -1,5 +1,8 @@
 import { subject } from '@casl/ability';
-import { EnumPolicyAction } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import type { IPolicyAbilityRule } from '@modules/policy/interfaces/policy.interface';
@@ -23,7 +26,7 @@ describe('PolicyAbilityFactory', () => {
     const buildRule = (
         overrides: Partial<IPolicyAbilityRule> = {}
     ): IPolicyAbilityRule => ({
-        subject: 'User',
+        subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read],
         conditions: null,
         inverted: false,
@@ -52,7 +55,7 @@ describe('PolicyAbilityFactory', () => {
         it('lets the all subject cover every subject', () => {
             const ability = factory.build([
                 buildRule({
-                    subject: 'all',
+                    subject: EnumPolicySubject.all,
                     action: [EnumPolicyAction.manage],
                 }),
             ]);
@@ -89,7 +92,10 @@ describe('PolicyAbilityFactory', () => {
 
         it('matches an object against the rule conditions', () => {
             const ability = factory.build([
-                buildRule({ subject: 'Workspace', conditions: { id: 'w1' } }),
+                buildRule({
+                    subject: EnumPolicySubject.workspace,
+                    conditions: { id: 'w1' },
+                }),
             ]);
 
             expect(
@@ -108,9 +114,9 @@ describe('PolicyAbilityFactory', () => {
 
         it('ignores the conditions of an inverted rule on a subject-only check', () => {
             const ability = factory.build([
-                buildRule({ subject: 'Workspace' }),
+                buildRule({ subject: EnumPolicySubject.workspace }),
                 buildRule({
-                    subject: 'Workspace',
+                    subject: EnumPolicySubject.workspace,
                     inverted: true,
                     conditions: { isPublic: true },
                 }),
@@ -121,9 +127,9 @@ describe('PolicyAbilityFactory', () => {
 
         it('denies an object only when it matches an inverted conditional rule', () => {
             const ability = factory.build([
-                buildRule({ subject: 'Workspace' }),
+                buildRule({ subject: EnumPolicySubject.workspace }),
                 buildRule({
-                    subject: 'Workspace',
+                    subject: EnumPolicySubject.workspace,
                     inverted: true,
                     conditions: { isPublic: true },
                 }),
@@ -170,6 +176,51 @@ describe('PolicyAbilityFactory', () => {
             expect(
                 ability.relevantRuleFor(EnumPolicyAction.read, 'User')?.reason
             ).toBeUndefined();
+        });
+
+        it('lets manage on a specific subject grant an action the registry never listed for it', () => {
+            const ability = factory.build([
+                buildRule({
+                    subject: EnumPolicySubject.workspaceMember,
+                    action: [EnumPolicyAction.manage],
+                }),
+            ]);
+
+            expect(
+                ability.can(EnumPolicyAction.create, 'WorkspaceMember')
+            ).toBe(true);
+        });
+
+        it('leaves a manage rule on the all subject as the true wildcard', () => {
+            const ability = factory.build([
+                buildRule({
+                    subject: EnumPolicySubject.all,
+                    action: [EnumPolicyAction.manage],
+                }),
+            ]);
+
+            expect(ability.can(EnumPolicyAction.create, 'Workspace')).toBe(
+                true
+            );
+            expect(ability.can(EnumPolicyAction.delete, 'Role')).toBe(true);
+        });
+
+        it('carries conditions, inversion and reason onto an expanded manage rule', () => {
+            const ability = factory.build([
+                buildRule({
+                    subject: EnumPolicySubject.workspaceMember,
+                    action: [EnumPolicyAction.manage],
+                    inverted: true,
+                    reason: 'blocked',
+                }),
+            ]);
+
+            const rule = ability.relevantRuleFor(
+                EnumPolicyAction.update,
+                'WorkspaceMember'
+            );
+            expect(rule?.inverted).toBe(true);
+            expect(rule?.reason).toBe('blocked');
         });
 
         it('expands a rule with several actions into one check per action', () => {

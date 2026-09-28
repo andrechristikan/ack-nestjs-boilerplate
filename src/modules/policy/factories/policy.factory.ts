@@ -1,4 +1,5 @@
 import { createPrismaAbility } from '@casl/prisma';
+import { abilitySubjectOf } from '@modules/policy/constants/policy.constant';
 import type { EnumPolicyAction } from '@generated/prisma-client/client';
 import type {
     IPolicyAbility,
@@ -17,7 +18,7 @@ export class PolicyAbilityFactory {
             ...rules.filter(rule => rule.inverted),
         ].map(rule => ({
             action: rule.action,
-            subject: rule.subject,
+            subject: abilitySubjectOf(rule.subject),
             conditions: rule.conditions ?? undefined,
             inverted: rule.inverted,
             reason: rule.reason ?? undefined,

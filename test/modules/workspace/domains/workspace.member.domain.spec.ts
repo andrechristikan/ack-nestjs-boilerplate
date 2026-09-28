@@ -234,6 +234,15 @@ describe('WorkspaceMemberDomain', () => {
     });
 
     describe('transferOwnership', () => {
+        it('rejects a non-owner actor before any repository read', async () => {
+            await expect(
+                domain.transferOwnership('workspace-id', admin, member.userId)
+            ).rejects.toBeInstanceOf(WorkspaceMemberPeerForbiddenException);
+            expect(
+                memberRepository.findOneByWorkspaceAndUser
+            ).not.toHaveBeenCalled();
+        });
+
         it('rejects transferring ownership to oneself', async () => {
             await expect(
                 domain.transferOwnership('workspace-id', owner, owner.userId)

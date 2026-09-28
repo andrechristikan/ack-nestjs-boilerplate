@@ -1,17 +1,16 @@
-import type { Ability, ForcedSubject } from '@casl/ability';
-import type { PrismaQueryOf, Subjects } from '@casl/prisma';
+import type { ForcedSubject } from '@casl/ability';
+import type { PrismaAbility } from '@casl/prisma';
 import type {
     EnumPolicyAction,
     EnumPolicySubject,
     Policy,
     Prisma,
     Project,
+    ProjectMember,
     Workspace,
+    WorkspaceMember,
 } from '@generated/prisma-client/client';
-import type { IProjectMemberWithRolePolicies } from '@modules/project/interfaces/project.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import type { IWorkspaceMemberWithRolePolicies } from '@modules/workspace/interfaces/workspace.interface';
-import type { PolicyConditionUnresolved } from '@modules/policy/utils/policy.condition.util';
 
 export type IPolicyConditions = Prisma.JsonObject;
 
@@ -24,7 +23,6 @@ export interface IPolicyScopePair {
 export interface IPolicySubjectDefinition {
     /** Prisma model the subject resolves to; null for the `all` wildcard and the `analytic` virtual. */
     model: Prisma.ModelName | null;
-    actions: readonly EnumPolicyAction[];
     scope: IPolicyScopePair | null;
 }
 
@@ -33,51 +31,26 @@ export interface IPolicyRequired {
     action: EnumPolicyAction[];
 }
 
-type IPolicyRoleHolder<T extends { roleId: string; role: { key: string } }> =
-    Pick<T, 'roleId'> & { role: Pick<T['role'], 'key'> };
-
 export interface IPolicyPlaceholderContext {
-    user: (Pick<IUser, 'id'> & IPolicyRoleHolder<IUser>) | null;
+    user: Pick<IUser, 'id'> | null;
     workspace: Pick<Workspace, 'id'> | null;
-    workspaceMember:
-        | (Pick<IWorkspaceMemberWithRolePolicies, 'id'> &
-              IPolicyRoleHolder<IWorkspaceMemberWithRolePolicies>)
-        | null;
+    workspaceMember: Pick<WorkspaceMember, 'id'> | null;
     project: Pick<Project, 'id'> | null;
-    projectMember:
-        | (Pick<IProjectMemberWithRolePolicies, 'id'> &
-              IPolicyRoleHolder<IProjectMemberWithRolePolicies>)
-        | null;
-    language: string | null;
+    projectMember: Pick<ProjectMember, 'id'> | null;
 }
 
-export type IPolicyAbilityModels = {
-    [K in Prisma.ModelName]: Prisma.TypeMap['model'][K]['payload']['scalars'];
-};
-
 export type IPolicyAbilitySubject =
+    | Prisma.ModelName
     | 'all'
     | 'analytic'
-    | Subjects<IPolicyAbilityModels>
-    | ForcedSubject<IPolicyRuleSubject>;
+    | ForcedSubject<Prisma.ModelName | 'all' | 'analytic'>;
 
-export type IPolicyAbility = Ability<
-    [EnumPolicyAction, IPolicyAbilitySubject],
-    PrismaQueryOf<Prisma.TypeMap>
+export type IPolicyAbility = PrismaAbility<
+    [EnumPolicyAction, IPolicyAbilitySubject]
 >;
 
-export type IPolicySubjectInput =
-    | EnumPolicySubject
-    | {
-          subject: EnumPolicySubject;
-          record: IPolicyAbilityModels[Prisma.ModelName];
-      };
-
-/** The subject a built ability rule targets: a Prisma model, or the `all` and `analytic` virtual subjects. */
-export type IPolicyRuleSubject = Prisma.ModelName | 'all' | 'analytic';
-
 export interface IPolicyAbilityRule {
-    subject: IPolicyRuleSubject;
+    subject: EnumPolicySubject;
     action: EnumPolicyAction[];
     conditions: IPolicyConditions | null;
     inverted: boolean;
@@ -90,7 +63,3 @@ export interface IPolicyRequestContext {
     project: Policy[] | null;
     placeholders: IPolicyPlaceholderContext;
 }
-
-/** A resolved condition node, or the sentinel when a placeholder has no value in the request context. */
-export type IPolicyResolved =
-    Prisma.JsonValue | typeof PolicyConditionUnresolved;

@@ -121,9 +121,13 @@ export class WorkspaceMemberDomain {
 
     async transferOwnership(
         workspaceId: string,
-        actorMember: WorkspaceMember,
+        actorMember: IWorkspaceMemberWithRole,
         targetUserId: string
     ): Promise<void> {
+        if (actorMember.role.key !== EnumRoleWorkspaceKey.owner) {
+            throw new WorkspaceMemberPeerForbiddenException();
+        }
+
         if (targetUserId === actorMember.userId) {
             throw new WorkspaceSelfTransferException();
         }

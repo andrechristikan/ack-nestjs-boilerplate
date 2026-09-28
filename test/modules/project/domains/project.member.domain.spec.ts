@@ -214,7 +214,7 @@ describe('ProjectMemberDomain', () => {
     });
 
     describe('assignMember', () => {
-        it('resolves the role in the project scope, assigns the member and stages activity when the actor holds manage on workspace', async () => {
+        it('resolves the role in the project scope, assigns the member and stages activity when the actor holds update on projectMember', async () => {
             setCanManage(true);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.admin)
@@ -242,8 +242,8 @@ describe('ProjectMemberDomain', () => {
                 EnumRoleScope.project
             );
             expect(policyDomain.can).toHaveBeenCalledWith(
-                EnumPolicyAction.manage,
-                EnumPolicySubject.workspace
+                EnumPolicyAction.update,
+                EnumPolicySubject.projectMember
             );
             expect(projectMemberRepository.create).toHaveBeenCalledWith(
                 project.id,
