@@ -35,11 +35,12 @@ a skill the owner did not name.
   reads a session transcript first.
 
 Knowledge skills (`ack-add-module`, `ack-add-status-code`, `ack-add-queue`, `ack-add-seed`,
-`ack-add-notification`) hold procedures, load on demand, and are not user-invocable.
-
-Workflow skills call `superpowers:*` skills as steps. Superpowers, caveman, and
-humanizer are plugins installed once per machine; enabling them in
-`.claude/settings.json` does not install them:
+`ack-add-notification`) hold procedures, load on demand, and are not user-invocable. Workflow skills
+call `superpowers:*` skills at the step that names them, or through an agent's `skills:` preload, and
+nowhere else; outside a workflow skill (a question, a small edit, a script) the session works without
+them. A skill already in the session's context is not invoked again for a reply, a clarifying question,
+or a later step of the same run; its text is present and applies. Superpowers, caveman, and humanizer
+are plugins installed once per machine; enabling them in `.claude/settings.json` does not install them:
 
 - `claude plugin install superpowers@claude-plugins-official`
 - `claude plugin marketplace add JuliusBrussee/caveman`, then

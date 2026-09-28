@@ -100,7 +100,9 @@ Every finding passes `superpowers:receiving-code-review` here, in this session:
 ## 7. Approve
 
 Present the plan path and its header to the owner with `AskUserQuestion`. Approval means
-the plan is final; a change request loops to step 5.
+the plan is final. A change request revises the plan file here with the writing-plans text
+already in context, keeps the header, then repeats step 6 on the revised plan; the skill is
+not invoked again.
 
 Invoke `superpowers:verification-before-completion`: report every step above with what it
 produced, not a claim that it ran.

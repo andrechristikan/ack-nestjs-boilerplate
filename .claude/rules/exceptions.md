@@ -33,9 +33,11 @@ export class UserNotFoundException extends AppBaseException {
 
 ## Who throws
 
-- The domain throws the typed exception of the subject that failed; never `new Error()`,
-  never a Nest `BadRequestException` / `NotFoundException` from feature code. Another
-  module's exception is correct when that module owns the entity (`cross-module.md`).
+- The domain throws the typed exception of the subject that failed, never `new Error()` or a
+  Nest `BadRequestException` / `NotFoundException`; another module's exception is correct when
+  that module owns the entity (`cross-module.md`). A plain `Error` is correct only where no
+  request or job reaches and no filter maps it: config parsed at construction (the JWT key
+  parse in `AuthJwtDomain`) and a seed command under `src/migration/`.
 - An HTTP service and a processor service throw nothing of their own.
 - A util maps an error to an exception and returns it; the caller throws
   (`const exception = this.util.mapCollision(error); throw exception;`).

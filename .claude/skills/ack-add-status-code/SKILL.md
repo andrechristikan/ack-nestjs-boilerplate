@@ -29,8 +29,8 @@ done
 
 The output lists each owner's low and high member. Owners are feature modules under
 `src/modules/` and the `src/common/` sub-trees with an enum (`src/app`, `aws`, `database`,
-`file`, `helper`, `pagination`, `request`, `response`). The next free hundred is the
-highest block base plus 100.
+`file`, `firebase`, `helper`, `pagination`, `request`, `response`). The next free hundred is
+the highest block base plus 100.
 
 ## 2. Reuse before adding
 

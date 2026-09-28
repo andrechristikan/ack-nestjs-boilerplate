@@ -43,7 +43,7 @@ defaults, only with a list endpoint); a data constant never lives in a class fil
 | enum type; key and string value | `Enum` + PascalCase; camelCase both | `EnumQueue.notificationEmail` |
 | constant of any kind | PascalCase | `UserDefaultAvailableSearch`, `AuthJwtAccessGuardKey` |
 | method, variable, field, injected field | camelCase; injected field is the class name lowercased | `authDomain: AuthDomain` |
-| narrowed list read; Prisma select constant | `I<Module>List`, never `…Row`; `<Module>[<Audience>][<Concern>]Select` | `IUserList`, `UserAdminListSelect` |
+| narrowed list read; Prisma select constant | `I<Module>List` when narrower than the single-row shape, `I<Module>` when list and single-row reads share one neutral select, never `…Row`; `<Module>[<Audience>][<Concern>]Select` | `IUserList` + `UserAdminListSelect`; `IApiKey` + `ApiKeySelect` |
 | boolean state method; transaction method | `exists*` or the state asserted, `Promise<boolean>`; `*InTx` with `tx` first | `existsByEmail`, `createInTx` |
 | DI token (rare); OpenAPI scheme const | PascalCase in `Symbol()`; PascalCase const, camelCase value | `ApiKeyDocSecurityName = 'xApiKey'` |
 
