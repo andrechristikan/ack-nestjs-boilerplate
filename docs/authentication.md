@@ -278,7 +278,7 @@ sequenceDiagram
         API-->>Client: Response
     else Session not found or jti mismatch
         Redis-->>API: Validation failed
-        API-->>Client: 401 Unauthorized (SessionForbiddenException)
+        API-->>Client: 401 Unauthorized (SessionRevokedException)
         Note over API: Token signature valid but session invalid/revoked<br/>or jti does not match (potential token reuse).<br/>AuthJwtAccessTokenInvalidException covers signature/Passport failures.
     end
 ```
@@ -1199,12 +1199,12 @@ User:{userId}:Session:{sessionId}
 Used for session listing and management purposes.
 
 **Fields Stored:**
-- `jti` — JWT ID for session tracking
-- `ipAddress` — Client IP at login time
-- `userAgent` — Parsed user agent (browser, OS, device)
-- `geoLocation` — Geographic location derived from IP (optional): `latitude`, `longitude`, `country`, `region`, `city`
-- `deviceOwnershipId` — Reference to the `DeviceOwnership` record associated with this session (represents the user-device relationship)
-- `expiredAt`, `revokedAt`, `isRevoked`, `revokedById` — Lifecycle and revocation tracking fields
+- `jti`: JWT ID for session tracking
+- `ipAddress`: Client IP at login time
+- `userAgent`: Parsed user agent (browser, OS, device)
+- `geoLocation`: Geographic location derived from IP (optional): `latitude`, `longitude`, `country`, `region`, `city`
+- `deviceOwnershipId`: Reference to the `DeviceOwnership` record associated with this session (represents the user-device relationship)
+- `expiredAt`, `revokedAt`, `isRevoked`, `revokedById`: Lifecycle and revocation tracking fields
 
 **When Updated:**
 - Created during login with initial jti (linked to a DeviceOwnership)
@@ -1352,14 +1352,14 @@ sequenceDiagram
         
         alt Session Not Found
             Redis-->>API: null
-            API-->>Client: 401 Unauthorized (SessionForbiddenException)
+            API-->>Client: 401 Unauthorized (SessionRevokedException)
         else Session Found
             Redis-->>API: {userId, sessionId, jti, expiredAt}
             
             API->>API: Compare token jti with Redis jti
             
             alt jti Mismatch
-                API-->>Client: 401 Unauthorized (SessionForbiddenException)
+                API-->>Client: 401 Unauthorized (SessionRevokedException)
                 Note over API: Potential security breach:<br/>Old token used after refresh
             else jti Match
                 API->>API: All validations passed

@@ -20,6 +20,7 @@ import {
 } from '@common/doc/constants/doc.constant';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import {
+    ResponseFileMediaTypes,
     ResponseMessagePathMetaKey,
     ResponseSchemaMetaKey,
 } from '@common/response/constants/response.constant';
@@ -166,8 +167,9 @@ export function ResponsePagination(
 }
 
 /**
- * Streams a file download via `ResponseFileInterceptor` and documents the non-JSON produces
- * plus export size/data errors. Success HTTP status follows `@HttpCode` or Nest method defaults.
+ * Streams a file download via `ResponseFileInterceptor`, declares the file media type on the
+ * success response only (errors stay `application/json`), and documents the export size/data
+ * errors. Success HTTP status follows `@HttpCode` or Nest method defaults.
  * The handler must return `IResponseFileReturn`.
  * @public
  */
@@ -193,12 +195,19 @@ export function ResponseFile(options?: {
             }
         }
 
+        const extension = options?.extension ?? EnumFileExtensionDocument.csv;
+        const mediaType = ResponseFileMediaTypes[extension];
+
         applyDecorators(
             UseInterceptors(ResponseFileInterceptor),
-            ApiProduces(options?.extension ?? EnumFileExtensionDocument.csv),
             ApiResponse({
                 description: httpStatus.toString(),
                 status: httpStatus,
+                content: {
+                    [mediaType]: {
+                        schema: { type: 'string', format: 'binary' },
+                    },
+                },
             }),
             DocFileErrorResponses.exceedMaxDataExport,
             DocFileErrorResponses.exceedMaxSizeExport

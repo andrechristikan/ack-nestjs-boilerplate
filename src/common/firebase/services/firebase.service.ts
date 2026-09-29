@@ -7,6 +7,7 @@ import type {
     IFirebasePushResult,
 } from '@common/firebase/interfaces/firebase.interface';
 import { FirebaseUtil } from '@common/firebase/utils/firebase.util';
+import { FirebaseChunkSizeInvalidException } from '@common/firebase/exceptions/firebase.chunk-size-invalid.exception';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { Injectable, Logger } from '@nestjs/common';
 import type { OnModuleInit } from '@nestjs/common';
@@ -144,9 +145,7 @@ export class FirebaseService implements OnModuleInit {
         }
 
         if (chunkSize < 1 || chunkSize > FirebaseMaxSendPushBatchSize) {
-            throw new Error(
-                `chunkSize must be between 1 and ${FirebaseMaxSendPushBatchSize}`
-            );
+            throw new FirebaseChunkSizeInvalidException();
         }
 
         const chunkedTokens = this.helperArrayService.chunk(tokens, chunkSize);

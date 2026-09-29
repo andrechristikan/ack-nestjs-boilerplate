@@ -15,6 +15,7 @@ import type { IResponseFileReturn } from '@common/response/interfaces/response.i
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileExceedMaxSizeExportException } from '@common/file/exceptions/file.exceed-max-size-export.exception';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
+import { ResponseFileDataInvalidException } from '@common/response/exceptions/response.file-data-invalid.exception';
 
 /**
  * Streams CSV/PDF return values as a `StreamableFile`, setting download and standard headers.
@@ -49,7 +50,13 @@ export class ResponseFileInterceptor implements NestInterceptor {
         return Buffer.from([]);
     }
 
-    private validateDataResponse(responseData: IResponseFileReturn): void {
+    private validateDataResponse(
+        responseData: IResponseFileReturn | null
+    ): void {
+        if (!responseData) {
+            throw new ResponseFileDataInvalidException();
+        }
+
         if (responseData.extension === EnumFileExtensionDocument.csv) {
             this.validateCsvResponse(responseData);
         } else if (responseData.extension === EnumFileExtensionDocument.pdf) {
@@ -58,22 +65,14 @@ export class ResponseFileInterceptor implements NestInterceptor {
     }
 
     private validateCsvResponse(responseData: IResponseFileReturn): void {
-        if (!responseData) {
-            throw new Error('Response data is null or undefined');
-        }
-
         if (!responseData.data || typeof responseData.data !== 'string') {
-            throw new Error('Field data must be a string');
+            throw new ResponseFileDataInvalidException();
         }
     }
 
     private validatePdfResponse(responseData: IResponseFileReturn): void {
-        if (!responseData) {
-            throw new Error('Response data is null or undefined');
-        }
-
         if (!responseData.data || !(responseData.data instanceof Buffer)) {
-            throw new Error('Field data must be a Buffer');
+            throw new ResponseFileDataInvalidException();
         }
     }
 

@@ -97,6 +97,12 @@ import type { AwsS3PresignPartRequestDto } from '@common/aws/dtos/request/aws.s3
 import type { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 import { FileService } from '@common/file/services/file.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { AwsS3ConfigMissingException } from '@common/aws/exceptions/aws.s3-config-missing.exception';
+import { AwsS3FileRequiredException } from '@common/aws/exceptions/aws.s3-file-required.exception';
+import { AwsS3IterationLimitExceededException } from '@common/aws/exceptions/aws.s3-iteration-limit-exceeded.exception';
+import { AwsS3KeyInvalidException } from '@common/aws/exceptions/aws.s3-key-invalid.exception';
+import { AwsS3MaxPartNumberExceededException } from '@common/aws/exceptions/aws.s3-max-part-number-exceeded.exception';
+import { AwsS3ObjectExistException } from '@common/aws/exceptions/aws.s3-object-exist.exception';
 
 @Injectable()
 export class AwsS3Service implements OnModuleInit {
@@ -203,9 +209,7 @@ export class AwsS3Service implements OnModuleInit {
         const config = this.config.get(access);
 
         if (!config) {
-            throw new Error(
-                `AWS S3 configuration for access level ${access} is missing.`
-            );
+            throw new AwsS3ConfigMissingException();
         }
 
         return config;
@@ -317,7 +321,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const accessibility = options.access;
@@ -360,7 +364,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (path.startsWith('/')) {
-            throw new Error('Path should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const accessibility = options.access;
@@ -429,7 +433,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const accessibility = options.access;
@@ -472,15 +476,15 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (file.key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         if (!file.file) {
-            throw new Error('File is required');
+            throw new AwsS3FileRequiredException();
         }
 
         if (file.key.includes('..') || file.key.includes('//')) {
-            throw new Error('Invalid key: path traversal detected');
+            throw new AwsS3KeyInvalidException();
         }
 
         const accessibility = options.access;
@@ -498,7 +502,7 @@ export class AwsS3Service implements OnModuleInit {
                     HeadObjectCommandOutput
                 >(headCommand);
 
-                throw new Error(`Key ${file.key} is already exist.`);
+                throw new AwsS3ObjectExistException();
             } catch (error: unknown) {
                 if (!(error instanceof NotFound)) {
                     throw error;
@@ -545,7 +549,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const config = this.getConfig(options.access);
@@ -571,7 +575,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (keys.some(e => e.startsWith('/'))) {
-            throw new Error('Keys should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const config = this.getConfig(options.access);
@@ -603,7 +607,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (path.startsWith('/')) {
-            throw new Error('Path should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const config = this.getConfig(options.access);
@@ -614,9 +618,7 @@ export class AwsS3Service implements OnModuleInit {
 
         do {
             if (iterations >= maxIterations) {
-                throw new Error(
-                    `DeleteDir exceeded max iterations (${maxIterations}). Too many objects.`
-                );
+                throw new AwsS3IterationLimitExceededException();
             }
 
             const listCommand: ListObjectsV2Command = new ListObjectsV2Command({
@@ -669,11 +671,9 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (file.key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         } else if (maxPartNumber > AwsS3MaxPartNumber) {
-            throw new Error(
-                `Max part number is greater than ${AwsS3MaxPartNumber}`
-            );
+            throw new AwsS3MaxPartNumberExceededException();
         }
 
         const accessibility = options.access;
@@ -691,7 +691,7 @@ export class AwsS3Service implements OnModuleInit {
                     HeadObjectCommandOutput
                 >(headCommand);
 
-                throw new Error(`Key ${file.key} is already exist.`);
+                throw new AwsS3ObjectExistException();
             } catch (error: unknown) {
                 if (!(error instanceof NotFound)) {
                     throw error;
@@ -860,7 +860,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const config = this.getConfig(options.access);
@@ -916,7 +916,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const config = this.getConfig(options.access);
@@ -933,7 +933,7 @@ export class AwsS3Service implements OnModuleInit {
                     HeadObjectCommandOutput
                 >(headCommand);
 
-                throw new Error(`Key ${key} is already exists.`);
+                throw new AwsS3ObjectExistException();
             } catch (error: unknown) {
                 if (!(error instanceof NotFound)) {
                     throw error;
@@ -981,7 +981,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const config = this.getConfig(options.access);
@@ -1020,7 +1020,7 @@ export class AwsS3Service implements OnModuleInit {
         options: IAwsS3Options
     ): IAwsS3 {
         if (key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const accessibility = options.access;
@@ -1055,11 +1055,11 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (source.key.startsWith('/')) {
-            throw new Error('Source key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         if (destination.startsWith('/')) {
-            throw new Error('Destination should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const configTo = this.getConfig(options.accessTo);
@@ -1112,11 +1112,11 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (sources.some(e => e.key.startsWith('/'))) {
-            throw new Error('Source keys should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         if (destination.startsWith('/')) {
-            throw new Error('Destination should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const promises = [];

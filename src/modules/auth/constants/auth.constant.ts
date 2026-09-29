@@ -63,8 +63,8 @@ export const DocAuthJwtAccessErrorResponses = {
             statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
         },
         {
-            messagePath: 'session.error.forbidden',
-            statusCode: EnumSessionStatusCodeError.forbidden,
+            messagePath: 'session.error.revoked',
+            statusCode: EnumSessionStatusCodeError.revoked,
         }
     ),
 } as const;
@@ -81,8 +81,8 @@ export const DocAuthJwtRefreshErrorResponses = {
             statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
         },
         {
-            messagePath: 'session.error.forbidden',
-            statusCode: EnumSessionStatusCodeError.forbidden,
+            messagePath: 'session.error.revoked',
+            statusCode: EnumSessionStatusCodeError.revoked,
         }
     ),
 } as const;

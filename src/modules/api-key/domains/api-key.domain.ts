@@ -25,8 +25,8 @@ import { ApiKeyXApiKeyNotFoundException } from '@modules/api-key/exceptions/api-
 import { ApiKeyXApiKeyPredefinedNotFoundException } from '@modules/api-key/exceptions/api-key.x-api-key-predefined-not-found.exception';
 import { ApiKeyXApiKeyRequiredException } from '@modules/api-key/exceptions/api-key.x-api-key-required.exception';
 import type {
+    IApiKey,
     IApiKeyCreate,
-    IApiKeyList,
     IApiKeyWithSecret,
 } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
@@ -48,9 +48,9 @@ export class ApiKeyDomain {
     ) {}
 
     private validateApiKey(
-        apiKey?: ApiKey | null,
+        apiKey: IApiKey | null,
         includeActive: boolean = false
-    ): asserts apiKey is ApiKey {
+    ): asserts apiKey is IApiKey {
         if (!apiKey) {
             throw new ApiKeyNotFoundException();
         }
@@ -96,7 +96,7 @@ export class ApiKeyDomain {
         pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePaginationReturn<IApiKeyList>> {
+    ): Promise<IResponsePaginationReturn<IApiKey>> {
         return this.apiKeyRepository.findWithPagination(
             pagination,
             isActive,
@@ -154,7 +154,7 @@ export class ApiKeyDomain {
         return { apiKey: created, secret };
     }
 
-    async updateStatusByAdmin(id: string, isActive: boolean): Promise<ApiKey> {
+    async updateStatusByAdmin(id: string, isActive: boolean): Promise<IApiKey> {
         const today = this.helperDateService.create();
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
@@ -189,7 +189,7 @@ export class ApiKeyDomain {
         return updated;
     }
 
-    async updateByAdmin(id: string, name?: string): Promise<ApiKey> {
+    async updateByAdmin(id: string, name: string): Promise<IApiKey> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
@@ -200,18 +200,13 @@ export class ApiKeyDomain {
                 {
                     id: apiKey.id,
                     type: apiKey.type,
-                    name: name ?? apiKey.name,
+                    name,
                 },
                 updatedAt,
                 true
             ),
         ];
-        let updated: ApiKey;
-        if (name) {
-            updated = await this.apiKeyRepository.updateName(id, name);
-        } else {
-            updated = apiKey;
-        }
+        const updated = await this.apiKeyRepository.updateName(id, name);
         this.activityLogDomain.stagePrepared(events);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
@@ -222,7 +217,7 @@ export class ApiKeyDomain {
         id: string,
         startAt: Date,
         endAt: Date
-    ): Promise<ApiKey> {
+    ): Promise<IApiKey> {
         this.validateStartAtIsFuture(startAt);
 
         const apiKey = await this.apiKeyRepository.findOneById(id);
@@ -279,7 +274,7 @@ export class ApiKeyDomain {
         return { apiKey: updated, secret };
     }
 
-    async deleteByAdmin(id: string): Promise<ApiKey> {
+    async deleteByAdmin(id: string): Promise<IApiKey> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
             throw new ApiKeyNotFoundException();

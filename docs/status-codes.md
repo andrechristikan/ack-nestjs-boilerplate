@@ -36,17 +36,18 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `51100` | `policy` | `51100`–`51103` | 4 |
 | `51200` | `notification` | `51200`–`51203` | 4 |
 | `51300` | `device` | `51300` | 1 |
-| `51400` | `aws` | `51400` | 1 |
+| `51400` | `aws` | `51400`–`51407` | 8 |
 | `51500` | `term-policy` | `51500`–`51508` | 9 |
 | `51600` | `workspace` | `51600`–`51620` | 21 |
 | `51700` | `project` | `51700`–`51707` | 8 |
 | `51800` | `database` | `51800` | 1 |
-| `51900` | `response` | `51900`–`51902` | 3 |
+| `51900` | `response` | `51900`–`51903` | 4 |
 | `52000` | `activity-log` | `52000` | 1 |
 | `52100` | `analytic` | `52100` | 1 |
 | `52200` | `helper` | `52200`–`52202` | 3 |
+| `52300` | `firebase` | `52300` | 1 |
 
-Next free hundred: `52300`. The enum files are the source; this map follows them.
+Next free hundred: `52400`. The enum files are the source; this map follows them.
 
 ## `app`
 
@@ -116,7 +117,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
 | `notFound` | `50400` | `notFound` | 404 (`NOT_FOUND`) | `session.error.notFound` | Sorry, we couldn't find the session. |
-| `forbidden` | `50401` | `forbidden` | 401 (`UNAUTHORIZED`) | `session.error.forbidden` | You cannot revoke your current session. |
+| `revoked` | `50401` | `revoked` | 401 (`UNAUTHORIZED`) | `session.error.revoked` | Your session has expired or been revoked. Please sign in again. |
 
 ## `role`
 
@@ -246,6 +247,15 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
 | `serviceUnavailable` | `51400` | `serviceUnavailable` | 503 (`SERVICE_UNAVAILABLE`) | `aws.error.serviceUnavailable` | The AWS service is currently unavailable. Please try again later. |
+| `s3ConfigMissing` | `51401` | `s3ConfigMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3ConfigMissing` | The storage configuration for this access level is missing. |
+| `s3KeyInvalid` | `51402` | `s3KeyInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3KeyInvalid` | The storage key is invalid. |
+| `s3FileRequired` | `51403` | `s3FileRequired` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3FileRequired` | A file is required for this storage operation. |
+| `s3ObjectExist` | `51404` | `s3ObjectExist` | 409 (`CONFLICT`) | `aws.error.s3ObjectExist` | A file already exists at this location. |
+| `s3MaxPartNumberExceeded` | `51405` | `s3MaxPartNumberExceeded` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3MaxPartNumberExceeded` | The multipart upload exceeds the maximum number of parts. |
+| `s3IterationLimitExceeded` | `51406` | `s3IterationLimitExceeded` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3IterationLimitExceeded` | The storage operation exceeded its iteration limit. |
+| `sesTemplateBodyRequired` | `51407` | `sesTemplateBodyRequired` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.sesTemplateBodyRequired` | An email template needs an HTML or plain-text body. |
+
+`s3KeyInvalid` is the shape guard inside `AwsS3Service`: a key, path, source, or destination that starts with `/`, plus a `..` or `//` in a `putItem` key. A client-supplied key meets `AwsS3ObjectKeyRegex` in the request schema first and answers 422 (`50300`) there. `s3ObjectExist` is raised when an upload or presign targets a key that already holds an object and `forceUpdate` is off.
 
 ## `term-policy`
 
@@ -313,6 +323,9 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `serialization` | `51900` | `serialization` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.serialization` | The server produced a response that does not match the schema it declares. |
 | `paginationShapeInvalid` | `51901` | `paginationShapeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.paginationShapeInvalid` | The server produced a paginated response with an invalid shape. |
 | `paginationTypeInvalid` | `51902` | `paginationTypeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.paginationTypeInvalid` | The server produced a paginated response with an unknown pagination type. |
+| `fileDataInvalid` | `51903` | `fileDataInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.fileDataInvalid` | The server produced a file response with missing or invalid data. |
+
+`ResponseFileDataInvalidException` is raised by `ResponseFileInterceptor` when a `@ResponseFile` handler returns no payload, a CSV `data` that is missing, empty, or not a string, or a PDF `data` that is missing or not a `Buffer`.
 
 ## `activity-log`
 
@@ -336,7 +349,15 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 
 `HelperDecryptFailedException` covers a malformed, tampered, or wrong-key payload; `HelperEncryptionSecretInvalidException` covers a root secret that is not canonical base64url of 48 bytes. `AuthTwoFactorDomain` turns a `decryptFailed` on a stored TOTP secret into `twoFactorSecretUnavailable` (409), and `NotificationEmailProcessor` turns it into a BullMQ `UnrecoverableError`.
 
-`HelperPatternTokenMissingException` carries the offending token in `messageProperties.token`. `HelperStringService.fillPattern` raises it when a `{token}` in the pattern has no entry in the values it was given, which makes a configured pattern and its call site disagree an error rather than a key holding the literal `{token}`.
+`HelperPatternTokenMissingException` carries the offending token in `messageProperties.token`. `HelperStringService.fillPattern` raises it when a `{token}` in the pattern has no entry in the values it was given, so a configured pattern that disagrees with its call site raises an error and no key ever holds the literal `{token}`.
+
+## `firebase`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `chunkSizeInvalid` | `52300` | `chunkSizeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `firebase.error.chunkSizeInvalid` | The push notification batch size is out of range. |
+
+`FirebaseChunkSizeInvalidException` is raised by `FirebaseService.sendMulticast` when the chunk size falls outside 1 to `FirebaseMaxSendPushBatchSize` (500).
 
 ## Related documents
 

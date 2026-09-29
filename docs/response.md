@@ -178,16 +178,16 @@ The page fields (`type`, `cursor` emitted as `nextCursor`, `perPage`, `hasNext`,
 
 File download response decorator that handles CSV and PDF file downloads with proper headers and streaming.
 
-**Parameters:** None
+**Parameters:** optional `{ extension }`, an `EnumFileExtensionDocument` (default `csv`). It sets the media type the OpenAPI success response declares: `text/csv` or `application/pdf` from `ResponseFileMediaTypes`, with a binary string schema. Error responses on the same route stay `application/json`.
 
 **Requirements:**
 - Handler returns `IResponseFileReturn` (`IResponseCsvReturn` | `IResponsePdfReturn`)
 - `extension` is `EnumFileExtensionDocument.csv` or `EnumFileExtensionDocument.pdf`
-- CSV data is a string (already converted)
+- CSV data is a non-empty string (already converted)
 - PDF data is a Buffer
 - Optional `filename` - if not provided, the interceptor fills the `response.filenameExportPattern` config (`export-{timestamp}.{extension}`) through `HelperStringService.fillPattern`, with the request timestamp and the literal `csv`, so the generated fallback is always a `.csv` name. A PDF download carries an explicit `filename`
 
-**Interceptor:** `ResponseFileInterceptor` - validates data based on extension type, converts to Buffer, rejects a buffer larger than `file.maxSizeExportInBytes` (2 MB) with `FileExceedMaxSizeExportException` (422, `50105`), sets content headers (Content-Type, Content-Disposition, Content-Length), returns StreamableFile
+**Interceptor:** `ResponseFileInterceptor` - validates data based on extension type (a missing payload, a CSV `data` that is missing, empty, or not a string, or a PDF `data` that is missing or not a Buffer raises `ResponseFileDataInvalidException`, 500, `51903`), converts to Buffer, rejects a buffer larger than `file.maxSizeExportInBytes` (2 MB) with `FileExceedMaxSizeExportException` (422, `50105`), sets content headers (Content-Type, Content-Disposition, Content-Length), returns StreamableFile
 
 **CSV export:**
 

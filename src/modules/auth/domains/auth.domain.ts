@@ -8,7 +8,7 @@ import type {
     IAuthSocialPayload,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthSocialDomain } from '@modules/auth/domains/auth.social.domain';
-import { SessionForbiddenException } from '@modules/session/exceptions/session.forbidden.exception';
+import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { Injectable } from '@nestjs/common';
 import type { TokenPayload } from 'google-auth-library';
@@ -37,7 +37,7 @@ export class AuthDomain {
 
         const isValidSession = await this.sessionCache.getLogin(sub, sessionId);
         if (!isValidSession || jti !== isValidSession.jti) {
-            throw new SessionForbiddenException();
+            throw new SessionRevokedException();
         }
 
         return payload;
@@ -71,7 +71,7 @@ export class AuthDomain {
 
         const isValidSession = await this.sessionCache.getLogin(sub, sessionId);
         if (!isValidSession || jti !== isValidSession.jti) {
-            throw new SessionForbiddenException();
+            throw new SessionRevokedException();
         }
 
         return payload;

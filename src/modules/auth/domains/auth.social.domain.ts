@@ -4,6 +4,7 @@ import { LoginTicket, OAuth2Client } from 'google-auth-library';
 import type { TokenPayload } from 'google-auth-library';
 import verifyAppleToken from 'verify-apple-id-token';
 import type { VerifyAppleIdTokenResponse } from 'verify-apple-id-token';
+import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
 
 /** Verifies Google and Apple identity tokens. See docs/authentication.md. */
 @Injectable()
@@ -41,14 +42,18 @@ export class AuthSocialDomain {
         const payload = login.getPayload();
 
         if (!payload) {
-            throw new Error('Unable to extract payload from Google token');
+            throw new AuthSocialGoogleInvalidException(
+                'Unable to extract payload from Google token'
+            );
         }
         if (!payload.email) {
-            throw new Error('Google token payload does not contain email');
+            throw new AuthSocialGoogleInvalidException(
+                'Google token payload does not contain email'
+            );
         }
 
         if (!payload.email_verified) {
-            throw new Error(
+            throw new AuthSocialGoogleInvalidException(
                 'Google token payload does not contain email_verified'
             );
         }

@@ -6,13 +6,13 @@ import { EnumSessionStatusCodeError } from '@modules/session/enums/session.statu
  * Raised when a token session is missing or its token id does not match.
  * @public
  */
-export class SessionForbiddenException extends AppBaseException {
+export class SessionRevokedException extends AppBaseException {
     readonly module = 'session';
-    readonly statusCode = EnumSessionStatusCodeError.forbidden;
+    readonly statusCode = EnumSessionStatusCodeError.revoked;
     readonly statusCodeKey = EnumSessionStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNAUTHORIZED;
 
     constructor() {
-        super('session.error.forbidden');
+        super('session.error.revoked');
     }
 }

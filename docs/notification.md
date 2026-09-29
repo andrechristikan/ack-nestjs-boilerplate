@@ -261,7 +261,7 @@ The push processor is configured with a BullMQ rate limiter:
 })
 ```
 
-`FirebaseService.sendMulticast()` also enforces a per-call chunk size of at most `FirebaseMaxSendPushBatchSize` (500) tokens per FCM `sendEachForMulticast` call, with chunks processed via `Promise.allSettled`.
+`FirebaseService.sendMulticast()` also enforces a per-call chunk size of at most `FirebaseMaxSendPushBatchSize` (500) tokens per FCM `sendEachForMulticast` call, with chunks processed via `Promise.allSettled`. A chunk size outside 1 to 500 raises `FirebaseChunkSizeInvalidException` (500, `52300`).
 
 For Firebase configuration and no-op mode (disabled when credentials are missing), see [Third-Party Integration; Firebase][ref-doc-third-party].
 

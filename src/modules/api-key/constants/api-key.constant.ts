@@ -57,10 +57,10 @@ export const DocApiKeyErrorResponses = {
 } as const;
 
 /**
- * Columns an admin api key list read returns; the credential hash is never among them.
+ * Columns an api key read returns toward HTTP; the credential hash is never among them.
  * @public
  */
-export const ApiKeyAdminListSelect = {
+export const ApiKeySelect = {
     id: true,
     type: true,
     name: true,

@@ -274,7 +274,7 @@ Single and multiple file uploads with extension validation.
 The live example is `POST /shared/user/profile/photo/upload` on `UserSharedController`. The controller only dispatches: it calls `UserProfileHttpService.uploadPhotoProfile`, which forwards to the domain `UserProfileDomain`, where the S3 write happens.
 
 ```typescript
-@UserSharedUploadPhotoProfileDoc()
+@Doc({ summary: 'upload photo profile' })
 @Response('user.uploadPhotoProfile')
 @TermPolicyAcceptanceProtected()
 @UserProtected()
@@ -329,6 +329,7 @@ const aws: IAwsS3 | null = await this.awsS3Service.putItem(
 `putItem` behaviour:
 
 - returns `null` when S3 credentials are not configured, and the domain skips the database write in that case
+- raises `AwsS3ObjectExistException` (409, `51404`) when the generated key already holds an object, since this call leaves `forceUpdate` off
 - otherwise the domain prepares `userUpdatePhotoProfile`, stores the S3 reference with one `UserRepository.updatePhotoProfile` update (no transaction), and then stages the event
 
 **Multiple Files Upload:**
@@ -374,7 +375,7 @@ export type UserImportRequestDto = z.infer<typeof UserImportRequestSchema>;
 ```
 
 ```typescript
-@UserAdminImportDoc()
+@Doc({ summary: 'import users via csv file' })
 @Response('user.import')
 @TermPolicyAcceptanceProtected()
 @PolicyProtected({
@@ -553,7 +554,7 @@ async presignGetItem(
 
 ### Parameters
 
-- `key`: the S3 object key. A key that starts with `/` causes the method to throw.
+- `key`: the S3 object key. A key that starts with `/` raises `AwsS3KeyInvalidException` (500, `51402`).
 - `options.access`: `EnumAwsS3Accessibility.public` or `EnumAwsS3Accessibility.private`, required. It selects which configured bucket is signed against, and the compiler refuses a call that leaves it out.
 - `options.expiredInSeconds`: signature lifetime in seconds. When omitted it falls back to `aws.s3.presignExpiredInSeconds`, defined in `aws.config.ts` as `ms('30m') / 1000` and handed to the signer as it stands.
 
@@ -585,7 +586,7 @@ The client uploads directly to S3 with a time-limited PUT URL. The API never see
 
 **Step 1 - Request schemas:**
 
-Both schemas pick `size` off `AwsS3PresignRequestSchema`, where it is `z.number().int()`. The update schema also reuses its `key` field (non-empty, matching `AwsS3ObjectKeyRegex`) with its own description.
+Both schemas pick `size` off `AwsS3PresignRequestSchema`, where it is `z.number().int()`. The update schema also reuses its `key` field (non-empty, matching `AwsS3ObjectKeyRegex`) with its own description. `AwsS3ObjectKeyRegex` admits letters, digits, `.`, `_`, `-`, and `/`, and rejects a leading `/`, an empty segment (`//`), and `..`; a key that fails it answers 422 (`50300`).
 
 ```typescript
 export const UserGeneratePhotoProfileRequestSchema =
@@ -622,7 +623,7 @@ export class UserSharedController {
     // ... the other HTTP services this controller dispatches to
   ) {}
 
-  @UserSharedGeneratePhotoProfilePresignDoc()
+  @Doc({ summary: 'generate upload photo profile presign' })
   @Response('user.generatePhotoProfilePresign', {
     schema: AwsS3PresignResponseSchema,
   })
@@ -644,7 +645,7 @@ export class UserSharedController {
     );
   }
 
-  @UserSharedUpdatePhotoProfileDoc()
+  @Doc({ summary: 'update photo profile' })
   @Response('user.updatePhotoProfile')
   @TermPolicyAcceptanceProtected()
   @UserProtected()
@@ -883,7 +884,7 @@ sequenceDiagram
 The second presign endpoint signs a term policy content upload. `TermPolicyAdminController` is registered by `RouterHttpAdminModule`, so the route is `POST /admin/term-policy/content/presign/generate`.
 
 ```typescript
-@TermPolicyAdminGenerateContentPresignDoc()
+@Doc({ summary: 'Generate presign url for term or policy content upload' })
 @Response('termPolicy.generateContentPresign', {
   schema: AwsS3PresignResponseSchema,
 })

@@ -43,8 +43,7 @@ import {
     EnumRoleType,
 } from '@generated/prisma-client/client';
 
-import type { ApiKey } from '@generated/prisma-client/client';
-import type { IApiKeyList } from '@modules/api-key/interfaces/api-key.interface';
+import type { IApiKey } from '@modules/api-key/interfaces/api-key.interface';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { ApiKeyUpdateStatusRequestSchema } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
@@ -77,7 +76,7 @@ export class ApiKeyAdminController {
     @Get('/list')
     async list(
         @Query({ schema: ApiKeyListRequestSchema }) query: ApiKeyListRequestDto
-    ): Promise<IResponsePaginationReturn<IApiKeyList>> {
+    ): Promise<IResponsePaginationReturn<IApiKey>> {
         return this.apiKeyHttpService.getListByAdmin(query);
     }
 
@@ -143,7 +142,7 @@ export class ApiKeyAdminController {
         body: ApiKeyUpdateRequestDto,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string
-    ): Promise<IResponseReturn<ApiKey>> {
+    ): Promise<IResponseReturn<IApiKey>> {
         return this.apiKeyHttpService.updateByAdmin(apiKeyId, body);
     }
 
@@ -167,7 +166,7 @@ export class ApiKeyAdminController {
         body: ApiKeyUpdateDateRequestDto,
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string
-    ): Promise<IResponseReturn<ApiKey>> {
+    ): Promise<IResponseReturn<IApiKey>> {
         return this.apiKeyHttpService.updateDatesByAdmin(apiKeyId, body);
     }
 
@@ -191,7 +190,7 @@ export class ApiKeyAdminController {
         apiKeyId: string,
         @Body({ schema: ApiKeyUpdateStatusRequestSchema })
         body: ApiKeyUpdateStatusRequestDto
-    ): Promise<IResponseReturn<ApiKey>> {
+    ): Promise<IResponseReturn<IApiKey>> {
         return this.apiKeyHttpService.updateStatusByAdmin(apiKeyId, body);
     }
 
@@ -213,7 +212,7 @@ export class ApiKeyAdminController {
     async delete(
         @Param('apiKeyId', { schema: RequestMongoIdSchema })
         apiKeyId: string
-    ): Promise<IResponseReturn<ApiKey>> {
+    ): Promise<IResponseReturn<IApiKey>> {
         return this.apiKeyHttpService.deleteByAdmin(apiKeyId);
     }
 }

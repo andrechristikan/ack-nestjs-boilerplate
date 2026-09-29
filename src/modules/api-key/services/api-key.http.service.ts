@@ -6,7 +6,6 @@ import type {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
-import type { ApiKey } from '@generated/prisma-client/client';
 import {
     ApiKeyDefaultAvailableOrderBy,
     ApiKeyDefaultAvailableSearch,
@@ -18,7 +17,7 @@ import type { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/a
 import type { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import type { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
 import type { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
-import type { IApiKeyList } from '@modules/api-key/interfaces/api-key.interface';
+import type { IApiKey } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { Injectable } from '@nestjs/common';
@@ -34,7 +33,7 @@ export class ApiKeyHttpService {
 
     async getListByAdmin(
         query: ApiKeyListRequestDto
-    ): Promise<IResponsePaginationReturn<IApiKeyList>> {
+    ): Promise<IResponsePaginationReturn<IApiKey>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ApiKeyWhereInput>(query, {
                 availableSearch: ApiKeyDefaultAvailableSearch,
@@ -82,7 +81,7 @@ export class ApiKeyHttpService {
     async updateStatusByAdmin(
         id: string,
         { isActive }: ApiKeyUpdateStatusRequestDto
-    ): Promise<IResponseReturn<ApiKey>> {
+    ): Promise<IResponseReturn<IApiKey>> {
         const updated = await this.apiKeyDomain.updateStatusByAdmin(
             id,
             isActive
@@ -96,7 +95,7 @@ export class ApiKeyHttpService {
     async updateByAdmin(
         id: string,
         { name }: ApiKeyUpdateRequestDto
-    ): Promise<IResponseReturn<ApiKey>> {
+    ): Promise<IResponseReturn<IApiKey>> {
         const updated = await this.apiKeyDomain.updateByAdmin(id, name);
 
         return {
@@ -107,7 +106,7 @@ export class ApiKeyHttpService {
     async updateDatesByAdmin(
         id: string,
         { startAt, endAt }: ApiKeyUpdateDateRequestDto
-    ): Promise<IResponseReturn<ApiKey>> {
+    ): Promise<IResponseReturn<IApiKey>> {
         const updated = await this.apiKeyDomain.updateDatesByAdmin(
             id,
             startAt,
@@ -128,7 +127,7 @@ export class ApiKeyHttpService {
         return { data: reset };
     }
 
-    async deleteByAdmin(id: string): Promise<IResponseReturn<ApiKey>> {
+    async deleteByAdmin(id: string): Promise<IResponseReturn<IApiKey>> {
         const deleted = await this.apiKeyDomain.deleteByAdmin(id);
 
         return {

@@ -81,6 +81,7 @@ Message files use JSON format with nested structure. Key paths follow the patter
 | `doc.json` | API documentation messages |
 | `featureFlag.json` | Feature flag messages |
 | `file.json` | File upload messages |
+| `firebase.json` | Firebase kit errors (push batch size) |
 | `health.json` | Health check messages |
 | `hello.json` | Hello endpoint messages |
 | `helper.json` | Helper kit errors (encryption) |
@@ -91,7 +92,7 @@ Message files use JSON format with nested structure. Key paths follow the patter
 | `policy.json` | Policy messages |
 | `project.json` | Project messages |
 | `request.json` | Request validation messages |
-| `response.json` | Response serialization error messages |
+| `response.json` | Response kit errors (serialization, pagination shape, file download data) |
 | `role.json` | Role messages |
 | `session.json` | Session messages |
 | `termPolicy.json` | Terms & policy messages |

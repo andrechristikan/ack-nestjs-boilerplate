@@ -4,6 +4,6 @@
     "revokeAll": "All sessions revoked successfully.",
     "error": {
         "notFound": "Sorry, we couldn't find the session.",
-        "forbidden": "You cannot revoke your current session."
+        "revoked": "Your session has expired or been revoked. Please sign in again."
     }
 }

@@ -1,12 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
-import type { IApiKeyCreated } from '@modules/api-key/interfaces/api-key.interface';
+import type {
+    IApiKey,
+    IApiKeyCreated,
+} from '@modules/api-key/interfaces/api-key.interface';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
 @Injectable()
 export class ApiKeyUtil {
-    mapCreate(apiKey: ApiKey, secret: string): IApiKeyCreated {
+    mapCreate(apiKey: IApiKey, secret: string): IApiKeyCreated {
         return {
             ...apiKey,
             secret,
@@ -15,8 +18,8 @@ export class ApiKeyUtil {
 
     isExpired(
         apiKey: {
-            startAt?: Date | null;
-            endAt?: Date | null;
+            startAt: Date | null;
+            endAt: Date | null;
         },
         currentDate: Date
     ): boolean {
@@ -29,8 +32,8 @@ export class ApiKeyUtil {
 
     isNotYetActive(
         apiKey: {
-            startAt?: Date | null;
-            endAt?: Date | null;
+            startAt: Date | null;
+            endAt: Date | null;
         },
         currentDate: Date
     ): boolean {
@@ -50,8 +53,8 @@ export class ApiKeyUtil {
      */
     isValid(
         apiKey: {
-            startAt?: Date | null;
-            endAt?: Date | null;
+            startAt: Date | null;
+            endAt: Date | null;
             isActive: boolean;
         },
         currentDate: Date

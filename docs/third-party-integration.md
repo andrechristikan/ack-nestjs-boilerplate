@@ -133,6 +133,15 @@ AWS service errors use `EnumAwsStatusCodeError` located at `src/common/aws/enums
 | Enum | Code | i18n Key | Description |
 |---|---|---|---|
 | `EnumAwsStatusCodeError.serviceUnavailable` | `51400` | `aws.error.serviceUnavailable` | AWS service is unavailable |
+| `EnumAwsStatusCodeError.s3ConfigMissing` | `51401` | `aws.error.s3ConfigMissing` | No S3 bucket configuration for the requested access level |
+| `EnumAwsStatusCodeError.s3KeyInvalid` | `51402` | `aws.error.s3KeyInvalid` | A key, path, source, or destination starts with `/`, or a `putItem` key contains `..` or `//` |
+| `EnumAwsStatusCodeError.s3FileRequired` | `51403` | `aws.error.s3FileRequired` | `putItem` received no file content |
+| `EnumAwsStatusCodeError.s3ObjectExist` | `51404` | `aws.error.s3ObjectExist` | The target key already holds an object and `forceUpdate` is off (HTTP 409) |
+| `EnumAwsStatusCodeError.s3MaxPartNumberExceeded` | `51405` | `aws.error.s3MaxPartNumberExceeded` | A multipart upload asks for more parts than `AwsS3MaxPartNumber` |
+| `EnumAwsStatusCodeError.s3IterationLimitExceeded` | `51406` | `aws.error.s3IterationLimitExceeded` | `deleteDir` reached its iteration cap before the prefix was empty |
+| `EnumAwsStatusCodeError.sesTemplateBodyRequired` | `51407` | `aws.error.sesTemplateBodyRequired` | An SES template create or update has neither an HTML nor a plain-text body |
+
+Every code except `51400` (503) and `51404` (409) answers HTTP 500.
 
 ## Firebase
 
@@ -154,6 +163,8 @@ FIREBASE_PRIVATE_KEY=<your_firebase_private_key>
 - Invalid token detection and cleanup
 
 Leave `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` empty to disable Firebase in development.
+
+`FirebaseService.sendMulticast` raises `FirebaseChunkSizeInvalidException` (`52300`, `firebase.error.chunkSizeInvalid`, HTTP 500) when the chunk size falls outside 1 to `FirebaseMaxSendPushBatchSize` (500).
 
 For notification details, see [Notification Documentation][ref-doc-notification].
 

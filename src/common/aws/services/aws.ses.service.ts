@@ -34,6 +34,7 @@ import type {
     IAwsSESSendBulk,
     IAwsSESTemplate,
 } from '@common/aws/interfaces/aws.ses.interface';
+import { AwsSesTemplateBodyRequiredException } from '@common/aws/exceptions/aws.ses-template-body-required.exception';
 
 @Injectable()
 export class AwsSESService implements OnModuleInit {
@@ -168,7 +169,7 @@ export class AwsSESService implements OnModuleInit {
         }
 
         if (!htmlBody && !plainTextBody) {
-            throw new Error('body is null');
+            throw new AwsSesTemplateBodyRequiredException();
         }
 
         const command: CreateTemplateCommand = new CreateTemplateCommand({
@@ -204,7 +205,7 @@ export class AwsSESService implements OnModuleInit {
         }
 
         if (!htmlBody && !plainTextBody) {
-            throw new Error('body is null');
+            throw new AwsSesTemplateBodyRequiredException();
         }
 
         const command: UpdateTemplateCommand = new UpdateTemplateCommand({

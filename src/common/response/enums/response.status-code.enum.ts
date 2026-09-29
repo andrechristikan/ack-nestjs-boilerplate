@@ -6,4 +6,5 @@ export enum EnumResponseStatusCodeError {
     serialization = 51900,
     paginationShapeInvalid = 51901,
     paginationTypeInvalid = 51902,
+    fileDataInvalid = 51903,
 }

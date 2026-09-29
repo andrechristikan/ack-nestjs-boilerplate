@@ -94,14 +94,14 @@ export const SessionListSelect = {
 } satisfies Prisma.SessionSelect;
 
 // src/modules/session/interfaces/session.interface.ts
-export type ISessionListRow = Prisma.SessionGetPayload<{
+export type ISessionList = Prisma.SessionGetPayload<{
     select: typeof SessionListSelect;
 }>;
 ```
 
 The `GetPayload` form ties the row type to the constant, so a column added to or removed from the projection moves the type with it. A nested relation takes its own select constant in the same place (`user: { select: UserRefSelect }`), and arrives narrowed the same way.
 
-`User.password`, `Session.jti`, `ApiKey.hash`, `PasswordHistory.password` and `WorkspaceInvite.token` sit outside the `*ListSelect` constant of their module, so a paginated read of those models leaves the credential in the database.
+`User.password`, `Session.jti`, `ApiKey.hash`, `PasswordHistory.password` and `WorkspaceInvite.token` sit outside the select constant their module paginates with (`UserAdminListSelect`, `SessionListSelect`, `ApiKeySelect`, `PasswordHistoryListSelect`, `WorkspaceInviteUserListSelect`), so a paginated read of those models leaves the credential in the database.
 
 **Methods:**
 
@@ -117,8 +117,8 @@ async offset<TReturn, TArgsWhere = unknown>(
 ```
 
 **Type Parameters:**
-- `TReturn` — shape of each item in the returned `data` array
-- `TArgsWhere` — Prisma `where` type for the model (e.g. `Prisma.UserWhereInput`). Defaults to `unknown`
+- `TReturn`: shape of each item in the returned `data` array
+- `TArgsWhere`: Prisma `where` type for the model (e.g. `Prisma.UserWhereInput`). Defaults to `unknown`
 
 **Parameters:**
 - `repository`: Repository instance implementing IPaginationRepository
@@ -179,8 +179,8 @@ async cursor<TReturn, TArgsWhere = unknown>(
 ```
 
 **Type Parameters:**
-- `TReturn` — shape of each item in the returned `data` array
-- `TArgsWhere` — Prisma `where` type for the model (e.g. `Prisma.UserWhereInput`). Defaults to `unknown`
+- `TReturn`: shape of each item in the returned `data` array
+- `TArgsWhere`: Prisma `where` type for the model (e.g. `Prisma.UserWhereInput`). Defaults to `unknown`
 
 **Parameters:**
 - `repository`: Repository instance

@@ -11,7 +11,7 @@ OpenAPI is co-located on the same runtime decorators that own the HTTP contract.
 Controller-facing surface:
 
 - `@Doc` stamps operation metadata, shared headers, and the global kit error responses
-- `@DocErrors` is the public escape hatch for endpoint-specific module-flow errors an endpoint opts into the OpenAPI document
+- `@DocErrors` is the public escape hatch for endpoint-specific flow errors an endpoint opts into the OpenAPI document
 - Success envelopes and response-kind error kits come from `@Response` / `@ResponsePagination` / `@ResponseFile`
 - Auth and guard error kits come from the matching `*Protected` / auth decorators
 - Multipart upload OpenAPI comes from `FileUploadSingle` / `FileUploadMultiple` / `FileUploadMultipleFields`
@@ -103,7 +103,7 @@ async profile(
 
 ### DocErrors
 
-Public escape hatch for endpoint-specific module-flow errors an endpoint opts into the OpenAPI document. Controllers do not call `DocResponseError` directly; they use `@DocErrors`.
+Public escape hatch for endpoint-specific flow errors an endpoint opts into the OpenAPI document, whether the exception lives in a module or in `src/common/`. Controllers do not call `DocResponseError` directly; they use `@DocErrors`.
 
 **Parameters:**
 
@@ -125,7 +125,7 @@ async handler(): Promise<IResponseReturn<SomeResponseDto>> {
 }
 ```
 
-For a module-flow exception that is not already covered by a kit and that the endpoint documents in OpenAPI.
+For a flow exception, from a module or from `src/common/`, that no kit already covers and that the endpoint documents in OpenAPI.
 
 ### DocResponseError
 
@@ -168,7 +168,7 @@ A hand-written schema object beside a zod schema is a mirror. Every field carrie
 |---|---|---|
 | `@Response(messagePath, { schema?, cache? })` | Success envelope; HTTP status and body `statusCode` from `@HttpCode` or Nest method defaults (`POST` → 201, else 200) | `DocSerializationErrorResponses.serialization` |
 | `@ResponsePagination(messagePath, { schema, cache? })` | 200 page envelope with `baseSchema: ResponsePaginationSchema`; item schema is the row | Shared pagination errors plus both offset and cursor kits, plus serialization / pagination-shape / pagination-type failures |
-| `@ResponseFile({ extension? })` | Non-JSON produces for the extension | Export size / data caps from `DocFileErrorResponses` |
+| `@ResponseFile({ extension? })` | Success response under the extension's media type (`text/csv` or `application/pdf`, from `ResponseFileMediaTypes`) with a binary string schema; error responses stay `application/json` | Export size / data caps from `DocFileErrorResponses` |
 | `FileUpload*` | Multipart consumes + binary body | Upload errors from `DocFileErrorResponses` |
 
 `IResponseOptions` carries only `schema` and `cache`. It does not carry `httpStatus` or `statusCode`. Override either status at runtime via `metadata` on the handler return. `@ResponsePagination` does not emit list `ApiQuery`s; those come from the zod query schema.
@@ -200,7 +200,7 @@ One error has one source, from where the exception lives:
 | `src/common/` or `src/app/`, and any request can reach it | `@Doc()` |
 | `src/common/`, behind one runtime primitive | that primitive: pagination kits on `@ResponsePagination`, upload kits on `FileUpload*`, download kits on `@ResponseFile` |
 | a module, raised by a guard or an auth strategy | the matching `*Protected` / auth decorator |
-| a module, raised by a specific endpoint's flow and required in OpenAPI | `@DocErrors` on that handler |
+| a module or `src/common/`, raised by a specific endpoint's flow and required in OpenAPI | `@DocErrors` on that handler |
 
 A module marked `@Global()` changes nothing about this. Its errors reach the kit only through a guard or auth strategy that gates them, or through `@DocErrors` when an endpoint opts in.
 
