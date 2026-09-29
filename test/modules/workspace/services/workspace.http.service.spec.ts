@@ -8,6 +8,11 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { Workspace } from '@generated/prisma-client/client';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { WorkspacePermissionSubjects } from '@modules/workspace/constants/workspace.constant';
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import type { WorkspaceAdminListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
 import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import type { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/workspace.switch.request.dto';
@@ -20,6 +25,7 @@ import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http
 
 describe('WorkspaceHttpService', () => {
     const workspaceDomain: MockProxy<WorkspaceDomain> = mock<WorkspaceDomain>();
+    const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
@@ -93,6 +99,7 @@ describe('WorkspaceHttpService', () => {
             providers: [
                 WorkspaceHttpService,
                 { provide: WorkspaceDomain, useValue: workspaceDomain },
+                { provide: PolicyDomain, useValue: policyDomain },
                 {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
@@ -338,6 +345,43 @@ describe('WorkspaceHttpService', () => {
             expect(workspaceDomain.previewWorkspace).toHaveBeenCalledWith(
                 'acme'
             );
+        });
+    });
+
+    describe('getEffectivePermissions', () => {
+        const workspaceMember = {
+            id: 'member-id',
+        } as IWorkspaceMemberWithRole;
+        const ability = {} as never;
+
+        it('reads the ability from the store and wraps the domain permissions', () => {
+            requestStoreService.get.mockReturnValue(ability);
+            const permissions = [
+                { subject: 'Workspace', actions: ['read'] },
+            ] as never;
+            policyDomain.getEffectivePermissions.mockReturnValue(permissions);
+
+            const result = service.getEffectivePermissions(
+                workspace,
+                workspaceMember
+            );
+
+            expect(requestStoreService.get).toHaveBeenCalledWith(
+                PolicyAbilityStoreKey
+            );
+            expect(policyDomain.getEffectivePermissions).toHaveBeenCalledWith(
+                ability,
+                WorkspacePermissionSubjects
+            );
+            expect(result).toEqual({ data: { permissions } });
+        });
+
+        it('throws when the ability is absent from the store', () => {
+            requestStoreService.get.mockReturnValue(null);
+
+            expect(() =>
+                service.getEffectivePermissions(workspace, workspaceMember)
+            ).toThrow(RequestContextMissingException);
         });
     });
 });

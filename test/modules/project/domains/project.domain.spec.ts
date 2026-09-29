@@ -24,7 +24,7 @@ import {
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
@@ -45,7 +45,7 @@ describe('ProjectDomain', () => {
     const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const ability: MockProxy<IPolicyAbility> = mock<IPolicyAbility>();
+    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const helperDateService: MockProxy<HelperDateService> =

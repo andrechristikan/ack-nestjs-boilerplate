@@ -7,7 +7,7 @@ import {
     PolicyRequiredMetaKey,
 } from '@modules/policy/constants/policy.constant';
 import type { IPolicyRequired } from '@modules/policy/interfaces/policy.interface';
-import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { PolicyPredefinedNotFoundException } from '@modules/policy/exceptions/policy.predefined-not-found.exception';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
@@ -25,7 +25,7 @@ export class PolicyGuard implements CanActivate {
     ) {}
 
     canActivate(context: ExecutionContext): boolean {
-        const ability = this.requestStoreService.get<IPolicyAbility>(
+        const ability = this.requestStoreService.get<PolicyAbility>(
             PolicyAbilityStoreKey
         );
         if (!ability) {

@@ -2,6 +2,7 @@
     "list": "List of your workspaces",
     "create": "Workspace created successfully",
     "get": "Workspace retrieved successfully",
+    "permissions": "Workspace permissions retrieved successfully",
     "preview": "Workspace preview retrieved successfully",
     "update": "Workspace updated successfully",
     "updateIsPublic": "Workspace visibility updated successfully",

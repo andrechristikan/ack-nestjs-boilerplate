@@ -224,6 +224,102 @@ describe('Workspace user routes', () => {
         });
     });
 
+    describe('GET /api/v1/user/workspace/permissions', () => {
+        let app: INestApplication;
+        let owner: IE2eUserFixture;
+        let ownerToken: string;
+        let workspaceId: string;
+
+        beforeAll(async () => {
+            app = getApp();
+            owner = await createActiveUser(app);
+            ({ accessToken: ownerToken } = await loginActiveUser(app, owner));
+            const workspace = await createPublicWorkspace(app, owner.id);
+            workspaceId = workspace.id;
+            await addWorkspaceMember(app, workspaceId, owner.id);
+        });
+
+        afterAll(async () => {
+            await deleteWorkspaceFixture(app, workspaceId);
+            await deleteUserFixture(app, owner.id);
+        });
+
+        it("reports the owner's full workspace grant", async () => {
+            const response = await withUserAuth(
+                e2eGet(app, '/api/v1/user/workspace/permissions'),
+                ownerToken,
+                workspaceId
+            ).expect(200);
+
+            const permissions = response.body.data.permissions as Array<{
+                subject: string;
+                actions: string[];
+            }>;
+            const workspacePermission = permissions.find(
+                permission => permission.subject === 'Workspace'
+            );
+            expect(workspacePermission?.actions).toEqual(
+                expect.arrayContaining(['read', 'update', 'delete'])
+            );
+        });
+
+        it('reports only workspace:read for a plain member', async () => {
+            const member = await createActiveUser(app);
+            await addWorkspaceMember(
+                app,
+                workspaceId,
+                member.id,
+                EnumRoleWorkspaceKey.member
+            );
+            const { accessToken: memberToken } = await loginActiveUser(
+                app,
+                member
+            );
+
+            try {
+                const response = await withUserAuth(
+                    e2eGet(app, '/api/v1/user/workspace/permissions'),
+                    memberToken,
+                    workspaceId
+                ).expect(200);
+
+                expect(response.body.data.permissions).toEqual([
+                    { subject: 'Workspace', actions: ['read'] },
+                ]);
+            } finally {
+                await deleteUserFixture(app, member.id);
+            }
+        });
+
+        it('404s when x-workspace-id names a soft-deleted workspace', async () => {
+            const deletedWorkspace = await createPublicWorkspace(app, owner.id);
+            await addWorkspaceMember(app, deletedWorkspace.id, owner.id);
+            await getPrismaClient(app).workspace.update({
+                where: { id: deletedWorkspace.id },
+                data: { deletedAt: new Date() },
+            });
+
+            try {
+                const response = await withUserAuth(
+                    e2eGet(app, '/api/v1/user/workspace/permissions'),
+                    ownerToken,
+                    deletedWorkspace.id
+                ).expect(404);
+
+                expect(response.body).toMatchObject({
+                    module: 'workspace',
+                    statusCode: EnumWorkspaceStatusCodeError.notFound,
+                    statusCodeKey:
+                        EnumWorkspaceStatusCodeError[
+                            EnumWorkspaceStatusCodeError.notFound
+                        ],
+                });
+            } finally {
+                await deleteWorkspaceFixture(app, deletedWorkspace.id);
+            }
+        });
+    });
+
     describe('PUT /api/v1/user/workspace/update', () => {
         let app: INestApplication;
         let owner: IE2eUserFixture;

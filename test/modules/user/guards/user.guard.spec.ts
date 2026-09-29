@@ -9,7 +9,7 @@ import {
 } from '@modules/user/constants/user.constant';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { UserGuard } from '@modules/user/guards/user.guard';
 import { UserDomain } from '@modules/user/domains/user.domain';
@@ -32,7 +32,7 @@ describe('UserGuard', () => {
     const userService: MockProxy<UserDomain> = mock<UserDomain>();
     const policyAbilityFactory: MockProxy<PolicyAbilityFactory> =
         mock<PolicyAbilityFactory>();
-    const ability: MockProxy<IPolicyAbility> = mock<IPolicyAbility>();
+    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     let guard: UserGuard;

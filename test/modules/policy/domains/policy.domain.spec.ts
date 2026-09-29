@@ -18,7 +18,7 @@ import { PolicyImmutableException } from '@modules/policy/exceptions/policy.immu
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
 import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
-import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { RoleDomain } from '@modules/role/domains/role.domain';
@@ -65,7 +65,7 @@ describe('PolicyDomain', () => {
     const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
-    const ability: MockProxy<IPolicyAbility> = mock<IPolicyAbility>();
+    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
 
     let service: PolicyDomain;
 
@@ -99,7 +99,7 @@ describe('PolicyDomain', () => {
         it('converts matching CASL rules into a Prisma where clause', () => {
             expect(
                 service.accessibleWhere(
-                    createPrismaAbility<IPolicyAbility>([
+                    createPrismaAbility<PolicyAbility>([
                         {
                             action: EnumPolicyAction.read,
                             subject: 'Project',
@@ -116,7 +116,7 @@ describe('PolicyDomain', () => {
     describe('assertCan', () => {
         beforeEach(() => {
             ability.detectSubjectType.mockReturnValue(
-                'Project' as ReturnType<IPolicyAbility['detectSubjectType']>
+                'Project' as ReturnType<PolicyAbility['detectSubjectType']>
             );
         });
 
@@ -124,7 +124,7 @@ describe('PolicyDomain', () => {
             ability.relevantRuleFor.mockReturnValue({
                 inverted: false,
                 reason: undefined,
-            } as ReturnType<IPolicyAbility['relevantRuleFor']>);
+            } as ReturnType<PolicyAbility['relevantRuleFor']>);
 
             expect(() =>
                 service.assertCan(
@@ -162,7 +162,7 @@ describe('PolicyDomain', () => {
             ability.relevantRuleFor.mockReturnValue({
                 inverted: true,
                 reason: 'blocked by rule',
-            } as ReturnType<IPolicyAbility['relevantRuleFor']>);
+            } as ReturnType<PolicyAbility['relevantRuleFor']>);
 
             try {
                 service.assertCan(

@@ -9,7 +9,7 @@ import type { EnumPolicyConditionPlaceholder } from '@modules/policy/constants/p
 
 export type IPolicyConditions = Prisma.JsonObject;
 
-export type IPolicyPlaceholderValues = Readonly<
+export type PolicyPlaceholderValues = Readonly<
     Partial<Record<EnumPolicyConditionPlaceholder, string | undefined>>
 >;
 
@@ -18,12 +18,22 @@ export interface IPolicyRequired {
     action: EnumPolicyAction[];
 }
 
-export type IPolicyAbilitySubject =
+/**
+ * One row of the caller's effective permissions: a subject and the concrete actions the resolved
+ * ability grants on it.
+ * @public
+ */
+export interface IEffectivePermission {
+    subject: EnumPolicySubject;
+    actions: EnumPolicyAction[];
+}
+
+export type PolicyAbilitySubject =
     EnumPolicySubject | ForcedSubject<EnumPolicySubject>;
 
-export type IPolicyAbility = Ability<
-    [EnumPolicyAction, IPolicyAbilitySubject],
+export type PolicyAbility = Ability<
+    [EnumPolicyAction, PolicyAbilitySubject],
     PrismaQuery
 >;
 
-export type IPolicyAbilityRule = RawRuleOf<IPolicyAbility>;
+export type PolicyAbilityRule = RawRuleOf<PolicyAbility>;

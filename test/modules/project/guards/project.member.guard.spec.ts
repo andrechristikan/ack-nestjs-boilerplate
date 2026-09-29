@@ -16,7 +16,7 @@ import {
     EnumPolicyConditionPlaceholder,
     PolicyAbilityStoreKey,
 } from '@modules/policy/constants/policy.constant';
-import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import {
     ProjectMemberRequiredMetaKey,
     ProjectMemberStoreKey,
@@ -33,7 +33,7 @@ describe('ProjectMemberGuard', () => {
         mock<ProjectMemberDomain>();
     const policyAbilityFactory: MockProxy<PolicyAbilityFactory> =
         mock<PolicyAbilityFactory>();
-    const ability: MockProxy<IPolicyAbility> = mock<IPolicyAbility>({
+    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>({
         rules: [],
     });
     const requestStoreService: MockProxy<RequestStoreService> =

@@ -2,7 +2,7 @@ import type { Prisma } from '@generated/prisma-client/client';
 import { EnumPolicyConditionPlaceholder } from '@modules/policy/constants/policy.constant';
 import type {
     IPolicyConditions,
-    IPolicyPlaceholderValues,
+    PolicyPlaceholderValues,
 } from '@modules/policy/interfaces/policy.interface';
 
 /** True when `value` is a non-null, non-array object. */
@@ -12,7 +12,7 @@ export function isPlainJsonObject(value: unknown): value is IPolicyConditions {
 
 function interpolateNode(
     node: Prisma.JsonValue,
-    values: IPolicyPlaceholderValues
+    values: PolicyPlaceholderValues
 ): Prisma.JsonValue | undefined {
     if (typeof node === 'string') {
         const isKnownPlaceholder = Object.values(
@@ -63,7 +63,7 @@ function interpolateNode(
 /** Interpolates known placeholders without mutating the conditions, failing closed when absent. */
 export function interpolate(
     conditions: IPolicyConditions,
-    values: IPolicyPlaceholderValues
+    values: PolicyPlaceholderValues
 ): IPolicyConditions | null {
     const interpolated = interpolateNode(conditions, values);
     if (!isPlainJsonObject(interpolated)) {

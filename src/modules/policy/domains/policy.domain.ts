@@ -1,7 +1,10 @@
 import { PolicyImmutableException } from '@modules/policy/exceptions/policy.immutable.exception';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
-import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import type {
+    IEffectivePermission,
+    PolicyAbility,
+} from '@modules/policy/interfaces/policy.interface';
 import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
@@ -49,21 +52,16 @@ export class PolicyDomain {
     }
 
     /** Returns the Prisma where clause for a subject, or null when the ability has no rules for it. */
-    accessibleWhere(
-        ability: IPolicyAbility,
+    accessibleWhere<TWhere = Record<string, unknown>>(
+        ability: PolicyAbility,
         action: EnumPolicyAction,
         subjectName: EnumPolicySubject
-    ): Record<string, unknown> | null {
-        const caslSubject = subjectName;
-
-        if (ability.rulesFor(action, caslSubject).length === 0) {
+    ): TWhere | null {
+        if (ability.rulesFor(action, subjectName).length === 0) {
             return null;
         }
 
-        return accessibleBy(ability, action).ofType(caslSubject) as Record<
-            string,
-            unknown
-        >;
+        return accessibleBy(ability, action).ofType(subjectName) as TWhere;
     }
 
     /**
@@ -71,7 +69,7 @@ export class PolicyDomain {
      * subject, carrying the matched rule's `reason` when one is present.
      */
     assertCan(
-        ability: IPolicyAbility,
+        ability: PolicyAbility,
         action: EnumPolicyAction,
         subjectName: EnumPolicySubject,
         record?: object
@@ -92,6 +90,24 @@ export class PolicyDomain {
                 : undefined;
             throw new PolicyForbiddenException(reason);
         }
+    }
+
+    /**
+     * Reports the concrete `EnumPolicyAction` members the ability grants for each subject; a
+     * subject the ability grants nothing on is omitted.
+     */
+    getEffectivePermissions(
+        ability: PolicyAbility,
+        subjects: EnumPolicySubject[]
+    ): IEffectivePermission[] {
+        return subjects
+            .map(subjectName => ({
+                subject: subjectName,
+                actions: Object.values(EnumPolicyAction).filter(action =>
+                    ability.can(action, subjectName)
+                ),
+            }))
+            .filter(permission => permission.actions.length > 0);
     }
 
     async findManyByRole(roleId: string): Promise<Policy[]> {

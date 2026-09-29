@@ -7,6 +7,14 @@ import type {
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import type {
+    IEffectivePermission,
+    PolicyAbility,
+} from '@modules/policy/interfaces/policy.interface';
+import { ProjectPermissionSubjects } from '@modules/project/constants/project.constant';
 import {
     ProjectCursorAvailableOrderBy,
     ProjectDefaultAvailableOrderBy,
@@ -18,12 +26,14 @@ import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/proj
 import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
+import type { IProjectMemberWithRole } from '@modules/project/interfaces/project.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class ProjectHttpService {
     constructor(
         private readonly projectDomain: ProjectDomain,
+        private readonly policyDomain: PolicyDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -139,5 +149,24 @@ export class ProjectHttpService {
         const project = await this.projectDomain.getByIdForAdmin(projectId);
 
         return { data: project };
+    }
+
+    getEffectivePermissions(
+        _project: Project,
+        _projectMember: IProjectMemberWithRole
+    ): IResponseReturn<{ permissions: IEffectivePermission[] }> {
+        const ability = this.requestStoreService.get<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        if (!ability) {
+            throw new RequestContextMissingException(PolicyAbilityStoreKey);
+        }
+
+        const permissions = this.policyDomain.getEffectivePermissions(
+            ability,
+            ProjectPermissionSubjects
+        );
+
+        return { data: { permissions } };
     }
 }

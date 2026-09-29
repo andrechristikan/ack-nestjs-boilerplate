@@ -7,6 +7,14 @@ import type {
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import type {
+    IEffectivePermission,
+    PolicyAbility,
+} from '@modules/policy/interfaces/policy.interface';
+import { WorkspacePermissionSubjects } from '@modules/workspace/constants/workspace.constant';
 import {
     WorkspaceCursorAvailableOrderBy,
     WorkspaceDefaultAvailableOrderBy,
@@ -20,12 +28,14 @@ import type { WorkspaceUpdateIsPublicRequestDto } from '@modules/workspace/dtos/
 import type { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/request/workspace.update-slug.request.dto';
 import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class WorkspaceHttpService {
     constructor(
         private readonly workspaceDomain: WorkspaceDomain,
+        private readonly policyDomain: PolicyDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -171,5 +181,24 @@ export class WorkspaceHttpService {
         const workspace = await this.workspaceDomain.previewWorkspace(slug);
 
         return { data: workspace };
+    }
+
+    getEffectivePermissions(
+        _workspace: Workspace,
+        _workspaceMember: IWorkspaceMemberWithRole
+    ): IResponseReturn<{ permissions: IEffectivePermission[] }> {
+        const ability = this.requestStoreService.get<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        if (!ability) {
+            throw new RequestContextMissingException(PolicyAbilityStoreKey);
+        }
+
+        const permissions = this.policyDomain.getEffectivePermissions(
+            ability,
+            WorkspacePermissionSubjects
+        );
+
+        return { data: { permissions } };
     }
 }

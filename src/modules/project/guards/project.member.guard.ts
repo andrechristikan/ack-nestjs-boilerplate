@@ -5,7 +5,7 @@ import {
     EnumPolicyConditionPlaceholder,
     PolicyAbilityStoreKey,
 } from '@modules/policy/constants/policy.constant';
-import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type { IUserWithoutPolicies } from '@modules/user/interfaces/user.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
@@ -71,7 +71,7 @@ export class ProjectMemberGuard implements CanActivate {
             role: { policies, ...role },
             ...member
         } = result;
-        const previousAbility = this.requestStoreService.get<IPolicyAbility>(
+        const previousAbility = this.requestStoreService.get<PolicyAbility>(
             PolicyAbilityStoreKey
         );
         if (!previousAbility) {

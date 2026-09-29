@@ -7,8 +7,8 @@ import {
 import type { Policy, Workspace } from '@generated/prisma-client/client';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import type {
-    IPolicyAbility,
-    IPolicyPlaceholderValues,
+    PolicyAbility,
+    PolicyPlaceholderValues,
 } from '@modules/policy/interfaces/policy.interface';
 import { EnumPolicyConditionPlaceholder } from '@modules/policy/constants/policy.constant';
 
@@ -29,8 +29,8 @@ describe('PolicyAbilityFactory', () => {
         deletedBy: null,
     });
     const buildRule = (
-        overrides: Partial<RawRuleOf<IPolicyAbility>> = {}
-    ): RawRuleOf<IPolicyAbility> => ({
+        overrides: Partial<RawRuleOf<PolicyAbility>> = {}
+    ): RawRuleOf<PolicyAbility> => ({
         subject: 'User',
         action: [EnumPolicyAction.read],
         conditions: undefined,
@@ -51,7 +51,7 @@ describe('PolicyAbilityFactory', () => {
         updatedBy: null,
         ...overrides,
     });
-    const placeholders: IPolicyPlaceholderValues = {
+    const placeholders: PolicyPlaceholderValues = {
         [EnumPolicyConditionPlaceholder.userId]: 'user-id',
         [EnumPolicyConditionPlaceholder.workspaceId]: 'workspace-id',
     };

@@ -1,9 +1,9 @@
 import { createPrismaAbility } from '@casl/prisma';
 import type { Policy } from '@generated/prisma-client/client';
 import type {
-    IPolicyAbility,
-    IPolicyAbilityRule,
-    IPolicyPlaceholderValues,
+    PolicyAbilityRule,
+    PolicyAbility,
+    PolicyPlaceholderValues,
 } from '@modules/policy/interfaces/policy.interface';
 import {
     interpolate,
@@ -16,8 +16,8 @@ import { Injectable } from '@nestjs/common';
 export class PolicyAbilityFactory {
     private toAbilityRule(
         policy: Policy,
-        placeholders: IPolicyPlaceholderValues
-    ): IPolicyAbilityRule | null {
+        placeholders: PolicyPlaceholderValues
+    ): PolicyAbilityRule | null {
         const { conditions } = policy;
         const resolved =
             conditions === null || !isPlainJsonObject(conditions)
@@ -38,21 +38,21 @@ export class PolicyAbilityFactory {
     }
 
     /** Inverted rules are added after allows so a matching deny is authoritative. */
-    build(rules: IPolicyAbilityRule[]): IPolicyAbility {
+    build(rules: PolicyAbilityRule[]): PolicyAbility {
         const orderedRules = [
             ...rules.filter(rule => !rule.inverted),
             ...rules.filter(rule => rule.inverted),
         ];
 
-        return createPrismaAbility<IPolicyAbility>(orderedRules);
+        return createPrismaAbility<PolicyAbility>(orderedRules);
     }
 
     /** Builds a resolved ability from the supplied persisted policies. */
     buildFromPolicies(
         policies: Policy[] | null,
-        placeholders: IPolicyPlaceholderValues
-    ): IPolicyAbility {
-        const rules: IPolicyAbilityRule[] = [];
+        placeholders: PolicyPlaceholderValues
+    ): PolicyAbility {
+        const rules: PolicyAbilityRule[] = [];
         for (const policy of policies ?? []) {
             const rule = this.toAbilityRule(policy, placeholders);
             if (rule !== null) {

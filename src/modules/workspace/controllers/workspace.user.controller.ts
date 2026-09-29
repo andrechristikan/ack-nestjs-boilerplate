@@ -68,7 +68,9 @@ import { WorkspaceInviteResponseSchema } from '@modules/workspace/dtos/response/
 import type { WorkspaceInviteResponseDto } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
 import { WorkspaceJoinRequestResponseSchema } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
+import { WorkspacePermissionResponseSchema } from '@modules/workspace/dtos/response/workspace.permission.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
+import type { IEffectivePermission } from '@modules/policy/interfaces/policy.interface';
 import type {
     IWorkspaceInviteList,
     IWorkspaceMember,
@@ -172,6 +174,31 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace
     ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceHttpService.getCurrentWorkspace(workspace);
+    }
+
+    @Doc({
+        summary:
+            "get the caller's effective permissions for the current workspace",
+    })
+    @Response('workspace.permissions', {
+        schema: WorkspacePermissionResponseSchema,
+    })
+    @WorkspaceMemberProtected()
+    @WorkspaceProtected()
+    @UserProtected()
+    @FeatureFlagProtected('workspace')
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true })
+    @Get('/permissions')
+    async permissions(
+        @WorkspaceCurrent() workspace: Workspace,
+        @WorkspaceMemberCurrent() workspaceMember: IWorkspaceMemberWithRole
+    ): Promise<IResponseReturn<{ permissions: IEffectivePermission[] }>> {
+        return this.workspaceHttpService.getEffectivePermissions(
+            workspace,
+            workspaceMember
+        );
     }
 
     @Doc({ summary: 'update the current workspace name/description' })

@@ -1,4 +1,4 @@
-import { Prisma } from '@generated/prisma-client/client';
+import { EnumPolicySubject, Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
 import {
@@ -18,6 +18,21 @@ export const WorkspaceStoreKey = 'WorkspaceStore';
  * @public
  */
 export const WorkspaceMemberStoreKey = 'WorkspaceMemberStore';
+
+/**
+ * Subjects the workspace `/permissions` endpoint reports on: the workspace family plus the
+ * workspace role's project-scoped grants.
+ * @public
+ */
+export const WorkspacePermissionSubjects: EnumPolicySubject[] = [
+    EnumPolicySubject.Workspace,
+    EnumPolicySubject.WorkspaceMember,
+    EnumPolicySubject.WorkspaceInvite,
+    EnumPolicySubject.WorkspaceJoinRequest,
+    EnumPolicySubject.Project,
+    EnumPolicySubject.ProjectMember,
+    EnumPolicySubject.analytic,
+];
 
 /**
  * Workspace guard error kit for `@WorkspaceProtected`.

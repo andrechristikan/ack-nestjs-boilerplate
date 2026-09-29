@@ -2,6 +2,7 @@
     "list": "List of projects",
     "create": "Project created successfully",
     "get": "Project retrieved successfully",
+    "permissions": "Project permissions retrieved successfully",
     "update": "Project updated successfully",
     "updateSlug": "Project slug updated successfully",
     "softDelete": "Project deleted successfully",

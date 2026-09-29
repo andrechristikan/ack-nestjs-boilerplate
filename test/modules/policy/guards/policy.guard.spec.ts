@@ -7,7 +7,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 
 import { EnumPolicyAction, EnumPolicySubject } from '@generated/prisma-client';
 import type { IPolicyRequired } from '@modules/policy/interfaces/policy.interface';
-import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyRequiredMetaKey } from '@modules/policy/constants/policy.constant';
 import { PolicyGuard } from '@modules/policy/guards/policy.guard';
@@ -21,7 +21,7 @@ describe('PolicyGuard', () => {
     const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const ability: MockProxy<IPolicyAbility> = mock<IPolicyAbility>();
+    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
     const handler = () => undefined;
     const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
     let guard: PolicyGuard;

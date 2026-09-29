@@ -191,6 +191,95 @@ describe('Project user routes', () => {
         });
     });
 
+    describe('GET /api/v1/user/project/permissions/:projectId', () => {
+        let app: INestApplication;
+        let owner: IE2eUserFixture;
+        let accessToken: string;
+        let workspaceId: string;
+        let projectId: string;
+
+        beforeAll(async () => {
+            app = getApp();
+            owner = await createActiveUser(app);
+            ({ accessToken } = await loginActiveUser(app, owner));
+            const workspace = await createPublicWorkspace(app, owner.id);
+            workspaceId = workspace.id;
+            await addWorkspaceMember(app, workspaceId, owner.id);
+            const project = await createWorkspaceProject(
+                app,
+                workspaceId,
+                owner.id
+            );
+            projectId = project.id;
+            await addProjectMember(app, projectId, owner.id);
+        });
+
+        afterAll(async () => {
+            await deleteWorkspaceFixture(app, workspaceId);
+            await deleteUserFixture(app, owner.id);
+        });
+
+        it('reports permissions scoped to project and projectMember for a project member', async () => {
+            const response = await withUserAuth(
+                e2eGet(app, `/api/v1/user/project/permissions/${projectId}`),
+                accessToken,
+                workspaceId
+            ).expect(200);
+
+            const permissions = response.body.data.permissions as Array<{
+                subject: string;
+                actions: string[];
+            }>;
+            expect(
+                permissions.every(permission =>
+                    ['Project', 'ProjectMember'].includes(permission.subject)
+                )
+            ).toBe(true);
+            const projectPermission = permissions.find(
+                permission => permission.subject === 'Project'
+            );
+            expect(projectPermission?.actions).toEqual(
+                expect.arrayContaining(['read'])
+            );
+        });
+
+        it('rejects a caller with no project membership', async () => {
+            const stranger = await createActiveUser(app);
+            await addWorkspaceMember(
+                app,
+                workspaceId,
+                stranger.id,
+                EnumRoleWorkspaceKey.member
+            );
+            const { accessToken: strangerToken } = await loginActiveUser(
+                app,
+                stranger
+            );
+
+            try {
+                const response = await withUserAuth(
+                    e2eGet(
+                        app,
+                        `/api/v1/user/project/permissions/${projectId}`
+                    ),
+                    strangerToken,
+                    workspaceId
+                ).expect(403);
+
+                expect(response.body).toMatchObject({
+                    module: 'project',
+                    statusCode: EnumProjectStatusCodeError.memberForbidden,
+                    statusCodeKey:
+                        EnumProjectStatusCodeError[
+                            EnumProjectStatusCodeError.memberForbidden
+                        ],
+                });
+            } finally {
+                await deleteUserFixture(app, stranger.id);
+            }
+        });
+    });
+
     describe('PUT /api/v1/user/project/update/:projectId', () => {
         let app: INestApplication;
         let owner: IE2eUserFixture;

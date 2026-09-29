@@ -42,7 +42,9 @@ import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/
 import { ProjectUpdateRequestSchema } from '@modules/project/dtos/request/project.update.request.dto';
 import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseSchema } from '@modules/project/dtos/response/project.member.response.dto';
+import { ProjectPermissionResponseSchema } from '@modules/project/dtos/response/project.permission.response.dto';
 import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
+import type { IEffectivePermission } from '@modules/policy/interfaces/policy.interface';
 import type {
     IProjectMember,
     IProjectMemberWithRole,
@@ -172,6 +174,33 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project
     ): Promise<IResponseReturn<Project>> {
         return this.projectHttpService.getProject(project);
+    }
+
+    @Doc({
+        summary:
+            "get the caller's effective permissions for the current project",
+    })
+    @Response('project.permissions', {
+        schema: ProjectPermissionResponseSchema,
+    })
+    @ProjectMemberProtected()
+    @ProjectProtected()
+    @WorkspaceMemberProtected()
+    @WorkspaceProtected()
+    @UserProtected()
+    @FeatureFlagProtected('workspace')
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true })
+    @Get('/permissions/:projectId')
+    async permissions(
+        @ProjectCurrent() project: Project,
+        @ProjectMemberCurrent() projectMember: IProjectMemberWithRole
+    ): Promise<IResponseReturn<{ permissions: IEffectivePermission[] }>> {
+        return this.projectHttpService.getEffectivePermissions(
+            project,
+            projectMember
+        );
     }
 
     @Doc({

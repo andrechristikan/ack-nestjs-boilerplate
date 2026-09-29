@@ -6,7 +6,7 @@ import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 @Global()
 @Module({
     providers: [PolicyAbilityFactory, PolicyDomain],
-    exports: [PolicyDomain],
+    exports: [PolicyDomain, PolicyAbilityFactory],
     imports: [PolicyRepositoryModule],
 })
 export class PolicyDomainModule {}

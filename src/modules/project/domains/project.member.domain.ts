@@ -14,7 +14,7 @@ import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
 import { ProjectMemberLastAdminException } from '@modules/project/exceptions/project.member-last-admin.exception';
@@ -44,7 +44,7 @@ export class ProjectMemberDomain {
     private assertProjectMemberPeerAllowed(
         ...roleKeysInvolved: string[]
     ): void {
-        const ability = this.requestStoreService.get<IPolicyAbility>(
+        const ability = this.requestStoreService.get<PolicyAbility>(
             PolicyAbilityStoreKey
         );
         if (!ability) {

@@ -16,7 +16,7 @@ import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.do
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberLastAdminException } from '@modules/project/exceptions/project.member-last-admin.exception';
@@ -81,7 +81,7 @@ describe('ProjectMemberDomain', () => {
         mock<ProjectMemberRepository>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const ability: MockProxy<IPolicyAbility> = mock<IPolicyAbility>();
+    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();

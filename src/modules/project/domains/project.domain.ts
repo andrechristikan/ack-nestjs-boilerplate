@@ -22,7 +22,7 @@ import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectSlugAlreadyExistsException } from '@modules/project/exceptions/project.slug-already-exists.exception';
@@ -155,7 +155,7 @@ export class ProjectDomain {
         workspaceMember: WorkspaceMember,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
     ): Promise<IResponsePaginationReturn<Project>> {
-        const ability = this.requestStoreService.get<IPolicyAbility>(
+        const ability = this.requestStoreService.get<PolicyAbility>(
             PolicyAbilityStoreKey
         );
         if (!ability) {
@@ -166,11 +166,12 @@ export class ProjectDomain {
             EnumPolicySubject.Project
         );
         const memberUserId = canReadAllProjects ? null : workspaceMember.userId;
-        const authorizationWhere = this.policyDomain.accessibleWhere(
-            ability,
-            EnumPolicyAction.read,
-            EnumPolicySubject.Project
-        ) as Prisma.ProjectWhereInput | null;
+        const authorizationWhere =
+            this.policyDomain.accessibleWhere<Prisma.ProjectWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.Project
+            );
 
         return this.projectRepository.findWithPaginationCursorForWorkspace(
             workspaceId,
