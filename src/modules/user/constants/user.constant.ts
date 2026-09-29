@@ -11,7 +11,7 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 export const UserGuardIsVerifiedMetaKey = 'UserGuardIsVerifiedMetaKey';
 
 /**
- * Request-store key holding the loaded current user.
+ * Request-store key holding the loaded current user without role policies.
  * @public
  */
 export const UserStoreKey = 'UserStore';

@@ -7,7 +7,9 @@ import {
     UserGuardIsVerifiedMetaKey,
     UserStoreKey,
 } from '@modules/user/constants/user.constant';
-import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { UserGuard } from '@modules/user/guards/user.guard';
 import { UserDomain } from '@modules/user/domains/user.domain';
@@ -28,6 +30,9 @@ import type { Policy } from '@generated/prisma-client';
 describe('UserGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
     const userService: MockProxy<UserDomain> = mock<UserDomain>();
+    const policyAbilityFactory: MockProxy<PolicyAbilityFactory> =
+        mock<PolicyAbilityFactory>();
+    const ability: MockProxy<IPolicyAbility> = mock<IPolicyAbility>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     let guard: UserGuard;
@@ -37,7 +42,7 @@ describe('UserGuard', () => {
     const policy: Policy = {
         id: 'policy-id',
         roleId: 'role-id',
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read],
         conditions: null,
         inverted: false,
@@ -97,6 +102,8 @@ describe('UserGuard', () => {
         twoFactor: null,
     });
     const user: IUser = createUser([policy]);
+    const { policies: _policies, ...roleWithoutPolicies } = user.role;
+    const userWithoutPolicies = { ...user, role: roleWithoutPolicies };
 
     const createContext = (
         contextRequest: unknown = request
@@ -111,12 +118,17 @@ describe('UserGuard', () => {
 
     beforeEach(async () => {
         userService.validateUserGuard.mockResolvedValue(user);
+        policyAbilityFactory.buildFromPolicies.mockReturnValue(ability);
 
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 UserGuard,
                 { provide: Reflector, useValue: reflector },
                 { provide: UserDomain, useValue: userService },
+                {
+                    provide: PolicyAbilityFactory,
+                    useValue: policyAbilityFactory,
+                },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
@@ -139,29 +151,40 @@ describe('UserGuard', () => {
         );
         expect(requestStoreService.set).toHaveBeenCalledWith(
             UserStoreKey,
-            user
+            userWithoutPolicies
         );
     });
 
-    it('stores the role policies under the policy store key', async () => {
+    it('resolves the role policies without storing them in CLS', async () => {
         reflector.get.mockReturnValue(undefined);
 
         await guard.canActivate(createContext());
 
-        expect(requestStoreService.set).toHaveBeenCalledWith(PolicyStoreKey, [
-            policy,
-        ]);
+        expect(policyAbilityFactory.buildFromPolicies).toHaveBeenCalledWith(
+            [policy],
+            {
+                user: userWithoutPolicies,
+                workspace: null,
+                workspaceMember: null,
+                project: null,
+                projectMember: null,
+            }
+        );
+        expect(requestStoreService.set).toHaveBeenCalledWith(
+            PolicyAbilityStoreKey,
+            ability
+        );
     });
 
-    it('stores an empty policy list when the role carries no policies', async () => {
+    it('resolves an empty policy list when the role carries none', async () => {
         reflector.get.mockReturnValue(undefined);
         userService.validateUserGuard.mockResolvedValue(createUser([]));
 
         await guard.canActivate(createContext());
 
-        expect(requestStoreService.set).toHaveBeenCalledWith(
-            PolicyStoreKey,
-            []
+        expect(policyAbilityFactory.buildFromPolicies).toHaveBeenCalledWith(
+            [],
+            expect.objectContaining({ user: expect.anything() })
         );
     });
 

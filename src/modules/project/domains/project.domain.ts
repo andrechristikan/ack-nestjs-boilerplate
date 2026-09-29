@@ -1,4 +1,6 @@
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -19,6 +21,8 @@ import {
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectSlugAlreadyExistsException } from '@modules/project/exceptions/project.slug-already-exists.exception';
@@ -52,7 +56,8 @@ export class ProjectDomain {
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly projectMemberDomain: ProjectMemberDomain,
-        private readonly roleDomain: RoleDomain
+        private readonly roleDomain: RoleDomain,
+        private readonly requestStoreService: RequestStoreService
     ) {
         this.slugRegex = this.configService.get<RegExp>('project.slugRegex')!;
         this.slugPrefix = this.configService.get<string>('project.slugPrefix')!;
@@ -150,15 +155,27 @@ export class ProjectDomain {
         workspaceMember: WorkspaceMember,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
     ): Promise<IResponsePaginationReturn<Project>> {
-        const canReadAllProjects = this.policyDomain.can(
+        const ability = this.requestStoreService.get<IPolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        if (!ability) {
+            throw new RequestContextMissingException(PolicyAbilityStoreKey);
+        }
+        const canReadAllProjects = ability.can(
             EnumPolicyAction.read,
-            EnumPolicySubject.project
+            EnumPolicySubject.Project
         );
         const memberUserId = canReadAllProjects ? null : workspaceMember.userId;
+        const authorizationWhere = this.policyDomain.accessibleWhere(
+            ability,
+            EnumPolicyAction.read,
+            EnumPolicySubject.Project
+        ) as Prisma.ProjectWhereInput | null;
 
         return this.projectRepository.findWithPaginationCursorForWorkspace(
             workspaceId,
             memberUserId,
+            authorizationWhere,
             pagination
         );
     }

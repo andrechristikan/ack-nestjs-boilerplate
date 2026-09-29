@@ -36,7 +36,7 @@ describe('RoleDomain', () => {
     const policy = {
         id: 'policy-id',
         roleId: 'role-id',
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read],
         conditions: null,
         inverted: false,

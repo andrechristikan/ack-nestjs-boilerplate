@@ -9,7 +9,7 @@ describe('PolicySchema', () => {
     const policy = {
         id: 'policy-id',
         roleId: 'role-id',
-        subject: EnumPolicySubject.workspaceMember,
+        subject: EnumPolicySubject.WorkspaceMember,
         action: [EnumPolicyAction.read],
         conditions: { workspaceId: '${workspace.id}' },
         inverted: false,

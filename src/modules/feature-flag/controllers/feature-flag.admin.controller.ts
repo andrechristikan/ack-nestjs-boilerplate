@@ -59,7 +59,7 @@ export class FeatureFlagAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.featureFlag,
+        subject: EnumPolicySubject.FeatureFlag,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -80,7 +80,7 @@ export class FeatureFlagAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.featureFlag,
+        subject: EnumPolicySubject.FeatureFlag,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()
@@ -106,7 +106,7 @@ export class FeatureFlagAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.featureFlag,
+        subject: EnumPolicySubject.FeatureFlag,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()

@@ -23,6 +23,7 @@ export interface IProjectRepository {
     findWithPaginationCursorForWorkspace(
         workspaceId: string,
         memberUserId: string | null,
+        authorizationWhere: Prisma.ProjectWhereInput | null,
         {
             where,
             ...others

@@ -125,7 +125,7 @@ export class ProjectUserController {
     @Response('project.create', { schema: ProjectResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.project,
+        subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.create],
     })
     @WorkspaceMemberProtected()
@@ -155,7 +155,7 @@ export class ProjectUserController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.project,
+        subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.read],
     })
     @ProjectMemberProtected({ required: false })
@@ -183,7 +183,7 @@ export class ProjectUserController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.project,
+        subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.update],
     })
     @ProjectMemberProtected({ required: false })
@@ -217,7 +217,7 @@ export class ProjectUserController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.project,
+        subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.update],
     })
     @ProjectMemberProtected({ required: false })
@@ -249,7 +249,7 @@ export class ProjectUserController {
     @Response('project.softDelete')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.project,
+        subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.delete],
     })
     @ProjectMemberProtected({ required: false })
@@ -280,7 +280,7 @@ export class ProjectUserController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.project,
+        subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.read],
     })
     @ProjectMemberProtected({ required: false })
@@ -308,7 +308,7 @@ export class ProjectUserController {
     @Response('project.member.assign', { schema: ProjectMemberResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.projectMember,
+        subject: EnumPolicySubject.ProjectMember,
         action: [EnumPolicyAction.create],
     })
     @ProjectMemberProtected({ required: false })
@@ -341,7 +341,7 @@ export class ProjectUserController {
     @Response('project.member.updateRole')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.projectMember,
+        subject: EnumPolicySubject.ProjectMember,
         action: [EnumPolicyAction.update],
     })
     @ProjectMemberProtected({ required: false })
@@ -377,7 +377,7 @@ export class ProjectUserController {
     @Response('project.member.remove')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.projectMember,
+        subject: EnumPolicySubject.ProjectMember,
         action: [EnumPolicyAction.delete],
     })
     @ProjectMemberProtected({ required: false })

@@ -49,11 +49,11 @@ export class DeviceAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.device,
+            subject: EnumPolicySubject.Device,
             action: [EnumPolicyAction.read],
         }
     )
@@ -76,11 +76,11 @@ export class DeviceAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.device,
+            subject: EnumPolicySubject.Device,
             action: [EnumPolicyAction.read, EnumPolicyAction.delete],
         }
     )

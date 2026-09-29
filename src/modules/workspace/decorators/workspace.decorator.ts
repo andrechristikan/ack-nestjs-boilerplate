@@ -62,7 +62,7 @@ export const WorkspaceCurrent = createParamDecorator<
 
 /**
  * Requires the caller to be a member of the workspace resolved by `@WorkspaceProtected()`. Stack
- * above it. The guard also stores the caller's workspace role policies under the workspace policy key.
+ * above it. The guard also merges the caller's workspace role policies into the resolved ability.
  * @public
  */
 export function WorkspaceMemberProtected(): MethodDecorator {

@@ -3,11 +3,14 @@ import {
     EnumPolicySubject,
 } from '@generated/prisma-client/client';
 import type { Prisma } from '@generated/prisma-client/client';
-import { PolicySubjectRegistry } from '@modules/policy/constants/policy.constant';
+import {
+    PolicySubjectScope,
+    type PolicySubjectScopeEntry,
+} from '@modules/policy/constants/policy.constant';
 import type {
     IPolicyConditions,
     IPolicyPlaceholderContext,
-    IPolicyScopePair,
+    IPolicyPlaceholderValues,
 } from '@modules/policy/interfaces/policy.interface';
 
 /** True when `value` is a non-null, non-array object. */
@@ -74,6 +77,66 @@ function resolveNode(
     return entries;
 }
 
+function interpolateNode(
+    node: Prisma.JsonValue,
+    values: IPolicyPlaceholderValues
+): Prisma.JsonValue | undefined {
+    if (typeof node === 'string') {
+        if (!Object.hasOwn(values, node)) {
+            return node;
+        }
+
+        return values[node];
+    }
+
+    if (node === null || typeof node !== 'object') {
+        return node;
+    }
+
+    if (Array.isArray(node)) {
+        const items: Prisma.JsonValue[] = [];
+        for (const item of node) {
+            const interpolated = interpolateNode(item, values);
+            if (interpolated === undefined) {
+                return undefined;
+            }
+
+            items.push(interpolated);
+        }
+
+        return items;
+    }
+
+    const entries: IPolicyConditions = {};
+    for (const [key, child] of Object.entries(node)) {
+        if (child === undefined) {
+            continue;
+        }
+
+        const interpolated = interpolateNode(child, values);
+        if (interpolated === undefined) {
+            return undefined;
+        }
+
+        entries[key] = interpolated;
+    }
+
+    return entries;
+}
+
+/** Interpolates only the explicitly supplied placeholders without mutating the conditions. */
+export function interpolate(
+    conditions: IPolicyConditions,
+    values: IPolicyPlaceholderValues
+): IPolicyConditions | null {
+    const interpolated = interpolateNode(conditions, values);
+    if (!isPlainJsonObject(interpolated)) {
+        return null;
+    }
+
+    return interpolated;
+}
+
 /** Returns `null` when a placeholder has no value in the context, so the caller can fail closed. */
 export function resolvePlaceholders(
     conditions: IPolicyConditions,
@@ -88,34 +151,43 @@ export function resolvePlaceholders(
 }
 
 /**
- * The scope pair a stored rule of the subject must carry, read straight from the registry: the
- * subject's own scope, waived for a bare project `create` where no project exists yet.
+ * The scope a stored rule must carry, waived for a project `create` where no project exists yet.
  */
-export function scopePairOf(
+export function policyScopeOf(
     subject: EnumPolicySubject,
     action: readonly EnumPolicyAction[]
-): IPolicyScopePair | null {
-    const isBareProjectCreate =
-        subject === EnumPolicySubject.project &&
+): PolicySubjectScopeEntry | null {
+    // A project-create policy runs before a project exists, so it cannot be
+    // constrained by the project ID that later project operations require.
+    const isPreResourceProjectCreate =
+        subject === EnumPolicySubject.Project &&
         action.length === 1 &&
         action[0] === EnumPolicyAction.create;
 
-    return isBareProjectCreate ? null : PolicySubjectRegistry[subject].scope;
+    return isPreResourceProjectCreate
+        ? null
+        : (PolicySubjectScope[subject as keyof typeof PolicySubjectScope] ??
+              null);
 }
 
 /**
- * Builds the stored condition tying a rule to the active workspace or project: the subject's
- * scope pair, followed by `extra`.
+ * Builds the stored condition tying a rule to the active workspace or project, followed by `extra`.
  */
 export function scopedCondition(
     subject: EnumPolicySubject,
     action: readonly EnumPolicyAction[],
     extra: IPolicyConditions | null = null
 ): IPolicyConditions | null {
-    const pair = scopePairOf(subject, action);
-    if (pair === null) {
+    const requiredScope = policyScopeOf(subject, action);
+    if (requiredScope === null) {
         return extra;
     }
 
-    return { [pair.key]: pair.placeholder, ...extra };
+    const { [requiredScope.key]: _ignoredScope, ...otherConditions } =
+        extra ?? {};
+
+    return {
+        [requiredScope.key]: requiredScope.placeholder,
+        ...otherConditions,
+    };
 }

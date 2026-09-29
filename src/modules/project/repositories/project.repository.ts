@@ -60,6 +60,7 @@ export class ProjectRepository implements IProjectRepository {
     async findWithPaginationCursorForWorkspace(
         workspaceId: string,
         memberUserId: string | null,
+        authorizationWhere: Prisma.ProjectWhereInput | null,
         {
             where,
             ...others
@@ -74,6 +75,7 @@ export class ProjectRepository implements IProjectRepository {
                         where ?? {},
                         { workspaceId },
                         ProjectActiveFilter,
+                        ...(authorizationWhere ? [authorizationWhere] : []),
                         ...(memberUserId
                             ? [{ members: { some: { userId: memberUserId } } }]
                             : []),

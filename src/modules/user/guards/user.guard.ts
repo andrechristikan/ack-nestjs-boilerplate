@@ -7,15 +7,18 @@ import {
     UserGuardIsVerifiedMetaKey,
     UserStoreKey,
 } from '@modules/user/constants/user.constant';
-import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import type { IUserWithoutPolicies } from '@modules/user/interfaces/user.interface';
 
-/** Validates the authenticated user and stores it, and the policies of its role, in the request context for `UserCurrent` and the policy guard. */
+/** Validates the authenticated user, stores it without role policies, and resolves the request ability. */
 @Injectable()
 export class UserGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
         private readonly userDomain: UserDomain,
+        private readonly policyAbilityFactory: PolicyAbilityFactory,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -33,8 +36,21 @@ export class UserGuard implements CanActivate {
             isVerified
         );
 
-        this.requestStoreService.set(UserStoreKey, user);
-        this.requestStoreService.set(PolicyStoreKey, user.role.policies);
+        const { policies, ...role } = user.role;
+        const userWithoutPolicies: IUserWithoutPolicies = {
+            ...user,
+            role,
+        };
+
+        this.requestStoreService.set(UserStoreKey, userWithoutPolicies);
+        const ability = this.policyAbilityFactory.buildFromPolicies(policies, {
+            user: userWithoutPolicies,
+            workspace: null,
+            workspaceMember: null,
+            project: null,
+            projectMember: null,
+        });
+        this.requestStoreService.set(PolicyAbilityStoreKey, ability);
 
         return true;
     }

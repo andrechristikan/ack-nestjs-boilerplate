@@ -1,7 +1,10 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { Workspace } from '@generated/prisma-client/client';
-import { WorkspaceMemberPolicyStoreKey } from '@modules/policy/constants/policy.constant';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import type { IUserWithoutPolicies } from '@modules/user/interfaces/user.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import {
     WorkspaceMemberStoreKey,
@@ -14,20 +17,22 @@ import type { CanActivate, ExecutionContext } from '@nestjs/common';
 /**
  * Confirms the already-authenticated user (loaded by `UserGuard`, which must run before this guard)
  * is a member of the workspace resolved by `WorkspaceGuard`, stores the membership with its role
- * (without policies), and the role's policies under the workspace policy key. Never
+ * (without policies), and merges the role's policies into the resolved request ability. Never
  * re-fetches or re-authenticates.
  */
 @Injectable()
 export class WorkspaceMemberGuard implements CanActivate {
     constructor(
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
+        private readonly policyAbilityFactory: PolicyAbilityFactory,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     async canActivate(_context: ExecutionContext): Promise<boolean> {
         const workspace =
             this.requestStoreService.get<Workspace>(WorkspaceStoreKey);
-        const user = this.requestStoreService.get<IUser>(UserStoreKey);
+        const user =
+            this.requestStoreService.get<IUserWithoutPolicies>(UserStoreKey);
 
         const {
             role: { policies, ...role },
@@ -37,11 +42,30 @@ export class WorkspaceMemberGuard implements CanActivate {
             user?.id ?? null
         );
 
+        const previousAbility = this.requestStoreService.get<IPolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        if (!previousAbility) {
+            throw new RequestContextMissingException(PolicyAbilityStoreKey);
+        }
+        const ability = this.policyAbilityFactory.buildFromPolicies(policies, {
+            user: user ?? null,
+            workspace: workspace ?? null,
+            workspaceMember: member,
+            project: null,
+            projectMember: null,
+        });
+        this.requestStoreService.set(
+            PolicyAbilityStoreKey,
+            this.policyAbilityFactory.build([
+                ...(previousAbility.rules ?? []),
+                ...(ability.rules ?? []),
+            ])
+        );
         this.requestStoreService.set(WorkspaceMemberStoreKey, {
             ...member,
             role,
         });
-        this.requestStoreService.set(WorkspaceMemberPolicyStoreKey, policies);
 
         return true;
     }

@@ -16,7 +16,7 @@ export const PolicySchema = DatabaseResponseSchema.omit({
 }).extend({
     subject: z.enum(EnumPolicySubject).meta({
         description: 'Policy subject',
-        example: EnumPolicySubject.user,
+        example: EnumPolicySubject.User,
     }),
     action: z
         .array(z.enum(EnumPolicyAction))

@@ -15,6 +15,8 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client';
 import type { IPolicyRequired } from '@modules/policy/interfaces/policy.interface';
+import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyRequiredMetaKey } from '@modules/policy/constants/policy.constant';
 import { PolicyGuard } from '@modules/policy/guards/policy.guard';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
@@ -80,6 +82,7 @@ describe('PolicyGuard', () => {
     const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const ability: MockProxy<IPolicyAbility> = mock<IPolicyAbility>();
     const handler = () => undefined;
     const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
     let guard: PolicyGuard;
@@ -87,7 +90,9 @@ describe('PolicyGuard', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         context.getHandler.mockReturnValue(handler);
-        requestStoreService.get.mockReturnValue(user);
+        requestStoreService.get.mockImplementation(key =>
+            key === PolicyAbilityStoreKey ? ability : user
+        );
 
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
@@ -136,7 +141,7 @@ describe('PolicyGuard', () => {
     it('asserts one subject and one action once', () => {
         reflector.get.mockReturnValue([
             {
-                subject: EnumPolicySubject.user,
+                subject: EnumPolicySubject.User,
                 action: [EnumPolicyAction.read],
             },
         ] satisfies IPolicyRequired[]);
@@ -144,19 +149,20 @@ describe('PolicyGuard', () => {
         expect(guard.canActivate(context)).toBe(true);
         expect(policyDomain.assertCan).toHaveBeenCalledTimes(1);
         expect(policyDomain.assertCan).toHaveBeenCalledWith(
+            ability,
             EnumPolicyAction.read,
-            EnumPolicySubject.user
+            EnumPolicySubject.User
         );
     });
 
     it('asserts every action of every subject in order', () => {
         reflector.get.mockReturnValue([
             {
-                subject: EnumPolicySubject.user,
+                subject: EnumPolicySubject.User,
                 action: [EnumPolicyAction.read, EnumPolicyAction.update],
             },
             {
-                subject: EnumPolicySubject.role,
+                subject: EnumPolicySubject.Role,
                 action: [EnumPolicyAction.create, EnumPolicyAction.delete],
             },
         ] satisfies IPolicyRequired[]);
@@ -165,30 +171,34 @@ describe('PolicyGuard', () => {
         expect(policyDomain.assertCan).toHaveBeenCalledTimes(4);
         expect(policyDomain.assertCan).toHaveBeenNthCalledWith(
             1,
+            ability,
             EnumPolicyAction.read,
-            EnumPolicySubject.user
+            EnumPolicySubject.User
         );
         expect(policyDomain.assertCan).toHaveBeenNthCalledWith(
             2,
+            ability,
             EnumPolicyAction.update,
-            EnumPolicySubject.user
+            EnumPolicySubject.User
         );
         expect(policyDomain.assertCan).toHaveBeenNthCalledWith(
             3,
+            ability,
             EnumPolicyAction.create,
-            EnumPolicySubject.role
+            EnumPolicySubject.Role
         );
         expect(policyDomain.assertCan).toHaveBeenNthCalledWith(
             4,
+            ability,
             EnumPolicyAction.delete,
-            EnumPolicySubject.role
+            EnumPolicySubject.Role
         );
     });
 
     it('propagates the reason carried by a denying assertCan', () => {
         reflector.get.mockReturnValue([
             {
-                subject: EnumPolicySubject.user,
+                subject: EnumPolicySubject.User,
                 action: [EnumPolicyAction.read],
             },
         ] satisfies IPolicyRequired[]);
@@ -210,7 +220,7 @@ describe('PolicyGuard', () => {
     it('propagates a denying assertCan without returning true', () => {
         reflector.get.mockReturnValue([
             {
-                subject: EnumPolicySubject.user,
+                subject: EnumPolicySubject.User,
                 action: [EnumPolicyAction.read, EnumPolicyAction.update],
             },
         ] satisfies IPolicyRequired[]);

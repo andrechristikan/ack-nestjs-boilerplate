@@ -1,4 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -11,7 +13,8 @@ import {
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
 import { ProjectMemberLastAdminException } from '@modules/project/exceptions/project.member-last-admin.exception';
@@ -33,17 +36,23 @@ import { Injectable } from '@nestjs/common';
 export class ProjectMemberDomain {
     constructor(
         private readonly projectMemberRepository: ProjectMemberRepository,
-        private readonly policyDomain: PolicyDomain,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly roleDomain: RoleDomain
+        private readonly roleDomain: RoleDomain,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     private assertProjectMemberPeerAllowed(
         ...roleKeysInvolved: string[]
     ): void {
-        const canManageMembers = this.policyDomain.can(
+        const ability = this.requestStoreService.get<IPolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        if (!ability) {
+            throw new RequestContextMissingException(PolicyAbilityStoreKey);
+        }
+        const canManageMembers = ability.can(
             EnumPolicyAction.update,
-            EnumPolicySubject.projectMember
+            EnumPolicySubject.ProjectMember
         );
         if (
             !canManageMembers &&

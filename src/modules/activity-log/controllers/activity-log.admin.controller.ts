@@ -38,11 +38,11 @@ export class ActivityLogAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.activityLog,
+            subject: EnumPolicySubject.ActivityLog,
             action: [EnumPolicyAction.read],
         }
     )
@@ -67,11 +67,11 @@ export class ActivityLogAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.workspace,
+            subject: EnumPolicySubject.Workspace,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.activityLog,
+            subject: EnumPolicySubject.ActivityLog,
             action: [EnumPolicyAction.read],
         }
     )

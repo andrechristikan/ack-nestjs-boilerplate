@@ -13,8 +13,10 @@ import {
     type WorkspaceMember,
 } from '@generated/prisma-client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberLastAdminException } from '@modules/project/exceptions/project.member-last-admin.exception';
@@ -77,7 +79,9 @@ function buildMemberWithRole(
 describe('ProjectMemberDomain', () => {
     const projectMemberRepository: MockProxy<ProjectMemberRepository> =
         mock<ProjectMemberRepository>();
-    const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const ability: MockProxy<IPolicyAbility> = mock<IPolicyAbility>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
@@ -91,7 +95,10 @@ describe('ProjectMemberDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        policyDomain.can.mockReturnValue(false);
+        requestStoreService.get.mockImplementation(key =>
+            key === PolicyAbilityStoreKey ? ability : null
+        );
+        ability.can.mockReturnValue(false);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -100,7 +107,7 @@ describe('ProjectMemberDomain', () => {
                     provide: ProjectMemberRepository,
                     useValue: projectMemberRepository,
                 },
-                { provide: PolicyDomain, useValue: policyDomain },
+                { provide: RequestStoreService, useValue: requestStoreService },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: RoleDomain, useValue: roleDomain },
             ],
@@ -110,7 +117,7 @@ describe('ProjectMemberDomain', () => {
     });
 
     function setCanManage(allowed: boolean): void {
-        policyDomain.can.mockReturnValue(allowed);
+        ability.can.mockReturnValue(allowed);
     }
 
     describe('validateProjectMemberGuard', () => {
@@ -241,9 +248,9 @@ describe('ProjectMemberDomain', () => {
                 'admin-role-id',
                 EnumRoleScope.project
             );
-            expect(policyDomain.can).toHaveBeenCalledWith(
+            expect(ability.can).toHaveBeenCalledWith(
                 EnumPolicyAction.update,
-                EnumPolicySubject.projectMember
+                EnumPolicySubject.ProjectMember
             );
             expect(projectMemberRepository.create).toHaveBeenCalledWith(
                 project.id,
@@ -711,7 +718,7 @@ describe('ProjectMemberDomain', () => {
             await expect(
                 domain.removeMember(project, 'actor-id', 'target-member-id')
             ).rejects.toBeInstanceOf(ProjectMemberPeerForbiddenException);
-            expect(policyDomain.can).not.toHaveBeenCalled();
+            expect(ability.can).not.toHaveBeenCalled();
         });
 
         it('rejects removing the last admin', async () => {

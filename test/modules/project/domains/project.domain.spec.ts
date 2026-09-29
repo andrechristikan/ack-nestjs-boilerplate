@@ -7,6 +7,7 @@ import { DatabaseUniqueValueGenerationFailedException } from '@common/database/e
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
@@ -22,6 +23,8 @@ import {
 } from '@generated/prisma-client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
@@ -40,6 +43,9 @@ describe('ProjectDomain', () => {
     const projectRepository: MockProxy<ProjectRepository> =
         mock<ProjectRepository>();
     const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+    const ability: MockProxy<IPolicyAbility> = mock<IPolicyAbility>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -64,6 +70,9 @@ describe('ProjectDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        requestStoreService.get.mockImplementation(key =>
+            key === PolicyAbilityStoreKey ? ability : null
+        );
         configGet.mockImplementation((key: string) => {
             if (key === 'project.slugRegex') return /^[a-z-]+$/;
             if (key === 'project.slugPrefix') return 'project';
@@ -84,6 +93,7 @@ describe('ProjectDomain', () => {
                 ProjectDomain,
                 { provide: ProjectRepository, useValue: projectRepository },
                 { provide: PolicyDomain, useValue: policyDomain },
+                { provide: RequestStoreService, useValue: requestStoreService },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: HelperDateService, useValue: helperDateService },
                 {
@@ -140,7 +150,7 @@ describe('ProjectDomain', () => {
             const pagination =
                 mock<IPaginationQueryCursorParams<Prisma.ProjectWhereInput>>();
             const page = mock<IResponsePaginationReturn<Project>>();
-            policyDomain.can.mockReturnValue(canRead);
+            ability.can.mockReturnValue(canRead);
             projectRepository.findWithPaginationCursorForWorkspace.mockResolvedValue(
                 page
             );
@@ -152,13 +162,18 @@ describe('ProjectDomain', () => {
                     pagination
                 )
             ).resolves.toBe(page);
-            expect(policyDomain.can).toHaveBeenCalledWith(
+            expect(ability.can).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
-                EnumPolicySubject.project
+                EnumPolicySubject.Project
             );
             expect(
                 projectRepository.findWithPaginationCursorForWorkspace
-            ).toHaveBeenCalledWith('workspace-id', expectedUserId, pagination);
+            ).toHaveBeenCalledWith(
+                'workspace-id',
+                expectedUserId,
+                undefined,
+                pagination
+            );
         }
     );
 

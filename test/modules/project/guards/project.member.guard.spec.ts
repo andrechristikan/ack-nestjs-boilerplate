@@ -11,11 +11,9 @@ import {
     EnumPolicySubject,
     EnumRoleScope,
 } from '@generated/prisma-client';
-import {
-    PolicyStoreKey,
-    ProjectMemberPolicyStoreKey,
-    WorkspaceMemberPolicyStoreKey,
-} from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import {
     ProjectMemberRequiredMetaKey,
     ProjectMemberStoreKey,
@@ -30,32 +28,22 @@ import { UserStoreKey } from '@modules/user/constants/user.constant';
 describe('ProjectMemberGuard', () => {
     const projectMemberDomain: MockProxy<ProjectMemberDomain> =
         mock<ProjectMemberDomain>();
+    const policyAbilityFactory: MockProxy<PolicyAbilityFactory> =
+        mock<PolicyAbilityFactory>();
+    const ability: MockProxy<IPolicyAbility> = mock<IPolicyAbility>({
+        rules: [],
+    });
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const reflector: MockProxy<Reflector> = mock<Reflector>();
     const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
     const handler = vi.fn();
     const at = new Date('2026-01-01T00:00:00.000Z');
-    const workspacePolicies = [
-        {
-            id: 'workspace-policy-id',
-            roleId: 'workspace-role-id',
-            subject: EnumPolicySubject.workspace,
-            action: [EnumPolicyAction.read],
-            conditions: null,
-            inverted: false,
-            reason: null,
-            createdAt: at,
-            createdBy: null,
-            updatedAt: at,
-            updatedBy: null,
-        },
-    ];
     const projectPolicies = [
         {
             id: 'project-policy-id',
             roleId: 'project-role-id',
-            subject: EnumPolicySubject.project,
+            subject: EnumPolicySubject.Project,
             action: [EnumPolicyAction.read, EnumPolicyAction.update],
             conditions: null,
             inverted: false,
@@ -100,12 +88,18 @@ describe('ProjectMemberGuard', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityFactory.buildFromPolicies.mockReturnValue(ability);
+        policyAbilityFactory.build.mockReturnValue(ability);
         context.getHandler.mockReturnValue(handler);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectMemberGuard,
                 { provide: ProjectMemberDomain, useValue: projectMemberDomain },
+                {
+                    provide: PolicyAbilityFactory,
+                    useValue: policyAbilityFactory,
+                },
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
@@ -119,9 +113,9 @@ describe('ProjectMemberGuard', () => {
 
     it('reads the required flag from the handler metadata', async () => {
         stubStore({
+            [PolicyAbilityStoreKey]: ability,
             [ProjectStoreKey]: { id: 'project-id' },
             [UserStoreKey]: { id: 'user-id' },
-            [WorkspaceMemberPolicyStoreKey]: workspacePolicies,
         });
         reflector.get.mockReturnValue(false);
         projectMemberDomain.validateProjectMemberGuard.mockResolvedValue(null);
@@ -134,11 +128,11 @@ describe('ProjectMemberGuard', () => {
         );
     });
 
-    it('stores the membership with its role stripped of policies and the policies under the project policy key alone', async () => {
+    it('stores the membership without policies and resolves the project policies', async () => {
         stubStore({
+            [PolicyAbilityStoreKey]: ability,
             [ProjectStoreKey]: { id: 'project-id' },
             [UserStoreKey]: { id: 'user-id' },
-            [WorkspaceMemberPolicyStoreKey]: workspacePolicies,
         });
         reflector.get.mockReturnValue(true);
         projectMemberDomain.validateProjectMemberGuard.mockResolvedValue(
@@ -155,21 +149,19 @@ describe('ProjectMemberGuard', () => {
             ProjectMemberStoreKey,
             { ...member, role }
         );
+        expect(policyAbilityFactory.buildFromPolicies).toHaveBeenCalledWith(
+            projectPolicies,
+            expect.objectContaining({ project: { id: 'project-id' } })
+        );
         expect(requestStoreService.set).toHaveBeenCalledWith(
-            ProjectMemberPolicyStoreKey,
-            projectPolicies
-        );
-        expect(requestStoreService.set).not.toHaveBeenCalledWith(
-            PolicyStoreKey,
-            expect.anything()
-        );
-        expect(requestStoreService.get).not.toHaveBeenCalledWith(
-            WorkspaceMemberPolicyStoreKey
+            PolicyAbilityStoreKey,
+            ability
         );
     });
 
     it('treats a missing metadata value as strict', async () => {
         stubStore({
+            [PolicyAbilityStoreKey]: ability,
             [ProjectStoreKey]: { id: 'project-id' },
             [UserStoreKey]: { id: 'user-id' },
         });
@@ -187,9 +179,9 @@ describe('ProjectMemberGuard', () => {
 
     it('stores nothing and leaves the workspace policies when a non-rejecting route finds no row', async () => {
         stubStore({
+            [PolicyAbilityStoreKey]: ability,
             [ProjectStoreKey]: { id: 'project-id' },
             [UserStoreKey]: { id: 'user-id' },
-            [WorkspaceMemberPolicyStoreKey]: workspacePolicies,
         });
         reflector.get.mockReturnValue(false);
         projectMemberDomain.validateProjectMemberGuard.mockResolvedValue(null);
@@ -238,6 +230,7 @@ describe('ProjectMemberGuard', () => {
         'passes null for the missing identifier when $name',
         async ({ project, user, expected }) => {
             stubStore({
+                [PolicyAbilityStoreKey]: ability,
                 [ProjectStoreKey]: project,
                 [UserStoreKey]: user,
             });

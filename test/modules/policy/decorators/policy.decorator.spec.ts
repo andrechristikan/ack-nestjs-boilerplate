@@ -14,7 +14,7 @@ describe('policy decorators', () => {
     it('registers the policy guard and required policy metadata', () => {
         const handler = vi.fn();
         const required: IPolicyRequired = {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         };
         PolicyProtected(required)({}, 'handler', { value: handler });

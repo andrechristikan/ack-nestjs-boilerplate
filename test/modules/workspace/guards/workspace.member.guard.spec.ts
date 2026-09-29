@@ -10,10 +10,9 @@ import {
     EnumPolicySubject,
     EnumRoleScope,
 } from '@generated/prisma-client';
-import {
-    PolicyStoreKey,
-    WorkspaceMemberPolicyStoreKey,
-} from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import {
@@ -27,6 +26,11 @@ import type { IWorkspaceMemberWithRolePolicies } from '@modules/workspace/interf
 describe('WorkspaceMemberGuard', () => {
     const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> =
         mock<WorkspaceMemberDomain>();
+    const policyAbilityFactory: MockProxy<PolicyAbilityFactory> =
+        mock<PolicyAbilityFactory>();
+    const ability: MockProxy<IPolicyAbility> = mock<IPolicyAbility>({
+        rules: [],
+    });
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
@@ -35,7 +39,7 @@ describe('WorkspaceMemberGuard', () => {
         {
             id: 'policy-id',
             roleId: 'role-id',
-            subject: EnumPolicySubject.workspace,
+            subject: EnumPolicySubject.Workspace,
             action: [EnumPolicyAction.read],
             conditions: null,
             inverted: false,
@@ -73,6 +77,8 @@ describe('WorkspaceMemberGuard', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityFactory.buildFromPolicies.mockReturnValue(ability);
+        policyAbilityFactory.build.mockReturnValue(ability);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -80,6 +86,10 @@ describe('WorkspaceMemberGuard', () => {
                 {
                     provide: WorkspaceMemberDomain,
                     useValue: workspaceMemberDomain,
+                },
+                {
+                    provide: PolicyAbilityFactory,
+                    useValue: policyAbilityFactory,
                 },
                 {
                     provide: RequestStoreService,
@@ -95,6 +105,7 @@ describe('WorkspaceMemberGuard', () => {
         const workspace = { id: 'workspace-id' };
         const user = { id: 'user-id' };
         requestStoreService.get.mockImplementation((key: unknown) => {
+            if (key === PolicyAbilityStoreKey) return ability;
             if (key === WorkspaceStoreKey) return workspace;
             if (key === UserStoreKey) return user;
             return undefined;
@@ -113,10 +124,29 @@ describe('WorkspaceMemberGuard', () => {
             { ...member, role }
         );
         expect(requestStoreService.set).toHaveBeenCalledTimes(2);
+        expect(policyAbilityFactory.buildFromPolicies).toHaveBeenCalledWith(
+            policies,
+            {
+                user,
+                workspace,
+                workspaceMember: expect.objectContaining({
+                    id: member.id,
+                    workspaceId: member.workspaceId,
+                    userId: member.userId,
+                }),
+                project: null,
+                projectMember: null,
+            }
+        );
+        expect(requestStoreService.set).toHaveBeenCalledWith(
+            PolicyAbilityStoreKey,
+            ability
+        );
     });
 
-    it('stores the workspace role policies under the workspace policy key and leaves the platform key alone', async () => {
+    it('resolves the workspace role policies without storing raw policies', async () => {
         requestStoreService.get.mockImplementation((key: unknown) => {
+            if (key === PolicyAbilityStoreKey) return ability;
             if (key === WorkspaceStoreKey) return { id: 'workspace-id' };
             if (key === UserStoreKey) return { id: 'user-id' };
             return undefined;
@@ -127,18 +157,16 @@ describe('WorkspaceMemberGuard', () => {
 
         await guard.canActivate(context);
 
-        expect(requestStoreService.set).toHaveBeenCalledWith(
-            WorkspaceMemberPolicyStoreKey,
-            policies
-        );
-        expect(requestStoreService.set).not.toHaveBeenCalledWith(
-            PolicyStoreKey,
-            expect.anything()
+        expect(policyAbilityFactory.buildFromPolicies).toHaveBeenCalledWith(
+            policies,
+            expect.objectContaining({ workspace: { id: 'workspace-id' } })
         );
     });
 
-    it('stores an empty policy list when the workspace role carries none', async () => {
-        requestStoreService.get.mockReturnValue(undefined);
+    it('resolves an empty policy list when the workspace role carries none', async () => {
+        requestStoreService.get.mockImplementation((key: unknown) =>
+            key === PolicyAbilityStoreKey ? ability : undefined
+        );
         workspaceMemberDomain.validateWorkspaceMemberGuard.mockResolvedValue({
             ...member,
             role: { ...member.role, policies: [] },
@@ -146,14 +174,16 @@ describe('WorkspaceMemberGuard', () => {
 
         await guard.canActivate(context);
 
-        expect(requestStoreService.set).toHaveBeenCalledWith(
-            WorkspaceMemberPolicyStoreKey,
-            []
+        expect(policyAbilityFactory.buildFromPolicies).toHaveBeenCalledWith(
+            [],
+            expect.objectContaining({ workspace: null, user: null })
         );
     });
 
     it('passes null identifiers when prerequisite guards did not store context', async () => {
-        requestStoreService.get.mockReturnValue(undefined);
+        requestStoreService.get.mockImplementation((key: unknown) =>
+            key === PolicyAbilityStoreKey ? ability : undefined
+        );
         workspaceMemberDomain.validateWorkspaceMemberGuard.mockResolvedValue(
             member
         );
@@ -181,6 +211,7 @@ describe('WorkspaceMemberGuard', () => {
         'passes null for the missing identifier when $name',
         async ({ workspace, user, expected }) => {
             requestStoreService.get.mockImplementation((key: unknown) => {
+                if (key === PolicyAbilityStoreKey) return ability;
                 if (key === WorkspaceStoreKey) return workspace;
                 if (key === UserStoreKey) return user;
                 return undefined;
@@ -200,6 +231,7 @@ describe('WorkspaceMemberGuard', () => {
     it('propagates the domain rejection unchanged and publishes nothing', async () => {
         const error = new Error('not a workspace member');
         requestStoreService.get.mockImplementation((key: unknown) => {
+            if (key === PolicyAbilityStoreKey) return ability;
             if (key === WorkspaceStoreKey) return { id: 'workspace-id' };
             if (key === UserStoreKey) return { id: 'user-id' };
             return undefined;

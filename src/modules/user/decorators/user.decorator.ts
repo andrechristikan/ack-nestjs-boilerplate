@@ -4,7 +4,7 @@ import {
     UserStoreKey,
 } from '@modules/user/constants/user.constant';
 import { UserGuard } from '@modules/user/guards/user.guard';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import type { IUserWithoutPolicies } from '@modules/user/interfaces/user.interface';
 import {
     SetMetadata,
     UseGuards,
@@ -33,15 +33,22 @@ export function UserProtected(isVerified: boolean = true): MethodDecorator {
  * @public
  */
 export const UserCurrent = createParamDecorator<
-    Extract<keyof IUser, string> | undefined,
-    IUser | NonNullable<IUser[Extract<keyof IUser, string>]>
+    Extract<keyof IUserWithoutPolicies, string> | undefined,
+    | IUserWithoutPolicies
+    | NonNullable<
+          IUserWithoutPolicies[Extract<keyof IUserWithoutPolicies, string>]
+      >
 >(
     (
-        field: Extract<keyof IUser, string> | undefined
-    ): IUser | NonNullable<IUser[Extract<keyof IUser, string>]> => {
-        const user = ClsServiceManager.getClsService().get<IUser | undefined>(
-            UserStoreKey
-        );
+        field: Extract<keyof IUserWithoutPolicies, string> | undefined
+    ):
+        | IUserWithoutPolicies
+        | NonNullable<
+              IUserWithoutPolicies[Extract<keyof IUserWithoutPolicies, string>]
+          > => {
+        const user = ClsServiceManager.getClsService().get<
+            IUserWithoutPolicies | undefined
+        >(UserStoreKey);
         if (user === undefined || user === null) {
             throw new RequestContextMissingException(UserStoreKey);
         }

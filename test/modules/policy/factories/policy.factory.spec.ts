@@ -1,11 +1,15 @@
 import { subject } from '@casl/ability';
+import type { RawRuleOf } from '@casl/ability';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
 } from '@generated/prisma-client/client';
-import type { Workspace } from '@generated/prisma-client/client';
+import type { Policy, Workspace } from '@generated/prisma-client/client';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
-import type { IPolicyAbilityRule } from '@modules/policy/interfaces/policy.interface';
+import type {
+    IPolicyAbility,
+    IPolicyPlaceholderContext,
+} from '@modules/policy/interfaces/policy.interface';
 
 describe('PolicyAbilityFactory', () => {
     const factory = new PolicyAbilityFactory();
@@ -24,17 +28,45 @@ describe('PolicyAbilityFactory', () => {
         deletedBy: null,
     });
     const buildRule = (
-        overrides: Partial<IPolicyAbilityRule> = {}
-    ): IPolicyAbilityRule => ({
-        subject: EnumPolicySubject.user,
+        overrides: Partial<RawRuleOf<IPolicyAbility>> = {}
+    ): RawRuleOf<IPolicyAbility> => ({
+        subject: 'User',
+        action: [EnumPolicyAction.read],
+        conditions: undefined,
+        inverted: false,
+        ...overrides,
+    });
+    const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
+        id: 'policy-id',
+        roleId: 'role-id',
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read],
         conditions: null,
         inverted: false,
         reason: null,
+        createdAt: now,
+        createdBy: null,
+        updatedAt: now,
+        updatedBy: null,
         ...overrides,
     });
+    const placeholders: IPolicyPlaceholderContext = {
+        user: { id: 'user-id' },
+        workspace: { id: 'workspace-id' },
+        workspaceMember: null,
+        project: null,
+        projectMember: null,
+    };
 
     describe('build', () => {
+        it('accepts CASL raw rules without remapping application subjects', () => {
+            const ability = factory.build([
+                buildRule({ action: EnumPolicyAction.read }),
+            ]);
+
+            expect(ability.can(EnumPolicyAction.read, 'User')).toBe(true);
+        });
+
         it('allows a granted action on the subject and denies the rest', () => {
             const ability = factory.build([buildRule()]);
 
@@ -55,7 +87,7 @@ describe('PolicyAbilityFactory', () => {
         it('lets the all subject cover every subject', () => {
             const ability = factory.build([
                 buildRule({
-                    subject: EnumPolicySubject.all,
+                    subject: 'all',
                     action: [EnumPolicyAction.manage],
                 }),
             ]);
@@ -93,7 +125,7 @@ describe('PolicyAbilityFactory', () => {
         it('matches an object against the rule conditions', () => {
             const ability = factory.build([
                 buildRule({
-                    subject: EnumPolicySubject.workspace,
+                    subject: 'Workspace',
                     conditions: { id: 'w1' },
                 }),
             ]);
@@ -114,9 +146,9 @@ describe('PolicyAbilityFactory', () => {
 
         it('ignores the conditions of an inverted rule on a subject-only check', () => {
             const ability = factory.build([
-                buildRule({ subject: EnumPolicySubject.workspace }),
+                buildRule({ subject: 'Workspace' }),
                 buildRule({
-                    subject: EnumPolicySubject.workspace,
+                    subject: 'Workspace',
                     inverted: true,
                     conditions: { isPublic: true },
                 }),
@@ -127,9 +159,9 @@ describe('PolicyAbilityFactory', () => {
 
         it('denies an object only when it matches an inverted conditional rule', () => {
             const ability = factory.build([
-                buildRule({ subject: EnumPolicySubject.workspace }),
+                buildRule({ subject: 'Workspace' }),
                 buildRule({
-                    subject: EnumPolicySubject.workspace,
+                    subject: 'Workspace',
                     inverted: true,
                     conditions: { isPublic: true },
                 }),
@@ -181,7 +213,7 @@ describe('PolicyAbilityFactory', () => {
         it('lets manage on a specific subject grant an action the registry never listed for it', () => {
             const ability = factory.build([
                 buildRule({
-                    subject: EnumPolicySubject.workspaceMember,
+                    subject: 'WorkspaceMember',
                     action: [EnumPolicyAction.manage],
                 }),
             ]);
@@ -194,7 +226,7 @@ describe('PolicyAbilityFactory', () => {
         it('leaves a manage rule on the all subject as the true wildcard', () => {
             const ability = factory.build([
                 buildRule({
-                    subject: EnumPolicySubject.all,
+                    subject: 'all',
                     action: [EnumPolicyAction.manage],
                 }),
             ]);
@@ -208,7 +240,7 @@ describe('PolicyAbilityFactory', () => {
         it('carries conditions, inversion and reason onto an expanded manage rule', () => {
             const ability = factory.build([
                 buildRule({
-                    subject: EnumPolicySubject.workspaceMember,
+                    subject: 'WorkspaceMember',
                     action: [EnumPolicyAction.manage],
                     inverted: true,
                     reason: 'blocked',
@@ -233,6 +265,48 @@ describe('PolicyAbilityFactory', () => {
             expect(ability.can(EnumPolicyAction.read, 'User')).toBe(true);
             expect(ability.can(EnumPolicyAction.update, 'User')).toBe(true);
             expect(ability.can(EnumPolicyAction.create, 'User')).toBe(false);
+        });
+    });
+
+    describe('buildFromPolicies', () => {
+        it('interpolates policy conditions without mutating persisted policies', () => {
+            const policy = buildPolicy({
+                conditions: { userId: '${user.id}' },
+            });
+            const snapshot = structuredClone(policy);
+
+            const ability = factory.buildFromPolicies([policy], placeholders);
+
+            expect(policy).toEqual(snapshot);
+            expect(
+                ability.can(
+                    EnumPolicyAction.read,
+                    subject('User', { userId: 'user-id' })
+                )
+            ).toBe(true);
+        });
+
+        it('builds only the supplied policies', () => {
+            const ability = factory.buildFromPolicies(
+                [buildPolicy({ subject: EnumPolicySubject.Project })],
+                placeholders
+            );
+
+            expect(ability.can(EnumPolicyAction.read, 'Project')).toBe(true);
+            expect(ability.can(EnumPolicyAction.read, 'Workspace')).toBe(false);
+        });
+
+        it('drops policies whose conditions cannot be resolved', () => {
+            const ability = factory.buildFromPolicies(
+                [
+                    buildPolicy({
+                        conditions: { projectId: '${project.id}' },
+                    }),
+                ],
+                placeholders
+            );
+
+            expect(ability.can(EnumPolicyAction.read, 'User')).toBe(false);
         });
     });
 });

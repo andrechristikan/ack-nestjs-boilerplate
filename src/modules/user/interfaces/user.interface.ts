@@ -42,6 +42,10 @@ export interface IUser extends User {
     twoFactor: IUserTwoFactor | null;
 }
 
+export type IUserWithoutPolicies = Omit<IUser, 'role'> & {
+    role: Omit<IRoleWithPolicies, 'policies'>;
+};
+
 /** A user row flattened for CSV export: only the role name and the photo are joined. */
 export interface IUserExport extends User {
     role: Pick<Role, 'name'>;

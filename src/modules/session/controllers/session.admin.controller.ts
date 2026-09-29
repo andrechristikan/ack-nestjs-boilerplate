@@ -47,11 +47,11 @@ export class SessionAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.session,
+            subject: EnumPolicySubject.Session,
             action: [EnumPolicyAction.read],
         }
     )
@@ -74,11 +74,11 @@ export class SessionAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.session,
+            subject: EnumPolicySubject.Session,
             action: [EnumPolicyAction.read, EnumPolicyAction.delete],
         }
     )
@@ -106,11 +106,11 @@ export class SessionAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.session,
+            subject: EnumPolicySubject.Session,
             action: [EnumPolicyAction.read, EnumPolicyAction.delete],
         }
     )

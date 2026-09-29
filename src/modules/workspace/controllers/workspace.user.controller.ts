@@ -157,7 +157,7 @@ export class WorkspaceUserController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+        subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.read],
     })
     @WorkspaceMemberProtected()
@@ -180,7 +180,7 @@ export class WorkspaceUserController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+        subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.update],
     })
     @WorkspaceMemberProtected()
@@ -213,7 +213,7 @@ export class WorkspaceUserController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+        subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.update],
     })
     @WorkspaceMemberProtected()
@@ -243,7 +243,7 @@ export class WorkspaceUserController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+        subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.update],
     })
     @WorkspaceMemberProtected()
@@ -292,7 +292,7 @@ export class WorkspaceUserController {
     @Response('workspace.transferOwnership')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+        subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.update],
     })
     @WorkspaceMemberProtected()
@@ -343,7 +343,7 @@ export class WorkspaceUserController {
     @Response('workspace.softDelete')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+        subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.delete],
     })
     @WorkspaceMemberProtected()
@@ -392,7 +392,7 @@ export class WorkspaceUserController {
     @Response('workspace.member.updateRole')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspaceMember,
+        subject: EnumPolicySubject.WorkspaceMember,
         action: [EnumPolicyAction.update],
     })
     @WorkspaceMemberProtected()
@@ -423,7 +423,7 @@ export class WorkspaceUserController {
     @Response('workspace.member.remove')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspaceMember,
+        subject: EnumPolicySubject.WorkspaceMember,
         action: [EnumPolicyAction.delete],
     })
     @WorkspaceMemberProtected()
@@ -480,7 +480,7 @@ export class WorkspaceUserController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspaceInvite,
+        subject: EnumPolicySubject.WorkspaceInvite,
         action: [EnumPolicyAction.create],
     })
     @WorkspaceMemberProtected()
@@ -513,7 +513,7 @@ export class WorkspaceUserController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspaceInvite,
+        subject: EnumPolicySubject.WorkspaceInvite,
         action: [EnumPolicyAction.update],
     })
     @WorkspaceMemberProtected()
@@ -545,7 +545,7 @@ export class WorkspaceUserController {
     @Response('workspace.invite.revoke')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspaceInvite,
+        subject: EnumPolicySubject.WorkspaceInvite,
         action: [EnumPolicyAction.delete],
     })
     @WorkspaceMemberProtected()
@@ -647,7 +647,7 @@ export class WorkspaceUserController {
     @Response('workspace.joinRequest.accept')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspaceJoinRequest,
+        subject: EnumPolicySubject.WorkspaceJoinRequest,
         action: [EnumPolicyAction.update],
     })
     @WorkspaceMemberProtected()
@@ -676,7 +676,7 @@ export class WorkspaceUserController {
     @Response('workspace.joinRequest.reject')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspaceJoinRequest,
+        subject: EnumPolicySubject.WorkspaceJoinRequest,
         action: [EnumPolicyAction.update],
     })
     @WorkspaceMemberProtected()

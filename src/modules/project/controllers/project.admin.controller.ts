@@ -47,7 +47,7 @@ export class ProjectAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.project,
+        subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -70,7 +70,7 @@ export class ProjectAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.project,
+        subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()

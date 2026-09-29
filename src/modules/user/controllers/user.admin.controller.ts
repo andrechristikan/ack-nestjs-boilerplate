@@ -93,7 +93,7 @@ export class UserAdminController {
     @ResponsePagination('user.list', { schema: UserListResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -111,7 +111,7 @@ export class UserAdminController {
     @Response('user.get', { schema: UserProfileResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -130,7 +130,7 @@ export class UserAdminController {
     @Response('user.create', { schema: DatabaseIdResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @UserProtected()
@@ -150,7 +150,7 @@ export class UserAdminController {
     @Response('user.updateStatus')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()
@@ -176,7 +176,7 @@ export class UserAdminController {
     @Response('user.updatePassword')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()
@@ -199,7 +199,7 @@ export class UserAdminController {
     @Response('user.twoFactor.resetByAdmin')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()
@@ -222,7 +222,7 @@ export class UserAdminController {
     @Response('user.import')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @UserProtected()
@@ -253,7 +253,7 @@ export class UserAdminController {
     @ResponseFile()
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()

@@ -1,31 +1,71 @@
 import { createPrismaAbility } from '@casl/prisma';
-import { abilitySubjectOf } from '@modules/policy/constants/policy.constant';
-import type { EnumPolicyAction } from '@generated/prisma-client/client';
+import type { Policy } from '@generated/prisma-client/client';
 import type {
     IPolicyAbility,
     IPolicyAbilityRule,
-    IPolicyAbilitySubject,
+    IPolicyPlaceholderContext,
 } from '@modules/policy/interfaces/policy.interface';
+import {
+    interpolate,
+    isPlainJsonObject,
+} from '@modules/policy/utils/policy.condition.util';
 import { Injectable } from '@nestjs/common';
 
 /** Builds the typed Prisma CASL ability from policy rules. */
 @Injectable()
 export class PolicyAbilityFactory {
+    private toAbilityRule(
+        policy: Policy,
+        placeholders: IPolicyPlaceholderContext
+    ): IPolicyAbilityRule | null {
+        const { conditions } = policy;
+        const resolved =
+            conditions === null || !isPlainJsonObject(conditions)
+                ? null
+                : interpolate(conditions, {
+                      '${user.id}': placeholders.user?.id,
+                      '${workspace.id}': placeholders.workspace?.id,
+                      '${workspaceMember.id}': placeholders.workspaceMember?.id,
+                      '${project.id}': placeholders.project?.id,
+                      '${projectMember.id}': placeholders.projectMember?.id,
+                  });
+
+        if (conditions !== null && resolved === null) {
+            return null;
+        }
+
+        return {
+            subject: policy.subject,
+            action: policy.action,
+            ...(resolved ? { conditions: resolved } : {}),
+            inverted: policy.inverted,
+            ...(policy.reason ? { reason: policy.reason } : {}),
+        };
+    }
+
     /** Inverted rules are added after allows so a matching deny is authoritative. */
     build(rules: IPolicyAbilityRule[]): IPolicyAbility {
-        const rawRules = [
+        const orderedRules = [
             ...rules.filter(rule => !rule.inverted),
             ...rules.filter(rule => rule.inverted),
-        ].map(rule => ({
-            action: rule.action,
-            subject: abilitySubjectOf(rule.subject),
-            conditions: rule.conditions ?? undefined,
-            inverted: rule.inverted,
-            reason: rule.reason ?? undefined,
-        }));
+        ];
 
-        return createPrismaAbility<[EnumPolicyAction, IPolicyAbilitySubject]>(
-            rawRules
-        );
+        return createPrismaAbility<IPolicyAbility>(orderedRules);
+    }
+
+    /** Builds a resolved ability from the supplied persisted policies. */
+    buildFromPolicies(
+        policies: Policy[] | null,
+        placeholders: IPolicyPlaceholderContext
+    ): IPolicyAbility {
+        const rules: IPolicyAbilityRule[] = [];
+        for (const policy of policies ?? []) {
+            const rule = this.toAbilityRule(policy, placeholders);
+            if (rule !== null) {
+                rules.push(rule);
+            }
+        }
+
+        return this.build(rules);
     }
 }

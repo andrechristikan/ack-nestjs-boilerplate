@@ -53,7 +53,7 @@ export class WorkspaceAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+        subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -77,7 +77,7 @@ export class WorkspaceAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+        subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -98,7 +98,7 @@ export class WorkspaceAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+        subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()

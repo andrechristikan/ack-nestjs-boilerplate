@@ -769,22 +769,22 @@ enum EnumPolicyAction {
 
 enum EnumPolicySubject {
   all
-  apiKey
-  role
-  user
-  session
-  activityLog
-  passwordHistory
-  termPolicy
-  featureFlag
-  device
-  workspace
-  project
+  ApiKey
+  Role
+  User
+  Session
+  ActivityLog
+  PasswordHistory
+  TermPolicy
+  FeatureFlag
+  Device
+  Workspace
+  Project
   analytic
-  workspaceMember
-  workspaceInvite
-  workspaceJoinRequest
-  projectMember
+  WorkspaceMember
+  WorkspaceInvite
+  WorkspaceJoinRequest
+  ProjectMember
 }
 
 enum EnumApiKeyType {

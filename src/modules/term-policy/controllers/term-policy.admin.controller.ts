@@ -77,7 +77,7 @@ export class TermPolicyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -96,7 +96,7 @@ export class TermPolicyAdminController {
     @Response('termPolicy.create', { schema: TermPolicyResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @UserProtected()
@@ -117,7 +117,7 @@ export class TermPolicyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
     @UserProtected()
@@ -138,7 +138,7 @@ export class TermPolicyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [
             EnumPolicyAction.read,
             EnumPolicyAction.create,
@@ -164,7 +164,7 @@ export class TermPolicyAdminController {
     @Response('termPolicy.updateContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()
@@ -188,7 +188,7 @@ export class TermPolicyAdminController {
     @Response('termPolicy.addContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()
@@ -212,7 +212,7 @@ export class TermPolicyAdminController {
     @Response('termPolicy.removeContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()
@@ -238,7 +238,7 @@ export class TermPolicyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -262,7 +262,7 @@ export class TermPolicyAdminController {
     @Response('termPolicy.publish')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()

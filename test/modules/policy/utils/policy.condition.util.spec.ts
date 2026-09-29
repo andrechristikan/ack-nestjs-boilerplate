@@ -2,14 +2,12 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
 } from '@generated/prisma-client/client';
-import type {
-    IPolicyPlaceholderContext,
-    IPolicyScopePair,
-} from '@modules/policy/interfaces/policy.interface';
+import type { IPolicyPlaceholderContext } from '@modules/policy/interfaces/policy.interface';
 import {
     isPlainJsonObject,
+    interpolate,
     resolvePlaceholders,
-    scopePairOf,
+    policyScopeOf,
     scopedCondition,
 } from '@modules/policy/utils/policy.condition.util';
 
@@ -28,10 +26,10 @@ describe('PolicyConditionUtil', () => {
         '${project.id}',
         '${projectMember.id}',
     ];
-    const workspacePair: IPolicyScopePair = {
+    const workspacePair = {
         key: 'workspaceId',
         placeholder: '${workspace.id}',
-    };
+    } as const;
 
     describe('isPlainJsonObject', () => {
         it('accepts a plain object', () => {
@@ -197,10 +195,60 @@ describe('PolicyConditionUtil', () => {
         });
     });
 
-    describe('scopePairOf', () => {
+    describe('interpolate', () => {
+        it('replaces only the explicitly supplied placeholders', () => {
+            expect(
+                interpolate(
+                    {
+                        userId: '${user.id}',
+                        workspaceId: '${workspace.id}',
+                    },
+                    { '${user.id}': 'user-1' }
+                )
+            ).toEqual({
+                userId: 'user-1',
+                workspaceId: '${workspace.id}',
+            });
+        });
+
+        it('recurses through nested objects and arrays without mutating input', () => {
+            const conditions = {
+                AND: [
+                    { userId: '${user.id}' },
+                    { ids: ['${project.id}', 'literal'] },
+                ],
+            };
+
+            expect(
+                interpolate(conditions, {
+                    '${user.id}': 'user-1',
+                    '${project.id}': 'project-1',
+                })
+            ).toEqual({
+                AND: [{ userId: 'user-1' }, { ids: ['project-1', 'literal'] }],
+            });
+            expect(conditions).toEqual({
+                AND: [
+                    { userId: '${user.id}' },
+                    { ids: ['${project.id}', 'literal'] },
+                ],
+            });
+        });
+
+        it('drops a condition when a supplied placeholder has no value', () => {
+            expect(
+                interpolate(
+                    { userId: '${user.id}' },
+                    { '${user.id}': undefined }
+                )
+            ).toBeNull();
+        });
+    });
+
+    describe('policyScopeOf', () => {
         it('keys a workspace-level subject on its workspaceId', () => {
             expect(
-                scopePairOf(EnumPolicySubject.workspaceMember, [
+                policyScopeOf(EnumPolicySubject.WorkspaceMember, [
                     EnumPolicyAction.update,
                 ])
             ).toEqual(workspacePair);
@@ -208,7 +256,7 @@ describe('PolicyConditionUtil', () => {
 
         it('keys the workspace subject on its own id', () => {
             expect(
-                scopePairOf(EnumPolicySubject.workspace, [
+                policyScopeOf(EnumPolicySubject.Workspace, [
                     EnumPolicyAction.read,
                 ])
             ).toEqual({ key: 'id', placeholder: '${workspace.id}' });
@@ -216,13 +264,15 @@ describe('PolicyConditionUtil', () => {
 
         it('keys the project subject on its own id', () => {
             expect(
-                scopePairOf(EnumPolicySubject.project, [EnumPolicyAction.read])
+                policyScopeOf(EnumPolicySubject.Project, [
+                    EnumPolicyAction.read,
+                ])
             ).toEqual({ key: 'id', placeholder: '${project.id}' });
         });
 
         it('keys projectMember on its projectId only', () => {
             expect(
-                scopePairOf(EnumPolicySubject.projectMember, [
+                policyScopeOf(EnumPolicySubject.ProjectMember, [
                     EnumPolicyAction.create,
                 ])
             ).toEqual({ key: 'projectId', placeholder: '${project.id}' });
@@ -230,7 +280,7 @@ describe('PolicyConditionUtil', () => {
 
         it('waives the pair for a bare project create', () => {
             expect(
-                scopePairOf(EnumPolicySubject.project, [
+                policyScopeOf(EnumPolicySubject.Project, [
                     EnumPolicyAction.create,
                 ])
             ).toBeNull();
@@ -238,25 +288,27 @@ describe('PolicyConditionUtil', () => {
 
         it('does not waive a project create combined with another action', () => {
             expect(
-                scopePairOf(EnumPolicySubject.project, [
+                policyScopeOf(EnumPolicySubject.Project, [
                     EnumPolicyAction.create,
                     EnumPolicyAction.read,
                 ])
             ).toEqual({ key: 'id', placeholder: '${project.id}' });
         });
 
-        it.each([EnumPolicySubject.user, EnumPolicySubject.all])(
+        it.each([EnumPolicySubject.User, EnumPolicySubject.all])(
             'returns null for the unscoped %s subject',
             subject => {
                 expect(
-                    scopePairOf(subject, [EnumPolicyAction.read])
+                    policyScopeOf(subject, [EnumPolicyAction.read])
                 ).toBeNull();
             }
         );
 
         it('keys analytic on its workspaceId, same as the other workspace-scoped subjects', () => {
             expect(
-                scopePairOf(EnumPolicySubject.analytic, [EnumPolicyAction.read])
+                policyScopeOf(EnumPolicySubject.analytic, [
+                    EnumPolicyAction.read,
+                ])
             ).toEqual(workspacePair);
         });
     });
@@ -264,7 +316,7 @@ describe('PolicyConditionUtil', () => {
     describe('scopedCondition', () => {
         it('merges extra conditions after the scope pair', () => {
             const result = scopedCondition(
-                EnumPolicySubject.workspaceInvite,
+                EnumPolicySubject.WorkspaceInvite,
                 [EnumPolicyAction.manage],
                 { status: 'pending' }
             );
@@ -282,17 +334,27 @@ describe('PolicyConditionUtil', () => {
         it('returns only the extra conditions for a waived project create', () => {
             expect(
                 scopedCondition(
-                    EnumPolicySubject.project,
+                    EnumPolicySubject.Project,
                     [EnumPolicyAction.create],
                     { workspaceId: 'w' }
                 )
             ).toEqual({ workspaceId: 'w' });
         });
 
+        it('preserves the mandatory scope placeholder when extra conditions use the same key', () => {
+            expect(
+                scopedCondition(
+                    EnumPolicySubject.WorkspaceInvite,
+                    [EnumPolicyAction.manage],
+                    { workspaceId: 'other-workspace' }
+                )
+            ).toEqual({ workspaceId: '${workspace.id}' });
+        });
+
         it('returns the extra conditions for an unscoped subject', () => {
             expect(
                 scopedCondition(
-                    EnumPolicySubject.user,
+                    EnumPolicySubject.User,
                     [EnumPolicyAction.read],
                     { a: 1 }
                 )

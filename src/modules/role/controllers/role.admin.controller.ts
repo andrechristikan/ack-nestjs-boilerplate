@@ -46,7 +46,7 @@ export class RoleAdminController {
     @ResponsePagination('role.list', { schema: RoleListResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.role,
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -65,7 +65,7 @@ export class RoleAdminController {
     @Response('role.get', { schema: RoleSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.role,
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -84,7 +84,7 @@ export class RoleAdminController {
     @Response('role.update', { schema: RoleSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.role,
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()

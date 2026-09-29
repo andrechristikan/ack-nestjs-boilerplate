@@ -64,7 +64,7 @@ export class ApiKeyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -82,7 +82,7 @@ export class ApiKeyAdminController {
     @Response('apiKey.create', { schema: ApiKeyCreateResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @UserProtected()
@@ -103,7 +103,7 @@ export class ApiKeyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()
@@ -124,7 +124,7 @@ export class ApiKeyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()
@@ -147,7 +147,7 @@ export class ApiKeyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()
@@ -170,7 +170,7 @@ export class ApiKeyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()
@@ -193,7 +193,7 @@ export class ApiKeyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
     @UserProtected()

@@ -22,7 +22,7 @@ describe('RoleSchema', () => {
             {
                 id: 'policy-id',
                 roleId: 'role-id',
-                subject: EnumPolicySubject.user,
+                subject: EnumPolicySubject.User,
                 action: [EnumPolicyAction.read],
                 conditions: null,
                 inverted: false,

@@ -6,7 +6,7 @@ import { PolicyCreateRequestSchema } from '@modules/policy/dtos/request/policy.c
 
 describe('PolicyCreateRequestSchema', () => {
     const valid = {
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read],
     };
 

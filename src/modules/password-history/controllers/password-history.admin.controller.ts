@@ -39,11 +39,11 @@ export class PasswordHistoryAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.passwordHistory,
+            subject: EnumPolicySubject.PasswordHistory,
             action: [EnumPolicyAction.read],
         }
     )
