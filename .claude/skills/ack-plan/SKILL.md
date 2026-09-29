@@ -37,8 +37,8 @@ not installed, stop and say `claude plugin install superpowers@claude-plugins-of
 - Do not ask what the owner already named.
 - A question the code can answer goes to `explorer` in step 3, not to the owner.
 - Integrate each answer and ask the next round until nothing material is open.
-- State the settled requirement back in one paragraph. It names what is out of scope, the
-  review depth (`rules and boot` or `end to end`), and whether docs update (`yes` or `no`).
+- State the settled requirement back in one paragraph. It names what is out of scope and the
+  review depth (`rules and boot` or `end to end`).
 
 ## 3. Explore, through `explorer`
 
@@ -66,12 +66,11 @@ Invoke `superpowers:writing-plans` on the approved design; the output is
 `.superpowers/<date>-<slug>-plan.md`. Its Execution Handoff is not taken: the plan ends
 here, and execution is `/ack-build` after step 7.
 
-The plan opens with a four-line header block:
+The plan opens with a three-line header block:
 
 ```
 Requirement: <the settled paragraph>
 Review depth: rules and boot | end to end
-Docs: yes | no
 Spec: <.superpowers/<date>-<slug>-spec.md | none>
 ```
 

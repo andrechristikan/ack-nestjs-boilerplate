@@ -39,14 +39,15 @@ Knowledge skills (`ack-add-module`, `ack-add-status-code`, `ack-add-queue`, `ack
 call `superpowers:*` skills at the step that names them, or through an agent's `skills:` preload, and
 nowhere else; outside a workflow skill (a question, a small edit, a script) the session works without
 them. A skill already in the session's context is not invoked again for a reply, a clarifying question,
-or a later step of the same run; its text is present and applies. Superpowers, caveman, and humanizer
-are plugins installed once per machine; enabling them in `.claude/settings.json` does not install them:
+or a later step of the same run; its text is present and applies. `.claude/settings.json` declares
+the third-party marketplaces (`extraKnownMarketplaces`) and enables the plugins (`enabledPlugins`);
+trusting the folder registers the marketplaces. A plugin listed by relative path loads from the
+marketplace copy with no install step; an external one is installed once per machine. `writer` preloads
+`doc-coauthoring` and `diagram-design`; outside `writer` they run when the owner names them.
 
-- `claude plugin install superpowers@claude-plugins-official`
-- `claude plugin marketplace add JuliusBrussee/caveman`, then
-  `claude plugin install caveman@caveman`
-- `claude plugin marketplace add blader/humanizer`, then
-  `claude plugin install humanizer@humanizer`
+- relative path: `caveman@caveman`, `humanizer@humanizer`, `diagram-design@diagram-design`,
+  `example-skills@anthropic-agent-skills`, which carries `doc-coauthoring`
+- external source, once per machine: `claude plugin install superpowers@claude-plugins-official`
 
 ### Agents
 

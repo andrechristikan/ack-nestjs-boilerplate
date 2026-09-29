@@ -41,17 +41,17 @@ what is (`activeSessionCount is computed per read`).
 
 ## Documentation prose
 
-Binds `docs/*.md`, the root people files, and `.github/` markdown; YAML under `.github/` is repaired for stale
-facts, not rewritten as prose.
+Binds `docs/*.md`, the root people files, and `.github/` markdown; `.github/` YAML gets stale-fact repairs only.
 
-- Indicative mood. An obligation becomes a fact: `all three paths produce the same idempotency key`, not
-  `all paths have to produce identical keys`.
+- Indicative mood; an obligation is a fact: `all three paths produce the same idempotency key`, not `keys must match`.
 - No `.claude/`, no rule cited by path, no working artifact (`.superpowers/`, `generated/`, `graphify-out/`,
   `.claude/worktrees/`), no local-only git ref, no absolute filesystem path, no branch-compare framing
   (`main`, `development`, `origin/*`, "against base"). A version identity the release is about may appear.
 - No em-dash; use a period, comma, semicolon, colon, or parentheses. No filler, no rhetorical question, no
   synonym stacking. Bullets first; keep the existing section structure on a small correction.
 - A flow, a stack, or a hand-off is a mermaid diagram (`flowchart`, `sequenceDiagram`, `stateDiagram-v2`).
+- A designed diagram exists only where the owner asked for one: HTML source and SVG export together under
+  `docs/assets/`, kebab-case names; the page embeds the SVG as a markdown image, alt text saying what it shows.
 
 A PR description fills `.github/pull_request_template.md`; a version description is lean release notes. Both
 are public paste-ready prose under the same bans.

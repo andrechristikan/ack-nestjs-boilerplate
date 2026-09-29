@@ -31,7 +31,7 @@ It changes nothing: git stays read-only, and no DB or seed command runs. If a
 |---|---|
 | `src/` and `test/` paths | `rules and boot` |
 | a `.superpowers/*-plan.md` path | `plan` |
-| markdown under `docs/`, the root people files, or `.github/` | `docs` |
+| markdown under `docs/`, the root people files, or `.github/`; diagram files under `docs/assets/` | `docs` |
 | `.claude/**`, `AGENTS.md`, or `.github/copilot-instructions.md` | `harness` |
 
 - The requirement is the plan header's `Requirement:` line when a plan exists for the

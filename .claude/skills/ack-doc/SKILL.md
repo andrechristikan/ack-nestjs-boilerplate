@@ -3,23 +3,26 @@ name: ack-doc
 description: >-
   Checks docs/*.md, README.md, SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, and
   .github/** except copilot-instructions.md against the checkout through writer and
-  repairs what is stale, final state only. Use when the owner asks to update or verify the
-  docs. Not for a PR description (ack-pr), src/ (ack-plan, ack-build), or .claude/**
-  (ack-harness).
+  repairs what is stale, final state only. Draws a designed diagram under docs/assets/ when
+  the owner asks for one, and reader-tests every page created or section added with a fresh
+  agent that sees that file alone. Use when the owner asks to update, verify, or extend the
+  docs, or for an architecture diagram. Not for a PR description (ack-pr), src/ (ack-plan,
+  ack-build), or .claude/** (ack-harness).
 disable-model-invocation: true
 context: fork
 agent: general-purpose
-argument-hint: "<named doc files, or 'all'> [what changed recently]"
+argument-hint: "<named doc files, or 'all'> [what changed recently] [diagram: <name and subject>]"
 ---
 
 !`git status --short`
 
 # ack-doc
 
-One dispatch to `writer`, the agent that owns reader-facing prose. You do not edit those
-trees yourself. Every file produced here is final state only: how the thing works now, with
-no history, decision log, "changed on", "applies from", "previously", or rationale for a
-change (`.claude/rules/authoring.md`, Final state only).
+One dispatch to `writer`, the agent that owns reader-facing prose, then a reader test of
+what it added. You do not edit those trees yourself. Every file produced here is final
+state only: how the thing works now, with no history, decision log, "changed on", "applies
+from", "previously", or rationale for a change (`.claude/rules/authoring.md`, Final state
+only).
 
 ## 1. Scope
 
@@ -41,45 +44,68 @@ and `.github/**` except `copilot-instructions.md`; name them in the dispatch eit
 `docs/status-codes.md` is the human catalog; it is updated from the numbers an `/ack-build`
 run handed back, not re-derived here.
 
+The `Diagram:` slot carries the diagram and its subject when the owner asked for a designed
+one (an architecture overview, say), and `none` otherwise.
+
 ## 2. Dispatch `writer`
 
 ```
 Agent: writer
 Scope: <the files from step 1>
 Context: <what changed recently, when the owner said>
+Diagram: <name and subject, when the owner asked for one | none>
 Acceptance: every claim classified ACCURATE, STALE, MISSING, PHANTOM, CONTRADICTS, or
   CONFLICT; the first five repaired in place against the code on disk; CONFLICT left
   unresolved and reported with the evidence for both sides. Final state only. Indicative
-  mood, no em-dash, mermaid for a flow, a stack, or a hand-off; keep the page's section
-  structure. Run humanizer in file mode on every markdown file touched; YAML is
-  repaired for stale facts only.
+  mood, no em-dash, mermaid for a flow, a stack, or a hand-off, a designed diagram only
+  for the Diagram line; keep the page's section structure. Run humanizer in file mode on
+  every markdown file touched; YAML is repaired for stale facts only.
 Rules to read: .claude/rules/authoring.md
 Report: findings by class, files changed, every CONFLICT with its evidence, the
-  humanizer spans touched.
+  humanizer spans touched, the reader questions predicted per page created or section
+  added, and for a diagram the HTML and SVG paths under docs/assets/ and the drawing plan.
 ```
 
 Add the working-tree line and the no-questions line from
 `../ack-build/references/dispatch.md`. Git stays read-only.
 
-## 3. Review, through `reviewer`
+## 3. Reader test
+
+When `writer`'s report lists a page created or a section added, dispatch one fresh agent
+per such file, in parallel. When it lists none, skip this step and say so in the hand-back.
+
+```
+Agent: general-purpose
+Read: <the one markdown file> and nothing else: no code, no other doc, no search
+Questions: <the reader questions writer predicted for that file>
+Task: answer each question from the file alone, citing the line that answers it.
+Report: per question, the answer with its line, or "not answered"; every assumption you
+  had to make; every passage that reads as ambiguous or contradictory, with its line.
+```
+
+## 4. Review, through `reviewer`
 
 Dispatch `reviewer` at `Depth: docs` (template `../ack-build/references/dispatch.md`,
-Reviewer). Scope: the files `writer` changed. Requirement: every claim matches the code on
-disk under `.claude/rules/authoring.md` Documentation prose.
+Reviewer). Scope: the markdown files `writer` changed, plus the HTML and SVG under
+`docs/assets/` of a diagram it drew. Requirement: every claim matches the code on disk under
+`.claude/rules/authoring.md` Documentation prose; for a diagram, every node, label, and
+connection exists in the code as drawn, the SVG carries the HTML's labels and connections,
+and the embedding page's alt text says what the diagram shows.
 
-Every finding passes `superpowers:receiving-code-review` here: open the code and the doc,
-confirm or reject with a reason. A confirmed STALE or PHANTOM goes back to `writer` in one
-repair dispatch, then one scoped re-review. A CONFLICT is not repaired and joins the
-owner's list. Rejected findings and what stays open are lines in the hand-back.
+Every finding, the reviewer's and the reader test's, passes
+`superpowers:receiving-code-review` here: open the code and the doc, confirm or reject with
+a reason. Confirmed findings go back to `writer` in one repair dispatch, then one scoped
+re-review. A CONFLICT is not repaired and joins the owner's list. Rejected findings and
+what stays open are lines in the hand-back.
 
-## 4. Read what comes back
+## 5. Read what comes back
 
 Every CONFLICT goes to the owner as a list with the evidence for both sides. When the
 evidence says the code is wrong (a guard removed by a commit that does not mention it, a
 doc newer than the change, a disagreement about authorization, credentials, or session
 invalidation), that is a suspected defect for `/ack-plan`, not a doc edit.
 
-## 5. Verify
+## 6. Verify
 
 Invoke `superpowers:verification-before-completion`. The hand-back reports each dispatch
 with what it produced, and each CONFLICT with its evidence, not a claim.
@@ -92,7 +118,9 @@ seed command. Commits go through `ask`; propose the subject only.
 ## Hand back
 
 Findings by class, files repaired, every CONFLICT unresolved with its evidence, the
-humanizer spans touched, every reviewer finding and its state (fixed, rejected with the
+humanizer spans touched, the diagram paths when one was drawn, the reader-test result per
+file (unanswered questions, assumptions, ambiguities) or the line that the step was
+skipped, every reviewer and reader-test finding and its state (fixed, rejected with the
 reason, open), and one line per thing noticed outside the scope.
 
 ## Next

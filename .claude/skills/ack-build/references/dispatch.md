@@ -91,18 +91,3 @@ Report: only what affects correctness or the stated requirement, each with file:
   clean. Do not fix anything.
 Rules to read: <paths from the list above>
 ```
-
-## Writer
-
-```
-Agent: writer
-Scope: <docs/*.md files the behaviour touches>, plus README.md, SECURITY.md,
-  CONTRIBUTING.md, CODE_OF_CONDUCT.md, and .github/** except copilot-instructions.md
-Change: <what landed, in one paragraph, with the files under src/ that prove it>
-Acceptance: every claim in scope classified ACCURATE, STALE, MISSING, PHANTOM,
-  CONTRADICTS, or CONFLICT; the first five repaired in place; CONFLICT reported with the
-  evidence for both sides and left unresolved. Final state only. Run
-  humanizer in file mode on every markdown file touched; not on YAML.
-Rules to read: .claude/rules/authoring.md
-Report: findings by class, files changed, every CONFLICT with its evidence.
-```

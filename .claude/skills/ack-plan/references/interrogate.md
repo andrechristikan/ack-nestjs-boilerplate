@@ -51,6 +51,5 @@ and where the answer's shape is decided.
 ## Close
 
 - Out of scope, stated as a list.
-- Docs: `yes` or `no`.
 - Review depth: `rules and boot` or `end to end`. `end to end` is worth it when a hand-off
   crosses a module, a queue, or a cascade.

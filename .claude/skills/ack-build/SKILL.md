@@ -27,8 +27,7 @@ stands after that. If a `superpowers:*` skill is not installed, stop and say
 ## Input
 
 - A plan path: read the plan whole. Its header carries `Review depth: rules and boot | end
-  to end` and `Docs: yes | no`, set by `/ack-plan`. A header without them means
-  `rules and boot` and `no`.
+  to end`, set by `/ack-plan`. A header without it means `rules and boot`.
 - A pin: files, the cause at `file:line`, and the change. Missing any of the three, stop
   and hand back.
 - Nothing open is decided here. An open product question, a shape with two readings, or a
@@ -83,19 +82,6 @@ out of scope. How to read `deadcode`, `spell`, and a scoped `test:cov`: `.claude
 Gotchas. A coverage gap beyond the TDD specs is named with file and lines; closing it is
 `/ack-spec`.
 
-## Docs, through `writer`
-
-When the plan header says `Docs: yes`, dispatch `writer` with the docs the behaviour
-touches (`references/dispatch.md`, Writer).
-
-After `writer` returns, dispatch `reviewer` at `Depth: docs` over the files `writer`
-changed (`references/dispatch.md`, Reviewer). Every finding passes
-`superpowers:receiving-code-review` as in the task review:
-
-- A confirmed STALE or PHANTOM goes to `writer` in one repair dispatch, then one scoped
-  re-review.
-- A CONFLICT between a doc and the code goes to the owner unresolved.
-
 ## Finish
 
 Propose the commit subject (`<type>(<scope>): <description>`, `.commitlintrc`) and stop.
@@ -111,12 +97,11 @@ runs in the session from `/ack-pr create`, not here.
 - Every run-surface file checked and whether it changed; every status code allocated.
 - The schema delta and the owner's push command.
 - The output of the five checks.
-- What `writer` changed; the docs review's findings and each one's state.
 - The proposed commit subject.
 - One line per thing noticed outside the scope.
 
 ## Next
 
-`/ack-pr create` once the branch is settled. `/ack-spec` for a coverage gap beyond the TDD
-specs. `/ack-doc` when docs were `no` and are wanted later. `/ack-review <scope>` to judge
-the checkout again. `/ack-plan` for anything handed back as open.
+`/ack-doc` for the docs the change touches. `/ack-pr create` once the branch is settled.
+`/ack-spec` for a coverage gap beyond the TDD specs. `/ack-review <scope>` to judge the
+checkout again. `/ack-plan` for anything handed back as open.
