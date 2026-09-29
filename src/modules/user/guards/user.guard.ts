@@ -8,7 +8,10 @@ import {
     UserStoreKey,
 } from '@modules/user/constants/user.constant';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import {
+    EnumPolicyConditionPlaceholder,
+    PolicyAbilityStoreKey,
+} from '@modules/policy/constants/policy.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IUserWithoutPolicies } from '@modules/user/interfaces/user.interface';
 
@@ -44,11 +47,7 @@ export class UserGuard implements CanActivate {
 
         this.requestStoreService.set(UserStoreKey, userWithoutPolicies);
         const ability = this.policyAbilityFactory.buildFromPolicies(policies, {
-            user: userWithoutPolicies,
-            workspace: null,
-            workspaceMember: null,
-            project: null,
-            projectMember: null,
+            [EnumPolicyConditionPlaceholder.userId]: userWithoutPolicies.id,
         });
         this.requestStoreService.set(PolicyAbilityStoreKey, ability);
 

@@ -11,7 +11,7 @@ describe('PolicySchema', () => {
         roleId: 'role-id',
         subject: EnumPolicySubject.WorkspaceMember,
         action: [EnumPolicyAction.read],
-        conditions: { workspaceId: '${workspace.id}' },
+        conditions: { workspaceId: '${workspaceId}' },
         inverted: false,
         reason: null,
         createdAt: now,
@@ -41,7 +41,7 @@ describe('PolicySchema', () => {
                 'updatedBy',
             ].sort()
         );
-        expect(parsed.conditions).toEqual({ workspaceId: '${workspace.id}' });
+        expect(parsed.conditions).toEqual({ workspaceId: '${workspaceId}' });
         expect(parsed.inverted).toBe(false);
         expect(parsed.reason).toBeNull();
     });

@@ -11,7 +11,10 @@ import {
     EnumRoleScope,
 } from '@generated/prisma-client';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import {
+    EnumPolicyConditionPlaceholder,
+    PolicyAbilityStoreKey,
+} from '@modules/policy/constants/policy.constant';
 import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
@@ -127,15 +130,9 @@ describe('WorkspaceMemberGuard', () => {
         expect(policyAbilityFactory.buildFromPolicies).toHaveBeenCalledWith(
             policies,
             {
-                user,
-                workspace,
-                workspaceMember: expect.objectContaining({
-                    id: member.id,
-                    workspaceId: member.workspaceId,
-                    userId: member.userId,
-                }),
-                project: null,
-                projectMember: null,
+                [EnumPolicyConditionPlaceholder.userId]: user.id,
+                [EnumPolicyConditionPlaceholder.workspaceId]: workspace.id,
+                [EnumPolicyConditionPlaceholder.workspaceMemberId]: member.id,
             }
         );
         expect(requestStoreService.set).toHaveBeenCalledWith(
@@ -159,7 +156,11 @@ describe('WorkspaceMemberGuard', () => {
 
         expect(policyAbilityFactory.buildFromPolicies).toHaveBeenCalledWith(
             policies,
-            expect.objectContaining({ workspace: { id: 'workspace-id' } })
+            {
+                [EnumPolicyConditionPlaceholder.userId]: 'user-id',
+                [EnumPolicyConditionPlaceholder.workspaceId]: 'workspace-id',
+                [EnumPolicyConditionPlaceholder.workspaceMemberId]: member.id,
+            }
         );
     });
 
@@ -176,7 +177,11 @@ describe('WorkspaceMemberGuard', () => {
 
         expect(policyAbilityFactory.buildFromPolicies).toHaveBeenCalledWith(
             [],
-            expect.objectContaining({ workspace: null, user: null })
+            {
+                [EnumPolicyConditionPlaceholder.userId]: undefined,
+                [EnumPolicyConditionPlaceholder.workspaceId]: undefined,
+                [EnumPolicyConditionPlaceholder.workspaceMemberId]: member.id,
+            }
         );
     });
 

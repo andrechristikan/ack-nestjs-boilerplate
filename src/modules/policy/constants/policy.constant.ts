@@ -1,12 +1,14 @@
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
-import { EnumPolicySubject, Prisma } from '@generated/prisma-client/client';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 
-export type PolicySubjectScopeEntry = {
-    key: 'id' | 'workspaceId' | 'projectId';
-    placeholder: '${workspace.id}' | '${project.id}';
-};
+export enum EnumPolicyConditionPlaceholder {
+    userId = '${userId}',
+    workspaceId = '${workspaceId}',
+    workspaceMemberId = '${workspaceMemberId}',
+    projectId = '${projectId}',
+    projectMemberId = '${projectMemberId}',
+}
 
 /**
  * Route metadata key holding the policy abilities `@PolicyProtected` requires.
@@ -34,37 +36,3 @@ export const DocPolicyErrorResponses = {
         messagePath: 'policy.error.predefinedNotFound',
     }),
 } as const;
-
-/** Scope metadata that is specific to this authorization model and cannot be inferred by CASL. */
-export const PolicySubjectScope = {
-    [EnumPolicySubject.Workspace]: {
-        key: Prisma.WorkspaceScalarFieldEnum.id,
-        placeholder: '${workspace.id}',
-    },
-    [EnumPolicySubject.WorkspaceMember]: {
-        key: Prisma.WorkspaceMemberScalarFieldEnum.workspaceId,
-        placeholder: '${workspace.id}',
-    },
-    [EnumPolicySubject.WorkspaceInvite]: {
-        key: Prisma.WorkspaceInviteScalarFieldEnum.workspaceId,
-        placeholder: '${workspace.id}',
-    },
-    [EnumPolicySubject.WorkspaceJoinRequest]: {
-        key: Prisma.WorkspaceJoinRequestScalarFieldEnum.workspaceId,
-        placeholder: '${workspace.id}',
-    },
-    [EnumPolicySubject.Project]: {
-        key: Prisma.ProjectScalarFieldEnum.id,
-        placeholder: '${project.id}',
-    },
-    [EnumPolicySubject.ProjectMember]: {
-        key: Prisma.ProjectMemberScalarFieldEnum.projectId,
-        placeholder: '${project.id}',
-    },
-    [EnumPolicySubject.analytic]: {
-        key: Prisma.WorkspaceMemberScalarFieldEnum.workspaceId,
-        placeholder: '${workspace.id}',
-    },
-} as const satisfies Partial<
-    Record<EnumPolicySubject, PolicySubjectScopeEntry>
->;

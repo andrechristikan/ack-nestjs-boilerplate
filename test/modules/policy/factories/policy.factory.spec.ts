@@ -8,8 +8,9 @@ import type { Policy, Workspace } from '@generated/prisma-client/client';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import type {
     IPolicyAbility,
-    IPolicyPlaceholderContext,
+    IPolicyPlaceholderValues,
 } from '@modules/policy/interfaces/policy.interface';
+import { EnumPolicyConditionPlaceholder } from '@modules/policy/constants/policy.constant';
 
 describe('PolicyAbilityFactory', () => {
     const factory = new PolicyAbilityFactory();
@@ -50,12 +51,9 @@ describe('PolicyAbilityFactory', () => {
         updatedBy: null,
         ...overrides,
     });
-    const placeholders: IPolicyPlaceholderContext = {
-        user: { id: 'user-id' },
-        workspace: { id: 'workspace-id' },
-        workspaceMember: null,
-        project: null,
-        projectMember: null,
+    const placeholders: IPolicyPlaceholderValues = {
+        [EnumPolicyConditionPlaceholder.userId]: 'user-id',
+        [EnumPolicyConditionPlaceholder.workspaceId]: 'workspace-id',
     };
 
     describe('build', () => {
@@ -271,7 +269,9 @@ describe('PolicyAbilityFactory', () => {
     describe('buildFromPolicies', () => {
         it('interpolates policy conditions without mutating persisted policies', () => {
             const policy = buildPolicy({
-                conditions: { userId: '${user.id}' },
+                conditions: {
+                    userId: EnumPolicyConditionPlaceholder.userId,
+                },
             });
             const snapshot = structuredClone(policy);
 
@@ -300,7 +300,9 @@ describe('PolicyAbilityFactory', () => {
             const ability = factory.buildFromPolicies(
                 [
                     buildPolicy({
-                        conditions: { projectId: '${project.id}' },
+                        conditions: {
+                            projectId: EnumPolicyConditionPlaceholder.projectId,
+                        },
                     }),
                 ],
                 placeholders

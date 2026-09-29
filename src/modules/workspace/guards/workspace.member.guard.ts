@@ -1,7 +1,10 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { Workspace } from '@generated/prisma-client/client';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import {
+    EnumPolicyConditionPlaceholder,
+    PolicyAbilityStoreKey,
+} from '@modules/policy/constants/policy.constant';
 import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type { IUserWithoutPolicies } from '@modules/user/interfaces/user.interface';
@@ -49,11 +52,9 @@ export class WorkspaceMemberGuard implements CanActivate {
             throw new RequestContextMissingException(PolicyAbilityStoreKey);
         }
         const ability = this.policyAbilityFactory.buildFromPolicies(policies, {
-            user: user ?? null,
-            workspace: workspace ?? null,
-            workspaceMember: member,
-            project: null,
-            projectMember: null,
+            [EnumPolicyConditionPlaceholder.userId]: user?.id,
+            [EnumPolicyConditionPlaceholder.workspaceId]: workspace?.id,
+            [EnumPolicyConditionPlaceholder.workspaceMemberId]: member.id,
         });
         this.requestStoreService.set(
             PolicyAbilityStoreKey,

@@ -395,7 +395,7 @@ describe('PolicyDomain', () => {
                 service.createByAdmin('role-id', {
                     subject: EnumPolicySubject.ProjectMember,
                     action: [EnumPolicyAction.update],
-                    conditions: { projectId: '${project.id}' },
+                    conditions: { projectId: '${projectId}' },
                 })
             ).resolves.toBe(policy);
         });

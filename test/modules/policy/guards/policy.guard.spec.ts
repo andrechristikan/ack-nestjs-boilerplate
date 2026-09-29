@@ -5,15 +5,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 
-import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-    EnumRoleScope,
-    EnumUserGender,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
-} from '@generated/prisma-client';
+import { EnumPolicyAction, EnumPolicySubject } from '@generated/prisma-client';
 import type { IPolicyRequired } from '@modules/policy/interfaces/policy.interface';
 import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
@@ -22,62 +14,9 @@ import { PolicyGuard } from '@modules/policy/guards/policy.guard';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyPredefinedNotFoundException } from '@modules/policy/exceptions/policy.predefined-not-found.exception';
-import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
-import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 
 describe('PolicyGuard', () => {
-    const now = new Date('2026-01-01T00:00:00.000Z');
-    const user = {
-        id: 'user-1',
-        name: 'User',
-        username: 'user',
-        isVerified: true,
-        verifiedAt: now,
-        email: 'user@example.com',
-        roleId: 'role-id',
-        password: 'hash',
-        passwordExpired: null,
-        passwordCreated: now,
-        passwordAttempt: 0,
-        signUpAt: now,
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: EnumUserGender.male,
-        countryId: 'country-id',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        createdAt: now,
-        createdBy: null,
-        updatedAt: now,
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        termsOfServiceAccepted: true,
-        privacyAccepted: true,
-        cookiesAccepted: false,
-        marketingAccepted: false,
-        role: {
-            id: 'role-id',
-            name: 'User',
-            description: null,
-            scope: EnumRoleScope.platform,
-            key: EnumRolePlatformKey.user,
-            createdAt: now,
-            createdBy: null,
-            updatedAt: now,
-            updatedBy: null,
-            policies: [],
-        },
-        twoFactor: null,
-    } satisfies IUser;
     const reflector: MockProxy<Reflector> = mock<Reflector>();
     const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
     const requestStoreService: MockProxy<RequestStoreService> =
@@ -90,9 +29,7 @@ describe('PolicyGuard', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         context.getHandler.mockReturnValue(handler);
-        requestStoreService.get.mockImplementation(key =>
-            key === PolicyAbilityStoreKey ? ability : user
-        );
+        requestStoreService.get.mockReturnValue(ability);
 
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
@@ -108,15 +45,16 @@ describe('PolicyGuard', () => {
         guard = moduleRef.get(PolicyGuard);
     });
 
-    it('throws AuthJwtAccessTokenInvalidException when the request has no user, before any metadata or ability work', () => {
-        requestStoreService.get.mockReturnValue(null);
+    it('does not read the authenticated user from request storage', () => {
+        reflector.get.mockReturnValue([]);
 
         expect(() => guard.canActivate(context)).toThrow(
-            AuthJwtAccessTokenInvalidException
+            PolicyPredefinedNotFoundException
         );
-        expect(requestStoreService.get).toHaveBeenCalledWith(UserStoreKey);
-        expect(reflector.get).not.toHaveBeenCalled();
-        expect(policyDomain.assertCan).not.toHaveBeenCalled();
+        expect(requestStoreService.get).toHaveBeenCalledWith(
+            PolicyAbilityStoreKey
+        );
+        expect(requestStoreService.get).toHaveBeenCalledTimes(1);
     });
 
     it.each([

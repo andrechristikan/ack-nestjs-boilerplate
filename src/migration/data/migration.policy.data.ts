@@ -8,7 +8,7 @@ import type {
     IMigrationPolicyData,
     IMigrationPolicyRule,
 } from '@migration/interfaces/migration.interface';
-import { scopedCondition } from '@modules/policy/utils/policy.condition.util';
+import { EnumPolicyConditionPlaceholder } from '@modules/policy/constants/policy.constant';
 import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
 import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
@@ -41,14 +41,24 @@ const rule = (
     reason,
 });
 
-/**
- * Builds a seeded rule whose conditions come from `scopedCondition` for the same actions.
- */
-const scopedRule = (
+const workspaceRule = (
     subject: EnumPolicySubject,
     action: EnumPolicyAction[]
 ): IMigrationPolicyRule =>
-    rule(subject, action, scopedCondition(subject, action));
+    rule(subject, action, {
+        workspaceId: EnumPolicyConditionPlaceholder.workspaceId,
+    });
+
+const projectRule = (
+    subject: EnumPolicySubject,
+    action: EnumPolicyAction[]
+): IMigrationPolicyRule =>
+    rule(subject, action, {
+        projectId: EnumPolicyConditionPlaceholder.projectId,
+    });
+
+const projectCreateRule = (): IMigrationPolicyRule =>
+    rule(EnumPolicySubject.Project, [EnumPolicyAction.create]);
 
 const PolicyData: IMigrationPolicyData[] = [
     {
@@ -63,7 +73,7 @@ const PolicyData: IMigrationPolicyData[] = [
             ...PlatformAdminSubjects.map(subject =>
                 rule(subject, Object.values(EnumPolicyAction))
             ),
-            scopedRule(EnumPolicySubject.analytic, [EnumPolicyAction.read]),
+            rule(EnumPolicySubject.analytic, [EnumPolicyAction.read]),
             rule(EnumPolicySubject.Workspace, [EnumPolicyAction.read]),
             rule(EnumPolicySubject.Project, [EnumPolicyAction.read]),
         ],
@@ -77,70 +87,72 @@ const PolicyData: IMigrationPolicyData[] = [
         scope: EnumRoleScope.workspace,
         key: EnumRoleWorkspaceKey.owner,
         policies: [
-            scopedRule(EnumPolicySubject.Workspace, [EnumPolicyAction.manage]),
-            scopedRule(EnumPolicySubject.WorkspaceMember, [
+            workspaceRule(EnumPolicySubject.Workspace, [
+                EnumPolicyAction.manage,
+            ]),
+            workspaceRule(EnumPolicySubject.WorkspaceMember, [
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete,
             ]),
-            scopedRule(EnumPolicySubject.WorkspaceInvite, [
+            workspaceRule(EnumPolicySubject.WorkspaceInvite, [
                 EnumPolicyAction.manage,
             ]),
-            scopedRule(EnumPolicySubject.WorkspaceJoinRequest, [
+            workspaceRule(EnumPolicySubject.WorkspaceJoinRequest, [
                 EnumPolicyAction.update,
             ]),
-            scopedRule(EnumPolicySubject.Project, [EnumPolicyAction.create]),
-            scopedRule(EnumPolicySubject.Project, [
+            projectCreateRule(),
+            projectRule(EnumPolicySubject.Project, [
                 EnumPolicyAction.read,
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete,
             ]),
-            scopedRule(EnumPolicySubject.ProjectMember, [
+            projectRule(EnumPolicySubject.ProjectMember, [
                 EnumPolicyAction.create,
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete,
             ]),
-            scopedRule(EnumPolicySubject.analytic, [EnumPolicyAction.read]),
+            workspaceRule(EnumPolicySubject.analytic, [EnumPolicyAction.read]),
         ],
     },
     {
         scope: EnumRoleScope.workspace,
         key: EnumRoleWorkspaceKey.admin,
         policies: [
-            scopedRule(EnumPolicySubject.Workspace, [
+            workspaceRule(EnumPolicySubject.Workspace, [
                 EnumPolicyAction.read,
                 EnumPolicyAction.update,
             ]),
-            scopedRule(EnumPolicySubject.WorkspaceMember, [
+            workspaceRule(EnumPolicySubject.WorkspaceMember, [
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete,
             ]),
-            scopedRule(EnumPolicySubject.WorkspaceInvite, [
+            workspaceRule(EnumPolicySubject.WorkspaceInvite, [
                 EnumPolicyAction.manage,
             ]),
-            scopedRule(EnumPolicySubject.WorkspaceJoinRequest, [
+            workspaceRule(EnumPolicySubject.WorkspaceJoinRequest, [
                 EnumPolicyAction.update,
             ]),
-            scopedRule(EnumPolicySubject.Project, [EnumPolicyAction.create]),
-            scopedRule(EnumPolicySubject.Project, [EnumPolicyAction.delete]),
-            scopedRule(EnumPolicySubject.analytic, [EnumPolicyAction.read]),
+            projectCreateRule(),
+            projectRule(EnumPolicySubject.Project, [EnumPolicyAction.delete]),
+            workspaceRule(EnumPolicySubject.analytic, [EnumPolicyAction.read]),
         ],
     },
     {
         scope: EnumRoleScope.workspace,
         key: EnumRoleWorkspaceKey.member,
         policies: [
-            scopedRule(EnumPolicySubject.Workspace, [EnumPolicyAction.read]),
+            workspaceRule(EnumPolicySubject.Workspace, [EnumPolicyAction.read]),
         ],
     },
     {
         scope: EnumRoleScope.project,
         key: EnumRoleProjectKey.admin,
         policies: [
-            scopedRule(EnumPolicySubject.Project, [
+            projectRule(EnumPolicySubject.Project, [
                 EnumPolicyAction.read,
                 EnumPolicyAction.update,
             ]),
-            scopedRule(EnumPolicySubject.ProjectMember, [
+            projectRule(EnumPolicySubject.ProjectMember, [
                 EnumPolicyAction.create,
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete,
@@ -151,14 +163,14 @@ const PolicyData: IMigrationPolicyData[] = [
         scope: EnumRoleScope.project,
         key: EnumRoleProjectKey.member,
         policies: [
-            scopedRule(EnumPolicySubject.Project, [EnumPolicyAction.read]),
+            projectRule(EnumPolicySubject.Project, [EnumPolicyAction.read]),
         ],
     },
     {
         scope: EnumRoleScope.project,
         key: EnumRoleProjectKey.viewer,
         policies: [
-            scopedRule(EnumPolicySubject.Project, [EnumPolicyAction.read]),
+            projectRule(EnumPolicySubject.Project, [EnumPolicyAction.read]),
         ],
     },
 ];

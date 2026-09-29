@@ -37,7 +37,7 @@ export const PolicySchema = DatabaseResponseSchema.omit({
             type: 'object',
             description:
                 'Prisma where-input conditions the rule applies to, null for the whole subject',
-            example: { workspaceId: '${workspace.id}' },
+            example: { workspaceId: '${workspaceId}' },
         })
         .nullable(),
     inverted: z.boolean().meta({

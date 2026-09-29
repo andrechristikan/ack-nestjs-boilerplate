@@ -193,9 +193,8 @@ delete }`, stored in `Policy.action` as a typed Prisma enum array. There are no 
 workflow enums: a domain operation maps to a CRUD verb, or to `manage`/`update` when it is a
 privileged or status-transition action that must not be granted piecemeal.
 
-The table below lists the actions the seeded rules use for each subject. `PolicySubjectRegistry`
-(see [Subjects](#subjects)) carries no action list of its own, so nothing in the write path
-checks a rule's action against this table; it documents intent, not an enforced catalog:
+The table below lists the actions the seeded rules use for each subject. It documents intent, not an
+enforced catalog; nothing in the policy write path checks a rule's action against this table:
 
 | Subject                | Actions in use                                   | Operations covered                                                             |
 | ---------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------- |
@@ -263,100 +262,18 @@ model-aligned names rather than colon-delimited values. For example, `workspaceI
 directly to `WorkspaceInvite`; `workspace:invite` would require an additional enum-to-model
 translation without changing the boundary.
 
-`PolicySubjectRegistry` is static application metadata, not persisted policy data. Each entry is
-`{ model, scope }`: `model` is the Prisma model the subject resolves to, feeding `abilitySubjectOf`
-and the CASL subject typing; `scope` is the condition key and placeholder `scopedCondition()` uses
-to build a rule's stored condition (see [Scoping Placeholder Conventions](#scoping-placeholder-conventions)).
-Enum values stay camelCase; Prisma model names stay PascalCase, which avoids using an enum string
-as a model constructor or a Prisma delegate.
+Subject-to-model adaptation happens at the CASL boundary. Persisted subjects remain in application
+vocabulary, while conditional checks tag Prisma plain objects with the corresponding CASL subject.
+The subject list is the authorization catalog; it does not carry a second scope registry. Role-scope
+alignment comes from the seeded rules and from role-assignment domain checks, not from policy writes.
 
-Each subject carries at most one scope pair, the condition key and placeholder tying a stored rule
-to the active boundary (see [Scoping Placeholder Conventions](#scoping-placeholder-conventions) for
-the normative rule). Scalar keys come from `Prisma.<Model>ScalarFieldEnum`, so a typo is a
-compile-time error.
+Workspace and project subjects carry conditions tying a stored rule to the active boundary (see
+[Scoping Placeholder Conventions](#scoping-placeholder-conventions)).
 
-```ts
-type IPolicyScopePair = {
-    key: 'id' | 'workspaceId' | 'projectId';
-    placeholder: '${workspace.id}' | '${project.id}';
-};
-
-type IPolicySubjectDefinition = {
-    // Prisma model the subject resolves to; null for the `all` wildcard and the `analytic` capability.
-    model: Prisma.ModelName | null;
-    scope: IPolicyScopePair | null;
-};
-
-const PolicySubjectRegistry = {
-    all: { model: null, scope: null }, // CASL wildcard subject; carried only by the super-admin `manage`/`all` rule.
-    workspace: {
-        model: Prisma.ModelName.Workspace,
-        scope: { key: Prisma.WorkspaceScalarFieldEnum.id, placeholder: '${workspace.id}' },
-    },
-    workspaceMember: {
-        model: Prisma.ModelName.WorkspaceMember,
-        scope: {
-            key: Prisma.WorkspaceMemberScalarFieldEnum.workspaceId,
-            placeholder: '${workspace.id}',
-        },
-    },
-    workspaceInvite: {
-        model: Prisma.ModelName.WorkspaceInvite,
-        scope: {
-            key: Prisma.WorkspaceInviteScalarFieldEnum.workspaceId,
-            placeholder: '${workspace.id}',
-        },
-    },
-    workspaceJoinRequest: {
-        model: Prisma.ModelName.WorkspaceJoinRequest,
-        scope: {
-            key: Prisma.WorkspaceJoinRequestScalarFieldEnum.workspaceId,
-            placeholder: '${workspace.id}',
-        },
-    },
-    project: {
-        model: Prisma.ModelName.Project,
-        scope: { key: Prisma.ProjectScalarFieldEnum.id, placeholder: '${project.id}' },
-    },
-    projectMember: {
-        model: Prisma.ModelName.ProjectMember,
-        scope: {
-            key: Prisma.ProjectMemberScalarFieldEnum.projectId,
-            placeholder: '${project.id}',
-        },
-    },
-    analytic: {
-        // Virtual capability subject: no persisted record, so `model` is null; the scope pair
-        // still ties the seeded `read` grant to the active workspace.
-        model: null,
-        scope: {
-            key: Prisma.WorkspaceMemberScalarFieldEnum.workspaceId,
-            placeholder: '${workspace.id}',
-        },
-    },
-
-    // Platform/admin resource subjects: full CRUD, no tenant scope, no scope pair. `role`, `user`,
-    // `apiKey`, `device`, `session`, `activityLog`, `passwordHistory`, `termPolicy`, `featureFlag`
-    // all share this shape (model = the matching Prisma model, scope = null).
-    role: { model: Prisma.ModelName.Role, scope: null },
-    // ...user, apiKey, device, session, activityLog, passwordHistory, termPolicy, featureFlag
-} as const satisfies Record<EnumPolicySubject, IPolicySubjectDefinition>;
-```
-
-`all` and `analytic` are the only `model: null` subjects. `abilitySubjectOf(subject)` is the single
-adapter at the ability boundary: it resolves the persisted enum subject to its registry Prisma
-model, or to the virtual subject's own name (`'all'` or `'analytic'`), before the rule enters CASL.
-Domain rules stay in application vocabulary while the request-scoped ability uses CASL subject names
-and tagged records.
-
-The registry has an entry for every `EnumPolicySubject` member; it needs no entries for health,
-hello, country, or notification surfaces because those carry no subject. Role-scope-to-subject
-alignment is not enforced by the registry or by rule validation: the only rejection at write time is
-naming `all` directly (see [Stored Rule Contract](#stored-rule-contract)), so the seeded scoped-role
-rules in [Initial Seed Rules](#initial-seed-rules) are what keeps a role's grants within its intended
-domain. The operations listed under [Actions](#actions) as requiring no CASL permission carry no
-subject and have no registry entry at all; visibility and membership still filter their result sets,
-but that is a query concern the repository applies directly.
+The persisted enum subject is kept in application vocabulary. Conditional Prisma records are tagged
+with the corresponding CASL subject at the ability boundary, while virtual subjects such as `all`
+and `analytic` are evaluated by name. Operations without a subject carry no policy rule; their
+membership and visibility checks remain domain or repository concerns.
 
 The `workspace` and `project` subjects are distinguished operationally: their active records are
 resolved and cached in the request store (`WorkspaceStoreKey`/`ProjectStoreKey`) by
@@ -373,41 +290,41 @@ to the boundary where the role was assigned. This is normative:
   from the mandatory scope pair.
 - Every **workspace-scoped** subject (`workspace`, `workspaceMember`, `workspaceInvite`,
   `workspaceJoinRequest`) rule held by a workspace role MUST include a `workspaceId` key (`id` for
-  the `workspace` subject itself) resolved from `${workspace.id}`, populated from the request's
+  the `workspace` subject itself) resolved from `${workspaceId}`, populated from the request's
   `x-workspace-id` header on user and shared routes and from the validated `:workspaceId` path
   param on admin routes.
-- Every project subject rule other than a bare `project:create` carries the subject's own fixed
-  scope pair from the registry: `id` resolved from `${project.id}` for `project`, `projectId`
-  resolved from `${project.id}` for `projectMember`. The pair is the same whether a workspace role
-  or a project role holds the rule; `${project.id}` populates from the request's `:projectId`
+- Every project subject rule other than a bare `project:create` carries a fixed scope pair: `id`
+  resolved from `${projectId}` for `project`, `projectId` resolved from `${projectId}` for
+  `projectMember`. The pair is the same whether a workspace role or a project role holds the rule;
+  `${projectId}` populates from the request's `:projectId`
   route param, so the rule matches only while a project route resolved that path.
 - A bare `project:create` rule (the single action `create`, nothing else) carries no scope
-  condition: `scopePairOf` waives the pair for that one case, since no project exists yet to scope
-  to. The create check evaluates the incoming project's own attributes before persistence.
+  condition, since no project exists yet to scope to. The create check evaluates the incoming
+  project's own attributes before persistence.
 - Conditions are generated and processed in three steps:
-  1. Seeds and the rule DTO build the stored `conditions` through `scopedCondition(subject,
-     action, extra?)`, which reads the subject's fixed scope pair from `PolicySubjectRegistry`
-     (waived for a bare `project:create`) and merges in `extra`. A workspace-member rule is stored
-     as `{ "workspaceId": "${workspace.id}" }`.
+  1. Seed helpers build stored conditions explicitly. Workspace-scoped rules use
+     `{ "workspaceId": "${workspaceId}" }`; project-scoped rules use either
+     `{ "id": "${projectId}" }` or `{ "projectId": "${projectId}" }`. A bare `project:create`
+     rule has no condition.
   2. Policy writes do not check whether a rule's subject, actions, or conditions match the role's
      scope. Condition keys and operators are stored as provided by the trusted policy author.
-  3. At request time `interpolate` (in `policy.condition.util.ts`) replaces the placeholder
+  3. At request time `interpolate` replaces the placeholder
      with the resolved id, so CASL receives `{ "workspaceId": "<uuid>" }`. Nothing is injected
      implicitly: the stored rule is the single source of truth, and `accessibleWhere` reuses the same
      condition.
-- `projectMember:create` carries the subject's fixed `projectId` scope pair and no member-instance
-  condition: holding the permission means "can assign any member in the permitted project."
+- `projectMember:create` carries the `projectId` scope condition and no member-instance condition:
+  holding the permission means "can assign any member in the permitted project."
 - Operations without a subject (see [Actions](#actions)) need no entry here: they carry no action, so
   they have no condition to validate.
 
-The placeholder allow-list `interpolate` accepts is:
+The canonical placeholder tokens are:
 
-- `${user.id}` — record-level ownership rules like `{ "userId": "${user.id}" }`.
-- `${workspace.id}` — every workspace-scoped condition.
-- `${project.id}` — every project-role project condition.
-- `${workspaceMember.id}` — a workspace-member instance condition when the membership guard has
+- `${userId}` — record-level ownership rules like `{ "userId": "${userId}" }`.
+- `${workspaceId}` — every workspace-scoped condition.
+- `${projectId}` — every project-scoped condition.
+- `${workspaceMemberId}` — a workspace-member instance condition when the membership guard has
   established that context.
-- `${projectMember.id}` — a project-member instance condition when the membership guard has
+- `${projectMemberId}` — a project-member instance condition when the membership guard has
   established that context.
 
 ## Stored Rule Contract
@@ -452,7 +369,7 @@ operators or dotted paths. An ownership rule is stored as:
 
 ```json
 {
-    "userId": "${user.id}"
+    "userId": "${userId}"
 }
 ```
 
@@ -506,11 +423,11 @@ cannot detect the subject type by `constructor` and would otherwise match no con
 {
     "subject": "workspaceMember",
     "action": ["update"],
-    "conditions": { "workspaceId": "${workspace.id}" }
+    "conditions": { "workspaceId": "${workspaceId}" }
 }
 ```
 
-`interpolate` resolves `${workspace.id}` from the request context before the rule is added
+`interpolate` resolves `${workspaceId}` from the explicit placeholder values before the rule is added
 to the ability, so the ability carries the literal id, e.g. `{ "workspaceId": "3f2b..." }`. The same
 rule drives both enforcement forms:
 
@@ -538,10 +455,11 @@ resolved membership roles. Each guard resolves only the placeholders available a
 writes the resulting ability under `PolicyAbilityStoreKey`.
 
 ```ts
-const ability = policyAbilityFactory.buildFromPolicies(
-    rolePolicies,
-    placeholders
-);
+const ability = policyAbilityFactory.buildFromPolicies(rolePolicies, {
+    [EnumPolicyConditionPlaceholder.userId]: user.id,
+    [EnumPolicyConditionPlaceholder.workspaceId]: workspace?.id,
+    [EnumPolicyConditionPlaceholder.projectId]: project?.id,
+});
 requestStoreService.set(
     PolicyAbilityStoreKey,
     policyAbilityFactory.build([
@@ -551,9 +469,10 @@ requestStoreService.set(
 );
 ```
 
-`PolicyAbilityFactory` is a pure composition service. `buildFromPolicies` starts with the supplied
-previous ability's rules, interpolates recognized placeholders, drops rules whose conditions cannot
-be resolved, and returns a new ability. It does not read or write request context.
+`PolicyAbilityFactory` is a pure composition service. `buildFromPolicies` receives the explicit
+placeholder values available at the current boundary, interpolates recognized placeholders, drops
+rules whose conditions cannot be resolved, and returns a new ability. It does not read or write
+request context.
 
 The guard that establishes a policy boundary owns the request-store write. Workspace and project
 member guards require an existing ability before merging their role policies, so an incomplete guard
@@ -601,19 +520,17 @@ policy metadata names only `{ subject, action }`. The decorator usage is unchang
 updateWorkspace(...) { ... }
 ```
 
-`PolicyGuard` keeps an explicit user check, reads the route metadata, loads the resolved ability, and
-asks `PolicyDomain` for a type-level decision per required `{ subject, action }`. It does not load
-policy rows or resource records. Boundary guards establish workspace and project context before it,
-while feature domains perform record checks when they load sub-resource targets.
+`PolicyGuard` reads the resolved ability and route metadata, then asks `PolicyDomain` for a type-level
+decision per required `{ subject, action }`. Authentication and membership guards establish their
+preconditions before it. The policy guard does not load policy rows or resource records; feature
+domains perform record checks when they load sub-resource targets.
 
 ```ts
 // guards/policy.guard.ts
 canActivate(context: ExecutionContext): boolean {
-    // An explicit user check stays ahead of the metadata and ability work as a
-    // defense-in-depth measure on this auth-adjacent guard.
-    const user = this.requestStoreService.get<IUser>(UserStoreKey);
-    if (!user) {
-        throw new AuthJwtAccessTokenInvalidException();
+    const ability = this.requestStoreService.get<IPolicyAbility>(PolicyAbilityStoreKey);
+    if (!ability) {
+        throw new RequestContextMissingException(PolicyAbilityStoreKey);
     }
 
     const policyMetadata = this.reflector.get<IPolicyRequired[]>(
@@ -623,11 +540,6 @@ canActivate(context: ExecutionContext): boolean {
     const requiredPolicies = policyMetadata ?? [];
     if (requiredPolicies.length === 0) {
         throw new PolicyPredefinedNotFoundException();
-    }
-
-    const ability = this.requestStoreService.get<IPolicyAbility>(PolicyAbilityStoreKey);
-    if (!ability) {
-        throw new RequestContextMissingException(PolicyAbilityStoreKey);
     }
 
     for (const { subject, action } of requiredPolicies) {
@@ -833,13 +745,13 @@ second lists the default rules each seeded scoped role holds.
 | Join request accept/reject | `workspaceJoinRequest` | `update` (owner holds `manage`) | current workspace member | `workspaceId` condition. |
 | Project list (user) | none | none | current workspace member | No CASL metadata on the route; `ProjectDomain.getListForMember` probes `can('read', 'project')` to decide whether the list spans every project in the workspace or only the caller's assigned projects. |
 | Admin workspace/project list and workspace member list | `workspace` / `project` | `read` | platform admin | Platform-role rule, no scope condition; admin get uses `:workspaceId`/`:projectId`. |
-| Project get/update/slug/delete | `project` | `read`, `update`, `delete` (owner holds `manage`) | current workspace and project membership | `id` condition resolved from `${project.id}`, the same pair whether a workspace or project role holds the rule. |
+| Project get/update/slug/delete | `project` | `read`, `update`, `delete` (owner holds `manage`) | current workspace and project membership | `id` condition resolved from `${projectId}`, the same pair whether a workspace or project role holds the rule. |
 | Project create | `project` | `create` | current workspace member | Bare `project:create` carries no scope condition; the create check evaluates the incoming project's own attributes. |
 | Project member list | none | none | current project member | No CASL metadata; membership is the gate. |
-| Project member role/remove | `projectMember` | `update`, `delete` (owner holds `manage`) | current workspace, project, and project membership | `projectId` condition resolved from `${project.id}`. |
-| Project member assign | `projectMember` | `create` | current workspace, project, and project membership | Carries the subject's fixed `projectId` scope pair; no member-instance condition. |
+| Project member role/remove | `projectMember` | `update`, `delete` (owner holds `manage`) | current workspace, project, and project membership | `projectId` condition resolved from `${projectId}`. |
+| Project member assign | `projectMember` | `create` | current workspace, project, and project membership | Carries the `projectId` scope condition; no member-instance condition. |
 | Project leave | none | none | caller's current project membership | |
-| Analytics (admin and user) | `analytic` | `read` | platform admin/super-admin (admin routes) or workspace owner/admin (user routes) | Capability subject with no persisted record; `workspaceId` condition resolved from `${workspace.id}` on the seeded workspace-scoped grants. |
+| Analytics (admin and user) | `analytic` | `read` | platform admin/super-admin (admin routes) or workspace owner/admin (user routes) | Capability subject with no persisted record; workspace-role grants carry a `workspaceId` condition resolved from `${workspaceId}`. |
 
 **Default scoped role rules**
 
@@ -903,18 +815,18 @@ The initial policy seed is explicit rather than derived from every enum member.
 - `admin` (platform): every `EnumPolicyAction` on each platform/admin resource subject
   (`activityLog`, `apiKey`, `device`, `featureFlag`, `passwordHistory`, `role`, `session`,
   `termPolicy`, `user`), `read` on `analytic`, and `read` on `workspace` and `project`. The
-  `analytic` grant is `rule(analytic, [read])` — a bare capability rule with **no** condition, since
-  `analytic` carries no scope. Additional actions are added only with matching admin endpoints.
+  `analytic` grant is workspace-scoped in the seed catalog. Additional actions are added only with
+  matching admin endpoints.
 - `user` (platform): seeds no workspace-family rule. Workspace `list`/`create`, invite `claim`, and
   join-request `create` carry no CASL permission.
 - Workspace roles: seed `owner`, `admin`, and `member` once with the workspace rows in the scoped role
   matrix — `owner` with `manage` on `workspace`, `workspaceMember`, `workspaceInvite`,
   `workspaceJoinRequest`, `project`, and `projectMember`; `admin` with explicit CRUD on the same
-  subjects plus `workspaceInvite: manage` — including `analytic:read` for owner and admin (again
-  `rule(analytic, [read])`, unconditioned).
+  subjects plus `workspaceInvite: manage` — including workspace-scoped `analytic:read` for owner
+  and admin.
 - Project roles: seed `owner`, `admin`, `member`, and `viewer` once with the project rows in the
   scoped role matrix; `owner` with `manage` on `project` and `projectMember`; `projectMember:create`
-  (held by `admin`) carries the selected role-scope condition and no member-instance condition.
+  (held by `admin`) carries the project-scope condition and no member-instance condition.
 
 The seed replaces the managed policy rows for the fixed roles and recreates them from the declarative
 rule catalog. There is no priority-based identity or ordering.
@@ -945,16 +857,16 @@ The design questions raised during planning are settled:
   `PolicyAbilityFactory` as CASL's literal wildcard action whatever subject it names, `all` and any
   specific subject alike (see [Actions](#actions), [Ability Lifecycle](#ability-lifecycle)).
 - **Write-time action and scope validation** — policy writes persist structurally valid rule data
-  without role-scope compatibility checks. Scope conditions are supplied by seed/catalog helpers,
+  without role-scope compatibility checks. Scope conditions are supplied explicitly by seed helpers,
   while CASL evaluates the resulting rules at request time (see
   [Stored Rule Contract](#stored-rule-contract), [Subjects](#subjects)).
 - **`IPolicyRepository`** — kept. It has no DI-token seam of its own, but the other modules keep
   repository interfaces as house style, so it stays for consistency.
 - **Project creator role** — the creator becomes the project `owner`, not `admin` (see
   [Initial Seed Rules](#initial-seed-rules)).
-- **Member-instance placeholders** — `${workspaceMember.id}` and `${projectMember.id}` stay dropped.
-  The follow-up trigger is the first rule that needs to scope to a specific member row; until then no
-  rule references a member instance.
+- **Member-instance placeholders** — `${workspaceMemberId}` and `${projectMemberId}` are available
+  when a membership guard has established those records. Seeded rules currently use workspace and
+  project scope conditions rather than member-instance conditions.
 
 ## Test Plan
 
@@ -999,5 +911,5 @@ runs against PostgreSQL in its dedicated environment, outside this unit suite.
 | Method | Description | What it tests |
 | --- | --- | --- |
 | Rule DTO validation | `conditions` is not a JSON object | Rejected at the DTO boundary, before reaching the domain |
-| `PolicySubjectRegistry` shape check | Iterate every `EnumPolicySubject` member | Each has a registry entry with `model` and `scope`; concrete scope keys use the corresponding generated Prisma scalar-field enum member |
-| Seed data catalog | Every seeded role/scope pair | Maps only to actions valid for its scope (no platform action on a workspace role, etc.) |
+| Placeholder catalog | Every `EnumPolicyConditionPlaceholder` member | Uses the canonical flat token values and fails closed when a recognized token has no value |
+| Seed data catalog | Every seeded role/scope pair | Uses explicit workspace, project, or unscoped conditions for the intended role scope |

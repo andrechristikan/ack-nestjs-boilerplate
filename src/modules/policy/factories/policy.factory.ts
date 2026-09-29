@@ -3,7 +3,7 @@ import type { Policy } from '@generated/prisma-client/client';
 import type {
     IPolicyAbility,
     IPolicyAbilityRule,
-    IPolicyPlaceholderContext,
+    IPolicyPlaceholderValues,
 } from '@modules/policy/interfaces/policy.interface';
 import {
     interpolate,
@@ -16,19 +16,13 @@ import { Injectable } from '@nestjs/common';
 export class PolicyAbilityFactory {
     private toAbilityRule(
         policy: Policy,
-        placeholders: IPolicyPlaceholderContext
+        placeholders: IPolicyPlaceholderValues
     ): IPolicyAbilityRule | null {
         const { conditions } = policy;
         const resolved =
             conditions === null || !isPlainJsonObject(conditions)
                 ? null
-                : interpolate(conditions, {
-                      '${user.id}': placeholders.user?.id,
-                      '${workspace.id}': placeholders.workspace?.id,
-                      '${workspaceMember.id}': placeholders.workspaceMember?.id,
-                      '${project.id}': placeholders.project?.id,
-                      '${projectMember.id}': placeholders.projectMember?.id,
-                  });
+                : interpolate(conditions, placeholders);
 
         if (conditions !== null && resolved === null) {
             return null;
@@ -56,7 +50,7 @@ export class PolicyAbilityFactory {
     /** Builds a resolved ability from the supplied persisted policies. */
     buildFromPolicies(
         policies: Policy[] | null,
-        placeholders: IPolicyPlaceholderContext
+        placeholders: IPolicyPlaceholderValues
     ): IPolicyAbility {
         const rules: IPolicyAbilityRule[] = [];
         for (const policy of policies ?? []) {

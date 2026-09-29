@@ -162,13 +162,7 @@ describe('UserGuard', () => {
 
         expect(policyAbilityFactory.buildFromPolicies).toHaveBeenCalledWith(
             [policy],
-            {
-                user: userWithoutPolicies,
-                workspace: null,
-                workspaceMember: null,
-                project: null,
-                projectMember: null,
-            }
+            { '${userId}': userWithoutPolicies.id }
         );
         expect(requestStoreService.set).toHaveBeenCalledWith(
             PolicyAbilityStoreKey,
@@ -184,7 +178,7 @@ describe('UserGuard', () => {
 
         expect(policyAbilityFactory.buildFromPolicies).toHaveBeenCalledWith(
             [],
-            expect.objectContaining({ user: expect.anything() })
+            { '${userId}': userWithoutPolicies.id }
         );
     });
 

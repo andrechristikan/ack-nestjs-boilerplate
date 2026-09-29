@@ -12,7 +12,10 @@ import {
     EnumRoleScope,
 } from '@generated/prisma-client';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import {
+    EnumPolicyConditionPlaceholder,
+    PolicyAbilityStoreKey,
+} from '@modules/policy/constants/policy.constant';
 import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import {
     ProjectMemberRequiredMetaKey,
@@ -151,7 +154,13 @@ describe('ProjectMemberGuard', () => {
         );
         expect(policyAbilityFactory.buildFromPolicies).toHaveBeenCalledWith(
             projectPolicies,
-            expect.objectContaining({ project: { id: 'project-id' } })
+            {
+                [EnumPolicyConditionPlaceholder.userId]: 'user-id',
+                [EnumPolicyConditionPlaceholder.workspaceId]: undefined,
+                [EnumPolicyConditionPlaceholder.workspaceMemberId]: undefined,
+                [EnumPolicyConditionPlaceholder.projectId]: 'project-id',
+                [EnumPolicyConditionPlaceholder.projectMemberId]: 'member-id',
+            }
         );
         expect(requestStoreService.set).toHaveBeenCalledWith(
             PolicyAbilityStoreKey,

@@ -9,7 +9,7 @@ describe('PolicyUpdateRequestSchema', () => {
     it('accepts the full rule without a subject', () => {
         const full = {
             ...valid,
-            conditions: { userId: '${user.id}' },
+            conditions: { userId: '${userId}' },
             inverted: false,
             reason: 'Only the owner can update this user',
         };

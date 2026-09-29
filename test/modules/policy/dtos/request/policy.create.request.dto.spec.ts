@@ -21,7 +21,7 @@ describe('PolicyCreateRequestSchema', () => {
     it('accepts a full rule', () => {
         const full = {
             ...valid,
-            conditions: { userId: '${user.id}', AND: [{ id: 'x' }] },
+            conditions: { userId: '${userId}', AND: [{ id: 'x' }] },
             inverted: true,
             reason: 'Only owners can update this user',
         };

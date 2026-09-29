@@ -1,10 +1,12 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { Project, Workspace } from '@generated/prisma-client/client';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import {
+    EnumPolicyConditionPlaceholder,
+    PolicyAbilityStoreKey,
+} from '@modules/policy/constants/policy.constant';
 import type { IPolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import type { IPolicyPlaceholderContext } from '@modules/policy/interfaces/policy.interface';
 import type { IUserWithoutPolicies } from '@modules/user/interfaces/user.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import {
@@ -16,6 +18,7 @@ import {
     WorkspaceMemberStoreKey,
     WorkspaceStoreKey,
 } from '@modules/workspace/constants/workspace.constant';
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
@@ -47,9 +50,10 @@ export class ProjectMemberGuard implements CanActivate {
         const project = this.requestStoreService.get<Project>(ProjectStoreKey);
         const workspace =
             this.requestStoreService.get<Workspace>(WorkspaceStoreKey);
-        const workspaceMember = this.requestStoreService.get<
-            NonNullable<IPolicyPlaceholderContext['workspaceMember']>
-        >(WorkspaceMemberStoreKey);
+        const workspaceMember =
+            this.requestStoreService.get<IWorkspaceMemberWithRole>(
+                WorkspaceMemberStoreKey
+            );
         const user =
             this.requestStoreService.get<IUserWithoutPolicies>(UserStoreKey);
 
@@ -74,11 +78,12 @@ export class ProjectMemberGuard implements CanActivate {
             throw new RequestContextMissingException(PolicyAbilityStoreKey);
         }
         const ability = this.policyAbilityFactory.buildFromPolicies(policies, {
-            user: user ?? null,
-            workspace: workspace ?? null,
-            workspaceMember: workspaceMember ?? null,
-            project: project ?? null,
-            projectMember: member,
+            [EnumPolicyConditionPlaceholder.userId]: user?.id,
+            [EnumPolicyConditionPlaceholder.workspaceId]: workspace?.id,
+            [EnumPolicyConditionPlaceholder.workspaceMemberId]:
+                workspaceMember?.id,
+            [EnumPolicyConditionPlaceholder.projectId]: project?.id,
+            [EnumPolicyConditionPlaceholder.projectMemberId]: member.id,
         });
         this.requestStoreService.set(
             PolicyAbilityStoreKey,

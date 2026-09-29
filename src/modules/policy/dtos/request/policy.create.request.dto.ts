@@ -17,7 +17,7 @@ export const PolicyCreateRequestSchema = PolicySchema.pick({
             .meta({
                 description:
                     'Prisma where-input conditions the rule applies to; absent for the whole subject',
-                example: { workspaceId: '${workspace.id}' },
+                example: { workspaceId: '${workspaceId}' },
             })
             .optional(),
         reason: PolicySchema.shape.reason.unwrap().optional(),
