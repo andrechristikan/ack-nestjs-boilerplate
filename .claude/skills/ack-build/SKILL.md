@@ -1,8 +1,9 @@
 ---
 name: ack-build
 description: >-
-  Builds src/ from an approved plan or a pin through coder and reviewer, test-first, one
-  task at a time with a review after every task, seeds and the run surface included, then
+  Builds src/ from an approved plan or a pin through coder and reviewer, one task at a
+  time with a review after every task: test-first when a task changes src/ behaviour, the
+  test files a plan task lists written as listed, seeds and the run surface included; then
   verifies and proposes the commit subject. Use with a plan path from /ack-plan or a pin
   (files, cause at file:line, change). Not for an open question or a new shape (ack-plan),
   a symptom without a cause (ack-debug), judging only (ack-review), specs over code that
@@ -17,7 +18,8 @@ argument-hint: "<.superpowers/<date>-<slug>-plan.md | pin: files <paths>; cause 
 
 # ack-build
 
-You orchestrate; agents do the work. `coder` writes `src/` and `test/`; you write no code.
+You orchestrate; agents do the work. `coder` writes `src/`, `test/`, and the run surface a
+task lists (`.github/workflows/` and `.github/dependabot.yml` included); you write no code.
 You dispatch, read what comes back, and report. A change under `.claude/**` lands first
 through `/ack-harness`, before any `src/` work; code is written against the rule as it
 stands after that. If a `superpowers:*` skill is not installed, stop and say
@@ -44,8 +46,12 @@ Dispatch template: `references/dispatch.md`, Coder. Pass `model: opus` on the Ag
 when the plan marks the task `Complexity: complex`; otherwise the agent's own model
 applies. A pin is one dispatch carrying the pin instead of a plan path.
 
-- `coder` writes the failing spec, watches it fail, implements, runs `pnpm typecheck` and
-  `pnpm test <module>`, then repairs the run surface the change made stale.
+- When the task changes `src/` behaviour, `coder` writes the failing unit spec under
+  `test/unit/`, watches it fail, and implements. Specs, test helpers, setup or
+  global-setup files, and test config the task's Files list names are written as listed.
+- `coder` then runs `pnpm typecheck` and `pnpm test <module>`, or the task's own
+  acceptance commands when the plan names them, and repairs the run surface the change
+  made stale.
 - A schema delta is `coder`'s edit and the owner's push: `coder` runs `pnpm db:generate`;
   relay the model, the field, the index, the data consequence, and `pnpm db:migrate`.
 - A `NEEDS_CONTEXT` or `BLOCKED` hand-back goes to the session as an open question; do
@@ -77,8 +83,9 @@ pnpm test <module>
 ```
 
 `<module>` is a path filter naming each module the work changed; a module only read is
-out of scope. How to read `deadcode`, `spell`, and a scoped `test:cov`: `.claude/CLAUDE.md`
-Gotchas. A coverage gap beyond the TDD specs is named with file and lines; closing it is
+out of scope. When a plan task names its own acceptance commands (`pnpm test:integration`,
+`pnpm test:e2e`, the unit parity counts), run and read each of those too. How to read
+`deadcode`, `spell`, and a scoped `test:cov`: `.claude/CLAUDE.md` Gotchas. A coverage gap beyond the TDD specs is named with file and lines; closing it is
 `/ack-spec`.
 
 ## Finish
@@ -95,7 +102,7 @@ runs in the session from `/ack-pr create`, not here.
 - The final review at the plan's depth.
 - Every run-surface file checked and whether it changed; every status code allocated.
 - The schema delta and the owner's push command.
-- The output of the five checks.
+- The output of the five checks and of every task acceptance command run.
 - The proposed commit subject.
 - One line per thing noticed outside the scope.
 

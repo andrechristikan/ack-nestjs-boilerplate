@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stop: typecheck and the scoped unit suite when src/ or test/ changed; block on failure.
+# Stop: typecheck and the unit suite when src/ or test/ changed; block on failure.
 set -uo pipefail
 
 input=$(cat)
@@ -22,22 +22,9 @@ out=$(pnpm typecheck 2>&1) || {
     block "pnpm typecheck failed: $line"
 }
 
-dirs=$(printf '%s\n' "$changed" | sed -nE \
-    -e 's#^src/modules/([^/]+)/.*#test/modules/\1#p' \
-    -e 's#^src/common/([^/]+)/.*#test/common/\1#p' \
-    -e 's#^(test/modules/[^/]+)/.*#\1#p' \
-    -e 's#^(test/common/[^/]+)/.*#\1#p' \
-    -e 's#^(test/.*)/[^/]+\.ts$#\1#p' | sort -u)
-
-paths=()
-while IFS= read -r dir; do
-    [ -n "$dir" ] && [ -d "$dir" ] && paths+=("$dir")
-done <<< "$dirs"
-[ "${#paths[@]}" -gt 0 ] || exit 0
-
-out=$(pnpm test "${paths[@]}" 2>&1) || {
+out=$(pnpm test 2>&1) || {
     line=$(printf '%s\n' "$out" | grep -m1 -E '^ *FAIL ' || printf '%s\n' "$out" | grep -m1 -E 'Error:|✗|×' || echo 'pnpm test failed')
-    block "pnpm test ${paths[*]} failed: $line"
+    block "pnpm test failed: $line"
 }
 
 exit 0

@@ -50,7 +50,7 @@ Name every row marked SOLVED and every row still open in the hand-back.
   100 only when all four read 100. `Uncovered Line #s` names the lines still open.
 - `coverage.include` is `src/**/*.ts` minus `coverage.exclude` in `vitest.config.ts`
   (modules, enums, interfaces, constants, contracts, controllers, processors,
-  repositories, docs, `src/generated`, `src/migration`, `src/router`, `src/configs`,
+  repositories, `src/generated`, `src/migration`, `src/router`, `src/configs`,
   `src/languages`, root `src/*.ts`). An excluded file is not a gap and gets no spec.
 - Clear the Vitest cache (`pnpm exec vitest --clearCache`) before trusting a gap that a
   previous run did not show.

@@ -3,8 +3,8 @@
 ## Files
 
 `<module>.<noun-or-action>[.<sub>].<role>.ts`. Every file under `src/` carries the `<module>.` prefix except
-`src/main.ts`, `src/migration.ts`, `src/instrument.ts`, `src/swagger.ts` (each aliased in `tsconfig.json`
-`paths`) and generated code. A dot separates segments; a dash sits only inside one segment for a compound noun
+`src/main.ts`, `src/migration.ts`, `src/instrument.ts`, `src/swagger.ts`, `src/configure.ts` (each aliased in
+`tsconfig.json` `paths`: `@main`, `@migration`, `@instrument`, `@swagger`, `@configure`) and generated code. A dot separates segments; a dash sits only inside one segment for a compound noun
 (`user.mobile-number.domain.ts`). At most four dot-separated name parts, three for `*.interface.ts`; a spec adds
 `.spec.ts` on top. Folders are kebab-case, plural when they hold a kind of file (`domains/`, `dtos/request/`).
 
@@ -33,6 +33,13 @@ not optional, and file and exports agree on it. At most two constants files: `<m
 keys, selects, everything the module owns) and `<module>.list.constant.ts` (list allow-lists and filter
 defaults, only with a list endpoint); a data constant never lives in a class file. `I*` declarations live under
 `interfaces/`: the repository port alone, data shapes collected in `<module>[.<concern>].interface.ts`.
+
+Under `test/`, a spec with a subject file is that file's name plus `.spec.ts` and mirrors its `src/` path under
+`test/<type>/`. An e2e spec for a flow across several routes is `test/e2e/flows/<module>.<flow>.spec.ts`
+(`user.login-profile.spec.ts`). Every other file starts with `test.`: `test.[<type>.][<noun>.]<role>.ts`, role `setup` or `global-setup` at the
+root of `test/<type>/`, `helper` in a `helpers/` folder; the type segment is present everywhere except
+`test/helpers/`. `test/helpers/test.provided-context.d.ts` types `inject()`. A binary fixture is
+`test.<type>.<noun>.fixture.<ext>` in that type's `helpers/`.
 
 ## Identifiers
 

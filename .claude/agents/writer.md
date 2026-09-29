@@ -2,10 +2,11 @@
 name: writer
 description: >-
   Writes reader-facing prose against the code on disk: docs/*.md, README.md, SECURITY.md,
-  CONTRIBUTING.md, CODE_OF_CONDUCT.md, .github/** except copilot-instructions.md, and PR,
-  PR comment, and version text under generated/docs/. Reports a conflict rather than
-  resolving it. Use when a doc or a PR text is wanted. Not for .claude/**, AGENTS.md, or
-  the Copilot digest (harness), or for code (coder).
+  CONTRIBUTING.md, CODE_OF_CONDUCT.md, .github/ markdown except copilot-instructions.md,
+  stale-fact repairs in .github/ YAML, and PR, PR comment, and version text under
+  generated/docs/. Reports a conflict rather than resolving it. Use when a doc or a PR text
+  is wanted. Not for .claude/**, AGENTS.md, or the Copilot digest (harness), or for code or
+  a workflow or dependabot.yml a change moves or a plan task lists (coder).
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: opus
 skills: caveman:caveman, humanizer:humanizer, example-skills:doc-coauthoring, diagram-design:diagram-design

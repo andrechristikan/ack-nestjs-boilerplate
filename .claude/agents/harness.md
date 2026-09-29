@@ -4,8 +4,9 @@ description: >-
   Writes the AI configuration: .claude/** (CLAUDE.md, rules, agents, skills, hooks,
   settings), AGENTS.md, and .github/copilot-instructions.md, final state only, every
   path and command verified against the checkout. Use when how Claude or Copilot works in
-  this repository changes. Not for src/ or test/ (coder, tester), docs/ or the rest of
-  .github/** (writer), or prisma/.
+  this repository changes. Not for src/ or test/ (coder, tester); .github/workflows/ and
+  .github/dependabot.yml as run surface (coder); docs/, the rest of .github/ markdown, or
+  stale-fact repairs in .github/ YAML (writer); or prisma/.
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: opus
 skills: caveman:caveman

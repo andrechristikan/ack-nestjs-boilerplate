@@ -35,8 +35,10 @@ disk, never from `HEAD` or a ref. To list what changed, use `git status --short`
 Glob confirm the exact token and the path. A file enters the table only after you opened it.
 Where each entry point is declared: `.claude/rules/layering.md` (routes and the router
 modules), `.claude/rules/queue.md` (`@QueueProcessor`; a grep for a bare `@Processor` finds
-nothing), `.claude/rules/seeding.md` (`@Command` seeds). A spec lives under `test/`
-mirroring `src/`.
+nothing), `.claude/rules/seeding.md` (`@Command` seeds). A spec lives under
+`test/unit/`, `test/integration/`, or `test/e2e/`, mirroring `src/`; helpers sit in
+`test/<type>/helpers/` or `test/helpers/`. `pnpm test`, `pnpm test:integration`, and
+`pnpm test:e2e` run them; the last two need a running Docker daemon.
 
 ## Contract
 

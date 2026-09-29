@@ -75,6 +75,6 @@ An exported, complete member of a family with a used member is kit surface whate
 
 ## The run surface is a call site
 
-A command, port, path, or script a change moves also moves in `package.json`, `scripts/`, `ci/`,
-`docker-compose.yml`, `.github/workflows/`, `.github/dependabot.yml`, `nest-cli.json`, `vitest.config.ts`,
-`knip.json`, `tsconfig*.json`, `eslint.config.mjs`, and `.husky/`.
+A command, port, path, or script a change moves also moves in `package.json`, `scripts/`, `ci/`, `ci/docker-compose.yml`,
+`docker-compose.yml`, the root `dockerfile.local`, `.github/workflows/`, `.github/dependabot.yml`, `nest-cli.json`,
+`vitest.config.ts`, `knip.json`, `tsconfig*.json`, `eslint.config.mjs`, `.husky/`, and `.gitignore`.

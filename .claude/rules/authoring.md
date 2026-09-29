@@ -41,7 +41,8 @@ what is (`activeSessionCount is computed per read`).
 
 ## Documentation prose
 
-Binds `docs/*.md`, the root people files, and `.github/` markdown; `.github/` YAML gets stale-fact repairs only.
+Binds `docs/*.md`, the root people files, and `.github/` markdown. In `.github/` YAML, `writer` repairs stale facts
+only; a workflow or `dependabot.yml` a change moves or a plan task lists is `coder`'s run surface (`rules/layering.md`).
 
 - Indicative mood; an obligation is a fact: `all three paths produce the same idempotency key`, not `keys must match`.
 - No `.claude/`, no rule cited by path, no working artifact (`.superpowers/`, `generated/`, `graphify-out/`,
@@ -69,10 +70,9 @@ path, command, and flag against the checkout before writing it. `copilot-instruc
 Budgets: `.claude/CLAUDE.md` ≤ 120 lines; `AGENTS.md` ≤ 80; `copilot-instructions.md` ≤ 60; a rule ≤ 80; an
 agent body ≤ 60 after frontmatter; a workflow `SKILL.md` ≤ 150 (long material in `references/`); a knowledge one ≤ 120.
 
-A rule file opens with `paths:` as a YAML list unless it is one of the four unscoped ones. A skill's
-`SKILL.md` and an agent's `.md` open with YAML frontmatter whose `description` is a folded block scalar
-(`description: >-`); a plain scalar containing `: ` does not parse, and `.claude/hooks/roster.sh` reads the
-folded form.
+A rule file opens with `paths:` as a YAML list unless it is one of the four unscoped ones. A skill's `SKILL.md`
+and an agent's `.md` open with YAML frontmatter whose `description` is a folded block scalar (`description: >-`);
+a plain scalar containing `: ` does not parse, and `.claude/hooks/roster.sh` reads the folded form.
 
 ## Language
 

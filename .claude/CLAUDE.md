@@ -7,21 +7,19 @@ depends on it, so build the correct shape and change every call site.
 
 ## Claude-specific
 
-Sessions start in `acceptEdits` (`permissions.defaultMode` in `.claude/settings.json`): a file
-edit applies without a prompt, and Bash runs under the `allow`, `ask`, and `deny` rules and the
-hooks. `/ack-plan` plans first through superpowers; `/ack-build` builds an approved plan or a
-pin. `/plan` and Shift+Tab enter plan mode on demand, and its files land in
-`.superpowers/plans/`. The VS Code and Cursor extensions ignore `defaultMode`.
+Sessions start in `acceptEdits` (`permissions.defaultMode` in `.claude/settings.json`): a file edit applies
+without a prompt, and Bash runs under the `allow`, `ask`, and `deny` rules and the hooks. `/ack-plan` plans
+first through superpowers; `/ack-build` builds an approved plan or a pin. `/plan` and Shift+Tab enter plan mode
+on demand; its files land in `.superpowers/plans/`. The VS Code and Cursor extensions ignore `defaultMode`.
 
 ### Skills
 
-Type the name; nothing chains automatically. Each skill ends with a Next line. Do not start
-a skill the owner did not name.
+Type the name; nothing chains automatically. Each skill ends with a Next line. Do not start a skill the owner did not name.
 
 - `/ack-plan`: settles a `src/` change in the session: interrogation, explorer, brainstorming,
   writing-plans, owner approval; ends with a plan path.
-- `/ack-build`: builds an approved plan or a pin test-first through coder and reviewer, seeds
-  and the run surface included; review after every task.
+- `/ack-build`: builds an approved plan or a pin through coder and reviewer, test-first where
+  `src/` behaviour changes, seeds and the run surface included; review after every task.
 - `/ack-review`: judges a named scope at a chosen depth through reviewer, four checks, verdict
   PASS or FAIL; findings come back as pins.
 - `/ack-debug`: pins a symptom with the owner, finds its cause through debugger, and ends
@@ -40,14 +38,14 @@ call `superpowers:*` skills at the step that names them, or through an agent's `
 nowhere else; outside a workflow skill (a question, a small edit, a script) the session works without
 them. A skill already in the session's context is not invoked again for a reply, a clarifying question,
 or a later step of the same run; its text is present and applies. `.claude/settings.json` declares
-the third-party marketplaces (`extraKnownMarketplaces`) and enables the plugins (`enabledPlugins`);
-trusting the folder registers the marketplaces. A plugin listed by relative path loads from the
-marketplace copy with no install step; an external one is installed once per machine. `writer` preloads
-`doc-coauthoring` and `diagram-design`; outside `writer` they run when the owner names them.
+the project marketplaces (`extraKnownMarketplaces`) and plugins (`enabledPlugins`); trusting the folder
+registers the marketplaces. `writer` preloads `example-skills:doc-coauthoring` and
+`diagram-design:diagram-design`; outside `writer` they run when the owner names them.
 
-- relative path: `caveman@caveman`, `humanizer@humanizer`, `diagram-design@diagram-design`,
-  `example-skills@anthropic-agent-skills`, which carries `doc-coauthoring`
+- relative path, no install step: `caveman@caveman`, `humanizer@humanizer`, `diagram-design@diagram-design`
 - external source, once per machine: `claude plugin install superpowers@claude-plugins-official`
+- user scope, once per machine: `claude plugin marketplace add anthropics/skills`, then
+  `claude plugin install example-skills@anthropic-agent-skills --scope user`, which carries `doc-coauthoring`
 
 ### Agents
 
@@ -56,14 +54,14 @@ Skills dispatch the agents in `.claude/agents/`:
 - `explorer`: locates code, reads a third-party contract, assesses approaches.
 - `debugger`: reproduces a pinned symptom and finds its root cause with evidence; reports a
   pin, does not fix.
-- `coder`: implements a named `src/` change test-first, seeds included, and repairs the run
-  surface the change makes stale.
+- `coder`: implements a named `src/` change, test-first where behaviour changes, seeds included;
+  writes the test and run-surface files a plan task lists and repairs the run surface the change
+  makes stale, `.github/workflows/` and `.github/dependabot.yml` included.
 - `tester`: writes or repairs tests under `test/` for code that exists; does not edit `src/`.
 - `reviewer`: judges a named scope at the depth the dispatch sets; reports, does not fix.
-- `writer`: reader-facing prose: `docs/`, the root people files, `.github/**` except
-  `copilot-instructions.md`, PR and version text.
-- `harness`: the AI configuration: `.claude/**`, `AGENTS.md`,
-  `.github/copilot-instructions.md`.
+- `writer`: reader-facing prose: `docs/`, the root people files, `.github/` markdown except
+  `copilot-instructions.md`, stale-fact repairs in `.github/` YAML, PR and version text.
+- `harness`: the AI configuration: `.claude/**`, `AGENTS.md`, `.github/copilot-instructions.md`.
 
 No agent can ask a question. An agent missing something stops and hands the question back;
 the session asks the owner and dispatches again. Anything an agent notices outside its
@@ -85,7 +83,9 @@ end-to-end flow. Nothing requires it.
   exports exit 1.
 - A scoped `pnpm test:cov <path>` exits 1 with every spec passing because the 100% threshold
   is global. Read the `Tests` line and the per-file rows, not the exit code.
-- `coverage.enabled` is `false` in `vitest.config.ts`, so `pnpm test` applies no threshold.
+- `pnpm test` runs unit only, needs no Docker, and applies no threshold (`coverage.enabled` is
+  `false`). `pnpm test:integration` and `pnpm test:e2e` need a running Docker daemon; the
+  first run pulls the images and can take minutes before a spec starts.
 - `npx <pkg>@<version>` runs the local binary when the package is installed.
 - Claude worktrees live under `.claude/worktrees/` (gitignored). A recursive grep from the
   repository root reads them; exclude that directory.

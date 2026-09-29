@@ -1,11 +1,11 @@
 ---
 name: ack-spec
 description: >-
-  Creates or repairs tests for code that exists through tester, to 100% coverage per file;
-  unit today; integration or e2e when their run surface exists (`ack-plan` then
-  `ack-build` add it). A confirmed no-flow bug goes to coder test-first; a flow change or a
-  decision is handed back or logged in the sweep. Use for a failing suite, a coverage gap, or orphan specs. Not for new
-  behaviour (ack-plan).
+  Creates or repairs unit, integration, or e2e tests for code that exists through tester:
+  unit to 100% coverage per file, integration and e2e on Testcontainers. A confirmed
+  no-flow bug goes to coder test-first; a flow change or a decision is handed back or
+  logged in the sweep. Use for a failing suite, a coverage gap, or orphan specs. Not for
+  new behaviour (ack-plan).
 disable-model-invocation: true
 context: fork
 argument-hint: "<module or path filter, or the failing suite> [unit|integration|e2e]"
@@ -23,18 +23,20 @@ test-first. On the coverage path the code wins: a spec asserts what `src/` does.
 
 ## 1. Scope
 
-Run the suite for the named scope and read the failure; the scope is a Vitest path filter.
-Clear the cache before believing a coverage gap.
+Run the suite for the named scope and kind and read the failure; the scope is a Vitest
+path filter. Clear the cache before believing a coverage gap.
 
 ```bash
-pnpm test <scope>
+pnpm test <scope>               # unit
+pnpm test:integration <scope>   # integration, Docker daemon running
+pnpm test:e2e <scope>           # e2e, Docker daemon running
 pnpm exec vitest --clearCache
 ```
 
-Kind: `unit` continues. `integration` or `e2e` first checks the run surface: a Vitest
-project or config, a `package.json` script, and the engine in `docker-compose.yml`
-(`.claude/rules/testing.md`). When it is missing, stop and hand back that `/ack-plan` plans
-the run surface first.
+Kind: `unit` continues. `integration` or `e2e` first checks `docker info` exits 0, then
+that the type's global-setup and setup files start every engine and fake the subject needs
+(`.claude/rules/testing.md`, Integration and e2e). A stopped daemon, or an engine the setup
+does not start, is a hand-back naming what is missing.
 
 ## 2. Classify
 
@@ -66,7 +68,8 @@ Dispatch `tester`:
 Agent: tester
 Scope: <src paths in scope and their test/ mirrors>
 Kind: unit | integration | e2e
-Bar: 100% statements, branches, functions, and lines on every file in scope
+Bar: unit, 100% statements, branches, functions, and lines on every file in scope;
+  integration and e2e, every subject in scope asserted the way testing.md sets
 Source of truth: the code as it is on disk, including repairs this run landed
 Mode: cover | repair | relocate only (move green specs, no new assertion)
 Rules to read: .claude/rules/testing.md, plus the scoped rule each subject matches
@@ -80,7 +83,8 @@ Add the working-tree line and the no-questions line from
 
 ## 5. Reach 100%
 
-Re-run the scope, then run the full coverage suite; this is the only skill that does:
+Re-run the scope, then, for unit, run the full coverage suite; this is the only skill that
+does:
 
 ```bash
 pnpm test <scope>
@@ -119,18 +123,19 @@ with their states.
 ## Boundaries
 
 Do not write a spec or a repair yourself; dispatch. Do not delete, `.skip`, or weaken a
-spec, lower a threshold, extend the exclude list, or add an ignore comment. Do not run a DB
-or seed command. No boot. Commits go through `ask`; propose the subject only.
+spec, lower a threshold, extend the exclude list, or add an ignore comment. Do not run the
+owner's DB and seed commands (`db:migrate`, `migration:*`, `db:studio`, `mongosh`,
+`redis-cli`); the reset and seeding inside the integration and e2e test helpers are part of
+the suites and run with them. No boot. Commits go through `ask`; propose the subject only.
 
 ## Hand back
 
 Specs written or repaired by file; every no-flow bug fixed (file, line, change); every flow
 or decision handed back or logged; per-file coverage with the command; files at 100 and
-files short with the reason; sweep rows opened and rows marked SOLVED; the run-surface gap
-when the kind was integration or e2e; every reviewer finding and its state (fixed, rejected
+files short with the reason; sweep rows opened and rows marked SOLVED; a missing engine or
+fake when the kind was integration or e2e; every reviewer finding and its state (fixed, rejected
 with the reason, open); one line per thing noticed outside the scope.
 
 ## Next
 
-`/ack-plan` for a flow change the owner approved, or to add the integration or e2e run
-surface.
+`/ack-plan` for a flow change the owner approved.

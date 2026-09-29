@@ -129,17 +129,13 @@
         },
         "diagram-design": {
             "source": { "source": "github", "repo": "cathrynlavery/diagram-design" }
-        },
-        "anthropic-agent-skills": {
-            "source": { "source": "github", "repo": "anthropics/skills" }
         }
     },
     "enabledPlugins": {
         "superpowers@claude-plugins-official": true,
         "caveman@caveman": true,
         "humanizer@humanizer": true,
-        "diagram-design@diagram-design": true,
-        "example-skills@anthropic-agent-skills": true
+        "diagram-design@diagram-design": true
     },
     "hooks": {
         "PreToolUse": [

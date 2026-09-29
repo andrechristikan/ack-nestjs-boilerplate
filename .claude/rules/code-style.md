@@ -37,10 +37,25 @@ pass of `HelperStringService.fillPattern` (`src/common/helper/services/helper.st
 
 ## Concurrency and errors
 
-Independent `await`s in one scope run in one `Promise.all([...])`; the exceptions are an await whose argument
-uses an earlier result, a write that must not happen if an earlier step throws, and anything inside
-`DatabaseService.withTransaction`. `.catch()` belongs only to `bootstrap().catch` in `src/main.ts` and
-`src/migration.ts` and to a promise never awaited.
+Async operations that do not depend on each other run concurrently, in `src/` and `test/` alike: `Promise.all` when
+one failure fails the whole, `Promise.allSettled` when each outcome is handled on its own. A sequential `await` of
+independent operations is a defect; one still in the tree is a sweep finding, not a precedent. Each call lands in a
+`const` first, then the array:
+
+```ts
+const userPromise = this.userRepository.findOneById(userId);
+const settingPromise = this.settingRepository.findByUser(userId);
+const [user, setting] = await Promise.all([userPromise, settingPromise]);
+```
+
+Sequential stays only in these cases, each named in a one-line comment at the site (`// Sequential by design: ...`):
+- the call consumes an earlier result;
+- a write that must not happen if an earlier step throws;
+- statements on one `tx` inside `DatabaseService.withTransaction` (a MongoDB session runs one operation at a time);
+- side effects whose order is part of the contract;
+- a fan-out over an unbounded collection, which runs in bounded chunks.
+
+`.catch()` belongs only to `bootstrap().catch` in `src/main.ts` and `src/migration.ts` and to a promise never awaited.
 
 ## Types and comments
 
@@ -56,3 +71,6 @@ Kit surface carries `@public` (a knip directive): every export of `*.dto.ts`, `*
 has a JSDoc whose first line states what it is, then `@public` (`@alias` for an intentional alias). No other
 export carries it; the tag keeps an unused export out of the knip report, and an unimported file still prints.
 
+## Move to ESLint
+
+- `no-await-in-loop` for the concurrency rule, enabled once the sequential awaits in the tree are swept.

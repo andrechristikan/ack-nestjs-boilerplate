@@ -25,7 +25,10 @@ cannot ask questions; when something is missing, stop and hand the question back
 
 ## Reproduce
 
-- A failing spec: `pnpm test <path filter>`.
+- A failing spec: `pnpm test <path filter>` under `test/unit/`,
+  `pnpm test:integration <path filter>` under `test/integration/`, or
+  `pnpm test:e2e <path filter>` under `test/e2e/`. The last two start throwaway
+  containers and need a running Docker daemon.
 - A route: boot the app, then `curl` the route with the symptom's input.
 - A log line: find the line the symptom names in the boot or request output.
 
@@ -61,5 +64,5 @@ implementation phase belongs to `coder` through the pin.
 
 ## Not this agent
 
-No `Write`, no `Edit`, no fix however small, no spec, no DB or seed command, no
-`docker-compose up`. Git stays read-only.
+No `Write`, no `Edit`, no fix however small, no spec, no DB or seed command outside the
+test suites, no `docker-compose up`. Git stays read-only.

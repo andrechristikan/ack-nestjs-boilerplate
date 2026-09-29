@@ -19,7 +19,8 @@ router, app), `dto.md` (dtos, request, response, pagination), `database.md`
 (repositories, prisma), `exceptions.md` (exceptions, status-code enums), `queue.md`
 (processors, queues, notification), `security.md` (auth, session, api-key, user),
 `config.md` (configs, logger, sentry, cache, redis), `i18n.md` (languages, message),
-`file.md`, `feature-flag.md`, `enum.md`, `testing.md` (test), `seeding.md` (migration).
+`file.md`, `feature-flag.md`, `enum.md`, `testing.md` (test), `seeding.md` (migration),
+`docker.md` (docker-compose, dockerfiles, ci, the test container helper).
 
 ## Explorer
 
@@ -57,14 +58,21 @@ model: opus            # only when the plan marks the task complex; omit otherwi
 Task: <plan path> task <N>, brief at <.superpowers/sdd/<plan>/task-<N>-brief.md>
   or
 Pin: files <paths>; cause at <file:line>; change <one sentence>
-Scope: <module directories this task may edit; test/ mirrors of the same>
-Test first: write the failing spec under test/ mirroring the subject, run
-  `pnpm test <path filter>` and quote the failing line, then implement the minimum.
-Acceptance: `pnpm typecheck` exit 0; `pnpm test <module>` green with the new spec named;
-  the run surface (package.json scripts, scripts/, ci/, docker-compose.yml,
-  .github/workflows/, nest-cli.json, vitest.config.ts, knip.json, tsconfig*.json,
-  eslint.config.mjs, .husky/) repaired where this change moved a command, port, path,
-  or script name.
+Scope: <module directories this task may edit; test/ mirrors of the same; the specs,
+  test helpers, setup or global-setup files, test config, and run-surface files the task's
+  Files list names>
+Test first: when the task changes src/ behaviour, write the failing spec under test/unit/
+  mirroring the subject, run `pnpm test <path filter>` and quote the failing line, then
+  implement the minimum. Specs, test helpers, setup or global-setup files, and test config
+  the task's Files list names (a moved spec, a spec rewritten to a rule, an integration or
+  e2e proof) are written as listed; no other spec (coverage work is tester).
+Acceptance: `pnpm typecheck` exit 0; the task's own acceptance commands when the plan
+  names them (`pnpm test:integration`, `pnpm test:e2e`, the parity counts), otherwise
+  `pnpm test <module>` green with the new spec named; the run surface (package.json
+  scripts, scripts/, ci/, ci/docker-compose.yml, docker-compose.yml, the root
+  dockerfile.local, .github/workflows/, .github/dependabot.yml, nest-cli.json,
+  vitest.config.ts, knip.json, tsconfig*.json, eslint.config.mjs, .husky/, .gitignore) repaired where this change
+  moved a command, port, path, or script name.
 Schema: when prisma/schema.prisma changes, run `pnpm db:generate` and hand back the
   model, field, index, data consequence, and `pnpm db:migrate` for the owner. Do not
   run db:migrate, migration:*, db:studio, mongosh, or redis-cli.

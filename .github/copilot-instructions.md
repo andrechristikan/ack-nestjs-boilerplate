@@ -38,21 +38,23 @@ beside a schema; no class DTO. Folders: `dtos/request/`, `dtos/response/`. Rule:
 ## A `this.` call lands in a `const` first
 
 A call rooted at `this` (`this.x()`, `this.dep.x()`, awaited or not) is assigned to a `const`
-before its value is used; a ternary branch that needs one becomes `if` / `else`. Rule:
-`.claude/rules/code-style.md`.
+before its value is used; a ternary branch that needs one becomes `if` / `else`. Independent
+async calls each land in a `const`, then run in one `Promise.all` or `Promise.allSettled`; a
+sequential one carries a comment naming why. Rule: `.claude/rules/code-style.md`.
 
 ## Imports
 
-Alias imports only, from `tsconfig.json` `paths` (`@app/*`, `@common/*`, `@configs/*`,
-`@modules/*`, `@router/*`, `@migration/*`, `@queues/*`, `@test/*`, `@generated/*`). A class
-Nest injects is a value import, not `import type`.
+Alias imports only, from `tsconfig.json` `paths`: `@app/*`, `@common/*`, `@configs/*`, `@modules/*`, `@router/*`,
+`@migration/*`, `@queues/*`, `@test/*`, `@generated/*`, `@main`, `@migration`, `@instrument`, `@swagger`,
+`@configure`. A class Nest injects is a value import, not `import type`.
 
 ## Tests
 
-`pnpm test <module>` scopes the run to a Vitest path filter, for example `pnpm test user`.
-Specs live under `test/**/*.spec.ts` (`.claude/rules/testing.md`).
+A spec mirrors its subject's `src/` path under `test/unit/`, `test/integration/`, or `test/e2e/`; an e2e flow
+across several routes is `test/e2e/flows/<module>.<flow>.spec.ts`. `pnpm test user` filters unit specs, and
+`pnpm test:integration` and `pnpm test:e2e` need Docker. A spec declares no function; an arrow is only a direct
+argument to a Vitest API; reused logic is a helper. Rule: `.claude/rules/testing.md`.
 
 ## Prisma schema
 
-Edit `prisma/schema.prisma`; do not apply it. The commands that apply it are the owner's
-(`AGENTS.md`).
+Edit `prisma/schema.prisma`; do not apply it. The commands that apply it are the owner's (`AGENTS.md`).

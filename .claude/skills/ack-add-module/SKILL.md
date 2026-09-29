@@ -94,6 +94,6 @@ pnpm test <module>
 ```
 
 Check in the boot log that every route mounts under its prefix and that
-`UnknownDependenciesException` does not appear. Specs: `test/modules/<module>/…` mirrors
+`UnknownDependenciesException` does not appear. Specs: `test/unit/modules/<module>/…` mirrors
 `src/`; controllers, repositories, modules, and processors are excluded from coverage
 (`.claude/rules/testing.md`).
