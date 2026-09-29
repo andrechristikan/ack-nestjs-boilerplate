@@ -75,7 +75,7 @@ export class UserUtil {
         return {
             targetUserId: user.id,
             targetUsername: user.username,
-            timestamp: user.updatedAt ?? user.createdAt,
+            timestamp: user.updatedAt,
         };
     }
 
@@ -85,7 +85,7 @@ export class UserUtil {
     ): IActivityLogMetadata {
         return {
             actorUserId,
-            timestamp: user.updatedAt ?? user.createdAt,
+            timestamp: user.updatedAt,
         };
     }
 }

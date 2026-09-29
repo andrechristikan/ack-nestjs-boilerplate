@@ -50,11 +50,13 @@ export class FileService {
     }
 
     extractMimeFromFilename(filename: string): string | null {
-        return (
-            Mime.getType(
-                filename.slice(filename.lastIndexOf('.'))
-            )?.toLowerCase() ?? null
-        );
+        const dotIndex = filename.lastIndexOf('.');
+
+        if (dotIndex === -1) {
+            return null;
+        }
+
+        return Mime.getType(filename.slice(dotIndex))?.toLowerCase() ?? null;
     }
 
     extractFilenameFromPath(filePath: string): string {

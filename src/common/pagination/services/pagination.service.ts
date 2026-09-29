@@ -3,10 +3,7 @@ import {
     PaginationDefaultCursorField,
     PaginationDefaultOrderBy,
 } from '@common/pagination/constants/pagination.constant';
-import {
-    EnumPaginationOrderDirectionType,
-    EnumPaginationType,
-} from '@common/pagination/enums/pagination.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
     IPaginationCursorArgs,
     IPaginationCursorReturn,
@@ -127,8 +124,7 @@ export class PaginationService {
         }
 
         const lastTerm = resolved[resolved.length - 1];
-        const direction =
-            Object.values(lastTerm)[0] ?? EnumPaginationOrderDirectionType.desc;
+        const direction = Object.values(lastTerm)[0];
 
         return [...resolved, { [cursorField]: direction }];
     }

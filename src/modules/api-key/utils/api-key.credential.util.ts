@@ -22,8 +22,12 @@ export class ApiKeyCredentialUtil {
      * Builds a public key prefixed with the current environment for traceability.
      */
     createKey(key?: string): string {
+        if (key) {
+            return `${this.env}_${key}`;
+        }
+
         const random: string = this.helperStringService.random(25);
-        return `${this.env}_${key ?? random}`;
+        return `${this.env}_${random}`;
     }
 
     /**

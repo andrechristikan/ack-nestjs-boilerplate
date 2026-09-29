@@ -497,7 +497,8 @@ export default [
             'no-restricted-syntax': [
                 'error',
                 {
-                    selector: 'MemberExpression[property.name="mock"]',
+                    selector:
+                        'MemberExpression[property.name="mock"]:not([object.name="vi"])',
                     message:
                         'Assert through toHaveBeenCalledWith and friends, not fn.mock.*',
                 },

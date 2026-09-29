@@ -131,12 +131,14 @@ export class NotificationQueue {
     }
 
     async sendWelcomeSocial(userId: string): Promise<void> {
+        const payload: INotificationQueuePayload = {
+            userId,
+            proceedBy: userId,
+        };
+
         await this.notificationQueue.add(
             EnumNotificationProcess.welcomeSocial,
-            {
-                userId,
-                proceedBy: userId,
-            } as INotificationQueuePayload,
+            payload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -182,12 +184,14 @@ export class NotificationQueue {
     }
 
     async sendChangePassword(userId: string): Promise<void> {
+        const payload: INotificationQueuePayload = {
+            userId,
+            proceedBy: userId,
+        };
+
         await this.notificationQueue.add(
             EnumNotificationProcess.changePassword,
-            {
-                userId,
-                proceedBy: userId,
-            } as INotificationQueuePayload,
+            payload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -202,13 +206,16 @@ export class NotificationQueue {
         userId: string,
         verified: INotificationVerifiedEmailPayload
     ): Promise<void> {
-        await this.notificationQueue.add(
-            EnumNotificationProcess.verifiedEmail,
+        const payload: INotificationQueuePayload<INotificationVerifiedEmailPayload> =
             {
                 userId,
                 data: verified,
                 proceedBy: userId,
-            } as INotificationQueuePayload<INotificationVerifiedEmailPayload>,
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.verifiedEmail,
+            payload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -292,12 +299,14 @@ export class NotificationQueue {
     }
 
     async sendResetPassword(userId: string): Promise<void> {
+        const payload: INotificationQueuePayload = {
+            userId,
+            proceedBy: userId,
+        };
+
         await this.notificationQueue.add(
             EnumNotificationProcess.resetPassword,
-            {
-                userId,
-                proceedBy: userId,
-            } as INotificationQueuePayload,
+            payload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -312,12 +321,14 @@ export class NotificationQueue {
         userId: string,
         createdBy: string
     ): Promise<void> {
+        const payload: INotificationQueuePayload = {
+            userId,
+            proceedBy: createdBy,
+        };
+
         await this.notificationQueue.add(
             EnumNotificationProcess.resetTwoFactorByAdmin,
-            {
-                userId,
-                proceedBy: createdBy,
-            } as INotificationQueuePayload,
+            payload,
             {
                 priority: EnumQueuePriority.high,
                 deduplication: {
@@ -332,13 +343,16 @@ export class NotificationQueue {
         userId: string,
         newDevice: INotificationNewDeviceLoginPayload
     ): Promise<void> {
-        await this.notificationQueue.add(
-            EnumNotificationProcess.newDeviceLogin,
+        const payload: INotificationQueuePayload<INotificationNewDeviceLoginPayload> =
             {
                 userId,
                 data: newDevice,
                 proceedBy: userId,
-            } as INotificationQueuePayload<INotificationNewDeviceLoginPayload>,
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.newDeviceLogin,
+            payload,
             {
                 priority: EnumQueuePriority.high,
                 deduplication: {
@@ -353,12 +367,15 @@ export class NotificationQueue {
         payload: INotificationPublishTermPolicyPayload,
         publishedBy: string
     ): Promise<void> {
-        await this.notificationQueue.add(
-            EnumNotificationProcess.publishTermPolicy,
+        const queuePayload: INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload> =
             {
                 proceedBy: publishedBy,
                 data: payload,
-            } as INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>,
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.publishTermPolicy,
+            queuePayload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -373,13 +390,16 @@ export class NotificationQueue {
         userId: string,
         verifiedMobile: INotificationVerifiedMobileNumberPayload
     ): Promise<void> {
-        await this.notificationQueue.add(
-            EnumNotificationProcess.verifiedMobileNumber,
+        const payload: INotificationQueuePayload<INotificationVerifiedMobileNumberPayload> =
             {
                 userId,
                 data: verifiedMobile,
                 proceedBy: userId,
-            } as INotificationQueuePayload<INotificationVerifiedMobileNumberPayload>,
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.verifiedMobileNumber,
+            payload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -394,13 +414,16 @@ export class NotificationQueue {
         userId: string,
         payload: INotificationAcceptTermPolicyPayload
     ): Promise<void> {
-        await this.notificationQueue.add(
-            EnumNotificationProcess.userAcceptTermPolicy,
+        const queuePayload: INotificationQueuePayload<INotificationAcceptTermPolicyPayload> =
             {
                 userId,
                 data: payload,
                 proceedBy: userId,
-            } as INotificationQueuePayload<INotificationAcceptTermPolicyPayload>,
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.userAcceptTermPolicy,
+            queuePayload,
             {
                 priority: EnumQueuePriority.low,
                 deduplication: {
@@ -485,13 +508,16 @@ export class NotificationQueue {
         payload: INotificationWorkspaceJoinAcceptedPayload,
         reviewedByUserId: string
     ): Promise<void> {
-        await this.notificationQueue.add(
-            EnumNotificationProcess.workspaceJoinAccepted,
+        const queuePayload: INotificationQueuePayload<INotificationWorkspaceJoinAcceptedPayload> =
             {
                 userId,
                 data: payload,
                 proceedBy: reviewedByUserId,
-            } as INotificationQueuePayload<INotificationWorkspaceJoinAcceptedPayload>,
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.workspaceJoinAccepted,
+            queuePayload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -507,13 +533,16 @@ export class NotificationQueue {
         payload: INotificationWorkspaceJoinRejectedPayload,
         reviewedByUserId: string
     ): Promise<void> {
-        await this.notificationQueue.add(
-            EnumNotificationProcess.workspaceJoinRejected,
+        const queuePayload: INotificationQueuePayload<INotificationWorkspaceJoinRejectedPayload> =
             {
                 userId,
                 data: payload,
                 proceedBy: reviewedByUserId,
-            } as INotificationQueuePayload<INotificationWorkspaceJoinRejectedPayload>,
+            };
+
+        await this.notificationQueue.add(
+            EnumNotificationProcess.workspaceJoinRejected,
+            queuePayload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {

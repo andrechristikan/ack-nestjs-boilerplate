@@ -55,7 +55,12 @@ describe('AnalyticDateDomain', () => {
             } catch (error) {
                 expect(error).toBeInstanceOf(AnalyticInvalidDateRangeException);
                 expect(error).toMatchObject({
+                    module: 'analytic',
                     statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
+                    statusCodeKey:
+                        EnumAnalyticStatusCodeError[
+                            EnumAnalyticStatusCodeError.invalidDateRange
+                        ],
                     messagePath: 'analytic.error.invalidDateRange',
                 });
             }
@@ -68,7 +73,13 @@ describe('AnalyticDateDomain', () => {
             } catch (error) {
                 expect(error).toBeInstanceOf(AnalyticInvalidDateRangeException);
                 expect(error).toMatchObject({
+                    module: 'analytic',
                     statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
+                    statusCodeKey:
+                        EnumAnalyticStatusCodeError[
+                            EnumAnalyticStatusCodeError.invalidDateRange
+                        ],
+                    messagePath: 'analytic.error.invalidDateRange',
                 });
             }
         });
@@ -79,6 +90,15 @@ describe('AnalyticDateDomain', () => {
                 throw new Error('expected throw');
             } catch (error) {
                 expect(error).toBeInstanceOf(AnalyticInvalidDateRangeException);
+                expect(error).toMatchObject({
+                    module: 'analytic',
+                    statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
+                    statusCodeKey:
+                        EnumAnalyticStatusCodeError[
+                            EnumAnalyticStatusCodeError.invalidDateRange
+                        ],
+                    messagePath: 'analytic.error.invalidDateRange',
+                });
             }
         });
     });
@@ -112,7 +132,12 @@ describe('AnalyticDateDomain', () => {
             } catch (error) {
                 expect(error).toBeInstanceOf(AnalyticInvalidDateRangeException);
                 expect(error).toMatchObject({
+                    module: 'analytic',
                     statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
+                    statusCodeKey:
+                        EnumAnalyticStatusCodeError[
+                            EnumAnalyticStatusCodeError.invalidDateRange
+                        ],
                     messagePath: 'analytic.error.invalidDateRange',
                 });
             }
@@ -124,6 +149,15 @@ describe('AnalyticDateDomain', () => {
                 throw new Error('expected throw');
             } catch (error) {
                 expect(error).toBeInstanceOf(AnalyticInvalidDateRangeException);
+                expect(error).toMatchObject({
+                    module: 'analytic',
+                    statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
+                    statusCodeKey:
+                        EnumAnalyticStatusCodeError[
+                            EnumAnalyticStatusCodeError.invalidDateRange
+                        ],
+                    messagePath: 'analytic.error.invalidDateRange',
+                });
             }
         });
     });

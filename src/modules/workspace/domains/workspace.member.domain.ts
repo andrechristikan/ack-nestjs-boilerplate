@@ -144,17 +144,15 @@ export class WorkspaceMemberDomain {
                 metadata: { targetUserId: targetMember.userId },
             }),
         ];
-        if (targetMember.userId !== actorMember.userId) {
-            const workspaceOwnershipTransferredByOwnerEvent =
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
-                    userId: targetMember.userId,
-                    createdBy: actorMember.userId,
-                    workspaceId: workspaceId,
-                    metadata: { actorUserId: actorMember.userId },
-                });
-            events.push(workspaceOwnershipTransferredByOwnerEvent);
-        }
+        const workspaceOwnershipTransferredByOwnerEvent =
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
+                userId: targetMember.userId,
+                createdBy: actorMember.userId,
+                workspaceId: workspaceId,
+                metadata: { actorUserId: actorMember.userId },
+            });
+        events.push(workspaceOwnershipTransferredByOwnerEvent);
 
         await this.workspaceMemberRepository.transferOwnership(
             actorMember.id,

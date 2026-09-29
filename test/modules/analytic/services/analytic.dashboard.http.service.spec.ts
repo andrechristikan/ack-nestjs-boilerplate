@@ -1,6 +1,7 @@
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -21,7 +22,7 @@ describe('AnalyticDashboardHttpService', () => {
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
-    const pagination = {
+    const pagination: IPaginationQueryOffsetParams<unknown> = {
         skip: 0,
         limit: 20,
         orderBy: [],
@@ -34,7 +35,7 @@ describe('AnalyticDashboardHttpService', () => {
         paginationQueryUtil.offset.mockReturnValue({
             params: pagination,
             storePatch: {},
-        } as never);
+        });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -80,9 +81,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.usersRegistrations.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.usersRegistrations.mockResolvedValue({
+                count: 12,
+            });
 
             await service.usersRegistrations();
 
@@ -120,7 +121,11 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.usersChurn.mockResolvedValue({} as never);
+            analyticDashboardDomain.usersChurn.mockResolvedValue({
+                count: 4,
+                total: 10,
+                rate: 0.4,
+            });
 
             await service.usersChurn();
 
@@ -155,7 +160,10 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.usersBlocked.mockResolvedValue({} as never);
+            analyticDashboardDomain.usersBlocked.mockResolvedValue({
+                trend: 3,
+                current: 5,
+            });
 
             await service.usersBlocked();
 
@@ -190,9 +198,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate: null,
                 endDate: null,
             });
-            analyticDashboardDomain.usersSignUpWith.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.usersSignUpWith.mockResolvedValue({
+                buckets: [{ key: 'key-1', count: 7 }],
+            });
 
             await service.usersSignUpWith();
 
@@ -226,9 +234,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate: null,
                 endDate: null,
             });
-            analyticDashboardDomain.usersSignUpFrom.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.usersSignUpFrom.mockResolvedValue({
+                buckets: [{ key: 'key-1', count: 7 }],
+            });
 
             await service.usersSignUpFrom();
 
@@ -267,9 +275,11 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate: null,
                 endDate: null,
             });
-            analyticDashboardDomain.usersEmailVerification.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.usersEmailVerification.mockResolvedValue({
+                count: 4,
+                total: 10,
+                rate: 0.4,
+            });
 
             await service.usersEmailVerification();
 
@@ -308,9 +318,11 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate: null,
                 endDate: null,
             });
-            analyticDashboardDomain.usersMobileVerification.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.usersMobileVerification.mockResolvedValue({
+                count: 4,
+                total: 10,
+                rate: 0.4,
+            });
 
             await service.usersMobileVerification();
 
@@ -393,9 +405,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.usersSelfDelete.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.usersSelfDelete.mockResolvedValue({
+                count: 12,
+            });
 
             await service.usersSelfDelete();
 
@@ -428,9 +440,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.usersClaimUsername.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.usersClaimUsername.mockResolvedValue({
+                count: 12,
+            });
 
             await service.usersClaimUsername();
 
@@ -467,9 +479,11 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.usersMobileChurn.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.usersMobileChurn.mockResolvedValue({
+                added: 1,
+                updated: 2,
+                deleted: 3,
+            });
 
             await service.usersMobileChurn();
 
@@ -502,9 +516,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.authLoginFrequency.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.authLoginFrequency.mockResolvedValue({
+                count: 12,
+            });
 
             await service.authLoginFrequency();
 
@@ -539,9 +553,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate: null,
                 endDate: null,
             });
-            analyticDashboardDomain.authLoginMethod.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.authLoginMethod.mockResolvedValue({
+                buckets: [{ key: 'key-1', count: 7 }],
+            });
 
             await service.authLoginMethod();
 
@@ -575,9 +589,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate: null,
                 endDate: null,
             });
-            analyticDashboardDomain.authLoginSource.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.authLoginSource.mockResolvedValue({
+                buckets: [{ key: 'key-1', count: 7 }],
+            });
 
             await service.authLoginSource();
 
@@ -611,7 +625,10 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.authLockout.mockResolvedValue({} as never);
+            analyticDashboardDomain.authLockout.mockResolvedValue({
+                failed: 6,
+                maxAttempt: 3,
+            });
 
             await service.authLockout();
 
@@ -644,9 +661,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.authSessionRevoke.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.authSessionRevoke.mockResolvedValue({
+                count: 12,
+            });
 
             await service.authSessionRevoke();
 
@@ -698,9 +715,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate: null,
                 endDate: null,
             });
-            analyticDashboardDomain.authSessionsGeo.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.authSessionsGeo.mockResolvedValue({
+                buckets: [{ key: 'key-1', count: 7 }],
+            });
 
             await service.authSessionsGeo();
 
@@ -737,9 +754,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate: null,
                 endDate: null,
             });
-            analyticDashboardDomain.authSessionsUserAgent.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.authSessionsUserAgent.mockResolvedValue({
+                buckets: [{ key: 'key-1', count: 7 }],
+            });
 
             await service.authSessionsUserAgent();
 
@@ -774,9 +791,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.authRefreshTokenVolume.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.authRefreshTokenVolume.mockResolvedValue({
+                count: 12,
+            });
 
             await service.authRefreshTokenVolume();
 
@@ -810,9 +827,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.authLogoutRate.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.authLogoutRate.mockResolvedValue({
+                count: 12,
+            });
 
             await service.authLogoutRate();
 
@@ -854,9 +871,10 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.authVerificationFunnel.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.authVerificationFunnel.mockResolvedValue({
+                email: { used: 1, unused: 2, total: 3, rate: 0.33 },
+                mobile: { used: 4, unused: 1, total: 5, rate: 0.8 },
+            });
 
             await service.authVerificationFunnel();
 
@@ -909,9 +927,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.authPasswordChange.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.authPasswordChange.mockResolvedValue({
+                count: 12,
+            });
 
             await service.authPasswordChange();
 
@@ -950,7 +968,7 @@ describe('AnalyticDashboardHttpService', () => {
                 endDate,
             });
             analyticDashboardDomain.authForgotPasswordConversion.mockResolvedValue(
-                {} as never
+                { created: 5, used: 2, rate: 0.4 }
             );
 
             await service.authForgotPasswordConversion();
@@ -987,9 +1005,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.authAdminForcePassword.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.authAdminForcePassword.mockResolvedValue({
+                count: 12,
+            });
 
             await service.authAdminForcePassword();
 
@@ -1044,9 +1062,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.authTwoFactorAdminReset.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.authTwoFactorAdminReset.mockResolvedValue({
+                count: 12,
+            });
 
             await service.authTwoFactorAdminReset();
 
@@ -1083,7 +1101,7 @@ describe('AnalyticDashboardHttpService', () => {
                 endDate,
             });
             analyticDashboardDomain.authTwoFactorVerifySuccess.mockResolvedValue(
-                {} as never
+                { count: 12 }
             );
 
             await service.authTwoFactorVerifySuccess();
@@ -1121,7 +1139,7 @@ describe('AnalyticDashboardHttpService', () => {
                 endDate,
             });
             analyticDashboardDomain.authBackupCodeRegeneration.mockResolvedValue(
-                {} as never
+                { count: 12 }
             );
 
             await service.authBackupCodeRegeneration();
@@ -1176,9 +1194,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.devicesRegistration.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.devicesRegistration.mockResolvedValue({
+                count: 12,
+            });
 
             await service.devicesRegistration();
 
@@ -1247,9 +1265,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.devicesInfoRefresh.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.devicesInfoRefresh.mockResolvedValue({
+                count: 12,
+            });
 
             await service.devicesInfoRefresh();
 
@@ -1338,9 +1356,12 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.apiKeysLifecycle.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.apiKeysLifecycle.mockResolvedValue({
+                created: 1,
+                reset: 2,
+                updated: 3,
+                deleted: 4,
+            });
 
             await service.apiKeysLifecycle();
 
@@ -1412,7 +1433,7 @@ describe('AnalyticDashboardHttpService', () => {
                 endDate: null,
             });
             analyticDashboardDomain.termPoliciesAcceptanceRate.mockResolvedValue(
-                {} as never
+                { acceptances: 4, users: 8, published: 2, rate: 0.5 }
             );
 
             await service.termPoliciesAcceptanceRate();
@@ -1449,9 +1470,10 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate: null,
                 endDate: null,
             });
-            analyticDashboardDomain.termPoliciesTimeToAccept.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.termPoliciesTimeToAccept.mockResolvedValue({
+                count: 3,
+                averageMs: 1500,
+            });
 
             await service.termPoliciesTimeToAccept();
 
@@ -1483,9 +1505,9 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.workspacesCreation.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.workspacesCreation.mockResolvedValue({
+                count: 12,
+            });
 
             await service.workspacesCreation();
 
@@ -1541,7 +1563,7 @@ describe('AnalyticDashboardHttpService', () => {
                 endDate,
             });
             analyticDashboardDomain.workspacesInviteFunnel.mockResolvedValue(
-                {} as never
+                []
             );
 
             await service.workspacesInviteFunnel();
@@ -1581,7 +1603,7 @@ describe('AnalyticDashboardHttpService', () => {
                 endDate,
             });
             analyticDashboardDomain.workspacesJoinOutcomes.mockResolvedValue(
-                {} as never
+                []
             );
 
             await service.workspacesJoinOutcomes();
@@ -1653,35 +1675,6 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.workspacesActivityVolume
             ).toHaveBeenCalledWith(startDate, endDate, pagination);
         });
-        it('passes null dates when query dates are omitted', async () => {
-            analyticDateDomain.requireRange.mockReturnValue({
-                startDate,
-                endDate,
-            });
-            const page = {
-                type: EnumPaginationType.offset as const,
-                count: 0,
-                perPage: 20,
-                page: 1,
-                totalPage: 0,
-                hasNext: false,
-                hasPrevious: false,
-                data: [],
-            };
-            analyticDashboardDomain.workspacesActivityVolume.mockResolvedValue(
-                page
-            );
-
-            await service.workspacesActivityVolume({
-                page: 1,
-                perPage: 20,
-            } as never);
-
-            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
-            );
-        });
     });
 
     describe('projectsCreation', () => {
@@ -1712,9 +1705,10 @@ describe('AnalyticDashboardHttpService', () => {
                 startDate,
                 endDate,
             });
-            analyticDashboardDomain.projectsCreation.mockResolvedValue(
-                {} as never
-            );
+            analyticDashboardDomain.projectsCreation.mockResolvedValue({
+                created: 2,
+                perWorkspace: [{ workspaceId: 'workspace-1', count: 2 }],
+            });
 
             await service.projectsCreation();
 

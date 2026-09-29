@@ -71,10 +71,6 @@ export function DocResponseError(
             entry => entry.httpStatus === httpStatus
         );
 
-        if (statusEntries.length === 0) {
-            return;
-        }
-
         const schemas: SchemaObject[] = statusEntries.map(entry => {
             const baseSchema: z.ZodObject = entry.baseSchema ?? ResponseSchema;
             const withData: z.ZodObject = entry.schema
@@ -85,7 +81,7 @@ export function DocResponseError(
                     example: entry.messagePath,
                 }),
                 statusCode: withData.shape.statusCode.meta({
-                    example: entry.statusCode ?? HttpStatus.OK,
+                    example: entry.statusCode,
                 }),
             });
 
@@ -112,9 +108,9 @@ export function DocResponseError(
                       statusEntries.map(entry => [
                           entry.messagePath,
                           {
-                              summary: `${entry.statusCode ?? httpStatus} — ${entry.messagePath}`,
+                              summary: `${entry.statusCode} — ${entry.messagePath}`,
                               value: {
-                                  statusCode: entry.statusCode ?? httpStatus,
+                                  statusCode: entry.statusCode,
                                   message: entry.messagePath,
                                   metadata: metadataExample,
                               },

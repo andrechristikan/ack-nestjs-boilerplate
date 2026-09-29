@@ -188,13 +188,11 @@ export class PaginationQueryUtil {
         }
 
         const trimmed = orderBy.toString().split(':');
-        return trimmed && trimmed.length > 0
-            ? [
-                  {
-                      [trimmed[0]]: trimmed[1]?.toLowerCase(),
-                  },
-              ]
-            : [];
+        return [
+            {
+                [trimmed[0]]: trimmed[1]?.toLowerCase(),
+            },
+        ];
     }
 
     private parseOrderBy(

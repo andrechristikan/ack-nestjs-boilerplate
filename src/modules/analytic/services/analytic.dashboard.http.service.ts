@@ -731,8 +731,8 @@ export class AnalyticDashboardHttpService {
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.requireRange(
-            (query.startDate as Date | undefined) ?? null,
-            (query.endDate as Date | undefined) ?? null
+            query.startDate,
+            query.endDate
         );
 
         return this.analyticDashboardDomain.workspacesActivityVolume(

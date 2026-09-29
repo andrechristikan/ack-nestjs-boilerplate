@@ -312,8 +312,7 @@ export class UserLoginDomain {
                     isRequiredSetup: true,
                     challengeToken,
                     challengeExpiresInMs: expiresInMs,
-                    backupCodesRemaining:
-                        user.twoFactor?.backupCodes.length ?? 0,
+                    backupCodesRemaining: user.twoFactor.backupCodes.length,
                     otpauthUrl,
                     secret,
                 },
@@ -328,7 +327,7 @@ export class UserLoginDomain {
                 isRequiredSetup: false,
                 challengeToken,
                 challengeExpiresInMs: expiresInMs,
-                backupCodesRemaining: user.twoFactor?.backupCodes.length ?? 0,
+                backupCodesRemaining: user.twoFactor.backupCodes.length,
             },
         };
     }

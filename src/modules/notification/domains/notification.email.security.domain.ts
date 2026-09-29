@@ -9,7 +9,7 @@ import type {
     INotificationTemporaryPasswordEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { flatten } from 'flat';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -17,8 +17,6 @@ import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 /** Renders and sends the password, two-factor and new-device login emails. */
 @Injectable()
 export class NotificationEmailSecurityDomain {
-    private readonly logger = new Logger(NotificationEmailSecurityDomain.name);
-
     private readonly noreplyEmail: string;
     private readonly supportEmail: string;
 
@@ -59,45 +57,37 @@ export class NotificationEmailSecurityDomain {
             passwordCreatedAt,
         }: INotificationTemporaryPasswordEncryptedPayload
     ): Promise<IQueueResponse> {
-        try {
-            const password = this.helperEncryptionService.aes256Decrypt(
-                encryptedPassword,
-                this.encryptionSecretKey,
-                NotificationPayloadEncryptionPurpose,
-                userId
-            );
+        const password = this.helperEncryptionService.aes256Decrypt(
+            encryptedPassword,
+            this.encryptionSecretKey,
+            NotificationPayloadEncryptionPurpose,
+            userId
+        );
 
-            const passwordExpiredAtDate =
-                this.helperDateService.createFromIso(passwordExpiredAt);
-            const passwordExpiredAtFormatted =
-                this.helperDateService.formatToRFC2822(passwordExpiredAtDate);
-            const passwordCreatedAtDate =
-                this.helperDateService.createFromIso(passwordCreatedAt);
-            const passwordCreatedAtFormatted =
-                this.helperDateService.formatToRFC2822(passwordCreatedAtDate);
-            const result = await this.awsSESService.send({
-                templateName: EnumNotificationProcess.temporaryPasswordByAdmin,
-                recipients: [email],
-                sender: this.noreplyEmail,
-                templateData: {
-                    ...this.defaultTemplateData,
-                    username,
-                    password,
-                    passwordExpiredAt: passwordExpiredAtFormatted,
-                    passwordCreatedAt: passwordCreatedAtFormatted,
-                },
-                ...(cc?.length && { cc }),
-                ...(bcc?.length && { bcc }),
-            });
+        const passwordExpiredAtDate =
+            this.helperDateService.createFromIso(passwordExpiredAt);
+        const passwordExpiredAtFormatted =
+            this.helperDateService.formatToRFC2822(passwordExpiredAtDate);
+        const passwordCreatedAtDate =
+            this.helperDateService.createFromIso(passwordCreatedAt);
+        const passwordCreatedAtFormatted =
+            this.helperDateService.formatToRFC2822(passwordCreatedAtDate);
+        const result = await this.awsSESService.send({
+            templateName: EnumNotificationProcess.temporaryPasswordByAdmin,
+            recipients: [email],
+            sender: this.noreplyEmail,
+            templateData: {
+                ...this.defaultTemplateData,
+                username,
+                password,
+                passwordExpiredAt: passwordExpiredAtFormatted,
+                passwordCreatedAt: passwordCreatedAtFormatted,
+            },
+            ...(cc?.length && { cc }),
+            ...(bcc?.length && { bcc }),
+        });
 
-            return { message: 'Temporary password email processed', result };
-        } catch (err: unknown) {
-            this.logger.error(
-                err,
-                'Failed to process temporary password email'
-            );
-            throw err;
-        }
+        return { message: 'Temporary password email processed', result };
     }
 
     async processChangePassword({
@@ -106,24 +96,19 @@ export class NotificationEmailSecurityDomain {
         cc,
         bcc,
     }: INotificationEmailSendPayload): Promise<IQueueResponse> {
-        try {
-            const result = await this.awsSESService.send({
-                templateName: EnumNotificationProcess.changePassword,
-                recipients: [email],
-                sender: this.noreplyEmail,
-                templateData: {
-                    ...this.defaultTemplateData,
-                    username,
-                },
-                ...(cc?.length && { cc }),
-                ...(bcc?.length && { bcc }),
-            });
+        const result = await this.awsSESService.send({
+            templateName: EnumNotificationProcess.changePassword,
+            recipients: [email],
+            sender: this.noreplyEmail,
+            templateData: {
+                ...this.defaultTemplateData,
+                username,
+            },
+            ...(cc?.length && { cc }),
+            ...(bcc?.length && { bcc }),
+        });
 
-            return { message: 'Change password email processed', result };
-        } catch (err: unknown) {
-            this.logger.error(err, 'Failed to process change password email');
-            throw err;
-        }
+        return { message: 'Change password email processed', result };
     }
 
     async processResetPassword({
@@ -132,24 +117,19 @@ export class NotificationEmailSecurityDomain {
         cc,
         bcc,
     }: INotificationEmailSendPayload): Promise<IQueueResponse> {
-        try {
-            const result = await this.awsSESService.send({
-                templateName: EnumNotificationProcess.resetPassword,
-                recipients: [email],
-                sender: this.noreplyEmail,
-                templateData: {
-                    ...this.defaultTemplateData,
-                    username,
-                },
-                ...(cc?.length && { cc }),
-                ...(bcc?.length && { bcc }),
-            });
+        const result = await this.awsSESService.send({
+            templateName: EnumNotificationProcess.resetPassword,
+            recipients: [email],
+            sender: this.noreplyEmail,
+            templateData: {
+                ...this.defaultTemplateData,
+                username,
+            },
+            ...(cc?.length && { cc }),
+            ...(bcc?.length && { bcc }),
+        });
 
-            return { message: 'Reset password email processed', result };
-        } catch (err: unknown) {
-            this.logger.error(err, 'Failed to process reset password email');
-            throw err;
-        }
+        return { message: 'Reset password email processed', result };
     }
 
     async processForgotPassword(
@@ -161,39 +141,33 @@ export class NotificationEmailSecurityDomain {
             expiredInMinutes,
         }: INotificationForgotPasswordEncryptedPayload
     ): Promise<IQueueResponse> {
-        try {
-            const link = this.helperEncryptionService.aes256Decrypt(
-                encryptedLink,
-                this.encryptionSecretKey,
-                NotificationPayloadEncryptionPurpose,
-                userId
-            );
+        const link = this.helperEncryptionService.aes256Decrypt(
+            encryptedLink,
+            this.encryptionSecretKey,
+            NotificationPayloadEncryptionPurpose,
+            userId
+        );
 
-            const expiredAtDate =
-                this.helperDateService.createFromIso(expiredAt);
-            const expiredAtFormatted =
-                this.helperDateService.formatToRFC2822(expiredAtDate);
-            const result = await this.awsSESService.send({
-                templateName: EnumNotificationProcess.forgotPassword,
-                recipients: [email],
-                sender: this.noreplyEmail,
-                templateData: {
-                    ...this.defaultTemplateData,
-                    username,
-                    link,
-                    expiredAt: expiredAtFormatted,
-                    reference,
-                    expiredInMinutes: String(expiredInMinutes),
-                },
-                ...(cc?.length && { cc }),
-                ...(bcc?.length && { bcc }),
-            });
+        const expiredAtDate = this.helperDateService.createFromIso(expiredAt);
+        const expiredAtFormatted =
+            this.helperDateService.formatToRFC2822(expiredAtDate);
+        const result = await this.awsSESService.send({
+            templateName: EnumNotificationProcess.forgotPassword,
+            recipients: [email],
+            sender: this.noreplyEmail,
+            templateData: {
+                ...this.defaultTemplateData,
+                username,
+                link,
+                expiredAt: expiredAtFormatted,
+                reference,
+                expiredInMinutes: String(expiredInMinutes),
+            },
+            ...(cc?.length && { cc }),
+            ...(bcc?.length && { bcc }),
+        });
 
-            return { message: 'Forgot password email processed', result };
-        } catch (err: unknown) {
-            this.logger.error(err, 'Failed to process forgot password email');
-            throw err;
-        }
+        return { message: 'Forgot password email processed', result };
     }
 
     async processResetTwoFactorByAdmin({
@@ -202,30 +176,22 @@ export class NotificationEmailSecurityDomain {
         cc,
         bcc,
     }: INotificationEmailSendPayload): Promise<IQueueResponse> {
-        try {
-            const result = await this.awsSESService.send({
-                templateName: EnumNotificationProcess.resetTwoFactorByAdmin,
-                recipients: [email],
-                sender: this.noreplyEmail,
-                templateData: {
-                    ...this.defaultTemplateData,
-                    username,
-                },
-                ...(cc?.length && { cc }),
-                ...(bcc?.length && { bcc }),
-            });
+        const result = await this.awsSESService.send({
+            templateName: EnumNotificationProcess.resetTwoFactorByAdmin,
+            recipients: [email],
+            sender: this.noreplyEmail,
+            templateData: {
+                ...this.defaultTemplateData,
+                username,
+            },
+            ...(cc?.length && { cc }),
+            ...(bcc?.length && { bcc }),
+        });
 
-            return {
-                message: 'Reset two factor by admin email processed',
-                result,
-            };
-        } catch (err: unknown) {
-            this.logger.error(
-                err,
-                'Failed to process reset two factor by admin email'
-            );
-            throw err;
-        }
+        return {
+            message: 'Reset two factor by admin email processed',
+            result,
+        };
     }
 
     async processNewDeviceLogin(
@@ -237,31 +203,26 @@ export class NotificationEmailSecurityDomain {
             requestLog: { userAgent, ipAddress },
         }: INotificationNewDeviceLoginPayload
     ): Promise<IQueueResponse> {
-        try {
-            const loginAtDate = this.helperDateService.createFromIso(loginAt);
-            const loginAtFormatted =
-                this.helperDateService.formatToRFC2822(loginAtDate);
-            const result = await this.awsSESService.send({
-                templateName: EnumNotificationProcess.newDeviceLogin,
-                recipients: [email],
-                sender: this.noreplyEmail,
-                templateData: {
-                    ...this.defaultTemplateData,
-                    username,
-                    loginFrom,
-                    loginWith,
-                    loginAt: loginAtFormatted,
-                    userAgent: flatten(userAgent),
-                    ipAddress: ipAddress ?? '',
-                },
-                ...(cc?.length && { cc }),
-                ...(bcc?.length && { bcc }),
-            });
+        const loginAtDate = this.helperDateService.createFromIso(loginAt);
+        const loginAtFormatted =
+            this.helperDateService.formatToRFC2822(loginAtDate);
+        const result = await this.awsSESService.send({
+            templateName: EnumNotificationProcess.newDeviceLogin,
+            recipients: [email],
+            sender: this.noreplyEmail,
+            templateData: {
+                ...this.defaultTemplateData,
+                username,
+                loginFrom,
+                loginWith,
+                loginAt: loginAtFormatted,
+                userAgent: flatten(userAgent),
+                ipAddress: ipAddress ?? '',
+            },
+            ...(cc?.length && { cc }),
+            ...(bcc?.length && { bcc }),
+        });
 
-            return { message: 'New device login email processed', result };
-        } catch (err: unknown) {
-            this.logger.error(err, 'Failed to process new device login email');
-            throw err;
-        }
+        return { message: 'New device login email processed', result };
     }
 }

@@ -147,10 +147,6 @@ export class HelperStringService {
             if (normalizedPattern.endsWith('*')) {
                 const basePattern = normalizedPattern.slice(0, -1);
 
-                if (!basePattern) {
-                    return true;
-                }
-
                 if (basePattern.endsWith('/')) {
                     return normalizedPath.startsWith(basePattern);
                 }

@@ -10,7 +10,7 @@ export function validateEmail(value: string): IHelperEmailValidation {
         };
     }
 
-    const atSymbolCount = (value.match(/@/g) ?? []).length;
+    const atSymbolCount = value.split('@').length - 1;
     if (atSymbolCount !== 1) {
         return {
             validated: false,
@@ -20,7 +20,7 @@ export function validateEmail(value: string): IHelperEmailValidation {
 
     const [localPart, domain] = value.split('@');
 
-    if (!domain || domain.length > 253) {
+    if (domain.length > 253) {
         return {
             validated: false,
             messagePath: 'request.error.email.domainLength',
@@ -43,20 +43,9 @@ export function validateEmail(value: string): IHelperEmailValidation {
     }
 
     const domainLabels = domain.split('.');
-    if (domainLabels.length < 2) {
-        return {
-            validated: false,
-            messagePath: 'request.error.email.domainFormat',
-        };
-    }
 
     for (const label of domainLabels) {
-        if (label.length === 0) {
-            return {
-                validated: false,
-                messagePath: 'request.error.email.domainEmptyLabel',
-            };
-        } else if (label.length > 63) {
+        if (label.length > 63) {
             return {
                 validated: false,
                 messagePath: 'request.error.email.domainLabelLength',
@@ -86,12 +75,7 @@ export function validateEmail(value: string): IHelperEmailValidation {
         };
     }
 
-    if (!localPart || localPart.length === 0) {
-        return {
-            validated: false,
-            messagePath: 'request.error.email.localPartNotEmpty',
-        };
-    } else if (localPart.length > 64) {
+    if (localPart.length > 64) {
         return {
             validated: false,
             messagePath: 'request.error.email.localPartMaxLength',

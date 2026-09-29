@@ -1,7 +1,6 @@
 {
     "error": {
         "serviceUnavailable": "The AWS service is currently unavailable. Please try again later.",
-        "s3ConfigMissing": "The storage configuration for this access level is missing.",
         "s3KeyInvalid": "The storage key is invalid.",
         "s3FileRequired": "A file is required for this storage operation.",
         "s3ObjectExist": "A file already exists at this location.",

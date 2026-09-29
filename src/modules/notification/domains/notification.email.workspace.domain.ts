@@ -13,15 +13,13 @@ import type {
     INotificationWorkspaceJoinRequestEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /** Renders and sends the workspace invite and join-request emails. */
 @Injectable()
 export class NotificationEmailWorkspaceDomain {
-    private readonly logger = new Logger(NotificationEmailWorkspaceDomain.name);
-
     private readonly noreplyEmail: string;
     private readonly supportEmail: string;
 
@@ -66,40 +64,34 @@ export class NotificationEmailWorkspaceDomain {
             expiredAt,
         }: INotificationWorkspaceInviteEncryptedPayload
     ): Promise<IQueueResponse> {
-        try {
-            const inviteAcceptLink = this.helperEncryptionService.aes256Decrypt(
-                encryptedInviteAcceptLink,
-                this.encryptionSecretKey,
-                NotificationPayloadEncryptionPurpose,
-                userId
-            );
+        const inviteAcceptLink = this.helperEncryptionService.aes256Decrypt(
+            encryptedInviteAcceptLink,
+            this.encryptionSecretKey,
+            NotificationPayloadEncryptionPurpose,
+            userId
+        );
 
-            const expiredAtDate =
-                this.helperDateService.createFromIso(expiredAt);
-            const expiredAtFormatted =
-                this.helperDateService.formatToRFC2822(expiredAtDate);
-            const result = await this.awsSESService.send({
-                templateName: EnumNotificationProcess.workspaceInvite,
-                recipients: [email],
-                sender: this.noreplyEmail,
-                templateData: {
-                    ...this.defaultTemplateData,
-                    workspaceName,
-                    inviterName,
-                    workspaceMemberRole,
-                    inviteAcceptLink,
-                    reference,
-                    expiredAt: expiredAtFormatted,
-                },
-                ...(cc?.length && { cc }),
-                ...(bcc?.length && { bcc }),
-            });
+        const expiredAtDate = this.helperDateService.createFromIso(expiredAt);
+        const expiredAtFormatted =
+            this.helperDateService.formatToRFC2822(expiredAtDate);
+        const result = await this.awsSESService.send({
+            templateName: EnumNotificationProcess.workspaceInvite,
+            recipients: [email],
+            sender: this.noreplyEmail,
+            templateData: {
+                ...this.defaultTemplateData,
+                workspaceName,
+                inviterName,
+                workspaceMemberRole,
+                inviteAcceptLink,
+                reference,
+                expiredAt: expiredAtFormatted,
+            },
+            ...(cc?.length && { cc }),
+            ...(bcc?.length && { bcc }),
+        });
 
-            return { message: 'Workspace invite email processed', result };
-        } catch (err: unknown) {
-            this.logger.error(err, 'Failed to process workspace invite email');
-            throw err;
-        }
+        return { message: 'Workspace invite email processed', result };
     }
 
     async processWorkspaceInviteUnregistered(
@@ -113,44 +105,35 @@ export class NotificationEmailWorkspaceDomain {
             expiredAt,
         }: INotificationWorkspaceInviteUnregisteredEncryptedPayload
     ): Promise<IQueueResponse> {
-        try {
-            const inviteAcceptLink = this.helperEncryptionService.aes256Decrypt(
-                encryptedInviteAcceptLink,
-                this.encryptionSecretKey,
-                NotificationPayloadEncryptionPurpose,
-                reference
-            );
+        const inviteAcceptLink = this.helperEncryptionService.aes256Decrypt(
+            encryptedInviteAcceptLink,
+            this.encryptionSecretKey,
+            NotificationPayloadEncryptionPurpose,
+            reference
+        );
 
-            const expiredAtDate =
-                this.helperDateService.createFromIso(expiredAt);
-            const expiredAtFormatted =
-                this.helperDateService.formatToRFC2822(expiredAtDate);
-            const result = await this.awsSESService.send({
-                templateName: EnumNotificationProcess.workspaceInvite,
-                recipients: [email],
-                sender: this.noreplyEmail,
-                templateData: {
-                    ...this.defaultTemplateData,
-                    workspaceName,
-                    inviterName,
-                    workspaceMemberRole,
-                    inviteAcceptLink,
-                    reference,
-                    expiredAt: expiredAtFormatted,
-                },
-            });
+        const expiredAtDate = this.helperDateService.createFromIso(expiredAt);
+        const expiredAtFormatted =
+            this.helperDateService.formatToRFC2822(expiredAtDate);
+        const result = await this.awsSESService.send({
+            templateName: EnumNotificationProcess.workspaceInvite,
+            recipients: [email],
+            sender: this.noreplyEmail,
+            templateData: {
+                ...this.defaultTemplateData,
+                workspaceName,
+                inviterName,
+                workspaceMemberRole,
+                inviteAcceptLink,
+                reference,
+                expiredAt: expiredAtFormatted,
+            },
+        });
 
-            return {
-                message: 'Workspace invite (unregistered) email processed',
-                result,
-            };
-        } catch (err: unknown) {
-            this.logger.error(
-                err,
-                'Failed to process workspace invite (unregistered) email'
-            );
-            throw err;
-        }
+        return {
+            message: 'Workspace invite (unregistered) email processed',
+            result,
+        };
     }
 
     async processWorkspaceJoinRequest(
@@ -161,72 +144,56 @@ export class NotificationEmailWorkspaceDomain {
             encryptedJoinRequestReviewLink,
         }: INotificationWorkspaceJoinRequestEncryptedPayload
     ): Promise<IQueueResponse> {
-        try {
-            const joinRequestReviewLink =
-                this.helperEncryptionService.aes256Decrypt(
-                    encryptedJoinRequestReviewLink,
-                    this.encryptionSecretKey,
-                    NotificationPayloadEncryptionPurpose,
-                    userId
-                );
-
-            const result = await this.awsSESService.send({
-                templateName: EnumNotificationProcess.workspaceJoinRequest,
-                recipients: [email],
-                sender: this.noreplyEmail,
-                templateData: {
-                    ...this.defaultTemplateData,
-                    username,
-                    workspaceName,
-                    requesterName,
-                    joinRequestReviewLink,
-                },
-                ...(cc?.length && { cc }),
-                ...(bcc?.length && { bcc }),
-            });
-
-            return {
-                message: 'Workspace join request email processed',
-                result,
-            };
-        } catch (err: unknown) {
-            this.logger.error(
-                err,
-                'Failed to process workspace join request email'
+        const joinRequestReviewLink =
+            this.helperEncryptionService.aes256Decrypt(
+                encryptedJoinRequestReviewLink,
+                this.encryptionSecretKey,
+                NotificationPayloadEncryptionPurpose,
+                userId
             );
-            throw err;
-        }
+
+        const result = await this.awsSESService.send({
+            templateName: EnumNotificationProcess.workspaceJoinRequest,
+            recipients: [email],
+            sender: this.noreplyEmail,
+            templateData: {
+                ...this.defaultTemplateData,
+                username,
+                workspaceName,
+                requesterName,
+                joinRequestReviewLink,
+            },
+            ...(cc?.length && { cc }),
+            ...(bcc?.length && { bcc }),
+        });
+
+        return {
+            message: 'Workspace join request email processed',
+            result,
+        };
     }
 
     async processWorkspaceJoinAccepted(
         { email, username, cc, bcc }: INotificationEmailSendPayload,
         { workspaceName }: INotificationWorkspaceJoinAcceptedPayload
     ): Promise<IQueueResponse> {
-        try {
-            const result = await this.awsSESService.send({
-                templateName: EnumNotificationProcess.workspaceJoinAccepted,
-                recipients: [email],
-                sender: this.noreplyEmail,
-                templateData: {
-                    ...this.defaultTemplateData,
-                    username,
-                    workspaceName,
-                },
-                ...(cc?.length && { cc }),
-                ...(bcc?.length && { bcc }),
-            });
+        const result = await this.awsSESService.send({
+            templateName: EnumNotificationProcess.workspaceJoinAccepted,
+            recipients: [email],
+            sender: this.noreplyEmail,
+            templateData: {
+                ...this.defaultTemplateData,
+                username,
+                workspaceName,
+            },
+            ...(cc?.length && { cc }),
+            ...(bcc?.length && { bcc }),
+        });
 
-            return {
-                message: 'Workspace join accepted email processed',
-                result,
-            };
-        } catch (err: unknown) {
-            this.logger.error(
-                err,
-                'Failed to process workspace join accepted email'
-            );
-            throw err;
-        }
+        return {
+            message: 'Workspace join accepted email processed',
+            result,
+        };
     }
 
     async processWorkspaceJoinRejected(
@@ -236,35 +203,27 @@ export class NotificationEmailWorkspaceDomain {
             rejectReasonCode,
         }: INotificationWorkspaceJoinRejectedPayload
     ): Promise<IQueueResponse> {
-        try {
-            const rejectReasonLabel = this.messageService.setMessage(
-                `notification.rejectReason.${rejectReasonCode}`
-            );
+        const rejectReasonLabel = this.messageService.setMessage(
+            `notification.rejectReason.${rejectReasonCode}`
+        );
 
-            const result = await this.awsSESService.send({
-                templateName: EnumNotificationProcess.workspaceJoinRejected,
-                recipients: [email],
-                sender: this.noreplyEmail,
-                templateData: {
-                    ...this.defaultTemplateData,
-                    username,
-                    workspaceName,
-                    rejectReasonLabel,
-                },
-                ...(cc?.length && { cc }),
-                ...(bcc?.length && { bcc }),
-            });
+        const result = await this.awsSESService.send({
+            templateName: EnumNotificationProcess.workspaceJoinRejected,
+            recipients: [email],
+            sender: this.noreplyEmail,
+            templateData: {
+                ...this.defaultTemplateData,
+                username,
+                workspaceName,
+                rejectReasonLabel,
+            },
+            ...(cc?.length && { cc }),
+            ...(bcc?.length && { bcc }),
+        });
 
-            return {
-                message: 'Workspace join rejected email processed',
-                result,
-            };
-        } catch (err: unknown) {
-            this.logger.error(
-                err,
-                'Failed to process workspace join rejected email'
-            );
-            throw err;
-        }
+        return {
+            message: 'Workspace join rejected email processed',
+            result,
+        };
     }
 }

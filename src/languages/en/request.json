@@ -36,7 +36,6 @@
         "email": {
             "invalid": "{property} should be a valid email address.",
             "multipleAtSymbols": "{property} should not contain multiple '@' symbols.",
-            "localPartNotEmpty": "{property} local part cannot be empty.",
             "domainLength": "{property} domain length should be less than or equal to 255 characters.",
             "localPartMaxLength": "{property} local part length should be less than or equal to 64 characters.",
             "localPartDot": "{property} local part should not start or end with a dot.",
@@ -46,8 +45,6 @@
             "domainDash": "{property} domain cannot start or end with a dash.",
             "domainDot": "{property} domain cannot start or end with a dot.",
             "domainConsecutiveDots": "{property} domain cannot contain consecutive dots.",
-            "domainFormat": "{property} domain must have at least 2 labels.",
-            "domainEmptyLabel": "{property} domain label cannot be empty.",
             "domainLabelLength": "{property} domain label cannot exceed 63 characters.",
             "domainLabelDash": "{property} domain label cannot start or end with a dash.",
             "domainInvalidChars": "{property} domain label can only contain alphanumeric and dash characters.",

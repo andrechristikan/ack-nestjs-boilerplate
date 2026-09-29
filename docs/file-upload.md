@@ -329,7 +329,7 @@ const aws: IAwsS3 | null = await this.awsS3Service.putItem(
 `putItem` behaviour:
 
 - returns `null` when S3 credentials are not configured, and the domain skips the database write in that case
-- raises `AwsS3ObjectExistException` (409, `51404`) when the generated key already holds an object, since this call leaves `forceUpdate` off
+- raises `AwsS3ObjectExistException` (409, `51403`) when the generated key already holds an object, since this call leaves `forceUpdate` off
 - otherwise the domain prepares `userUpdatePhotoProfile`, stores the S3 reference with one `UserRepository.updatePhotoProfile` update (no transaction), and then stages the event
 
 **Multiple Files Upload:**
@@ -554,7 +554,7 @@ async presignGetItem(
 
 ### Parameters
 
-- `key`: the S3 object key. A key that starts with `/` raises `AwsS3KeyInvalidException` (500, `51402`).
+- `key`: the S3 object key. A key that starts with `/` raises `AwsS3KeyInvalidException` (500, `51401`).
 - `options.access`: `EnumAwsS3Accessibility.public` or `EnumAwsS3Accessibility.private`, required. It selects which configured bucket is signed against, and the compiler refuses a call that leaves it out.
 - `options.expiredInSeconds`: signature lifetime in seconds. When omitted it falls back to `aws.s3.presignExpiredInSeconds`, defined in `aws.config.ts` as `ms('30m') / 1000` and handed to the signer as it stands.
 

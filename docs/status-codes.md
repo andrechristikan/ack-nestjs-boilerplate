@@ -36,7 +36,7 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `51100` | `policy` | `51100`–`51103` | 4 |
 | `51200` | `notification` | `51200`–`51203` | 4 |
 | `51300` | `device` | `51300` | 1 |
-| `51400` | `aws` | `51400`–`51407` | 8 |
+| `51400` | `aws` | `51400`–`51406` | 7 |
 | `51500` | `term-policy` | `51500`–`51508` | 9 |
 | `51600` | `workspace` | `51600`–`51620` | 21 |
 | `51700` | `project` | `51700`–`51707` | 8 |
@@ -247,13 +247,12 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
 | `serviceUnavailable` | `51400` | `serviceUnavailable` | 503 (`SERVICE_UNAVAILABLE`) | `aws.error.serviceUnavailable` | The AWS service is currently unavailable. Please try again later. |
-| `s3ConfigMissing` | `51401` | `s3ConfigMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3ConfigMissing` | The storage configuration for this access level is missing. |
-| `s3KeyInvalid` | `51402` | `s3KeyInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3KeyInvalid` | The storage key is invalid. |
-| `s3FileRequired` | `51403` | `s3FileRequired` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3FileRequired` | A file is required for this storage operation. |
-| `s3ObjectExist` | `51404` | `s3ObjectExist` | 409 (`CONFLICT`) | `aws.error.s3ObjectExist` | A file already exists at this location. |
-| `s3MaxPartNumberExceeded` | `51405` | `s3MaxPartNumberExceeded` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3MaxPartNumberExceeded` | The multipart upload exceeds the maximum number of parts. |
-| `s3IterationLimitExceeded` | `51406` | `s3IterationLimitExceeded` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3IterationLimitExceeded` | The storage operation exceeded its iteration limit. |
-| `sesTemplateBodyRequired` | `51407` | `sesTemplateBodyRequired` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.sesTemplateBodyRequired` | An email template needs an HTML or plain-text body. |
+| `s3KeyInvalid` | `51401` | `s3KeyInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3KeyInvalid` | The storage key is invalid. |
+| `s3FileRequired` | `51402` | `s3FileRequired` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3FileRequired` | A file is required for this storage operation. |
+| `s3ObjectExist` | `51403` | `s3ObjectExist` | 409 (`CONFLICT`) | `aws.error.s3ObjectExist` | A file already exists at this location. |
+| `s3MaxPartNumberExceeded` | `51404` | `s3MaxPartNumberExceeded` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3MaxPartNumberExceeded` | The multipart upload exceeds the maximum number of parts. |
+| `s3IterationLimitExceeded` | `51405` | `s3IterationLimitExceeded` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3IterationLimitExceeded` | The storage operation exceeded its iteration limit. |
+| `sesTemplateBodyRequired` | `51406` | `sesTemplateBodyRequired` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.sesTemplateBodyRequired` | An email template needs an HTML or plain-text body. |
 
 `s3KeyInvalid` is the shape guard inside `AwsS3Service`: a key, path, source, or destination that starts with `/`, plus a `..` or `//` in a `putItem` key. A client-supplied key meets `AwsS3ObjectKeyRegex` in the request schema first and answers 422 (`50300`) there. `s3ObjectExist` is raised when an upload or presign targets a key that already holds an object and `forceUpdate` is off.
 

@@ -196,6 +196,7 @@ export class UserTwoFactorDomain {
         backupCode: string | null
     ): Promise<IUserTwoFactorSetup> {
         let backupCodeVerified: IAuthTwoFactorVerifyResult | null = null;
+        let backupCodes: string[] = [];
         if (user.twoFactor?.enabled) {
             if (!backupCode) {
                 throw new AuthTwoFactorBackupCodeRequiredException();
@@ -206,6 +207,7 @@ export class UserTwoFactorDomain {
                     method: EnumAuthTwoFactorMethod.backupCodes,
                     backupCode,
                 });
+            backupCodes = user.twoFactor.backupCodes;
         }
 
         try {
@@ -227,7 +229,7 @@ export class UserTwoFactorDomain {
                         user.id,
                         encryptedSecret,
                         backupCodeVerified,
-                        user.twoFactor?.backupCodes ?? []
+                        backupCodes
                     );
                 if (!isSetUp) {
                     throw new AuthTwoFactorInvalidException();

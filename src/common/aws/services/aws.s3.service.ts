@@ -97,7 +97,6 @@ import type { AwsS3PresignPartRequestDto } from '@common/aws/dtos/request/aws.s3
 import type { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 import { FileService } from '@common/file/services/file.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { AwsS3ConfigMissingException } from '@common/aws/exceptions/aws.s3-config-missing.exception';
 import { AwsS3FileRequiredException } from '@common/aws/exceptions/aws.s3-file-required.exception';
 import { AwsS3IterationLimitExceededException } from '@common/aws/exceptions/aws.s3-iteration-limit-exceeded.exception';
 import { AwsS3KeyInvalidException } from '@common/aws/exceptions/aws.s3-key-invalid.exception';
@@ -125,8 +124,7 @@ export class AwsS3Service implements OnModuleInit {
     private readonly iamArn: string | null;
     private readonly corsAllowedOrigin: string[];
 
-    private readonly config: Map<EnumAwsS3Accessibility, IAwsS3ConfigBucket> =
-        new Map<EnumAwsS3Accessibility, IAwsS3ConfigBucket>();
+    private readonly config: Record<EnumAwsS3Accessibility, IAwsS3ConfigBucket>;
 
     private s3Client: S3Client;
 
@@ -150,18 +148,20 @@ export class AwsS3Service implements OnModuleInit {
         const publicBucketConfig = this.configService.get<IAwsS3ConfigBucket>(
             'aws.s3.config.public'
         )!;
-        this.config.set(EnumAwsS3Accessibility.public, {
-            ...publicBucketConfig,
-            access: EnumAwsS3Accessibility.public,
-        } as IAwsS3ConfigBucket);
-
         const privateBucketConfig = this.configService.get<IAwsS3ConfigBucket>(
             'aws.s3.config.private'
         )!;
-        this.config.set(EnumAwsS3Accessibility.private, {
-            ...privateBucketConfig,
-            access: EnumAwsS3Accessibility.private,
-        } as IAwsS3ConfigBucket);
+
+        this.config = {
+            [EnumAwsS3Accessibility.public]: {
+                ...publicBucketConfig,
+                access: EnumAwsS3Accessibility.public,
+            },
+            [EnumAwsS3Accessibility.private]: {
+                ...privateBucketConfig,
+                access: EnumAwsS3Accessibility.private,
+            },
+        };
 
         this.presignExpiredInSeconds = this.configService.get<number>(
             'aws.s3.presignExpiredInSeconds'
@@ -206,13 +206,7 @@ export class AwsS3Service implements OnModuleInit {
     }
 
     private getConfig(access: EnumAwsS3Accessibility): IAwsS3ConfigBucket {
-        const config = this.config.get(access);
-
-        if (!config) {
-            throw new AwsS3ConfigMissingException();
-        }
-
-        return config;
+        return this.config[access];
     }
 
     private buildUrls(
@@ -237,6 +231,54 @@ export class AwsS3Service implements OnModuleInit {
         return {
             completedUrl,
             cdnUrl: cdnObjectUrl,
+        };
+    }
+
+    private async copyItemInitialized(
+        source: IAwsS3,
+        destination: string,
+        options: IAwsS3CopyItemOptions
+    ): Promise<IAwsS3> {
+        if (source.key.startsWith('/')) {
+            throw new AwsS3KeyInvalidException();
+        }
+
+        if (destination.startsWith('/')) {
+            throw new AwsS3KeyInvalidException();
+        }
+
+        const configTo = this.getConfig(options.accessTo);
+        const configFrom = this.getConfig(options.accessFrom);
+
+        const destinationKey = `${destination}/${source.key.split('/').pop()}`;
+        const copyCommand = new CopyObjectCommand({
+            Bucket: configTo.bucket,
+            Key: destinationKey,
+            CopySource: `${configFrom.bucket}/${source.key}`,
+            MetadataDirective: 'COPY',
+            ServerSideEncryption: 'AES256',
+        });
+
+        await this.s3Client.send<
+            CopyObjectCommandInput,
+            CopyObjectCommandOutput
+        >(copyCommand);
+
+        const { extension, mime } = this.getFileInfoFromKey(destinationKey);
+        const { completedUrl, cdnUrl } = this.buildUrls(
+            configTo,
+            destinationKey
+        );
+
+        return {
+            bucket: configTo.bucket,
+            key: destinationKey,
+            completedUrl,
+            cdnUrl,
+            extension,
+            size: source.size,
+            mime,
+            access: configTo.access,
         };
     }
 
@@ -1054,47 +1096,13 @@ export class AwsS3Service implements OnModuleInit {
             return null;
         }
 
-        if (source.key.startsWith('/')) {
-            throw new AwsS3KeyInvalidException();
-        }
-
-        if (destination.startsWith('/')) {
-            throw new AwsS3KeyInvalidException();
-        }
-
-        const configTo = this.getConfig(options.accessTo);
-        const configFrom = this.getConfig(options.accessFrom);
-
-        const destinationKey = `${destination}/${source.key.split('/').pop()}`;
-        const copyCommand = new CopyObjectCommand({
-            Bucket: configTo.bucket,
-            Key: destinationKey,
-            CopySource: `${configFrom.bucket}/${source.key}`,
-            MetadataDirective: 'COPY',
-            ServerSideEncryption: 'AES256',
-        });
-
-        await this.s3Client.send<
-            CopyObjectCommandInput,
-            CopyObjectCommandOutput
-        >(copyCommand);
-
-        const { extension, mime } = this.getFileInfoFromKey(destinationKey);
-        const { completedUrl, cdnUrl } = this.buildUrls(
-            configTo,
-            destinationKey
+        const copiedItem = this.copyItemInitialized(
+            source,
+            destination,
+            options
         );
 
-        return {
-            bucket: configTo.bucket,
-            key: destinationKey,
-            completedUrl,
-            cdnUrl,
-            extension,
-            size: source.size,
-            mime,
-            access: configTo.access,
-        };
+        return copiedItem;
     }
 
     async copyItems(
@@ -1119,11 +1127,11 @@ export class AwsS3Service implements OnModuleInit {
             throw new AwsS3KeyInvalidException();
         }
 
-        const promises = [];
+        const promises: Promise<IAwsS3>[] = [];
 
         const accessibility = options.access;
         for (const source of sources) {
-            const copiedItem = this.copyItem(source, destination, {
+            const copiedItem = this.copyItemInitialized(source, destination, {
                 accessTo: accessibility,
                 accessFrom: source.access,
             });
@@ -1132,8 +1140,11 @@ export class AwsS3Service implements OnModuleInit {
 
         const copiedItems = await Promise.allSettled(promises);
         return copiedItems
-            .filter(item => item.status === 'fulfilled' && item.value !== null)
-            .map(item => (item as PromiseFulfilledResult<IAwsS3>).value!);
+            .filter(
+                (item): item is PromiseFulfilledResult<IAwsS3> =>
+                    item.status === 'fulfilled'
+            )
+            .map(item => item.value);
     }
 
     async settingBucketExpiredObjectLifecycle(

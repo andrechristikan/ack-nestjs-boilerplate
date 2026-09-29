@@ -61,7 +61,7 @@ export class MessageService {
     ): IMessageValidationError {
         const key = this.resolveIssueKey(issue);
         const property = this.resolveIssueProperty(issue);
-        const lastProperty = property.split('.').pop() ?? 'Unknown';
+        const lastProperty = property.slice(property.lastIndexOf('.') + 1);
         const properties: IMessageSetOptions = {
             customLanguage: options?.customLanguage,
             properties: { property: lastProperty },

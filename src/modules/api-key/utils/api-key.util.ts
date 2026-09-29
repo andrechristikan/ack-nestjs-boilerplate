@@ -62,14 +62,14 @@ export class ApiKeyUtil {
         const isExpired = this.isExpired(apiKey, currentDate);
         const isNotYetActive = this.isNotYetActive(apiKey, currentDate);
 
-        return apiKey && apiKey.isActive && !isExpired && !isNotYetActive;
+        return apiKey.isActive && !isExpired && !isNotYetActive;
     }
 
     validateType(
         apiKey: { type: EnumApiKeyType },
         allowed: EnumApiKeyType[]
     ): boolean {
-        return apiKey && allowed.includes(apiKey.type);
+        return allowed.includes(apiKey.type);
     }
 
     mapActivityLogMetadata(

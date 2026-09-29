@@ -64,8 +64,8 @@ export class AnalyticAnomalyHttpService {
             });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.optionalRange(
-            (query.startDate as Date | undefined) ?? null,
-            (query.endDate as Date | undefined) ?? null
+            query.startDate ?? null,
+            query.endDate ?? null
         );
         return this.analyticAnomalyDomain.impossibleTravelList(
             range.startDate,
@@ -97,7 +97,7 @@ export class AnalyticAnomalyHttpService {
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticAnomalyDomain.loginSpikeIpList(
-            (query.windowMs as number | undefined) ?? null,
+            query.windowMs ?? null,
             params
         );
     }
@@ -175,8 +175,8 @@ export class AnalyticAnomalyHttpService {
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.optionalRange(
-            (query.startDate as Date | undefined) ?? null,
-            (query.endDate as Date | undefined) ?? null
+            query.startDate ?? null,
+            query.endDate ?? null
         );
         return this.analyticAnomalyDomain.loginTimeList(
             range.startDate,

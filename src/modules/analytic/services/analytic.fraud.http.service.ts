@@ -79,7 +79,7 @@ export class AnalyticFraudHttpService {
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticFraudDomain.credentialStuffingList(
-            (query.windowMs as number | undefined) ?? null,
+            query.windowMs ?? null,
             params
         );
     }
@@ -112,8 +112,8 @@ export class AnalyticFraudHttpService {
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.requireRange(
-            (query.startDate as Date | undefined) ?? null,
-            (query.endDate as Date | undefined) ?? null
+            query.startDate,
+            query.endDate
         );
         return this.analyticFraudDomain.accountTakeoverList(
             range.startDate,
@@ -142,7 +142,7 @@ export class AnalyticFraudHttpService {
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticFraudDomain.massRegistrationList(
-            (query.windowMs as number | undefined) ?? null,
+            query.windowMs ?? null,
             params
         );
     }
@@ -171,7 +171,7 @@ export class AnalyticFraudHttpService {
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticFraudDomain.passwordResetEnumerationList(
-            (query.windowMs as number | undefined) ?? null,
+            query.windowMs ?? null,
             params
         );
     }
@@ -227,8 +227,8 @@ export class AnalyticFraudHttpService {
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.requireRange(
-            (query.startDate as Date | undefined) ?? null,
-            (query.endDate as Date | undefined) ?? null
+            query.startDate,
+            query.endDate
         );
         return this.analyticFraudDomain.sessionAfterAdminList(
             range.startDate,
@@ -262,7 +262,7 @@ export class AnalyticFraudHttpService {
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticFraudDomain.forgotPasswordTokenAbuseList(
-            (query.windowMs as number | undefined) ?? null,
+            query.windowMs ?? null,
             params
         );
     }
@@ -290,7 +290,7 @@ export class AnalyticFraudHttpService {
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticFraudDomain.refreshSpikeList(
-            (query.windowMs as number | undefined) ?? null,
+            query.windowMs ?? null,
             params
         );
     }
@@ -319,7 +319,7 @@ export class AnalyticFraudHttpService {
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticFraudDomain.backupCodeNewDeviceList(
-            (query.windowMs as number | undefined) ?? null,
+            query.windowMs ?? null,
             params
         );
     }
@@ -347,7 +347,7 @@ export class AnalyticFraudHttpService {
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticFraudDomain.apiKeyBurstList(
-            (query.windowMs as number | undefined) ?? null,
+            query.windowMs ?? null,
             params
         );
     }
@@ -370,7 +370,7 @@ export class AnalyticFraudHttpService {
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticFraudDomain.riskScores(
-            (query.minScore as number | undefined) ?? null,
+            query.minScore ?? null,
             params
         );
     }

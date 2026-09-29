@@ -30,15 +30,8 @@ export class HealthJwksIndicator {
             new URL(uri);
 
             return indicator.up();
-        } catch (err: unknown) {
-            if (err instanceof TypeError) {
-                return indicator.down('JWKS URI is not a valid URL');
-            }
-
-            const message =
-                err instanceof Error ? err.message : 'Unknown error';
-
-            return indicator.down(`HealthJwksIndicator Failed - ${message}`);
+        } catch {
+            return indicator.down('JWKS URI is not a valid URL');
         }
     }
 
