@@ -8,7 +8,6 @@ description: >-
   behaviour (ack-plan).
 disable-model-invocation: true
 context: fork
-agent: general-purpose
 argument-hint: "<module or path filter, or the failing suite> [unit|integration|e2e]"
 ---
 

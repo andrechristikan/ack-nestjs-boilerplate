@@ -10,7 +10,6 @@ description: >-
   ack-build), or .claude/** (ack-harness).
 disable-model-invocation: true
 context: fork
-agent: general-purpose
 argument-hint: "<named doc files, or 'all'> [what changed recently] [diagram: <name and subject>]"
 ---
 

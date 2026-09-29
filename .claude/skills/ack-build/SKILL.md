@@ -9,7 +9,6 @@ description: >-
   exists (ack-spec), docs (ack-doc), or the harness (ack-harness).
 disable-model-invocation: true
 context: fork
-agent: general-purpose
 argument-hint: "<.superpowers/<date>-<slug>-plan.md | pin: files <paths>; cause <file:line>; change <one sentence>>"
 ---
 
