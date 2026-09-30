@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { subject } from '@casl/ability';
 import { createPrismaAbility } from '@casl/prisma';
 import {
     EnumPolicyAction,
@@ -179,34 +180,29 @@ describe('PolicyDomain', () => {
             }
         });
 
-        it('checks the subject-tagged record when the input carries one', () => {
+        it('checks a subject-tagged record', () => {
             const record = { id: 'workspace-1' };
+            const target = subject(EnumPolicySubject.Workspace, record);
             ability.relevantRuleFor.mockReturnValue(null);
 
             try {
-                service.assertCan(
-                    ability,
-                    EnumPolicyAction.update,
-                    EnumPolicySubject.Workspace,
-                    record
-                );
+                service.assertCan(ability, EnumPolicyAction.update, target);
                 throw new Error('expected throw');
             } catch {
                 expect(ability.relevantRuleFor).toHaveBeenCalledWith(
                     EnumPolicyAction.update,
-                    expect.objectContaining(record),
+                    target,
                     undefined
                 );
             }
         });
     });
 
-    it('rejects role-scoped reads when the role does not exist', async () => {
-        roleDomain.getById.mockResolvedValue(null);
+    it('returns no policies when the role does not exist', async () => {
+        policyRepository.findManyByRoleId.mockResolvedValue([]);
 
-        await expect(service.findManyByRole('missing')).rejects.toBeInstanceOf(
-            RoleNotFoundException
-        );
+        await expect(service.findManyByRole('missing')).resolves.toEqual([]);
+        expect(roleDomain.getById).not.toHaveBeenCalled();
     });
 
     it('returns policies for an existing role', async () => {

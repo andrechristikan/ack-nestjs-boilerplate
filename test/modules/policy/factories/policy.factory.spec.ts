@@ -311,4 +311,97 @@ describe('PolicyAbilityFactory', () => {
             expect(ability.can(EnumPolicyAction.read, 'User')).toBe(false);
         });
     });
+
+    describe('isPlainJsonObject', () => {
+        it('accepts a plain object', () => {
+            expect(factory['isPlainJsonObject']({ a: 1 })).toBe(true);
+        });
+
+        it.each([
+            ['null', null],
+            ['an array', [1]],
+            ['a string', 'x'],
+            ['a number', 3],
+        ])('rejects %s', (_name, value) => {
+            expect(factory['isPlainJsonObject'](value)).toBe(false);
+        });
+    });
+
+    describe('interpolateNode', () => {
+        it('returns primitive values unchanged', () => {
+            expect(factory['interpolateNode']('literal', {})).toBe('literal');
+            expect(factory['interpolateNode'](null, {})).toBeNull();
+            expect(factory['interpolateNode'](3, {})).toBe(3);
+        });
+
+        it('resolves placeholders in nested objects and arrays', () => {
+            expect(
+                factory['interpolateNode'](
+                    {
+                        AND: [
+                            {
+                                userId: EnumPolicyConditionPlaceholder.userId,
+                            },
+                            {
+                                ids: [
+                                    EnumPolicyConditionPlaceholder.projectId,
+                                    'literal',
+                                ],
+                            },
+                        ],
+                    },
+                    {
+                        [EnumPolicyConditionPlaceholder.userId]: 'user-1',
+                        [EnumPolicyConditionPlaceholder.projectId]: 'project-1',
+                    }
+                )
+            ).toEqual({
+                AND: [{ userId: 'user-1' }, { ids: ['project-1', 'literal'] }],
+            });
+        });
+
+        it('returns undefined when a placeholder is unavailable', () => {
+            expect(
+                factory['interpolateNode'](
+                    EnumPolicyConditionPlaceholder.projectId,
+                    {}
+                )
+            ).toBeUndefined();
+        });
+
+        it('leaves unknown placeholder-like strings unchanged', () => {
+            expect(
+                factory['interpolateNode']('${unknown}', {
+                    [EnumPolicyConditionPlaceholder.userId]: 'user-1',
+                })
+            ).toBe('${unknown}');
+        });
+    });
+
+    describe('interpolate', () => {
+        it('returns interpolated conditions without mutating the input', () => {
+            const conditions = {
+                userId: EnumPolicyConditionPlaceholder.userId,
+                workspaceId: EnumPolicyConditionPlaceholder.workspaceId,
+            };
+
+            expect(factory['interpolate'](conditions, placeholders)).toEqual({
+                userId: 'user-id',
+                workspaceId: 'workspace-id',
+            });
+            expect(conditions).toEqual({
+                userId: EnumPolicyConditionPlaceholder.userId,
+                workspaceId: EnumPolicyConditionPlaceholder.workspaceId,
+            });
+        });
+
+        it('returns null when interpolation does not produce an object', () => {
+            expect(
+                factory['interpolate'](
+                    { projectId: EnumPolicyConditionPlaceholder.projectId },
+                    placeholders
+                )
+            ).toBeNull();
+        });
+    });
 });

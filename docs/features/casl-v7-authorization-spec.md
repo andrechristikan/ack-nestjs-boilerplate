@@ -42,14 +42,14 @@ deferred:
   type-level check
   ([`@casl/ability` `Rule.ts`](https://github.com/stalniy/casl/blob/master/packages/casl-ability/src/Rule.ts)
   evaluates conditions only against an instance). Every `@PolicyProtected` route runs this gate.
-- **Record-level** — the instance form `ability.can(action, subject('Model', record))` evaluates
+- **Record-level** — the instance form `ability.can(action, PolicyUtil.toSubject(subject, record))` evaluates
   the stored conditions, so the seeded scope conditions become enforcing. It runs at the layer where
   the target record first exists: feature domains run it for sub-resource writes (`workspaceMember`,
   `projectMember`, `workspaceInvite`, `workspaceJoinRequest`), whose target is loaded from a
   client-supplied id inside the domain. Repositories additionally push
   `accessibleBy(...).ofType(Model)` into the Prisma `where`. Prisma returns class-less plain objects,
-  so tagging the record with `subject('Model', record)` is mandatory for CASL to select the right
-  rules.
+  so tagging the record with `PolicyUtil.toSubject(subject, record)` is mandatory for CASL to select
+  the right rules.
 
 Without the record-level layer the stored scope conditions are inert: the boundary would rest only
 on the workspace/project guards, on which role's policies each guard loads, and on hand-written
@@ -263,7 +263,8 @@ directly to `WorkspaceInvite`; `workspace:invite` would require an additional en
 translation without changing the boundary.
 
 Subject-to-model adaptation happens at the CASL boundary. Persisted subjects remain in application
-vocabulary, while conditional checks tag Prisma plain objects with the corresponding CASL subject.
+vocabulary, while `PolicyUtil.toSubject(subject, record)` tags Prisma plain objects with the
+corresponding CASL subject for conditional checks.
 The subject list is the authorization catalog; it does not carry a second scope registry. Role-scope
 alignment comes from the seeded rules and from role-assignment domain checks, not from policy writes.
 
@@ -271,8 +272,8 @@ Workspace and project subjects carry conditions tying a stored rule to the activ
 [Scoping Placeholder Conventions](#scoping-placeholder-conventions)).
 
 The persisted enum subject is kept in application vocabulary. Conditional Prisma records are tagged
-with the corresponding CASL subject at the ability boundary, while virtual subjects such as `all`
-and `analytic` are evaluated by name. Operations without a subject carry no policy rule; their
+with `PolicyUtil.toSubject` before an instance check, while virtual subjects such as `all` and
+`analytic` are evaluated by name. Operations without a subject carry no policy rule; their
 membership and visibility checks remain domain or repository concerns.
 
 The `workspace` and `project` subjects are distinguished operationally: their active records are
@@ -308,8 +309,8 @@ to the boundary where the role was assigned. This is normative:
      rule has no condition.
   2. Policy writes do not check whether a rule's subject, actions, or conditions match the role's
      scope. Condition keys and operators are stored as provided by the trusted policy author.
-  3. At request time `interpolate` replaces the placeholder
-     with the resolved id, so CASL receives `{ "workspaceId": "<uuid>" }`. Nothing is injected
+  3. At request time `PolicyAbilityFactory` replaces the placeholder with the resolved id, so CASL
+     receives `{ "workspaceId": "<uuid>" }`. Nothing is injected
      implicitly: the stored rule is the single source of truth, and `accessibleWhere` reuses the same
      condition.
 - `projectMember:create` carries the `projectId` scope condition and no member-instance condition:
@@ -391,8 +392,8 @@ Two further interpreter caveats bind future condition authors: equality of a JSO
 equality of a list/array column are not implemented — use the list operators
 `has`/`hasSome`/`hasEvery` for array columns instead of a bare equality.
 
-`interpolate` traverses an object or array and replaces recognized complete string values
-from the placeholder list in
+`PolicyAbilityFactory` traverses condition objects and arrays, replacing recognized complete string
+values from the placeholder list in
 [Scoping Placeholder Conventions](#scoping-placeholder-conventions). Other condition strings remain
 unchanged. The policy author is responsible for supplying a condition the target Prisma `WhereInput`
 and CASL adapter can evaluate. Conditions are JSON data, not executable expressions.
@@ -413,9 +414,10 @@ the Prisma Client is extended with `createCaslExtension()`, which maps that empt
 `findFirstOrThrow`/`update`/`delete` reject with a not-found error. Registering the extension is what
 makes list authorization fail closed rather than fail loud.
 
-Object checks tag the loaded record with `subject(abilitySubjectOf(subject), record)` — a typed
-Prisma plain object. Because Prisma returns class-less objects, this tagging is mandatory: CASL
-cannot detect the subject type by `constructor` and would otherwise match no conditional rule.
+Object checks tag the loaded record with `PolicyUtil.toSubject(subject, record)`, producing a typed
+CASL subject from the Prisma plain object. Because Prisma returns class-less objects, this tagging
+is mandatory: CASL cannot detect the subject type by `constructor` and would otherwise match no
+conditional rule.
 
 **Worked example.** A `workspaceMember` `update` rule scoped to the active workspace is stored as:
 
@@ -427,16 +429,24 @@ cannot detect the subject type by `constructor` and would otherwise match no con
 }
 ```
 
-`interpolate` resolves `${workspaceId}` from the explicit placeholder values before the rule is added
-to the ability, so the ability carries the literal id, e.g. `{ "workspaceId": "3f2b..." }`. The same
-rule drives both enforcement forms:
+`PolicyAbilityFactory` resolves `${workspaceId}` from the explicit placeholder values before the rule
+is added to the ability, so the ability carries the literal id, e.g. `{ "workspaceId": "3f2b..." }`.
+The same rule drives both enforcement forms:
 
 ```ts
 const ability = this.requestStoreService.get<IPolicyAbility>(PolicyAbilityStoreKey); // workspaceId: "3f2b..." resolved
 
 // Record-level: the instance check evaluates the stored condition.
-ability.can('update', subject('WorkspaceMember', memberFromOtherWorkspace)); // false — workspaceId mismatch
-ability.can('update', subject('WorkspaceMember', memberFromActiveWorkspace)); // true
+const otherWorkspaceMember = policyUtil.toSubject(
+    EnumPolicySubject.workspaceMember,
+    memberFromOtherWorkspace
+);
+const activeWorkspaceMember = policyUtil.toSubject(
+    EnumPolicySubject.workspaceMember,
+    memberFromActiveWorkspace
+);
+ability.can('update', otherWorkspaceMember); // false — workspaceId mismatch
+ability.can('update', activeWorkspaceMember); // true
 
 // Query-level: accessibleWhere wraps accessibleBy(ability, 'update').ofType(...WorkspaceMember),
 // yielding a Prisma.WorkspaceMemberWhereInput, e.g. { workspaceId: "3f2b..." }.
@@ -479,9 +489,10 @@ member guards require an existing ability before merging their role policies, so
 chain fails with a missing request-context error. The project member guard permits an absent optional
 membership row and leaves the workspace ability unchanged.
 
-Consumers read the ability directly from `PolicyAbilityStoreKey`. `PolicyGuard` passes it to
-`PolicyDomain.assertCan(ability, action, subject)`. Feature domains call `ability.can(action,
-subject)` for local decisions and pass the same ability to
+Consumers read the ability directly from `PolicyAbilityStoreKey`. `PolicyGuard` passes the subject
+type to `PolicyDomain.assertCan(ability, action, subject)`. Feature domains tag loaded records with
+`PolicyUtil.toSubject` and pass the tagged target to `PolicyDomain.assertCan`; they can also call
+`ability.can(action, subject)` for local decisions and pass the same ability to
 `PolicyDomain.accessibleWhere(ability, action, subject)` for Prisma filtering. A `manage` rule
 remains CASL's literal wildcard action and is evaluated by the ability itself.
 
@@ -563,7 +574,7 @@ client-supplied id (`:memberId`, `:inviteId`, …) that no guard resolves. The d
 **hybrid** of two mechanisms driven by the same stored rule:
 
 - **The write itself** — the domain runs an instance check on the record it has already loaded for
-  its own logic: `assertCan(action, subject, record)`. No second `select` is issued, and the 403
+  its own logic: `assertCan(action, PolicyUtil.toSubject(subject, record))`. No second `select` is issued, and the 403
   carries the matched rule's `reason`. This is where the stored scope conditions enforce, since CASL
   consults conditions only on an instance check. The mutation then `AND`-composes
   `accessibleBy(...).ofType(Model)` (via `PolicyDomain.accessibleWhere`) into its own `where`, so the write
@@ -594,11 +605,14 @@ async updateMember(user: IUser, workspaceId: string, memberId: string, dto: Work
 
     // 2. Record-level decision on the already-loaded record — no duplicate select. Only the
     //    instance form evaluates the stored `workspaceId` condition.
+    const target = this.policyUtil.toSubject(
+        EnumPolicySubject.workspaceMember,
+        member
+    );
     this.policyDomain.assertCan(
         ability,
         EnumPolicyAction.update,
-        EnumPolicySubject.workspaceMember,
-        member
+        target
     ); // throws PolicyForbiddenException (with the matched rule's reason) → 403; the record is known to exist
 
     // 3. The mutation composes the authorization `where` so the write itself cannot touch a row
@@ -882,7 +896,7 @@ runs against PostgreSQL in its dedicated environment, outside this unit suite.
 | `PolicyGuard.canActivate` | Required policy absent from ability | Guard rejects the request instead of falling through |
 | `PolicyDomain.assertCan` | Ability denies the action | Throws `PolicyForbiddenException`, does not return `false` silently |
 | Ability build (`PolicyAbilityFactory`) | Inverted rule vs. allow, same subject, in either input order | Matching inverted rules remain authoritative |
-| Record-level `can(action, subject, record)` | Record from a different workspace against a `workspaceId`-scoped rule | Condition mismatch denies — the instance check evaluates the scoping placeholder, the type-level check does not |
+| Record-level `can(action, PolicyUtil.toSubject(subject, record))` | Record from a different workspace against a `workspaceId`-scoped rule | Condition mismatch denies — the instance check evaluates the scoping placeholder, the type-level check does not |
 | `PolicyAbilityFactory.buildFromPolicies` | Platform, workspace, and project rules for one user | Guards compose platform → workspace → project policies and interpolate the available placeholders |
 | `PolicyGuard.canActivate` | `superAdmin` role, no special-cased bypass in code | Evaluates through the seeded `manage`/`all` rule like any other role, not a hardcoded short-circuit |
 | Policy write persistence (`PolicyDomain` create/update path) | Structurally valid rules across platform, workspace, and project roles | Persists the rule without applying role-scope compatibility checks |

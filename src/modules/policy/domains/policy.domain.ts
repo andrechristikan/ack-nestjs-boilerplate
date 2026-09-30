@@ -4,6 +4,7 @@ import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-f
 import type {
     IEffectivePermission,
     PolicyAbility,
+    PolicyAbilitySubject,
 } from '@modules/policy/interfaces/policy.interface';
 import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
@@ -14,7 +15,7 @@ import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum'
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { Injectable } from '@nestjs/common';
-import { ForbiddenError, subject } from '@casl/ability';
+import { ForbiddenError } from '@casl/ability';
 import { accessibleBy } from '@casl/prisma';
 import {
     EnumActivityLogAction,
@@ -71,12 +72,8 @@ export class PolicyDomain {
     assertCan(
         ability: PolicyAbility,
         action: EnumPolicyAction,
-        subjectName: EnumPolicySubject,
-        record?: object
+        target: PolicyAbilitySubject
     ): void {
-        const target =
-            record === undefined ? subjectName : subject(subjectName, record);
-
         try {
             ForbiddenError.from(ability).throwUnlessCan(action, target);
         } catch (error) {
@@ -111,8 +108,6 @@ export class PolicyDomain {
     }
 
     async findManyByRole(roleId: string): Promise<Policy[]> {
-        await this.validateRoleExists(roleId);
-
         return this.policyRepository.findManyByRoleId(roleId);
     }
 
