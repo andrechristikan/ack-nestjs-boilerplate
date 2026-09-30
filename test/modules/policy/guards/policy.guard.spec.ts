@@ -14,6 +14,7 @@ import { PolicyGuard } from '@modules/policy/guards/policy.guard';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyPredefinedNotFoundException } from '@modules/policy/exceptions/policy.predefined-not-found.exception';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 describe('PolicyGuard', () => {
@@ -43,6 +44,20 @@ describe('PolicyGuard', () => {
             ],
         }).compile();
         guard = moduleRef.get(PolicyGuard);
+    });
+
+    it('throws RequestContextMissingException when no ability is stored', () => {
+        requestStoreService.get.mockReturnValue(undefined);
+
+        expect(() => guard.canActivate(context)).toThrow(
+            RequestContextMissingException
+        );
+        expect(() => guard.canActivate(context)).toThrow(
+            expect.objectContaining({
+                messagePath: 'request.error.contextMissing',
+            })
+        );
+        expect(reflector.get).not.toHaveBeenCalled();
     });
 
     it('does not read the authenticated user from request storage', () => {

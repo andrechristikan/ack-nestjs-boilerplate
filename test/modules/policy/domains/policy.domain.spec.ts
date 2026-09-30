@@ -112,6 +112,56 @@ describe('PolicyDomain', () => {
                 )
             ).toEqual({ OR: [{ workspaceId: 'workspace-1' }] });
         });
+
+        it('combines multiple allow rules into an OR where clause', () => {
+            expect(
+                service.accessibleWhere(
+                    createPrismaAbility<PolicyAbility>([
+                        {
+                            action: EnumPolicyAction.read,
+                            subject: 'Project',
+                            conditions: { workspaceId: 'workspace-1' },
+                        },
+                        {
+                            action: EnumPolicyAction.read,
+                            subject: 'Project',
+                            conditions: { workspaceId: 'workspace-2' },
+                        },
+                    ]),
+                    EnumPolicyAction.read,
+                    EnumPolicySubject.Project
+                )
+            ).toEqual({
+                OR: [
+                    { workspaceId: 'workspace-2' },
+                    { workspaceId: 'workspace-1' },
+                ],
+            });
+        });
+
+        it('translates an inverted condition into a denying Prisma clause', () => {
+            expect(
+                service.accessibleWhere(
+                    createPrismaAbility<PolicyAbility>([
+                        {
+                            action: EnumPolicyAction.read,
+                            subject: 'Project',
+                            conditions: {},
+                        },
+                        {
+                            action: EnumPolicyAction.read,
+                            subject: 'Project',
+                            inverted: true,
+                            conditions: { archived: true },
+                        },
+                    ]),
+                    EnumPolicyAction.read,
+                    EnumPolicySubject.Project
+                )
+            ).toEqual({
+                OR: [{ AND: [{}, { NOT: { archived: true } }] }],
+            });
+        });
     });
 
     describe('assertCan', () => {
@@ -195,6 +245,82 @@ describe('PolicyDomain', () => {
                     undefined
                 );
             }
+        });
+
+        it('rethrows errors that are not CASL forbidden errors', () => {
+            const error = new Error('ability failure');
+            ability.relevantRuleFor.mockImplementation(() => {
+                throw error;
+            });
+
+            expect(() =>
+                service.assertCan(
+                    ability,
+                    EnumPolicyAction.read,
+                    EnumPolicySubject.Project
+                )
+            ).toThrow(error);
+            expect(ability.relevantRuleFor).toHaveBeenCalledOnce();
+        });
+
+        it('allows a matching conditional record and denies a different record', () => {
+            const realAbility = createPrismaAbility<PolicyAbility>([
+                {
+                    action: EnumPolicyAction.update,
+                    subject: 'Workspace',
+                    conditions: { id: 'workspace-1' },
+                },
+            ]);
+
+            expect(() =>
+                service.assertCan(
+                    realAbility,
+                    EnumPolicyAction.update,
+                    subject(EnumPolicySubject.Workspace, { id: 'workspace-1' })
+                )
+            ).not.toThrow();
+            expect(() =>
+                service.assertCan(
+                    realAbility,
+                    EnumPolicyAction.update,
+                    subject(EnumPolicySubject.Workspace, { id: 'workspace-2' })
+                )
+            ).toThrow(PolicyForbiddenException);
+        });
+    });
+
+    describe('getEffectivePermissions', () => {
+        it('returns only the concrete actions granted for each subject', () => {
+            ability.can.mockImplementation(
+                (action, subjectName) =>
+                    subjectName === EnumPolicySubject.User &&
+                    action === EnumPolicyAction.read
+            );
+
+            expect(
+                service.getEffectivePermissions(ability, [
+                    EnumPolicySubject.User,
+                    EnumPolicySubject.Project,
+                ])
+            ).toEqual([
+                {
+                    subject: EnumPolicySubject.User,
+                    actions: [EnumPolicyAction.read],
+                },
+            ]);
+        });
+
+        it('omits a subject when an inverse rule denies every action', () => {
+            ability.can.mockReturnValue(false);
+
+            expect(
+                service.getEffectivePermissions(ability, [
+                    EnumPolicySubject.Workspace,
+                ])
+            ).toEqual([]);
+            expect(ability.can).toHaveBeenCalledTimes(
+                Object.values(EnumPolicyAction).length
+            );
         });
     });
 

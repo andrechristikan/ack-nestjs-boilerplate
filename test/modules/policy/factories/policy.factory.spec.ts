@@ -179,6 +179,30 @@ describe('PolicyAbilityFactory', () => {
             ).toBe(true);
         });
 
+        it('keeps a conditional inverted rule authoritative when it precedes the allow rule', () => {
+            const ability = factory.build([
+                buildRule({
+                    subject: 'Workspace',
+                    inverted: true,
+                    conditions: { isPublic: true },
+                }),
+                buildRule({ subject: 'Workspace' }),
+            ]);
+
+            expect(
+                ability.can(
+                    EnumPolicyAction.read,
+                    subject('Workspace', buildWorkspace('w1', true))
+                )
+            ).toBe(false);
+            expect(
+                ability.can(
+                    EnumPolicyAction.read,
+                    subject('Workspace', buildWorkspace('w1', false))
+                )
+            ).toBe(true);
+        });
+
         it('keeps the rules it was given untouched', () => {
             const rules = [buildRule({ conditions: { id: 'x' } })];
             const snapshot = structuredClone(rules);
@@ -267,6 +291,13 @@ describe('PolicyAbilityFactory', () => {
     });
 
     describe('buildFromPolicies', () => {
+        it('builds an ability that denies when no policies are supplied', () => {
+            const ability = factory.buildFromPolicies(null, placeholders);
+
+            expect(
+                ability.can(EnumPolicyAction.read, EnumPolicySubject.User)
+            ).toBe(false);
+        });
         it('interpolates policy conditions without mutating persisted policies', () => {
             const policy = buildPolicy({
                 conditions: {
@@ -284,6 +315,25 @@ describe('PolicyAbilityFactory', () => {
                     subject('User', { userId: 'user-id' })
                 )
             ).toBe(true);
+        });
+
+        it('preserves an inverted policy reason on the resolved ability', () => {
+            const ability = factory.buildFromPolicies(
+                [
+                    buildPolicy({
+                        inverted: true,
+                        reason: 'blocked by policy',
+                    }),
+                ],
+                placeholders
+            );
+
+            expect(
+                ability.relevantRuleFor(
+                    EnumPolicyAction.read,
+                    EnumPolicySubject.User
+                )?.reason
+            ).toBe('blocked by policy');
         });
 
         it('builds only the supplied policies', () => {
@@ -367,6 +417,22 @@ describe('PolicyAbilityFactory', () => {
                     {}
                 )
             ).toBeUndefined();
+        });
+
+        it('returns undefined when a nested array placeholder is unavailable', () => {
+            expect(
+                factory['interpolateNode'](
+                    [EnumPolicyConditionPlaceholder.projectId],
+                    {}
+                )
+            ).toBeUndefined();
+        });
+
+        it('drops object entries whose runtime value is undefined', () => {
+            const node = { optional: null };
+            Object.defineProperty(node, 'optional', { value: undefined });
+
+            expect(factory['interpolateNode'](node, {})).toEqual({});
         });
 
         it('leaves unknown placeholder-like strings unchanged', () => {
