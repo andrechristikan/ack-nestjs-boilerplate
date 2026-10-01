@@ -184,7 +184,7 @@ A configuration key used as a gate follows the global rule: the effective value 
 
 `@WorkspaceFeatureFlagProtected('<key>')` takes a bare flag key. A dotted key, or an empty segment, is rejected the same way `@FeatureFlagProtected` rejects it. The decorator lives in `workspace.decorator.ts`, the guard in `guards/`.
 
-The guard checks the global flag first, then the workspace row, so a route needs one decorator, not two.
+The guard checks the global `FeatureFlag.isEnable` kill switch first, then the workspace row, so a route needs one workspace feature decorator in addition to its workspace and user protection. It does not evaluate user permissions. `PolicyProtected` handles those permissions as a separate guard. Global rollout percentage and target-user targeting remain behavior of `@FeatureFlagProtected`; workspace evaluation uses the global row only as a platform-wide kill switch and does not reapply rollout or targeting per workspace.
 
 ```typescript
 @Response('project.list')
@@ -196,16 +196,36 @@ The guard checks the global flag first, then the workspace row, so a route needs
 async list(): Promise<IResponsePaginationReturn<ProjectResponseDto>> { ... }
 ```
 
-Position matters. `@WorkspaceFeatureFlagProtected()` sits above `@WorkspaceProtected()`. Decorators run bottom-up, and the guard needs the workspace that `WorkspaceGuard` stores in the request store. Without that order the guard finds no workspace.
+Position matters. `@WorkspaceFeatureFlagProtected()` sits above `@WorkspaceProtected()` and above `@PolicyProtected()`. Decorators run bottom-up, so the feature guard executes before the permission guard and after `WorkspaceGuard` has stored the workspace in the request store. Without that order the feature guard either finds no workspace or the permission guard runs before feature availability is checked.
 
 The `/admin` scope takes no workspace guard, so it takes no workspace flag either.
+
+Workspace feature configuration answers whether a capability is available and which limits or settings apply. `FeatureFlagGuard` and `WorkspaceFeatureFlagGuard` perform the feature checks, including the global feature kill switch. `PolicyProtected` performs the permission check. A route can require both checks:
+
+```typescript
+@WorkspaceFeatureFlagProtected('project')
+@PolicyProtected({ subject: 'project', action: 'read' })
+```
+
+Feature availability and authorization remain separate checks:
+
+```text
+FeatureFlagGuard / WorkspaceFeatureFlagGuard
+    -> feature is available and globally enabled
+PolicyProtected
+    -> caller has permission for the action
+```
+
+The effective configuration is resolved once per request when several layers need it. The resolved value is stored in the request store and reused by HTTP services and domains. Domain flows outside an HTTP request resolve the same configuration through the workspace feature-flag domain.
+
+Numeric limits are enforced in the transaction that performs the related write. The limit read, relevant count, and write use the same transaction and protect the relevant workspace so concurrent requests cannot both pass the limit check.
 
 ## Cache
 
 - Key: `WorkspaceFeatureFlag:{workspaceId}:{key}`, TTL 1 hour, configured in `workspace.config.ts`. The cached value is the feature row with its configuration rows.
 - Read-through and best-effort: a cache failure is logged and falls through to the database.
 - An admin update to the row or to any of its configuration entries deletes the entry.
-- The cache holds raw dates. The window checks are never cached.
+- The cache holds raw rows and dates. The window checks and effective verdict are evaluated on every read, so activation and expiry do not depend on a cache write or invalidation event.
 
 ## Lifecycle
 
@@ -264,7 +284,9 @@ The user read route writes no activity. The admin writes add two actions to `Enu
 | `adminWorkspaceFeatureFlagUpdate` | PATCH on a feature row | flag key, resulting `isEnable`, `validFrom`, `validTo` |
 | `adminWorkspaceFeatureFlagConfigUpdate` | PUT or DELETE on an override | flag key, config key, value, `validFrom`, `validTo`, and whether it was removed |
 
-The contract sets `workspace: target` so the row shows in the affected workspace's activity list. Every existing `admin*` action uses `workspace: none`, so this is the first admin action with a workspace target. Confirm during implementation that `prepare` and the list routes accept `user: payload` together with `workspace: target`. The metadata schema and the i18n description in `src/languages/en/activityLog.json` are added with the action, and both actions are recorded in [Activity Log][ref-doc-activity-log].
+The contract sets `workspace: target` so the row shows in the affected workspace's activity list. The activity preparation and list routes accept `user: payload` together with `workspace: target`. The metadata schema and the i18n description in `src/languages/en/activityLog.json` are defined with the action, and both actions are recorded in [Activity Log][ref-doc-activity-log].
+
+The activity metadata records the resulting values supplied by the administrative write. The contract remains `user: payload`, and the workspace target identifies the affected workspace.
 
 ## Status Codes
 
@@ -290,8 +312,8 @@ The registry default already acts as the per-key default, and an override row re
 ## Open Questions
 
 1. Which features are in the first registry, and with which configuration keys? `workspace`, `loginWith*` and `signUp` are platform concerns and likely stay out of it.
-2. Can one configuration key hold several time-boxed values (a schedule), or one override at a time? The unique key above allows one. A schedule needs `@@unique([workspaceFeatureFlagId, key, validFrom])` and a non-overlap rule.
-3. An expired window answers 503 with no notification or activity row. Assumed enough; revisit if tenants need a warning before expiry.
+2. Can one configuration key hold several time-boxed values (a schedule), or one override at a time? The current unique key allows one override row. A schedule needs `@@unique([workspaceFeatureFlagId, key, validFrom])` and a non-overlap rule.
+3. An expired window answers 503 with no notification or activity row. The current behavior does not notify or log expiration; revisit if tenants need a warning before expiry.
 
 ## Implementation Steps
 
