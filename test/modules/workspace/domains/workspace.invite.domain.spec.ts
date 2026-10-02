@@ -467,6 +467,26 @@ describe('WorkspaceInviteDomain', () => {
         expect(payload).not.toHaveProperty('workspaceMemberRole');
     });
 
+    it('loads the invite the route addresses within the workspace', async () => {
+        inviteRepository.findByIdAndWorkspace.mockResolvedValue(invite);
+
+        await expect(domain.getInvite('workspace-id', invite.id)).resolves.toBe(
+            invite
+        );
+        expect(inviteRepository.findByIdAndWorkspace).toHaveBeenCalledWith(
+            invite.id,
+            'workspace-id'
+        );
+    });
+
+    it('reports an invite outside the workspace as not found', async () => {
+        inviteRepository.findByIdAndWorkspace.mockResolvedValue(null);
+
+        await expect(
+            domain.getInvite('workspace-id', invite.id)
+        ).rejects.toBeInstanceOf(WorkspaceInviteNotFoundException);
+    });
+
     it.each([
         [null, WorkspaceInviteNotFoundException],
         [

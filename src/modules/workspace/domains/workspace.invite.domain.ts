@@ -15,7 +15,12 @@ import {
     EnumWorkspaceInviteStatus,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { Project, User, Workspace } from '@generated/prisma-client/client';
+import type {
+    Project,
+    User,
+    Workspace,
+    WorkspaceInvite,
+} from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import type { INotificationWorkspaceInvitePayload } from '@modules/notification/interfaces/notification.interface';
@@ -406,6 +411,23 @@ export class WorkspaceInviteDomain {
             actorId,
             existingUser
         );
+
+        return invite;
+    }
+
+    /** Loads the invite the route addresses within the workspace, so a record outside it reads as not found. */
+    async getInvite(
+        workspaceId: string,
+        workspaceInviteId: string
+    ): Promise<WorkspaceInvite> {
+        const invite =
+            await this.workspaceInviteRepository.findByIdAndWorkspace(
+                workspaceInviteId,
+                workspaceId
+            );
+        if (!invite) {
+            throw new WorkspaceInviteNotFoundException();
+        }
 
         return invite;
     }

@@ -15,7 +15,7 @@ import {
 import type { Workspace } from '@generated/prisma-client/client';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { WorkspacePermissionSubjects } from '@modules/workspace/constants/workspace.constant';
 import type { WorkspaceAdminListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
@@ -30,7 +30,8 @@ import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http
 
 describe('WorkspaceHttpService', () => {
     const workspaceDomain: MockProxy<WorkspaceDomain> = mock<WorkspaceDomain>();
-    const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
+    const policyAbilityDomain: MockProxy<PolicyAbilityDomain> =
+        mock<PolicyAbilityDomain>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
@@ -102,13 +103,13 @@ describe('WorkspaceHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        policyDomain.requireStored.mockReturnValue(adminAbility);
+        policyAbilityDomain.requireStored.mockReturnValue(adminAbility);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceHttpService,
                 { provide: WorkspaceDomain, useValue: workspaceDomain },
-                { provide: PolicyDomain, useValue: policyDomain },
+                { provide: PolicyAbilityDomain, useValue: policyAbilityDomain },
                 {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
@@ -197,7 +198,7 @@ describe('WorkspaceHttpService', () => {
             );
 
             expect(result).toEqual({ data: workspace });
-            expect(policyDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
                 adminAbility,
                 EnumPolicyAction.update,
                 subject(EnumPolicySubject.Workspace, workspace)
@@ -226,7 +227,7 @@ describe('WorkspaceHttpService', () => {
             );
 
             expect(result).toEqual({ data: workspace });
-            expect(policyDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
                 adminAbility,
                 EnumPolicyAction.update,
                 subject(EnumPolicySubject.Workspace, workspace)
@@ -251,7 +252,7 @@ describe('WorkspaceHttpService', () => {
             );
 
             expect(result).toEqual({ data: workspace });
-            expect(policyDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
                 adminAbility,
                 EnumPolicyAction.update,
                 subject(EnumPolicySubject.Workspace, workspace)
@@ -283,7 +284,7 @@ describe('WorkspaceHttpService', () => {
         it('delegates to the domain', async () => {
             await service.softDeleteWorkspace(workspace, 'actor-id');
 
-            expect(policyDomain.assertCan).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
                 adminAbility,
                 EnumPolicyAction.delete,
                 subject(EnumPolicySubject.Workspace, workspace)
@@ -309,8 +310,8 @@ describe('WorkspaceHttpService', () => {
                 storeFilter: { isPublic: true },
             } as never);
             workspaceDomain.getListForAdmin.mockResolvedValue(offsetPage);
-            policyDomain.requireStored.mockReturnValue(adminAbility);
-            policyDomain.requireAccessibleWhere.mockReturnValue(
+            policyAbilityDomain.requireStored.mockReturnValue(adminAbility);
+            policyAbilityDomain.requireAccessibleWhere.mockReturnValue(
                 accessibleWorkspaceWhere
             );
 
@@ -339,8 +340,8 @@ describe('WorkspaceHttpService', () => {
             } as never);
             paginationQueryUtil.equalBoolean.mockReturnValue(undefined);
             workspaceDomain.getListForAdmin.mockResolvedValue(offsetPage);
-            policyDomain.requireStored.mockReturnValue(adminAbility);
-            policyDomain.requireAccessibleWhere.mockReturnValue(
+            policyAbilityDomain.requireStored.mockReturnValue(adminAbility);
+            policyAbilityDomain.requireAccessibleWhere.mockReturnValue(
                 accessibleWorkspaceWhere
             );
 
@@ -367,17 +368,19 @@ describe('WorkspaceHttpService', () => {
             } as never);
             paginationQueryUtil.equalBoolean.mockReturnValue(undefined);
             workspaceDomain.getListForAdmin.mockResolvedValue(offsetPage);
-            policyDomain.requireStored.mockReturnValue(adminAbility);
-            policyDomain.requireAccessibleWhere.mockReturnValue(
+            policyAbilityDomain.requireStored.mockReturnValue(adminAbility);
+            policyAbilityDomain.requireAccessibleWhere.mockReturnValue(
                 accessibleWorkspaceWhere
             );
 
             await service.getListForAdmin({});
 
-            expect(policyDomain.requireStored).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
                 PolicyAbilityStoreKey
             );
-            expect(policyDomain.requireAccessibleWhere).toHaveBeenCalledWith(
+            expect(
+                policyAbilityDomain.requireAccessibleWhere
+            ).toHaveBeenCalledWith(
                 adminAbility,
                 EnumPolicyAction.read,
                 EnumPolicySubject.Workspace
@@ -385,7 +388,7 @@ describe('WorkspaceHttpService', () => {
         });
 
         it('throws RequestContextMissingException when no ability is stored and never lists', async () => {
-            policyDomain.requireStored.mockImplementation(() => {
+            policyAbilityDomain.requireStored.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
@@ -401,10 +404,12 @@ describe('WorkspaceHttpService', () => {
                 storePatch: offsetStorePatch,
             } as never);
             paginationQueryUtil.equalBoolean.mockReturnValue(undefined);
-            policyDomain.requireStored.mockReturnValue(adminAbility);
-            policyDomain.requireAccessibleWhere.mockImplementation(() => {
-                throw new PolicyForbiddenException();
-            });
+            policyAbilityDomain.requireStored.mockReturnValue(adminAbility);
+            policyAbilityDomain.requireAccessibleWhere.mockImplementation(
+                () => {
+                    throw new PolicyForbiddenException();
+                }
+            );
 
             await expect(service.getListForAdmin({})).rejects.toThrow(
                 PolicyForbiddenException
@@ -442,26 +447,27 @@ describe('WorkspaceHttpService', () => {
         const ability = {} as never;
 
         it('reads the ability from the store and wraps the domain permissions', () => {
-            policyDomain.requireStored.mockReturnValue(ability);
+            policyAbilityDomain.requireStored.mockReturnValue(ability);
             const permissions = [
                 { subject: 'Workspace', actions: ['read'] },
             ] as never;
-            policyDomain.getEffectivePermissions.mockReturnValue(permissions);
+            policyAbilityDomain.getEffectivePermissions.mockReturnValue(
+                permissions
+            );
 
             const result = service.getEffectivePermissions();
 
-            expect(policyDomain.requireStored).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
                 PolicyAbilityStoreKey
             );
-            expect(policyDomain.getEffectivePermissions).toHaveBeenCalledWith(
-                ability,
-                WorkspacePermissionSubjects
-            );
+            expect(
+                policyAbilityDomain.getEffectivePermissions
+            ).toHaveBeenCalledWith(ability, WorkspacePermissionSubjects);
             expect(result).toEqual({ data: { permissions } });
         });
 
         it('throws when the ability is absent from the store', () => {
-            policyDomain.requireStored.mockImplementation(() => {
+            policyAbilityDomain.requireStored.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 

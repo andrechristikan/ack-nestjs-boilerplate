@@ -187,7 +187,7 @@ export class ProjectUserController {
         schema: ProjectPermissionResponseSchema,
     })
     @PolicyAbilityProtected()
-    @ProjectMemberProtected()
+    @ProjectMemberProtected({ required: false })
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -302,14 +302,15 @@ export class ProjectUserController {
     }
 
     @Doc({
-        summary: 'list members of a project; requires the project read policy',
+        summary:
+            'list members of a project; requires the project member read policy',
     })
     @ResponsePagination('project.member.list', {
         schema: ProjectMemberResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @ProjectPolicyProtected({
-        subject: EnumPolicySubject.Project,
+        subject: EnumPolicySubject.ProjectMember,
         action: [EnumPolicyAction.read],
     })
     @ProjectMemberProtected({ required: false })
@@ -387,8 +388,6 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Param('projectMemberId', { schema: RequestUuidSchema })
-        _projectMemberId: string,
-        @Param('projectMemberId', { schema: RequestUuidSchema })
         projectMemberId: string,
         @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
         body: ProjectMemberUpdateRoleRequestDto
@@ -424,8 +423,6 @@ export class ProjectUserController {
     async memberRemove(
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
-        @Param('projectMemberId', { schema: RequestUuidSchema })
-        _projectMemberId: string,
         @Param('projectMemberId', { schema: RequestUuidSchema })
         projectMemberId: string
     ): Promise<void> {

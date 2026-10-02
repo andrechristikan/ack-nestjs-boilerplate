@@ -6,9 +6,10 @@ import type {
     PolicyAbilityRule,
     PolicyPlaceholderValues,
 } from '@modules/policy/interfaces/policy.interface';
+import { PolicyPlaceholderPattern } from '@modules/policy/constants/policy.constant';
 import { Injectable } from '@nestjs/common';
 
-/** Builds the typed Prisma CASL ability from policy rules. */
+/** Resolves persisted policies into rules and builds the typed Prisma CASL ability from them. */
 @Injectable()
 export class PolicyAbilityFactory {
     private isPlainJsonObject(value: unknown): value is IPolicyConditions {
@@ -34,17 +35,14 @@ export class PolicyAbilityFactory {
             }
 
             const isPlaceholder =
-                typeof value === 'string' && /^\$\{[^}]+\}$/.test(value);
+                typeof value === 'string' &&
+                PolicyPlaceholderPattern.test(value);
             const resolved = isPlaceholder ? values[value] : value;
             if (resolved === undefined) {
                 return null;
             }
 
             entries[key] = resolved;
-        }
-
-        if (!this.isPlainJsonObject(entries)) {
-            return null;
         }
 
         return entries;
@@ -83,19 +81,18 @@ export class PolicyAbilityFactory {
         return createPrismaAbility<PolicyAbility>(orderedRules);
     }
 
-    /** Builds a resolved ability from the supplied persisted policies. */
-    buildFromPolicies(
-        policies: Policy[] | null,
+    /**
+     * Resolves persisted policies into plain ability rules. A rule whose placeholder has no value,
+     * or whose conditions are not flat scalars, is omitted so it fails closed.
+     */
+    resolveRules(
+        policies: Policy[],
         placeholders: PolicyPlaceholderValues
-    ): PolicyAbility {
-        const rules: PolicyAbilityRule[] = [];
-        for (const policy of policies ?? []) {
+    ): PolicyAbilityRule[] {
+        return policies.flatMap(policy => {
             const rule = this.toAbilityRule(policy, placeholders);
-            if (rule !== null) {
-                rules.push(rule);
-            }
-        }
 
-        return this.build(rules);
+            return rule === null ? [] : [rule];
+        });
     }
 }

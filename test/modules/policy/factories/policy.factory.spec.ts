@@ -25,7 +25,7 @@ describe('PolicyAbilityFactory', () => {
     });
 
     it('resolves any caller-supplied placeholder without a placeholder catalog', () => {
-        const ability = factory.buildFromPolicies(
+        const rules = factory.resolveRules(
             [
                 buildPolicy({
                     workspaceId: EnumPolicyConditionPlaceholder.workspaceId,
@@ -34,45 +34,108 @@ describe('PolicyAbilityFactory', () => {
             { [EnumPolicyConditionPlaceholder.workspaceId]: 'workspace-1' }
         );
 
-        expect(
-            ability.can(
-                EnumPolicyAction.read,
-                subject(EnumPolicySubject.WorkspaceMember, {
-                    workspaceId: 'workspace-1',
-                })
-            )
-        ).toBe(true);
+        expect(rules).toEqual([
+            {
+                subject: EnumPolicySubject.WorkspaceMember,
+                action: [EnumPolicyAction.read],
+                conditions: { workspaceId: 'workspace-1' },
+                inverted: false,
+            },
+        ]);
+    });
+
+    it('keeps a literal condition value and carries the reason', () => {
+        const rules = factory.resolveRules(
+            [{ ...buildPolicy({ roleId: 'role-1' }), reason: 'why' }],
+            {}
+        );
+
+        expect(rules).toEqual([
+            expect.objectContaining({
+                conditions: { roleId: 'role-1' },
+                reason: 'why',
+            }),
+        ]);
+    });
+
+    it('keeps a rule without conditions as an unconditional rule', () => {
+        const rules = factory.resolveRules([buildPolicy(null)], {});
+
+        expect(rules).toEqual([
+            {
+                subject: EnumPolicySubject.WorkspaceMember,
+                action: [EnumPolicyAction.read],
+                inverted: false,
+            },
+        ]);
     });
 
     it('drops a rule when a placeholder has no resolved value', () => {
-        const ability = factory.buildFromPolicies(
+        expect(
+            factory.resolveRules(
+                [
+                    buildPolicy({
+                        workspaceId: EnumPolicyConditionPlaceholder.workspaceId,
+                    }),
+                ],
+                {}
+            )
+        ).toEqual([]);
+    });
+
+    it('drops nested condition objects instead of supporting arbitrary query syntax', () => {
+        expect(
+            factory.resolveRules(
+                [buildPolicy({ workspace: { id: 'workspace-1' } })],
+                {}
+            )
+        ).toEqual([]);
+    });
+
+    it('drops a rule whose conditions are not a plain object', () => {
+        expect(
+            factory.resolveRules([buildPolicy(['workspace-1'])], {})
+        ).toEqual([]);
+    });
+
+    it('keeps the surviving rules when another rule is dropped', () => {
+        const rules = factory.resolveRules(
             [
-                buildPolicy({
-                    workspaceId: EnumPolicyConditionPlaceholder.workspaceId,
-                }),
+                buildPolicy({ workspace: { id: 'workspace-1' } }),
+                buildPolicy(null),
             ],
             {}
         );
 
-        expect(
-            ability.can(
-                EnumPolicyAction.read,
-                EnumPolicySubject.WorkspaceMember
-            )
-        ).toBe(false);
+        expect(rules).toHaveLength(1);
     });
 
-    it('drops nested condition objects instead of supporting arbitrary query syntax', () => {
-        const ability = factory.buildFromPolicies(
-            [buildPolicy({ workspace: { id: 'workspace-1' } })],
-            {}
-        );
+    describe('build', () => {
+        it('orders inverted rules after allows so a matching deny wins', () => {
+            const ability = factory.build([
+                {
+                    subject: EnumPolicySubject.WorkspaceMember,
+                    action: EnumPolicyAction.read,
+                    inverted: true,
+                },
+                {
+                    subject: EnumPolicySubject.WorkspaceMember,
+                    action: EnumPolicyAction.read,
+                },
+            ]);
 
-        expect(
-            ability.can(
-                EnumPolicyAction.read,
-                EnumPolicySubject.WorkspaceMember
-            )
-        ).toBe(false);
+            expect(ability.rules.map(rule => rule.inverted ?? false)).toEqual([
+                false,
+                true,
+            ]);
+            expect(
+                ability.can(
+                    EnumPolicyAction.read,
+                    subject(EnumPolicySubject.WorkspaceMember, {
+                        workspaceId: 'workspace-1',
+                    })
+                )
+            ).toBe(false);
+        });
     });
 });

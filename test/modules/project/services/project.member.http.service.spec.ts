@@ -12,7 +12,7 @@ import {
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
@@ -29,7 +29,7 @@ describe('ProjectMemberHttpService', () => {
     const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> = mock();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> = mock();
     const requestStoreService: MockProxy<RequestStoreService> = mock();
-    const policyDomain: MockProxy<PolicyDomain> = mock();
+    const policyAbilityDomain: MockProxy<PolicyAbilityDomain> = mock();
     const project = mock<Project>({
         id: 'project-id',
         workspaceId: 'workspace-id',
@@ -49,7 +49,7 @@ describe('ProjectMemberHttpService', () => {
                 },
                 { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
                 { provide: RequestStoreService, useValue: requestStoreService },
-                { provide: PolicyDomain, useValue: policyDomain },
+                { provide: PolicyAbilityDomain, useValue: policyAbilityDomain },
             ],
         }).compile();
         service = module.get(ProjectMemberHttpService);
@@ -62,7 +62,7 @@ describe('ProjectMemberHttpService', () => {
         });
         const ability = mock<PolicyAbility>();
         const member = mock<IProjectMember>();
-        policyDomain.requireStored.mockReturnValue(ability);
+        policyAbilityDomain.requireStored.mockReturnValue(ability);
         workspaceMemberDomain.getOneByWorkspaceAndUser.mockResolvedValue(
             mock<WorkspaceMember>({
                 userId: body.userId,
@@ -80,10 +80,10 @@ describe('ProjectMemberHttpService', () => {
             expect.objectContaining({ userId: body.userId }),
             body.roleId
         );
-        expect(policyDomain.requireStored).toHaveBeenCalledWith(
+        expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
             PolicyAbilityStoreKey
         );
-        expect(policyDomain.assertCan).toHaveBeenCalledWith(
+        expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
             ability,
             EnumPolicyAction.create,
             expect.objectContaining({
@@ -103,17 +103,17 @@ describe('ProjectMemberHttpService', () => {
         projectMemberDomain.getOneByIdAndProject.mockResolvedValue(
             targetMember
         );
-        policyDomain.requireStored.mockReturnValue(ability);
+        policyAbilityDomain.requireStored.mockReturnValue(ability);
         await service.updateMemberRole(
             project,
             'actor-id',
             'target-member-id',
             body
         );
-        expect(policyDomain.requireStored).toHaveBeenCalledWith(
+        expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
             PolicyAbilityStoreKey
         );
-        expect(policyDomain.assertCan).toHaveBeenCalledWith(
+        expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
             ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.ProjectMember, targetMember)
@@ -135,8 +135,8 @@ describe('ProjectMemberHttpService', () => {
         projectMemberDomain.getOneByIdAndProject.mockResolvedValue(
             targetMember
         );
-        policyDomain.requireStored.mockReturnValue(ability);
-        policyDomain.assertCan.mockImplementation(() => {
+        policyAbilityDomain.requireStored.mockReturnValue(ability);
+        policyAbilityDomain.assertCan.mockImplementation(() => {
             throw error;
         });
 
@@ -156,12 +156,12 @@ describe('ProjectMemberHttpService', () => {
         projectMemberDomain.getOneByIdAndProject.mockResolvedValue(
             targetMember
         );
-        policyDomain.requireStored.mockReturnValue(ability);
+        policyAbilityDomain.requireStored.mockReturnValue(ability);
         await service.removeMember(project, 'actor-id', 'target-member-id');
-        expect(policyDomain.requireStored).toHaveBeenCalledWith(
+        expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
             PolicyAbilityStoreKey
         );
-        expect(policyDomain.assertCan).toHaveBeenCalledWith(
+        expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
             ability,
             EnumPolicyAction.delete,
             subject(EnumPolicySubject.ProjectMember, targetMember)

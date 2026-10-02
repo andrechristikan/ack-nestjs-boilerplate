@@ -3,7 +3,6 @@ import { Injectable } from '@nestjs/common';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -25,7 +24,6 @@ import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/wor
 export class PolicyAbilityGuard implements CanActivate {
     constructor(
         private readonly policyAbilityDomain: PolicyAbilityDomain,
-        private readonly policyDomain: PolicyDomain,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -37,7 +35,8 @@ export class PolicyAbilityGuard implements CanActivate {
             return true;
         }
 
-        const user = this.policyDomain.requireStored<IUser>(UserStoreKey);
+        const user =
+            this.policyAbilityDomain.requireStored<IUser>(UserStoreKey);
         const workspace =
             this.requestStoreService.get<Workspace>(WorkspaceStoreKey);
         const workspaceMember =

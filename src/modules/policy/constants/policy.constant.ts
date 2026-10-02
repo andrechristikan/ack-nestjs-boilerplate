@@ -8,6 +8,9 @@ export enum EnumPolicyConditionPlaceholder {
     projectId = '${projectId}',
 }
 
+/** Matches a whole condition value written as a `${...}` placeholder token. */
+export const PolicyPlaceholderPattern = /^\$\{[^}]+\}$/;
+
 /**
  * Route metadata key holding the `{ subject, action }` requirements `@PolicyProtected` declares.
  * @public

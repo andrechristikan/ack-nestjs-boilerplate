@@ -1,3 +1,4 @@
+import { subject } from '@casl/ability';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -13,9 +14,9 @@ import {
     EnumPolicySubject,
     EnumRoleScope,
 } from '@generated/prisma-client/client';
-import type { Prisma } from '@generated/prisma-client/client';
+import type { Prisma, Workspace } from '@generated/prisma-client/client';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
@@ -38,7 +39,8 @@ describe('WorkspaceMemberHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
+    const policyAbilityDomain: MockProxy<PolicyAbilityDomain> =
+        mock<PolicyAbilityDomain>();
     const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
     const accessibleMemberWhere: Prisma.WorkspaceMemberWhereInput = {
         workspaceId: 'workspace-id',
@@ -152,15 +154,15 @@ describe('WorkspaceMemberHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        policyDomain.requireStored.mockReturnValue(ability);
-        policyDomain.requireAccessibleWhere.mockReturnValue(
+        policyAbilityDomain.requireStored.mockReturnValue(ability);
+        policyAbilityDomain.requireAccessibleWhere.mockReturnValue(
             accessibleMemberWhere
         );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceMemberHttpService,
-                { provide: PolicyDomain, useValue: policyDomain },
+                { provide: PolicyAbilityDomain, useValue: policyAbilityDomain },
                 {
                     provide: WorkspaceMemberDomain,
                     useValue: workspaceMemberDomain,
@@ -180,13 +182,19 @@ describe('WorkspaceMemberHttpService', () => {
     });
 
     describe('transferOwnership', () => {
-        it('delegates to the domain with the target user id', async () => {
-            const dto = {
-                targetUserId: 'target-user-id',
-            } satisfies WorkspaceTransferOwnershipRequestDto;
+        const dto = {
+            targetUserId: 'target-user-id',
+        } satisfies WorkspaceTransferOwnershipRequestDto;
+        const workspace = { id: 'workspace-id' } as Workspace;
 
-            await service.transferOwnership('workspace-id', actorMember, dto);
+        it('checks Workspace update on the workspace record, then delegates to the domain', async () => {
+            await service.transferOwnership(workspace, actorMember, dto);
 
+            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.update,
+                subject(EnumPolicySubject.Workspace, workspace)
+            );
             expect(
                 workspaceMemberDomain.transferOwnership
             ).toHaveBeenCalledWith(
@@ -194,6 +202,19 @@ describe('WorkspaceMemberHttpService', () => {
                 actorMember,
                 'target-user-id'
             );
+        });
+
+        it('does not call the domain when the policy denies the workspace', async () => {
+            policyAbilityDomain.assertCan.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(
+                service.transferOwnership(workspace, actorMember, dto)
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(
+                workspaceMemberDomain.transferOwnership
+            ).not.toHaveBeenCalled();
         });
     });
 
@@ -289,10 +310,12 @@ describe('WorkspaceMemberHttpService', () => {
 
             await service.getMembersList('workspace-id', {});
 
-            expect(policyDomain.requireStored).toHaveBeenCalledWith(
+            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
                 PolicyAbilityStoreKey
             );
-            expect(policyDomain.requireAccessibleWhere).toHaveBeenCalledWith(
+            expect(
+                policyAbilityDomain.requireAccessibleWhere
+            ).toHaveBeenCalledWith(
                 ability,
                 EnumPolicyAction.read,
                 EnumPolicySubject.WorkspaceMember
@@ -300,7 +323,7 @@ describe('WorkspaceMemberHttpService', () => {
         });
 
         it('throws RequestContextMissingException when no ability is stored and never lists', async () => {
-            policyDomain.requireStored.mockImplementation(() => {
+            policyAbilityDomain.requireStored.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
@@ -311,9 +334,11 @@ describe('WorkspaceMemberHttpService', () => {
         });
 
         it('propagates the policy rejection when the ability holds no read rule and never lists', async () => {
-            policyDomain.requireAccessibleWhere.mockImplementation(() => {
-                throw new PolicyForbiddenException();
-            });
+            policyAbilityDomain.requireAccessibleWhere.mockImplementation(
+                () => {
+                    throw new PolicyForbiddenException();
+                }
+            );
 
             await expect(
                 service.getMembersList('workspace-id', {})
@@ -338,12 +363,38 @@ describe('WorkspaceMemberHttpService', () => {
                 dto
             );
 
+            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.update,
+                subject(EnumPolicySubject.WorkspaceMember, targetMember)
+            );
             expect(workspaceMemberDomain.updateMemberRole).toHaveBeenCalledWith(
                 'workspace-id',
                 actorMember,
                 targetMember,
                 'admin-role-id'
             );
+        });
+
+        it('does not call the domain when the policy denies the target member', async () => {
+            workspaceMemberDomain.getOneByIdAndWorkspace.mockResolvedValue(
+                targetMember
+            );
+            policyAbilityDomain.assertCan.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(
+                service.updateMemberRole(
+                    'workspace-id',
+                    actorMember,
+                    targetMember.id,
+                    { roleId: 'admin-role-id' }
+                )
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(
+                workspaceMemberDomain.updateMemberRole
+            ).not.toHaveBeenCalled();
         });
     });
 
@@ -358,11 +409,34 @@ describe('WorkspaceMemberHttpService', () => {
                 targetMember.id
             );
 
+            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.delete,
+                subject(EnumPolicySubject.WorkspaceMember, targetMember)
+            );
             expect(workspaceMemberDomain.removeMember).toHaveBeenCalledWith(
                 'workspace-id',
                 actorMember,
                 targetMember
             );
+        });
+
+        it('does not call the domain when the policy denies the target member', async () => {
+            workspaceMemberDomain.getOneByIdAndWorkspace.mockResolvedValue(
+                targetMember
+            );
+            policyAbilityDomain.assertCan.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(
+                service.removeMember(
+                    'workspace-id',
+                    actorMember,
+                    targetMember.id
+                )
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(workspaceMemberDomain.removeMember).not.toHaveBeenCalled();
         });
     });
 

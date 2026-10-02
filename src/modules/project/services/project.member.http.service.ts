@@ -22,7 +22,7 @@ import type {
 } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';
@@ -34,7 +34,7 @@ export class ProjectMemberHttpService {
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService,
-        private readonly policyDomain: PolicyDomain
+        private readonly policyAbilityDomain: PolicyAbilityDomain
     ) {}
 
     async getMembersList(
@@ -64,10 +64,10 @@ export class ProjectMemberHttpService {
         actorId: string,
         { userId, roleId }: ProjectMemberAssignRequestDto
     ): Promise<IResponseReturn<IProjectMember>> {
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
             PolicyAbilityStoreKey
         );
-        this.policyDomain.assertCan(
+        this.policyAbilityDomain.assertCan(
             ability,
             EnumPolicyAction.create,
             subject(EnumPolicySubject.ProjectMember, {
@@ -102,10 +102,10 @@ export class ProjectMemberHttpService {
                 project.id,
                 targetMemberId
             );
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
             PolicyAbilityStoreKey
         );
-        this.policyDomain.assertCan(
+        this.policyAbilityDomain.assertCan(
             ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.ProjectMember, targetMember)
@@ -128,10 +128,10 @@ export class ProjectMemberHttpService {
                 project.id,
                 targetMemberId
             );
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
             PolicyAbilityStoreKey
         );
-        this.policyDomain.assertCan(
+        this.policyAbilityDomain.assertCan(
             ability,
             EnumPolicyAction.delete,
             subject(EnumPolicySubject.ProjectMember, targetMember)

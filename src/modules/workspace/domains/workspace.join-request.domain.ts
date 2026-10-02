@@ -193,6 +193,23 @@ export class WorkspaceJoinRequestDomain {
         );
     }
 
+    /** Loads the join request the route addresses within the workspace, so a record outside it reads as not found. */
+    async getJoinRequest(
+        workspaceId: string,
+        workspaceJoinRequestId: string
+    ): Promise<WorkspaceJoinRequest> {
+        const joinRequest =
+            await this.workspaceJoinRequestRepository.findByIdAndWorkspace(
+                workspaceJoinRequestId,
+                workspaceId
+            );
+        if (!joinRequest) {
+            throw new WorkspaceJoinRequestNotFoundException();
+        }
+
+        return joinRequest;
+    }
+
     async acceptJoinRequest(
         workspace: Workspace,
         reviewerId: string,

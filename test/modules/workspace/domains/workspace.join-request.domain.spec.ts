@@ -266,6 +266,26 @@ describe('WorkspaceJoinRequestDomain', () => {
         );
     });
 
+    it('loads the join request the route addresses within the workspace', async () => {
+        joinRepository.findByIdAndWorkspace.mockResolvedValue(joinRequest);
+
+        await expect(
+            domain.getJoinRequest('workspace-id', 'join-id')
+        ).resolves.toBe(joinRequest);
+        expect(joinRepository.findByIdAndWorkspace).toHaveBeenCalledWith(
+            'join-id',
+            'workspace-id'
+        );
+    });
+
+    it('reports a join request outside the workspace as not found', async () => {
+        joinRepository.findByIdAndWorkspace.mockResolvedValue(null);
+
+        await expect(
+            domain.getJoinRequest('workspace-id', 'join-id')
+        ).rejects.toBeInstanceOf(WorkspaceJoinRequestNotFoundException);
+    });
+
     it.each([
         [null, WorkspaceJoinRequestNotFoundException],
         [

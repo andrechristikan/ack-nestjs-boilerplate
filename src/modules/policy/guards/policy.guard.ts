@@ -5,7 +5,7 @@ import {
     PolicyAbilityStoreKey,
     PolicyRequiredMetaKey,
 } from '@modules/policy/constants/policy.constant';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyPredefinedNotFoundException } from '@modules/policy/exceptions/policy.predefined-not-found.exception';
 import type {
     IPolicyRequired,
@@ -16,7 +16,7 @@ import type {
 export class PolicyGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly policyDomain: PolicyDomain
+        private readonly policyAbilityDomain: PolicyAbilityDomain
     ) {}
 
     canActivate(context: ExecutionContext): boolean {
@@ -28,12 +28,12 @@ export class PolicyGuard implements CanActivate {
             throw new PolicyPredefinedNotFoundException();
         }
 
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
             PolicyAbilityStoreKey
         );
         for (const { subject, action } of required) {
             for (const one of action) {
-                this.policyDomain.assertCan(ability, one, subject);
+                this.policyAbilityDomain.assertCan(ability, one, subject);
             }
         }
 

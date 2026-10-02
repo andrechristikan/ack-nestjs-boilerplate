@@ -1,13 +1,15 @@
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { subject } from '@casl/ability';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     Prisma,
 } from '@generated/prisma-client/client';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import type { Workspace } from '@generated/prisma-client/client';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import {
@@ -29,18 +31,26 @@ import { Injectable } from '@nestjs/common';
 export class WorkspaceMemberHttpService {
     constructor(
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
-        private readonly policyDomain: PolicyDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     async transferOwnership(
-        workspaceId: string,
+        workspace: Workspace,
         actorMember: IWorkspaceMemberWithRole,
         { targetUserId }: WorkspaceTransferOwnershipRequestDto
     ): Promise<void> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        this.policyAbilityDomain.assertCan(
+            ability,
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.Workspace, workspace)
+        );
         await this.workspaceMemberDomain.transferOwnership(
-            workspaceId,
+            workspace.id,
             actorMember,
             targetUserId
         );
@@ -57,11 +67,11 @@ export class WorkspaceMemberHttpService {
         workspaceId: string,
         query: WorkspaceMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
             PolicyAbilityStoreKey
         );
         const accessibleWhere =
-            this.policyDomain.requireAccessibleWhere<Prisma.WorkspaceMemberWhereInput>(
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.WorkspaceMemberWhereInput>(
                 ability,
                 EnumPolicyAction.read,
                 EnumPolicySubject.WorkspaceMember
@@ -112,6 +122,14 @@ export class WorkspaceMemberHttpService {
                 workspaceId,
                 targetMemberId
             );
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        this.policyAbilityDomain.assertCan(
+            ability,
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.WorkspaceMember, targetMember)
+        );
         await this.workspaceMemberDomain.updateMemberRole(
             workspaceId,
             actorMember,
@@ -130,6 +148,14 @@ export class WorkspaceMemberHttpService {
                 workspaceId,
                 targetMemberId
             );
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        this.policyAbilityDomain.assertCan(
+            ability,
+            EnumPolicyAction.delete,
+            subject(EnumPolicySubject.WorkspaceMember, targetMember)
+        );
         await this.workspaceMemberDomain.removeMember(
             workspaceId,
             actorMember,
