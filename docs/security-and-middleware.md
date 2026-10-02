@@ -465,14 +465,13 @@ Feature modules own the rest of the keys, each declared in its own `constants/` 
 | `AuthPayloadStoreKey` | `AuthJwtAccessGuard`, `AuthJwtRefreshGuard` | the verified JWT payload |
 | `UserStoreKey` | `UserGuard` | the loaded `IUser` |
 | `ApiKeyStoreKey` | `ApiKeyXApiKeyGuard` | the authenticated `ApiKey` |
-| `PolicyStoreKey` | `UserGuard` | the platform role's policies |
-| `WorkspaceMemberPolicyStoreKey` | `WorkspaceMemberGuard` | the policies of the caller's workspace role |
-| `ProjectMemberPolicyStoreKey` | `ProjectMemberGuard` | the policies of the caller's project role |
-| `PolicyAbilityStoreKey` | `PolicyDomain` | the CASL ability built once per request from the three policy keys, on the first permission check |
+| `PolicyAbilityStoreKey` | `PlatformPolicyAbilityGuard`, `WorkspacePolicyAbilityGuard`, `ProjectPolicyAbilityGuard` | the CASL ability of the route's effective scope, built once per request by the first ability guard that runs; a later ability guard reuses it |
 | `WorkspaceStoreKey` | `WorkspaceGuard` | the resolved `Workspace` |
 | `WorkspaceMemberStoreKey` | `WorkspaceMemberGuard` | the caller's `WorkspaceMember` row with its minimal role (`id`, `scope`, `key`, `name`) |
+| `WorkspaceMemberTargetStoreKey` | `WorkspaceMemberPolicyGuard` | the workspace member record the route addresses, authorized against the ability |
 | `ProjectStoreKey` | `ProjectGuard` | the resolved `Project` |
 | `ProjectMemberStoreKey` | `ProjectMemberGuard` | the caller's `ProjectMember` row with its minimal role (`id`, `scope`, `key`, `name`) |
+| `ProjectMemberTargetStoreKey` | `ProjectMemberPolicyGuard` | the project member record the route addresses, authorized against the ability |
 | `ActivityLogStageStoreKey` | `ActivityLogDomain.stagePrepared` | the staged activity events of the request |
 | `PaginationStoreKey` | HTTP services via `PaginationQueryUtil` `storePatch` | the response-metadata block `ResponsePaginationInterceptor` emits |
 
@@ -562,6 +561,8 @@ StoreReader<K extends Extract<keyof Model, string>>(field?: K): ParameterDecorat
 | `@WorkspaceMemberCurrent(field?)` | `WorkspaceMember` with its role | `WorkspaceMemberStoreKey` | `WorkspaceMemberGuard` |
 | `@ProjectCurrent(field?)` | `Project` | `ProjectStoreKey` | `ProjectGuard` |
 | `@ProjectMemberCurrent(field?)` | `ProjectMember` with its role | `ProjectMemberStoreKey` | `ProjectMemberGuard`, bound by the strict `@ProjectMemberProtected()` |
+| `@WorkspaceMemberTargetCurrent(field?)` | the authorized target `WorkspaceMember` with its role | `WorkspaceMemberTargetStoreKey` | `WorkspaceMemberPolicyGuard` |
+| `@ProjectMemberTargetCurrent(field?)` | the authorized target `ProjectMember` with its role | `ProjectMemberTargetStoreKey` | `ProjectMemberPolicyGuard` |
 
 `@ProjectMemberCurrent()` is valid only on a route carrying the strict `@ProjectMemberProtected()`. With `{ required: false }` the guard stores no member row when the caller has none, so the read throws there.
 

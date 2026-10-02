@@ -69,7 +69,7 @@ flowchart LR
 - `@ApiKeyProtected`
 - `@AuthJwtAccessProtected`
 - `@UserProtected`
-- `@PolicyProtected({ subject: EnumPolicySubject.analytic, action: [EnumPolicyAction.read] })`
+- `@PlatformPolicyProtected({ subject: EnumPolicySubject.analytic, action: [EnumPolicyAction.read] })`
 - `@TermPolicyAcceptanceProtected`
 - `@RequestThrottle({ user: true })`
 
@@ -83,7 +83,7 @@ Admin scope carries no workspace header.
 - `@UserProtected`
 - `@WorkspaceProtected`
 - `@WorkspaceMemberProtected`
-- `@PolicyProtected({ subject: EnumPolicySubject.analytic, action: [EnumPolicyAction.read] })` on every route except the workspace summary
+- `@WorkspaceSubjectPolicyProtected({ subject: EnumPolicySubject.analytic, action: [EnumPolicyAction.read] })` on every route except the workspace summary
 - `@TermPolicyAcceptanceProtected`
 - `@RequestThrottle({ user: true })`
 

@@ -20,7 +20,6 @@ import {
 import type {
     IWorkspaceMember,
     IWorkspaceMemberWithRole,
-    IWorkspaceMemberWithRolePolicies,
 } from '@modules/workspace/interfaces/workspace.interface';
 import type { IWorkspaceMemberRepository } from '@modules/workspace/interfaces/workspace.member-repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -34,8 +33,9 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
 
     private buildWorkspaceScopedWhere(
         workspaceId: string,
-        where?: Prisma.WorkspaceMemberWhereInput,
-        role?: Record<string, IPaginationIn>
+        filters?: Prisma.WorkspaceMemberWhereInput,
+        role?: Record<string, IPaginationIn>,
+        where?: Prisma.WorkspaceMemberWhereInput
     ): Prisma.WorkspaceMemberWhereInput {
         const roleKeys = role?.role?.in;
         const roleFilter: Prisma.WorkspaceMemberWhereInput = roleKeys
@@ -48,16 +48,19 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
             : {};
 
         return {
-            ...where,
-            ...roleFilter,
-            workspaceId,
+            AND: [
+                filters ?? {},
+                ...(where ? [where] : []),
+                roleFilter,
+                { workspaceId },
+            ],
         };
     }
 
     async findOneWithRoleByWorkspaceAndUser(
         workspaceId: string,
         userId: string
-    ): Promise<IWorkspaceMemberWithRolePolicies | null> {
+    ): Promise<IWorkspaceMemberWithRole | null> {
         return this.databaseService.client.workspaceMember.findFirst({
             where: {
                 workspaceId,
@@ -81,14 +84,18 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
 
     async findByIdAndWorkspace(
         workspaceMemberId: string,
-        workspaceId: string
+        workspaceId: string,
+        where?: Prisma.WorkspaceMemberWhereInput
     ): Promise<IWorkspaceMemberWithRole | null> {
         return this.databaseService.client.workspaceMember.findFirst({
             where: {
-                id: workspaceMemberId,
-                workspaceId,
+                AND: [
+                    { id: workspaceMemberId },
+                    { workspaceId },
+                    ...(where ? [where] : []),
+                ],
             },
-            include: { role: { select: RoleSelect } },
+            include: WorkspaceMemberRoleInclude,
         });
     }
 
@@ -140,14 +147,14 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
     async findWithPaginationOffset(
         workspaceId: string,
         {
-            where,
+            where: filters,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
         role?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
-            where,
+            filters,
             role
         );
 
@@ -171,15 +178,17 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
     async findWithPaginationCursor(
         workspaceId: string,
         {
-            where,
+            where: filters,
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>
+        role?: Record<string, IPaginationIn>,
+        where?: Prisma.WorkspaceMemberWhereInput
     ): Promise<IPaginationCursorReturn<IWorkspaceMember>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
-            where,
-            role
+            filters,
+            role,
+            where
         );
 
         return this.paginationService.cursor<

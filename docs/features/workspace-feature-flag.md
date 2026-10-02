@@ -196,15 +196,15 @@ The guard checks the global `FeatureFlag.isEnable` kill switch first, then the w
 async list(): Promise<IResponsePaginationReturn<ProjectResponseDto>> { ... }
 ```
 
-Position matters. `@WorkspaceFeatureFlagProtected()` sits above `@WorkspaceProtected()` and above `@PolicyProtected()`. Decorators run bottom-up, so the feature guard executes before the permission guard and after `WorkspaceGuard` has stored the workspace in the request store. Without that order the feature guard either finds no workspace or the permission guard runs before feature availability is checked.
+Position matters. `@WorkspaceFeatureFlagProtected()` sits above `@WorkspaceProtected()` and above the policy decorator. Decorators run bottom-up, so the feature guard executes before the permission guard and after `WorkspaceGuard` has stored the workspace in the request store. Without that order the feature guard either finds no workspace or the permission guard runs before feature availability is checked.
 
 The `/admin` scope takes no workspace guard, so it takes no workspace flag either.
 
-Workspace feature configuration answers whether a capability is available and which limits or settings apply. `FeatureFlagGuard` and `WorkspaceFeatureFlagGuard` perform the feature checks, including the global feature kill switch. `PolicyProtected` performs the permission check. A route can require both checks:
+Workspace feature configuration answers whether a capability is available and which limits or settings apply. `FeatureFlagGuard` and `WorkspaceFeatureFlagGuard` perform the feature checks, including the global feature kill switch. A policy decorator performs the permission check. A route can require both checks:
 
 ```typescript
 @WorkspaceFeatureFlagProtected('project')
-@PolicyProtected({ subject: 'project', action: 'read' })
+@ProjectPolicyProtected(EnumPolicyAction.read)
 ```
 
 Feature availability and authorization remain separate checks:
@@ -212,7 +212,7 @@ Feature availability and authorization remain separate checks:
 ```text
 FeatureFlagGuard / WorkspaceFeatureFlagGuard
     -> feature is available and globally enabled
-PolicyProtected
+Policy decorator
     -> caller has permission for the action
 ```
 

@@ -9,7 +9,6 @@ import { ProjectMemberRoleInclude } from '@modules/project/constants/project.con
 import type {
     IProjectMember,
     IProjectMemberWithRole,
-    IProjectMemberWithRolePolicies,
 } from '@modules/project/interfaces/project.interface';
 import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
 import { RoleSelect } from '@modules/role/constants/role.constant';
@@ -39,7 +38,7 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
     async findOneWithRoleByProjectAndUser(
         projectId: string,
         userId: string
-    ): Promise<IProjectMemberWithRolePolicies | null> {
+    ): Promise<IProjectMemberWithRole | null> {
         return this.databaseService.client.projectMember.findFirst({
             where: {
                 projectId,
@@ -51,14 +50,18 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
 
     async findByIdAndProject(
         projectMemberId: string,
-        projectId: string
+        projectId: string,
+        where?: Prisma.ProjectMemberWhereInput
     ): Promise<IProjectMemberWithRole | null> {
         return this.databaseService.client.projectMember.findFirst({
             where: {
-                id: projectMemberId,
-                projectId,
+                AND: [
+                    { id: projectMemberId },
+                    { projectId },
+                    ...(where ? [where] : []),
+                ],
             },
-            include: { role: { select: RoleSelect } },
+            include: ProjectMemberRoleInclude,
         });
     }
 

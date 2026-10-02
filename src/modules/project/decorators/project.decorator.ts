@@ -1,4 +1,7 @@
 import type { Project } from '@generated/prisma-client/client';
+import { EnumPolicyProjectSubject } from '@modules/policy/enums/policy.enum';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import type { IPolicyRequired } from '@modules/policy/interfaces/policy.interface';
 import {
     DocProjectErrorResponses,
     DocProjectMemberErrorResponses,
@@ -71,12 +74,11 @@ export const ProjectCurrent = createParamDecorator<
 );
 
 /**
- * Loads the caller's project membership and merges the project role's policies into the resolved
- * request ability. Stack
- * above `@ProjectProtected()` and `@WorkspaceMemberProtected()`. The default is strict: a caller
- * with no `ProjectMember` row is rejected with `memberForbidden`. Pass `{ required: false }` only
- * on a policy-gated route that a workspace role must reach without a row (project delete): a
- * caller with no row passes through with the workspace policies alone.
+ * Loads the caller's project membership and stores it with its role. Stack above
+ * `@ProjectProtected()` and `@WorkspaceMemberProtected()`. The default is strict: a caller with no
+ * `ProjectMember` row is rejected with `memberForbidden`. Pass `{ required: false }` only on a
+ * policy-gated route that a workspace role must reach without a row (project delete): a caller
+ * with no row passes through and no member is stored.
  * @public
  */
 export function ProjectMemberProtected(options?: {
@@ -139,3 +141,14 @@ export const ProjectMemberCurrent = createParamDecorator<
         return value;
     }
 );
+
+/**
+ * Requires the caller to hold the given project policy subject/action pairs.
+ * Sits above `@ProjectMemberProtected(...)` and `@ProjectProtected()`.
+ * @public
+ */
+export function ProjectPolicyProtected(
+    ...requiredPolicies: IPolicyRequired<EnumPolicyProjectSubject>[]
+): MethodDecorator {
+    return PolicyProtected(...requiredPolicies);
+}

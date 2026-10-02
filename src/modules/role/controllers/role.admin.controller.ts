@@ -12,7 +12,7 @@ import {
 
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleHttpService } from '@modules/role/services/role.http.service';
 import type {
     IResponsePaginationReturn,
@@ -45,7 +45,7 @@ export class RoleAdminController {
     @Doc({ summary: 'get list of roles' })
     @ResponsePagination('role.list', { schema: RoleListResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read],
     })
@@ -64,7 +64,7 @@ export class RoleAdminController {
     @Doc({ summary: 'get detail a role' })
     @Response('role.get', { schema: RoleSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read],
     })
@@ -83,7 +83,7 @@ export class RoleAdminController {
     @Doc({ summary: 'update data a role' })
     @Response('role.update', { schema: RoleSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })

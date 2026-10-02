@@ -10,21 +10,21 @@ import type { Prisma, WorkspaceMember } from '@generated/prisma-client/client';
 import type {
     IWorkspaceMember,
     IWorkspaceMemberWithRole,
-    IWorkspaceMemberWithRolePolicies,
 } from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IWorkspaceMemberRepository {
     findOneWithRoleByWorkspaceAndUser(
         workspaceId: string,
         userId: string
-    ): Promise<IWorkspaceMemberWithRolePolicies | null>;
+    ): Promise<IWorkspaceMemberWithRole | null>;
     findOneByWorkspaceAndUser(
         workspaceId: string,
         userId: string
     ): Promise<WorkspaceMember | null>;
     findByIdAndWorkspace(
         workspaceMemberId: string,
-        workspaceId: string
+        workspaceId: string,
+        where?: Prisma.WorkspaceMemberWhereInput
     ): Promise<IWorkspaceMemberWithRole | null>;
     countOwnedActiveByUser(userId: string): Promise<number>;
     countOwners(workspaceId: string): Promise<number>;
@@ -33,19 +33,14 @@ export interface IWorkspaceMemberRepository {
     ): Promise<{ userId: string }[]>;
     findWithPaginationOffset(
         workspaceId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
+        params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
         role?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>>;
     findWithPaginationCursor(
         workspaceId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>
+        params: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
+        role?: Record<string, IPaginationIn>,
+        where?: Prisma.WorkspaceMemberWhereInput
     ): Promise<IPaginationCursorReturn<IWorkspaceMember>>;
     createOwnerInTx(
         tx: IDatabaseTransactionClient,

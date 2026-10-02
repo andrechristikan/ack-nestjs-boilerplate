@@ -19,7 +19,7 @@ import {
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
 
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
@@ -45,7 +45,7 @@ export class SessionAdminController {
     @Doc({ summary: 'admin get all user Sessions' })
     @ResponsePagination('session.list', { schema: SessionResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected(
+    @PlatformPolicyProtected(
         {
             subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
@@ -72,7 +72,7 @@ export class SessionAdminController {
     @Doc({ summary: 'admin revoke user Session' })
     @Response('session.revoke')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected(
+    @PlatformPolicyProtected(
         {
             subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
@@ -104,7 +104,7 @@ export class SessionAdminController {
     @Doc({ summary: 'admin revoke all user Sessions' })
     @Response('session.revokeAll')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected(
+    @PlatformPolicyProtected(
         {
             subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],

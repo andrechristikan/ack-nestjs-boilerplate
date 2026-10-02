@@ -566,14 +566,41 @@ describe('WorkspaceDomain', () => {
             result
         );
         workspaceRepository.findByIdForAdmin.mockResolvedValue(workspace);
+        const where = { isPublic: true };
         await expect(
-            domain.getListForAdmin(pagination, {
-                public: { equal: true },
-            } as never)
+            domain.getListForAdmin(
+                pagination,
+                {
+                    public: { equal: true },
+                } as never,
+                where
+            )
         ).resolves.toBe(result);
+        expect(
+            workspaceRepository.findWithPaginationOffsetForAdmin
+        ).toHaveBeenCalledWith(
+            pagination,
+            {
+                public: { equal: true },
+            },
+            where
+        );
         await expect(domain.getByIdForAdmin(workspace.id)).resolves.toBe(
             workspace
         );
+    });
+
+    it('lists workspaces for a caller that supplies no where', async () => {
+        const pagination = { page: 1, perPage: 10 } as never;
+        const result = { data: [workspace], pagination: {} } as never;
+        workspaceRepository.findWithPaginationOffsetForAdmin.mockResolvedValue(
+            result
+        );
+
+        await expect(domain.getListForAdmin(pagination)).resolves.toBe(result);
+        expect(
+            workspaceRepository.findWithPaginationOffsetForAdmin
+        ).toHaveBeenCalledWith(pagination, undefined, undefined);
     });
 
     it('rejects an unknown workspace administrator read', async () => {

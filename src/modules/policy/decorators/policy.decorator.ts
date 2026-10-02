@@ -3,23 +3,33 @@ import {
     DocPolicyErrorResponses,
     PolicyRequiredMetaKey,
 } from '@modules/policy/constants/policy.constant';
+import { EnumPolicyPlatformSubject } from '@modules/policy/enums/policy.enum';
+import { PolicyAbilityGuard } from '@modules/policy/guards/policy.ability.guard';
 import { PolicyGuard } from '@modules/policy/guards/policy.guard';
-import type { IPolicyRequired } from '@modules/policy/interfaces/policy.interface';
+import type {
+    IPolicyRequired,
+    PolicySubject,
+} from '@modules/policy/interfaces/policy.interface';
 
-/**
- * Protects a route, requiring the caller to hold the given policies, and documents policy kits.
- * The guard judges the request-scoped ability, which is composed from the workspace and project
- * guards' store entries, so this decorator sits above `@WorkspaceProtected` / `@ProjectProtected`
- * and the member guards: decorators apply bottom to top, so the policy guard then runs after them.
- * @public
- */
-export function PolicyProtected(
-    ...requiredPolicies: IPolicyRequired[]
+/** Builds the request ability and enforces the declared subject/action policies. */
+export function PolicyProtected<TSubject extends PolicySubject>(
+    ...requirements: IPolicyRequired<TSubject>[]
 ): MethodDecorator {
     return applyDecorators(
-        UseGuards(PolicyGuard),
-        SetMetadata(PolicyRequiredMetaKey, requiredPolicies),
+        UseGuards(PolicyAbilityGuard, PolicyGuard),
+        SetMetadata(PolicyRequiredMetaKey, requirements),
         DocPolicyErrorResponses.forbidden,
         DocPolicyErrorResponses.predefinedNotFound
     );
+}
+
+/** Builds the request ability without declaring a policy requirement. */
+export function PolicyAbilityProtected(): MethodDecorator {
+    return applyDecorators(UseGuards(PolicyAbilityGuard));
+}
+
+export function PlatformPolicyProtected(
+    ...requirements: IPolicyRequired<EnumPolicyPlatformSubject>[]
+): MethodDecorator {
+    return PolicyProtected(...requirements);
 }

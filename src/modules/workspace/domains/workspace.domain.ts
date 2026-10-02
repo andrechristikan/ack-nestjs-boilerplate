@@ -633,11 +633,13 @@ export class WorkspaceDomain {
 
     async getListForAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
-        isPublic?: Record<string, IPaginationEqual>
+        isPublic?: Record<string, IPaginationEqual>,
+        where?: Prisma.WorkspaceWhereInput
     ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.workspaceRepository.findWithPaginationOffsetForAdmin(
             pagination,
-            isPublic
+            isPublic,
+            where
         );
     }
 

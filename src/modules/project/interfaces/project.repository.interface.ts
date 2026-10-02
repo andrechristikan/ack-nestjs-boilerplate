@@ -23,18 +23,13 @@ export interface IProjectRepository {
     findWithPaginationCursorForWorkspace(
         workspaceId: string,
         memberUserId: string | null,
-        authorizationWhere: Prisma.ProjectWhereInput | null,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
+        params: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
+        where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>>;
     findWithPaginationOffsetForAdmin(
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string
+        params: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
+        workspaceId?: string,
+        where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>>;
     createInTx(
         tx: IDatabaseTransactionClient,

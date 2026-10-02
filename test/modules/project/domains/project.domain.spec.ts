@@ -7,24 +7,21 @@ import { DatabaseUniqueValueGenerationFailedException } from '@common/database/e
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type {
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
-    EnumPolicyAction,
-    EnumPolicySubject,
     EnumRoleScope,
     type Prisma,
     type Project,
     type WorkspaceMember,
 } from '@generated/prisma-client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
@@ -42,10 +39,6 @@ import { ConfigService } from '@nestjs/config';
 describe('ProjectDomain', () => {
     const projectRepository: MockProxy<ProjectRepository> =
         mock<ProjectRepository>();
-    const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
-    const requestStoreService: MockProxy<RequestStoreService> =
-        mock<RequestStoreService>();
-    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -70,9 +63,6 @@ describe('ProjectDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        requestStoreService.get.mockImplementation(key =>
-            key === PolicyAbilityStoreKey ? ability : null
-        );
         configGet.mockImplementation((key: string) => {
             if (key === 'project.slugRegex') return /^[a-z-]+$/;
             if (key === 'project.slugPrefix') return 'project';
@@ -92,8 +82,6 @@ describe('ProjectDomain', () => {
             providers: [
                 ProjectDomain,
                 { provide: ProjectRepository, useValue: projectRepository },
-                { provide: PolicyDomain, useValue: policyDomain },
-                { provide: RequestStoreService, useValue: requestStoreService },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: HelperDateService, useValue: helperDateService },
                 {
@@ -130,27 +118,16 @@ describe('ProjectDomain', () => {
         ).toHaveBeenCalledWith('project-id', 'workspace-id');
     });
 
-    it.each([
-        {
-            name: 'a workspace role holding project read',
-            canRead: true,
-            expectedUserId: null,
-        },
-        {
-            name: 'a workspace role without project read',
-            canRead: false,
-            expectedUserId: 'user-id',
-        },
-    ])(
-        'scopes the project list for $name',
-        async ({ canRead, expectedUserId }) => {
-            const workspaceMember = mock<WorkspaceMember>({
-                userId: 'user-id',
-            });
-            const pagination =
-                mock<IPaginationQueryCursorParams<Prisma.ProjectWhereInput>>();
-            const page = mock<IResponsePaginationReturn<Project>>();
-            ability.can.mockReturnValue(canRead);
+    describe('getListForMember', () => {
+        const workspaceMember = mock<WorkspaceMember>({ userId: 'user-id' });
+        const pagination =
+            mock<IPaginationQueryCursorParams<Prisma.ProjectWhereInput>>();
+        const page = mock<IResponsePaginationReturn<Project>>();
+        const where: Prisma.ProjectWhereInput = {
+            workspaceId: 'workspace-id',
+        };
+
+        it('lists every project of the workspace for a caller that can read all of them', async () => {
             projectRepository.findWithPaginationCursorForWorkspace.mockResolvedValue(
                 page
             );
@@ -159,23 +136,76 @@ describe('ProjectDomain', () => {
                 domain.getListForMember(
                     'workspace-id',
                     workspaceMember,
-                    pagination
+                    pagination,
+                    true,
+                    where
                 )
             ).resolves.toBe(page);
-            expect(ability.can).toHaveBeenCalledWith(
-                EnumPolicyAction.read,
-                EnumPolicySubject.Project
+            expect(
+                projectRepository.findWithPaginationCursorForWorkspace
+            ).toHaveBeenCalledWith('workspace-id', null, pagination, where);
+        });
+
+        it('scopes the list to the projects the caller is a member of when the caller cannot read all', async () => {
+            projectRepository.findWithPaginationCursorForWorkspace.mockResolvedValue(
+                page
             );
+
+            await expect(
+                domain.getListForMember(
+                    'workspace-id',
+                    workspaceMember,
+                    pagination,
+                    false
+                )
+            ).resolves.toBe(page);
             expect(
                 projectRepository.findWithPaginationCursorForWorkspace
             ).toHaveBeenCalledWith(
                 'workspace-id',
-                expectedUserId,
-                undefined,
-                pagination
+                'user-id',
+                pagination,
+                undefined
             );
-        }
-    );
+        });
+    });
+
+    describe('getListForAdmin', () => {
+        it('forwards the where and the workspace filter', async () => {
+            const pagination =
+                mock<IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>>();
+            const page = mock<IResponsePaginationReturn<Project>>();
+            const where: Prisma.ProjectWhereInput = {
+                workspaceId: 'workspace-id',
+            };
+            projectRepository.findWithPaginationOffsetForAdmin.mockResolvedValue(
+                page
+            );
+
+            await expect(
+                domain.getListForAdmin(pagination, 'workspace-id', where)
+            ).resolves.toBe(page);
+            expect(
+                projectRepository.findWithPaginationOffsetForAdmin
+            ).toHaveBeenCalledWith(pagination, 'workspace-id', where);
+        });
+
+        it('lists for a caller that supplies no where and no workspace filter', async () => {
+            const pagination =
+                mock<IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>>();
+            const page = mock<IResponsePaginationReturn<Project>>();
+            projectRepository.findWithPaginationOffsetForAdmin.mockResolvedValue(
+                page
+            );
+
+            await expect(domain.getListForAdmin(pagination)).resolves.toBe(
+                page
+            );
+            expect(
+                projectRepository.findWithPaginationOffsetForAdmin
+            ).toHaveBeenCalledWith(pagination, undefined, undefined);
+        });
+    });
 
     describe('createProject', () => {
         const adminRole = mock<IRole>({ id: 'admin-role-id' });

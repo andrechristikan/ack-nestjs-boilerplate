@@ -41,20 +41,32 @@ const rule = (
     reason,
 });
 
+/**
+ * Builds a workspace-scoped rule. The condition is judged against the real
+ * record, so the key must exist on the subject's model: `Workspace` is the
+ * workspace itself (`id`); every other subject carries `workspaceId`
+ * (`analytic` has no model and is a subject-type check only).
+ */
 const workspaceRule = (
     subject: EnumPolicySubject,
     action: EnumPolicyAction[]
 ): IMigrationPolicyRule =>
     rule(subject, action, {
-        workspaceId: EnumPolicyConditionPlaceholder.workspaceId,
+        [subject === EnumPolicySubject.Workspace ? 'id' : 'workspaceId']:
+            EnumPolicyConditionPlaceholder.workspaceId,
     });
 
+/**
+ * Builds a project-scoped rule. `Project` is the project itself (`id`);
+ * every other subject carries `projectId`.
+ */
 const projectRule = (
     subject: EnumPolicySubject,
     action: EnumPolicyAction[]
 ): IMigrationPolicyRule =>
     rule(subject, action, {
-        projectId: EnumPolicyConditionPlaceholder.projectId,
+        [subject === EnumPolicySubject.Project ? 'id' : 'projectId']:
+            EnumPolicyConditionPlaceholder.projectId,
     });
 
 const projectCreateRule = (): IMigrationPolicyRule =>
@@ -91,6 +103,7 @@ const PolicyData: IMigrationPolicyData[] = [
                 EnumPolicyAction.manage,
             ]),
             workspaceRule(EnumPolicySubject.WorkspaceMember, [
+                EnumPolicyAction.read,
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete,
             ]),
@@ -101,7 +114,7 @@ const PolicyData: IMigrationPolicyData[] = [
                 EnumPolicyAction.update,
             ]),
             projectCreateRule(),
-            projectRule(EnumPolicySubject.Project, [
+            workspaceRule(EnumPolicySubject.Project, [
                 EnumPolicyAction.read,
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete,
@@ -123,6 +136,7 @@ const PolicyData: IMigrationPolicyData[] = [
                 EnumPolicyAction.update,
             ]),
             workspaceRule(EnumPolicySubject.WorkspaceMember, [
+                EnumPolicyAction.read,
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete,
             ]),
@@ -133,7 +147,7 @@ const PolicyData: IMigrationPolicyData[] = [
                 EnumPolicyAction.update,
             ]),
             projectCreateRule(),
-            projectRule(EnumPolicySubject.Project, [EnumPolicyAction.delete]),
+            workspaceRule(EnumPolicySubject.Project, [EnumPolicyAction.delete]),
             workspaceRule(EnumPolicySubject.analytic, [EnumPolicyAction.read]),
         ],
     },
@@ -142,6 +156,9 @@ const PolicyData: IMigrationPolicyData[] = [
         key: EnumRoleWorkspaceKey.member,
         policies: [
             workspaceRule(EnumPolicySubject.Workspace, [EnumPolicyAction.read]),
+            workspaceRule(EnumPolicySubject.WorkspaceMember, [
+                EnumPolicyAction.read,
+            ]),
         ],
     },
     {

@@ -43,7 +43,7 @@ export const UserSchema = DatabaseResponseSchema.extend({
         description: 'Identifier of the role assigned to the user',
         example: faker.string.uuid(),
     }),
-    role: RoleSchema.meta({
+    role: RoleSchema.omit({ policies: true }).meta({
         description: 'Role assigned to the user',
     }),
     passwordExpired: z.date().nullable().meta({

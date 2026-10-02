@@ -5,7 +5,12 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import { subject } from '@casl/ability';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
@@ -16,6 +21,9 @@ import type {
     IProjectMemberWithRole,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';
 
@@ -25,7 +33,8 @@ export class ProjectMemberHttpService {
         private readonly projectMemberDomain: ProjectMemberDomain,
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly policyDomain: PolicyDomain
     ) {}
 
     async getMembersList(
@@ -55,6 +64,18 @@ export class ProjectMemberHttpService {
         actorId: string,
         { userId, roleId }: ProjectMemberAssignRequestDto
     ): Promise<IResponseReturn<IProjectMember>> {
+        const ability = this.policyDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        this.policyDomain.assertCan(
+            ability,
+            EnumPolicyAction.create,
+            subject(EnumPolicySubject.ProjectMember, {
+                projectId: project.id,
+                userId,
+                roleId,
+            })
+        );
         const targetMember =
             await this.workspaceMemberDomain.getOneByWorkspaceAndUser(
                 project.workspaceId,
@@ -76,10 +97,23 @@ export class ProjectMemberHttpService {
         targetMemberId: string,
         { roleId }: ProjectMemberUpdateRoleRequestDto
     ): Promise<void> {
+        const targetMember =
+            await this.projectMemberDomain.getOneByIdAndProject(
+                project.id,
+                targetMemberId
+            );
+        const ability = this.policyDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        this.policyDomain.assertCan(
+            ability,
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.ProjectMember, targetMember)
+        );
         await this.projectMemberDomain.updateMemberRole(
             project,
             actorId,
-            targetMemberId,
+            targetMember,
             roleId
         );
     }
@@ -89,10 +123,23 @@ export class ProjectMemberHttpService {
         actorId: string,
         targetMemberId: string
     ): Promise<void> {
+        const targetMember =
+            await this.projectMemberDomain.getOneByIdAndProject(
+                project.id,
+                targetMemberId
+            );
+        const ability = this.policyDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        this.policyDomain.assertCan(
+            ability,
+            EnumPolicyAction.delete,
+            subject(EnumPolicySubject.ProjectMember, targetMember)
+        );
         await this.projectMemberDomain.removeMember(
             project,
             actorId,
-            targetMemberId
+            targetMember
         );
     }
 

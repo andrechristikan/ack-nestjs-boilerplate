@@ -7,7 +7,6 @@ import type { IRole } from '@modules/role/interfaces/role.interface';
 import type {
     WorkspaceInviteRoleInclude,
     WorkspaceInviteUserListSelect,
-    WorkspaceMemberRoleInclude,
 } from '@modules/workspace/constants/workspace.constant';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
@@ -20,11 +19,6 @@ export interface IWorkspaceMember extends WorkspaceMember {
 export interface IWorkspaceMemberWithRole extends WorkspaceMember {
     role: IRole;
 }
-
-export type IWorkspaceMemberWithRolePolicies =
-    Prisma.WorkspaceMemberGetPayload<{
-        include: typeof WorkspaceMemberRoleInclude;
-    }>;
 
 export type IWorkspaceInviteWithRole = Prisma.WorkspaceInviteGetPayload<{
     include: typeof WorkspaceInviteRoleInclude;

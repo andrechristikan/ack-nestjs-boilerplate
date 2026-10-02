@@ -128,7 +128,6 @@ describe('AuthTwoFactorDomain', () => {
             createdBy: null,
             updatedAt: now,
             updatedBy: null,
-            policies: [],
         },
         twoFactor,
     } satisfies IUser;

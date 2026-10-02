@@ -15,6 +15,8 @@ import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum'
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { Injectable } from '@nestjs/common';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { ForbiddenError } from '@casl/ability';
 import { accessibleBy } from '@casl/prisma';
 import {
@@ -30,7 +32,8 @@ export class PolicyDomain {
     constructor(
         private readonly policyRepository: PolicyRepository,
         private readonly roleDomain: RoleDomain,
-        private readonly activityLogDomain: ActivityLogDomain
+        private readonly activityLogDomain: ActivityLogDomain,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     private async validateRoleExists(roleId: string): Promise<IRole> {
@@ -52,6 +55,16 @@ export class PolicyDomain {
         }
     }
 
+    /** Reads a value an earlier guard stored for the request, and throws `RequestContextMissingException` naming the key when nothing is stored. The one place a guard or an HTTP service reads required request context. */
+    requireStored<T>(key: string): T {
+        const value = this.requestStoreService.get<T>(key);
+        if (value === null) {
+            throw new RequestContextMissingException(key);
+        }
+
+        return value;
+    }
+
     /** Returns the Prisma where clause for a subject, or null when the ability has no rules for it. */
     accessibleWhere<TWhere = Record<string, unknown>>(
         ability: PolicyAbility,
@@ -63,6 +76,24 @@ export class PolicyDomain {
         }
 
         return accessibleBy(ability, action).ofType(subjectName) as TWhere;
+    }
+
+    /** Returns the Prisma where clause for a subject, and throws `PolicyForbiddenException` when the ability holds no rule for it, so a caller never queries without the predicate. */
+    requireAccessibleWhere<TWhere = Record<string, unknown>>(
+        ability: PolicyAbility,
+        action: EnumPolicyAction,
+        subjectName: EnumPolicySubject
+    ): TWhere {
+        const where = this.accessibleWhere<TWhere>(
+            ability,
+            action,
+            subjectName
+        );
+        if (where === null) {
+            throw new PolicyForbiddenException();
+        }
+
+        return where;
     }
 
     /**

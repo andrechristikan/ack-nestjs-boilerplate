@@ -5,25 +5,23 @@ import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-c
 export enum EnumPolicyConditionPlaceholder {
     userId = '${userId}',
     workspaceId = '${workspaceId}',
-    workspaceMemberId = '${workspaceMemberId}',
     projectId = '${projectId}',
-    projectMemberId = '${projectMemberId}',
 }
 
 /**
- * Route metadata key holding the policy abilities `@PolicyProtected` requires.
+ * Route metadata key holding the `{ subject, action }` requirements `@PolicyProtected` declares.
  * @public
  */
 export const PolicyRequiredMetaKey = 'PolicyRequiredMetaKey';
 
 /**
- * Request-store key holding the CASL ability built once per request from the composed policies.
+ * Request-store key holding the single ability resolved for the request.
  * @public
  */
 export const PolicyAbilityStoreKey = 'PolicyAbilityStore';
 
 /**
- * Policy guard error kit for `@PolicyProtected`.
+ * Policy guard error kit for the policy decorators.
  * @public
  */
 export const DocPolicyErrorResponses = {

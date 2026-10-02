@@ -20,12 +20,12 @@ import { AnalyticWorkspaceUserHttpService } from '@modules/analytic/services/ana
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     WorkspaceCurrent,
     WorkspaceMemberProtected,
+    WorkspacePolicyProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
 import { Controller, Get, Query } from '@nestjs/common';
@@ -76,7 +76,7 @@ export class AnalyticUserController {
         schema: AnalyticStatusCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.analytic,
         action: [EnumPolicyAction.read],
     })
@@ -107,7 +107,7 @@ export class AnalyticUserController {
         schema: AnalyticStatusCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.analytic,
         action: [EnumPolicyAction.read],
     })
@@ -136,7 +136,7 @@ export class AnalyticUserController {
         schema: AnalyticRoleCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.analytic,
         action: [EnumPolicyAction.read],
     })
@@ -159,7 +159,7 @@ export class AnalyticUserController {
         schema: AnalyticMetricCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.analytic,
         action: [EnumPolicyAction.read],
     })

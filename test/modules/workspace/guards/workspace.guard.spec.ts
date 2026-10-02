@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { Workspace } from '@generated/prisma-client';
 import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
@@ -18,6 +19,7 @@ vi.mock('@common/sentry/services/sentry.service', () => ({
 describe('WorkspaceGuard', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const workspaceDomain: MockProxy<WorkspaceDomain> = mock<WorkspaceDomain>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
@@ -44,6 +46,7 @@ describe('WorkspaceGuard', () => {
                 WorkspaceGuard,
                 { provide: ConfigService, useValue: configService },
                 { provide: WorkspaceDomain, useValue: workspaceDomain },
+                { provide: DatabaseUtil, useValue: databaseUtil },
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
@@ -56,6 +59,9 @@ describe('WorkspaceGuard', () => {
 
     beforeEach(async () => {
         configGet.mockReturnValue('workspace-header');
+        context.switchToHttp.mockReturnValue({
+            getRequest: () => ({ params: {} }),
+        } as never);
         guard = await compile();
     });
 

@@ -192,19 +192,19 @@ Roles are rows of one `Role` table. `scope` (`platform`, `workspace`, `project`)
 
 The keys live in `EnumRolePlatformKey`, `EnumRoleWorkspaceKey`, and `EnumRoleProjectKey`. Role admin routes update `name` and `description` only; a role is never created or deleted through the API.
 
-**Seeded policies.** The `policy` seed writes each role's ordered rules, numbered from 1 in seed order as `priority`. A rule carries `subject`, `action[]`, `conditions`, `inverted`, and `reason`. It reads the roles by `(scope, key)` first and aborts without writing when one is missing, and each row is an upsert on `(roleId, priority)`, so re-running it is safe. Rows of a seeded role whose `priority` is not in the seed are deleted. Workspace and project rules on a scoped subject carry the scope condition (for example `workspaceId: ${workspace.id}`), so a rule reaches the active workspace or project only.
+**Seeded policies.** The `policy` seed writes each role's rules. A rule carries `subject`, `action[]`, `conditions`, `inverted`, and `reason`. It reads the roles by `(scope, key)` first and aborts without writing when one is missing. In one transaction it deletes every policy row of the seeded roles and recreates them from the declarative catalog, so re-running it is safe. Workspace and project rules on a scoped subject carry the scope condition (for example `workspaceId: ${workspaceId}` or `projectId: ${projectId}`), so a rule reaches the active workspace or project only.
 
 | Role | Seeded policies |
 |---|---|
 | platform `superAdmin` | `manage` on `all` |
-| platform `admin` | every action on `activityLog`, `analytic`, `apiKey`, `device`, `featureFlag`, `passwordHistory`, `role`, `session`, `termPolicy`, `user`; `read` on `workspace` and `project` |
+| platform `admin` | every action on `ActivityLog`, `ApiKey`, `Device`, `FeatureFlag`, `PasswordHistory`, `Role`, `Session`, `TermPolicy`, `User`; `read` on `analytic`, `Workspace`, and `Project` |
 | platform `user` | none |
-| workspace `owner` | `manage` on `workspace`; `update` and `delete` on `workspaceMember`; `manage` on `workspaceInvite`; `update` on `workspaceJoinRequest`; `create`, then `read`, `update`, and `delete` on `project`; `create`, `update`, and `delete` on `projectMember`; `read` on `analytic` |
-| workspace `admin` | `read` and `update` on `workspace`; `update` and `delete` on `workspaceMember`; `manage` on `workspaceInvite`; `update` on `workspaceJoinRequest`; `create` and `delete` on `project`; `read` on `analytic` |
-| workspace `member` | `read` on `workspace` |
-| project `admin` | `read` and `update` on `project`; `create`, `update`, and `delete` on `projectMember` |
-| project `member` | `read` on `project` |
-| project `viewer` | `read` on `project` |
+| workspace `owner` | `manage` on `Workspace`; `read`, `update`, and `delete` on `WorkspaceMember`; `manage` on `WorkspaceInvite`; `update` on `WorkspaceJoinRequest`; `create`, then `read`, `update`, and `delete` on `Project`; `create`, `update`, and `delete` on `ProjectMember`; `read` on `analytic` |
+| workspace `admin` | `read` and `update` on `Workspace`; `read`, `update`, and `delete` on `WorkspaceMember`; `manage` on `WorkspaceInvite`; `update` on `WorkspaceJoinRequest`; `create`, then `delete` on `Project`; `read` on `analytic` |
+| workspace `member` | `read` on `Workspace`; `read` on `WorkspaceMember` |
+| project `admin` | `read` and `update` on `Project`; `create`, `update`, and `delete` on `ProjectMember` |
+| project `member` | `read` on `Project` |
+| project `viewer` | `read` on `Project` |
 
 The `superAdmin` policy set is immutable through the API. Full authorization flow: [Authorization](authorization.md).
 
@@ -282,7 +282,7 @@ Every model in `prisma/schema.prisma` maps to a PostgreSQL table through `@@map`
 |---|---|---|
 | `ApiKey` | `api_keys` | API key credentials for machine access |
 | `Role` | `roles` | Roles |
-| `Policy` | `policies` | The ordered rules a role holds (`subject`, `action[]`, `conditions`, `inverted`, `reason`, `priority`), unique per `(roleId, priority)`, evaluated through CASL |
+| `Policy` | `policies` | The rules a role holds (`subject`, `action[]`, `conditions`, `inverted`, `reason`), indexed on `(roleId, subject)`, evaluated through CASL |
 | `Country` | `countries` | Country reference data |
 | `UserMobileNumber` | `user_mobile_numbers` | A user's mobile numbers and their verification state |
 | `User` | `users` | User accounts |

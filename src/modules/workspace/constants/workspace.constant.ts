@@ -1,10 +1,7 @@
 import { EnumPolicySubject, Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
-import {
-    RolePoliciesInclude,
-    RoleSelect,
-} from '@modules/role/constants/role.constant';
+import { RoleSelect } from '@modules/role/constants/role.constant';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 /**
@@ -35,7 +32,7 @@ export const WorkspacePermissionSubjects: EnumPolicySubject[] = [
 ];
 
 /**
- * Workspace guard error kit for `@WorkspaceProtected`.
+ * Workspace guard error kits for `@WorkspaceProtected` and the workspace policy decorators.
  * @public
  */
 export const DocWorkspaceErrorResponses = {
@@ -46,6 +43,10 @@ export const DocWorkspaceErrorResponses = {
     forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
         statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
         messagePath: 'workspace.error.memberForbidden',
+    }),
+    memberNotFound: DocResponseError(HttpStatus.NOT_FOUND, {
+        statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
+        messagePath: 'workspace.error.memberNotFound',
     }),
 } as const;
 
@@ -58,12 +59,12 @@ export const WorkspaceActiveFilter = {
 } as const satisfies Prisma.WorkspaceWhereInput;
 
 /**
- * Relations the member-with-role-policies read (`IWorkspaceMemberWithRolePolicies`) loads: the
- * member's workspace role together with that role's policies.
+ * Relations the member-with-role read (`IWorkspaceMemberWithRole`) loads: the member's workspace
+ * role identity.
  * @public
  */
 export const WorkspaceMemberRoleInclude = {
-    role: { include: RolePoliciesInclude },
+    role: { select: RoleSelect },
 } as const satisfies Prisma.WorkspaceMemberInclude;
 
 /**

@@ -5,16 +5,18 @@ import type {
     EnumPolicySubject,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { EnumPolicyConditionPlaceholder } from '@modules/policy/constants/policy.constant';
+export type { PolicySubject } from '@modules/policy/enums/policy.enum';
 
 export type IPolicyConditions = Prisma.JsonObject;
 
 export type PolicyPlaceholderValues = Readonly<
-    Partial<Record<EnumPolicyConditionPlaceholder, string | undefined>>
+    Record<string, string | undefined>
 >;
 
-export interface IPolicyRequired {
-    subject: EnumPolicySubject;
+export interface IPolicyRequired<
+    TSubject extends EnumPolicySubject = EnumPolicySubject,
+> {
+    subject: TSubject;
     action: EnumPolicyAction[];
 }
 
@@ -37,3 +39,10 @@ export type PolicyAbility = Ability<
 >;
 
 export type PolicyAbilityRule = RawRuleOf<PolicyAbility>;
+
+/** Request context used to resolve all roles applicable to one ability. */
+export interface IPolicyAbilityBuildInput {
+    user: { id: string; roleId: string };
+    workspace?: { id: string; memberRoleId: string };
+    project?: { id: string; memberRoleId: string | null };
+}

@@ -7,9 +7,7 @@ import {
     UserGuardIsVerifiedMetaKey,
     UserStoreKey,
 } from '@modules/user/constants/user.constant';
-import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { UserGuard } from '@modules/user/guards/user.guard';
 import { UserDomain } from '@modules/user/domains/user.domain';
@@ -17,54 +15,23 @@ import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import {
-    EnumPolicyAction,
-    EnumPolicySubject,
     EnumRoleScope,
     EnumUserGender,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client';
-import type { Policy } from '@generated/prisma-client';
 
 describe('UserGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
     const userService: MockProxy<UserDomain> = mock<UserDomain>();
-    const policyAbilityFactory: MockProxy<PolicyAbilityFactory> =
-        mock<PolicyAbilityFactory>();
-    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     let guard: UserGuard;
 
     const request = { user: { userId: 'user-id' } };
     const now = new Date('2026-01-01T00:00:00.000Z');
-    const policy: Policy = {
-        id: 'policy-id',
-        roleId: 'role-id',
-        subject: EnumPolicySubject.User,
-        action: [EnumPolicyAction.read],
-        conditions: null,
-        inverted: false,
-        reason: null,
-        createdAt: now,
-        createdBy: null,
-        updatedAt: now,
-        updatedBy: null,
-    };
-    const createRole = (policies: Policy[]): IUser['role'] => ({
-        id: 'role-id',
-        name: 'User',
-        description: null,
-        scope: EnumRoleScope.platform,
-        key: EnumRolePlatformKey.user,
-        createdAt: now,
-        createdBy: null,
-        updatedAt: now,
-        updatedBy: null,
-        policies,
-    });
-    const createUser = (policies: Policy[]): IUser => ({
+    const user: IUser = {
         id: 'user-id',
         name: 'User',
         username: 'user',
@@ -98,12 +65,19 @@ describe('UserGuard', () => {
         privacyAccepted: true,
         cookiesAccepted: false,
         marketingAccepted: false,
-        role: createRole(policies),
+        role: {
+            id: 'role-id',
+            name: 'User',
+            description: null,
+            scope: EnumRoleScope.platform,
+            key: EnumRolePlatformKey.user,
+            createdAt: now,
+            createdBy: null,
+            updatedAt: now,
+            updatedBy: null,
+        },
         twoFactor: null,
-    });
-    const user: IUser = createUser([policy]);
-    const { policies: _policies, ...roleWithoutPolicies } = user.role;
-    const userWithoutPolicies = { ...user, role: roleWithoutPolicies };
+    };
 
     const createContext = (
         contextRequest: unknown = request
@@ -117,18 +91,14 @@ describe('UserGuard', () => {
     };
 
     beforeEach(async () => {
+        vi.resetAllMocks();
         userService.validateUserGuard.mockResolvedValue(user);
-        policyAbilityFactory.buildFromPolicies.mockReturnValue(ability);
 
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 UserGuard,
                 { provide: Reflector, useValue: reflector },
                 { provide: UserDomain, useValue: userService },
-                {
-                    provide: PolicyAbilityFactory,
-                    useValue: policyAbilityFactory,
-                },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
@@ -151,34 +121,19 @@ describe('UserGuard', () => {
         );
         expect(requestStoreService.set).toHaveBeenCalledWith(
             UserStoreKey,
-            userWithoutPolicies
+            user
         );
     });
 
-    it('resolves the role policies without storing them in CLS', async () => {
+    it('stores only the user and never builds or stores an ability', async () => {
         reflector.get.mockReturnValue(undefined);
 
         await guard.canActivate(createContext());
 
-        expect(policyAbilityFactory.buildFromPolicies).toHaveBeenCalledWith(
-            [policy],
-            { '${userId}': userWithoutPolicies.id }
-        );
-        expect(requestStoreService.set).toHaveBeenCalledWith(
+        expect(requestStoreService.set).toHaveBeenCalledTimes(1);
+        expect(requestStoreService.set).not.toHaveBeenCalledWith(
             PolicyAbilityStoreKey,
-            ability
-        );
-    });
-
-    it('resolves an empty policy list when the role carries none', async () => {
-        reflector.get.mockReturnValue(undefined);
-        userService.validateUserGuard.mockResolvedValue(createUser([]));
-
-        await guard.canActivate(createContext());
-
-        expect(policyAbilityFactory.buildFromPolicies).toHaveBeenCalledWith(
-            [],
-            { '${userId}': userWithoutPolicies.id }
+            expect.anything()
         );
     });
 

@@ -11,7 +11,7 @@ import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log
 import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Param, Query } from '@nestjs/common';
@@ -36,7 +36,7 @@ export class ActivityLogAdminController {
         schema: ActivityLogResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected(
+    @PlatformPolicyProtected(
         {
             subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
@@ -65,7 +65,7 @@ export class ActivityLogAdminController {
         schema: ActivityLogResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected(
+    @PlatformPolicyProtected(
         {
             subject: EnumPolicySubject.Workspace,
             action: [EnumPolicyAction.read],

@@ -1,6 +1,5 @@
 import { createPrismaAbility } from '@casl/prisma';
-import type { Policy, Prisma } from '@generated/prisma-client/client';
-import { EnumPolicyConditionPlaceholder } from '@modules/policy/constants/policy.constant';
+import type { Policy } from '@generated/prisma-client/client';
 import type {
     IPolicyConditions,
     PolicyAbility,
@@ -18,66 +17,37 @@ export class PolicyAbilityFactory {
         );
     }
 
-    private interpolateNode(
-        node: Prisma.JsonValue,
-        values: PolicyPlaceholderValues
-    ): Prisma.JsonValue | undefined {
-        if (typeof node === 'string') {
-            const isKnownPlaceholder = Object.values(
-                EnumPolicyConditionPlaceholder
-            ).includes(node as EnumPolicyConditionPlaceholder);
-            if (!isKnownPlaceholder && !Object.hasOwn(values, node)) {
-                return node;
-            }
-
-            return values[node as EnumPolicyConditionPlaceholder];
-        }
-
-        if (node === null || typeof node !== 'object') {
-            return node;
-        }
-
-        if (Array.isArray(node)) {
-            const items: Prisma.JsonValue[] = [];
-            for (const item of node) {
-                const interpolated = this.interpolateNode(item, values);
-                if (interpolated === undefined) {
-                    return undefined;
-                }
-
-                items.push(interpolated);
-            }
-
-            return items;
-        }
-
-        const entries: IPolicyConditions = {};
-        for (const [key, child] of Object.entries(node)) {
-            if (child === undefined) {
-                continue;
-            }
-
-            const interpolated = this.interpolateNode(child, values);
-            if (interpolated === undefined) {
-                return undefined;
-            }
-
-            entries[key] = interpolated;
-        }
-
-        return entries;
-    }
-
     private interpolate(
         conditions: IPolicyConditions,
         values: PolicyPlaceholderValues
     ): IPolicyConditions | null {
-        const interpolated = this.interpolateNode(conditions, values);
-        if (!this.isPlainJsonObject(interpolated)) {
+        const entries: IPolicyConditions = {};
+
+        for (const [key, value] of Object.entries(conditions)) {
+            if (
+                value === undefined ||
+                (typeof value === 'object' && value !== null) ||
+                typeof value === 'function' ||
+                typeof value === 'symbol'
+            ) {
+                return null;
+            }
+
+            const isPlaceholder =
+                typeof value === 'string' && /^\$\{[^}]+\}$/.test(value);
+            const resolved = isPlaceholder ? values[value] : value;
+            if (resolved === undefined) {
+                return null;
+            }
+
+            entries[key] = resolved;
+        }
+
+        if (!this.isPlainJsonObject(entries)) {
             return null;
         }
 
-        return interpolated;
+        return entries;
     }
 
     private toAbilityRule(

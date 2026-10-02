@@ -1,4 +1,7 @@
 import type { Workspace } from '@generated/prisma-client/client';
+import { EnumPolicyWorkspaceSubject } from '@modules/policy/enums/policy.enum';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import type { IPolicyRequired } from '@modules/policy/interfaces/policy.interface';
 import {
     DocWorkspaceErrorResponses,
     WorkspaceMemberStoreKey,
@@ -62,7 +65,7 @@ export const WorkspaceCurrent = createParamDecorator<
 
 /**
  * Requires the caller to be a member of the workspace resolved by `@WorkspaceProtected()`. Stack
- * above it. The guard also merges the caller's workspace role policies into the resolved ability.
+ * above it. The guard stores the membership and builds no ability.
  * @public
  */
 export function WorkspaceMemberProtected(): MethodDecorator {
@@ -114,3 +117,14 @@ export const WorkspaceMemberCurrent = createParamDecorator<
         return value;
     }
 );
+
+/**
+ * Requires the caller to hold the given workspace policy subject/action pairs.
+ * Sits above `@WorkspaceMemberProtected()`.
+ * @public
+ */
+export function WorkspacePolicyProtected(
+    ...requiredPolicies: IPolicyRequired<EnumPolicyWorkspaceSubject>[]
+): MethodDecorator {
+    return PolicyProtected(...requiredPolicies);
+}
