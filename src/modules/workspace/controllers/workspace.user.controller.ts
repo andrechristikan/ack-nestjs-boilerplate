@@ -193,14 +193,10 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
     @Get('/permissions')
-    async permissions(
-        @WorkspaceCurrent() workspace: Workspace,
-        @WorkspaceMemberCurrent() workspaceMember: IWorkspaceMemberWithRole
-    ): Promise<IResponseReturn<{ permissions: IEffectivePermission[] }>> {
-        return this.workspaceHttpService.getEffectivePermissions(
-            workspace,
-            workspaceMember
-        );
+    async permissions(): Promise<
+        IResponseReturn<{ permissions: IEffectivePermission[] }>
+    > {
+        return this.workspaceHttpService.getEffectivePermissions();
     }
 
     @Doc({ summary: 'update the current workspace name/description' })
@@ -227,7 +223,7 @@ export class WorkspaceUserController {
         body: WorkspaceUpdateRequestDto
     ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceHttpService.updateWorkspace(
-            workspace.id,
+            workspace,
             userId,
             body
         );
@@ -260,7 +256,7 @@ export class WorkspaceUserController {
         body: WorkspaceUpdateIsPublicRequestDto
     ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceHttpService.updateWorkspaceIsPublic(
-            workspace.id,
+            workspace,
             userId,
             body
         );
@@ -290,7 +286,7 @@ export class WorkspaceUserController {
         body: WorkspaceUpdateSlugRequestDto
     ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceHttpService.updateWorkspaceSlug(
-            workspace.id,
+            workspace,
             userId,
             body
         );
@@ -387,10 +383,7 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string
     ): Promise<void> {
-        await this.workspaceHttpService.softDeleteWorkspace(
-            workspace.id,
-            userId
-        );
+        await this.workspaceHttpService.softDeleteWorkspace(workspace, userId);
     }
 
     @Doc({ summary: 'list members of the current workspace' })

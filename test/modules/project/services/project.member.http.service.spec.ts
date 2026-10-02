@@ -2,9 +2,18 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import { subject } from '@casl/ability';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    type Project,
+    type WorkspaceMember,
+} from '@generated/prisma-client/client';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
 import type { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
@@ -20,6 +29,7 @@ describe('ProjectMemberHttpService', () => {
     const workspaceMemberDomain: MockProxy<WorkspaceMemberDomain> = mock();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> = mock();
     const requestStoreService: MockProxy<RequestStoreService> = mock();
+    const policyDomain: MockProxy<PolicyDomain> = mock();
     const project = mock<Project>({
         id: 'project-id',
         workspaceId: 'workspace-id',
@@ -39,17 +49,20 @@ describe('ProjectMemberHttpService', () => {
                 },
                 { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
                 { provide: RequestStoreService, useValue: requestStoreService },
+                { provide: PolicyDomain, useValue: policyDomain },
             ],
         }).compile();
         service = module.get(ProjectMemberHttpService);
     });
 
-    it('assigns a member without resolving policy capability in the service', async () => {
+    it('checks the prospective member before assigning it', async () => {
         const body = mock<ProjectMemberAssignRequestDto>({
             userId: 'user-id',
             roleId: 'role-id',
         });
+        const ability = mock<PolicyAbility>();
         const member = mock<IProjectMember>();
+        policyDomain.requireStored.mockReturnValue(ability);
         workspaceMemberDomain.getOneByWorkspaceAndUser.mockResolvedValue(
             mock<WorkspaceMember>({
                 userId: body.userId,
@@ -67,20 +80,43 @@ describe('ProjectMemberHttpService', () => {
             expect.objectContaining({ userId: body.userId }),
             body.roleId
         );
+        expect(policyDomain.requireStored).toHaveBeenCalledWith(
+            PolicyAbilityStoreKey
+        );
+        expect(policyDomain.assertCan).toHaveBeenCalledWith(
+            ability,
+            EnumPolicyAction.create,
+            expect.objectContaining({
+                __caslSubjectType__: EnumPolicySubject.ProjectMember,
+                projectId: project.id,
+                userId: body.userId,
+                roleId: body.roleId,
+            })
+        );
     });
 
-    it('delegates role updates with only domain data', async () => {
+    it('checks the target member before delegating a role update', async () => {
         const body = mock<ProjectMemberUpdateRoleRequestDto>({
             roleId: 'role-id',
         });
+        const ability = mock<PolicyAbility>();
         projectMemberDomain.getOneByIdAndProject.mockResolvedValue(
             targetMember
         );
+        policyDomain.requireStored.mockReturnValue(ability);
         await service.updateMemberRole(
             project,
             'actor-id',
             'target-member-id',
             body
+        );
+        expect(policyDomain.requireStored).toHaveBeenCalledWith(
+            PolicyAbilityStoreKey
+        );
+        expect(policyDomain.assertCan).toHaveBeenCalledWith(
+            ability,
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.ProjectMember, targetMember)
         );
         expect(projectMemberDomain.updateMemberRole).toHaveBeenCalledWith(
             project,
@@ -90,11 +126,46 @@ describe('ProjectMemberHttpService', () => {
         );
     });
 
-    it('delegates removals with only domain data', async () => {
+    it('does not mutate when the target member fails the policy check', async () => {
+        const body = mock<ProjectMemberUpdateRoleRequestDto>({
+            roleId: 'role-id',
+        });
+        const ability = mock<PolicyAbility>();
+        const error = new Error('forbidden');
         projectMemberDomain.getOneByIdAndProject.mockResolvedValue(
             targetMember
         );
+        policyDomain.requireStored.mockReturnValue(ability);
+        policyDomain.assertCan.mockImplementation(() => {
+            throw error;
+        });
+
+        await expect(
+            service.updateMemberRole(
+                project,
+                'actor-id',
+                'target-member-id',
+                body
+            )
+        ).rejects.toThrow(error);
+        expect(projectMemberDomain.updateMemberRole).not.toHaveBeenCalled();
+    });
+
+    it('checks the target member before delegating a removal', async () => {
+        const ability = mock<PolicyAbility>();
+        projectMemberDomain.getOneByIdAndProject.mockResolvedValue(
+            targetMember
+        );
+        policyDomain.requireStored.mockReturnValue(ability);
         await service.removeMember(project, 'actor-id', 'target-member-id');
+        expect(policyDomain.requireStored).toHaveBeenCalledWith(
+            PolicyAbilityStoreKey
+        );
+        expect(policyDomain.assertCan).toHaveBeenCalledWith(
+            ability,
+            EnumPolicyAction.delete,
+            subject(EnumPolicySubject.ProjectMember, targetMember)
+        );
         expect(projectMemberDomain.removeMember).toHaveBeenCalledWith(
             project,
             'actor-id',

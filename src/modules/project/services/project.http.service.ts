@@ -1,6 +1,7 @@
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { subject } from '@casl/ability';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
@@ -29,7 +30,6 @@ import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/proj
 import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
-import type { IProjectMemberWithRole } from '@modules/project/interfaces/project.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -85,6 +85,14 @@ export class ProjectHttpService {
         actorId: string,
         { name, description }: ProjectCreateRequestDto
     ): Promise<IResponseReturn<Project>> {
+        const ability = this.policyDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        this.policyDomain.assertCan(
+            ability,
+            EnumPolicyAction.create,
+            subject(EnumPolicySubject.Project, { workspaceId })
+        );
         const project = await this.projectDomain.createProject(
             workspaceId,
             actorId,
@@ -95,6 +103,14 @@ export class ProjectHttpService {
     }
 
     getProject(project: Project): IResponseReturn<Project> {
+        const ability = this.policyDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        this.policyDomain.assertCan(
+            ability,
+            EnumPolicyAction.read,
+            subject(EnumPolicySubject.Project, project)
+        );
         const current = this.projectDomain.getProject(project);
 
         return { data: current };
@@ -105,6 +121,14 @@ export class ProjectHttpService {
         actorId: string,
         { name, description }: ProjectUpdateRequestDto
     ): Promise<IResponseReturn<Project>> {
+        const ability = this.policyDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        this.policyDomain.assertCan(
+            ability,
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.Project, project)
+        );
         const updated = await this.projectDomain.updateProject(
             project,
             actorId,
@@ -119,6 +143,14 @@ export class ProjectHttpService {
         actorId: string,
         { slug }: ProjectUpdateSlugRequestDto
     ): Promise<IResponseReturn<Project>> {
+        const ability = this.policyDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        this.policyDomain.assertCan(
+            ability,
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.Project, project)
+        );
         const updated = await this.projectDomain.updateProjectSlug(
             project,
             actorId,
@@ -129,6 +161,14 @@ export class ProjectHttpService {
     }
 
     async softDeleteProject(project: Project, actorId: string): Promise<void> {
+        const ability = this.policyDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        this.policyDomain.assertCan(
+            ability,
+            EnumPolicyAction.delete,
+            subject(EnumPolicySubject.Project, project)
+        );
         await this.projectDomain.softDeleteProject(project, actorId);
     }
 
@@ -176,10 +216,9 @@ export class ProjectHttpService {
         return { data: project };
     }
 
-    getEffectivePermissions(
-        _project: Project,
-        _projectMember: IProjectMemberWithRole
-    ): IResponseReturn<{ permissions: IEffectivePermission[] }> {
+    getEffectivePermissions(): IResponseReturn<{
+        permissions: IEffectivePermission[];
+    }> {
         const ability = this.policyDomain.requireStored<PolicyAbility>(
             PolicyAbilityStoreKey
         );

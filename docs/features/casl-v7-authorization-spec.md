@@ -181,8 +181,21 @@ current context. The policy guard performs the subject/action capability check, 
 performs business validation and the repository performs the database operation.
 
 Project-member and workspace-member mutation services load the target member by its route identifier
-before calling the domain. This lookup is a normal resource lookup and is not a record-level CASL
-check. The target member is not substituted into `PolicyGuard`.
+before calling the domain. Project-member role-update and remove services then read the request
+ability and call `PolicyDomain.assertCan` with the loaded target tagged as
+`EnumPolicySubject.ProjectMember`. The controller decorator still performs the type-level
+`ProjectMember` capability check; the HTTP service performs the record-level check before the domain
+mutation. Workspace-member mutations and other point operations remain on the ordinary type-level
+path until explicitly extended. The target member is never substituted for the caller's membership
+record.
+
+Project create and project-member assignment check the prospective resource fields against the
+corresponding `Project:create` and `ProjectMember:create` policies before the domain call. Project
+read, update, slug-update, and delete services check the resolved `Project` record with `read`,
+`update`, or `delete`. Workspace update, public-visibility update, slug-update, and delete services
+check the resolved `Workspace` record with `update` or `delete`. These checks remain HTTP-service
+authorization translation; domains continue to own business invariants and remain independent of
+request abilities.
 
 Platform admin project and workspace reads load their records through the HTTP service and domain
 using the route identifier. Their platform policy decorator supplies the type-level capability check.
@@ -209,13 +222,13 @@ The current route model is summarized below.
 | Operation | Policy path | Additional enforcement |
 | --- | --- | --- |
 | Platform administration | `PlatformPolicyProtected` | Platform role is part of the request ability |
-| Current workspace operations | `WorkspacePolicyProtected` | Workspace and membership guards; domain invariants |
+| Current workspace operations | `WorkspacePolicyProtected` plus HTTP-service record checks for updates/deletes | Workspace and membership guards; domain invariants |
 | Workspace-member lists | `WorkspacePolicyProtected` plus service `accessibleWhere` | Workspace boundary and active-member filters |
 | Workspace-member role/remove | `WorkspacePolicyProtected` | Target lookup, peer rules, owner rules |
-| Current project operations | `ProjectPolicyProtected` | Project and membership guards; domain invariants |
+| Current project operations | `ProjectPolicyProtected` plus HTTP-service record checks | Project and membership guards; domain invariants |
 | Project lists | `PolicyAbilityProtected` or workspace context plus service ability checks | Membership and policy predicates in list queries |
 | Project-member lists | `ProjectPolicyProtected` plus service query logic | Project boundary and membership filters |
-| Project-member role/remove | `ProjectPolicyProtected` | Target lookup, peer rules, last-admin rules |
+| Project-member role/remove | `ProjectPolicyProtected` plus HTTP-service record check | Target lookup, `assertCan` on the target member, peer rules, last-admin rules |
 | Workspace/project leave | Context and membership guards | Leave and last-owner/last-admin invariants |
 | Effective permissions | `PolicyAbilityProtected` | Service evaluates the stored ability |
 
@@ -245,7 +258,8 @@ The following capabilities are outside the current implementation:
 - resource-specific policy guards;
 - policy decorators that resolve and store arbitrary target records;
 - route-parameter precedence inside a policy guard;
-- record-level `ability.can(action, taggedRecord)` enforcement for point reads and mutations;
+- general record-level `ability.can(action, taggedRecord)` enforcement for every point read and
+  mutation;
 - automatic `accessibleBy` enforcement for every point read, update, and delete;
 - nested condition trees and relation-aware condition interpolation;
 - member-instance placeholders such as `${workspaceMemberId}` and `${projectMemberId}`;
@@ -273,7 +287,9 @@ different route target.
 
 Future point authorization combines the record identifier, business boundary, and CASL predicate in
 the repository query. High-risk mutations can carry the same predicate into the update or delete
-operation, or into a transaction, when authorization and mutation need one database boundary.
+operation, or into a transaction, when authorization and mutation need one database boundary. The
+current project-member record check is load-then-check-then-write; it does not yet make the policy
+check and mutation one database operation.
 
 Future condition support keeps fail-closed behavior for missing context and unresolved placeholders.
 Nested conditions, relation predicates, subject-specific validation, and member-instance placeholders
@@ -296,13 +312,14 @@ The authorization test suite covers:
 - generic placeholder interpolation and fail-closed unresolved placeholders;
 - allow and inverted rule ordering;
 - `PolicyGuard` metadata and action enforcement;
-- `PolicyDomain.assertCan`, `accessibleWhere`, and effective permissions;
+- `PolicyDomain.assertCan`, including the project-member record target path, `accessibleWhere`, and
+  effective permissions;
 - collection query predicate propagation;
 - workspace and project membership invariants around policy-gated mutations;
 - role and policy administration behavior.
 
-Record-level CASL enforcement, relation-aware conditions, member-instance placeholders, and atomic
-policy-constrained mutations remain verification targets for future implementation work.
+General record-level CASL enforcement, relation-aware conditions, member-instance placeholders, and
+atomic policy-constrained mutations remain verification targets for future implementation work.
 
 Future record-level work verifies:
 
@@ -316,3 +333,7 @@ Future record-level work verifies:
 - internal domain callers remain independent of HTTP request state;
 - policy-constrained mutations use the intended database boundary;
 - policy-write validation rejects invalid subject, action, and condition combinations.
+
+Atomic policy-constrained mutations additionally verify that the final update or delete predicate
+contains the target identifier, business boundary, and CASL predicate, and that a target becoming
+unauthorized between the check and write cannot be mutated successfully.

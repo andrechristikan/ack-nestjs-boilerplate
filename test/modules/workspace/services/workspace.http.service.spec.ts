@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { subject } from '@casl/ability';
 
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -17,7 +18,6 @@ import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { WorkspacePermissionSubjects } from '@modules/workspace/constants/workspace.constant';
-import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import type { WorkspaceAdminListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
 import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import type { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/workspace.switch.request.dto';
@@ -102,6 +102,7 @@ describe('WorkspaceHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyDomain.requireStored.mockReturnValue(adminAbility);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -190,12 +191,17 @@ describe('WorkspaceHttpService', () => {
             workspaceDomain.updateWorkspace.mockResolvedValue(workspace);
 
             const result = await service.updateWorkspace(
-                'workspace-id',
+                workspace,
                 'actor-id',
                 dto
             );
 
             expect(result).toEqual({ data: workspace });
+            expect(policyDomain.assertCan).toHaveBeenCalledWith(
+                adminAbility,
+                EnumPolicyAction.update,
+                subject(EnumPolicySubject.Workspace, workspace)
+            );
             expect(workspaceDomain.updateWorkspace).toHaveBeenCalledWith(
                 'workspace-id',
                 'actor-id',
@@ -214,12 +220,17 @@ describe('WorkspaceHttpService', () => {
             );
 
             const result = await service.updateWorkspaceIsPublic(
-                'workspace-id',
+                workspace,
                 'actor-id',
                 dto
             );
 
             expect(result).toEqual({ data: workspace });
+            expect(policyDomain.assertCan).toHaveBeenCalledWith(
+                adminAbility,
+                EnumPolicyAction.update,
+                subject(EnumPolicySubject.Workspace, workspace)
+            );
             expect(
                 workspaceDomain.updateWorkspaceIsPublic
             ).toHaveBeenCalledWith('workspace-id', 'actor-id', true);
@@ -234,12 +245,17 @@ describe('WorkspaceHttpService', () => {
             workspaceDomain.updateWorkspaceSlug.mockResolvedValue(workspace);
 
             const result = await service.updateWorkspaceSlug(
-                'workspace-id',
+                workspace,
                 'actor-id',
                 dto
             );
 
             expect(result).toEqual({ data: workspace });
+            expect(policyDomain.assertCan).toHaveBeenCalledWith(
+                adminAbility,
+                EnumPolicyAction.update,
+                subject(EnumPolicySubject.Workspace, workspace)
+            );
             expect(workspaceDomain.updateWorkspaceSlug).toHaveBeenCalledWith(
                 'workspace-id',
                 'actor-id',
@@ -265,8 +281,13 @@ describe('WorkspaceHttpService', () => {
 
     describe('softDeleteWorkspace', () => {
         it('delegates to the domain', async () => {
-            await service.softDeleteWorkspace('workspace-id', 'actor-id');
+            await service.softDeleteWorkspace(workspace, 'actor-id');
 
+            expect(policyDomain.assertCan).toHaveBeenCalledWith(
+                adminAbility,
+                EnumPolicyAction.delete,
+                subject(EnumPolicySubject.Workspace, workspace)
+            );
             expect(workspaceDomain.softDeleteWorkspace).toHaveBeenCalledWith(
                 'workspace-id',
                 'actor-id'
@@ -418,9 +439,6 @@ describe('WorkspaceHttpService', () => {
     });
 
     describe('getEffectivePermissions', () => {
-        const workspaceMember = {
-            id: 'member-id',
-        } as IWorkspaceMemberWithRole;
         const ability = {} as never;
 
         it('reads the ability from the store and wraps the domain permissions', () => {
@@ -430,10 +448,7 @@ describe('WorkspaceHttpService', () => {
             ] as never;
             policyDomain.getEffectivePermissions.mockReturnValue(permissions);
 
-            const result = service.getEffectivePermissions(
-                workspace,
-                workspaceMember
-            );
+            const result = service.getEffectivePermissions();
 
             expect(policyDomain.requireStored).toHaveBeenCalledWith(
                 PolicyAbilityStoreKey
@@ -450,9 +465,9 @@ describe('WorkspaceHttpService', () => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
-            expect(() =>
-                service.getEffectivePermissions(workspace, workspaceMember)
-            ).toThrow(RequestContextMissingException);
+            expect(() => service.getEffectivePermissions()).toThrow(
+                RequestContextMissingException
+            );
         });
     });
 });

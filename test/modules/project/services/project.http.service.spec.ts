@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { subject } from '@casl/ability';
 
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import type {
@@ -37,7 +38,6 @@ import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/p
 import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
 import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/project.user-list.request.dto';
-import type { IProjectMemberWithRole } from '@modules/project/interfaces/project.interface';
 import { ProjectHttpService } from '@modules/project/services/project.http.service';
 
 describe('ProjectHttpService', () => {
@@ -48,7 +48,10 @@ describe('ProjectHttpService', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
-    const project = mock<Project>({ id: 'project-id' });
+    const project = mock<Project>({
+        id: 'project-id',
+        workspaceId: 'workspace-id',
+    });
     const workspaceMember = mock<WorkspaceMember>({ userId: 'user-id' });
     const page = {
         type: EnumPaginationType.cursor as const,
@@ -179,6 +182,16 @@ describe('ProjectHttpService', () => {
             await expect(
                 service.createProject('workspace-id', 'actor-id', dto)
             ).resolves.toEqual({ data: project });
+            expect(policyDomain.requireStored).toHaveBeenCalledWith(
+                PolicyAbilityStoreKey
+            );
+            expect(policyDomain.assertCan).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.create,
+                subject(EnumPolicySubject.Project, {
+                    workspaceId: 'workspace-id',
+                })
+            );
             expect(projectDomain.createProject).toHaveBeenCalledWith(
                 'workspace-id',
                 'actor-id',
@@ -192,6 +205,11 @@ describe('ProjectHttpService', () => {
             projectDomain.getProject.mockReturnValue(project);
 
             expect(service.getProject(project)).toEqual({ data: project });
+            expect(policyDomain.assertCan).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.read,
+                subject(EnumPolicySubject.Project, project)
+            );
             expect(projectDomain.getProject).toHaveBeenCalledWith(project);
         });
     });
@@ -207,6 +225,11 @@ describe('ProjectHttpService', () => {
             await expect(
                 service.updateProject(project, 'actor-id', dto)
             ).resolves.toEqual({ data: project });
+            expect(policyDomain.assertCan).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.update,
+                subject(EnumPolicySubject.Project, project)
+            );
             expect(projectDomain.updateProject).toHaveBeenCalledWith(
                 project,
                 'actor-id',
@@ -223,6 +246,11 @@ describe('ProjectHttpService', () => {
             await expect(
                 service.updateProjectSlug(project, 'actor-id', dto)
             ).resolves.toEqual({ data: project });
+            expect(policyDomain.assertCan).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.update,
+                subject(EnumPolicySubject.Project, project)
+            );
             expect(projectDomain.updateProjectSlug).toHaveBeenCalledWith(
                 project,
                 'actor-id',
@@ -235,6 +263,11 @@ describe('ProjectHttpService', () => {
         it('delegates the delete', async () => {
             await service.softDeleteProject(project, 'actor-id');
 
+            expect(policyDomain.assertCan).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.delete,
+                subject(EnumPolicySubject.Project, project)
+            );
             expect(projectDomain.softDeleteProject).toHaveBeenCalledWith(
                 project,
                 'actor-id'
@@ -318,10 +351,7 @@ describe('ProjectHttpService', () => {
             const permissions = mock<IEffectivePermission[]>();
             policyDomain.getEffectivePermissions.mockReturnValue(permissions);
 
-            const result = service.getEffectivePermissions(
-                project,
-                mock<IProjectMemberWithRole>()
-            );
+            const result = service.getEffectivePermissions();
 
             expect(policyDomain.getEffectivePermissions).toHaveBeenCalledWith(
                 ability,
@@ -335,12 +365,9 @@ describe('ProjectHttpService', () => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
-            expect(() =>
-                service.getEffectivePermissions(
-                    project,
-                    mock<IProjectMemberWithRole>()
-                )
-            ).toThrow(RequestContextMissingException);
+            expect(() => service.getEffectivePermissions()).toThrow(
+                RequestContextMissingException
+            );
         });
     });
 });
