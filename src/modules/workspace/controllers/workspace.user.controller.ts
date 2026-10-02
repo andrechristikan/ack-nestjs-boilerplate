@@ -36,7 +36,8 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
+import { EnumPolicyAbilityScope } from '@modules/policy/enums/policy.enum';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 
@@ -81,6 +82,8 @@ import {
     WorkspaceCurrent,
     WorkspaceMemberCurrent,
     WorkspaceMemberProtected,
+    WorkspaceMemberTargetCurrent,
+    WorkspacePolicyProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
 
@@ -158,7 +161,7 @@ export class WorkspaceUserController {
         schema: WorkspaceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.read],
     })
@@ -183,6 +186,7 @@ export class WorkspaceUserController {
     @Response('workspace.permissions', {
         schema: WorkspacePermissionResponseSchema,
     })
+    @PolicyAbilityProtected(EnumPolicyAbilityScope.workspace)
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
@@ -206,7 +210,7 @@ export class WorkspaceUserController {
         schema: WorkspaceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.update],
     })
@@ -239,7 +243,7 @@ export class WorkspaceUserController {
         schema: WorkspaceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.update],
     })
@@ -269,7 +273,7 @@ export class WorkspaceUserController {
         schema: WorkspaceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.update],
     })
@@ -318,7 +322,7 @@ export class WorkspaceUserController {
     @Doc({ summary: 'transfer workspace ownership to another member' })
     @Response('workspace.transferOwnership')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.update],
     })
@@ -369,7 +373,7 @@ export class WorkspaceUserController {
     @Doc({ summary: 'soft-delete the current workspace' })
     @Response('workspace.softDelete')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.delete],
     })
@@ -396,6 +400,10 @@ export class WorkspaceUserController {
         schema: WorkspaceMemberResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
+    @WorkspacePolicyProtected({
+        subject: EnumPolicySubject.WorkspaceMember,
+        action: [EnumPolicyAction.read],
+    })
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
@@ -418,7 +426,7 @@ export class WorkspaceUserController {
     @Doc({ summary: 'update a member role in the current workspace' })
     @Response('workspace.member.updateRole')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.WorkspaceMember,
         action: [EnumPolicyAction.update],
     })
@@ -434,14 +442,15 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() actorMember: IWorkspaceMemberWithRole,
         @Param('workspaceMemberId', { schema: RequestUuidSchema })
-        workspaceMemberId: string,
+        _workspaceMemberId: string,
+        @WorkspaceMemberTargetCurrent() targetMember: IWorkspaceMemberWithRole,
         @Body({ schema: WorkspaceMemberUpdateRoleRequestSchema })
         body: WorkspaceMemberUpdateRoleRequestDto
     ): Promise<void> {
         await this.workspaceMemberHttpService.updateMemberRole(
             workspace.id,
             actorMember,
-            workspaceMemberId,
+            targetMember,
             body
         );
     }
@@ -449,7 +458,7 @@ export class WorkspaceUserController {
     @Doc({ summary: 'remove a member from the current workspace' })
     @Response('workspace.member.remove')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.WorkspaceMember,
         action: [EnumPolicyAction.delete],
     })
@@ -465,12 +474,13 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() actorMember: IWorkspaceMemberWithRole,
         @Param('workspaceMemberId', { schema: RequestUuidSchema })
-        workspaceMemberId: string
+        _workspaceMemberId: string,
+        @WorkspaceMemberTargetCurrent() targetMember: IWorkspaceMemberWithRole
     ): Promise<void> {
         await this.workspaceMemberHttpService.removeMember(
             workspace.id,
             actorMember,
-            workspaceMemberId
+            targetMember
         );
     }
 
@@ -506,7 +516,7 @@ export class WorkspaceUserController {
         schema: WorkspaceInviteResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.WorkspaceInvite,
         action: [EnumPolicyAction.create],
     })
@@ -539,7 +549,7 @@ export class WorkspaceUserController {
         schema: WorkspaceInviteResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.WorkspaceInvite,
         action: [EnumPolicyAction.update],
     })
@@ -571,7 +581,7 @@ export class WorkspaceUserController {
     @Doc({ summary: 'revoke a pending invite for the current workspace' })
     @Response('workspace.invite.revoke')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.WorkspaceInvite,
         action: [EnumPolicyAction.delete],
     })
@@ -673,7 +683,7 @@ export class WorkspaceUserController {
     })
     @Response('workspace.joinRequest.accept')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.WorkspaceJoinRequest,
         action: [EnumPolicyAction.update],
     })
@@ -702,7 +712,7 @@ export class WorkspaceUserController {
     @Doc({ summary: 'reject a pending join request with a reason code' })
     @Response('workspace.joinRequest.reject')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.WorkspaceJoinRequest,
         action: [EnumPolicyAction.update],
     })

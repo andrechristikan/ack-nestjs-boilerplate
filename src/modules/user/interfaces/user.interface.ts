@@ -30,7 +30,6 @@ import type {
     IAuthTwoFactorVerify,
 } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
-import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 
 export interface IUserTwoFactor extends TwoFactor {
@@ -38,13 +37,9 @@ export interface IUserTwoFactor extends TwoFactor {
 }
 
 export interface IUser extends User {
-    role: IRoleWithPolicies;
+    role: Role;
     twoFactor: IUserTwoFactor | null;
 }
-
-export type IUserWithoutPolicies = Omit<IUser, 'role'> & {
-    role: Omit<IRoleWithPolicies, 'policies'>;
-};
 
 /** A user row flattened for CSV export: only the role name and the photo are joined. */
 export interface IUserExport extends User {

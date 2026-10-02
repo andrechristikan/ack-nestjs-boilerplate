@@ -1,6 +1,4 @@
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -13,16 +11,11 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
-    EnumPolicyAction,
-    EnumPolicySubject,
     EnumRoleScope,
     Prisma,
 } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectSlugAlreadyExistsException } from '@modules/project/exceptions/project.slug-already-exists.exception';
@@ -48,7 +41,6 @@ export class ProjectDomain {
 
     constructor(
         private readonly projectRepository: ProjectRepository,
-        private readonly policyDomain: PolicyDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
@@ -56,8 +48,7 @@ export class ProjectDomain {
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly projectMemberDomain: ProjectMemberDomain,
-        private readonly roleDomain: RoleDomain,
-        private readonly requestStoreService: RequestStoreService
+        private readonly roleDomain: RoleDomain
     ) {
         this.slugRegex = this.configService.get<RegExp>('project.slugRegex')!;
         this.slugPrefix = this.configService.get<string>('project.slugPrefix')!;
@@ -153,31 +144,17 @@ export class ProjectDomain {
     async getListForMember(
         workspaceId: string,
         workspaceMember: WorkspaceMember,
-        pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
+        pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
+        canReadAllProjects: boolean,
+        where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
-        const ability = this.requestStoreService.get<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
-        if (!ability) {
-            throw new RequestContextMissingException(PolicyAbilityStoreKey);
-        }
-        const canReadAllProjects = ability.can(
-            EnumPolicyAction.read,
-            EnumPolicySubject.Project
-        );
         const memberUserId = canReadAllProjects ? null : workspaceMember.userId;
-        const authorizationWhere =
-            this.policyDomain.accessibleWhere<Prisma.ProjectWhereInput>(
-                ability,
-                EnumPolicyAction.read,
-                EnumPolicySubject.Project
-            );
 
         return this.projectRepository.findWithPaginationCursorForWorkspace(
             workspaceId,
             memberUserId,
-            authorizationWhere,
-            pagination
+            pagination,
+            where
         );
     }
 
@@ -328,11 +305,13 @@ export class ProjectDomain {
 
     async getListForAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string
+        workspaceId?: string,
+        where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.projectRepository.findWithPaginationOffsetForAdmin(
             pagination,
-            workspaceId
+            workspaceId,
+            where
         );
     }
 

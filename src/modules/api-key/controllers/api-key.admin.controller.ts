@@ -35,7 +35,7 @@ import type {
 } from '@common/response/interfaces/response.interface';
 
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     EnumPolicyAction,
@@ -63,7 +63,7 @@ export class ApiKeyAdminController {
         schema: ApiKeyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read],
     })
@@ -81,7 +81,7 @@ export class ApiKeyAdminController {
     @Doc({ summary: 'create an api key' })
     @Response('apiKey.create', { schema: ApiKeyCreateResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
@@ -102,7 +102,7 @@ export class ApiKeyAdminController {
         schema: ApiKeyCreateResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -123,7 +123,7 @@ export class ApiKeyAdminController {
         schema: ApiKeyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -146,7 +146,7 @@ export class ApiKeyAdminController {
         schema: ApiKeyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -169,7 +169,7 @@ export class ApiKeyAdminController {
         schema: ApiKeyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -192,7 +192,7 @@ export class ApiKeyAdminController {
         schema: ApiKeyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })

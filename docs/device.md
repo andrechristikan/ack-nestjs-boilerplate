@@ -192,19 +192,19 @@ The credential lockout (`UserPasswordDomain.reachMaxPasswordAttempt`) is the sec
 
 ## Policy Control
 
-Device endpoints are protected using `EnumPolicySubject.device`. Admin endpoints require both `user` (read) and `device` (read/delete) abilities:
+Device endpoints are protected using `EnumPolicySubject.Device`. Admin endpoints require both `User` (read) and `Device` (read/delete) abilities:
 
 ```typescript
 // Admin list devices
-@PolicyProtected(
-    { subject: EnumPolicySubject.user, action: [EnumPolicyAction.read] },
-    { subject: EnumPolicySubject.device, action: [EnumPolicyAction.read] }
+@PlatformPolicyProtected(
+    { subject: EnumPolicySubject.User, action: [EnumPolicyAction.read] },
+    { subject: EnumPolicySubject.Device, action: [EnumPolicyAction.read] }
 )
 
 // Admin remove device
-@PolicyProtected(
-    { subject: EnumPolicySubject.user, action: [EnumPolicyAction.read] },
-    { subject: EnumPolicySubject.device, action: [EnumPolicyAction.read, EnumPolicyAction.delete] }
+@PlatformPolicyProtected(
+    { subject: EnumPolicySubject.User, action: [EnumPolicyAction.read] },
+    { subject: EnumPolicySubject.Device, action: [EnumPolicyAction.read, EnumPolicyAction.delete] }
 )
 ```
 

@@ -15,10 +15,7 @@ import { TermPolicyRequiredInvalidException } from '@modules/term-policy/excepti
 import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
-import type {
-    IUser,
-    IUserWithoutPolicies,
-} from '@modules/user/interfaces/user.interface';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
 import { EnumTermPolicyType, Prisma } from '@generated/prisma-client/client';
@@ -35,7 +32,7 @@ export class TermPolicyAcceptanceDomain {
     ) {}
 
     async validateTermPolicyGuard(
-        user: IUserWithoutPolicies | null,
+        user: IUser | null,
         requiredTermPolicies: EnumTermPolicyType[]
     ): Promise<void> {
         if (!user) {

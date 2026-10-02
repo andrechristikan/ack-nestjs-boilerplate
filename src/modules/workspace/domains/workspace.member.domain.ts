@@ -26,17 +26,14 @@ import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/wo
 import type {
     IWorkspaceMember,
     IWorkspaceMemberWithRole,
-    IWorkspaceMemberWithRolePolicies,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
-import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class WorkspaceMemberDomain {
     constructor(
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
-        private readonly workspaceRepository: WorkspaceRepository,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly roleDomain: RoleDomain
     ) {}
@@ -72,7 +69,7 @@ export class WorkspaceMemberDomain {
     async validateWorkspaceMemberGuard(
         workspaceId: string | null,
         userId: string | null
-    ): Promise<IWorkspaceMemberWithRolePolicies> {
+    ): Promise<IWorkspaceMemberWithRole> {
         if (!userId) {
             throw new AuthJwtAccessTokenInvalidException();
         } else if (!workspaceId) {
@@ -91,6 +88,25 @@ export class WorkspaceMemberDomain {
         this.roleDomain.assertScope(member.role, EnumRoleScope.workspace);
 
         return member;
+    }
+
+    /** Loads the member the route addresses within the workspace, AND-composed with the optional where, so a record the where excludes reads as not found. */
+    async getOneByIdAndWorkspace(
+        workspaceId: string,
+        workspaceMemberId: string,
+        where?: Prisma.WorkspaceMemberWhereInput
+    ): Promise<IWorkspaceMemberWithRole> {
+        const target =
+            await this.workspaceMemberRepository.findByIdAndWorkspace(
+                workspaceMemberId,
+                workspaceId,
+                where
+            );
+        if (!target) {
+            throw new WorkspaceMemberNotFoundException();
+        }
+
+        return target;
     }
 
     async getOneByWorkspaceAndUser(
@@ -206,30 +222,23 @@ export class WorkspaceMemberDomain {
     async getMembersList(
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>
+        role?: Record<string, IPaginationIn>,
+        where?: Prisma.WorkspaceMemberWhereInput
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         return this.workspaceMemberRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
-            role
+            role,
+            where
         );
     }
 
     async updateMemberRole(
         workspaceId: string,
         actorMember: IWorkspaceMemberWithRole,
-        targetMemberId: string,
+        targetMember: IWorkspaceMemberWithRole,
         roleId: string
     ): Promise<void> {
-        const targetMember =
-            await this.workspaceMemberRepository.findByIdAndWorkspace(
-                targetMemberId,
-                workspaceId
-            );
-        if (!targetMember) {
-            throw new WorkspaceMemberNotFoundException();
-        }
-
         this.assertPeerActionAllowed(actorMember, targetMember);
 
         const role = await this.roleDomain.resolve(
@@ -272,17 +281,8 @@ export class WorkspaceMemberDomain {
     async removeMember(
         workspaceId: string,
         actorMember: IWorkspaceMemberWithRole,
-        targetMemberId: string
+        targetMember: IWorkspaceMemberWithRole
     ): Promise<void> {
-        const targetMember =
-            await this.workspaceMemberRepository.findByIdAndWorkspace(
-                targetMemberId,
-                workspaceId
-            );
-        if (!targetMember) {
-            throw new WorkspaceMemberNotFoundException();
-        }
-
         if (targetMember.userId === actorMember.userId) {
             throw new WorkspaceMemberPeerForbiddenException();
         }
@@ -315,21 +315,14 @@ export class WorkspaceMemberDomain {
         this.activityLogDomain.stagePrepared(events);
     }
 
+    /** Pages the members of a workspace the admin policy guard already resolved, soft-deleted included, so it reads no workspace row itself. */
     async getMembersListForAdmin(
         workspaceId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
-        const [workspace, paginated] = await Promise.all([
-            this.workspaceRepository.findByIdForAdmin(workspaceId),
-            this.workspaceMemberRepository.findWithPaginationOffset(
-                workspaceId,
-                pagination
-            ),
-        ]);
-        if (!workspace) {
-            throw new WorkspaceNotFoundException();
-        }
-
-        return paginated;
+        return this.workspaceMemberRepository.findWithPaginationOffset(
+            workspaceId,
+            pagination
+        );
     }
 }

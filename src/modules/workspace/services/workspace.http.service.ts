@@ -5,10 +5,14 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PlatformPolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { EnumPolicyAbilityScope } from '@modules/policy/enums/policy.enum';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import type {
     IEffectivePermission,
@@ -140,6 +144,16 @@ export class WorkspaceHttpService {
     async getListForAdmin(
         query: WorkspaceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Workspace>> {
+        const ability = this.policyDomain.requireStored<PolicyAbility>(
+            PlatformPolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyDomain.requireAccessibleWhere<Prisma.WorkspaceWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.Workspace
+            );
+
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.WorkspaceWhereInput>(query, {
                 availableSearch: WorkspaceDefaultAvailableSearch,
@@ -159,7 +173,8 @@ export class WorkspaceHttpService {
 
         const { data, ...others } = await this.workspaceDomain.getListForAdmin(
             params,
-            isPublic?.where
+            isPublic?.where,
+            accessibleWhere
         );
 
         return {
@@ -168,12 +183,7 @@ export class WorkspaceHttpService {
         };
     }
 
-    async getByIdForAdmin(
-        workspaceId: string
-    ): Promise<IResponseReturn<Workspace>> {
-        const workspace =
-            await this.workspaceDomain.getByIdForAdmin(workspaceId);
-
+    getForAdmin(workspace: Workspace): IResponseReturn<Workspace> {
         return { data: workspace };
     }
 
@@ -187,12 +197,9 @@ export class WorkspaceHttpService {
         _workspace: Workspace,
         _workspaceMember: IWorkspaceMemberWithRole
     ): IResponseReturn<{ permissions: IEffectivePermission[] }> {
-        const ability = this.requestStoreService.get<PolicyAbility>(
-            PolicyAbilityStoreKey
+        const ability = this.policyDomain.requireComposedAbility(
+            EnumPolicyAbilityScope.workspace
         );
-        if (!ability) {
-            throw new RequestContextMissingException(PolicyAbilityStoreKey);
-        }
 
         const permissions = this.policyDomain.getEffectivePermissions(
             ability,

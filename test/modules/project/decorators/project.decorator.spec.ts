@@ -7,19 +7,29 @@ import { ClsServiceManager } from 'nestjs-cls';
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { EnumPolicyAction } from '@generated/prisma-client';
+import { ProjectPolicyAbilityGuard } from '@modules/policy/guards/policy.project.ability.guard';
 import {
     ProjectMemberStoreKey,
+    ProjectMemberPolicyRequiredMetaKey,
     ProjectMemberRequiredMetaKey,
+    ProjectMemberTargetStoreKey,
+    ProjectPolicyRequiredMetaKey,
     ProjectStoreKey,
 } from '@modules/project/constants/project.constant';
 import {
     ProjectCurrent,
     ProjectMemberCurrent,
+    ProjectMemberPolicyProtected,
     ProjectMemberProtected,
+    ProjectMemberTargetCurrent,
+    ProjectPolicyProtected,
     ProjectProtected,
 } from '@modules/project/decorators/project.decorator';
 import { ProjectGuard } from '@modules/project/guards/project.guard';
 import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard';
+import { ProjectMemberPolicyGuard } from '@modules/project/guards/project.member.policy.guard';
+import { ProjectPolicyGuard } from '@modules/project/guards/project.policy.guard';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 
 vi.mock('nestjs-cls', () => ({
@@ -30,6 +40,18 @@ vi.mock('@modules/project/guards/project.guard', () => ({
 }));
 vi.mock('@modules/project/guards/project.member.guard', () => ({
     ProjectMemberGuard: vi.fn(),
+}));
+vi.mock('@modules/project/guards/project.policy.guard', () => ({
+    ProjectPolicyGuard: vi.fn(),
+}));
+vi.mock('@modules/project/guards/project.member.policy.guard', () => ({
+    ProjectMemberPolicyGuard: vi.fn(),
+}));
+vi.mock('@modules/policy/guards/policy.project.ability.guard', () => ({
+    ProjectPolicyAbilityGuard: vi.fn(),
+}));
+vi.mock('@modules/policy/guards/policy.guard', () => ({
+    PolicyGuard: vi.fn(),
 }));
 
 const extractFactory = (decorator: () => ParameterDecorator) => {
@@ -93,6 +115,60 @@ describe('project decorators', () => {
         expect(
             Reflect.getMetadata(DocResponseEntryMetaKey, handler)
         ).toBeUndefined();
+    });
+
+    it('ProjectPolicyProtected stacks the project ability guard then the project policy guard and declares the actions', () => {
+        const handler = vi.fn();
+
+        ProjectPolicyProtected(EnumPolicyAction.read, EnumPolicyAction.update)(
+            {},
+            'handler',
+            { value: handler }
+        );
+
+        expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
+            ProjectPolicyAbilityGuard,
+            ProjectPolicyGuard,
+        ]);
+        expect(
+            Reflect.getMetadata(ProjectPolicyRequiredMetaKey, handler)
+        ).toEqual([EnumPolicyAction.read, EnumPolicyAction.update]);
+    });
+
+    it('ProjectMemberPolicyProtected stacks the project ability guard and the member policy guard, never the project policy guard', () => {
+        const handler = vi.fn();
+
+        ProjectMemberPolicyProtected(EnumPolicyAction.delete)({}, 'handler', {
+            value: handler,
+        });
+
+        expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
+            ProjectPolicyAbilityGuard,
+            ProjectMemberPolicyGuard,
+        ]);
+        expect(
+            Reflect.getMetadata(ProjectMemberPolicyRequiredMetaKey, handler)
+        ).toEqual([EnumPolicyAction.delete]);
+    });
+
+    it('reads the authorized project member target from CLS and rejects when absent', () => {
+        const cls = mock<ClsService>();
+        const target = { id: 'target-member-id' };
+        cls.get.mockReturnValue(target);
+        vi.mocked(ClsServiceManager.getClsService).mockReturnValue(cls);
+        const factory = extractFactory(() => ProjectMemberTargetCurrent());
+
+        expect(factory(undefined)).toBe(target);
+        expect(factory('id')).toBe('target-member-id');
+        expect(cls.get).toHaveBeenCalledWith(ProjectMemberTargetStoreKey);
+
+        cls.get.mockReturnValue(undefined);
+        expect(() => factory(undefined)).toThrow(
+            RequestContextMissingException
+        );
+
+        cls.get.mockReturnValue({ field: null });
+        expect(() => factory('field')).toThrow(RequestContextMissingException);
     });
 
     it.each([

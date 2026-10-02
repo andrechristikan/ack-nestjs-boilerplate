@@ -28,27 +28,33 @@
 
 The system defines a CASL v7 authorization model over PostgreSQL and Prisma. It covers platform
 roles, workspace and project boundaries, stored rule evaluation, record-level object checks, and
-Prisma query filtering. `PolicyGuard` performs the route capability gate, HTTP services enforce
-request-scoped permissions, domains own business orchestration, and repositories own Prisma query
+Prisma query filtering. Fixed-scope ability guards build the request ability, policy enforcement
+guards gate each route and authorize target records, HTTP services apply the ability's query
+predicates to collections, domains own business orchestration, and repositories own Prisma query
 shapes.
 
 The model uses `@casl/ability@7.0.1` and `@casl/prisma@2.0.2`. `createPrismaAbility` builds the
 ability in the Prisma `WhereInput` dialect, and `accessibleBy(ability, action).ofType(Model)`
 turns a rule set into a per-model `WhereInput`.
 
-Authorization is enforced through a route gate and an HTTP-service decision layer:
+Authorization is enforced through ability guards, enforcement guards, and an HTTP-service query layer:
 
 - **Type-level** — `PolicyGuard` calls `ability.can(action, subject)` with no record, answering
   "could this role ever do this?" in O(1). CASL does not consult a rule's conditions on a
   type-level check
   ([`@casl/ability` `Rule.ts`](https://github.com/stalniy/casl/blob/master/packages/casl-ability/src/Rule.ts)
-  evaluates conditions only against an instance). Every `@PolicyProtected` route runs this gate.
-- **HTTP-service enforcement** — the instance form `ability.can(action,
-  PolicyUtil.toSubject(subject, record))` evaluates stored conditions after the HTTP service obtains
-  the target record. HTTP services also generate `accessibleBy(...).ofType(Model)` predicates for
-  policy-controlled collection queries and merge them into the existing pagination `where`. Prisma
-  returns class-less plain objects, so tagging records with `PolicyUtil.toSubject(subject, record)` is
-  mandatory for CASL to select the right rules.
+  evaluates conditions only against an instance). `@PlatformPolicyProtected` and
+  `@WorkspaceSubjectPolicyProtected` routes run this gate.
+- **Record-level** — the workspace, workspace-member, project, and project-member enforcement
+  guards resolve the target record and evaluate `ability.can(action,
+  PolicyUtil.toSubject(subject, record))`, which evaluates stored conditions against the record.
+  Member targets load through `PolicyDomain.requireAccessibleWhere`, so a record the ability does
+  not reach reads as not found. Prisma returns class-less plain objects, so tagging records with
+  `PolicyUtil.toSubject(subject, record)` is mandatory for CASL to select the right rules.
+- **Query-level** — HTTP services generate `accessibleBy(...).ofType(Model)` predicates through
+  `PolicyDomain.accessibleWhere` and `requireAccessibleWhere` for policy-controlled collection
+  queries and pass them to the domain as an optional generic `where`, which the repository
+  AND-composes with its mandatory constraints.
 
 Domains remain reusable by processors, automations, and other modules that do not have an HTTP
 request authorization context. They receive authorized inputs from HTTP services and do not read
@@ -91,14 +97,14 @@ role/member data used while the guards compose that ability.
 
 Platform roles and workspace/project memberships describe different dimensions of authority.
 
-- Admin-scope routes use `@PolicyProtected()`. A route narrowed to a workspace or project accepts
+- Admin-scope routes use `@PlatformPolicyProtected()`. A route narrowed to a workspace or project accepts
   a validated path id and does not read `x-workspace-id`.
 - User and shared workspace routes keep `@WorkspaceProtected()` and the membership-resolving
   `@WorkspaceMemberProtected()` form as the workspace boundary. Project routes keep
   `@ProjectProtected()` and `@ProjectMemberProtected()`.
 - CASL adds capability and record decisions after those guards establish the caller and
-  workspace/project context. HTTP services own request-scoped CASL checks, and CASL does not turn a
-  cross-workspace project into an accessible record.
+  workspace/project context. The policy enforcement guards own request-scoped CASL checks, and CASL
+  does not turn a cross-workspace project into an accessible record.
 - Workspace-owner project authority is expressed by the owner's workspace-role rules. It stays
   constrained to the active workspace and does not become a global project permission.
 
@@ -184,7 +190,7 @@ inferred merely from the existence of a controller or model.
 
 `manage` is CASL's literal, unbounded wildcard action. `all` is CASL's only wildcard subject;
 `manage` with `all` is the super-admin rule, not editable through the role-policy API, and `all`
-accepts no other action. `manage` on any other subject, such as `workspaceMember`, is the same
+accepts no other action. `manage` on any other subject, such as `WorkspaceMember`, is the same
 unbounded wildcard: building the ability passes a stored `manage` rule straight to
 `createPrismaAbility`, and no per-subject action list is consulted when the ability is built.
 
@@ -198,18 +204,18 @@ enforced catalog; nothing in the policy write path checks a rule's action agains
 
 | Subject                | Actions in use                                   | Operations covered                                                             |
 | ---------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------- |
-| `workspace`            | `read`, `update`, `delete`, `manage`            | ownership transfer requires `update`; `manage` grants every action on the subject |
-| `workspaceMember`      | `update`, `delete`, `manage`                    | role change, member removal                             |
-| `workspaceInvite`      | `create`, `update`, `delete`, `manage`          | `update` resends a pending invite; `delete` revokes it |
-| `workspaceJoinRequest` | `update`, `manage`                              | accept and reject                                   |
-| `project`              | `read`, `create`, `update`, `delete`, `manage`  | project lifecycle                      |
-| `projectMember`        | `create`, `update`, `delete`, `manage`          | `create` assigns a member; role change; member removal   |
+| `Workspace`            | `read`, `update`, `delete`, `manage`            | ownership transfer requires `update`; `manage` grants every action on the subject |
+| `WorkspaceMember`      | `read`, `update`, `delete`, `manage`            | member list, role change, member removal                |
+| `WorkspaceInvite`      | `create`, `update`, `delete`, `manage`          | `update` resends a pending invite; `delete` revokes it |
+| `WorkspaceJoinRequest` | `update`, `manage`                              | accept and reject                                   |
+| `Project`              | `read`, `create`, `update`, `delete`, `manage`  | project lifecycle                      |
+| `ProjectMember`        | `create`, `update`, `delete`, `manage`          | `create` assigns a member; role change; member removal   |
 | `analytic`            | `read`                                           | analytics dashboards, platform-wide (admin routes) and workspace (user routes) |
-| platform/admin resource subjects | every `EnumPolicyAction`               | `activityLog`, `apiKey`, `device`, `featureFlag`, `passwordHistory`, `role`, `session`, `termPolicy`, `user` (the admin controllers' CRUD, no tenant scope) |
+| platform/admin resource subjects | every `EnumPolicyAction`               | `ActivityLog`, `ApiKey`, `Device`, `FeatureFlag`, `PasswordHistory`, `Role`, `Session`, `TermPolicy`, `User` (the admin controllers' CRUD, no tenant scope) |
 
 **`manage` is unbounded on every subject, including a specific one.** A stored `manage` rule
 reaches `createPrismaAbility` as CASL's literal wildcard action, whatever subject it names:
-`manage` on `workspaceMember` authorizes every action CASL evaluates against that subject, not a
+`manage` on `WorkspaceMember` authorizes every action CASL evaluates against that subject, not a
 bounded subset. The `all` subject carries the same wildcard, so the super-admin `manage`/`all`
 rule and a scoped role's `manage` rule on one subject are evaluated the same way (see
 [Ability Lifecycle](#ability-lifecycle)). The `owner` roles hold `manage` on the subjects they fully
@@ -217,20 +223,19 @@ control; `admin` roles keep explicit CRUD so a specific action (most notably `de
 withheld, covered in
 [Policy Matrix & Default Scoped Role Rules](#policy-matrix--default-scoped-role-rules).
 
-`update` on `workspace` covers name, description, visibility, and slug changes. `update` on
-`project` covers name, description, and slug changes. These operations receive separate actions only
+`update` on `Workspace` covers name, description, visibility, and slug changes. `update` on
+`Project` covers name, description, and slug changes. These operations receive separate actions only
 when the product needs different grants.
 
-The following operations require **no CASL permission** and have no subject or action — the domains
+The following operations require **no CASL permission** and enforce no subject or action — the domains
 still enforce identity, membership, last-owner, and related invariants:
 
 - Workspace `list`, `create`, `leave`, and `switch`. Every authenticated user may perform them, and
   each only ever touches workspaces the caller has access to.
-- Workspace member `list`, workspace invite `list`, and workspace join-request `list`. Membership
-  in the workspace is the gate.
-- Project `list` and project member `list`. Membership in the workspace (project list) or the
-  project (member list) is the gate. The project list result set is filtered by visibility as a
-  query concern.
+- Workspace invite `list` and workspace join-request `list`. Membership in the workspace is the
+  gate.
+- Project `list`. Membership in the workspace is the gate. The project list result set is filtered
+  by visibility as a query concern.
 - Project member `leave`. Every project member may leave; the domain enforces last-admin-style
   invariants.
 - Workspace invite `claim`. The invite token and the authenticated caller are both required.
@@ -239,28 +244,29 @@ still enforce identity, membership, last-owner, and related invariants:
 
 ### Subjects
 
-`EnumPolicySubject` is the full v1 registry — every subject `@PolicyProtected` names across the 16
+`EnumPolicySubject` is the full v1 registry — every subject the policy decorators name across the 16
 admin/user controllers, not a workspace/project-only subset:
 
 ```text
 all                                             # CASL wildcard subject
-activityLog  apiKey  device  featureFlag        # platform/admin resource subjects
-passwordHistory  role  session  termPolicy  user
-workspace  workspaceMember  workspaceInvite  workspaceJoinRequest
-project  projectMember
+ActivityLog  ApiKey  Device  FeatureFlag        # platform/admin resource subjects
+PasswordHistory  Role  Session  TermPolicy  User
+Workspace  WorkspaceMember  WorkspaceInvite  WorkspaceJoinRequest
+Project  ProjectMember
 analytic                                        # capability subject, model: null, workspace-scoped
 ```
 
-The platform/admin resource subjects back the admin controllers' CRUD (`role`, `user`, `apiKey`,
-`device`, `session`, `activityLog`, `passwordHistory`, `termPolicy`, `featureFlag`) — roughly 75
-`@PolicyProtected` applications. They are load-bearing v1 subjects: platform-admin policies grant
+The platform/admin resource subjects back the admin controllers' CRUD (`Role`, `User`, `ApiKey`,
+`Device`, `Session`, `ActivityLog`, `PasswordHistory`, `TermPolicy`, `FeatureFlag`) — roughly 75
+`@PlatformPolicyProtected` applications. They are load-bearing v1 subjects: platform-admin policies grant
 them every `EnumPolicyAction` with no tenant scope.
 
 Subjects may map to a persisted resource, a relation-backed resource, or a virtual capability such
-as `analytic`; a subject need not be a one-to-one Prisma model. Subjects use camelCase
-model-aligned names rather than colon-delimited values. For example, `workspaceInvite` maps
-directly to `WorkspaceInvite`; `workspace:invite` would require an additional enum-to-model
-translation without changing the boundary.
+as `analytic`; a subject need not be a one-to-one Prisma model. Persisted subjects use the
+Prisma model names, and the virtual subjects `all` and `analytic` are lowercase, rather than
+colon-delimited values. For example, `WorkspaceInvite` maps directly to the `WorkspaceInvite` model;
+`workspace:invite` would require an additional enum-to-model translation without changing the
+boundary.
 
 Subject-to-model adaptation happens at the CASL boundary. Persisted subjects remain in application
 vocabulary, while `PolicyUtil.toSubject(subject, record)` tags Prisma plain objects with the
@@ -276,11 +282,11 @@ with `PolicyUtil.toSubject` before an instance check, while virtual subjects suc
 `analytic` are evaluated by name. Operations without a subject carry no policy rule; their
 membership and visibility checks remain domain or repository concerns.
 
-The `workspace` and `project` subjects are distinguished operationally: their active records are
+The `Workspace` and `Project` subjects are distinguished operationally: their active records are
 resolved and cached in the request store (`WorkspaceStoreKey`/`ProjectStoreKey`) by
-`WorkspaceGuard`/`ProjectGuard`, which run before `PolicyGuard`. Those boundary guards establish
-resource context; `PolicyGuard` performs the type-level policy check, while HTTP services perform
-record-level checks for targets obtained through their domains (see [Enforcement Layers](#enforcement-layers)).
+`WorkspaceGuard`/`ProjectGuard`, which run before the policy guards. Those boundary guards establish
+resource context; `PolicyGuard` performs the type-level policy check, while the record enforcement
+guards perform record-level checks for the targets they load through the domains (see [Enforcement Layers](#enforcement-layers)).
 
 ### Scoping Placeholder Conventions
 
@@ -289,23 +295,23 @@ to the boundary where the role was assigned. This is normative:
 
 - These rules bind rules held by **workspace and project roles**. Platform-role rules are exempt
   from the mandatory scope pair.
-- Every **workspace-scoped** subject (`workspace`, `workspaceMember`, `workspaceInvite`,
-  `workspaceJoinRequest`) rule held by a workspace role MUST include a `workspaceId` key (`id` for
-  the `workspace` subject itself) resolved from `${workspaceId}`, populated from the request's
+- Every **workspace-scoped** subject (`Workspace`, `WorkspaceMember`, `WorkspaceInvite`,
+  `WorkspaceJoinRequest`) rule held by a workspace role MUST include a `workspaceId` key (`id` for
+  the `Workspace` subject itself) resolved from `${workspaceId}`, populated from the request's
   `x-workspace-id` header on user and shared routes and from the validated `:workspaceId` path
   param on admin routes.
-- Every project subject rule other than a bare `project:create` carries a fixed scope pair: `id`
-  resolved from `${projectId}` for `project`, `projectId` resolved from `${projectId}` for
-  `projectMember`. The pair is the same whether a workspace role or a project role holds the rule;
+- Every project subject rule other than a bare `Project:create` carries a fixed scope pair: `id`
+  resolved from `${projectId}` for `Project`, `projectId` resolved from `${projectId}` for
+  `ProjectMember`. The pair is the same whether a workspace role or a project role holds the rule;
   `${projectId}` populates from the request's `:projectId`
   route param, so the rule matches only while a project route resolved that path.
-- A bare `project:create` rule (the single action `create`, nothing else) carries no scope
+- A bare `Project:create` rule (the single action `create`, nothing else) carries no scope
   condition, since no project exists yet to scope to. The create check evaluates the incoming
   project's own attributes before persistence.
 - Conditions are generated and processed in three steps:
   1. Seed helpers build stored conditions explicitly. Workspace-scoped rules use
      `{ "workspaceId": "${workspaceId}" }`; project-scoped rules use either
-     `{ "id": "${projectId}" }` or `{ "projectId": "${projectId}" }`. A bare `project:create`
+     `{ "id": "${projectId}" }` or `{ "projectId": "${projectId}" }`. A bare `Project:create`
      rule has no condition.
   2. Policy writes do not check whether a rule's subject, actions, or conditions match the role's
      scope. Condition keys and operators are stored as provided by the trusted policy author.
@@ -313,7 +319,7 @@ to the boundary where the role was assigned. This is normative:
      receives `{ "workspaceId": "<uuid>" }`. Nothing is injected
      implicitly: the stored rule is the single source of truth, and `accessibleWhere` reuses the same
      condition.
-- `projectMember:create` carries the `projectId` scope condition and no member-instance condition:
+- `ProjectMember:create` carries the `projectId` scope condition and no member-instance condition:
   holding the permission means "can assign any member in the permitted project."
 - Operations without a subject (see [Actions](#actions)) need no entry here: they carry no action, so
   they have no condition to validate.
@@ -403,7 +409,7 @@ before inverted rules per the composition order in
 [Stored Rule Contract](#stored-rule-contract). Query filtering reads that ability through
 `accessibleBy(ability, action).ofType(Prisma.ModelName.X)` — the `@casl/prisma@2.0.2` API, not the
 older `accessibleBy(ability, action)[modelName]` bracket form. `PolicyDomain.accessibleWhere` wraps
-`.ofType(...)`; HTTP services merge its result into the existing pagination `where`, and repository
+`.ofType(...)`; HTTP services pass its result to the domain as the generic `where`, and repository
 queries compose that result with business predicates through `AND` (active-row and workspace/project
 predicates), never spreading an authorization filter into another `where` object.
 
@@ -447,11 +453,11 @@ JSON/Zod shape validation
     -> Prisma query execution
 ```
 
-**Worked example.** A `workspaceMember` `update` rule scoped to the active workspace is stored as:
+**Worked example.** A `WorkspaceMember` `update` rule scoped to the active workspace is stored as:
 
 ```json
 {
-    "subject": "workspaceMember",
+    "subject": "WorkspaceMember",
     "action": ["update"],
     "conditions": { "workspaceId": "${workspaceId}" }
 }
@@ -466,11 +472,11 @@ const ability = this.requestStoreService.get<IPolicyAbility>(PolicyAbilityStoreK
 
 // Record-level: the instance check evaluates the stored condition.
 const otherWorkspaceMember = policyUtil.toSubject(
-    EnumPolicySubject.workspaceMember,
+    EnumPolicySubject.WorkspaceMember,
     memberFromOtherWorkspace
 );
 const activeWorkspaceMember = policyUtil.toSubject(
-    EnumPolicySubject.workspaceMember,
+    EnumPolicySubject.WorkspaceMember,
     memberFromActiveWorkspace
 );
 ability.can('update', otherWorkspaceMember); // false — workspaceId mismatch
@@ -481,49 +487,60 @@ ability.can('update', activeWorkspaceMember); // true
 const authorizationWhere = this.policyDomain.accessibleWhere(
     ability,
     EnumPolicyAction.update,
-    EnumPolicySubject.workspaceMember
+    EnumPolicySubject.WorkspaceMember
 );
 ```
 
 ## Ability Lifecycle
 
-`UserGuard` initializes the request ability from the authenticated user's platform-role policies.
-`WorkspaceMemberGuard` and `ProjectMemberGuard` extend the same ability with the policies from the
-resolved membership roles. Each guard resolves only the placeholders available at its boundary and
-writes the resulting ability under `PolicyAbilityStoreKey`.
+`UserGuard` authenticates only: it stores the user under `UserStoreKey` and loads no policies.
+`WorkspaceMemberGuard` and `ProjectMemberGuard` store the membership rows and load no policies. The
+request ability comes from one of three fixed-scope ability guards, each composed by a policy
+decorator, and is stored under `PolicyAbilityStoreKey`:
+
+| Guard | Scope | Policies loaded, in composition order |
+| --- | --- | --- |
+| `PlatformPolicyAbilityGuard` | `platform` | The authenticated user's platform role |
+| `WorkspacePolicyAbilityGuard` | `workspace` | The platform role, then the acting workspace member's role |
+| `ProjectPolicyAbilityGuard` | `project` | The platform role, then the acting workspace member's role, then the acting project member's role when the caller has one |
+
+`PolicyAbilityDomain` (a domain, not a service) builds the ability. Each layer's rules load through
+the policy repository and resolve only the placeholders that layer owns:
 
 ```ts
-const ability = policyAbilityFactory.buildFromPolicies(rolePolicies, {
-    [EnumPolicyConditionPlaceholder.userId]: user.id,
-    [EnumPolicyConditionPlaceholder.workspaceId]: workspace?.id,
-    [EnumPolicyConditionPlaceholder.projectId]: project?.id,
+const ability = await policyAbilityDomain.buildAbility({
+    scope: EnumPolicyAbilityScope.workspace,
+    user: { id: user.id, roleId: user.roleId },
+    workspace: { id: workspace.id, member: { id: member.id, roleId: member.roleId } },
 });
-requestStoreService.set(
-    PolicyAbilityStoreKey,
-    policyAbilityFactory.build([
-        ...previousAbility.rules,
-        ...ability.rules,
-    ])
-);
+requestStoreService.set(PolicyAbilityStoreKey, ability);
 ```
 
 `PolicyAbilityFactory` is a pure composition service. `buildFromPolicies` receives the explicit
-placeholder values available at the current boundary, interpolates recognized placeholders, drops
-rules whose conditions cannot be resolved, and returns a new ability. It does not read or write
-request context.
+placeholder values available at the current layer, interpolates recognized placeholders, drops
+rules whose conditions cannot be resolved, and returns an ability. `build` adds every allowing rule
+before every inverted rule. The factory does not read or write request context.
 
-The guard that establishes a policy boundary owns the request-store write. Workspace and project
-member guards require an existing ability before merging their role policies, so an incomplete guard
-chain fails with a missing request-context error. The project member guard permits an absent optional
-membership row and leaves the workspace ability unchanged.
+An ability guard that finds an ability under `PolicyAbilityStoreKey` returns without loading or
+overwriting anything, so a stacked policy decorator reuses the first ability built for the request.
+On an admin resource route the workspace policy decorator is written above
+`@PlatformPolicyProtected`, so the platform ability is stored first. An ability guard whose
+required context (user, workspace, member, project) is missing from the store throws
+`RequestContextMissingException`. The project ability guard permits an absent project member and
+builds the project layer empty.
 
-Consumers read the ability directly from `PolicyAbilityStoreKey`. `PolicyGuard` passes the subject
-type to `PolicyDomain.assertCan(ability, action, subject)` for the route capability gate. HTTP
-services tag loaded records with `PolicyUtil.toSubject` and pass the tagged target to
-`PolicyDomain.assertCan`; they can also call `ability.can(action, subject)` for local capability
-decisions and pass the same ability to `PolicyDomain.accessibleWhere(ability, action, subject)` for
-collection filtering. A `manage` rule remains CASL's literal wildcard action and is evaluated by the
-ability itself. Domains do not read the request ability implicitly.
+`PlatformPolicyAbilityGuard` also resolves `${workspaceId}` and `${projectId}` from valid
+`:workspaceId` and `:projectId` route params, so a platform rule on an admin route can be scoped to
+the workspace or project the path addresses.
+
+Consumers read the ability from `PolicyAbilityStoreKey`. `PolicyGuard` passes the subject type to
+`PolicyDomain.assertCan(ability, action, subject)` for the route capability gate. The record
+enforcement guards tag the loaded record with `PolicyUtil.toSubject` and pass it to
+`PolicyDomain.assertCan`. HTTP services pass the same ability to
+`PolicyDomain.accessibleWhere(ability, action, subject)` or `requireAccessibleWhere` for collection
+filtering, and may call `ability.can(action, subject)` for local capability decisions. A `manage`
+rule remains CASL's literal wildcard action and is evaluated by the ability itself. Domains do not
+read the request ability implicitly.
 
 `assertCan` throws through `ForbiddenError.from(ability).throwUnlessCan(action, subject)` rather than
 a bare boolean branch, so the matched rule's `reason` is captured. The domain maps that
@@ -531,43 +548,51 @@ a bare boolean branch, so the matched rule's `reason` is captured. The domain ma
 status-code kit (`policy.constant.ts` `DocPolicyErrorResponses`). A denial therefore reports why
 without losing its i18n message.
 
-`PolicyGuard` reads static route metadata, loads the resolved ability from request context, and calls
-`PolicyDomain.assertCan`. Policy loading is completed by the user and membership guards before the
-policy guard runs.
-
-`@RoleProtected()`, `RoleGuard`, and the super-admin bypass are removed after their routes carry
-equivalent policy metadata. The super-admin role receives a persisted `manage`/`all` rule and
-proceeds through the same ability construction and CASL evaluation as every other role, keeping
-permission data as the single source of authorization decisions.
+`@RoleProtected()`, `RoleGuard`, and the super-admin bypass do not exist. The super-admin role holds
+a persisted `manage`/`all` rule and proceeds through the same ability construction and CASL
+evaluation as every other role, keeping permission data as the single source of authorization
+decisions.
 
 ## Enforcement Layers
 
-The enforcement path is realized as `PolicyGuard` for the route capability gate, HTTP services for
-request-scoped record and collection authorization, domains for business orchestration, and
-repositories for Prisma execution. The HTTP service is the layer that assumes a request
-authorization context. Domains remain usable by non-HTTP callers.
+The enforcement path is realized as ability guards for the request ability, policy enforcement
+guards for the route capability gate and target records, HTTP services for collection predicates,
+domains for business orchestration, and repositories for Prisma execution. Domains remain usable by
+non-HTTP callers.
 
 ### Guard Layer
 
-`@PolicyProtected` applies `UseGuards(PolicyGuard)` + `SetMetadata(PolicyRequiredMetaKey, ...)`;
-policy metadata names only `{ subject, action }`. The decorator usage is unchanged at the call site:
+Each policy decorator applies `UseGuards(<ability guard>, <enforcement guard>)` and sets the route
+metadata its enforcement guard reads:
+
+| Decorator | Enforcement guard | Metadata |
+| --- | --- | --- |
+| `@PlatformPolicyProtected({ subject, action[] })` | `PolicyGuard` | `PolicyRequiredMetaKey`: `{ subject, action[] }` objects |
+| `@WorkspaceSubjectPolicyProtected({ subject, action[] })` | `PolicyGuard` | `PolicyRequiredMetaKey` |
+| `@WorkspacePolicyProtected(...actions)` | `WorkspacePolicyGuard` | `WorkspacePolicyRequiredMetaKey`: actions on `Workspace` |
+| `@WorkspaceMemberPolicyProtected(...actions)` | `WorkspaceMemberPolicyGuard` | `WorkspaceMemberPolicyRequiredMetaKey`: actions on `WorkspaceMember` |
+| `@ProjectPolicyProtected(...actions)` | `ProjectPolicyGuard` | `ProjectPolicyRequiredMetaKey`: actions on `Project` |
+| `@ProjectMemberPolicyProtected(...actions)` | `ProjectMemberPolicyGuard` | `ProjectMemberPolicyRequiredMetaKey`: actions on `ProjectMember` |
+| `@PolicyAbilityProtected(scope)` | none | none |
+
+The workspace and project decorators fix their subject and take actions only. A route that declares
+no required policy throws `PolicyPredefinedNotFoundException`. The decorator usage at the call site:
 
 ```ts
-@PolicyProtected({ subject: EnumPolicySubject.workspace, action: [EnumPolicyAction.update] })
-@Patch(':workspaceId')
+@WorkspacePolicyProtected(EnumPolicyAction.update)
+@WorkspaceMemberProtected()
+@WorkspaceProtected()
+@Patch('/update')
 updateWorkspace(...) { ... }
 ```
 
 `PolicyGuard` reads the resolved ability and route metadata, then asks `PolicyDomain` for a type-level
-decision per required `{ subject, action }`. Authentication and membership guards establish their
-preconditions before it. The policy guard does not load policy rows or resource records. The HTTP
-service performs record checks after obtaining the target through its domain and performs collection
-filtering by composing the generated authorization predicate into the pagination input.
+decision per required `{ subject, action }`. It loads no policy rows and no resource records.
 
 ```ts
 // guards/policy.guard.ts
 canActivate(context: ExecutionContext): boolean {
-    const ability = this.requestStoreService.get<IPolicyAbility>(PolicyAbilityStoreKey);
+    const ability = this.requestStoreService.get<PolicyAbility>(PolicyAbilityStoreKey);
     if (!ability) {
         throw new RequestContextMissingException(PolicyAbilityStoreKey);
     }
@@ -591,81 +616,83 @@ canActivate(context: ExecutionContext): boolean {
 }
 ```
 
+The record guards resolve a real record and judge it tagged with its subject:
+
+- `WorkspacePolicyGuard` judges the `Workspace` record: `:workspaceId` when the route carries it
+  (admin routes, soft-deleted workspaces included), otherwise the workspace `WorkspaceGuard` stored.
+- `WorkspaceMemberPolicyGuard` judges the target workspace member. The `:workspaceMemberId` param
+  always wins; the acting member is the target only when the route carries no param. The target
+  loads through `PolicyDomain.requireAccessibleWhere` and
+  `WorkspaceMemberDomain.getOneByIdAndWorkspace`, so a record the ability does not reach answers
+  not found, and the authorized record is stored under `WorkspaceMemberTargetStoreKey` for
+  `@WorkspaceMemberTargetCurrent()`.
+- `ProjectPolicyGuard` judges the `Project` record `ProjectGuard` stored.
+- `ProjectMemberPolicyGuard` judges the target project member `:projectMemberId` addresses, loaded
+  the same way and stored under `ProjectMemberTargetStoreKey`. A route with no param (assign) has no
+  target record, so only the subject-type check applies.
+
 `PolicyDomain.assertCan` evaluates the supplied ability. `superAdmin`'s `manage`/`all` rule satisfies
-the same checks as any other role's rules, without a role-name bypass in the policy guard.
+the same checks as any other role's rules, without a role-name bypass in any guard.
 
 ### HTTP Service Layer
 
-HTTP services enforce request-scoped authorization after `PolicyGuard` has established the type-level
-capability. They obtain the target through the domain, call `PolicyDomain.assertCan` with a tagged
-record for conditional point operations, and pass only authorized business inputs to the domain's
-mutation method.
+HTTP services receive the authorized target from the enforcement guard through the target
+decorators and pass it to the domain, so a point operation does not read the target twice. The
+domain keeps its business invariants and the repository keeps Prisma execution.
 
-For a scope-only workspace rule, a synthetic tagged subject can use the validated route id without a
-database read. This is valid only when the applicable conditions depend exclusively on known route
-attributes. General conditions require the actual record.
-
-For a policy-controlled collection, the HTTP service generates the CASL predicate and merges it into
-the existing pagination filter before calling the domain:
+For a policy-controlled collection, the HTTP service reads the ability from request context,
+generates the CASL predicate, and passes it to the domain as the generic `where`:
 
 ```ts
-const authorizationWhere = this.policyDomain.accessibleWhere(
+const accessibleWhere = this.policyDomain.requireAccessibleWhere<Prisma.WorkspaceWhereInput>(
     ability,
     EnumPolicyAction.read,
-    EnumPolicySubject.workspace
+    EnumPolicySubject.Workspace
 );
 
-return this.workspaceDomain.getListForAdmin({
-    ...pagination,
-    where: {
-        AND: [
-            authorizationWhere,
-            pagination.where ?? {},
-        ],
-    },
-});
+return this.workspaceDomain.getListForAdmin(params, accessibleWhere, isPublic?.where);
 ```
 
-The repository receives the composed pagination input, adds fixed business predicates, and executes
-the Prisma query. It does not resolve abilities or accept an authorization predicate directly from a
-request DTO.
+The repository AND-composes the policy predicate with its mandatory constraints (active rows,
+workspace or project boundary) and with the caller's search and equality filters, and executes the
+Prisma query. It does not resolve abilities or accept an authorization predicate directly from a
+request DTO. `requireAccessibleWhere` throws `PolicyForbiddenException` when the ability holds no
+rule for the subject; `accessibleWhere` returns `null` in that case, and the project list then passes
+no predicate.
 
 Writes that are consequences of one authorized operation, such as creating memberships while
 claiming an invite, stay inside that operation's transaction and do not invent separate permissions
 for internal steps. Domains called by processors and automations use trusted paths without HTTP
 authorization state.
 
-**Canonical end-to-end example.** `WorkspaceHttpService.updateWorkspace` traces the HTTP boundary:
+**Canonical end-to-end example.** `PATCH /user/workspace/member/:workspaceMemberId/role/update`
+traces the HTTP boundary:
 
 ```ts
-async updateWorkspace(
-    workspaceId: string,
-    actorId: string,
-    body: WorkspaceUpdateRequestDto
+@WorkspaceMemberPolicyProtected(EnumPolicyAction.update)
+@WorkspaceMemberProtected()
+@WorkspaceProtected()
+@Patch('/member/:workspaceMemberId/role/update')
+async memberUpdateRole(
+    @WorkspaceCurrent() workspace: Workspace,
+    @WorkspaceMemberCurrent() actorMember: IWorkspaceMemberWithRole,
+    @WorkspaceMemberTargetCurrent() targetMember: IWorkspaceMemberWithRole,
+    @Body({ schema: WorkspaceMemberUpdateRoleRequestSchema }) body: WorkspaceMemberUpdateRoleRequestDto
 ) {
-    const workspace = await this.workspaceDomain.getByIdForAdmin(workspaceId);
-
-    this.policyDomain.assertCan(
-        ability,
-        EnumPolicyAction.update,
-        this.policyUtil.toSubject(
-            EnumPolicySubject.workspace,
-            workspace
-        )
-    );
-
-    return this.workspaceDomain.updateWorkspace(
-        workspaceId,
-        actorId,
+    await this.workspaceMemberHttpService.updateMemberRole(
+        workspace.id,
+        actorMember,
+        targetMember,
         body
     );
 }
 ```
 
-The point-operation check produces a precise 403 and preserves the matched policy reason. The update
-then runs as a separate domain and repository operation. Query pushdown can be added to a mutation
-where database-level protection against a policy change during the request is required; v1 does not
-make that protection universal.
+`WorkspaceMemberPolicyGuard` has already loaded the addressed member through the policy predicate
+and judged `update` on it, so the service receives an authorized record. The update then runs as a
+separate domain and repository operation. Query pushdown can be added to a mutation where
+database-level protection against a policy change during the request is required; the current
+design does not make that protection universal.
 
 ### Alternatives Considered
 
@@ -674,13 +701,13 @@ information.
 
 | Option | Mechanism | Trade-off |
 | --- | --- | --- |
-| **HTTP-service record check** | The HTTP service loads or receives the target and calls `PolicyDomain.assertCan` with a tagged record. | Supports arbitrary conditions, precise 403 responses, and policy reasons. The decision and mutation are separate operations. |
-| **HTTP-service pagination filter** | The HTTP service calls `PolicyDomain.accessibleWhere` and merges the result into the existing pagination `where`. | Filters collections in the database and preserves correct pagination. |
+| **Guard record check** | The enforcement guard loads the target through the policy predicate and calls `PolicyDomain.assertCan` with a tagged record. | Supports arbitrary conditions, precise 403 responses, and policy reasons. The decision and mutation are separate operations. |
+| **HTTP-service pagination filter** | The HTTP service calls `PolicyDomain.accessibleWhere` and passes the result as the generic `where`. | Filters collections in the database and preserves correct pagination. |
 | **Mutation query pushdown** | A mutation composes `accessibleBy(...).ofType(Model)` with its own Prisma predicate. | Closes the check/write window, but a denied mutation has not-found semantics and does not carry the matched policy reason. |
 
-The adopted v1 model uses HTTP-service record checks for point operations and HTTP-service pagination
-filters for collection reads. Mutation query pushdown remains an available hardening mechanism for
-operations that require database-level protection against a check/write race.
+The adopted model uses guard record checks for point operations and HTTP-service pagination
+predicates for collection reads. Mutation query pushdown remains an available hardening mechanism
+for operations that require database-level protection against a check/write race.
 
 ## Effective Permissions Endpoint
 
@@ -691,8 +718,8 @@ request's resolved ability, with no new ability-construction path.
 
 | Controller | Route | Guard stack | Response |
 | --- | --- | --- | --- |
-| `WorkspaceUserController` | `GET /permission` — current workspace from `x-workspace-id`, no path param, same as `get` | `@WorkspaceMemberProtected()`, `@WorkspaceProtected()`, `@UserProtected()`, `@FeatureFlagProtected('workspace')`, `@AuthJwtAccessProtected()`, `@ApiKeyProtected()`, `@RequestThrottle` | `{ permissions: IEffectivePermission[] }` scoped to `workspace`, `workspaceMember`, `workspaceInvite`, `workspaceJoinRequest`, and the workspace-role `project`/`projectMember`/`analytic` grants |
-| `ProjectUserController` | `GET /permission/:projectId` — path param, same as every other project route | `@ProjectMemberProtected(owner, admin, member, viewer)`, `@ProjectProtected()`, `@WorkspaceMemberProtected()`, `@WorkspaceProtected()`, `@UserProtected()`, `@FeatureFlagProtected('workspace')`, `@AuthJwtAccessProtected()`, `@ApiKeyProtected()`, `@RequestThrottle` | `{ permissions: IEffectivePermission[] }` scoped to `project`, `projectMember` |
+| `WorkspaceUserController` | `GET /permissions` — current workspace from `x-workspace-id`, no path param, same as `get` | `@PolicyAbilityProtected(workspace)`, `@WorkspaceMemberProtected()`, `@WorkspaceProtected()`, `@UserProtected()`, `@FeatureFlagProtected('workspace')`, `@AuthJwtAccessProtected()`, `@ApiKeyProtected()`, `@RequestThrottle` | `{ permissions: IEffectivePermission[] }` scoped to `Workspace`, `WorkspaceMember`, `WorkspaceInvite`, `WorkspaceJoinRequest`, and the workspace-role `Project`/`ProjectMember`/`analytic` grants |
+| `ProjectUserController` | `GET /permissions/:projectId` — path param, same as every other project route | `@PolicyAbilityProtected(project)`, `@ProjectMemberProtected()`, `@ProjectProtected()`, `@WorkspaceMemberProtected()`, `@WorkspaceProtected()`, `@UserProtected()`, `@FeatureFlagProtected('workspace')`, `@AuthJwtAccessProtected()`, `@ApiKeyProtected()`, `@RequestThrottle` | `{ permissions: IEffectivePermission[] }` scoped to `Project`, `ProjectMember` |
 
 The workspace route takes no id because no workspace route does — `get`, `update`, `updateIsPublic`,
 `updateSlug`, `ownershipTransfer`, and `leave` all resolve the active workspace from the
@@ -700,8 +727,7 @@ The workspace route takes no id because no workspace route does — `get`, `upda
 every project route does — there is no per-request "current project" header, so `@ProjectCurrent()`
 always resolves from the path.
 
-The response reuses the `{ subject, actions }` row shape already returned by the role-policy list
-endpoints (`PolicySchema`), rather than inventing a new one:
+The response rows carry a subject and the actions the caller holds on it (`EffectivePermissionSchema`):
 
 ```ts
 interface IEffectivePermission {
@@ -710,8 +736,8 @@ interface IEffectivePermission {
 }
 ```
 
-A `member` role and an `owner` role hitting `GET /permission` for the same workspace get different
-results — a `member` holds no rule beyond `workspace:read`, while an `owner` holds the full
+A `member` role and an `owner` role hitting `GET /permissions` for the same workspace get different
+results — a `member` holds no rule beyond `Workspace:read` and `WorkspaceMember:read`, while an `owner` holds the full
 workspace-family grant (see
 [Policy Matrix & Default Scoped Role Rules](#policy-matrix--default-scoped-role-rules) for the source
 of these grants):
@@ -719,17 +745,18 @@ of these grants):
 ```json
 // member
 { "permissions": [
-    { "subject": "workspace", "actions": ["read"] }
+    { "subject": "Workspace", "actions": ["read"] },
+    { "subject": "WorkspaceMember", "actions": ["read"] }
 ] }
 
 // owner
 { "permissions": [
-    { "subject": "workspace", "actions": ["read", "update", "delete", "manage"] },
-    { "subject": "workspaceMember", "actions": ["update", "delete", "manage"] },
-    { "subject": "workspaceInvite", "actions": ["create", "update", "delete"] },
-    { "subject": "workspaceJoinRequest", "actions": ["update", "manage"] },
-    { "subject": "project", "actions": ["read", "create", "update", "delete", "manage"] },
-    { "subject": "projectMember", "actions": ["create", "update", "delete", "manage"] },
+    { "subject": "Workspace", "actions": ["manage", "read", "create", "update", "delete"] },
+    { "subject": "WorkspaceMember", "actions": ["read", "update", "delete"] },
+    { "subject": "WorkspaceInvite", "actions": ["manage", "read", "create", "update", "delete"] },
+    { "subject": "WorkspaceJoinRequest", "actions": ["update"] },
+    { "subject": "Project", "actions": ["read", "create", "update", "delete"] },
+    { "subject": "ProjectMember", "actions": ["create", "update", "delete"] },
     { "subject": "analytic", "actions": ["read"] }
 ] }
 ```
@@ -739,27 +766,34 @@ and member, and the handler passes them through:
 
 ```ts
 // controllers/workspace.user.controller.ts
-@Get('/permission')
-async permission(
+@PolicyAbilityProtected(EnumPolicyAbilityScope.workspace)
+@WorkspaceMemberProtected()
+@WorkspaceProtected()
+@Get('/permissions')
+async permissions(
     @WorkspaceCurrent() workspace: Workspace,
-    @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember
+    @WorkspaceMemberCurrent() workspaceMember: IWorkspaceMemberWithRole
 ): Promise<IResponseReturn<{ permissions: IEffectivePermission[] }>> {
     return this.workspaceHttpService.getEffectivePermissions(workspace, workspaceMember);
 }
 
 // controllers/project.user.controller.ts
-@Get('/permission/:projectId')
-async permission(
+@PolicyAbilityProtected(EnumPolicyAbilityScope.project)
+@ProjectMemberProtected()
+@ProjectProtected()
+@Get('/permissions/:projectId')
+async permissions(
     @ProjectCurrent() project: Project,
-    @ProjectMemberCurrent() projectMember: ProjectMember
+    @ProjectMemberCurrent() projectMember: IProjectMemberWithRole
 ): Promise<IResponseReturn<{ permissions: IEffectivePermission[] }>> {
     return this.projectHttpService.getEffectivePermissions(project, projectMember);
 }
 ```
 
-The service reads the resolved ability from request context, iterates the workspace- or
-project-scoped subjects and, for each `EnumPolicyAction` member, calls `ability.can(action, subject)`,
-collecting only the actions that return `true`. A `manage` holder passes every one of those
+The service reads the resolved ability from request context and calls
+`PolicyDomain.getEffectivePermissions` over the workspace- or project-level subjects, which probes
+`ability.can(action, subject)` for each `EnumPolicyAction` member and collects only the actions that
+return `true`. A `manage` holder passes every one of those
 probes, since `manage` is CASL's literal wildcard action ([Ability Lifecycle](#ability-lifecycle)).
 No second ability is built for this endpoint.
 
@@ -774,24 +808,24 @@ second lists the default rules each seeded scoped role holds.
 | Operation group | Subject | Actions | Existing boundary context | Notes |
 | --- | --- | --- | --- | --- |
 | Workspace list/create/switch/leave | none | none | authenticated user; switch and leave need membership in the target workspace | No CASL metadata; see [Actions](#actions). List result set filtered by membership/visibility as a query concern. |
-| Workspace get (user and admin) | `workspace` | `read` | workspace member (user) or platform admin | `workspaceId` condition per [Scoping Placeholder Conventions](#scoping-placeholder-conventions); admin routes resolve it from `:workspaceId`. |
-| Workspace update/visibility/slug/delete | `workspace` | `update`, `delete` | current workspace member | `workspaceId` condition. |
-| Ownership transfer | `workspace` | `update` | current workspace membership | `workspaceId` condition; owner-exclusivity is enforced as a domain invariant in `WorkspaceMemberDomain.transferOwnership`, independent of the guard, since `update` is also held by `admin`. |
-| Member list | none | none | current workspace member | No CASL metadata; membership is the gate. |
-| Member role/remove | `workspaceMember` | `update`, `delete` (owner holds `manage`) | current workspace and member | `workspaceId` condition. |
+| Workspace get (user and admin) | `Workspace` | `read` | workspace member (user) or platform admin | `workspaceId` condition per [Scoping Placeholder Conventions](#scoping-placeholder-conventions); admin routes resolve it from `:workspaceId`. |
+| Workspace update/visibility/slug/delete | `Workspace` | `update`, `delete` | current workspace member | `workspaceId` condition. |
+| Ownership transfer | `Workspace` | `update` | current workspace membership | `workspaceId` condition; owner-exclusivity is enforced as a domain invariant in `WorkspaceMemberDomain.transferOwnership`, independent of the guard, since `update` is also held by `admin`. |
+| Member list | `WorkspaceMember` | `read` | current workspace member | `workspaceId` condition; subject-type gate, with the policy predicate merged into the pagination `where`. |
+| Member role/remove | `WorkspaceMember` | `update`, `delete` (owner holds `manage`) | current workspace and member | `workspaceId` condition. |
 | Invite list/claim | none | none | current member (list) or token-verified invite claimant (claim) | No CASL metadata. |
-| Invite create | `workspaceInvite` | `create` | current workspace member | `workspaceId` condition. |
-| Invite resend | `workspaceInvite` | `update` | current workspace member | `workspaceId` condition. |
-| Invite revoke | `workspaceInvite` | `delete` | current workspace member | `workspaceId` condition. |
+| Invite create | `WorkspaceInvite` | `create` | current workspace member | `workspaceId` condition. |
+| Invite resend | `WorkspaceInvite` | `update` | current workspace member | `workspaceId` condition. |
+| Invite revoke | `WorkspaceInvite` | `delete` | current workspace member | `workspaceId` condition. |
 | Join request create/list | none | none | public workspace requester (create) or current workspace member (list) | No CASL metadata. |
-| Join request accept/reject | `workspaceJoinRequest` | `update` (owner holds `manage`) | current workspace member | `workspaceId` condition. |
-| Project list (user) | none | none | current workspace member | No CASL metadata on the route; `ProjectDomain.getListForMember` probes `can('read', 'project')` to decide whether the list spans every project in the workspace or only the caller's assigned projects. |
-| Admin workspace/project list and workspace member list | `workspace` / `project` | `read` | platform admin | Platform-role rule, no scope condition; admin get uses `:workspaceId`/`:projectId`. |
-| Project get/update/slug/delete | `project` | `read`, `update`, `delete` (owner holds `manage`) | current workspace and project membership | `id` condition resolved from `${projectId}`, the same pair whether a workspace or project role holds the rule. |
-| Project create | `project` | `create` | current workspace member | Bare `project:create` carries no scope condition; the create check evaluates the incoming project's own attributes. |
-| Project member list | none | none | current project member | No CASL metadata; membership is the gate. |
-| Project member role/remove | `projectMember` | `update`, `delete` (owner holds `manage`) | current workspace, project, and project membership | `projectId` condition resolved from `${projectId}`. |
-| Project member assign | `projectMember` | `create` | current workspace, project, and project membership | Carries the `projectId` scope condition; no member-instance condition. |
+| Join request accept/reject | `WorkspaceJoinRequest` | `update` (owner holds `manage`) | current workspace member | `workspaceId` condition. |
+| Project list (user) | none | none | current workspace member | The route builds the workspace ability and enforces no policy; `ProjectHttpService.getListForMember` probes `can('read', 'Project')` to decide whether the list spans every project in the workspace or only the caller's assigned projects. |
+| Admin workspace/project list and workspace member list | `Workspace` / `Project` | `read` | platform admin | Platform-role rule, no scope condition; admin get uses `:workspaceId`/`:projectId`. |
+| Project get/update/slug/delete | `Project` | `read`, `update`, `delete` (owner holds `manage`) | current workspace and project membership | `id` condition resolved from `${projectId}`, the same pair whether a workspace or project role holds the rule. |
+| Project create | `Project` | `create` | current workspace member | Bare `Project:create` carries no scope condition; the create check evaluates the incoming project's own attributes. |
+| Project member list | `Project` | `read` | current workspace member (project membership optional) | `ProjectPolicyProtected(read)` gate. |
+| Project member role/remove | `ProjectMember` | `update`, `delete` (owner holds `manage`) | current workspace, project, and project membership | `projectId` condition resolved from `${projectId}`. |
+| Project member assign | `ProjectMember` | `create` | current workspace, project, and project membership | Carries the `projectId` scope condition; no member-instance condition. |
 | Project leave | none | none | caller's current project membership | |
 | Analytics (admin and user) | `analytic` | `read` | platform admin/super-admin (admin routes) or workspace owner/admin (user routes) | Capability subject with no persisted record; workspace-role grants carry a `workspaceId` condition resolved from `${workspaceId}`. |
 
@@ -804,40 +838,40 @@ role holds the rule, and matches the seeds in [Initial Seed Rules](#initial-seed
 
 | Role     | Scope     | Capabilities                                                                                                                                                 |
 | -------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `owner`  | workspace | `workspace`: `manage`; `workspaceMember`: `manage`; `workspaceInvite`: `manage`; `workspaceJoinRequest`: `manage`; `project`: `manage`; `projectMember`: `manage`; `analytic`: `read` |
-| `admin`  | workspace | `workspace`: `read`, `update`; `workspaceMember`: `update`, `delete`; `workspaceInvite`: `manage`; `workspaceJoinRequest`: `update`; `project`: `read`, `create`, `update`, `delete`; `projectMember`: `create`, `update`, `delete`; `analytic`: `read` |
-| `member` | workspace | `workspace`: `read`                                                                                                                                          |
-| `owner`  | project   | `project`: `manage`; `projectMember`: `manage`                                                                                                                |
-| `admin`  | project   | `project`: `read`, `update`; `projectMember`: `create`, `update`, `delete`                                                                                    |
-| `member` | project   | `project`: `read`                                                                                                                                              |
-| `viewer` | project   | `project`: `read`                                                                                                                                              |
+| `owner`  | workspace | `Workspace`: `manage`; `WorkspaceMember`: `manage`; `WorkspaceInvite`: `manage`; `WorkspaceJoinRequest`: `manage`; `Project`: `manage`; `ProjectMember`: `manage`; `analytic`: `read` |
+| `admin`  | workspace | `Workspace`: `read`, `update`; `WorkspaceMember`: `update`, `delete`; `WorkspaceInvite`: `manage`; `WorkspaceJoinRequest`: `update`; `Project`: `read`, `create`, `update`, `delete`; `ProjectMember`: `create`, `update`, `delete`; `analytic`: `read` |
+| `member` | workspace | `Workspace`: `read`                                                                                                                                          |
+| `owner`  | project   | `Project`: `manage`; `ProjectMember`: `manage`                                                                                                                |
+| `admin`  | project   | `Project`: `read`, `update`; `ProjectMember`: `create`, `update`, `delete`                                                                                    |
+| `member` | project   | `Project`: `read`                                                                                                                                              |
+| `viewer` | project   | `Project`: `read`                                                                                                                                              |
 
 The workspace `admin` and `owner` roles receive project authority through workspace-scoped CASL
 rules, so they act on projects in the active workspace without being assigned a project-scoped role.
-Workspace `admin` holds full project control — `project` CRUD and `projectMember` CRUD — but not
-`workspace:delete`, the destructive capability reserved for the owner.
+Workspace `admin` holds full project control — `Project` CRUD and `ProjectMember` CRUD — but not
+`Workspace:delete`, the destructive capability reserved for the owner.
 
 Owner and admin differ by design: **owner holds `manage`; admin holds explicit CRUD.** Per the
 `manage` principle in [Actions](#actions), owner roles are granted `manage` on every subject they
 fully control, while admin roles keep explicit CRUD so a specific action (most notably `delete`) can
 be withheld without touching the owner grant. Because `manage` grants exactly a subject's registered
-actions, `workspace: owner` holding `workspaceMember: manage` is functionally `{update, delete}` and
-`workspaceJoinRequest: manage` is functionally `{update}` — nothing beyond what admin's explicit CRUD
-already lists for those two subjects. The one deliberate exception is `workspaceInvite`: both `admin`
+actions, `workspace: owner` holding `WorkspaceMember: manage` is functionally `{update, delete}` and
+`WorkspaceJoinRequest: manage` is functionally `{update}` — nothing beyond what admin's explicit CRUD
+already lists for those two subjects. The one deliberate exception is `WorkspaceInvite`: both `admin`
 and `owner` hold `manage`, granting create, resend, and revoke together rather than through a
-separate CRUD grant. `workspace` itself keeps `manage` reserved for `owner` only, so
-`workspace:delete` stays withheld from admin. Ownership transfer requires `workspace:update`, which
+separate CRUD grant. `Workspace` itself keeps `manage` reserved for `owner` only, so
+`Workspace:delete` stays withheld from admin. Ownership transfer requires `Workspace:update`, which
 admin also holds, so owner-exclusivity for that operation is enforced as a domain invariant in
 `WorkspaceMemberDomain.transferOwnership` rather than by the guard's required action.
 
-Project `owner` and workspace `owner` both hold `manage` on `project` and `projectMember`, so an owner
+Project `owner` and workspace `owner` both hold `manage` on `Project` and `ProjectMember`, so an owner
 never needs a narrower CRUD grant to fully control the projects in its scope. Project members and
-viewers both start with `project:read`; members are the extension point for future project
+viewers both start with `Project:read`; members are the extension point for future project
 capabilities, while viewers remain read-only unless the preset is deliberately changed. Project and
-project-member listing are gated by membership alone, so no role carries a `projectMember` `read`
+project-member listing are gated by membership alone, so no role carries a `ProjectMember` `read`
 rule.
 
-Role administration uses the `role` subject: platform administrators read the preset catalog and
+Role administration uses the `Role` subject: platform administrators read the preset catalog and
 update role display metadata and policy rows. Role creation, deletion, key changes, and scope changes
 are not exposed; workspace owners, workspace admins, and project admins cannot administer roles or
 policies. Policy writes do not check a rule's subject against the role's scope or a rule's action
@@ -855,19 +889,19 @@ The initial policy seed is explicit rather than derived from every enum member.
 
 - `superAdmin`: `manage` on `all`.
 - `admin` (platform): every `EnumPolicyAction` on each platform/admin resource subject
-  (`activityLog`, `apiKey`, `device`, `featureFlag`, `passwordHistory`, `role`, `session`,
-  `termPolicy`, `user`), `read` on `analytic`, and `read` on `workspace` and `project`. The
+  (`ActivityLog`, `ApiKey`, `Device`, `FeatureFlag`, `PasswordHistory`, `Role`, `Session`,
+  `TermPolicy`, `User`), `read` on `analytic`, and `read` on `Workspace` and `Project`. The
   `analytic` grant is workspace-scoped in the seed catalog. Additional actions are added only with
   matching admin endpoints.
 - `user` (platform): seeds no workspace-family rule. Workspace `list`/`create`, invite `claim`, and
   join-request `create` carry no CASL permission.
 - Workspace roles: seed `owner`, `admin`, and `member` once with the workspace rows in the scoped role
-  matrix — `owner` with `manage` on `workspace`, `workspaceMember`, `workspaceInvite`,
-  `workspaceJoinRequest`, `project`, and `projectMember`; `admin` with explicit CRUD on the same
-  subjects plus `workspaceInvite: manage` — including workspace-scoped `analytic:read` for owner
+  matrix — `owner` with `manage` on `Workspace`, `WorkspaceMember`, `WorkspaceInvite`,
+  `WorkspaceJoinRequest`, `Project`, and `ProjectMember`; `admin` with explicit CRUD on the same
+  subjects plus `WorkspaceInvite: manage` — including workspace-scoped `analytic:read` for owner
   and admin.
 - Project roles: seed `owner`, `admin`, `member`, and `viewer` once with the project rows in the
-  scoped role matrix; `owner` with `manage` on `project` and `projectMember`; `projectMember:create`
+  scoped role matrix; `owner` with `manage` on `Project` and `ProjectMember`; `ProjectMember:create`
   (held by `admin`) carries the project-scope condition and no member-instance condition.
 
 The seed replaces the managed policy rows for the fixed roles and recreates them from the declarative
@@ -881,14 +915,16 @@ freshly created project has an owner from the first request. This requires the `
 
 The design questions raised during planning are settled:
 
-- **Request authorization boundary** — `@PolicyProtected` remains the type-level route gate, HTTP
-  services own request-scoped record checks and collection filtering, domains remain reusable by
-  internal callers, and repositories own Prisma execution.
-- **Record-level checks** — HTTP services call `PolicyDomain.assertCan` with tagged records. A
-  synthetic tagged subject is used only when all applicable conditions depend on known route data.
+- **Request authorization boundary** — fixed-scope ability guards build the request ability,
+  `PolicyGuard` and the record enforcement guards own the route gate and target-record checks, HTTP
+  services own collection predicates, domains remain reusable by internal callers, and
+  repositories own Prisma execution.
+- **Record-level checks** — the record enforcement guards call `PolicyDomain.assertCan` with
+  records tagged by `PolicyUtil.toSubject`, loaded through the policy predicate. A synthetic
+  tagged subject is never built from route ids.
 - **Generating Prisma `where` from rule conditions** — HTTP services call
-  `PolicyDomain.accessibleWhere` for policy-controlled collection queries and merge the result into
-  existing pagination filters. `createCaslExtension()` provides fail-closed collection behavior.
+  `PolicyDomain.accessibleWhere` or `requireAccessibleWhere` for policy-controlled collection
+  queries and pass the result to the domain as the generic `where`. `createCaslExtension()` provides fail-closed collection behavior.
 - **Mutation hardening** — mutation query pushdown is available for operations that require database
   enforcement against a check/write race; it is not universal in v1.
 - **`manage` stays unbounded on every subject** — CASL's `createAliasResolver` explicitly forbids
@@ -920,12 +956,13 @@ runs against PostgreSQL in its dedicated environment, outside this unit suite.
 | Method | Description | What it tests |
 | --- | --- | --- |
 | `PolicyGuard.canActivate` | Required policy absent from ability | Guard rejects the request instead of falling through |
+| Ability guards (`PlatformPolicyAbilityGuard`, `WorkspacePolicyAbilityGuard`, `ProjectPolicyAbilityGuard`) | A stored ability already present | Guard returns without loading or overwriting the ability |
 | `PolicyDomain.assertCan` | Ability denies the action | Throws `PolicyForbiddenException`, does not return `false` silently |
-| HTTP service record authorization | Conditional workspace or project record | Service calls `PolicyDomain.assertCan` with `PolicyUtil.toSubject`; denial carries the policy reason |
-| HTTP service collection authorization | Conditional workspace or project list | Service merges `PolicyDomain.accessibleWhere` into the pagination `where` before calling the domain |
+| Record enforcement guards | Conditional workspace, project, or member record | Guard calls `PolicyDomain.assertCan` with `PolicyUtil.toSubject`; denial carries the policy reason |
+| HTTP service collection authorization | Conditional workspace or project list | Service passes `PolicyDomain.accessibleWhere` to the domain as the generic `where` |
 | Ability build (`PolicyAbilityFactory`) | Inverted rule vs. allow, same subject, in either input order | Matching inverted rules remain authoritative |
 | Record-level `can(action, PolicyUtil.toSubject(subject, record))` | Record from a different workspace against a `workspaceId`-scoped rule | Condition mismatch denies — the instance check evaluates the scoping placeholder, the type-level check does not |
-| `PolicyAbilityFactory.buildFromPolicies` | Platform, workspace, and project rules for one user | Guards compose platform → workspace → project policies and interpolate the available placeholders |
+| `PolicyAbilityDomain.buildAbility` | Platform, workspace, and project rules for one user | The domain composes platform → workspace → project policies and interpolates the placeholders each layer owns |
 | `PolicyGuard.canActivate` | `superAdmin` role, no special-cased bypass in code | Evaluates through the seeded `manage`/`all` rule like any other role, not a hardcoded short-circuit |
 | Policy write persistence (`PolicyDomain` create/update path) | Structurally valid rules across platform, workspace, and project roles | Persists the rule without applying role-scope compatibility checks |
 
@@ -933,8 +970,8 @@ runs against PostgreSQL in its dedicated environment, outside this unit suite.
 
 | Method | Description | What it tests |
 | --- | --- | --- |
-| `PolicyDomain.accessibleWhere` | Subject with an active-scope condition | Produces the exact Prisma `WhereInput` the HTTP service merges into pagination before the repository query |
-| Policy seed (`policy.seed.ts` or equivalent) | Re-running the seed after a rule's conditions changed | Replaces the managed policy set without priority-based identity |
+| `PolicyDomain.accessibleWhere` | Subject with an active-scope condition | Produces the exact Prisma `WhereInput` the HTTP service passes to the domain before the repository query |
+| Policy seed (`policy.seed.ts` or equivalent) | Re-running the seed after a rule's conditions changed | Replaces the managed policy set |
 | Role assignment domain (`User`/`WorkspaceMember`/`ProjectMember` role write) | Assigning a workspace-scoped role to a `ProjectMember.roleId` (wrong scope) | Rejected — scope validation runs before the write, not just at read time |
 | `WorkspaceDomain` ownership transfer / last-owner check | Attempt to remove or demote the sole `owner` after the CASL migration | Last-owner invariant still blocks the operation regardless of the caller's CASL grant |
 | `getEffectivePermissions` | Role with a narrow rule set vs. a role with a broad one, same subject | Returned action list matches exactly what `can()` would allow for each action — no extra, no missing |
@@ -944,8 +981,8 @@ runs against PostgreSQL in its dedicated environment, outside this unit suite.
 | Method | Description | What it tests |
 | --- | --- | --- |
 | `PolicyRepository` read path | Rows for one role fetched in bulk | Returns the role's policy rows without requiring priority ordering |
-| Guard ability composition | User, workspace-member, and project-member guards in sequence | Each guard stores the cumulative resolved ability and never stores raw policy rows |
-| Guard stacking (`WorkspaceGuard`/`ProjectGuard` + `PolicyGuard`) | Cross-workspace project id in the route | Boundary guard rejects before `PolicyGuard` runs — CASL never sees an out-of-boundary record |
+| Ability guard composition | Platform, workspace, and project ability guards | Each guard stores the resolved ability of its scope and never stores raw policy rows |
+| Guard stacking (`WorkspaceGuard`/`ProjectGuard` + policy guards) | Cross-workspace project id in the route | Boundary guard rejects before the policy guards run — CASL never sees an out-of-boundary record |
 | Membership-only operations (workspace switch, workspace/project leave) | Caller has no matching CASL rule at all | Operation still succeeds — these routes carry no policy metadata by design |
 | Domain automation path | No HTTP request ability | Domain operation remains callable without request authorization state |
 

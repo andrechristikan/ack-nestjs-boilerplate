@@ -29,7 +29,8 @@ import type {
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
+import { EnumPolicyAbilityScope } from '@modules/policy/enums/policy.enum';
 
 import { ProjectCreateRequestSchema } from '@modules/project/dtos/request/project.create.request.dto';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
@@ -53,6 +54,8 @@ import {
     ProjectCurrent,
     ProjectMemberCurrent,
     ProjectMemberProtected,
+    ProjectMemberTargetCurrent,
+    ProjectPolicyProtected,
     ProjectProtected,
 } from '@modules/project/decorators/project.decorator';
 
@@ -64,6 +67,7 @@ import {
     WorkspaceCurrent,
     WorkspaceMemberCurrent,
     WorkspaceMemberProtected,
+    WorkspacePolicyProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
 
@@ -96,12 +100,13 @@ export class ProjectUserController {
 
     @Doc({
         summary:
-            'list projects in the current workspace; a workspace role holding workspace:manage sees all, others only assigned projects',
+            'list projects in the current workspace; a caller whose platform or workspace role holds Project read sees every project that read allows, others only their assigned projects',
     })
     @ResponsePagination('project.list', {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected(EnumPolicyAbilityScope.workspace)
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
@@ -126,7 +131,7 @@ export class ProjectUserController {
     @Doc({ summary: 'create a project in the current workspace' })
     @Response('project.create', { schema: ProjectResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @WorkspacePolicyProtected({
         subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.create],
     })
@@ -156,7 +161,7 @@ export class ProjectUserController {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @ProjectPolicyProtected({
         subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.read],
     })
@@ -183,6 +188,7 @@ export class ProjectUserController {
     @Response('project.permissions', {
         schema: ProjectPermissionResponseSchema,
     })
+    @PolicyAbilityProtected(EnumPolicyAbilityScope.project)
     @ProjectMemberProtected()
     @ProjectProtected()
     @WorkspaceMemberProtected()
@@ -211,7 +217,7 @@ export class ProjectUserController {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @ProjectPolicyProtected({
         subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.update],
     })
@@ -245,7 +251,7 @@ export class ProjectUserController {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @ProjectPolicyProtected({
         subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.update],
     })
@@ -277,7 +283,7 @@ export class ProjectUserController {
     })
     @Response('project.softDelete')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @ProjectPolicyProtected({
         subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.delete],
     })
@@ -308,7 +314,7 @@ export class ProjectUserController {
         schema: ProjectMemberResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @ProjectPolicyProtected({
         subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.read],
     })
@@ -336,7 +342,7 @@ export class ProjectUserController {
     })
     @Response('project.member.assign', { schema: ProjectMemberResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @ProjectPolicyProtected({
         subject: EnumPolicySubject.ProjectMember,
         action: [EnumPolicyAction.create],
     })
@@ -369,7 +375,7 @@ export class ProjectUserController {
     })
     @Response('project.member.updateRole')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @ProjectPolicyProtected({
         subject: EnumPolicySubject.ProjectMember,
         action: [EnumPolicyAction.update],
     })
@@ -387,14 +393,15 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Param('projectMemberId', { schema: RequestUuidSchema })
-        projectMemberId: string,
+        _projectMemberId: string,
+        @ProjectMemberTargetCurrent() targetMember: IProjectMemberWithRole,
         @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
         body: ProjectMemberUpdateRoleRequestDto
     ): Promise<void> {
         await this.projectMemberHttpService.updateMemberRole(
             project,
             workspaceMember.userId,
-            projectMemberId,
+            targetMember,
             body
         );
     }
@@ -405,7 +412,7 @@ export class ProjectUserController {
     })
     @Response('project.member.remove')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @ProjectPolicyProtected({
         subject: EnumPolicySubject.ProjectMember,
         action: [EnumPolicyAction.delete],
     })
@@ -423,12 +430,13 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Param('projectMemberId', { schema: RequestUuidSchema })
-        projectMemberId: string
+        _projectMemberId: string,
+        @ProjectMemberTargetCurrent() targetMember: IProjectMemberWithRole
     ): Promise<void> {
         await this.projectMemberHttpService.removeMember(
             project,
             workspaceMember.userId,
-            projectMemberId
+            targetMember
         );
     }
 

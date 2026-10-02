@@ -67,7 +67,6 @@ describe('UserPasswordHttpService', () => {
             createdBy: null,
             updatedAt: now,
             updatedBy: null,
-            policies: [],
         },
         twoFactor: null,
     } satisfies IUser;

@@ -12,7 +12,7 @@ Projects carry their own membership with three roles (rows of the shared `Role` 
 - `member`
 - `viewer`
 
-A caller's effective policies on a project route are the policies of the workspace role plus those of the project role. A workspace `owner` holds explicit `project` and `projectMember` actions through its workspace role, so it reaches every project in the workspace without holding a `ProjectMember` row.
+A caller's effective policies on a project route are the policies of the platform role, the workspace role, and the project role, composed in that order into one ability. A workspace `owner` holds explicit `project` and `projectMember` actions through its workspace role, so it reaches every project in the workspace without holding a `ProjectMember` row.
 
 ## Related Documents
 
@@ -89,8 +89,9 @@ Mounted under `/user`. **Every route below requires the `x-workspace-id` header*
 
 | Method | Path | Gate |
 |---|---|---|
-| `GET` | `/user/project/list` | Any workspace member. A caller who holds `workspace:[manage]` (the `owner`) sees every project; everyone else sees only projects they belong to |
-| `POST` | `/user/project/create` | `project:[create]` (workspace `admin` and `owner`) |
+| `GET` | `/user/project/list` | Any workspace member (the route builds the workspace ability and enforces no policy). A caller whose ability holds `project:[read]` (the `owner`) sees every project the policy predicate reaches; everyone else sees only projects they belong to |
+| `GET` | `/user/project/permissions/:projectId` | Any project member. Returns the caller's effective actions on `project` and `projectMember` |
+| `POST` | `/user/project/create` | `project:[create]`, a subject-type check (workspace `admin` and `owner`) |
 | `GET` | `/user/project/get/:projectId` | `project:[read]` from the project role or the workspace role |
 | `PUT` | `/user/project/update/:projectId` | `project:[update]` from the project role (`admin`) or the workspace role (`owner`) |
 | `PATCH` | `/user/project/update/:projectId/slug` | `project:[update]`, as above |
@@ -105,7 +106,7 @@ Note the path shape on the member routes: `:projectId` leads the target segment,
 
 ### Admin Scope
 
-Mounted under `/admin`. Gated by `@PolicyProtected({ subject: project, action: [read] })` against the caller's platform role. These routes are **not** feature-flagged, do not read `x-workspace-id`, and are read-only.
+Mounted under `/admin`. Gated by `@PlatformPolicyProtected({ subject: Project, action: [read] })` against the caller's platform role. These routes are **not** feature-flagged, do not read `x-workspace-id`, and are read-only.
 
 | Method | Path | Description |
 |---|---|---|
@@ -114,12 +115,12 @@ Mounted under `/admin`. Gated by `@PolicyProtected({ subject: project, action: [
 
 ## Access Control
 
-The guards run in this order, first to last: `ApiKeyXApiKeyGuard` → JWT → `FeatureFlagGuard` → `UserGuard` → `WorkspaceGuard` → `WorkspaceMemberGuard` → `ProjectGuard` → `ProjectMemberGuard` → `PolicyGuard` → `TermPolicyGuard`. Each guard reads what the previous one stored and never re-fetches.
+The guards run in this order, first to last: `ApiKeyXApiKeyGuard` → JWT → `FeatureFlagGuard` → `UserGuard` → `WorkspaceGuard` → `WorkspaceMemberGuard` → `ProjectGuard` → `ProjectMemberGuard` → the policy ability guard → the policy enforcement guard → `TermPolicyGuard`. Each guard reads what the previous one stored and never re-fetches.
 
 - **`ProjectGuard`** reads the `projectId` route param and the workspace `WorkspaceGuard` resolved, then loads the project **constrained to that workspace and to non-deleted rows**. A missing param, a soft-deleted project, and a project belonging to a different workspace all collapse into the same `ProjectNotFoundException` (404, `51700`). Cross-workspace probing therefore cannot distinguish "not yours" from "does not exist".
-- **`WorkspaceMemberGuard`** writes the workspace role's policies under `WorkspaceMemberPolicyStoreKey`.
-- **`ProjectMemberGuard`** writes the project role's policies under `ProjectMemberPolicyStoreKey`. With `{ required: false }` a caller with no `ProjectMember` row passes with the workspace policies alone.
-- **`PolicyGuard`** decides against the composed policies: platform, then workspace, then project, so a later level takes precedence.
+- **`WorkspaceMemberGuard`** and **`ProjectMemberGuard`** are membership-only. They store the member rows and load no policies. With `{ required: false }` a caller with no `ProjectMember` row passes and no member is stored.
+- **`ProjectPolicyAbilityGuard`** builds the ability from the platform role, the workspace role of the acting member, and the project role of the acting project member when one exists, in that order, and stores it under `PolicyAbilityStoreKey`. An ability already stored is reused and never overwritten.
+- **`ProjectPolicyGuard`** and **`ProjectMemberPolicyGuard`** decide against that ability (see [Project policy decorators](#project-policy-decorators)).
 
 A workspace `admin` does not inherit project read or update: its workspace role grants only project `create` and `delete`. The `owner` role grants `create`, `read`, `update`, and `delete` on `project` and `create`, `update`, and `delete` on `projectMember`, which is what lets it act on every project without a membership row.
 
@@ -138,13 +139,24 @@ Reads the `projectId` **route parameter** (there is no project header) and resol
 **Method decorator**. Stack it above `@ProjectProtected()`. It applies `ProjectMemberGuard` in one of two modes:
 
 - **Strict (the default, `@ProjectMemberProtected()`)** demands a real `ProjectMember` row and stores it with its minimal role (`id`, `scope`, `key`, `name`, no policies) under `ProjectMemberStoreKey`. No row throws `ProjectMemberForbiddenException` (403, `51701`). This is the form used by `member leave`, which has nothing to remove without a row.
-- **`{ required: false }`** lets a caller with no row through with the workspace policies alone, so a workspace role that holds the capability (the `owner`) still passes `@PolicyProtected()`. Every policy-gated project route except delete uses this form.
+- **`{ required: false }`** lets a caller with no row through, so a workspace role that holds the capability (the `owner`) still passes the project policy decorator. Every policy-gated project route uses this form.
 
-In both modes, when a row exists, the guard stores the project role's policies under `ProjectMemberPolicyStoreKey`, which `PolicyDomain` composes after the platform and workspace policies.
+In both modes the guard stores a row it finds and loads no policies.
+
+#### Project policy decorators
+
+Each composes `ProjectPolicyAbilityGuard` with one enforcement guard and sits above `@ProjectMemberProtected(...)`.
+
+| Decorator | Enforcement guard | Judges |
+|---|---|---|
+| `@ProjectPolicyProtected(...actions)` | `ProjectPolicyGuard` | The project record `ProjectGuard` stored, tagged as `Project` |
+| `@ProjectMemberPolicyProtected(...actions)` | `ProjectMemberPolicyGuard` | The member `:projectMemberId` addresses. The target loads through the policy predicate (a record the ability does not reach answers `ProjectMemberNotFoundException`), is judged as a tagged record, and is stored for `@ProjectMemberTargetCurrent()`. A route with no `:projectMemberId` (assign) takes the subject-type check only |
+
+Both take actions only, so the subject is fixed. `@PolicyAbilityProtected(project)` builds the same ability and enforces nothing; the permissions route uses it.
 
 #### `ProjectCurrent()` / `ProjectMemberCurrent()`
 
-**Parameter decorators** that read back the `Project` and the `ProjectMember` with its role (`IProjectMemberWithRole`) the guards stored. Each takes an optional field name typed against its model and returns the whole row without one. Both return a non-null value.
+**Parameter decorators** that read back the `Project` and the `ProjectMember` with its role (`IProjectMemberWithRole`) the guards stored. `@ProjectMemberTargetCurrent()` reads the target member `ProjectMemberPolicyGuard` authorized, which is the addressed member. Each takes an optional field name typed against its model and returns the whole row without one. Both return a non-null value.
 
 - `ProjectCurrent()` on a route without `@ProjectProtected()` answers `RequestContextMissingException` (500, `50304`).
 - `ProjectMemberCurrent()` is valid only on a route carrying the strict `@ProjectMemberProtected()`. A `{ required: false }` route can hold no member row, so the read answers `RequestContextMissingException` (500, `50304`) there. `ProjectMemberDomain.leaveProject` receives the row itself; the caller's missing membership is already refused by the guard with `ProjectMemberForbiddenException` (403, `51701`).
@@ -153,7 +165,7 @@ The store readers: [Security and Middleware][ref-doc-security-and-middleware].
 
 ### The `/admin` scope takes none of this
 
-Admin routes carry no project or workspace guard. They take the project id from the path and are gated by `@PolicyProtected()` instead.
+Admin routes carry no project or workspace guard. They take the project id from the path and are gated by `@PlatformPolicyProtected()` instead.
 
 ## Slug
 
@@ -174,7 +186,7 @@ A project member must already be a workspace member. `assignMember` resolves the
 | Remove | Peer rule on the target's role. Removing yourself throws `ProjectMemberPeerForbiddenException` (403, `51702`); use leave instead. The row is hard-deleted |
 | Leave | No peer check. The last project `admin` is rejected. The caller's own row is hard-deleted |
 
-**Peer rule.** `assertProjectMemberPeerAllowed` throws `ProjectMemberPeerForbiddenException` (403, `51702`) when the actor lacks `workspace:[manage]` and any role involved in the operation is `admin`. A project `admin` can therefore manage `member` and `viewer` rows, but can neither create another `admin` nor act on an existing one. Only a caller holding `workspace:[manage]` (the workspace `owner`) can.
+**Peer rule.** `assertProjectMemberPeerAllowed` throws `ProjectMemberPeerForbiddenException` (403, `51702`) when the actor's ability lacks `projectMember:[update]` and any role involved in the operation is `admin`. `ProjectMemberHttpService` computes that capability from the request ability and passes it to the domain.
 
 **Last-admin protection.** Removing, demoting, or leaving as the only project `admin` throws `ProjectMemberLastAdminException` (`51707`). `assertNotLastAdmin` counts the remaining admins first.
 
@@ -218,7 +230,7 @@ Deleting the **workspace** soft-deletes its still-active projects in the same tr
 |---|---|---|---|
 | `notFound` | `51700` | 404 | Unknown, soft-deleted, or out-of-workspace project |
 | `memberForbidden` | `51701` | 403 | Caller holds no `ProjectMember` row on a strict route |
-| `memberPeerForbidden` | `51702` | 403 | Operation involves an `admin` and the actor lacks `workspace:[manage]`, or self-removal |
+| `memberPeerForbidden` | `51702` | 403 | Operation involves an `admin` and the actor's ability lacks `projectMember:[update]`, or self-removal |
 | `memberNotFound` | `51703` | 404 | Target member row does not exist in this project |
 | `memberAlreadyAssigned` | `51704` | 400 | User already belongs to the project |
 | `slugAlreadyExists` | `51705` | 400 | Slug already taken in this workspace |

@@ -11,7 +11,7 @@ import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decora
 import { PasswordHistoryResponseSchema } from '@modules/password-history/dtos/response/password-history.response.dto';
 import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryHttpService } from '@modules/password-history/services/password-history.http.service';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Param, Query } from '@nestjs/common';
@@ -37,7 +37,7 @@ export class PasswordHistoryAdminController {
         schema: PasswordHistoryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected(
+    @PlatformPolicyProtected(
         {
             subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],

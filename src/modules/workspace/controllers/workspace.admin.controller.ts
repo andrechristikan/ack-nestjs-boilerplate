@@ -23,10 +23,11 @@ import {
 import type { Workspace } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 
+import { WorkspaceTargetCurrent } from '@modules/workspace/decorators/workspace.decorator';
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
@@ -52,7 +53,7 @@ export class WorkspaceAdminController {
         schema: WorkspaceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.read],
     })
@@ -76,7 +77,7 @@ export class WorkspaceAdminController {
         schema: WorkspaceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.read],
     })
@@ -87,9 +88,10 @@ export class WorkspaceAdminController {
     @Get('/get/:workspaceId')
     async get(
         @Param('workspaceId', { schema: RequestUuidSchema })
-        workspaceId: string
+        _workspaceId: string,
+        @WorkspaceTargetCurrent() workspace: Workspace
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.getByIdForAdmin(workspaceId);
+        return this.workspaceHttpService.getForAdmin(workspace);
     }
 
     @Doc({ summary: 'admin list members of a workspace (read-only)' })
@@ -97,7 +99,7 @@ export class WorkspaceAdminController {
         schema: WorkspaceMemberResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.read],
     })
@@ -110,10 +112,11 @@ export class WorkspaceAdminController {
         @Query({ schema: WorkspaceAdminMemberListRequestSchema })
         query: WorkspaceAdminMemberListRequestDto,
         @Param('workspaceId', { schema: RequestUuidSchema })
-        workspaceId: string
+        _workspaceId: string,
+        @WorkspaceTargetCurrent() workspace: Workspace
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         return this.workspaceMemberHttpService.getMembersListForAdmin(
-            workspaceId,
+            workspace.id,
             query
         );
     }

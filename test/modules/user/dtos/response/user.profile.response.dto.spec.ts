@@ -95,5 +95,6 @@ describe('UserProfileResponseSchema', () => {
         expect(result.photo).not.toHaveProperty('size');
         expect(result.mobileNumbers[0]).not.toHaveProperty('secret');
         expect(result).not.toHaveProperty('password');
+        expect(result.role).not.toHaveProperty('policies');
     });
 });

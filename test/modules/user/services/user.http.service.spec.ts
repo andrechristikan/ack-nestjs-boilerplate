@@ -55,7 +55,6 @@ describe('UserHttpService', () => {
         createdBy: null,
         updatedAt: now,
         updatedBy: null,
-        policies: [],
     };
     const userListItem = {
         id: 'user-id',
@@ -161,7 +160,6 @@ describe('UserHttpService', () => {
             createdBy: null,
             updatedAt: now,
             updatedBy: null,
-            policies: [],
         },
         twoFactor: null,
         mobileNumbers: [],

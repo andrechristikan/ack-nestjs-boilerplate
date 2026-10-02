@@ -5,30 +5,25 @@ import type { MockProxy } from 'vitest-mock-extended';
 
 import {
     EnumActivityLogAction,
-    EnumPolicyAction,
-    EnumPolicySubject,
     EnumRoleScope,
+    type Prisma,
     type Project,
     type ProjectMember,
     type WorkspaceMember,
 } from '@generated/prisma-client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberLastAdminException } from '@modules/project/exceptions/project.member-last-admin.exception';
 import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
-import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
 import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import type {
     IProjectMember,
     IProjectMemberWithRole,
-    IProjectMemberWithRolePolicies,
 } from '@modules/project/interfaces/project.interface';
+import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
@@ -49,7 +44,7 @@ function buildRole(key: EnumRoleProjectKey): IRole {
 function buildMemberWithRole(
     key: EnumRoleProjectKey,
     overrides: Partial<ProjectMember> = {}
-): IProjectMemberWithRolePolicies {
+): IProjectMemberWithRole {
     const at = new Date('2026-01-01T00:00:00.000Z');
     const role = buildRole(key);
 
@@ -58,15 +53,7 @@ function buildMemberWithRole(
         projectId: 'project-id',
         userId: 'target-user-id',
         roleId: role.id,
-        role: {
-            ...role,
-            description: null,
-            createdAt: at,
-            createdBy: null,
-            updatedAt: at,
-            updatedBy: null,
-            policies: [],
-        },
+        role,
         joinedAt: at,
         createdAt: at,
         createdBy: null,
@@ -79,9 +66,6 @@ function buildMemberWithRole(
 describe('ProjectMemberDomain', () => {
     const projectMemberRepository: MockProxy<ProjectMemberRepository> =
         mock<ProjectMemberRepository>();
-    const requestStoreService: MockProxy<RequestStoreService> =
-        mock<RequestStoreService>();
-    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
@@ -95,10 +79,6 @@ describe('ProjectMemberDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        requestStoreService.get.mockImplementation(key =>
-            key === PolicyAbilityStoreKey ? ability : null
-        );
-        ability.can.mockReturnValue(false);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -107,7 +87,6 @@ describe('ProjectMemberDomain', () => {
                     provide: ProjectMemberRepository,
                     useValue: projectMemberRepository,
                 },
-                { provide: RequestStoreService, useValue: requestStoreService },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: RoleDomain, useValue: roleDomain },
             ],
@@ -116,9 +95,67 @@ describe('ProjectMemberDomain', () => {
         domain = module.get(ProjectMemberDomain);
     });
 
-    function setCanManage(allowed: boolean): void {
-        ability.can.mockReturnValue(allowed);
-    }
+    describe('getOneByIdAndProject', () => {
+        const where: Prisma.ProjectMemberWhereInput = {
+            userId: 'target-user-id',
+        };
+
+        it('returns the row the scoped read finds, forwarding the where after the project id', async () => {
+            const target = buildMemberWithRole(EnumRoleProjectKey.member);
+            projectMemberRepository.findByIdAndProject.mockResolvedValue(
+                target
+            );
+
+            await expect(
+                domain.getOneByIdAndProject('project-id', target.id, where)
+            ).resolves.toBe(target);
+            expect(
+                projectMemberRepository.findByIdAndProject
+            ).toHaveBeenCalledWith(target.id, 'project-id', where);
+        });
+
+        it('is callable without a where for a caller that holds no request ability', async () => {
+            const target = buildMemberWithRole(EnumRoleProjectKey.member);
+            projectMemberRepository.findByIdAndProject.mockResolvedValue(
+                target
+            );
+
+            await expect(
+                domain.getOneByIdAndProject('project-id', target.id)
+            ).resolves.toBe(target);
+            expect(
+                projectMemberRepository.findByIdAndProject
+            ).toHaveBeenCalledWith(target.id, 'project-id', undefined);
+        });
+
+        it.each([
+            ['a where', where],
+            ['no where', undefined],
+        ])(
+            'throws ProjectMemberNotFoundException when the read returns no row with %s',
+            async (_name, scoped) => {
+                projectMemberRepository.findByIdAndProject.mockResolvedValue(
+                    null
+                );
+
+                await expect(
+                    domain.getOneByIdAndProject(
+                        'project-id',
+                        'missing-id',
+                        scoped
+                    )
+                ).rejects.toMatchObject({
+                    module: 'project',
+                    statusCode: EnumProjectStatusCodeError.memberNotFound,
+                    statusCodeKey:
+                        EnumProjectStatusCodeError[
+                            EnumProjectStatusCodeError.memberNotFound
+                        ],
+                    messagePath: 'project.error.memberNotFound',
+                });
+            }
+        );
+    });
 
     describe('validateProjectMemberGuard', () => {
         it('rejects validation without a user', async () => {
@@ -222,7 +259,6 @@ describe('ProjectMemberDomain', () => {
 
     describe('assignMember', () => {
         it('resolves the role in the project scope, assigns the member and stages activity when the actor holds update on projectMember', async () => {
-            setCanManage(true);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.admin)
             );
@@ -241,16 +277,13 @@ describe('ProjectMemberDomain', () => {
                     project,
                     'actor-id',
                     targetMember,
-                    'admin-role-id'
+                    'admin-role-id',
+                    true
                 )
             ).resolves.toBe(created);
             expect(roleDomain.resolve).toHaveBeenCalledWith(
                 'admin-role-id',
                 EnumRoleScope.project
-            );
-            expect(ability.can).toHaveBeenCalledWith(
-                EnumPolicyAction.update,
-                EnumPolicySubject.ProjectMember
             );
             expect(projectMemberRepository.create).toHaveBeenCalledWith(
                 project.id,
@@ -275,7 +308,6 @@ describe('ProjectMemberDomain', () => {
         });
 
         it('stages no by-admin event when the actor assigns themselves', async () => {
-            setCanManage(true);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.member)
             );
@@ -293,14 +325,14 @@ describe('ProjectMemberDomain', () => {
                     userId: 'actor-id',
                     workspaceId: 'workspace-id',
                 }),
-                'member-role-id'
+                'member-role-id',
+                true
             );
 
             expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
         });
 
         it('rejects an actor without manage on workspace assigning an admin role', async () => {
-            setCanManage(false);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.admin)
             );
@@ -314,7 +346,8 @@ describe('ProjectMemberDomain', () => {
                     project,
                     'actor-id',
                     targetMember,
-                    'admin-role-id'
+                    'admin-role-id',
+                    false
                 )
             ).rejects.toBeInstanceOf(ProjectMemberPeerForbiddenException);
             expect(
@@ -325,7 +358,6 @@ describe('ProjectMemberDomain', () => {
         it.each([EnumRoleProjectKey.member, EnumRoleProjectKey.viewer])(
             'lets an actor without manage on workspace assign the %s role',
             async key => {
-                setCanManage(false);
                 roleDomain.resolve.mockResolvedValue(buildRole(key));
                 projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
                     null
@@ -342,7 +374,8 @@ describe('ProjectMemberDomain', () => {
                             userId: 'target-id',
                             workspaceId: 'workspace-id',
                         }),
-                        `${key}-role-id`
+                        `${key}-role-id`,
+                        false
                     )
                 ).resolves.toBeDefined();
             }
@@ -364,7 +397,8 @@ describe('ProjectMemberDomain', () => {
                             userId: 'target-id',
                             workspaceId: 'workspace-id',
                         }),
-                        'bad-role-id'
+                        'bad-role-id',
+                        false
                     )
                 ).rejects.toBeInstanceOf(Failure);
                 expect(projectMemberRepository.create).not.toHaveBeenCalled();
@@ -372,18 +406,22 @@ describe('ProjectMemberDomain', () => {
         );
 
         it('rejects assigning a member outside the project workspace', async () => {
-            setCanManage(true);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.member)
             );
 
             await expect(
-                domain.assignMember(project, 'actor-id', null, 'member-role-id')
+                domain.assignMember(
+                    project,
+                    'actor-id',
+                    null,
+                    'member-role-id',
+                    true
+                )
             ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
         });
 
         it('rejects assigning a workspace member of another workspace', async () => {
-            setCanManage(true);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.member)
             );
@@ -396,13 +434,13 @@ describe('ProjectMemberDomain', () => {
                         userId: 'target-id',
                         workspaceId: 'other-workspace-id',
                     }),
-                    'member-role-id'
+                    'member-role-id',
+                    true
                 )
             ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
         });
 
         it('rejects assigning a member already assigned to the project', async () => {
-            setCanManage(true);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.member)
             );
@@ -418,27 +456,43 @@ describe('ProjectMemberDomain', () => {
                         userId: 'target-id',
                         workspaceId: 'workspace-id',
                     }),
-                    'member-role-id'
+                    'member-role-id',
+                    true
                 )
             ).rejects.toBeInstanceOf(ProjectMemberAlreadyAssignedException);
         });
     });
 
     describe('updateMemberRole', () => {
-        it('resolves the role in the project scope, updates it and stages activity', async () => {
-            setCanManage(true);
+        it('never re-reads the target the guard already authorized', async () => {
             roleDomain.resolve.mockResolvedValue(
-                buildRole(EnumRoleProjectKey.admin)
-            );
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                buildMemberWithRole(EnumRoleProjectKey.member)
+                buildRole(EnumRoleProjectKey.viewer)
             );
 
             await domain.updateMemberRole(
                 project,
                 'actor-id',
-                'target-member-id',
-                'admin-role-id'
+                buildMemberWithRole(EnumRoleProjectKey.member),
+                'viewer-role-id',
+                false
+            );
+
+            expect(
+                projectMemberRepository.findByIdAndProject
+            ).not.toHaveBeenCalled();
+        });
+
+        it('resolves the role in the project scope, updates it and stages activity', async () => {
+            roleDomain.resolve.mockResolvedValue(
+                buildRole(EnumRoleProjectKey.admin)
+            );
+
+            await domain.updateMemberRole(
+                project,
+                'actor-id',
+                buildMemberWithRole(EnumRoleProjectKey.member),
+                'admin-role-id',
+                true
             );
 
             expect(roleDomain.resolve).toHaveBeenCalledWith(
@@ -466,37 +520,21 @@ describe('ProjectMemberDomain', () => {
         });
 
         it('stages no by-admin event when the actor changes their own role', async () => {
-            setCanManage(true);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.viewer)
-            );
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                buildMemberWithRole(EnumRoleProjectKey.member, {
-                    userId: 'actor-id',
-                })
             );
 
             await domain.updateMemberRole(
                 project,
                 'actor-id',
-                'target-member-id',
-                'viewer-role-id'
+                buildMemberWithRole(EnumRoleProjectKey.member, {
+                    userId: 'actor-id',
+                }),
+                'viewer-role-id',
+                true
             );
 
             expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
-        });
-
-        it('rejects when the target member is not found', async () => {
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(null);
-
-            await expect(
-                domain.updateMemberRole(
-                    project,
-                    'actor-id',
-                    'missing-id',
-                    'member-role-id'
-                )
-            ).rejects.toBeInstanceOf(ProjectMemberNotFoundException);
         });
 
         it.each([
@@ -505,17 +543,15 @@ describe('ProjectMemberDomain', () => {
         ])(
             'propagates the role resolution failure (%s) and writes nothing',
             async (_name, Failure) => {
-                projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                    buildMemberWithRole(EnumRoleProjectKey.member)
-                );
                 roleDomain.resolve.mockRejectedValue(new Failure());
 
                 await expect(
                     domain.updateMemberRole(
                         project,
                         'actor-id',
-                        'target-member-id',
-                        'bad-role-id'
+                        buildMemberWithRole(EnumRoleProjectKey.member),
+                        'bad-role-id',
+                        false
                     )
                 ).rejects.toBeInstanceOf(Failure);
                 expect(
@@ -525,58 +561,49 @@ describe('ProjectMemberDomain', () => {
         );
 
         it('rejects an actor without manage on workspace changing the role of an existing admin', async () => {
-            setCanManage(false);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.member)
-            );
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                buildMemberWithRole(EnumRoleProjectKey.admin)
             );
 
             await expect(
                 domain.updateMemberRole(
                     project,
                     'actor-id',
-                    'target-member-id',
-                    'member-role-id'
+                    buildMemberWithRole(EnumRoleProjectKey.admin),
+                    'member-role-id',
+                    false
                 )
             ).rejects.toBeInstanceOf(ProjectMemberPeerForbiddenException);
             expect(projectMemberRepository.updateRole).not.toHaveBeenCalled();
         });
 
         it('rejects an actor without manage on workspace promoting a peer to admin', async () => {
-            setCanManage(false);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.admin)
-            );
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                buildMemberWithRole(EnumRoleProjectKey.member)
             );
 
             await expect(
                 domain.updateMemberRole(
                     project,
                     'actor-id',
-                    'target-member-id',
-                    'admin-role-id'
+                    buildMemberWithRole(EnumRoleProjectKey.member),
+                    'admin-role-id',
+                    false
                 )
             ).rejects.toBeInstanceOf(ProjectMemberPeerForbiddenException);
         });
 
         it('lets an actor without manage on workspace move a member between non-admin roles', async () => {
-            setCanManage(false);
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.viewer)
-            );
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                buildMemberWithRole(EnumRoleProjectKey.member)
             );
 
             await domain.updateMemberRole(
                 project,
                 'actor-id',
-                'target-member-id',
-                'viewer-role-id'
+                buildMemberWithRole(EnumRoleProjectKey.member),
+                'viewer-role-id',
+                false
             );
 
             expect(projectMemberRepository.updateRole).toHaveBeenCalledWith(
@@ -588,10 +615,6 @@ describe('ProjectMemberDomain', () => {
 
     describe('updateMemberRole last admin', () => {
         it('rejects demoting the last admin', async () => {
-            setCanManage(true);
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                buildMemberWithRole(EnumRoleProjectKey.admin)
-            );
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.viewer)
             );
@@ -601,18 +624,15 @@ describe('ProjectMemberDomain', () => {
                 domain.updateMemberRole(
                     project,
                     'actor-id',
-                    'target-member-id',
-                    'viewer-role-id'
+                    buildMemberWithRole(EnumRoleProjectKey.admin),
+                    'viewer-role-id',
+                    true
                 )
             ).rejects.toBeInstanceOf(ProjectMemberLastAdminException);
             expect(projectMemberRepository.updateRole).not.toHaveBeenCalled();
         });
 
         it('allows demoting an admin when another admin remains', async () => {
-            setCanManage(true);
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                buildMemberWithRole(EnumRoleProjectKey.admin)
-            );
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.viewer)
             );
@@ -621,8 +641,9 @@ describe('ProjectMemberDomain', () => {
             await domain.updateMemberRole(
                 project,
                 'actor-id',
-                'target-member-id',
-                'viewer-role-id'
+                buildMemberWithRole(EnumRoleProjectKey.admin),
+                'viewer-role-id',
+                true
             );
 
             expect(projectMemberRepository.updateRole).toHaveBeenCalledWith(
@@ -632,10 +653,6 @@ describe('ProjectMemberDomain', () => {
         });
 
         it('allows re-assigning the admin role to the last admin without counting', async () => {
-            setCanManage(true);
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                buildMemberWithRole(EnumRoleProjectKey.admin)
-            );
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.admin)
             );
@@ -643,8 +660,9 @@ describe('ProjectMemberDomain', () => {
             await domain.updateMemberRole(
                 project,
                 'actor-id',
-                'target-member-id',
-                'admin-role-id'
+                buildMemberWithRole(EnumRoleProjectKey.admin),
+                'admin-role-id',
+                true
             );
 
             expect(projectMemberRepository.countAdmins).not.toHaveBeenCalled();
@@ -652,10 +670,6 @@ describe('ProjectMemberDomain', () => {
         });
 
         it('does not count admins when the target is not an admin', async () => {
-            setCanManage(false);
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                buildMemberWithRole(EnumRoleProjectKey.member)
-            );
             roleDomain.resolve.mockResolvedValue(
                 buildRole(EnumRoleProjectKey.viewer)
             );
@@ -663,8 +677,9 @@ describe('ProjectMemberDomain', () => {
             await domain.updateMemberRole(
                 project,
                 'actor-id',
-                'target-member-id',
-                'viewer-role-id'
+                buildMemberWithRole(EnumRoleProjectKey.member),
+                'viewer-role-id',
+                false
             );
 
             expect(projectMemberRepository.countAdmins).not.toHaveBeenCalled();
@@ -672,14 +687,28 @@ describe('ProjectMemberDomain', () => {
     });
 
     describe('removeMember', () => {
-        it('removes the member and stages activity', async () => {
-            setCanManage(true);
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                buildMemberWithRole(EnumRoleProjectKey.admin)
+        it('never re-reads the target the guard already authorized', async () => {
+            await domain.removeMember(
+                project,
+                'actor-id',
+                buildMemberWithRole(EnumRoleProjectKey.viewer),
+                false
             );
+
+            expect(
+                projectMemberRepository.findByIdAndProject
+            ).not.toHaveBeenCalled();
+        });
+
+        it('removes the member and stages activity', async () => {
             projectMemberRepository.countAdmins.mockResolvedValue(2);
 
-            await domain.removeMember(project, 'actor-id', 'target-member-id');
+            await domain.removeMember(
+                project,
+                'actor-id',
+                buildMemberWithRole(EnumRoleProjectKey.admin),
+                true
+            );
 
             expect(projectMemberRepository.removeMember).toHaveBeenCalledWith(
                 'target-member-id'
@@ -700,36 +729,29 @@ describe('ProjectMemberDomain', () => {
             });
         });
 
-        it('rejects when the target member is not found', async () => {
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(null);
-
-            await expect(
-                domain.removeMember(project, 'actor-id', 'missing-id')
-            ).rejects.toBeInstanceOf(ProjectMemberNotFoundException);
-        });
-
         it('rejects removing oneself, directing to leaveProject instead', async () => {
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                buildMemberWithRole(EnumRoleProjectKey.member, {
-                    userId: 'actor-id',
-                })
-            );
-
             await expect(
-                domain.removeMember(project, 'actor-id', 'target-member-id')
+                domain.removeMember(
+                    project,
+                    'actor-id',
+                    buildMemberWithRole(EnumRoleProjectKey.member, {
+                        userId: 'actor-id',
+                    }),
+                    false
+                )
             ).rejects.toBeInstanceOf(ProjectMemberPeerForbiddenException);
-            expect(ability.can).not.toHaveBeenCalled();
         });
 
         it('rejects removing the last admin', async () => {
-            setCanManage(true);
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                buildMemberWithRole(EnumRoleProjectKey.admin)
-            );
             projectMemberRepository.countAdmins.mockResolvedValue(1);
 
             await expect(
-                domain.removeMember(project, 'actor-id', 'target-member-id')
+                domain.removeMember(
+                    project,
+                    'actor-id',
+                    buildMemberWithRole(EnumRoleProjectKey.admin),
+                    true
+                )
             ).rejects.toBeInstanceOf(ProjectMemberLastAdminException);
             expect(projectMemberRepository.countAdmins).toHaveBeenCalledWith(
                 'project-id'
@@ -738,35 +760,35 @@ describe('ProjectMemberDomain', () => {
         });
 
         it('does not count admins when removing a non-admin member', async () => {
-            setCanManage(true);
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                buildMemberWithRole(EnumRoleProjectKey.viewer)
+            await domain.removeMember(
+                project,
+                'actor-id',
+                buildMemberWithRole(EnumRoleProjectKey.viewer),
+                true
             );
-
-            await domain.removeMember(project, 'actor-id', 'target-member-id');
 
             expect(projectMemberRepository.countAdmins).not.toHaveBeenCalled();
         });
 
         it('rejects an actor without manage on workspace removing an admin', async () => {
-            setCanManage(false);
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                buildMemberWithRole(EnumRoleProjectKey.admin)
-            );
-
             await expect(
-                domain.removeMember(project, 'actor-id', 'target-member-id')
+                domain.removeMember(
+                    project,
+                    'actor-id',
+                    buildMemberWithRole(EnumRoleProjectKey.admin),
+                    false
+                )
             ).rejects.toBeInstanceOf(ProjectMemberPeerForbiddenException);
             expect(projectMemberRepository.removeMember).not.toHaveBeenCalled();
         });
 
         it('lets an actor without manage on workspace remove a non-admin member', async () => {
-            setCanManage(false);
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                buildMemberWithRole(EnumRoleProjectKey.viewer)
+            await domain.removeMember(
+                project,
+                'actor-id',
+                buildMemberWithRole(EnumRoleProjectKey.viewer),
+                false
             );
-
-            await domain.removeMember(project, 'actor-id', 'target-member-id');
 
             expect(projectMemberRepository.removeMember).toHaveBeenCalledWith(
                 'target-member-id'

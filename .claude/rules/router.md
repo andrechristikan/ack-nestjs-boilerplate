@@ -68,7 +68,7 @@ rules key off it:
 | `system` | `/system` | api-key / machine caller, no `req.user` | cursor |
 | `user` | `/user` | JWT, workspace-scoped via `x-workspace-id` | cursor |
 | `shared` | `/shared` | JWT, may be workspace-scoped | cursor |
-| `admin` | `/admin` | JWT + `@RoleProtected` + `@PolicyProtected` | **offset** |
+| `admin` | `/admin` | JWT + `@RoleProtected` + `@PlatformPolicyProtected` | **offset** |
 
 - **`/admin` is offset pagination; every other scope is cursor.** Not a per-endpoint
   judgement (`rules/pagination.md`).

@@ -9,7 +9,7 @@ import {
 } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { PolicySchema } from '@modules/policy/dtos/policy.dto';
 import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
 import { PolicyCreateRequestSchema } from '@modules/policy/dtos/request/policy.create.request.dto';
@@ -43,7 +43,7 @@ export class PolicyAdminController {
     @Doc({ summary: 'get all policies granted by a role' })
     @Response('policy.listByRole', { schema: PolicyListResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read],
     })
@@ -62,7 +62,7 @@ export class PolicyAdminController {
     @Doc({ summary: 'grant a rule to a role' })
     @Response('policy.create', { schema: PolicySchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
@@ -83,7 +83,7 @@ export class PolicyAdminController {
     @Doc({ summary: 'update the full rule of a role policy' })
     @Response('policy.update', { schema: PolicySchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -106,7 +106,7 @@ export class PolicyAdminController {
     @Doc({ summary: 'revoke a policy from a role' })
     @Response('policy.delete')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })

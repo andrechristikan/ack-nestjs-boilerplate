@@ -23,7 +23,7 @@ import {
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
 
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { TermPolicyContentPresignRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
@@ -76,7 +76,7 @@ export class TermPolicyAdminController {
         schema: TermPolicyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read],
     })
@@ -95,7 +95,7 @@ export class TermPolicyAdminController {
     @Doc({ summary: 'Create a new term or policy' })
     @Response('termPolicy.create', { schema: TermPolicyResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
@@ -116,7 +116,7 @@ export class TermPolicyAdminController {
         schema: TermPolicyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
@@ -137,7 +137,7 @@ export class TermPolicyAdminController {
         schema: AwsS3PresignResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.TermPolicy,
         action: [
             EnumPolicyAction.read,
@@ -163,7 +163,7 @@ export class TermPolicyAdminController {
     @Doc({ summary: 'Update content of a term or policy by ID' })
     @Response('termPolicy.updateContent')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -187,7 +187,7 @@ export class TermPolicyAdminController {
     @Doc({ summary: 'Add content to a term or policy by ID' })
     @Response('termPolicy.addContent')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -211,7 +211,7 @@ export class TermPolicyAdminController {
     @Doc({ summary: 'Remove content of a term or policy by ID' })
     @Response('termPolicy.removeContent')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -237,7 +237,7 @@ export class TermPolicyAdminController {
         schema: AwsS3PresignResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read],
     })
@@ -261,7 +261,7 @@ export class TermPolicyAdminController {
     @Doc({ summary: 'Publish a term or policy by ID' })
     @Response('termPolicy.publish')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })

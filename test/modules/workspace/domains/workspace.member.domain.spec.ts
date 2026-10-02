@@ -8,7 +8,7 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
     EnumActivityLogAction,
     EnumRoleScope,
-    type Workspace,
+    type Prisma,
 } from '@generated/prisma-client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
@@ -26,12 +26,8 @@ import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/except
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceOwnerRoleNotAssignableException } from '@modules/workspace/exceptions/workspace.owner-role-not-assignable.exception';
 import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/workspace.self-transfer.exception';
-import type {
-    IWorkspaceMemberWithRole,
-    IWorkspaceMemberWithRolePolicies,
-} from '@modules/workspace/interfaces/workspace.interface';
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
-import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 
 const now = new Date('2026-01-01T00:00:00.000Z');
 const buildRole = (key: EnumRoleWorkspaceKey): IRole => ({
@@ -40,19 +36,6 @@ const buildRole = (key: EnumRoleWorkspaceKey): IRole => ({
     key,
     name: key,
 });
-const workspace: Workspace = {
-    id: 'workspace-id',
-    name: 'Workspace',
-    slug: 'workspace',
-    description: null,
-    isPublic: false,
-    createdAt: now,
-    createdBy: null,
-    updatedAt: now,
-    updatedBy: null,
-    deletedAt: null,
-    deletedBy: null,
-};
 const buildMember = ({
     id,
     userId,
@@ -77,8 +60,6 @@ const buildMember = ({
 describe('WorkspaceMemberDomain', () => {
     const memberRepository: MockProxy<WorkspaceMemberRepository> =
         mock<WorkspaceMemberRepository>();
-    const workspaceRepository: MockProxy<WorkspaceRepository> =
-        mock<WorkspaceRepository>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
     const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
@@ -118,7 +99,6 @@ describe('WorkspaceMemberDomain', () => {
                     provide: WorkspaceMemberRepository,
                     useValue: memberRepository,
                 },
-                { provide: WorkspaceRepository, useValue: workspaceRepository },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: RoleDomain, useValue: roleDomain },
             ],
@@ -128,19 +108,6 @@ describe('WorkspaceMemberDomain', () => {
     });
 
     describe('validateWorkspaceMemberGuard', () => {
-        const memberWithPolicies: IWorkspaceMemberWithRolePolicies = {
-            ...member,
-            role: {
-                ...member.role,
-                description: null,
-                createdAt: now,
-                createdBy: null,
-                updatedAt: now,
-                updatedBy: null,
-                policies: [],
-            },
-        };
-
         it('rejects member validation without a user', async () => {
             await expect(
                 domain.validateWorkspaceMemberGuard('workspace-id', null)
@@ -165,24 +132,24 @@ describe('WorkspaceMemberDomain', () => {
 
         it('returns the member with its role after asserting the role scope is workspace', async () => {
             memberRepository.findOneWithRoleByWorkspaceAndUser.mockResolvedValue(
-                memberWithPolicies
+                member
             );
 
             await expect(
                 domain.validateWorkspaceMemberGuard('workspace-id', 'user-id')
-            ).resolves.toBe(memberWithPolicies);
+            ).resolves.toBe(member);
             expect(
                 memberRepository.findOneWithRoleByWorkspaceAndUser
             ).toHaveBeenCalledWith('workspace-id', 'user-id');
             expect(roleDomain.assertScope).toHaveBeenCalledWith(
-                memberWithPolicies.role,
+                member.role,
                 EnumRoleScope.workspace
             );
         });
 
         it('propagates a role scope mismatch from the role domain', async () => {
             memberRepository.findOneWithRoleByWorkspaceAndUser.mockResolvedValue(
-                memberWithPolicies
+                member
             );
             roleDomain.assertScope.mockImplementation(() => {
                 throw new RoleScopeMismatchException();
@@ -192,6 +159,64 @@ describe('WorkspaceMemberDomain', () => {
                 domain.validateWorkspaceMemberGuard('workspace-id', 'user-id')
             ).rejects.toBeInstanceOf(RoleScopeMismatchException);
         });
+    });
+
+    describe('getOneByIdAndWorkspace', () => {
+        const where: Prisma.WorkspaceMemberWhereInput = {
+            role: { key: EnumRoleWorkspaceKey.member },
+        };
+
+        it('returns the row the scoped read finds, forwarding the where after the workspace id', async () => {
+            memberRepository.findByIdAndWorkspace.mockResolvedValue(member);
+
+            await expect(
+                domain.getOneByIdAndWorkspace('workspace-id', member.id, where)
+            ).resolves.toBe(member);
+            expect(memberRepository.findByIdAndWorkspace).toHaveBeenCalledWith(
+                member.id,
+                'workspace-id',
+                where
+            );
+        });
+
+        it('is callable without a where for a caller that holds no request ability', async () => {
+            memberRepository.findByIdAndWorkspace.mockResolvedValue(member);
+
+            await expect(
+                domain.getOneByIdAndWorkspace('workspace-id', member.id)
+            ).resolves.toBe(member);
+            expect(memberRepository.findByIdAndWorkspace).toHaveBeenCalledWith(
+                member.id,
+                'workspace-id',
+                undefined
+            );
+        });
+
+        it.each([
+            ['a where', where],
+            ['no where', undefined],
+        ])(
+            'throws WorkspaceMemberNotFoundException when the read returns no row with %s',
+            async (_name, scoped) => {
+                memberRepository.findByIdAndWorkspace.mockResolvedValue(null);
+
+                await expect(
+                    domain.getOneByIdAndWorkspace(
+                        'workspace-id',
+                        'missing-id',
+                        scoped
+                    )
+                ).rejects.toMatchObject({
+                    module: 'workspace',
+                    statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
+                    statusCodeKey:
+                        EnumWorkspaceStatusCodeError[
+                            EnumWorkspaceStatusCodeError.memberNotFound
+                        ],
+                    messagePath: 'workspace.error.memberNotFound',
+                });
+            }
+        );
     });
 
     describe('getOneByWorkspaceAndUser', () => {
@@ -403,32 +428,62 @@ describe('WorkspaceMemberDomain', () => {
                 orderBy: [],
             };
             const role = { role: { in: [EnumRoleWorkspaceKey.admin] } };
+            const where: Prisma.WorkspaceMemberWhereInput = {
+                workspaceId: 'workspace-id',
+            };
             memberRepository.findWithPaginationCursor.mockResolvedValue(
                 paginated
             );
 
             await expect(
-                domain.getMembersList('workspace-id', pagination, role)
+                domain.getMembersList('workspace-id', pagination, role, where)
             ).resolves.toBe(paginated);
             expect(
                 memberRepository.findWithPaginationCursor
-            ).toHaveBeenCalledWith('workspace-id', pagination, role);
+            ).toHaveBeenCalledWith('workspace-id', pagination, role, where);
+        });
+
+        it('hands an undefined where to the repository when the caller supplies none', async () => {
+            const pagination = {
+                limit: 10,
+                orderBy: [],
+            };
+            memberRepository.findWithPaginationCursor.mockResolvedValue({
+                type: EnumPaginationType.cursor as const,
+                count: 0,
+                perPage: 10,
+                hasNext: false,
+                cursor: undefined,
+                data: [],
+            });
+
+            await domain.getMembersList('workspace-id', pagination);
+
+            expect(
+                memberRepository.findWithPaginationCursor
+            ).toHaveBeenCalledWith(
+                'workspace-id',
+                pagination,
+                undefined,
+                undefined
+            );
         });
     });
 
     describe('updateMemberRole', () => {
-        it('rejects updating the role of a member that is not found', async () => {
-            memberRepository.findByIdAndWorkspace.mockResolvedValue(null);
+        it('never re-reads the target the guard already authorized', async () => {
+            roleDomain.resolve.mockResolvedValue(adminRole);
 
-            await expect(
-                domain.updateMemberRole(
-                    'workspace-id',
-                    admin,
-                    'missing-id',
-                    memberRole.id
-                )
-            ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
-            expect(roleDomain.resolve).not.toHaveBeenCalled();
+            await domain.updateMemberRole(
+                'workspace-id',
+                owner,
+                member,
+                adminRole.id
+            );
+
+            expect(
+                memberRepository.findByIdAndWorkspace
+            ).not.toHaveBeenCalled();
         });
 
         it.each([
@@ -437,13 +492,11 @@ describe('WorkspaceMemberDomain', () => {
         ])(
             'prevents %s from being changed by an admin before the role is resolved',
             async (_name, actor, target) => {
-                memberRepository.findByIdAndWorkspace.mockResolvedValue(target);
-
                 await expect(
                     domain.updateMemberRole(
                         'workspace-id',
                         actor,
-                        target.id,
+                        target,
                         memberRole.id
                     )
                 ).rejects.toBeInstanceOf(WorkspaceMemberPeerForbiddenException);
@@ -453,14 +506,13 @@ describe('WorkspaceMemberDomain', () => {
         );
 
         it('propagates a role that cannot be resolved in the workspace scope', async () => {
-            memberRepository.findByIdAndWorkspace.mockResolvedValue(member);
             roleDomain.resolve.mockRejectedValue(new RoleNotFoundException());
 
             await expect(
                 domain.updateMemberRole(
                     'workspace-id',
                     admin,
-                    member.id,
+                    member,
                     'missing-role-id'
                 )
             ).rejects.toBeInstanceOf(RoleNotFoundException);
@@ -472,7 +524,6 @@ describe('WorkspaceMemberDomain', () => {
         });
 
         it('propagates a role scope mismatch', async () => {
-            memberRepository.findByIdAndWorkspace.mockResolvedValue(member);
             roleDomain.resolve.mockRejectedValue(
                 new RoleScopeMismatchException()
             );
@@ -481,7 +532,7 @@ describe('WorkspaceMemberDomain', () => {
                 domain.updateMemberRole(
                     'workspace-id',
                     admin,
-                    member.id,
+                    member,
                     'project-role-id'
                 )
             ).rejects.toBeInstanceOf(RoleScopeMismatchException);
@@ -489,13 +540,12 @@ describe('WorkspaceMemberDomain', () => {
         });
 
         it('rejects assigning the owner role', async () => {
-            memberRepository.findByIdAndWorkspace.mockResolvedValue(member);
             roleDomain.resolve.mockResolvedValue(ownerRole);
 
             const promise = domain.updateMemberRole(
                 'workspace-id',
                 owner,
-                member.id,
+                member,
                 ownerRole.id
             );
 
@@ -516,13 +566,12 @@ describe('WorkspaceMemberDomain', () => {
         });
 
         it('updates the role through the resolved role id and stages the activity', async () => {
-            memberRepository.findByIdAndWorkspace.mockResolvedValue(member);
             roleDomain.resolve.mockResolvedValue(adminRole);
 
             await domain.updateMemberRole(
                 'workspace-id',
                 owner,
-                member.id,
+                member,
                 adminRole.id
             );
 
@@ -552,13 +601,12 @@ describe('WorkspaceMemberDomain', () => {
         });
 
         it('lets an owner change the role of an admin', async () => {
-            memberRepository.findByIdAndWorkspace.mockResolvedValue(otherAdmin);
             roleDomain.resolve.mockResolvedValue(memberRole);
 
             await domain.updateMemberRole(
                 'workspace-id',
                 owner,
-                otherAdmin.id,
+                otherAdmin,
                 memberRole.id
             );
 
@@ -569,16 +617,12 @@ describe('WorkspaceMemberDomain', () => {
         });
 
         it('skips the paired activity row when the actor changes its own role', async () => {
-            memberRepository.findByIdAndWorkspace.mockResolvedValue({
-                ...member,
-                userId: admin.userId,
-            });
             roleDomain.resolve.mockResolvedValue(memberRole);
 
             await domain.updateMemberRole(
                 'workspace-id',
                 admin,
-                member.id,
+                { ...member, userId: admin.userId },
                 memberRole.id
             );
 
@@ -587,38 +631,32 @@ describe('WorkspaceMemberDomain', () => {
     });
 
     describe('removeMember', () => {
-        it('prevents a member from removing itself', async () => {
-            memberRepository.findByIdAndWorkspace.mockResolvedValue(member);
+        it('never re-reads the target the guard already authorized', async () => {
+            await domain.removeMember('workspace-id', admin, member);
 
-            await expect(
-                domain.removeMember('workspace-id', member, member.id)
-            ).rejects.toBeInstanceOf(WorkspaceMemberPeerForbiddenException);
+            expect(
+                memberRepository.findByIdAndWorkspace
+            ).not.toHaveBeenCalled();
         });
 
-        it('rejects removing a member that is not found', async () => {
-            memberRepository.findByIdAndWorkspace.mockResolvedValue(null);
-
+        it('prevents a member from removing itself', async () => {
             await expect(
-                domain.removeMember('workspace-id', admin, 'missing-id')
-            ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
+                domain.removeMember('workspace-id', member, member)
+            ).rejects.toBeInstanceOf(WorkspaceMemberPeerForbiddenException);
         });
 
         it.each([
             ['an owner', owner],
             ['another admin', otherAdmin],
         ])('prevents an admin from removing %s', async (_name, target) => {
-            memberRepository.findByIdAndWorkspace.mockResolvedValue(target);
-
             await expect(
-                domain.removeMember('workspace-id', admin, target.id)
+                domain.removeMember('workspace-id', admin, target)
             ).rejects.toBeInstanceOf(WorkspaceMemberPeerForbiddenException);
             expect(memberRepository.removeMember).not.toHaveBeenCalled();
         });
 
         it('removes a member and stages the activity rows', async () => {
-            memberRepository.findByIdAndWorkspace.mockResolvedValue(member);
-
-            await domain.removeMember('workspace-id', admin, member.id);
+            await domain.removeMember('workspace-id', admin, member);
 
             expect(memberRepository.removeMember).toHaveBeenCalledWith(
                 member.id
@@ -641,9 +679,7 @@ describe('WorkspaceMemberDomain', () => {
         });
 
         it('lets an owner remove an admin', async () => {
-            memberRepository.findByIdAndWorkspace.mockResolvedValue(otherAdmin);
-
-            await domain.removeMember('workspace-id', owner, otherAdmin.id);
+            await domain.removeMember('workspace-id', owner, otherAdmin);
 
             expect(memberRepository.removeMember).toHaveBeenCalledWith(
                 otherAdmin.id
@@ -664,19 +700,7 @@ describe('WorkspaceMemberDomain', () => {
             data: [],
         };
 
-        it('rejects when the workspace does not exist', async () => {
-            workspaceRepository.findByIdForAdmin.mockResolvedValue(null);
-            memberRepository.findWithPaginationOffset.mockResolvedValue(
-                paginated
-            );
-
-            await expect(
-                domain.getMembersListForAdmin('workspace-id', pagination)
-            ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
-        });
-
-        it('returns the offset page of an existing workspace', async () => {
-            workspaceRepository.findByIdForAdmin.mockResolvedValue(workspace);
+        it('returns the offset page of the workspace', async () => {
             memberRepository.findWithPaginationOffset.mockResolvedValue(
                 paginated
             );

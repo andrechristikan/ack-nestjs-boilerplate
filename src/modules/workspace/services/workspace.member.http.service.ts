@@ -2,7 +2,13 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { EnumPolicyAbilityScope } from '@modules/policy/enums/policy.enum';
+import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import {
     WorkspaceMemberDefaultAvailableOrderBy,
     WorkspaceMemberDefaultRole,
@@ -22,6 +28,7 @@ import { Injectable } from '@nestjs/common';
 export class WorkspaceMemberHttpService {
     constructor(
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
+        private readonly policyDomain: PolicyDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -49,6 +56,16 @@ export class WorkspaceMemberHttpService {
         workspaceId: string,
         query: WorkspaceMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
+        const ability = this.policyDomain.requireComposedAbility(
+            EnumPolicyAbilityScope.workspace
+        );
+        const accessibleWhere =
+            this.policyDomain.requireAccessibleWhere<Prisma.WorkspaceMemberWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.WorkspaceMember
+            );
+
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.WorkspaceMemberWhereInput>(
                 query,
@@ -73,7 +90,8 @@ export class WorkspaceMemberHttpService {
             await this.workspaceMemberDomain.getMembersList(
                 workspaceId,
                 params,
-                role?.where
+                role?.where,
+                accessibleWhere
             );
 
         return {
@@ -85,13 +103,13 @@ export class WorkspaceMemberHttpService {
     async updateMemberRole(
         workspaceId: string,
         actorMember: IWorkspaceMemberWithRole,
-        targetMemberId: string,
+        targetMember: IWorkspaceMemberWithRole,
         { roleId }: WorkspaceMemberUpdateRoleRequestDto
     ): Promise<void> {
         await this.workspaceMemberDomain.updateMemberRole(
             workspaceId,
             actorMember,
-            targetMemberId,
+            targetMember,
             roleId
         );
     }
@@ -99,12 +117,12 @@ export class WorkspaceMemberHttpService {
     async removeMember(
         workspaceId: string,
         actorMember: IWorkspaceMemberWithRole,
-        targetMemberId: string
+        targetMember: IWorkspaceMemberWithRole
     ): Promise<void> {
         await this.workspaceMemberDomain.removeMember(
             workspaceId,
             actorMember,
-            targetMemberId
+            targetMember
         );
     }
 

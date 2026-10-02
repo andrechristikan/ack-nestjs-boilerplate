@@ -5,8 +5,14 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
+import { EnumPolicyAbilityScope } from '@modules/policy/enums/policy.enum';
+import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
 import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
@@ -24,9 +30,21 @@ export class ProjectMemberHttpService {
     constructor(
         private readonly projectMemberDomain: ProjectMemberDomain,
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
+        private readonly policyDomain: PolicyDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
+
+    private canManageProjectMembers(): boolean {
+        const ability = this.policyDomain.requireComposedAbility(
+            EnumPolicyAbilityScope.project
+        );
+
+        return ability.can(
+            EnumPolicyAction.update,
+            EnumPolicySubject.ProjectMember
+        );
+    }
 
     async getMembersList(
         project: Project,
@@ -55,6 +73,7 @@ export class ProjectMemberHttpService {
         actorId: string,
         { userId, roleId }: ProjectMemberAssignRequestDto
     ): Promise<IResponseReturn<IProjectMember>> {
+        const canManageProjectMembers = this.canManageProjectMembers();
         const targetMember =
             await this.workspaceMemberDomain.getOneByWorkspaceAndUser(
                 project.workspaceId,
@@ -64,7 +83,8 @@ export class ProjectMemberHttpService {
             project,
             actorId,
             targetMember,
-            roleId
+            roleId,
+            canManageProjectMembers
         );
 
         return { data: member };
@@ -73,26 +93,30 @@ export class ProjectMemberHttpService {
     async updateMemberRole(
         project: Project,
         actorId: string,
-        targetMemberId: string,
+        targetMember: IProjectMemberWithRole,
         { roleId }: ProjectMemberUpdateRoleRequestDto
     ): Promise<void> {
+        const canManageProjectMembers = this.canManageProjectMembers();
         await this.projectMemberDomain.updateMemberRole(
             project,
             actorId,
-            targetMemberId,
-            roleId
+            targetMember,
+            roleId,
+            canManageProjectMembers
         );
     }
 
     async removeMember(
         project: Project,
         actorId: string,
-        targetMemberId: string
+        targetMember: IProjectMemberWithRole
     ): Promise<void> {
+        const canManageProjectMembers = this.canManageProjectMembers();
         await this.projectMemberDomain.removeMember(
             project,
             actorId,
-            targetMemberId
+            targetMember,
+            canManageProjectMembers
         );
     }
 

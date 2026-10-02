@@ -1,7 +1,6 @@
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
-import { RolePoliciesInclude } from '@modules/role/constants/role.constant';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
 /**
@@ -84,11 +83,11 @@ export const TwoFactorWithBackupCodesInclude = {
 } satisfies Prisma.TwoFactorInclude;
 
 /**
- * Relations joined to a user row that carries its role, policies and two-factor state.
+ * Relations joined to a user row that carries its role and two-factor state.
  * @public
  */
 export const UserWithRoleInclude = {
-    role: { include: RolePoliciesInclude },
+    role: true,
     twoFactor: { include: TwoFactorWithBackupCodesInclude },
 } satisfies Prisma.UserInclude;
 
@@ -130,7 +129,7 @@ export const UserAdminListSelect = {
     updatedBy: true,
     deletedAt: true,
     deletedBy: true,
-    role: { include: RolePoliciesInclude },
+    role: true,
     twoFactor: true,
 } satisfies Prisma.UserSelect;
 

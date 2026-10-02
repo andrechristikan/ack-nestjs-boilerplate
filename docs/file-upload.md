@@ -377,8 +377,8 @@ export type UserImportRequestDto = z.infer<typeof UserImportRequestSchema>;
 @UserAdminImportDoc()
 @Response('user.import')
 @TermPolicyAcceptanceProtected()
-@PolicyProtected({
-  subject: EnumPolicySubject.user,
+@PlatformPolicyProtected({
+  subject: EnumPolicySubject.User,
   action: [EnumPolicyAction.read, EnumPolicyAction.create],
 })
 @UserProtected()
@@ -887,8 +887,8 @@ The second presign endpoint signs a term policy content upload. `TermPolicyAdmin
   schema: AwsS3PresignResponseSchema,
 })
 @TermPolicyAcceptanceProtected()
-@PolicyProtected({
-  subject: EnumPolicySubject.termPolicy,
+@PlatformPolicyProtected({
+  subject: EnumPolicySubject.TermPolicy,
   action: [
     EnumPolicyAction.read,
     EnumPolicyAction.create,

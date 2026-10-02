@@ -113,7 +113,8 @@ The member and invite roles are rows of the shared `Role` model, with scope `wor
 
 1. `RequestWorkspaceMiddleware` copies the `x-workspace-id` header into the request store under the key from `workspace.storeKey` (`workspaceId`), or `null` when the header is absent. It performs no validation.
 2. `WorkspaceGuard` reads that key, loads the active workspace, and stores the row under `WorkspaceStoreKey`. A missing header and an unknown id both throw `WorkspaceNotFoundException` (404, `51600`).
-3. `WorkspaceMemberGuard` then confirms the caller's membership, stores the `WorkspaceMember` row with its role, and writes the policies of that workspace role under `WorkspaceMemberPolicyStoreKey`.
+3. `WorkspaceMemberGuard` then confirms the caller's membership and stores the `WorkspaceMember` row with its role under `WorkspaceMemberStoreKey`. It loads no policies.
+4. A policy decorator, when the route carries one, builds the request ability from the platform role and the workspace role of that member.
 
 `POST /user/workspace/switch` takes the target id from the body, re-runs the same two checks the guards would have run (the workspace resolves and is active, the caller is a member of it), then records the choice on `user.lastWorkspaceId` and `lastWorkspaceChangedAt`. It does **not** change how a request is scoped: the client still has to send `x-workspace-id` on every workspace-scoped call.
 
@@ -140,12 +141,24 @@ Requires `x-workspace-id` to resolve to an existing, non-deleted workspace, thro
 **Method decorator**. Takes no arguments. Stack it above `@WorkspaceProtected()`. It applies `WorkspaceMemberGuard`.
 
 - `WorkspaceMemberGuard` confirms the user loaded by `UserGuard` has a `WorkspaceMember` row in the resolved workspace, and stores it with its minimal role (`id`, `scope`, `key`, `name`, no policies) under `WorkspaceMemberStoreKey`. No membership throws `WorkspaceMemberForbiddenException` (403, `51601`).
-- The guard stores the policies of the member's workspace role under `WorkspaceMemberPolicyStoreKey`. `PolicyDomain` composes that key after the platform policies, so on a workspace route the workspace role's rules take precedence over the platform role's.
-- What a member may do is decided by `@PolicyProtected()` against those policies. A route with no `@PolicyProtected()` is open to every member.
+- The guard is membership-only: it loads no policies and builds no ability.
+- What a member may do is decided by a workspace policy decorator (below). A route with no policy decorator is open to every member.
+
+### Workspace policy decorators
+
+Located at `src/modules/workspace/decorators`. Each composes `WorkspacePolicyAbilityGuard` with one enforcement guard and sits above `@WorkspaceMemberProtected()`. `WorkspacePolicyAbilityGuard` builds the ability from the platform role and the acting member's workspace role, with the workspace rules after the platform rules, and stores it under `PolicyAbilityStoreKey`. An ability a guard already stored is reused and never overwritten.
+
+| Decorator | Enforcement guard | Judges |
+|---|---|---|
+| `@WorkspacePolicyProtected(...actions)` | `WorkspacePolicyGuard` | The workspace record, tagged as `Workspace`. A route carrying `:workspaceId` (admin) resolves that workspace itself, soft-deleted ones included; a user route judges the workspace `WorkspaceGuard` stored |
+| `@WorkspaceMemberPolicyProtected(...actions)` | `WorkspaceMemberPolicyGuard` | The target member: `:workspaceMemberId`, or the acting member when the route carries no param. The target loads through the policy predicate, so a record the ability does not reach answers `WorkspaceMemberNotFoundException`, then the record is judged and stored for `@WorkspaceMemberTargetCurrent()` |
+| `@WorkspaceSubjectPolicyProtected({ subject, action })` | `PolicyGuard` | A subject-type check with no record: invite create, resend and revoke, join-request accept and reject, member list, analytics, project create |
+
+The `Workspace` and `WorkspaceMember` decorators take actions only, so the subject is fixed.
 
 ### `WorkspaceCurrent()` / `WorkspaceMemberCurrent()`
 
-**Parameter decorators** that read back the `Workspace` and the `WorkspaceMember` with its role that the guards stored.
+**Parameter decorators** that read back the `Workspace` and the `WorkspaceMember` with its role that the guards stored. `@WorkspaceMemberTargetCurrent()` reads the target member `WorkspaceMemberPolicyGuard` authorized, which is the addressed member rather than the caller.
 
 - Each takes an optional field name typed against its model: `@WorkspaceCurrent()` returns the whole row, `@WorkspaceCurrent('id')` returns that field
 - Both return a non-null value, so a route that reads one without the matching guard, or names a field holding `null`, answers `RequestContextMissingException` (500, `50304`)
@@ -154,7 +167,7 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 
 ### The `/admin` scope takes none of this
 
-Admin routes reach the same resources through `@PolicyProtected()` and take the workspace id from the **path**. They never read `x-workspace-id` and never carry a workspace guard.
+Admin routes reach the same resources through `@PlatformPolicyProtected()` and take the workspace id from the **path**. They never read `x-workspace-id` and never carry a workspace guard. A route that judges a workspace record writes `@WorkspacePolicyProtected()` above `@PlatformPolicyProtected()`, so the platform ability is stored first and the workspace decorator reuses it.
 
 ## Personal Workspace
 
@@ -206,23 +219,25 @@ Mounted under `/user`. Every route carries `@FeatureFlagProtected('workspace')`.
 | `PATCH` | `/user/workspace/update/is-public` | yes | `workspace:[update]` |
 | `PATCH` | `/user/workspace/update/slug` | yes | `workspace:[update]` |
 | `POST` | `/user/workspace/switch` | no | authenticated |
-| `POST` | `/user/workspace/ownership/transfer` | yes | `workspace:[manage]` |
+| `POST` | `/user/workspace/ownership/transfer` | yes | `workspace:[update]`, and the actor holds the `owner` role |
 | `POST` | `/user/workspace/leave` | yes | any member |
 | `DELETE` | `/user/workspace/delete` | yes | `workspace:[delete]` |
-| `GET` | `/user/workspace/member/list` | yes | any member |
+| `GET` | `/user/workspace/member/list` | yes | `workspaceMember:[read]` |
 | `PATCH` | `/user/workspace/member/:workspaceMemberId/role/update` | yes | `workspaceMember:[update]` |
 | `DELETE` | `/user/workspace/member/:workspaceMemberId/remove` | yes | `workspaceMember:[delete]` |
 | `GET` | `/user/workspace/invite/list` | yes | any member |
-| `POST` | `/user/workspace/invite/create` | yes | `workspaceInvite:[manage]` |
-| `POST` | `/user/workspace/invite/:workspaceInviteId/resend` | yes | `workspaceInvite:[manage]` |
-| `DELETE` | `/user/workspace/invite/:workspaceInviteId/revoke` | yes | `workspaceInvite:[manage]` |
+| `POST` | `/user/workspace/invite/create` | yes | `workspaceInvite:[create]` |
+| `POST` | `/user/workspace/invite/:workspaceInviteId/resend` | yes | `workspaceInvite:[update]` |
+| `DELETE` | `/user/workspace/invite/:workspaceInviteId/revoke` | yes | `workspaceInvite:[delete]` |
 | `POST` | `/user/workspace/invite/claim` | no | authenticated |
 | `POST` | `/user/workspace/join-request/create` | no | authenticated |
 | `GET` | `/user/workspace/join-request/list` | yes | any member |
 | `POST` | `/user/workspace/join-request/:workspaceJoinRequestId/accept` | yes | `workspaceJoinRequest:[update]` |
 | `POST` | `/user/workspace/join-request/:workspaceJoinRequestId/reject` | yes | `workspaceJoinRequest:[update]` |
 
-"Any member" means the route carries `@WorkspaceMemberProtected()` and no `@PolicyProtected()`. Every other gate is a CASL policy the caller's workspace role must grant. The seeded `owner` holds all of them, and the seeded `admin` holds every one except `workspace:[manage]` and `workspace:[delete]`.
+`GET /user/workspace/permissions` (header required) carries `@PolicyAbilityProtected(workspace)` and `@WorkspaceMemberProtected()` and returns the caller's effective actions per workspace-level subject. It enforces no policy.
+
+"Any member" means the route carries `@WorkspaceMemberProtected()` and no policy decorator. Every other gate is a CASL policy the caller's workspace role must grant. `workspaceInvite:[manage]` held by the seeded `owner` and `admin` covers create, resend, and revoke. The seeded `owner` holds every gate, and the seeded `admin` holds every one except `workspace:[delete]` and the `owner` check of the ownership transfer.
 
 Current-workspace analytic metrics for the active `x-workspace-id` live under `/user/analytic/workspace/*` (summary for any member; invite funnel, join outcomes, member roles, and activity for a role that holds `analytic:[read]`). See [Analytic](analytic.md).
 
@@ -239,7 +254,7 @@ Neither preview answers `forbidden` for a resource that exists but is not eligib
 
 ### Admin Scope
 
-Mounted under `/admin`. Gated by `@PolicyProtected({ subject: workspace, action: [read] })` against the caller's platform role. **Not feature-flagged**, does not read `x-workspace-id`, read-only.
+Mounted under `/admin`. Gated by `@PlatformPolicyProtected({ subject: Workspace, action: [read] })` against the caller's platform role; the get and members routes add `@WorkspacePolicyProtected(read)`. **Not feature-flagged**, does not read `x-workspace-id`, read-only.
 
 | Method | Path | Description |
 |---|---|---|
@@ -251,11 +266,11 @@ Mounted under `/admin`. Gated by `@PolicyProtected({ subject: workspace, action:
 
 | Role | Policies |
 |---|---|
-| `member` | `workspace:[read]`. Lists members, invites, and join requests, and leaves |
-| `admin` | `workspace:[read, update]`, `workspaceMember:[update, delete]`, `workspaceInvite:[manage]`, `workspaceJoinRequest:[update]`, `project:[create, delete]`, `analytic:[read]` |
-| `owner` | `workspace:[manage]`, `workspaceMember:[update, delete]`, `workspaceInvite:[manage]`, `workspaceJoinRequest:[update]`, `project:[create, read, update, delete]`, `projectMember:[create, update, delete]`, `analytic:[read]` |
+| `member` | `workspace:[read]`, `workspaceMember:[read]`. Lists members, invites, and join requests, and leaves |
+| `admin` | `workspace:[read, update]`, `workspaceMember:[read, update, delete]`, `workspaceInvite:[manage]`, `workspaceJoinRequest:[update]`, `project:[create, delete]`, `analytic:[read]` |
+| `owner` | `workspace:[manage]`, `workspaceMember:[read, update, delete]`, `workspaceInvite:[manage]`, `workspaceJoinRequest:[update]`, `project:[create, read, update, delete]`, `projectMember:[create, update, delete]`, `analytic:[read]` |
 
-Ownership transfer needs `workspace:[manage]` and workspace deletion needs `workspace:[delete]`, which only `owner` holds. The `owner` role is not assignable through a member role update or an invite (`WorkspaceOwnerRoleNotAssignableException`, 400, `51620`); ownership moves through the transfer route.
+Ownership transfer needs `workspace:[update]` and the `owner` role (`WorkspaceMemberPeerForbiddenException` otherwise), and workspace deletion needs `workspace:[delete]`, which only `owner` holds. The `owner` role is not assignable through a member role update or an invite (`WorkspaceOwnerRoleNotAssignableException`, 400, `51620`); ownership moves through the transfer route.
 
 **Peer rules** throw `WorkspaceMemberPeerForbiddenException` (403, `51607`). `assertPeerActionAllowed`, called on member role update and member removal, covers:
 
@@ -274,7 +289,7 @@ Ownership transfer needs `workspace:[manage]` and workspace deletion needs `work
 
 An invite is addressed to an email, not to a user, so it works whether or not that address already has an account.
 
-**Create.** `POST /user/workspace/invite/create` requires `workspaceInvite:[manage]`. The body carries `workspaceRoleId` and, for a project invite, `projectId` with `projectRoleId`; both role ids come from `GET /shared/role/list` and are validated against their scope. Steps:
+**Create.** `POST /user/workspace/invite/create` requires `workspaceInvite:[create]`. The body carries `workspaceRoleId` and, for a project invite, `projectId` with `projectRoleId`; both role ids come from `GET /shared/role/list` and are validated against their scope. Steps:
 
 1. Generates a random token and stores only its SHA-256 hash
 2. Mints a `WIN-` prefixed reference

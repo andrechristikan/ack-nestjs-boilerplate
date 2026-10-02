@@ -15,13 +15,10 @@ import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyPredefinedNotFoundException } from '@modules/policy/exceptions/policy.predefined-not-found.exception';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 
 describe('PolicyGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
     const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
-    const requestStoreService: MockProxy<RequestStoreService> =
-        mock<RequestStoreService>();
     const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
     const handler = () => undefined;
     const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
@@ -30,24 +27,22 @@ describe('PolicyGuard', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         context.getHandler.mockReturnValue(handler);
-        requestStoreService.get.mockReturnValue(ability);
+        policyDomain.requireStored.mockReturnValue(ability);
 
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 PolicyGuard,
                 { provide: Reflector, useValue: reflector },
                 { provide: PolicyDomain, useValue: policyDomain },
-                {
-                    provide: RequestStoreService,
-                    useValue: requestStoreService,
-                },
             ],
         }).compile();
         guard = moduleRef.get(PolicyGuard);
     });
 
     it('throws RequestContextMissingException when no ability is stored', () => {
-        requestStoreService.get.mockReturnValue(undefined);
+        policyDomain.requireStored.mockImplementation(() => {
+            throw new RequestContextMissingException(PolicyAbilityStoreKey);
+        });
 
         expect(() => guard.canActivate(context)).toThrow(
             RequestContextMissingException
@@ -60,16 +55,16 @@ describe('PolicyGuard', () => {
         expect(reflector.get).not.toHaveBeenCalled();
     });
 
-    it('does not read the authenticated user from request storage', () => {
+    it('reads only the ability from the request context', () => {
         reflector.get.mockReturnValue([]);
 
         expect(() => guard.canActivate(context)).toThrow(
             PolicyPredefinedNotFoundException
         );
-        expect(requestStoreService.get).toHaveBeenCalledWith(
+        expect(policyDomain.requireStored).toHaveBeenCalledWith(
             PolicyAbilityStoreKey
         );
-        expect(requestStoreService.get).toHaveBeenCalledTimes(1);
+        expect(policyDomain.requireStored).toHaveBeenCalledTimes(1);
     });
 
     it.each([

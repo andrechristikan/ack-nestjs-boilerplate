@@ -1,20 +1,14 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
-    EnumPolicyAction,
-    EnumPolicySubject,
     EnumRoleScope,
     Prisma,
 } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
 import { ProjectMemberLastAdminException } from '@modules/project/exceptions/project.member-last-admin.exception';
@@ -24,7 +18,6 @@ import { ProjectNotFoundException } from '@modules/project/exceptions/project.no
 import type {
     IProjectMember,
     IProjectMemberWithRole,
-    IProjectMemberWithRolePolicies,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
 import { RoleDomain } from '@modules/role/domains/role.domain';
@@ -37,25 +30,15 @@ export class ProjectMemberDomain {
     constructor(
         private readonly projectMemberRepository: ProjectMemberRepository,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly roleDomain: RoleDomain,
-        private readonly requestStoreService: RequestStoreService
+        private readonly roleDomain: RoleDomain
     ) {}
 
     private assertProjectMemberPeerAllowed(
+        canManageProjectMembers: boolean,
         ...roleKeysInvolved: string[]
     ): void {
-        const ability = this.requestStoreService.get<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
-        if (!ability) {
-            throw new RequestContextMissingException(PolicyAbilityStoreKey);
-        }
-        const canManageMembers = ability.can(
-            EnumPolicyAction.update,
-            EnumPolicySubject.ProjectMember
-        );
         if (
-            !canManageMembers &&
+            !canManageProjectMembers &&
             roleKeysInvolved.includes(EnumRoleProjectKey.admin)
         ) {
             throw new ProjectMemberPeerForbiddenException();
@@ -74,7 +57,7 @@ export class ProjectMemberDomain {
         projectId: string | null,
         userId: string | null,
         required: boolean
-    ): Promise<IProjectMemberWithRolePolicies | null> {
+    ): Promise<IProjectMemberWithRole | null> {
         if (!userId) {
             throw new AuthJwtAccessTokenInvalidException();
         } else if (!projectId) {
@@ -97,6 +80,24 @@ export class ProjectMemberDomain {
         this.roleDomain.assertScope(member.role, EnumRoleScope.project);
 
         return member;
+    }
+
+    /** Loads the member the route addresses within the project, AND-composed with the optional where, so a record the where excludes reads as not found. */
+    async getOneByIdAndProject(
+        projectId: string,
+        projectMemberId: string,
+        where?: Prisma.ProjectMemberWhereInput
+    ): Promise<IProjectMemberWithRole> {
+        const target = await this.projectMemberRepository.findByIdAndProject(
+            projectMemberId,
+            projectId,
+            where
+        );
+        if (!target) {
+            throw new ProjectMemberNotFoundException();
+        }
+
+        return target;
     }
 
     async getMembersList(
@@ -129,13 +130,14 @@ export class ProjectMemberDomain {
         project: Project,
         actorId: string,
         targetMember: WorkspaceMember | null,
-        roleId: string
+        roleId: string,
+        canManageProjectMembers: boolean
     ): Promise<IProjectMember> {
         const role = await this.roleDomain.resolve(
             roleId,
             EnumRoleScope.project
         );
-        this.assertProjectMemberPeerAllowed(role.key);
+        this.assertProjectMemberPeerAllowed(canManageProjectMembers, role.key);
 
         if (!targetMember || targetMember.workspaceId !== project.workspaceId) {
             throw new WorkspaceMemberNotFoundException();
@@ -185,23 +187,19 @@ export class ProjectMemberDomain {
     async updateMemberRole(
         project: Project,
         actorId: string,
-        targetMemberId: string,
-        roleId: string
+        targetMember: IProjectMemberWithRole,
+        roleId: string,
+        canManageProjectMembers: boolean
     ): Promise<void> {
-        const targetMember =
-            await this.projectMemberRepository.findByIdAndProject(
-                targetMemberId,
-                project.id
-            );
-        if (!targetMember) {
-            throw new ProjectMemberNotFoundException();
-        }
-
         const role = await this.roleDomain.resolve(
             roleId,
             EnumRoleScope.project
         );
-        this.assertProjectMemberPeerAllowed(targetMember.role.key, role.key);
+        this.assertProjectMemberPeerAllowed(
+            canManageProjectMembers,
+            targetMember.role.key,
+            role.key
+        );
         if (
             targetMember.role.key === EnumRoleProjectKey.admin &&
             role.key !== EnumRoleProjectKey.admin
@@ -237,22 +235,17 @@ export class ProjectMemberDomain {
     async removeMember(
         project: Project,
         actorId: string,
-        targetMemberId: string
+        targetMember: IProjectMemberWithRole,
+        canManageProjectMembers: boolean
     ): Promise<void> {
-        const targetMember =
-            await this.projectMemberRepository.findByIdAndProject(
-                targetMemberId,
-                project.id
-            );
-        if (!targetMember) {
-            throw new ProjectMemberNotFoundException();
-        }
-
         if (targetMember.userId === actorId) {
             throw new ProjectMemberPeerForbiddenException();
         }
 
-        this.assertProjectMemberPeerAllowed(targetMember.role.key);
+        this.assertProjectMemberPeerAllowed(
+            canManageProjectMembers,
+            targetMember.role.key
+        );
         if (targetMember.role.key === EnumRoleProjectKey.admin) {
             await this.assertNotLastAdmin(project.id);
         }

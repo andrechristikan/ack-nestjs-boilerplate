@@ -84,7 +84,6 @@ describe('AuthCache', () => {
             createdBy: null,
             updatedAt: now,
             updatedBy: null,
-            policies: [],
         },
         twoFactor: {
             id: 'two-factor-id',

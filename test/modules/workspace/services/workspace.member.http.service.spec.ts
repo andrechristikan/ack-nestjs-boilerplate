@@ -6,8 +6,18 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumRoleScope } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    EnumRoleScope,
+} from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
 import { WorkspaceMemberDefaultAvailableOrderBy } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceAdminMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-member-list.request.dto';
@@ -28,6 +38,11 @@ describe('WorkspaceMemberHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
+    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
+    const accessibleMemberWhere: Prisma.WorkspaceMemberWhereInput = {
+        workspaceId: 'workspace-id',
+    };
     const now = new Date('2026-01-01T00:00:00.000Z');
     const actorMember = {
         id: 'member-id',
@@ -45,6 +60,18 @@ describe('WorkspaceMemberHttpService', () => {
         createdBy: null,
         updatedAt: now,
         updatedBy: null,
+    } satisfies IWorkspaceMemberWithRole;
+    const targetMember = {
+        ...actorMember,
+        id: 'target-member-id',
+        userId: 'target-user-id',
+        roleId: 'member-role-id',
+        role: {
+            id: 'member-role-id',
+            scope: EnumRoleScope.workspace,
+            key: EnumRoleWorkspaceKey.member,
+            name: 'Member',
+        },
     } satisfies IWorkspaceMemberWithRole;
     const memberListItem = {
         id: 'member-id',
@@ -125,10 +152,15 @@ describe('WorkspaceMemberHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyDomain.requireStored.mockReturnValue(ability);
+        policyDomain.requireAccessibleWhere.mockReturnValue(
+            accessibleMemberWhere
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceMemberHttpService,
+                { provide: PolicyDomain, useValue: policyDomain },
                 {
                     provide: WorkspaceMemberDomain,
                     useValue: workspaceMemberDomain,
@@ -215,7 +247,8 @@ describe('WorkspaceMemberHttpService', () => {
             expect(workspaceMemberDomain.getMembersList).toHaveBeenCalledWith(
                 'workspace-id',
                 cursorParams,
-                { role: { in: ['admin'] } }
+                { role: { in: ['admin'] } },
+                accessibleMemberWhere
             );
             expect(result).toEqual(cursorPage);
         });
@@ -241,8 +274,51 @@ describe('WorkspaceMemberHttpService', () => {
             expect(workspaceMemberDomain.getMembersList).toHaveBeenCalledWith(
                 'workspace-id',
                 cursorParams,
-                undefined
+                undefined,
+                accessibleMemberWhere
             );
+        });
+
+        it('asks the policy domain for the read predicate of the stored ability', async () => {
+            paginationQueryUtil.cursor.mockReturnValue({
+                params: cursorParams,
+                storePatch: cursorStorePatch,
+            } as never);
+            paginationQueryUtil.inEnum.mockReturnValue(undefined);
+            workspaceMemberDomain.getMembersList.mockResolvedValue(cursorPage);
+
+            await service.getMembersList('workspace-id', {});
+
+            expect(policyDomain.requireStored).toHaveBeenCalledWith(
+                PolicyAbilityStoreKey
+            );
+            expect(policyDomain.requireAccessibleWhere).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.WorkspaceMember
+            );
+        });
+
+        it('throws RequestContextMissingException when no ability is stored and never lists', async () => {
+            policyDomain.requireStored.mockImplementation(() => {
+                throw new RequestContextMissingException(PolicyAbilityStoreKey);
+            });
+
+            await expect(
+                service.getMembersList('workspace-id', {})
+            ).rejects.toThrow(RequestContextMissingException);
+            expect(workspaceMemberDomain.getMembersList).not.toHaveBeenCalled();
+        });
+
+        it('propagates the policy rejection when the ability holds no read rule and never lists', async () => {
+            policyDomain.requireAccessibleWhere.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(
+                service.getMembersList('workspace-id', {})
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(workspaceMemberDomain.getMembersList).not.toHaveBeenCalled();
         });
     });
 
@@ -255,14 +331,14 @@ describe('WorkspaceMemberHttpService', () => {
             await service.updateMemberRole(
                 'workspace-id',
                 actorMember,
-                'target-member-id',
+                targetMember,
                 dto
             );
 
             expect(workspaceMemberDomain.updateMemberRole).toHaveBeenCalledWith(
                 'workspace-id',
                 actorMember,
-                'target-member-id',
+                targetMember,
                 'admin-role-id'
             );
         });
@@ -273,13 +349,13 @@ describe('WorkspaceMemberHttpService', () => {
             await service.removeMember(
                 'workspace-id',
                 actorMember,
-                'target-member-id'
+                targetMember
             );
 
             expect(workspaceMemberDomain.removeMember).toHaveBeenCalledWith(
                 'workspace-id',
                 actorMember,
-                'target-member-id'
+                targetMember
             );
         });
     });

@@ -5,10 +5,14 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PlatformPolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { EnumPolicyAbilityScope } from '@modules/policy/enums/policy.enum';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import type {
     IEffectivePermission,
@@ -43,6 +47,19 @@ export class ProjectHttpService {
         workspaceMember: WorkspaceMember,
         query: ProjectUserListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
+        const ability = this.policyDomain.requireComposedAbility(
+            EnumPolicyAbilityScope.workspace
+        );
+        const canReadAllProjects = ability.can(
+            EnumPolicyAction.read,
+            EnumPolicySubject.Project
+        );
+        const accessibleWhere =
+            this.policyDomain.accessibleWhere<Prisma.ProjectWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.Project
+            );
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ProjectWhereInput>(query, {
                 availableSearch: ProjectDefaultAvailableSearch,
@@ -53,7 +70,9 @@ export class ProjectHttpService {
         const { data, ...others } = await this.projectDomain.getListForMember(
             workspaceId,
             workspaceMember,
-            params
+            params,
+            canReadAllProjects,
+            accessibleWhere ?? undefined
         );
 
         return {
@@ -117,6 +136,15 @@ export class ProjectHttpService {
     async getListForAdmin(
         query: ProjectAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
+        const ability = this.policyDomain.requireStored<PolicyAbility>(
+            PlatformPolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyDomain.requireAccessibleWhere<Prisma.ProjectWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.Project
+            );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ProjectWhereInput>(query, {
                 availableSearch: ProjectDefaultAvailableSearch,
@@ -134,7 +162,8 @@ export class ProjectHttpService {
 
         const { data, ...others } = await this.projectDomain.getListForAdmin(
             params,
-            query.workspaceId as string | undefined
+            query.workspaceId as string | undefined,
+            accessibleWhere
         );
 
         return {
@@ -143,11 +172,7 @@ export class ProjectHttpService {
         };
     }
 
-    async getByIdForAdmin(
-        projectId: string
-    ): Promise<IResponseReturn<Project>> {
-        const project = await this.projectDomain.getByIdForAdmin(projectId);
-
+    getForAdmin(project: Project): IResponseReturn<Project> {
         return { data: project };
     }
 
@@ -155,12 +180,9 @@ export class ProjectHttpService {
         _project: Project,
         _projectMember: IProjectMemberWithRole
     ): IResponseReturn<{ permissions: IEffectivePermission[] }> {
-        const ability = this.requestStoreService.get<PolicyAbility>(
-            PolicyAbilityStoreKey
+        const ability = this.policyDomain.requireComposedAbility(
+            EnumPolicyAbilityScope.project
         );
-        if (!ability) {
-            throw new RequestContextMissingException(PolicyAbilityStoreKey);
-        }
 
         const permissions = this.policyDomain.getEffectivePermissions(
             ability,

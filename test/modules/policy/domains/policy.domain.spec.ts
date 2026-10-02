@@ -11,6 +11,8 @@ import {
     EnumActivityLogAction,
     type Policy,
 } from '@generated/prisma-client';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
@@ -66,6 +68,8 @@ describe('PolicyDomain', () => {
     const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
     const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
 
     let service: PolicyDomain;
@@ -78,10 +82,40 @@ describe('PolicyDomain', () => {
                 { provide: PolicyRepository, useValue: policyRepository },
                 { provide: RoleDomain, useValue: roleDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
+                {
+                    provide: RequestStoreService,
+                    useValue: requestStoreService,
+                },
             ],
         }).compile();
 
         service = moduleRef.get(PolicyDomain);
+    });
+
+    describe('requireStored', () => {
+        it('returns the value stored under the key', () => {
+            requestStoreService.get.mockReturnValue(ability);
+
+            expect(service.requireStored<PolicyAbility>('SomeKey')).toBe(
+                ability
+            );
+            expect(requestStoreService.get).toHaveBeenCalledWith('SomeKey');
+        });
+
+        it('throws RequestContextMissingException naming the key when nothing is stored', () => {
+            requestStoreService.get.mockReturnValue(null);
+
+            expect(() => service.requireStored('SomeKey')).toThrow(
+                RequestContextMissingException
+            );
+            expect(() => service.requireStored('SomeKey')).toThrow(
+                expect.objectContaining({
+                    rawError: expect.objectContaining({
+                        message: expect.stringContaining('SomeKey'),
+                    }),
+                })
+            );
+        });
     });
 
     describe('accessibleWhere', () => {
@@ -161,6 +195,47 @@ describe('PolicyDomain', () => {
             ).toEqual({
                 OR: [{ AND: [{}, { NOT: { archived: true } }] }],
             });
+        });
+    });
+
+    describe('requireAccessibleWhere', () => {
+        it('returns the Prisma where clause the ability grants for the subject', () => {
+            expect(
+                service.requireAccessibleWhere(
+                    createPrismaAbility<PolicyAbility>([
+                        {
+                            action: EnumPolicyAction.read,
+                            subject: 'Project',
+                            conditions: { workspaceId: 'workspace-1' },
+                        },
+                    ]),
+                    EnumPolicyAction.read,
+                    EnumPolicySubject.Project
+                )
+            ).toEqual({ OR: [{ workspaceId: 'workspace-1' }] });
+        });
+
+        it('throws PolicyForbiddenException when the ability has no rules for the subject', () => {
+            expect(() =>
+                service.requireAccessibleWhere(
+                    createPrismaAbility<PolicyAbility>([]),
+                    EnumPolicyAction.read,
+                    EnumPolicySubject.Project
+                )
+            ).toThrow(PolicyForbiddenException);
+            expect(() =>
+                service.requireAccessibleWhere(
+                    createPrismaAbility<PolicyAbility>([]),
+                    EnumPolicyAction.read,
+                    EnumPolicySubject.Project
+                )
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'policy',
+                    statusCode: EnumPolicyStatusCodeError.forbidden,
+                    messagePath: 'policy.error.forbidden',
+                })
+            );
         });
     });
 

@@ -21,8 +21,8 @@ import {
 import type { Project } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { ProjectTargetCurrent } from '@modules/project/decorators/project.decorator';
 import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectHttpService } from '@modules/project/services/project.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -46,7 +46,7 @@ export class ProjectAdminController {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.read],
     })
@@ -69,7 +69,7 @@ export class ProjectAdminController {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
+    @PlatformPolicyProtected({
         subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.read],
     })
@@ -80,8 +80,9 @@ export class ProjectAdminController {
     @Get('/get/:projectId')
     async get(
         @Param('projectId', { schema: RequestUuidSchema })
-        projectId: string
+        _projectId: string,
+        @ProjectTargetCurrent() project: Project
     ): Promise<IResponseReturn<Project>> {
-        return this.projectHttpService.getByIdForAdmin(projectId);
+        return this.projectHttpService.getForAdmin(project);
     }
 }

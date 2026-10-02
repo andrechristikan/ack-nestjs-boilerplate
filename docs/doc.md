@@ -329,8 +329,8 @@ Zod-bound path params reach OpenAPI from the schema on `@Param`. Auth and policy
 @Doc({ summary: 'get detail an user' })
 @Response('user.get', { schema: UserProfileResponseSchema })
 @TermPolicyAcceptanceProtected()
-@PolicyProtected({
-    subject: EnumPolicySubject.user,
+@PlatformPolicyProtected({
+    subject: EnumPolicySubject.User,
     action: [EnumPolicyAction.read],
 })
 @UserProtected()
@@ -371,8 +371,8 @@ List query OpenAPI comes only from the zod schema on `@Query({ schema })`. `@Res
 @Doc({ summary: 'get all users' })
 @ResponsePagination('user.list', { schema: UserListResponseSchema })
 @TermPolicyAcceptanceProtected()
-@PolicyProtected({
-    subject: EnumPolicySubject.user,
+@PlatformPolicyProtected({
+    subject: EnumPolicySubject.User,
     action: [EnumPolicyAction.read],
 })
 @UserProtected()

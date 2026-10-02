@@ -60,11 +60,11 @@ export class ProjectRepository implements IProjectRepository {
     async findWithPaginationCursorForWorkspace(
         workspaceId: string,
         memberUserId: string | null,
-        authorizationWhere: Prisma.ProjectWhereInput | null,
         {
-            where,
+            where: filters,
             ...others
-        }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
+        }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
+        where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.cursor<Project, Prisma.ProjectWhereInput>(
             this.databaseService.client.project,
@@ -72,10 +72,10 @@ export class ProjectRepository implements IProjectRepository {
                 ...others,
                 where: {
                     AND: [
-                        where ?? {},
+                        filters ?? {},
                         { workspaceId },
                         ProjectActiveFilter,
-                        ...(authorizationWhere ? [authorizationWhere] : []),
+                        ...(where ? [where] : []),
                         ...(memberUserId
                             ? [{ members: { some: { userId: memberUserId } } }]
                             : []),
@@ -87,18 +87,22 @@ export class ProjectRepository implements IProjectRepository {
 
     async findWithPaginationOffsetForAdmin(
         {
-            where,
+            where: filters,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string
+        workspaceId?: string,
+        where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.offset<Project, Prisma.ProjectWhereInput>(
             this.databaseService.client.project,
             {
                 ...others,
                 where: {
-                    ...where,
-                    ...(workspaceId ? { workspaceId } : {}),
+                    AND: [
+                        filters ?? {},
+                        ...(workspaceId ? [{ workspaceId }] : []),
+                        ...(where ? [where] : []),
+                    ],
                 },
             }
         );
