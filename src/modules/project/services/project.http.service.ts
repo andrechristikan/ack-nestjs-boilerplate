@@ -11,9 +11,8 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
-import { PlatformPolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import { EnumPolicyAbilityScope } from '@modules/policy/enums/policy.enum';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import type {
     IEffectivePermission,
     PolicyAbility,
@@ -47,8 +46,8 @@ export class ProjectHttpService {
         workspaceMember: WorkspaceMember,
         query: ProjectUserListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
-        const ability = this.policyDomain.requireComposedAbility(
-            EnumPolicyAbilityScope.workspace
+        const ability = this.policyDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
         );
         const canReadAllProjects = ability.can(
             EnumPolicyAction.read,
@@ -137,7 +136,7 @@ export class ProjectHttpService {
         query: ProjectAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
         const ability = this.policyDomain.requireStored<PolicyAbility>(
-            PlatformPolicyAbilityStoreKey
+            PolicyAbilityStoreKey
         );
         const accessibleWhere =
             this.policyDomain.requireAccessibleWhere<Prisma.ProjectWhereInput>(
@@ -172,7 +171,8 @@ export class ProjectHttpService {
         };
     }
 
-    getForAdmin(project: Project): IResponseReturn<Project> {
+    async getForAdmin(projectId: string): Promise<IResponseReturn<Project>> {
+        const project = await this.projectDomain.getByIdForAdmin(projectId);
         return { data: project };
     }
 
@@ -180,8 +180,8 @@ export class ProjectHttpService {
         _project: Project,
         _projectMember: IProjectMemberWithRole
     ): IResponseReturn<{ permissions: IEffectivePermission[] }> {
-        const ability = this.policyDomain.requireComposedAbility(
-            EnumPolicyAbilityScope.project
+        const ability = this.policyDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
         );
 
         const permissions = this.policyDomain.getEffectivePermissions(

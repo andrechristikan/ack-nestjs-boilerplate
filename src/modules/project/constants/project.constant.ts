@@ -33,18 +33,6 @@ export const ProjectPermissionSubjects: EnumPolicySubject[] = [
 export const ProjectMemberRequiredMetaKey = 'ProjectMemberRequiredMetaKey';
 
 /**
- * Request-store key holding the project record `PlatformPolicyGuard` authorized for the route.
- * @public
- */
-export const ProjectTargetStoreKey = 'ProjectTargetStore';
-
-/**
- * Request-store key holding the project member record `ProjectPolicyGuard` authorized for the route.
- * @public
- */
-export const ProjectMemberTargetStoreKey = 'ProjectMemberTargetStore';
-
-/**
  * Project guard error kit for `@ProjectProtected`.
  * @public
  */

@@ -393,11 +393,14 @@ describe('WorkspaceHttpService', () => {
     });
 
     describe('getForAdmin', () => {
-        it('wraps the workspace the policy guard authorized and reads nothing again', () => {
-            const result = service.getForAdmin(workspace);
+        it('loads and wraps the workspace by id', async () => {
+            workspaceDomain.getByIdForAdmin.mockResolvedValue(workspace);
+            const result = await service.getForAdmin(workspace.id);
 
             expect(result).toEqual({ data: workspace });
-            expect(workspaceDomain.getByIdForAdmin).not.toHaveBeenCalled();
+            expect(workspaceDomain.getByIdForAdmin).toHaveBeenCalledWith(
+                workspace.id
+            );
         });
     });
 

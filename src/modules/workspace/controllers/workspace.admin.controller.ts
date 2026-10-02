@@ -27,7 +27,6 @@ import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decor
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 
-import { WorkspaceTargetCurrent } from '@modules/workspace/decorators/workspace.decorator';
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
@@ -88,10 +87,9 @@ export class WorkspaceAdminController {
     @Get('/get/:workspaceId')
     async get(
         @Param('workspaceId', { schema: RequestUuidSchema })
-        _workspaceId: string,
-        @WorkspaceTargetCurrent() workspace: Workspace
+        workspaceId: string
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.getForAdmin(workspace);
+        return this.workspaceHttpService.getForAdmin(workspaceId);
     }
 
     @Doc({ summary: 'admin list members of a workspace (read-only)' })
@@ -112,11 +110,10 @@ export class WorkspaceAdminController {
         @Query({ schema: WorkspaceAdminMemberListRequestSchema })
         query: WorkspaceAdminMemberListRequestDto,
         @Param('workspaceId', { schema: RequestUuidSchema })
-        _workspaceId: string,
-        @WorkspaceTargetCurrent() workspace: Workspace
+        workspaceId: string
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         return this.workspaceMemberHttpService.getMembersListForAdmin(
-            workspace.id,
+            workspaceId,
             query
         );
     }

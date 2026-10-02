@@ -11,9 +11,8 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
-import { PlatformPolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import { EnumPolicyAbilityScope } from '@modules/policy/enums/policy.enum';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import type {
     IEffectivePermission,
     PolicyAbility,
@@ -145,7 +144,7 @@ export class WorkspaceHttpService {
         query: WorkspaceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Workspace>> {
         const ability = this.policyDomain.requireStored<PolicyAbility>(
-            PlatformPolicyAbilityStoreKey
+            PolicyAbilityStoreKey
         );
         const accessibleWhere =
             this.policyDomain.requireAccessibleWhere<Prisma.WorkspaceWhereInput>(
@@ -183,7 +182,11 @@ export class WorkspaceHttpService {
         };
     }
 
-    getForAdmin(workspace: Workspace): IResponseReturn<Workspace> {
+    async getForAdmin(
+        workspaceId: string
+    ): Promise<IResponseReturn<Workspace>> {
+        const workspace =
+            await this.workspaceDomain.getByIdForAdmin(workspaceId);
         return { data: workspace };
     }
 
@@ -197,8 +200,8 @@ export class WorkspaceHttpService {
         _workspace: Workspace,
         _workspaceMember: IWorkspaceMemberWithRole
     ): IResponseReturn<{ permissions: IEffectivePermission[] }> {
-        const ability = this.policyDomain.requireComposedAbility(
-            EnumPolicyAbilityScope.workspace
+        const ability = this.policyDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
         );
 
         const permissions = this.policyDomain.getEffectivePermissions(

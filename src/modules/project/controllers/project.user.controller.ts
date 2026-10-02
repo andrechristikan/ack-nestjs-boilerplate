@@ -30,7 +30,6 @@ import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
-import { EnumPolicyAbilityScope } from '@modules/policy/enums/policy.enum';
 
 import { ProjectCreateRequestSchema } from '@modules/project/dtos/request/project.create.request.dto';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
@@ -54,7 +53,6 @@ import {
     ProjectCurrent,
     ProjectMemberCurrent,
     ProjectMemberProtected,
-    ProjectMemberTargetCurrent,
     ProjectPolicyProtected,
     ProjectProtected,
 } from '@modules/project/decorators/project.decorator';
@@ -106,7 +104,7 @@ export class ProjectUserController {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected(EnumPolicyAbilityScope.workspace)
+    @PolicyAbilityProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
@@ -188,7 +186,7 @@ export class ProjectUserController {
     @Response('project.permissions', {
         schema: ProjectPermissionResponseSchema,
     })
-    @PolicyAbilityProtected(EnumPolicyAbilityScope.project)
+    @PolicyAbilityProtected()
     @ProjectMemberProtected()
     @ProjectProtected()
     @WorkspaceMemberProtected()
@@ -394,14 +392,15 @@ export class ProjectUserController {
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Param('projectMemberId', { schema: RequestUuidSchema })
         _projectMemberId: string,
-        @ProjectMemberTargetCurrent() targetMember: IProjectMemberWithRole,
+        @Param('projectMemberId', { schema: RequestUuidSchema })
+        projectMemberId: string,
         @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
         body: ProjectMemberUpdateRoleRequestDto
     ): Promise<void> {
         await this.projectMemberHttpService.updateMemberRole(
             project,
             workspaceMember.userId,
-            targetMember,
+            projectMemberId,
             body
         );
     }
@@ -431,12 +430,13 @@ export class ProjectUserController {
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Param('projectMemberId', { schema: RequestUuidSchema })
         _projectMemberId: string,
-        @ProjectMemberTargetCurrent() targetMember: IProjectMemberWithRole
+        @Param('projectMemberId', { schema: RequestUuidSchema })
+        projectMemberId: string
     ): Promise<void> {
         await this.projectMemberHttpService.removeMember(
             project,
             workspaceMember.userId,
-            targetMember
+            projectMemberId
         );
     }
 

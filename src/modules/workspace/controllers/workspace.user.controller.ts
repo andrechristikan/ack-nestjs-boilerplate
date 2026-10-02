@@ -37,7 +37,6 @@ import {
 
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
-import { EnumPolicyAbilityScope } from '@modules/policy/enums/policy.enum';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 
@@ -82,7 +81,6 @@ import {
     WorkspaceCurrent,
     WorkspaceMemberCurrent,
     WorkspaceMemberProtected,
-    WorkspaceMemberTargetCurrent,
     WorkspacePolicyProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
@@ -186,7 +184,7 @@ export class WorkspaceUserController {
     @Response('workspace.permissions', {
         schema: WorkspacePermissionResponseSchema,
     })
-    @PolicyAbilityProtected(EnumPolicyAbilityScope.workspace)
+    @PolicyAbilityProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
@@ -443,14 +441,15 @@ export class WorkspaceUserController {
         @WorkspaceMemberCurrent() actorMember: IWorkspaceMemberWithRole,
         @Param('workspaceMemberId', { schema: RequestUuidSchema })
         _workspaceMemberId: string,
-        @WorkspaceMemberTargetCurrent() targetMember: IWorkspaceMemberWithRole,
+        @Param('workspaceMemberId', { schema: RequestUuidSchema })
+        workspaceMemberId: string,
         @Body({ schema: WorkspaceMemberUpdateRoleRequestSchema })
         body: WorkspaceMemberUpdateRoleRequestDto
     ): Promise<void> {
         await this.workspaceMemberHttpService.updateMemberRole(
             workspace.id,
             actorMember,
-            targetMember,
+            workspaceMemberId,
             body
         );
     }
@@ -475,12 +474,13 @@ export class WorkspaceUserController {
         @WorkspaceMemberCurrent() actorMember: IWorkspaceMemberWithRole,
         @Param('workspaceMemberId', { schema: RequestUuidSchema })
         _workspaceMemberId: string,
-        @WorkspaceMemberTargetCurrent() targetMember: IWorkspaceMemberWithRole
+        @Param('workspaceMemberId', { schema: RequestUuidSchema })
+        workspaceMemberId: string
     ): Promise<void> {
         await this.workspaceMemberHttpService.removeMember(
             workspace.id,
             actorMember,
-            targetMember
+            workspaceMemberId
         );
     }
 

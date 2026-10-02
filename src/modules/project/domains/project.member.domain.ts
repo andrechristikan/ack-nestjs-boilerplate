@@ -33,18 +33,6 @@ export class ProjectMemberDomain {
         private readonly roleDomain: RoleDomain
     ) {}
 
-    private assertProjectMemberPeerAllowed(
-        canManageProjectMembers: boolean,
-        ...roleKeysInvolved: string[]
-    ): void {
-        if (
-            !canManageProjectMembers &&
-            roleKeysInvolved.includes(EnumRoleProjectKey.admin)
-        ) {
-            throw new ProjectMemberPeerForbiddenException();
-        }
-    }
-
     private async assertNotLastAdmin(projectId: string): Promise<void> {
         const adminCount =
             await this.projectMemberRepository.countAdmins(projectId);
@@ -130,15 +118,12 @@ export class ProjectMemberDomain {
         project: Project,
         actorId: string,
         targetMember: WorkspaceMember | null,
-        roleId: string,
-        canManageProjectMembers: boolean
+        roleId: string
     ): Promise<IProjectMember> {
         const role = await this.roleDomain.resolve(
             roleId,
             EnumRoleScope.project
         );
-        this.assertProjectMemberPeerAllowed(canManageProjectMembers, role.key);
-
         if (!targetMember || targetMember.workspaceId !== project.workspaceId) {
             throw new WorkspaceMemberNotFoundException();
         }
@@ -188,17 +173,11 @@ export class ProjectMemberDomain {
         project: Project,
         actorId: string,
         targetMember: IProjectMemberWithRole,
-        roleId: string,
-        canManageProjectMembers: boolean
+        roleId: string
     ): Promise<void> {
         const role = await this.roleDomain.resolve(
             roleId,
             EnumRoleScope.project
-        );
-        this.assertProjectMemberPeerAllowed(
-            canManageProjectMembers,
-            targetMember.role.key,
-            role.key
         );
         if (
             targetMember.role.key === EnumRoleProjectKey.admin &&
@@ -235,17 +214,12 @@ export class ProjectMemberDomain {
     async removeMember(
         project: Project,
         actorId: string,
-        targetMember: IProjectMemberWithRole,
-        canManageProjectMembers: boolean
+        targetMember: IProjectMemberWithRole
     ): Promise<void> {
         if (targetMember.userId === actorId) {
             throw new ProjectMemberPeerForbiddenException();
         }
 
-        this.assertProjectMemberPeerAllowed(
-            canManageProjectMembers,
-            targetMember.role.key
-        );
         if (targetMember.role.key === EnumRoleProjectKey.admin) {
             await this.assertNotLastAdmin(project.id);
         }

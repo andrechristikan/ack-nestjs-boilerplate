@@ -3,17 +3,6 @@ import { EnumPolicySubject } from '@generated/prisma-client/client';
 type PolicySubjectSubset = { [K in EnumPolicySubject]?: K };
 
 /**
- * Fixed scope of an ability guard: the narrowest layer whose role policies the guard adds on top
- * of every broader layer above it.
- * @public
- */
-export enum EnumPolicyAbilityScope {
-    platform = 'platform',
-    workspace = 'workspace',
-    project = 'project',
-}
-
-/**
  * Subjects a `@PlatformPolicyProtected` route may require: a TS-only subset of the persisted
  * Prisma `EnumPolicySubject`.
  * @public

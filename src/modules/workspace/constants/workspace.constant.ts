@@ -17,18 +17,6 @@ export const WorkspaceStoreKey = 'WorkspaceStore';
 export const WorkspaceMemberStoreKey = 'WorkspaceMemberStore';
 
 /**
- * Request-store key holding the workspace record `WorkspacePolicyGuard` or `PlatformPolicyGuard` authorized for the route.
- * @public
- */
-export const WorkspaceTargetStoreKey = 'WorkspaceTargetStore';
-
-/**
- * Request-store key holding the workspace member record `WorkspacePolicyGuard` authorized for the route.
- * @public
- */
-export const WorkspaceMemberTargetStoreKey = 'WorkspaceMemberTargetStore';
-
-/**
  * Subjects the workspace `/permissions` endpoint reports on: the workspace family plus the
  * workspace role's project-scoped grants.
  * @public

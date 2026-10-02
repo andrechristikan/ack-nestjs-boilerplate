@@ -7,8 +7,9 @@ import {
     EnumPolicySubject,
     Prisma,
 } from '@generated/prisma-client/client';
-import { EnumPolicyAbilityScope } from '@modules/policy/enums/policy.enum';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import {
     WorkspaceMemberDefaultAvailableOrderBy,
     WorkspaceMemberDefaultRole,
@@ -56,8 +57,8 @@ export class WorkspaceMemberHttpService {
         workspaceId: string,
         query: WorkspaceMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
-        const ability = this.policyDomain.requireComposedAbility(
-            EnumPolicyAbilityScope.workspace
+        const ability = this.policyDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
         );
         const accessibleWhere =
             this.policyDomain.requireAccessibleWhere<Prisma.WorkspaceMemberWhereInput>(
@@ -103,9 +104,14 @@ export class WorkspaceMemberHttpService {
     async updateMemberRole(
         workspaceId: string,
         actorMember: IWorkspaceMemberWithRole,
-        targetMember: IWorkspaceMemberWithRole,
+        targetMemberId: string,
         { roleId }: WorkspaceMemberUpdateRoleRequestDto
     ): Promise<void> {
+        const targetMember =
+            await this.workspaceMemberDomain.getOneByIdAndWorkspace(
+                workspaceId,
+                targetMemberId
+            );
         await this.workspaceMemberDomain.updateMemberRole(
             workspaceId,
             actorMember,
@@ -117,8 +123,13 @@ export class WorkspaceMemberHttpService {
     async removeMember(
         workspaceId: string,
         actorMember: IWorkspaceMemberWithRole,
-        targetMember: IWorkspaceMemberWithRole
+        targetMemberId: string
     ): Promise<void> {
+        const targetMember =
+            await this.workspaceMemberDomain.getOneByIdAndWorkspace(
+                workspaceId,
+                targetMemberId
+            );
         await this.workspaceMemberDomain.removeMember(
             workspaceId,
             actorMember,

@@ -3,22 +3,11 @@ import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import { PolicyRepositoryModule } from '@modules/policy/policy.repository.module';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
-import { PolicyUtil } from '@modules/policy/utils/policy.util';
 
 @Global()
 @Module({
-    providers: [
-        PolicyAbilityFactory,
-        PolicyAbilityDomain,
-        PolicyDomain,
-        PolicyUtil,
-    ],
-    exports: [
-        PolicyDomain,
-        PolicyAbilityDomain,
-        PolicyAbilityFactory,
-        PolicyUtil,
-    ],
+    providers: [PolicyAbilityFactory, PolicyAbilityDomain, PolicyDomain],
+    exports: [PolicyDomain, PolicyAbilityDomain, PolicyAbilityFactory],
     imports: [PolicyRepositoryModule],
 })
 export class PolicyDomainModule {}

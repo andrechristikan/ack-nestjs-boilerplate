@@ -328,10 +328,13 @@ describe('WorkspaceMemberHttpService', () => {
                 roleId: 'admin-role-id',
             } satisfies WorkspaceMemberUpdateRoleRequestDto;
 
+            workspaceMemberDomain.getOneByIdAndWorkspace.mockResolvedValue(
+                targetMember
+            );
             await service.updateMemberRole(
                 'workspace-id',
                 actorMember,
-                targetMember,
+                targetMember.id,
                 dto
             );
 
@@ -346,10 +349,13 @@ describe('WorkspaceMemberHttpService', () => {
 
     describe('removeMember', () => {
         it('delegates to the domain', async () => {
+            workspaceMemberDomain.getOneByIdAndWorkspace.mockResolvedValue(
+                targetMember
+            );
             await service.removeMember(
                 'workspace-id',
                 actorMember,
-                targetMember
+                targetMember.id
             );
 
             expect(workspaceMemberDomain.removeMember).toHaveBeenCalledWith(

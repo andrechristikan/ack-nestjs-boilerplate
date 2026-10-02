@@ -1,16 +1,9 @@
 import { PolicyImmutableException } from '@modules/policy/exceptions/policy.immutable.exception';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
-import {
-    PolicyAbilityChainByScope,
-    PolicyAbilityStoreKeyByScope,
-} from '@modules/policy/constants/policy.constant';
-import type { EnumPolicyAbilityScope } from '@modules/policy/enums/policy.enum';
-import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import type {
     IEffectivePermission,
     PolicyAbility,
-    PolicyAbilityRule,
     PolicyAbilitySubject,
 } from '@modules/policy/interfaces/policy.interface';
 import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
@@ -40,8 +33,7 @@ export class PolicyDomain {
         private readonly policyRepository: PolicyRepository,
         private readonly roleDomain: RoleDomain,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly requestStoreService: RequestStoreService,
-        private readonly policyAbilityFactory: PolicyAbilityFactory
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     private async validateRoleExists(roleId: string): Promise<IRole> {
@@ -71,23 +63,6 @@ export class PolicyDomain {
         }
 
         return value;
-    }
-
-    /**
-     * Composes the ability of `scope` at check time: reads every layer stored under the keys of
-     * `PolicyAbilityChainByScope[scope]` through `requireStored`, concatenates their rules, and
-     * builds one ability. Inverted rules are ordered last, so a deny from any layer stays authoritative.
-     */
-    requireComposedAbility(scope: EnumPolicyAbilityScope): PolicyAbility {
-        const rules: PolicyAbilityRule[] = [];
-        for (const layer of PolicyAbilityChainByScope[scope]) {
-            const ability = this.requireStored<PolicyAbility>(
-                PolicyAbilityStoreKeyByScope[layer]
-            );
-            rules.push(...ability.rules);
-        }
-
-        return this.policyAbilityFactory.build(rules);
     }
 
     /** Returns the Prisma where clause for a subject, or null when the ability has no rules for it. */

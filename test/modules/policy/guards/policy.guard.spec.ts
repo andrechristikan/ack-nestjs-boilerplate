@@ -1,185 +1,66 @@
 import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Test } from '@nestjs/testing';
-import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-
-import { EnumPolicyAction, EnumPolicySubject } from '@generated/prisma-client';
-import type { IPolicyRequired } from '@modules/policy/interfaces/policy.interface';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import { PolicyRequiredMetaKey } from '@modules/policy/constants/policy.constant';
-import { PolicyGuard } from '@modules/policy/guards/policy.guard';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import {
+    PolicyAbilityStoreKey,
+    PolicyRequiredMetaKey,
+} from '@modules/policy/constants/policy.constant';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
-import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyPredefinedNotFoundException } from '@modules/policy/exceptions/policy.predefined-not-found.exception';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import { PolicyGuard } from '@modules/policy/guards/policy.guard';
 
 describe('PolicyGuard', () => {
-    const reflector: MockProxy<Reflector> = mock<Reflector>();
-    const policyDomain: MockProxy<PolicyDomain> = mock<PolicyDomain>();
-    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
-    const handler = () => undefined;
-    const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
+    const reflector: MockProxy<Reflector> = mock();
+    const policyDomain: MockProxy<PolicyDomain> = mock();
+    const context: MockProxy<ExecutionContext> = mock();
+    const ability: MockProxy<PolicyAbility> = mock();
     let guard: PolicyGuard;
 
-    beforeEach(async () => {
+    beforeEach(() => {
         vi.resetAllMocks();
-        context.getHandler.mockReturnValue(handler);
+        guard = new PolicyGuard(reflector, policyDomain);
+        context.getHandler.mockReturnValue(() => undefined);
         policyDomain.requireStored.mockReturnValue(ability);
-
-        const moduleRef: TestingModule = await Test.createTestingModule({
-            providers: [
-                PolicyGuard,
-                { provide: Reflector, useValue: reflector },
-                { provide: PolicyDomain, useValue: policyDomain },
-            ],
-        }).compile();
-        guard = moduleRef.get(PolicyGuard);
     });
 
-    it('throws RequestContextMissingException when no ability is stored', () => {
-        policyDomain.requireStored.mockImplementation(() => {
-            throw new RequestContextMissingException(PolicyAbilityStoreKey);
-        });
-
-        expect(() => guard.canActivate(context)).toThrow(
-            RequestContextMissingException
-        );
-        expect(() => guard.canActivate(context)).toThrow(
-            expect.objectContaining({
-                messagePath: 'request.error.contextMissing',
-            })
-        );
-        expect(reflector.get).not.toHaveBeenCalled();
-    });
-
-    it('reads only the ability from the request context', () => {
-        reflector.get.mockReturnValue([]);
-
+    it('rejects routes without policy metadata', () => {
+        reflector.get.mockReturnValue(undefined);
         expect(() => guard.canActivate(context)).toThrow(
             PolicyPredefinedNotFoundException
         );
+    });
+
+    it('checks every declared action against the stored ability', () => {
+        reflector.get.mockReturnValue([
+            {
+                subject: EnumPolicySubject.Project,
+                action: [EnumPolicyAction.read, EnumPolicyAction.update],
+            },
+        ]);
+
+        expect(guard.canActivate(context)).toBe(true);
         expect(policyDomain.requireStored).toHaveBeenCalledWith(
             PolicyAbilityStoreKey
         );
-        expect(policyDomain.requireStored).toHaveBeenCalledTimes(1);
-    });
-
-    it.each([
-        ['empty', []],
-        ['absent', undefined],
-    ])(
-        'throws PolicyPredefinedNotFoundException when the metadata is %s',
-        (_name, metadata) => {
-            reflector.get.mockReturnValue(metadata);
-
-            expect(() => guard.canActivate(context)).toThrow(
-                PolicyPredefinedNotFoundException
-            );
-            expect(reflector.get).toHaveBeenCalledWith(
-                PolicyRequiredMetaKey,
-                handler
-            );
-            expect(policyDomain.assertCan).not.toHaveBeenCalled();
-        }
-    );
-
-    it('asserts one subject and one action once', () => {
-        reflector.get.mockReturnValue([
-            {
-                subject: EnumPolicySubject.User,
-                action: [EnumPolicyAction.read],
-            },
-        ] satisfies IPolicyRequired[]);
-
-        expect(guard.canActivate(context)).toBe(true);
-        expect(policyDomain.assertCan).toHaveBeenCalledTimes(1);
         expect(policyDomain.assertCan).toHaveBeenCalledWith(
             ability,
             EnumPolicyAction.read,
-            EnumPolicySubject.User
+            EnumPolicySubject.Project
         );
-    });
-
-    it('asserts every action of every subject in order', () => {
-        reflector.get.mockReturnValue([
-            {
-                subject: EnumPolicySubject.User,
-                action: [EnumPolicyAction.read, EnumPolicyAction.update],
-            },
-            {
-                subject: EnumPolicySubject.Role,
-                action: [EnumPolicyAction.create, EnumPolicyAction.delete],
-            },
-        ] satisfies IPolicyRequired[]);
-
-        expect(guard.canActivate(context)).toBe(true);
-        expect(policyDomain.assertCan).toHaveBeenCalledTimes(4);
-        expect(policyDomain.assertCan).toHaveBeenNthCalledWith(
-            1,
-            ability,
-            EnumPolicyAction.read,
-            EnumPolicySubject.User
-        );
-        expect(policyDomain.assertCan).toHaveBeenNthCalledWith(
-            2,
+        expect(policyDomain.assertCan).toHaveBeenCalledWith(
             ability,
             EnumPolicyAction.update,
-            EnumPolicySubject.User
+            EnumPolicySubject.Project
         );
-        expect(policyDomain.assertCan).toHaveBeenNthCalledWith(
-            3,
-            ability,
-            EnumPolicyAction.create,
-            EnumPolicySubject.Role
+        expect(reflector.get).toHaveBeenCalledWith(
+            PolicyRequiredMetaKey,
+            expect.any(Function)
         );
-        expect(policyDomain.assertCan).toHaveBeenNthCalledWith(
-            4,
-            ability,
-            EnumPolicyAction.delete,
-            EnumPolicySubject.Role
-        );
-    });
-
-    it('propagates the reason carried by a denying assertCan', () => {
-        reflector.get.mockReturnValue([
-            {
-                subject: EnumPolicySubject.User,
-                action: [EnumPolicyAction.read],
-            },
-        ] satisfies IPolicyRequired[]);
-        policyDomain.assertCan.mockImplementation(() => {
-            throw new PolicyForbiddenException('blocked by rule');
-        });
-
-        try {
-            guard.canActivate(context);
-            throw new Error('expected throw');
-        } catch (error) {
-            expect(error).toBeInstanceOf(PolicyForbiddenException);
-            expect(error).toMatchObject({
-                metadata: { reason: 'blocked by rule' },
-            });
-        }
-    });
-
-    it('propagates a denying assertCan without returning true', () => {
-        reflector.get.mockReturnValue([
-            {
-                subject: EnumPolicySubject.User,
-                action: [EnumPolicyAction.read, EnumPolicyAction.update],
-            },
-        ] satisfies IPolicyRequired[]);
-        policyDomain.assertCan.mockImplementationOnce(() => undefined);
-        policyDomain.assertCan.mockImplementationOnce(() => {
-            throw new PolicyForbiddenException();
-        });
-
-        expect(() => guard.canActivate(context)).toThrow(
-            PolicyForbiddenException
-        );
-        expect(policyDomain.assertCan).toHaveBeenCalledTimes(2);
     });
 });

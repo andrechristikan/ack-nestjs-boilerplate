@@ -313,19 +313,6 @@ describe('ProjectHttpService', () => {
         });
     });
 
-    describe('getByIdForAdmin', () => {
-        it('delegates and wraps the project', async () => {
-            projectDomain.getByIdForAdmin.mockResolvedValue(project);
-
-            await expect(
-                service.getByIdForAdmin('project-id')
-            ).resolves.toEqual({ data: project });
-            expect(projectDomain.getByIdForAdmin).toHaveBeenCalledWith(
-                'project-id'
-            );
-        });
-    });
-
     describe('getEffectivePermissions', () => {
         it('reads the stored ability and wraps the project permissions', () => {
             const permissions = mock<IEffectivePermission[]>();

@@ -9,9 +9,7 @@ describe('EnumPolicyConditionPlaceholder', () => {
         expect(Object.values(EnumPolicyConditionPlaceholder)).toEqual([
             '${userId}',
             '${workspaceId}',
-            '${workspaceMemberId}',
             '${projectId}',
-            '${projectMemberId}',
         ]);
     });
 });
