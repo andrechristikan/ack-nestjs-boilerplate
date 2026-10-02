@@ -14,6 +14,7 @@ import type {
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { subject } from '@casl/ability';
+import type { RawRuleOf } from '@casl/ability';
 import { createPrismaAbility } from '@casl/prisma';
 import {
     EnumPolicyAction,
@@ -29,6 +30,9 @@ describe('PolicyAbilityDomain', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
+    const buildRealAbility = (
+        rules: RawRuleOf<PolicyAbility>[]
+    ): PolicyAbility => createPrismaAbility<PolicyAbility>(rules);
     let domain: PolicyAbilityDomain;
 
     beforeEach(async () => {
@@ -198,7 +202,7 @@ describe('PolicyAbilityDomain', () => {
         it('converts matching CASL rules into a Prisma where clause', () => {
             expect(
                 domain.accessibleWhere(
-                    createPrismaAbility<PolicyAbility>([
+                    buildRealAbility([
                         {
                             action: EnumPolicyAction.read,
                             subject: 'Project',
@@ -214,7 +218,7 @@ describe('PolicyAbilityDomain', () => {
         it('combines multiple allow rules into an OR where clause', () => {
             expect(
                 domain.accessibleWhere(
-                    createPrismaAbility<PolicyAbility>([
+                    buildRealAbility([
                         {
                             action: EnumPolicyAction.read,
                             subject: 'Project',
@@ -240,7 +244,7 @@ describe('PolicyAbilityDomain', () => {
         it('translates an inverted condition into a denying Prisma clause', () => {
             expect(
                 domain.accessibleWhere(
-                    createPrismaAbility<PolicyAbility>([
+                    buildRealAbility([
                         {
                             action: EnumPolicyAction.read,
                             subject: 'Project',
@@ -266,7 +270,7 @@ describe('PolicyAbilityDomain', () => {
         it('returns the Prisma where clause the ability grants for the subject', () => {
             expect(
                 domain.requireAccessibleWhere(
-                    createPrismaAbility<PolicyAbility>([
+                    buildRealAbility([
                         {
                             action: EnumPolicyAction.read,
                             subject: 'Project',
@@ -280,26 +284,21 @@ describe('PolicyAbilityDomain', () => {
         });
 
         it('throws PolicyForbiddenException when the ability has no rules for the subject', () => {
-            expect(() =>
+            try {
                 domain.requireAccessibleWhere(
-                    createPrismaAbility<PolicyAbility>([]),
+                    buildRealAbility([]),
                     EnumPolicyAction.read,
                     EnumPolicySubject.Project
-                )
-            ).toThrow(PolicyForbiddenException);
-            expect(() =>
-                domain.requireAccessibleWhere(
-                    createPrismaAbility<PolicyAbility>([]),
-                    EnumPolicyAction.read,
-                    EnumPolicySubject.Project
-                )
-            ).toThrow(
-                expect.objectContaining({
+                );
+                throw new Error('expected throw');
+            } catch (error) {
+                expect(error).toBeInstanceOf(PolicyForbiddenException);
+                expect(error).toMatchObject({
                     module: 'policy',
                     statusCode: EnumPolicyStatusCodeError.forbidden,
                     messagePath: 'policy.error.forbidden',
-                })
-            );
+                });
+            }
         });
     });
 
@@ -403,7 +402,7 @@ describe('PolicyAbilityDomain', () => {
         });
 
         it('allows a matching conditional record and denies a different record', () => {
-            const realAbility = createPrismaAbility<PolicyAbility>([
+            const realAbility = buildRealAbility([
                 {
                     action: EnumPolicyAction.update,
                     subject: 'Workspace',
