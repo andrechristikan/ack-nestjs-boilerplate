@@ -27,19 +27,19 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `50200` | `pagination` | `50200`–`50215` | 16 |
 | `50300` | `request` | `50300`–`50304` | 5 |
 | `50400` | `session` | `50400`–`50401` | 2 |
-| `50500` | `role` | `50500`–`50504` | 5 |
+| `50500` | `role` | `50500`–`50501` | 2 |
 | `50600` | `feature-flag` | `50600`–`50606` | 7 |
 | `50700` | `api-key` | `50700`–`50708` | 9 |
 | `50800` | `auth` | `50800`–`50816` | 17 |
 | `50900` | `country` | `50900`–`50902` | 3 |
 | `51000` | `user` | `51000`–`51027` | 28 |
-| `51100` | `policy` | `51100`–`51103` | 4 |
+| `51100` | `policy` | `51100`–`51105` | 6 |
 | `51200` | `notification` | `51200`–`51203` | 4 |
 | `51300` | `device` | `51300` | 1 |
 | `51400` | `aws` | `51400` | 1 |
 | `51500` | `term-policy` | `51500`–`51508` | 9 |
 | `51600` | `workspace` | `51600`–`51620` | 21 |
-| `51700` | `project` | `51700`–`51707` | 8 |
+| `51700` | `project` | `51700`–`51706` | 7 |
 | `51800` | `database` | `51800` | 1 |
 | `51900` | `response` | `51900`–`51902` | 3 |
 | `52000` | `activity-log` | `52000` | 1 |
@@ -123,10 +123,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
 | `notFound` | `50500` | `notFound` | 404 (`NOT_FOUND`) | `role.error.notFound` | Sorry, we couldn't find the requested role. |
-| `exist` | `50501` | `exist` | 409 (`CONFLICT`) | `role.error.exist` | A role with this name already exists. |
-| `predefinedNotFound` | `50502` | `predefinedNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `role.error.predefinedNotFound` | Predefined roles not setted. |
-| `forbidden` | `50503` | `forbidden` | 403 (`FORBIDDEN`) | `role.error.forbidden` | Sorry, your role doesn't grant access to this resource. |
-| `used` | `50504` | `used` | 409 (`CONFLICT`) | `role.error.used` | This role is currently in use and cannot be deleted. |
+| `scopeMismatch` | `50501` | `scopeMismatch` | 400 (`BAD_REQUEST`) | `role.error.scopeMismatch` | This role cannot be used for this assignment. |
 
 ## `feature-flag`
 
@@ -222,9 +219,21 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
 | `forbidden` | `51100` | `forbidden` | 403 (`FORBIDDEN`) | `policy.error.forbidden` | Sorry, you don't have the necessary permissions to perform this action. |
-| `predefinedNotFound` | `51101` | `predefinedNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `policy.error.predefinedNotFound` | Predefined abilities not setted. |
+| `predefinedNotFound` | `51101` | `predefinedNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `policy.error.predefinedNotFound` | Predefined policies not setted. |
 | `notFound` | `51102` | `notFound` | 404 (`NOT_FOUND`) | `policy.error.notFound` | Sorry, we couldn't find the requested policy. |
-| `exist` | `51103` | `exist` | 409 (`CONFLICT`) | `policy.error.exist` | This role already grants a policy for that subject. |
+| `exist` | `51103` | `exist` | 409 (`CONFLICT`) | `policy.error.exist` | This role already has a policy at that priority. |
+| `immutable` | `51104` | `immutable` | 403 (`FORBIDDEN`) | `policy.error.immutable` | The policies of the super administrator role cannot be changed. |
+| `invalidRule` | `51105` | `invalidRule` | 422 (`UNPROCESSABLE_ENTITY`) | `policy.error.invalidRule.<reason>` | One message per reason, listed below. |
+
+`invalidRule` carries a `reason` that selects the message:
+
+| reason | description |
+|---|---|
+| `actionNotAllowed` | This action is not valid for that subject. |
+| `roleScopeInvalid` | This subject cannot be granted to a role of that scope. |
+| `scopeMissing` | The rule must carry the workspace or project scope condition for its subject. |
+| `placeholderInvalid` | The rule conditions use a placeholder that is unknown, partial or unsafe. |
+| `conditionInvalid` | The rule conditions reference a column, relation path or operator that the subject does not support. |
 
 ## `notification`
 
@@ -267,25 +276,25 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 |---|---|---|---|---|---|
 | `notFound` | `51600` | `notFound` | 404 (`NOT_FOUND`) | `workspace.error.notFound` | Sorry, we couldn't find the workspace. |
 | `memberForbidden` | `51601` | `memberForbidden` | 403 (`FORBIDDEN`) | `workspace.error.memberForbidden` | You are not a member of this workspace. |
-| `roleForbidden` | `51602` | `roleForbidden` | 403 (`FORBIDDEN`) | `workspace.error.roleForbidden` | You do not have the required role in this workspace. |
-| `inviteInvalid` | `51603` | `inviteInvalid` | 400 (`BAD_REQUEST`) | `workspace.error.inviteInvalid` | This workspace invite link is invalid or has expired. |
-| `capReached` | `51604` | `capReached` | 400 (`BAD_REQUEST`) | `workspace.error.capReached` | You have reached the maximum number of workspaces you can own. |
-| `slugAlreadyExists` | `51605` | `slugAlreadyExists` | 400 (`BAD_REQUEST`) | `workspace.error.slugAlreadyExists` | This workspace slug is already taken. |
-| `memberNotFound` | `51606` | `memberNotFound` | 404 (`NOT_FOUND`) | `workspace.error.memberNotFound` | Sorry, we couldn't find that workspace member. |
-| `lastOwner` | `51607` | `lastOwner` | 400 (`BAD_REQUEST`) | `workspace.error.lastOwner` | You are the last owner; transfer ownership before leaving. |
-| `memberPeerForbidden` | `51608` | `memberPeerForbidden` | 403 (`FORBIDDEN`) | `workspace.error.memberPeerForbidden` | You are not allowed to perform this action on this member. |
-| `inviteDuplicate` | `51609` | `inviteDuplicate` | 400 (`BAD_REQUEST`) | `workspace.error.inviteDuplicate` | There is already a pending invite for this email in this workspace. |
-| `inviteProjectMismatch` | `51610` | `inviteProjectMismatch` | 400 (`BAD_REQUEST`) | `workspace.error.inviteProjectMismatch` | This project does not belong to the current workspace. |
-| `inviteRoleRequired` | `51611` | `inviteRoleRequired` | 400 (`BAD_REQUEST`) | `workspace.error.inviteRoleRequired` | `projectMemberRole` is required when `projectId` is set, and must be omitted otherwise. |
-| `inviteNotFound` | `51612` | `inviteNotFound` | 404 (`NOT_FOUND`) | `workspace.error.inviteNotFound` | Sorry, we couldn't find that workspace invite. |
-| `inviteAlreadyProcessed` | `51613` | `inviteAlreadyProcessed` | 400 (`BAD_REQUEST`) | `workspace.error.inviteAlreadyProcessed` | This workspace invite is no longer pending. |
-| `notPublic` | `51614` | `notPublic` | 400 (`BAD_REQUEST`) | `workspace.error.notPublic` | This workspace is not accepting public join requests. |
-| `joinRequestAlreadyMember` | `51615` | `joinRequestAlreadyMember` | 400 (`BAD_REQUEST`) | `workspace.error.joinRequestAlreadyMember` | You are already a member of this workspace. |
-| `joinRequestDuplicate` | `51616` | `joinRequestDuplicate` | 400 (`BAD_REQUEST`) | `workspace.error.joinRequestDuplicate` | You already have a pending join request for this workspace. |
-| `joinRequestNotFound` | `51617` | `joinRequestNotFound` | 404 (`NOT_FOUND`) | `workspace.error.joinRequestNotFound` | Sorry, we couldn't find that workspace join request. |
-| `joinRequestAlreadyProcessed` | `51618` | `joinRequestAlreadyProcessed` | 400 (`BAD_REQUEST`) | `workspace.error.joinRequestAlreadyProcessed` | This workspace join request is no longer pending. |
-| `selfTransfer` | `51619` | `selfTransfer` | 400 (`BAD_REQUEST`) | `workspace.error.selfTransfer` | You cannot transfer ownership to yourself. |
-| `slugInvalid` | `51620` | `slugInvalid` | 400 (`BAD_REQUEST`) | `workspace.error.slugInvalid` | This workspace slug is not allowed; use letters, digits and hyphens only, within the allowed length. |
+| `inviteInvalid` | `51602` | `inviteInvalid` | 400 (`BAD_REQUEST`) | `workspace.error.inviteInvalid` | This workspace invite link is invalid or has expired. |
+| `capReached` | `51603` | `capReached` | 400 (`BAD_REQUEST`) | `workspace.error.capReached` | You have reached the maximum number of workspaces you can own. |
+| `slugAlreadyExists` | `51604` | `slugAlreadyExists` | 400 (`BAD_REQUEST`) | `workspace.error.slugAlreadyExists` | This workspace slug is already taken. |
+| `memberNotFound` | `51605` | `memberNotFound` | 404 (`NOT_FOUND`) | `workspace.error.memberNotFound` | Sorry, we couldn't find that workspace member. |
+| `lastOwner` | `51606` | `lastOwner` | 400 (`BAD_REQUEST`) | `workspace.error.lastOwner` | You are the last owner; transfer ownership before leaving. |
+| `memberPeerForbidden` | `51607` | `memberPeerForbidden` | 403 (`FORBIDDEN`) | `workspace.error.memberPeerForbidden` | You are not allowed to perform this action on this member. |
+| `inviteDuplicate` | `51608` | `inviteDuplicate` | 400 (`BAD_REQUEST`) | `workspace.error.inviteDuplicate` | There is already a pending invite for this email in this workspace. |
+| `inviteProjectMismatch` | `51609` | `inviteProjectMismatch` | 400 (`BAD_REQUEST`) | `workspace.error.inviteProjectMismatch` | This project does not belong to the current workspace. |
+| `inviteRoleRequired` | `51610` | `inviteRoleRequired` | 400 (`BAD_REQUEST`) | `workspace.error.inviteRoleRequired` | `projectRoleId` is required when `projectId` is set, and must be omitted otherwise. |
+| `inviteNotFound` | `51611` | `inviteNotFound` | 404 (`NOT_FOUND`) | `workspace.error.inviteNotFound` | Sorry, we couldn't find that workspace invite. |
+| `inviteAlreadyProcessed` | `51612` | `inviteAlreadyProcessed` | 400 (`BAD_REQUEST`) | `workspace.error.inviteAlreadyProcessed` | This workspace invite is no longer pending. |
+| `notPublic` | `51613` | `notPublic` | 400 (`BAD_REQUEST`) | `workspace.error.notPublic` | This workspace is not accepting public join requests. |
+| `joinRequestAlreadyMember` | `51614` | `joinRequestAlreadyMember` | 400 (`BAD_REQUEST`) | `workspace.error.joinRequestAlreadyMember` | You are already a member of this workspace. |
+| `joinRequestDuplicate` | `51615` | `joinRequestDuplicate` | 400 (`BAD_REQUEST`) | `workspace.error.joinRequestDuplicate` | You already have a pending join request for this workspace. |
+| `joinRequestNotFound` | `51616` | `joinRequestNotFound` | 404 (`NOT_FOUND`) | `workspace.error.joinRequestNotFound` | Sorry, we couldn't find that workspace join request. |
+| `joinRequestAlreadyProcessed` | `51617` | `joinRequestAlreadyProcessed` | 400 (`BAD_REQUEST`) | `workspace.error.joinRequestAlreadyProcessed` | This workspace join request is no longer pending. |
+| `selfTransfer` | `51618` | `selfTransfer` | 400 (`BAD_REQUEST`) | `workspace.error.selfTransfer` | You cannot transfer ownership to yourself. |
+| `slugInvalid` | `51619` | `slugInvalid` | 400 (`BAD_REQUEST`) | `workspace.error.slugInvalid` | This workspace slug is not allowed; use letters, digits and hyphens only, within the allowed length. |
+| `ownerRoleNotAssignable` | `51620` | `ownerRoleNotAssignable` | 400 (`BAD_REQUEST`) | `workspace.error.ownerRoleNotAssignable` | The owner role cannot be assigned here; use ownership transfer instead. |
 
 ## `project`
 
@@ -293,12 +302,11 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 |---|---|---|---|---|---|
 | `notFound` | `51700` | `notFound` | 404 (`NOT_FOUND`) | `project.error.notFound` | Sorry, we couldn't find the project. |
 | `memberForbidden` | `51701` | `memberForbidden` | 403 (`FORBIDDEN`) | `project.error.memberForbidden` | You are not a member of this project. |
-| `roleForbidden` | `51702` | `roleForbidden` | 403 (`FORBIDDEN`) | `project.error.roleForbidden` | You do not have the required role in this project. |
-| `memberPeerForbidden` | `51703` | `memberPeerForbidden` | 403 (`FORBIDDEN`) | `project.error.memberPeerForbidden` | You are not allowed to perform this action on this member. |
-| `memberNotFound` | `51704` | `memberNotFound` | 404 (`NOT_FOUND`) | `project.error.memberNotFound` | Sorry, we couldn't find that project member. |
-| `memberAlreadyAssigned` | `51705` | `memberAlreadyAssigned` | 400 (`BAD_REQUEST`) | `project.error.memberAlreadyAssigned` | This user is already assigned to the project. |
-| `slugAlreadyExists` | `51706` | `slugAlreadyExists` | 400 (`BAD_REQUEST`) | `project.error.slugAlreadyExists` | This project slug is already taken in this workspace. |
-| `slugInvalid` | `51707` | `slugInvalid` | 400 (`BAD_REQUEST`) | `project.error.slugInvalid` | This project slug is not allowed; use letters, digits and hyphens only, within the allowed length. |
+| `memberPeerForbidden` | `51702` | `memberPeerForbidden` | 403 (`FORBIDDEN`) | `project.error.memberPeerForbidden` | You are not allowed to perform this action on this member. |
+| `memberNotFound` | `51703` | `memberNotFound` | 404 (`NOT_FOUND`) | `project.error.memberNotFound` | Sorry, we couldn't find that project member. |
+| `memberAlreadyAssigned` | `51704` | `memberAlreadyAssigned` | 400 (`BAD_REQUEST`) | `project.error.memberAlreadyAssigned` | This user is already assigned to the project. |
+| `slugAlreadyExists` | `51705` | `slugAlreadyExists` | 400 (`BAD_REQUEST`) | `project.error.slugAlreadyExists` | This project slug is already taken in this workspace. |
+| `slugInvalid` | `51706` | `slugInvalid` | 400 (`BAD_REQUEST`) | `project.error.slugInvalid` | This project slug is not allowed; use letters, digits and hyphens only, within the allowed length. |
 
 ## `database`
 

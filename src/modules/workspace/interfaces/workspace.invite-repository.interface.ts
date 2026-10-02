@@ -9,6 +9,7 @@ import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import type {
     IWorkspaceInviteCreateData,
     IWorkspaceInviteList,
+    IWorkspaceInviteWithRole,
 } from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IWorkspaceInviteRepository {
@@ -19,7 +20,7 @@ export interface IWorkspaceInviteRepository {
     ): Promise<void>;
     findPendingByHashedToken(
         hashedToken: string
-    ): Promise<WorkspaceInvite | null>;
+    ): Promise<IWorkspaceInviteWithRole | null>;
     findByIdAndWorkspace(
         workspaceInviteId: string,
         workspaceId: string
@@ -40,20 +41,20 @@ export interface IWorkspaceInviteRepository {
         workspaceInviteId,
         workspaceId,
         email,
-        workspaceRole,
+        workspaceRoleId,
         projectId,
-        projectRole,
+        projectRoleId,
         hashedToken,
         reference,
         expiredAt,
         invitedByUserId,
-    }: IWorkspaceInviteCreateData): Promise<WorkspaceInvite>;
+    }: IWorkspaceInviteCreateData): Promise<IWorkspaceInviteWithRole>;
     rotateForResend(
         workspaceInviteId: string,
         hashedToken: string,
         reference: string,
         expiredAt: Date
-    ): Promise<WorkspaceInvite>;
+    ): Promise<IWorkspaceInviteWithRole>;
     revoke(workspaceInviteId: string): Promise<void>;
     acceptInTx(
         tx: IDatabaseTransactionClient,

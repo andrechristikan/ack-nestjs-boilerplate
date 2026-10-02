@@ -64,7 +64,7 @@ Standard API response decorator with optional caching.
 @Response('user.get', { schema: UserProfileResponseSchema })
 @Get('/get/:userId')
 async get(
-  @Param('userId', { schema: RequestMongoIdSchema }) userId: string
+  @Param('userId', { schema: RequestUuidSchema }) userId: string
 ): Promise<IResponseReturn<UserProfileResponseDto>> {
   return this.userHttpService.getOne(userId);
 }
@@ -250,11 +250,11 @@ export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
 }).extend({
     deviceId: z.string().meta({
         description: 'Device ownership ID',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     userId: z.string().meta({
         description: 'User ID who owns the device',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     /* the nested device, owner, and revocation fields follow */
 });
@@ -274,7 +274,7 @@ The `.meta({ description, example })` on each field is what the OpenAPI document
 @Response('role.delete')
 @Delete('/delete/:roleId')
 async delete(
-  @Param('roleId', { schema: RequestMongoIdSchema }) roleId: string
+  @Param('roleId', { schema: RequestUuidSchema }) roleId: string
 ): Promise<IResponseReturn<void>> {
   return this.roleHttpService.deleteByAdmin(roleId);
 }

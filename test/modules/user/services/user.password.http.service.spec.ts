@@ -1,10 +1,11 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 
 import {
-    EnumRoleType,
+    EnumRoleScope,
     EnumUserGender,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -60,12 +61,12 @@ describe('UserPasswordHttpService', () => {
             id: 'role-id',
             name: 'User',
             description: null,
-            type: EnumRoleType.user,
+            scope: EnumRoleScope.platform,
+            key: EnumRolePlatformKey.user,
             createdAt: now,
             createdBy: null,
             updatedAt: now,
             updatedBy: null,
-            policies: [],
         },
         twoFactor: null,
     } satisfies IUser;

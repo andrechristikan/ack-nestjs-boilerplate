@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -9,7 +10,7 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { AuthTwoFactorSecretEncryptionPurpose } from '@modules/auth/constants/auth.constant';
 import {
-    EnumRoleType,
+    EnumRoleScope,
     EnumUserGender,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -121,12 +122,12 @@ describe('AuthTwoFactorDomain', () => {
             id: 'role-id',
             name: 'User',
             description: null,
-            type: EnumRoleType.user,
+            scope: EnumRoleScope.platform,
+            key: EnumRolePlatformKey.user,
             createdAt: now,
             createdBy: null,
             updatedAt: now,
             updatedBy: null,
-            policies: [],
         },
         twoFactor,
     } satisfies IUser;

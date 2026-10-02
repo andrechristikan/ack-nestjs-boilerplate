@@ -1,9 +1,7 @@
-import {
-    EnumWorkspaceMemberRole,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumPolicySubject, Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import { RoleSelect } from '@modules/role/constants/role.constant';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
@@ -20,16 +18,19 @@ export const ProjectStoreKey = 'ProjectStore';
 export const ProjectMemberStoreKey = 'ProjectMemberStore';
 
 /**
- * Request-store key holding whether `ProjectRoleGuard` let the caller through on the workspace-owner bypass instead of a `ProjectMember` row.
+ * Subjects the project `/permissions/:projectId` endpoint reports on.
  * @public
  */
-export const ProjectWorkspaceOwnerStoreKey = 'ProjectWorkspaceOwnerStore';
+export const ProjectPermissionSubjects: EnumPolicySubject[] = [
+    EnumPolicySubject.Project,
+    EnumPolicySubject.ProjectMember,
+];
 
 /**
- * Route metadata key holding the project roles `@ProjectMemberProtected` requires.
+ * Route metadata key holding whether `@ProjectMemberProtected` requires a `ProjectMember` row (`true`, the default) or only loads its policies when one exists (`false`).
  * @public
  */
-export const ProjectRoleMetaKey = 'ProjectRoleMetaKey';
+export const ProjectMemberRequiredMetaKey = 'ProjectMemberRequiredMetaKey';
 
 /**
  * Project guard error kit for `@ProjectProtected`.
@@ -50,32 +51,17 @@ export const DocProjectErrorResponses = {
 } as const;
 
 /**
- * Project member guard error kit for role-less `@ProjectMemberProtected`.
+ * Project member guard error kits for strict `@ProjectMemberProtected()` and `@ProjectPolicyProtected`.
  * @public
  */
 export const DocProjectMemberErrorResponses = {
-    notFound: DocResponseError(HttpStatus.NOT_FOUND, {
-        statusCode: EnumProjectStatusCodeError.notFound,
-        messagePath: 'project.error.notFound',
-    }),
     forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
         statusCode: EnumProjectStatusCodeError.memberForbidden,
         messagePath: 'project.error.memberForbidden',
     }),
-} as const;
-
-/**
- * Project role guard error kit for role-gated `@ProjectMemberProtected`.
- * @public
- */
-export const DocProjectRoleErrorResponses = {
     notFound: DocResponseError(HttpStatus.NOT_FOUND, {
-        statusCode: EnumProjectStatusCodeError.notFound,
-        messagePath: 'project.error.notFound',
-    }),
-    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumProjectStatusCodeError.roleForbidden,
-        messagePath: 'project.error.roleForbidden',
+        statusCode: EnumProjectStatusCodeError.memberNotFound,
+        messagePath: 'project.error.memberNotFound',
     }),
 } as const;
 
@@ -88,7 +74,9 @@ export const ProjectActiveFilter = {
 } as const satisfies Prisma.ProjectWhereInput;
 
 /**
- * The only workspace role that sees and manages every project without a `ProjectMember` row.
+ * Relations the project member guard read loads: the project role identity.
  * @public
  */
-export const ProjectWorkspaceBypassRole = EnumWorkspaceMemberRole.owner;
+export const ProjectMemberRoleInclude = {
+    role: { select: RoleSelect },
+} as const satisfies Prisma.ProjectMemberInclude;

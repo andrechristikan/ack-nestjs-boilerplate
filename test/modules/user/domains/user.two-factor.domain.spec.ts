@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -9,7 +10,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
-    EnumRoleType,
+    EnumRoleScope,
     EnumUserGender,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -82,7 +83,8 @@ describe('UserTwoFactorDomain', () => {
     };
     const tokens = {
         tokenType: 'Bearer',
-        roleType: EnumRoleType.user,
+        roleKey: EnumRolePlatformKey.user,
+        roleScope: EnumRoleScope.platform,
         expiresIn: 3600,
         accessToken: 'access-token',
         refreshToken: 'refreshInTx-token',
@@ -129,12 +131,12 @@ describe('UserTwoFactorDomain', () => {
             id: 'role-id',
             name: 'User',
             description: null,
-            type: EnumRoleType.user,
+            scope: EnumRoleScope.platform,
+            key: EnumRolePlatformKey.user,
             createdAt: now,
             createdBy: null,
             updatedAt: now,
             updatedBy: null,
-            policies: [],
         },
         twoFactor: {
             id: 'two-factor-id',

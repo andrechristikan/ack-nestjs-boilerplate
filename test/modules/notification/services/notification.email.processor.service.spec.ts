@@ -8,7 +8,6 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumWorkspaceJoinRejectReason,
-    EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import { NotificationEmailAccountDomain } from '@modules/notification/domains/notification.email.account.domain';
 import { NotificationEmailSecurityDomain } from '@modules/notification/domains/notification.email.security.domain';
@@ -102,7 +101,7 @@ describe('NotificationEmailProcessorService', () => {
         workspaceId: 'workspace-id',
         workspaceName: 'Workspace',
         inviterName: 'Inviter',
-        workspaceMemberRole: EnumWorkspaceMemberRole.member,
+        workspaceRoleName: 'Member',
         encryptedInviteAcceptLink: 'encrypted-link',
         reference: 'reference',
         expiredAt: '2026-01-02T00:00:00.000Z',

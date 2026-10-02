@@ -257,7 +257,7 @@ export class UserRepository implements IUserRepository {
         const user = await tx.user.create({
             data: createData,
             include: {
-                role: { include: { policies: true } },
+                role: true,
             },
         });
 

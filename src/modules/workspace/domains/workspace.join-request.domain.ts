@@ -8,9 +8,9 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
+    EnumRoleScope,
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceJoinRequestStatus,
-    EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
 import type {
@@ -20,6 +20,9 @@ import type {
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { WorkspaceJoinRequestAlreadyMemberException } from '@modules/workspace/exceptions/workspace.join-request-already-member.exception';
 import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
@@ -52,7 +55,8 @@ export class WorkspaceJoinRequestDomain {
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService,
         private readonly notificationQueue: NotificationQueue,
-        private readonly featureFlagDomain: FeatureFlagDomain
+        private readonly featureFlagDomain: FeatureFlagDomain,
+        private readonly roleDomain: RoleDomain
     ) {
         this.homeUrl = this.configService.get<string>('home.url')!;
         this.joinRequestReviewLinkPattern = this.configService.get<string>(
@@ -223,11 +227,20 @@ export class WorkspaceJoinRequestDomain {
         }
 
         await this.databaseService.withTransaction(async tx => {
+            const memberRole = await this.roleDomain.getByScopeAndKeyInTx(
+                tx,
+                EnumRoleScope.workspace,
+                EnumRoleWorkspaceKey.member
+            );
+            if (!memberRole) {
+                throw new RoleNotFoundException();
+            }
+
             await this.workspaceMemberDomain.createInTx(
                 tx,
                 joinRequest.workspaceId,
                 joinRequest.userId,
-                EnumWorkspaceMemberRole.member,
+                memberRole.id,
                 reviewerId
             );
             await this.workspaceJoinRequestRepository.acceptInTx(

@@ -89,10 +89,11 @@ export class WorkspaceRepository implements IWorkspaceRepository {
 
     async findWithPaginationOffsetForAdmin(
         {
-            where,
+            where: filters,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
-        isPublic?: Record<string, IPaginationEqual>
+        isPublic?: Record<string, IPaginationEqual>,
+        where?: Prisma.WorkspaceWhereInput
     ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.paginationService.offset<
             Workspace,
@@ -100,8 +101,11 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         >(this.databaseService.client.workspace, {
             ...others,
             where: {
-                ...where,
-                ...isPublic,
+                AND: [
+                    filters ?? {},
+                    { ...isPublic },
+                    ...(where ? [where] : []),
+                ],
             },
         });
     }

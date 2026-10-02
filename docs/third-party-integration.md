@@ -14,7 +14,7 @@ Third-party clients are configured through environment variables. Each section b
 - [Notification Documentation][ref-doc-notification] - Push and email delivery
 - [Queue Documentation][ref-doc-queue] - BullMQ workers that call these services
 - [Cache Documentation][ref-doc-cache] - Redis used by cache and rate limits
-- [Database Documentation][ref-doc-database] - MongoDB connection expectations
+- [Database Documentation][ref-doc-database] - PostgreSQL connection expectations
 
 ## Table of Contents
 
@@ -73,7 +73,7 @@ For detailed upload and presign behavior, see [File Upload][ref-doc-file-upload]
 
 ### Bucket setup
 
-`pnpm migration awsS3Config` is a migration command, not a database seed. It applies bucket policy and settings on AWS for both the public and private buckets. It writes no MongoDB rows.
+`pnpm migration awsS3Config` is a migration command, not a database seed. It applies bucket policy and settings on AWS for both the public and private buckets. It writes no database rows.
 
 ```bash
 pnpm migration awsS3Config --type seed

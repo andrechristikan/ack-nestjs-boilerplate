@@ -88,7 +88,8 @@ export class RequestUtil {
      */
     buildRequestLog(req: IncomingMessage): IRequestLog {
         const userAgent = this.parseUserAgent(req.headers['user-agent']);
-        const ipAddress = getClientIp(req) ?? null;
+        const clientIp = getClientIp(req) ?? '';
+        const ipAddress = isIP(clientIp) ? clientIp : null;
 
         let geoLocation: IRequestGeoLocation | null = null;
         if (ipAddress) {

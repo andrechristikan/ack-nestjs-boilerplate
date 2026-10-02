@@ -39,7 +39,7 @@ export class UserPasswordRepository implements IUserPasswordRepository {
             include: {
                 user: {
                     include: {
-                        role: { include: { policies: true } },
+                        role: true,
                         twoFactor: {
                             include: {
                                 backupCodes: {

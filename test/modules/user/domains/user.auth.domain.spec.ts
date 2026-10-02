@@ -8,7 +8,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
-    EnumRoleType,
+    EnumRoleScope,
     EnumUserGender,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -23,6 +23,7 @@ import { CountryNotFoundException } from '@modules/country/exceptions/country.no
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
@@ -74,7 +75,8 @@ describe('UserAuthDomain', () => {
     const now = new Date('2026-01-01T00:00:00.000Z');
     const tokens = {
         tokenType: 'Bearer',
-        roleType: EnumRoleType.user,
+        roleKey: EnumRolePlatformKey.user,
+        roleScope: EnumRoleScope.platform,
         expiresIn: 3600,
         accessToken: 'access-token',
         refreshToken: 'refreshInTx-token',
@@ -123,12 +125,12 @@ describe('UserAuthDomain', () => {
             id: 'role-id',
             name: 'User',
             description: null,
-            type: EnumRoleType.user,
+            scope: EnumRoleScope.platform,
+            key: EnumRolePlatformKey.user,
             createdAt: now,
             createdBy: null,
             updatedAt: now,
             updatedBy: null,
-            policies: [],
         },
         twoFactor: null,
     } satisfies IUser;
@@ -152,7 +154,7 @@ describe('UserAuthDomain', () => {
     beforeEach(async () => {
         vi.mocked(configService.get).mockImplementation((key: string) => {
             const values = {
-                'user.default.role': 'User',
+                'user.default.role': EnumRolePlatformKey.user,
             };
 
             return values[key as keyof typeof values];
@@ -166,7 +168,7 @@ describe('UserAuthDomain', () => {
         userLoginDomain.refreshSession.mockResolvedValue(tokens);
         userLoginDomain.logout.mockResolvedValue(undefined);
         userVerificationDomain.markVerified.mockResolvedValue(undefined);
-        roleDomain.getByName.mockResolvedValue(user.role);
+        roleDomain.getByScopeAndKey.mockResolvedValue(user.role);
         countryDomain.existsById.mockResolvedValue(true);
         featureFlagCache.getMetadataByKeyAndCache.mockResolvedValue({
             signUpAllowed: true,
@@ -416,8 +418,22 @@ describe('UserAuthDomain', () => {
             });
         });
 
+        it('looks the configured default role up by platform scope', async () => {
+            await service.prepareSocialCreate(
+                user.email,
+                EnumUserLoginWith.socialGoogle,
+                socialInput,
+                workspaceContext
+            );
+
+            expect(roleDomain.getByScopeAndKey).toHaveBeenCalledWith(
+                EnumRoleScope.platform,
+                EnumRolePlatformKey.user
+            );
+        });
+
         it('rejects social creation without the configured user role', async () => {
-            roleDomain.getByName.mockResolvedValue(null);
+            roleDomain.getByScopeAndKey.mockResolvedValue(null);
 
             await expect(
                 service.prepareSocialCreate(
@@ -612,6 +628,15 @@ describe('UserAuthDomain', () => {
             expect(result.input.termPolicy.marketing).toBe(false);
         });
 
+        it('looks the configured default role up by platform scope on sign-up', async () => {
+            await service.prepareSignUp(signUpInput, workspaceContext);
+
+            expect(roleDomain.getByScopeAndKey).toHaveBeenCalledWith(
+                EnumRoleScope.platform,
+                EnumRolePlatformKey.user
+            );
+        });
+
         it.each([
             ['missing role', null, true, false, RoleNotFoundException],
             [
@@ -625,7 +650,7 @@ describe('UserAuthDomain', () => {
         ])(
             'rejects sign-up for a %s',
             async (_case, role, countryExists, emailExists, ExceptionClass) => {
-                roleDomain.getByName.mockResolvedValue(role);
+                roleDomain.getByScopeAndKey.mockResolvedValue(role);
                 countryDomain.existsById.mockResolvedValue(countryExists);
                 userRepository.existsByEmail.mockResolvedValue(emailExists);
 

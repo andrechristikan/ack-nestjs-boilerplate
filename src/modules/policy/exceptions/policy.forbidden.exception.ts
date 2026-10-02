@@ -1,4 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
+import type { IAppBaseExceptionOptions } from '@app/interfaces/app.interface';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 
@@ -12,7 +13,11 @@ export class PolicyForbiddenException extends AppBaseException {
     readonly statusCodeKey = EnumPolicyStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.FORBIDDEN;
 
-    constructor() {
-        super('policy.error.forbidden');
+    constructor(reason?: string) {
+        const options: IAppBaseExceptionOptions | undefined = reason
+            ? { metadata: { reason } }
+            : undefined;
+
+        super('policy.error.forbidden', options);
     }
 }

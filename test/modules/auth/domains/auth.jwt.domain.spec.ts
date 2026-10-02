@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { generateKeyPairSync } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -9,7 +10,7 @@ import { Duration } from 'luxon';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
-    EnumRoleType,
+    EnumRoleScope,
     EnumUserGender,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -119,12 +120,12 @@ describe('AuthJwtDomain', () => {
             id: 'role-id',
             name: 'User',
             description: null,
-            type: EnumRoleType.user,
+            scope: EnumRoleScope.platform,
+            key: EnumRolePlatformKey.user,
             createdAt: now,
             createdBy: null,
             updatedAt: now,
             updatedBy: null,
-            policies: [],
         },
         twoFactor: null,
     } satisfies IUser;
@@ -226,7 +227,8 @@ describe('AuthJwtDomain', () => {
             sessionId: 'session-id',
             tokens: {
                 tokenType: 'Bearer',
-                roleType: EnumRoleType.user,
+                roleKey: EnumRolePlatformKey.user,
+                roleScope: EnumRoleScope.platform,
                 expiresIn: 3600,
             },
         });
@@ -277,6 +279,10 @@ describe('AuthJwtDomain', () => {
             jti: 'rotated-jti',
             sessionId: 'session-id',
             expiredInMs: 120_000,
+            tokens: {
+                roleKey: EnumRolePlatformKey.user,
+                roleScope: EnumRoleScope.platform,
+            },
         });
         expect(
             service.validateRefreshToken(

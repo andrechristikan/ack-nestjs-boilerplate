@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { EnumRoleType } from '@generated/prisma-client/client';
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { PolicySchema } from '@modules/policy/dtos/policy.dto';
 
 /**
@@ -20,9 +21,13 @@ export const RoleSchema = DatabaseResponseSchema.omit({
         description: 'Description of role',
         example: faker.lorem.sentence(),
     }),
-    type: z.enum(EnumRoleType).meta({
-        description: 'Representative for role type',
-        example: EnumRoleType.admin,
+    scope: z.enum(EnumRoleScope).meta({
+        description: 'Scope the role applies to',
+        example: EnumRoleScope.platform,
+    }),
+    key: z.string().meta({
+        description: 'Immutable catalog key of the role',
+        example: EnumRolePlatformKey.admin,
     }),
     policies: z.array(PolicySchema).meta({
         description: 'Policies granted by this role',

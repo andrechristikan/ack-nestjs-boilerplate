@@ -10,7 +10,7 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 export const UserGuardIsVerifiedMetaKey = 'UserGuardIsVerifiedMetaKey';
 
 /**
- * Request-store key holding the loaded current user.
+ * Request-store key holding the loaded current user without role policies.
  * @public
  */
 export const UserStoreKey = 'UserStore';
@@ -83,11 +83,11 @@ export const TwoFactorWithBackupCodesInclude = {
 } satisfies Prisma.TwoFactorInclude;
 
 /**
- * Relations joined to a user row that carries its role, policies and two-factor state.
+ * Relations joined to a user row that carries its role and two-factor state.
  * @public
  */
 export const UserWithRoleInclude = {
-    role: { include: { policies: true } },
+    role: true,
     twoFactor: { include: TwoFactorWithBackupCodesInclude },
 } satisfies Prisma.UserInclude;
 
@@ -129,11 +129,7 @@ export const UserAdminListSelect = {
     updatedBy: true,
     deletedAt: true,
     deletedBy: true,
-    role: {
-        include: {
-            policies: true,
-        },
-    },
+    role: true,
     twoFactor: true,
 } satisfies Prisma.UserSelect;
 

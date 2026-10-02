@@ -6,10 +6,7 @@ import type {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
-import type {
-    Workspace,
-    WorkspaceInvite,
-} from '@generated/prisma-client/client';
+import type { Workspace } from '@generated/prisma-client/client';
 import {
     WorkspaceInviteDefaultAvailableOrderBy,
     WorkspaceInviteDefaultAvailableSearch,
@@ -19,6 +16,7 @@ import type { WorkspaceInviteListRequestDto } from '@modules/workspace/dtos/requ
 import type { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
 import type { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
+import type { WorkspaceInviteResponseDto } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
@@ -77,19 +75,19 @@ export class WorkspaceInviteHttpService {
         actorId: string,
         {
             email,
-            workspaceRole,
+            workspaceRoleId,
             projectId,
-            projectRole,
+            projectRoleId,
             expiryDuration,
         }: WorkspaceInviteCreateRequestDto
-    ): Promise<IResponseReturn<WorkspaceInvite>> {
+    ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
         const invite = await this.workspaceInviteDomain.createInvite(
             workspace,
             actorId,
-            { email, workspaceRole, projectId, projectRole, expiryDuration }
+            { email, workspaceRoleId, projectId, projectRoleId, expiryDuration }
         );
 
-        return { data: invite };
+        return { data: this.workspaceUtil.mapInvite(invite) };
     }
 
     async resendInvite(
@@ -97,7 +95,7 @@ export class WorkspaceInviteHttpService {
         actorId: string,
         workspaceInviteId: string,
         { expiryDuration }: WorkspaceInviteResendRequestDto
-    ): Promise<IResponseReturn<WorkspaceInvite>> {
+    ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
         const invite = await this.workspaceInviteDomain.resendInvite(
             workspace,
             actorId,
@@ -105,7 +103,7 @@ export class WorkspaceInviteHttpService {
             expiryDuration
         );
 
-        return { data: invite };
+        return { data: this.workspaceUtil.mapInvite(invite) };
     }
 
     async revokeInvite(

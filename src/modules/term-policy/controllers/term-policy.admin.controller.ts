@@ -23,8 +23,7 @@ import {
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
 
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { TermPolicyContentPresignRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
@@ -57,7 +56,6 @@ import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 
 import type { TermPolicy } from '@generated/prisma-client/client';
@@ -78,11 +76,10 @@ export class TermPolicyAdminController {
         schema: TermPolicyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -98,11 +95,10 @@ export class TermPolicyAdminController {
     @Doc({ summary: 'Create a new term or policy' })
     @Response('termPolicy.create', { schema: TermPolicyResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -120,11 +116,10 @@ export class TermPolicyAdminController {
         schema: TermPolicyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -142,15 +137,14 @@ export class TermPolicyAdminController {
         schema: AwsS3PresignResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.TermPolicy,
         action: [
             EnumPolicyAction.read,
             EnumPolicyAction.create,
             EnumPolicyAction.update,
         ],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -169,11 +163,10 @@ export class TermPolicyAdminController {
     @Doc({ summary: 'Update content of a term or policy by ID' })
     @Response('termPolicy.updateContent')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -194,11 +187,10 @@ export class TermPolicyAdminController {
     @Doc({ summary: 'Add content to a term or policy by ID' })
     @Response('termPolicy.addContent')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -219,11 +211,10 @@ export class TermPolicyAdminController {
     @Doc({ summary: 'Remove content of a term or policy by ID' })
     @Response('termPolicy.removeContent')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -246,11 +237,10 @@ export class TermPolicyAdminController {
         schema: AwsS3PresignResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -271,11 +261,10 @@ export class TermPolicyAdminController {
     @Doc({ summary: 'Publish a term or policy by ID' })
     @Response('termPolicy.publish')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

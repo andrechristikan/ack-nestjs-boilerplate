@@ -1,26 +1,27 @@
-import { EnumRoleType, type Role } from '@generated/prisma-client';
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { RoleUtil } from '@modules/role/utils/role.util';
 
 describe('RoleUtil', () => {
-    it('maps role identity and the latest audit timestamp', () => {
-        const createdAt = new Date('2026-01-01T00:00:00.000Z');
-        const updatedAt = new Date('2026-01-02T00:00:00.000Z');
-        const role = {
-            id: 'role-id',
-            name: 'Admin',
-            description: null,
-            type: EnumRoleType.admin,
-            createdAt,
-            createdBy: null,
-            updatedAt,
-            updatedBy: null,
-        } satisfies Role;
+    describe('mapActivityLogMetadata', () => {
+        it('maps role identity, key, scope and the given timestamp', () => {
+            const timestamp = new Date('2026-01-02T00:00:00.000Z');
+            const role = {
+                id: 'role-id',
+                scope: EnumRoleScope.platform,
+                key: EnumRolePlatformKey.admin,
+                name: 'Admin',
+            };
 
-        expect(new RoleUtil().mapActivityLogMetadata(role, updatedAt)).toEqual({
-            roleId: 'role-id',
-            roleName: 'Admin',
-            roleType: EnumRoleType.admin,
-            timestamp: updatedAt,
+            expect(
+                new RoleUtil().mapActivityLogMetadata(role, timestamp)
+            ).toEqual({
+                roleId: 'role-id',
+                roleName: 'Admin',
+                roleKey: EnumRolePlatformKey.admin,
+                roleScope: EnumRoleScope.platform,
+                timestamp,
+            });
         });
     });
 });

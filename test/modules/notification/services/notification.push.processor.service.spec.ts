@@ -7,7 +7,6 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumWorkspaceJoinRejectReason,
-    EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import { NotificationPushMaintenanceDomain } from '@modules/notification/domains/notification.push.maintenance.domain';
 import { NotificationPushSecurityDomain } from '@modules/notification/domains/notification.push.security.domain';
@@ -66,7 +65,7 @@ describe('NotificationPushProcessorService', () => {
         workspaceId: 'workspace-id',
         workspaceName: 'Workspace',
         inviterName: 'Inviter',
-        workspaceMemberRole: EnumWorkspaceMemberRole.member,
+        workspaceRoleName: 'Member',
         reference: 'reference',
         expiredAt: '2026-01-02T00:00:00.000Z',
     } satisfies INotificationWorkspaceInvitePushPayload;

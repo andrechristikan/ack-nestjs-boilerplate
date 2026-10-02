@@ -39,8 +39,8 @@ exists to catch.
 ## Params and queries
 
 - A path or query param is validated by a zod schema on the binding itself —
-  `@Param('userId', { schema: RequestMongoIdSchema })`,
-  `@Query('userId', { schema: RequestMongoIdSchema.optional() })`,
+  `@Param('userId', { schema: RequestUuidSchema })`,
+  `@Query('userId', { schema: RequestUuidSchema.optional() })`,
   `@Param('inviteToken', { schema: RequestRequiredStringSchema })` — the same
   `RequestSchemaValidationPipe` that validates bodies (`rules/http.md`). Shared schemas live
   in `src/common/request/validations/`.

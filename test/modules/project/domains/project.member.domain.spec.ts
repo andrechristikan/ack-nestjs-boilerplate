@@ -1,447 +1,141 @@
-import { Test } from '@nestjs/testing';
-import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-
-import { RequestStoreService } from '@common/request/services/request.store.service';
+import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import {
     EnumActivityLogAction,
-    EnumProjectMemberRole,
-    type Project,
-    type ProjectMember,
-    type WorkspaceMember,
-} from '@generated/prisma-client';
+    EnumRoleScope,
+} from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
-import { ProjectWorkspaceOwnerStoreKey } from '@modules/project/constants/project.constant';
-import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
-import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
-import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
+import { ProjectMemberLastAdminException } from '@modules/project/exceptions/project.member-last-admin.exception';
 import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
-import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
-import { ProjectRoleForbiddenException } from '@modules/project/exceptions/project.role-forbidden.exception';
-import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
-import { ProjectUtil } from '@modules/project/utils/project.util';
-import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
+import type {
+    IProjectMember,
+    IProjectMemberWithRole,
+} from '@modules/project/interfaces/project.interface';
+import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
 
 describe('ProjectMemberDomain', () => {
-    const projectMemberRepository: MockProxy<ProjectMemberRepository> =
-        mock<ProjectMemberRepository>();
-    const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
-    const activityLogDomain: MockProxy<ActivityLogDomain> =
-        mock<ActivityLogDomain>();
-    const requestStoreService: MockProxy<RequestStoreService> =
-        mock<RequestStoreService>();
-
+    const repository: MockProxy<ProjectMemberRepository> = mock();
+    const activityLog: MockProxy<ActivityLogDomain> = mock();
+    const roleDomain: MockProxy<RoleDomain> = mock();
     const project = mock<Project>({
         id: 'project-id',
         workspaceId: 'workspace-id',
     });
-
+    const member = mock<IProjectMemberWithRole>({
+        id: 'member-id',
+        userId: 'target-id',
+        role: {
+            key: EnumRoleProjectKey.member,
+        } as IProjectMemberWithRole['role'],
+    });
     let domain: ProjectMemberDomain;
 
-    beforeEach(async () => {
-        requestStoreService.get.mockReturnValue(null);
-
-        const module: TestingModule = await Test.createTestingModule({
-            providers: [
-                ProjectMemberDomain,
-                {
-                    provide: ProjectMemberRepository,
-                    useValue: projectMemberRepository,
-                },
-                { provide: ProjectUtil, useValue: projectUtil },
-                { provide: ActivityLogDomain, useValue: activityLogDomain },
-                {
-                    provide: RequestStoreService,
-                    useValue: requestStoreService,
-                },
-            ],
-        }).compile();
-
-        domain = module.get(ProjectMemberDomain);
+    beforeEach(() => {
+        vi.resetAllMocks();
+        domain = new ProjectMemberDomain(repository, activityLog, roleDomain);
+        activityLog.prepare.mockReturnValue({} as never);
     });
 
-    function setWorkspaceOwner(isOwner: boolean): void {
-        requestStoreService.get.mockImplementation(key => {
-            if (key === ProjectWorkspaceOwnerStoreKey) return isOwner;
-            return null;
+    it('assigns a workspace member after resolving a project role', async () => {
+        const target = mock<WorkspaceMember>({
+            userId: 'target-id',
+            workspaceId: 'workspace-id',
         });
-    }
+        const created = mock<IProjectMember>();
+        roleDomain.resolve.mockResolvedValue({
+            id: 'role-id',
+            key: EnumRoleProjectKey.member,
+        } as never);
+        repository.findOneByProjectAndUser.mockResolvedValue(null);
+        repository.create.mockResolvedValue(created);
 
-    describe('validateProjectMemberGuard', () => {
-        it('rejects validation without a user', async () => {
-            await expect(
-                domain.validateProjectMemberGuard('project-id', null)
-            ).rejects.toBeInstanceOf(AuthJwtAccessTokenInvalidException);
-        });
-
-        it('rejects validation without a project', async () => {
-            await expect(
-                domain.validateProjectMemberGuard(null, 'user-id')
-            ).rejects.toBeInstanceOf(ProjectNotFoundException);
-        });
-
-        it('rejects a user who is not a project member', async () => {
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
-                null
-            );
-            await expect(
-                domain.validateProjectMemberGuard('project-id', 'user-id')
-            ).rejects.toBeInstanceOf(ProjectMemberForbiddenException);
-        });
-
-        it('returns a valid project member', async () => {
-            const member = mock<ProjectMember>({ id: 'member-id' });
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
-                member
-            );
-            await expect(
-                domain.validateProjectMemberGuard('project-id', 'user-id')
-            ).resolves.toBe(member);
-        });
+        await expect(
+            domain.assignMember(project, 'actor-id', target, 'role-id')
+        ).resolves.toBe(created);
+        expect(roleDomain.resolve).toHaveBeenCalledWith(
+            'role-id',
+            EnumRoleScope.project
+        );
+        expect(repository.create).toHaveBeenCalledWith(
+            'project-id',
+            'target-id',
+            'role-id',
+            'actor-id'
+        );
     });
 
-    describe('validateProjectRoleGuard', () => {
-        it('rejects validation without a project', async () => {
-            await expect(
-                domain.validateProjectRoleGuard(null, null, [])
-            ).rejects.toBeInstanceOf(ProjectNotFoundException);
-        });
-
-        it('rejects validation without a workspace member', async () => {
-            await expect(
-                domain.validateProjectRoleGuard('project-id', null, [])
-            ).rejects.toBeInstanceOf(ProjectRoleForbiddenException);
-        });
-
-        it('lets a workspace owner bypass the project role check', async () => {
-            const workspaceMember = mock<WorkspaceMember>({
-                userId: 'owner-id',
-            });
-            projectUtil.isWorkspaceOwner.mockReturnValue(true);
-            await expect(
-                domain.validateProjectRoleGuard(
-                    'project-id',
-                    workspaceMember,
-                    []
-                )
-            ).resolves.toBe(true);
-            expect(
-                projectMemberRepository.findOneByProjectAndUser
-            ).not.toHaveBeenCalled();
-        });
-
-        it('rejects a workspace member with no matching or allowed project role', async () => {
-            const workspaceMember = mock<WorkspaceMember>({
-                userId: 'user-id',
-            });
-            projectUtil.isWorkspaceOwner.mockReturnValue(false);
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
-                null
-            );
-            await expect(
-                domain.validateProjectRoleGuard('project-id', workspaceMember, [
-                    EnumProjectMemberRole.admin,
-                ])
-            ).rejects.toBeInstanceOf(ProjectRoleForbiddenException);
-        });
-
-        it('returns false for a non-owner project member with an allowed role', async () => {
-            const workspaceMember = mock<WorkspaceMember>({
-                userId: 'user-id',
-            });
-            projectUtil.isWorkspaceOwner.mockReturnValue(false);
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
-                mock<ProjectMember>({
-                    role: EnumProjectMemberRole.member,
-                })
-            );
-            await expect(
-                domain.validateProjectRoleGuard('project-id', workspaceMember, [
-                    EnumProjectMemberRole.member,
-                ])
-            ).resolves.toBe(false);
-        });
-    });
-
-    describe('assignMember', () => {
-        it('assigns a member and stages activity when the actor is a workspace owner', async () => {
-            setWorkspaceOwner(true);
-            const targetMember = mock<WorkspaceMember>({
-                userId: 'target-id',
-                workspaceId: 'workspace-id',
-            });
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
-                null
-            );
-            const created = mock<IProjectMember>({
-                id: 'new-member-id',
-                user: {
-                    id: 'target-id',
-                    name: 'Target User',
-                    username: 'target-user',
-                    photo: null,
-                    createdAt: new Date(),
-                    createdBy: null,
-                    updatedAt: new Date(),
-                    updatedBy: null,
-                    deletedAt: null,
-                    deletedBy: null,
-                },
-            });
-            projectMemberRepository.create.mockResolvedValue(created);
-
-            await expect(
-                domain.assignMember(
-                    project,
-                    'actor-id',
-                    targetMember,
-                    EnumProjectMemberRole.admin
-                )
-            ).resolves.toBe(created);
-            expect(projectMemberRepository.create).toHaveBeenCalledWith(
-                project.id,
-                'target-id',
-                EnumProjectMemberRole.admin,
-                'actor-id'
-            );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.projectMemberAssigned,
-                userId: 'actor-id',
-                createdBy: 'actor-id',
-                workspaceId: 'workspace-id',
-                metadata: { targetUserId: 'target-id' },
-            });
-        });
-
-        it('rejects a non-owner assigning an admin peer', async () => {
-            setWorkspaceOwner(false);
-            const targetMember = mock<WorkspaceMember>({
-                userId: 'target-id',
-                workspaceId: 'workspace-id',
-            });
-
-            await expect(
-                domain.assignMember(
-                    project,
-                    'actor-id',
-                    targetMember,
-                    EnumProjectMemberRole.admin
-                )
-            ).rejects.toBeInstanceOf(ProjectMemberPeerForbiddenException);
-            expect(
-                projectMemberRepository.findOneByProjectAndUser
-            ).not.toHaveBeenCalled();
-        });
-
-        it('rejects assigning a member outside the project workspace', async () => {
-            setWorkspaceOwner(true);
-
-            await expect(
-                domain.assignMember(
-                    project,
-                    'actor-id',
-                    null,
-                    EnumProjectMemberRole.member
-                )
-            ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
-        });
-
-        it('rejects assigning a member already assigned to the project', async () => {
-            setWorkspaceOwner(true);
-            const targetMember = mock<WorkspaceMember>({
-                userId: 'target-id',
-                workspaceId: 'workspace-id',
-            });
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
-                mock<ProjectMember>({ id: 'existing-id' })
-            );
-
-            await expect(
-                domain.assignMember(
-                    project,
-                    'actor-id',
-                    targetMember,
-                    EnumProjectMemberRole.member
-                )
-            ).rejects.toBeInstanceOf(ProjectMemberAlreadyAssignedException);
-        });
-    });
-
-    describe('updateMemberRole', () => {
-        it('updates the role and stages activity', async () => {
-            setWorkspaceOwner(true);
-            const targetMember = mock<ProjectMember>({
-                id: 'target-member-id',
-                userId: 'target-user-id',
-                role: EnumProjectMemberRole.member,
-            });
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                targetMember
-            );
-
-            await domain.updateMemberRole(
+    it('rejects assigning an existing member', async () => {
+        roleDomain.resolve.mockResolvedValue({
+            id: 'role-id',
+            key: EnumRoleProjectKey.member,
+        } as never);
+        repository.findOneByProjectAndUser.mockResolvedValue(
+            mock<IProjectMember>()
+        );
+        await expect(
+            domain.assignMember(
                 project,
                 'actor-id',
-                'target-member-id',
-                EnumProjectMemberRole.admin
-            );
-
-            expect(projectMemberRepository.updateRole).toHaveBeenCalledWith(
-                'target-member-id',
-                EnumProjectMemberRole.admin
-            );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.projectMemberRoleUpdated,
-                userId: 'actor-id',
-                createdBy: 'actor-id',
-                workspaceId: 'workspace-id',
-                metadata: { targetUserId: 'target-user-id' },
-            });
-        });
-
-        it('rejects when the target member is not found', async () => {
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(null);
-
-            await expect(
-                domain.updateMemberRole(
-                    project,
-                    'actor-id',
-                    'missing-id',
-                    EnumProjectMemberRole.member
-                )
-            ).rejects.toBeInstanceOf(ProjectMemberNotFoundException);
-        });
-
-        it('rejects a non-owner changing an existing admin peer role', async () => {
-            setWorkspaceOwner(false);
-            const targetMember = mock<ProjectMember>({
-                id: 'target-member-id',
-                role: EnumProjectMemberRole.admin,
-            });
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                targetMember
-            );
-
-            await expect(
-                domain.updateMemberRole(
-                    project,
-                    'actor-id',
-                    'target-member-id',
-                    EnumProjectMemberRole.member
-                )
-            ).rejects.toBeInstanceOf(ProjectMemberPeerForbiddenException);
-        });
-
-        it('rejects a non-owner promoting a peer to admin', async () => {
-            setWorkspaceOwner(false);
-            const targetMember = mock<ProjectMember>({
-                id: 'target-member-id',
-                role: EnumProjectMemberRole.member,
-            });
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                targetMember
-            );
-
-            await expect(
-                domain.updateMemberRole(
-                    project,
-                    'actor-id',
-                    'target-member-id',
-                    EnumProjectMemberRole.admin
-                )
-            ).rejects.toBeInstanceOf(ProjectMemberPeerForbiddenException);
-        });
+                mock<WorkspaceMember>({ workspaceId: 'workspace-id' }),
+                'role-id'
+            )
+        ).rejects.toBeInstanceOf(ProjectMemberAlreadyAssignedException);
     });
 
-    describe('removeMember', () => {
-        it('removes the member and stages activity', async () => {
-            setWorkspaceOwner(true);
-            const targetMember = mock<ProjectMember>({
-                id: 'target-member-id',
-                userId: 'target-user-id',
-                role: EnumProjectMemberRole.admin,
-            });
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                targetMember
-            );
-
-            await domain.removeMember(project, 'actor-id', 'target-member-id');
-
-            expect(projectMemberRepository.removeMember).toHaveBeenCalledWith(
-                'target-member-id'
-            );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.projectMemberRemoved,
-                userId: 'actor-id',
-                createdBy: 'actor-id',
-                workspaceId: 'workspace-id',
-                metadata: { targetUserId: 'target-user-id' },
-            });
-        });
-
-        it('rejects when the target member is not found', async () => {
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(null);
-
-            await expect(
-                domain.removeMember(project, 'actor-id', 'missing-id')
-            ).rejects.toBeInstanceOf(ProjectMemberNotFoundException);
-        });
-
-        it('rejects removing oneself, directing to leaveProject instead', async () => {
-            const targetMember = mock<ProjectMember>({
-                id: 'target-member-id',
-                userId: 'actor-id',
-                role: EnumProjectMemberRole.member,
-            });
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                targetMember
-            );
-
-            await expect(
-                domain.removeMember(project, 'actor-id', 'target-member-id')
-            ).rejects.toBeInstanceOf(ProjectMemberPeerForbiddenException);
-            expect(requestStoreService.get).not.toHaveBeenCalled();
-        });
-
-        it('rejects a non-owner removing an admin peer', async () => {
-            setWorkspaceOwner(false);
-            const targetMember = mock<ProjectMember>({
-                id: 'target-member-id',
-                userId: 'target-user-id',
-                role: EnumProjectMemberRole.admin,
-            });
-            projectMemberRepository.findByIdAndProject.mockResolvedValue(
-                targetMember
-            );
-
-            await expect(
-                domain.removeMember(project, 'actor-id', 'target-member-id')
-            ).rejects.toBeInstanceOf(ProjectMemberPeerForbiddenException);
-        });
+    it('updates a member role without capability probing', async () => {
+        roleDomain.resolve.mockResolvedValue({
+            id: 'role-id',
+            key: EnumRoleProjectKey.viewer,
+        } as never);
+        await domain.updateMemberRole(project, 'actor-id', member, 'role-id');
+        expect(repository.updateRole).toHaveBeenCalledWith(
+            'member-id',
+            'role-id'
+        );
     });
 
-    describe('leaveProject', () => {
-        it('removes the member and stages the leave activity', async () => {
-            const member = mock<ProjectMember>({
-                id: 'member-id',
-                userId: 'user-id',
-            });
+    it('protects the last administrator from demotion', async () => {
+        roleDomain.resolve.mockResolvedValue({
+            id: 'role-id',
+            key: EnumRoleProjectKey.viewer,
+        } as never);
+        repository.countAdmins.mockResolvedValue(1);
+        await expect(
+            domain.updateMemberRole(
+                project,
+                'actor-id',
+                {
+                    ...member,
+                    role: { key: EnumRoleProjectKey.admin },
+                } as IProjectMemberWithRole,
+                'role-id'
+            )
+        ).rejects.toBeInstanceOf(ProjectMemberLastAdminException);
+    });
 
-            await domain.leaveProject(project, member);
+    it('rejects removing oneself', async () => {
+        await expect(
+            domain.removeMember(project, 'actor-id', {
+                ...member,
+                userId: 'actor-id',
+            })
+        ).rejects.toBeInstanceOf(ProjectMemberPeerForbiddenException);
+    });
 
-            expect(projectMemberRepository.removeMember).toHaveBeenCalledWith(
-                'member-id'
-            );
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.projectMemberLeft,
-                userId: 'user-id',
-                createdBy: 'user-id',
-                workspaceId: 'workspace-id',
-            });
+    it('removes a member and records the activity', async () => {
+        await domain.removeMember(project, 'actor-id', member);
+        expect(repository.removeMember).toHaveBeenCalledWith('member-id');
+        expect(activityLog.prepare).toHaveBeenCalledWith({
+            action: EnumActivityLogAction.projectMemberRemoved,
+            userId: 'actor-id',
+            createdBy: 'actor-id',
+            workspaceId: 'workspace-id',
+            metadata: { targetUserId: 'target-id' },
         });
     });
 });

@@ -1,0 +1,13 @@
+{
+    "keys": [
+        {
+            "kty": "EC",
+            "crv": "P-521",
+            "x": "AAJduCaYsdeYOsmIu8fbP-lXW0ONO1QBN6rxGEJzK2pI8gNLTFguDzXyxJiq5aqdedzrsGsAgWGT7_a672o_ttF9",
+            "y": "AXkxyzP0_SJ6fBluQI6LZb0QM2FneeNR1mssY6zH11vQy0M6WTAZE7lslLB3dvQ-j1wW2jLs6l2f6zjiR00zPaMu",
+            "use": "sig",
+            "alg": "ES512",
+            "kid": "e2e-refresh-key"
+        }
+    ]
+}

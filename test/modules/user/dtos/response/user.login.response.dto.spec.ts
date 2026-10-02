@@ -1,4 +1,5 @@
-import { EnumRoleType } from '@generated/prisma-client/client';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
+import { EnumRoleScope } from '@generated/prisma-client/client';
 import { UserLoginResponseSchema } from '@modules/user/dtos/response/user.login.response.dto';
 
 describe('UserLoginResponseSchema', () => {
@@ -13,7 +14,8 @@ describe('UserLoginResponseSchema', () => {
             ...workspace,
             tokens: {
                 tokenType: 'Bearer',
-                roleType: EnumRoleType.user,
+                roleKey: EnumRolePlatformKey.user,
+                roleScope: EnumRoleScope.platform,
                 expiresIn: 3600,
                 accessToken: 'access',
                 refreshToken: 'refresh',

@@ -4,9 +4,10 @@ import {
     EnumApiKeyType,
     EnumNotificationChannel,
     EnumNotificationType,
-    EnumRoleType,
+    EnumRoleScope,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 
 /**
  * Metadata recorded with an activity-log entry; which keys are present depends on the action.
@@ -73,9 +74,13 @@ export const ActivityLogMetadataResponseSchema = z.object({
         description: 'Name of the affected role',
         example: 'admin',
     }),
-    roleType: z.string().optional().meta({
-        description: 'Type of the affected role',
-        example: EnumRoleType.admin,
+    roleKey: z.string().optional().meta({
+        description: 'Key of the affected role',
+        example: EnumRolePlatformKey.admin,
+    }),
+    roleScope: z.string().optional().meta({
+        description: 'Scope of the affected role',
+        example: EnumRoleScope.platform,
     }),
     termPolicyId: z.string().optional().meta({
         description: 'Identifier of the affected term policy',

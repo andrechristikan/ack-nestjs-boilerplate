@@ -1,14 +1,15 @@
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import type { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
 import {
-    EnumRoleType,
+    EnumRoleScope,
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 
 export interface IAuthToken {
     tokenType: string;
-    roleType: EnumRoleType;
+    roleKey: string;
+    roleScope: EnumRoleScope;
     expiresIn: number;
     accessToken: string;
     refreshToken: string;

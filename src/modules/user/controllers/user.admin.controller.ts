@@ -28,12 +28,10 @@ import { UserHttpService } from '@modules/user/services/user.http.service';
 import { UserImportHttpService } from '@modules/user/services/user.import.http.service';
 import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
 import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor.http.service';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -94,11 +92,10 @@ export class UserAdminController {
     @Doc({ summary: 'get all users' })
     @ResponsePagination('user.list', { schema: UserListResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.user,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -113,11 +110,10 @@ export class UserAdminController {
     @Doc({ summary: 'get detail an user' })
     @Response('user.get', { schema: UserProfileResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.user,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -133,11 +129,10 @@ export class UserAdminController {
     @Doc({ summary: 'create a user' })
     @Response('user.create', { schema: DatabaseIdResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.user,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -154,11 +149,10 @@ export class UserAdminController {
     @Doc({ summary: 'update status of user' })
     @Response('user.updateStatus')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.user,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -181,11 +175,10 @@ export class UserAdminController {
     @Doc({ summary: 'update password of user' })
     @Response('user.updatePassword')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.user,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -205,11 +198,10 @@ export class UserAdminController {
     @Doc({ summary: 'Reset user' })
     @Response('user.twoFactor.resetByAdmin')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.user,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -229,11 +221,10 @@ export class UserAdminController {
     @Doc({ summary: 'import users via csv file' })
     @Response('user.import')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.user,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -261,11 +252,10 @@ export class UserAdminController {
     @Doc({ summary: 'export users via csv file' })
     @ResponseFile()
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.user,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

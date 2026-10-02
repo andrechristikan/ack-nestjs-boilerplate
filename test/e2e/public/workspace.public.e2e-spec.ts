@@ -91,7 +91,7 @@ describe('Workspace public preview routes', () => {
                 message: expect.any(String),
                 data: {
                     workspaceName: workspace.name,
-                    workspaceRole: 'member',
+                    workspaceRole: expect.objectContaining({ key: 'member' }),
                     expiredAt: expect.any(String),
                 },
             });

@@ -92,7 +92,7 @@ i18n JSON, one folder per locale. It contains:
 
 **Location:** `src/migration/`
 
-The migration folder seeds initial data. MongoDB has no migration files; the schema shape is applied by `pnpm db:migrate` (`prisma db push`). It includes:
+The migration folder seeds initial data. Schema changes are tracked as Prisma migration files under `prisma/migrations/`, applied by `pnpm db:migrate` (`prisma migrate dev`). It includes:
 - `migration.module.ts`: Registers every seed command as a provider
 - Subfolders for migration bases, data, enums, interfaces, and seeds
 - Populates the reference and bootstrap rows an empty database needs: api keys, countries, feature flags, roles, policies, term policies, users, and workspaces (the eight commands bundled into `pnpm migration:seed`)
@@ -308,7 +308,7 @@ Below are explanations for the root folders and files outside `src/`:
 - **.vitest/**: Vitest blob reports and JSON output. Ignored by git, Docker, Prettier, ESLint, and cspell, and listed in `tsconfig.json` / `tsconfig.build.json` `exclude`. `node_modules/.vitest-cache` holds `fsModuleCache`.
 - **keys/**: The JWT key pairs, the JWKS files, and `encryption-secret.env`, all written by `pnpm generate:secret`. Not tracked by git.
 - **logs/**: Directory for application logs. Not tracked by git.
-- **prisma/**: Contains `schema.prisma`, the single source of truth for the database schema. MongoDB has no migration files.
+- **prisma/**: Contains `schema.prisma`, the single source of truth for the database schema, and `migrations/`, the tracked history of migration files applied to PostgreSQL.
 - **scripts/**: `generate-secret.ts` (JWT keys, JWKS, and encryption secrets; `pnpm generate:secret`) and `generate-package.ts` (`pnpm generate:package`). Node runs both directly as TypeScript.
 - **test/**: The Vitest spec tree, mirroring `src/` (`test/**/*.spec.ts`). The suite is unit: one class, collaborators doubled. `pnpm test` is `TZ=UTC vitest run --passWithNoTests` and does not collect coverage. `pnpm test:cov` adds `--coverage`, which is when the 100% thresholds apply. `coverage.enabled` is `false` in `vitest.config.ts`. Controllers, processors, repositories, contracts, modules, enums, interfaces, and constants sit outside the coverage set. The doc kit in `src/common/doc/` is in it. Integration and e2e tests are not this suite. Specs exist under `test/app/` (app-layer env DTO, exceptions, filters), `test/common/pagination/` (query util and list query schemas), and `test/modules/analytic/`. `test/setup.ts` (`setupFiles`) mutes Nest `Logger` and `ConsoleLogger` by assigning no-ops onto instance and static methods. Specs do not spy loggers or `console`. `pre-commit` and CI (`.github/workflows/test.yml`, `workflow_dispatch`) run `NODE_ENV=test pnpm test`. `testTimeout` is 5000ms.
 

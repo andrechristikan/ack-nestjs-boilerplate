@@ -14,12 +14,14 @@ import {
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import {
     WorkspaceActiveFilter,
+    WorkspaceInviteRoleInclude,
     WorkspaceInviteUserListSelect,
 } from '@modules/workspace/constants/workspace.constant';
 import type { IWorkspaceInviteRepository } from '@modules/workspace/interfaces/workspace.invite-repository.interface';
 import type {
     IWorkspaceInviteCreateData,
     IWorkspaceInviteList,
+    IWorkspaceInviteWithRole,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -68,7 +70,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
 
     async findPendingByHashedToken(
         hashedToken: string
-    ): Promise<WorkspaceInvite | null> {
+    ): Promise<IWorkspaceInviteWithRole | null> {
         const today = this.helperDateService.create();
 
         return this.databaseService.client.workspaceInvite.findFirst({
@@ -80,6 +82,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 },
                 workspace: WorkspaceActiveFilter,
             },
+            include: WorkspaceInviteRoleInclude,
         });
     }
 
@@ -136,27 +139,28 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         workspaceInviteId,
         workspaceId,
         email,
-        workspaceRole,
+        workspaceRoleId,
         projectId,
-        projectRole,
+        projectRoleId,
         hashedToken,
         reference,
         expiredAt,
         invitedByUserId,
-    }: IWorkspaceInviteCreateData): Promise<WorkspaceInvite> {
+    }: IWorkspaceInviteCreateData): Promise<IWorkspaceInviteWithRole> {
         return this.databaseService.client.workspaceInvite.create({
             data: {
                 id: workspaceInviteId,
                 workspaceId,
                 email,
-                workspaceRole,
+                workspaceRoleId,
                 projectId,
-                projectRole,
+                projectRoleId,
                 token: hashedToken,
                 reference,
                 expiredAt,
                 invitedByUserId,
             },
+            include: WorkspaceInviteRoleInclude,
         });
     }
 
@@ -165,7 +169,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         hashedToken: string,
         reference: string,
         expiredAt: Date
-    ): Promise<WorkspaceInvite> {
+    ): Promise<IWorkspaceInviteWithRole> {
         return this.databaseService.client.workspaceInvite.update({
             where: { id: workspaceInviteId },
             data: {
@@ -173,6 +177,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 reference,
                 expiredAt,
             },
+            include: WorkspaceInviteRoleInclude,
         });
     }
 

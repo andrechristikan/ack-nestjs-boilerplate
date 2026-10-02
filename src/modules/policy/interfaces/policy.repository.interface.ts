@@ -1,16 +1,12 @@
-import { EnumPolicySubject } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 
 export interface IPolicyRepository {
     findManyByRoleId(roleId: string): Promise<Policy[]>;
-    existsByRoleIdAndSubject(
-        roleId: string,
-        subject: EnumPolicySubject
-    ): Promise<boolean>;
+    findOneByRoleIdAndId(roleId: string, id: string): Promise<Policy | null>;
     existsByRoleIdAndId(roleId: string, id: string): Promise<boolean>;
-    create(roleId: string, data: PolicyRequestDto): Promise<Policy>;
-    update(id: string, data: PolicyUpdateRequestDto): Promise<Policy>;
+    create(roleId: string, dto: PolicyCreateRequestDto): Promise<Policy>;
+    update(id: string, dto: PolicyUpdateRequestDto): Promise<Policy>;
     delete(id: string): Promise<Policy>;
 }

@@ -1,4 +1,5 @@
-import { EnumRoleType } from '@generated/prisma-client';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
+import { EnumRoleScope } from '@generated/prisma-client/client';
 import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
 
 describe('AuthTokenResponseSchema', () => {
@@ -6,7 +7,8 @@ describe('AuthTokenResponseSchema', () => {
         expect(
             AuthTokenResponseSchema.parse({
                 tokenType: 'Bearer',
-                roleType: EnumRoleType.user,
+                roleKey: EnumRolePlatformKey.user,
+                roleScope: EnumRoleScope.platform,
                 expiresIn: 3600,
                 accessToken: 'access-token',
                 refreshToken: 'refreshInTx-token',
@@ -16,7 +18,8 @@ describe('AuthTokenResponseSchema', () => {
             })
         ).toEqual({
             tokenType: 'Bearer',
-            roleType: EnumRoleType.user,
+            roleKey: EnumRolePlatformKey.user,
+            roleScope: EnumRoleScope.platform,
             expiresIn: 3600,
             accessToken: 'access-token',
             refreshToken: 'refreshInTx-token',

@@ -10,13 +10,11 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
-    EnumProjectMemberRole,
+    EnumRoleScope,
     EnumWorkspaceInviteStatus,
-    EnumWorkspaceMemberRole,
     type Project,
     type User,
     type Workspace,
-    type WorkspaceInvite,
 } from '@generated/prisma-client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
@@ -35,6 +33,13 @@ import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspaceInviteNotFoundException } from '@modules/workspace/exceptions/workspace.invite-not-found.exception';
 import { WorkspaceInviteProjectMismatchException } from '@modules/workspace/exceptions/workspace.invite-project-mismatch.exception';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { RoleScopeMismatchException } from '@modules/role/exceptions/role.scope-mismatch.exception';
+import { WorkspaceOwnerRoleNotAssignableException } from '@modules/workspace/exceptions/workspace.owner-role-not-assignable.exception';
+import type { IWorkspaceInviteWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/exceptions/workspace.invite-role-required.exception';
 import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
@@ -55,13 +60,25 @@ const workspace: Workspace = {
     deletedAt: null,
     deletedBy: null,
 };
-const invite: WorkspaceInvite = {
+const invite: IWorkspaceInviteWithRole = {
     id: 'invite-id',
     workspaceId: workspace.id,
     email: 'invitee@example.com',
-    workspaceRole: EnumWorkspaceMemberRole.member,
+    workspaceRoleId: 'member-role-id',
+    workspaceRole: {
+        id: 'member-role-id',
+        scope: EnumRoleScope.workspace,
+        key: EnumRoleWorkspaceKey.member,
+        name: 'Member',
+    },
     projectId: 'project-id',
-    projectRole: EnumProjectMemberRole.member,
+    projectRoleId: 'project-member-role-id',
+    projectRole: {
+        id: 'project-member-role-id',
+        scope: EnumRoleScope.project,
+        key: EnumRoleProjectKey.member,
+        name: 'Project Member',
+    },
     token: 'hashed-token',
     reference: 'INV-REF',
     expiredAt,
@@ -112,12 +129,31 @@ describe('WorkspaceInviteDomain', () => {
         mock<NotificationEmailQueue>();
     const featureFlagDomain: MockProxy<FeatureFlagDomain> =
         mock<FeatureFlagDomain>();
+    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
+    const memberRole = {
+        id: 'member-role-id',
+        scope: EnumRoleScope.workspace,
+        key: EnumRoleWorkspaceKey.member,
+        name: 'Member',
+    };
+    const ownerRole = {
+        id: 'owner-role-id',
+        scope: EnumRoleScope.workspace,
+        key: EnumRoleWorkspaceKey.owner,
+        name: 'Owner',
+    };
+    const projectMemberRole = {
+        id: 'project-member-role-id',
+        scope: EnumRoleScope.project,
+        key: EnumRoleProjectKey.member,
+        name: 'Project Member',
+    };
     const tx = {} as IDatabaseTransactionClient;
     const create = {
         email: invite.email as Lowercase<string>,
-        workspaceRole: invite.workspaceRole,
+        workspaceRoleId: invite.workspaceRoleId,
         projectId: invite.projectId!,
-        projectRole: invite.projectRole!,
+        projectRoleId: invite.projectRoleId!,
     };
 
     let domain: WorkspaceInviteDomain;
@@ -151,6 +187,14 @@ describe('WorkspaceInviteDomain', () => {
         dateService.formatToIso.mockReturnValue('2026-01-08T00:00:00.000Z');
         inviteRepository.createPending.mockResolvedValue(invite);
         inviteRepository.rotateForResend.mockResolvedValue(invite);
+        roleDomain.resolve.mockReset();
+        roleDomain.resolveInTx.mockReset();
+        roleDomain.resolve.mockImplementation(async (_id, scope) =>
+            scope === EnumRoleScope.project ? projectMemberRole : memberRole
+        );
+        roleDomain.resolveInTx.mockImplementation(async (_tx, _id, scope) =>
+            scope === EnumRoleScope.project ? projectMemberRole : memberRole
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -182,6 +226,7 @@ describe('WorkspaceInviteDomain', () => {
                     useValue: notificationEmailQueue,
                 },
                 { provide: FeatureFlagDomain, useValue: featureFlagDomain },
+                { provide: RoleDomain, useValue: roleDomain },
             ],
         }).compile();
         domain = module.get(WorkspaceInviteDomain);
@@ -231,9 +276,9 @@ describe('WorkspaceInviteDomain', () => {
             workspaceId: invite.workspaceId,
             workspaceInviteId: invite.id,
             invitedByUserId: invite.invitedByUserId,
-            workspaceMemberRole: invite.workspaceRole,
+            workspaceRoleId: invite.workspaceRoleId,
             projectId: invite.projectId,
-            projectMemberRole: invite.projectRole,
+            projectRoleId: invite.projectRoleId,
         });
     });
 
@@ -241,6 +286,7 @@ describe('WorkspaceInviteDomain', () => {
         inviteRepository.findPendingByHashedToken.mockResolvedValue({
             ...invite,
             projectId: null,
+            projectRoleId: null,
             projectRole: null,
         });
 
@@ -249,7 +295,7 @@ describe('WorkspaceInviteDomain', () => {
         ).resolves.toEqual(
             expect.objectContaining({
                 projectId: null,
-                projectMemberRole: null,
+                projectRoleId: null,
             })
         );
     });
@@ -268,7 +314,7 @@ describe('WorkspaceInviteDomain', () => {
     });
 
     it.each([
-        [{ ...create, projectRole: undefined }],
+        [{ ...create, projectRoleId: undefined }],
         [{ ...create, projectId: undefined }],
     ])('requires project and project role together', async data => {
         await expect(
@@ -328,7 +374,7 @@ describe('WorkspaceInviteDomain', () => {
     it('creates and emails an unregistered invite without a project', async () => {
         const withoutProject = {
             email: invite.email as Lowercase<string>,
-            workspaceRole: invite.workspaceRole,
+            workspaceRoleId: invite.workspaceRoleId,
         };
         inviteRepository.existsPendingByWorkspaceAndEmail.mockResolvedValue(
             false
@@ -346,6 +392,79 @@ describe('WorkspaceInviteDomain', () => {
                 inviteAcceptLink: expect.stringContaining('/signup/'),
             })
         );
+    });
+
+    it('resolves the invite roles by id and scope before creating', async () => {
+        projectDomain.getActiveByIdAndWorkspace.mockResolvedValue(
+            mock<Project>()
+        );
+        inviteRepository.existsPendingByWorkspaceAndEmail.mockResolvedValue(
+            false
+        );
+        userDomain.getOneActiveByEmail.mockResolvedValue(null);
+        userDomain.getNameById.mockResolvedValue(null);
+
+        await domain.createInvite(workspace, 'actor-id', create);
+
+        expect(roleDomain.resolve).toHaveBeenCalledWith(
+            create.workspaceRoleId,
+            EnumRoleScope.workspace
+        );
+        expect(roleDomain.resolve).toHaveBeenCalledWith(
+            create.projectRoleId,
+            EnumRoleScope.project
+        );
+        expect(inviteRepository.createPending).toHaveBeenCalledWith(
+            expect.objectContaining({
+                workspaceRoleId: create.workspaceRoleId,
+                projectRoleId: create.projectRoleId,
+            })
+        );
+    });
+
+    it('rejects the owner role on invite create, before any write', async () => {
+        roleDomain.resolve.mockResolvedValue(ownerRole);
+
+        await expect(
+            domain.createInvite(workspace, 'actor-id', create)
+        ).rejects.toBeInstanceOf(WorkspaceOwnerRoleNotAssignableException);
+        expect(inviteRepository.createPending).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['not found', RoleNotFoundException],
+        ['scope mismatch', RoleScopeMismatchException],
+    ])(
+        'propagates a role %s on invite create, before any write',
+        async (_label, Failure) => {
+            roleDomain.resolve.mockRejectedValue(new Failure());
+
+            await expect(
+                domain.createInvite(workspace, 'actor-id', create)
+            ).rejects.toBeInstanceOf(Failure);
+            expect(inviteRepository.createPending).not.toHaveBeenCalled();
+        }
+    );
+
+    it('carries the workspace role name in the notification payload', async () => {
+        projectDomain.getActiveByIdAndWorkspace.mockResolvedValue(
+            mock<Project>()
+        );
+        inviteRepository.existsPendingByWorkspaceAndEmail.mockResolvedValue(
+            false
+        );
+        userDomain.getOneActiveByEmail.mockResolvedValue(existingUser);
+        userDomain.getNameById.mockResolvedValue(null);
+
+        await domain.createInvite(workspace, 'actor-id', create);
+
+        const payload = notificationQueue.sendWorkspaceInvite.mock.calls[0][1];
+        expect(payload).toEqual(
+            expect.objectContaining({
+                workspaceRoleName: invite.workspaceRole.name,
+            })
+        );
+        expect(payload).not.toHaveProperty('workspaceMemberRole');
     });
 
     it.each([
@@ -415,16 +534,18 @@ describe('WorkspaceInviteDomain', () => {
         }
     );
 
+    const signUpContext = {
+        type: EnumUserSignUpWorkspaceContextType.invite as const,
+        workspaceId: invite.workspaceId,
+        workspaceInviteId: invite.id,
+        invitedByUserId: invite.invitedByUserId,
+        workspaceRoleId: invite.workspaceRoleId,
+        projectId: invite.projectId,
+        projectRoleId: invite.projectRoleId,
+    };
+
     it('accepts a sign-up invitation with project membership in order', async () => {
-        await domain.acceptOnSignUpInTx(tx, 'user-id', {
-            type: EnumUserSignUpWorkspaceContextType.invite,
-            workspaceId: invite.workspaceId,
-            workspaceInviteId: invite.id,
-            invitedByUserId: invite.invitedByUserId,
-            workspaceMemberRole: invite.workspaceRole,
-            projectId: invite.projectId,
-            projectMemberRole: invite.projectRole,
-        });
+        await domain.acceptOnSignUpInTx(tx, 'user-id', signUpContext);
         expect(inviteRepository.acceptInTx).toHaveBeenCalledAfter(
             memberDomain.createInTx
         );
@@ -433,17 +554,113 @@ describe('WorkspaceInviteDomain', () => {
         );
     });
 
+    it('re-validates the sign-up roles by id inside the transaction and creates both members with them', async () => {
+        await domain.acceptOnSignUpInTx(tx, 'user-id', signUpContext);
+
+        expect(roleDomain.resolveInTx).toHaveBeenCalledWith(
+            tx,
+            invite.workspaceRoleId,
+            EnumRoleScope.workspace
+        );
+        expect(roleDomain.resolveInTx).toHaveBeenCalledWith(
+            tx,
+            invite.projectRoleId,
+            EnumRoleScope.project
+        );
+        expect(memberDomain.createInTx).toHaveBeenLastCalledWith(
+            tx,
+            invite.workspaceId,
+            'user-id',
+            memberRole.id,
+            'user-id'
+        );
+        expect(projectMemberDomain.createInTx).toHaveBeenLastCalledWith(
+            tx,
+            invite.projectId,
+            'user-id',
+            projectMemberRole.id,
+            'user-id'
+        );
+    });
+
+    it('never resolves an invite role by key', async () => {
+        await domain.acceptOnSignUpInTx(tx, 'user-id', signUpContext);
+        expect(roleDomain.getByScopeAndKeyInTx).not.toHaveBeenCalled();
+        expect(roleDomain.getByScopeAndKey).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['missing', RoleNotFoundException],
+        ['wrong-scope', RoleScopeMismatchException],
+    ])(
+        'rejects a sign-up invitation whose project role is %s, before any write',
+        async (_label, Failure) => {
+            roleDomain.resolveInTx.mockImplementation(
+                async (_tx, _id, scope) => {
+                    if (scope === EnumRoleScope.project) {
+                        throw new Failure();
+                    }
+
+                    return memberRole;
+                }
+            );
+            memberDomain.createInTx.mockClear();
+            projectMemberDomain.createInTx.mockClear();
+            inviteRepository.acceptInTx.mockClear();
+
+            await expect(
+                domain.acceptOnSignUpInTx(tx, 'user-id', signUpContext)
+            ).rejects.toBeInstanceOf(Failure);
+            expect(memberDomain.createInTx).not.toHaveBeenCalled();
+            expect(inviteRepository.acceptInTx).not.toHaveBeenCalled();
+            expect(projectMemberDomain.createInTx).not.toHaveBeenCalled();
+        }
+    );
+
+    it.each([
+        ['missing', RoleNotFoundException],
+        ['wrong-scope', RoleScopeMismatchException],
+    ])(
+        'rejects a sign-up invitation whose workspace role is %s, before any write',
+        async (_label, Failure) => {
+            roleDomain.resolveInTx.mockRejectedValue(new Failure());
+            memberDomain.createInTx.mockClear();
+
+            await expect(
+                domain.acceptOnSignUpInTx(tx, 'user-id', {
+                    ...signUpContext,
+                    projectId: null,
+                    projectRoleId: null,
+                })
+            ).rejects.toBeInstanceOf(Failure);
+            expect(memberDomain.createInTx).not.toHaveBeenCalled();
+        }
+    );
+
+    it('rejects a sign-up invitation whose workspace role resolves to owner', async () => {
+        roleDomain.resolveInTx.mockResolvedValue(ownerRole);
+        memberDomain.createInTx.mockClear();
+
+        await expect(
+            domain.acceptOnSignUpInTx(tx, 'user-id', {
+                ...signUpContext,
+                projectId: null,
+                projectRoleId: null,
+            })
+        ).rejects.toBeInstanceOf(WorkspaceOwnerRoleNotAssignableException);
+        expect(memberDomain.createInTx).not.toHaveBeenCalled();
+    });
+
     it('accepts a sign-up invitation without project membership', async () => {
+        roleDomain.resolveInTx.mockClear();
         await domain.acceptOnSignUpInTx(tx, 'user-id', {
-            type: EnumUserSignUpWorkspaceContextType.invite,
-            workspaceId: invite.workspaceId,
-            workspaceInviteId: invite.id,
+            ...signUpContext,
             invitedByUserId: null,
-            workspaceMemberRole: invite.workspaceRole,
             projectId: null,
-            projectMemberRole: null,
+            projectRoleId: null,
         });
         expect(projectMemberDomain.createInTx).not.toHaveBeenCalled();
+        expect(roleDomain.resolveInTx).toHaveBeenCalledOnce();
     });
 
     it('rejects claiming an invitation for a different email', async () => {
@@ -481,11 +698,110 @@ describe('WorkspaceInviteDomain', () => {
         expect(activityLogDomain.prepare).toHaveBeenCalledTimes(2);
     });
 
+    it('re-validates the invite roles by id inside the claim transaction and creates both members with them', async () => {
+        inviteRepository.findPendingByHashedToken.mockResolvedValue(invite);
+        memberRepository.findOneByWorkspaceAndUser.mockResolvedValue(null);
+
+        await domain.claimInvite('user-id', invite.email, 'token');
+
+        expect(roleDomain.resolveInTx).toHaveBeenCalledWith(
+            tx,
+            invite.workspaceRoleId,
+            EnumRoleScope.workspace
+        );
+        expect(roleDomain.resolveInTx).toHaveBeenCalledWith(
+            tx,
+            invite.projectRoleId,
+            EnumRoleScope.project
+        );
+        expect(roleDomain.getByScopeAndKeyInTx).not.toHaveBeenCalled();
+        expect(memberDomain.createInTx).toHaveBeenLastCalledWith(
+            tx,
+            invite.workspaceId,
+            'user-id',
+            memberRole.id,
+            'user-id'
+        );
+        expect(projectMemberDomain.createInTx).toHaveBeenLastCalledWith(
+            tx,
+            invite.projectId,
+            'user-id',
+            projectMemberRole.id,
+            'user-id'
+        );
+    });
+
+    it.each([
+        ['missing', RoleNotFoundException],
+        ['wrong-scope', RoleScopeMismatchException],
+    ])(
+        'rejects claiming when the invite project role is %s, before any write',
+        async (_label, Failure) => {
+            inviteRepository.findPendingByHashedToken.mockResolvedValue(invite);
+            memberRepository.findOneByWorkspaceAndUser.mockResolvedValue(null);
+            roleDomain.resolveInTx.mockImplementation(
+                async (_tx, _id, scope) => {
+                    if (scope === EnumRoleScope.project) {
+                        throw new Failure();
+                    }
+
+                    return memberRole;
+                }
+            );
+            memberDomain.createInTx.mockClear();
+            inviteRepository.acceptInTx.mockClear();
+            projectMemberDomain.createInTx.mockClear();
+
+            await expect(
+                domain.claimInvite('user-id', invite.email, 'token')
+            ).rejects.toBeInstanceOf(Failure);
+            expect(memberDomain.createInTx).not.toHaveBeenCalled();
+            expect(inviteRepository.acceptInTx).not.toHaveBeenCalled();
+            expect(projectMemberDomain.createInTx).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        }
+    );
+
+    it.each([
+        ['missing', RoleNotFoundException],
+        ['wrong-scope', RoleScopeMismatchException],
+    ])(
+        'rejects claiming when the invite workspace role is %s, before any write',
+        async (_label, Failure) => {
+            inviteRepository.findPendingByHashedToken.mockResolvedValue(invite);
+            memberRepository.findOneByWorkspaceAndUser.mockResolvedValue(null);
+            roleDomain.resolveInTx.mockRejectedValue(new Failure());
+            memberDomain.createInTx.mockClear();
+            inviteRepository.acceptInTx.mockClear();
+
+            await expect(
+                domain.claimInvite('user-id', invite.email, 'token')
+            ).rejects.toBeInstanceOf(Failure);
+            expect(memberDomain.createInTx).not.toHaveBeenCalled();
+            expect(inviteRepository.acceptInTx).not.toHaveBeenCalled();
+        }
+    );
+
+    it('rejects claiming when the invite workspace role resolves to owner, before any write', async () => {
+        inviteRepository.findPendingByHashedToken.mockResolvedValue(invite);
+        memberRepository.findOneByWorkspaceAndUser.mockResolvedValue(null);
+        roleDomain.resolveInTx.mockResolvedValue(ownerRole);
+        memberDomain.createInTx.mockClear();
+        inviteRepository.acceptInTx.mockClear();
+
+        await expect(
+            domain.claimInvite('user-id', invite.email, 'token')
+        ).rejects.toBeInstanceOf(WorkspaceOwnerRoleNotAssignableException);
+        expect(memberDomain.createInTx).not.toHaveBeenCalled();
+        expect(inviteRepository.acceptInTx).not.toHaveBeenCalled();
+    });
+
     it('claims an invitation without inviter or project', async () => {
         inviteRepository.findPendingByHashedToken.mockResolvedValue({
             ...invite,
             invitedByUserId: null,
             projectId: null,
+            projectRoleId: null,
             projectRole: null,
         });
         memberRepository.findOneByWorkspaceAndUser.mockResolvedValue(null);

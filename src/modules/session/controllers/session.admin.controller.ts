@@ -19,8 +19,7 @@ import {
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
 
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
@@ -33,7 +32,6 @@ import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.user.session')
@@ -47,17 +45,16 @@ export class SessionAdminController {
     @Doc({ summary: 'admin get all user Sessions' })
     @ResponsePagination('session.list', { schema: SessionResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected(
+    @PlatformPolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.session,
+            subject: EnumPolicySubject.Session,
             action: [EnumPolicyAction.read],
         }
     )
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -75,17 +72,16 @@ export class SessionAdminController {
     @Doc({ summary: 'admin revoke user Session' })
     @Response('session.revoke')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected(
+    @PlatformPolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.session,
+            subject: EnumPolicySubject.Session,
             action: [EnumPolicyAction.read, EnumPolicyAction.delete],
         }
     )
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -108,17 +104,16 @@ export class SessionAdminController {
     @Doc({ summary: 'admin revoke all user Sessions' })
     @Response('session.revokeAll')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected(
+    @PlatformPolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.session,
+            subject: EnumPolicySubject.Session,
             action: [EnumPolicyAction.read, EnumPolicyAction.delete],
         }
     )
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

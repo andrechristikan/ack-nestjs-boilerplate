@@ -9,7 +9,7 @@ NestJS `ConfigModule` loads one `registerAs` file per concern from `src/configs`
 ## Related Documents
 
 - [Environment Documentation][ref-doc-environment] - Env var names and validation (`AppEnvSchema`)
-- [Database Documentation][ref-doc-database] - MongoDB and Prisma usage
+- [Database Documentation][ref-doc-database] - PostgreSQL and Prisma usage
 - [Cache Documentation][ref-doc-cache] - Redis cache usage
 
 ## Table of Contents
@@ -260,7 +260,7 @@ xApiKey: {
 
 **`url`** - Database connection string
 ```typescript
-url: string                     // MongoDB connection URL
+url: string                     // PostgreSQL connection URL
 ```
 
 **`debug`** - Database debug mode

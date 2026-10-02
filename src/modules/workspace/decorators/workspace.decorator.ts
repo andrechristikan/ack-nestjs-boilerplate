@@ -1,20 +1,16 @@
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
-import type {
-    Workspace,
-    WorkspaceMember,
-} from '@generated/prisma-client/client';
+import type { Workspace } from '@generated/prisma-client/client';
+import { EnumPolicyWorkspaceSubject } from '@modules/policy/enums/policy.enum';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import type { IPolicyRequired } from '@modules/policy/interfaces/policy.interface';
 import {
     DocWorkspaceErrorResponses,
-    DocWorkspaceRoleErrorResponses,
     WorkspaceMemberStoreKey,
-    WorkspaceRoleMetaKey,
     WorkspaceStoreKey,
 } from '@modules/workspace/constants/workspace.constant';
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
 import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
-import { WorkspaceRoleGuard } from '@modules/workspace/guards/workspace.role.guard';
 import {
-    SetMetadata,
     UseGuards,
     applyDecorators,
     createParamDecorator,
@@ -69,42 +65,39 @@ export const WorkspaceCurrent = createParamDecorator<
 
 /**
  * Requires the caller to be a member of the workspace resolved by `@WorkspaceProtected()`. Stack
- * above it. Pass `roles` to additionally require the caller's workspace membership role to be one
- * of them; omit `roles` to only require membership.
+ * above it. The guard stores the membership and builds no ability.
  * @public
  */
-export function WorkspaceMemberProtected(
-    ...roles: EnumWorkspaceMemberRole[]
-): MethodDecorator {
-    if (roles.length === 0) {
-        return applyDecorators(UseGuards(WorkspaceMemberGuard));
-    }
-
-    return applyDecorators(
-        UseGuards(WorkspaceMemberGuard, WorkspaceRoleGuard),
-        SetMetadata(WorkspaceRoleMetaKey, roles),
-        DocWorkspaceRoleErrorResponses.forbidden
-    );
+export function WorkspaceMemberProtected(): MethodDecorator {
+    return applyDecorators(UseGuards(WorkspaceMemberGuard));
 }
 
 /**
- * Reads the caller's workspace member row, or one of its fields, that `WorkspaceMemberGuard` stored; throws when either is absent.
+ * Reads the caller's workspace member row with its role, or one of its fields, that `WorkspaceMemberGuard` stored; throws when either is absent.
  * @public
  */
 export const WorkspaceMemberCurrent = createParamDecorator<
-    Extract<keyof WorkspaceMember, string> | undefined,
-    | WorkspaceMember
-    | NonNullable<WorkspaceMember[Extract<keyof WorkspaceMember, string>]>
+    Extract<keyof IWorkspaceMemberWithRole, string> | undefined,
+    | IWorkspaceMemberWithRole
+    | NonNullable<
+          IWorkspaceMemberWithRole[Extract<
+              keyof IWorkspaceMemberWithRole,
+              string
+          >]
+      >
 >(
     (
-        field: Extract<keyof WorkspaceMember, string> | undefined
+        field: Extract<keyof IWorkspaceMemberWithRole, string> | undefined
     ):
-        | WorkspaceMember
+        | IWorkspaceMemberWithRole
         | NonNullable<
-              WorkspaceMember[Extract<keyof WorkspaceMember, string>]
+              IWorkspaceMemberWithRole[Extract<
+                  keyof IWorkspaceMemberWithRole,
+                  string
+              >]
           > => {
         const workspaceMember = ClsServiceManager.getClsService().get<
-            WorkspaceMember | undefined
+            IWorkspaceMemberWithRole | undefined
         >(WorkspaceMemberStoreKey);
         if (workspaceMember === undefined || workspaceMember === null) {
             throw new RequestContextMissingException(WorkspaceMemberStoreKey);
@@ -124,3 +117,14 @@ export const WorkspaceMemberCurrent = createParamDecorator<
         return value;
     }
 );
+
+/**
+ * Requires the caller to hold the given workspace policy subject/action pairs.
+ * Sits above `@WorkspaceMemberProtected()`.
+ * @public
+ */
+export function WorkspacePolicyProtected(
+    ...requiredPolicies: IPolicyRequired<EnumPolicyWorkspaceSubject>[]
+): MethodDecorator {
+    return PolicyProtected(...requiredPolicies);
+}

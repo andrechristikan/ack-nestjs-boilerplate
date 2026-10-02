@@ -10,7 +10,7 @@ import {
     EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
-    EnumRoleType,
+    EnumRoleScope,
     EnumUserGender,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -29,7 +29,9 @@ import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { RoleScopeMismatchException } from '@modules/role/exceptions/role.scope-mismatch.exception';
 import { UserBlockedForbiddenException } from '@modules/user/exceptions/user.blocked-forbidden.exception';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
@@ -135,12 +137,12 @@ describe('UserDomain', () => {
             id: 'role-id',
             name: 'User',
             description: null,
-            type: EnumRoleType.user,
+            scope: EnumRoleScope.platform,
+            key: EnumRolePlatformKey.user,
             createdAt: now,
             createdBy: null,
             updatedAt: now,
             updatedBy: null,
-            policies: [],
         },
         twoFactor: null,
     } satisfies IUser;
@@ -148,7 +150,7 @@ describe('UserDomain', () => {
         ...activeUser.role,
         id: 'admin-role-id',
         name: 'Admin',
-        type: EnumRoleType.admin,
+        key: EnumRolePlatformKey.admin,
     };
     const workspaceContext = mock<IUserSignUpWorkspacePersonal>();
     const password = {
@@ -167,7 +169,7 @@ describe('UserDomain', () => {
         );
         helperDateService.create.mockReturnValue(now);
         userRepository.findOneById.mockResolvedValue(userRow);
-        roleDomain.getById.mockResolvedValue(activeUser.role);
+        roleDomain.resolve.mockResolvedValue(activeUser.role);
         countryDomain.existsById.mockResolvedValue(true);
         userRepository.existsByEmail.mockResolvedValue(false);
         userRepository.existsByUsername.mockResolvedValue(false);
@@ -271,11 +273,26 @@ describe('UserDomain', () => {
         ).rejects.toBeInstanceOf(UserEmailNotVerifiedException);
     });
 
-    it('returns an active verified user', async () => {
+    it('returns an active verified user after checking its role is platform-scoped', async () => {
         userRepository.findOneWithRoleById.mockResolvedValue(activeUser);
         await expect(service.validateUserGuard('user-id', true)).resolves.toBe(
             activeUser
         );
+        expect(roleDomain.assertScope).toHaveBeenCalledWith(
+            activeUser.role,
+            EnumRoleScope.platform
+        );
+    });
+
+    it('rejects a user whose role is not platform-scoped', async () => {
+        userRepository.findOneWithRoleById.mockResolvedValue(activeUser);
+        roleDomain.assertScope.mockImplementation(() => {
+            throw new RoleScopeMismatchException();
+        });
+
+        await expect(
+            service.validateUserGuard('user-id', false)
+        ).rejects.toThrow(RoleScopeMismatchException);
     });
 
     it('returns an active user without requiring verification', async () => {
@@ -399,7 +416,7 @@ describe('UserDomain', () => {
         });
 
         it('prepares a verified administrator and hashes its used verification', async () => {
-            roleDomain.getById.mockResolvedValue(adminRole);
+            roleDomain.resolve.mockResolvedValue(adminRole);
 
             const result = await service.prepareCreateByAdmin(
                 { ...input, name: undefined, roleId: adminRole.id },
@@ -420,26 +437,32 @@ describe('UserDomain', () => {
             });
         });
 
+        it('resolves the role against the platform scope', async () => {
+            await service.prepareCreateByAdmin(input, 'admin-id');
+
+            expect(roleDomain.resolve).toHaveBeenCalledWith(
+                input.roleId,
+                EnumRoleScope.platform
+            );
+        });
+
         it.each([
-            ['missing role', null, true, false, RoleNotFoundException],
-            [
-                'missing country',
-                activeUser.role,
-                false,
-                false,
-                CountryNotFoundException,
-            ],
-            [
-                'duplicate email',
-                activeUser.role,
-                true,
-                true,
-                UserEmailExistException,
-            ],
+            ['missing role', new RoleNotFoundException()],
+            ['a non-platform role', new RoleScopeMismatchException()],
+        ])('propagates the role rejection for %s', async (_case, error) => {
+            roleDomain.resolve.mockRejectedValue(error);
+
+            await expect(
+                service.prepareCreateByAdmin(input, 'admin-id')
+            ).rejects.toBe(error);
+        });
+
+        it.each([
+            ['missing country', false, false, CountryNotFoundException],
+            ['duplicate email', true, true, UserEmailExistException],
         ])(
             'rejects creation for a %s',
-            async (_case, role, countryExists, emailExists, ExceptionClass) => {
-                roleDomain.getById.mockResolvedValue(role);
+            async (_case, countryExists, emailExists, ExceptionClass) => {
                 countryDomain.existsById.mockResolvedValue(countryExists);
                 userRepository.existsByEmail.mockResolvedValue(emailExists);
 

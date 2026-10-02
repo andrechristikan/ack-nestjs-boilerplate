@@ -1,0 +1,13 @@
+{
+    "keys": [
+        {
+            "kty": "EC",
+            "crv": "P-256",
+            "x": "PRE6HnfSX6CtNhZNMpHc3t4sLFMJNlbMaiIcBBPTK9A",
+            "y": "KvvA5J1NqXVdVBdg4npIs8FAxLfifFl-IvSgs0S-C54",
+            "use": "sig",
+            "alg": "ES256",
+            "kid": "e2e-access-key"
+        }
+    ]
+}

@@ -1,75 +1,78 @@
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    type Policy,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import { subject } from '@casl/ability';
+import type { Policy } from '@generated/prisma-client/client';
+import { EnumPolicyConditionPlaceholder } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 
 describe('PolicyAbilityFactory', () => {
     const factory = new PolicyAbilityFactory();
     const now = new Date('2026-01-01T00:00:00.000Z');
-    const policy = {
+    const buildPolicy = (conditions: Policy['conditions']): Policy => ({
         id: 'policy-id',
         roleId: 'role-id',
-        subject: EnumPolicySubject.user,
-        action: [EnumPolicyAction.read, EnumPolicyAction.update],
+        subject: EnumPolicySubject.WorkspaceMember,
+        action: [EnumPolicyAction.read],
+        conditions,
+        inverted: false,
+        reason: null,
         createdAt: now,
         createdBy: null,
         updatedAt: now,
         updatedBy: null,
-    } satisfies Policy;
-
-    it('constructs abilities from the project policy rows', () => {
-        const ability = factory.createForUser([policy]);
-
-        expect(ability.can(EnumPolicyAction.read, EnumPolicySubject.user)).toBe(
-            true
-        );
-        expect(
-            ability.can(EnumPolicyAction.delete, EnumPolicySubject.user)
-        ).toBe(false);
-        expect(ability.can(EnumPolicyAction.read, EnumPolicySubject.role)).toBe(
-            false
-        );
     });
 
-    it('requires every action across every declared subject', () => {
-        const ability = factory.createForUser([policy]);
+    it('resolves any caller-supplied placeholder without a placeholder catalog', () => {
+        const ability = factory.buildFromPolicies(
+            [
+                buildPolicy({
+                    workspaceId: EnumPolicyConditionPlaceholder.workspaceId,
+                }),
+            ],
+            { [EnumPolicyConditionPlaceholder.workspaceId]: 'workspace-1' }
+        );
 
         expect(
-            factory.handlerPolicies(ability, [
-                {
-                    subject: EnumPolicySubject.user,
-                    action: [EnumPolicyAction.read, EnumPolicyAction.update],
-                },
-            ])
+            ability.can(
+                EnumPolicyAction.read,
+                subject(EnumPolicySubject.WorkspaceMember, {
+                    workspaceId: 'workspace-1',
+                })
+            )
         ).toBe(true);
+    });
+
+    it('drops a rule when a placeholder has no resolved value', () => {
+        const ability = factory.buildFromPolicies(
+            [
+                buildPolicy({
+                    workspaceId: EnumPolicyConditionPlaceholder.workspaceId,
+                }),
+            ],
+            {}
+        );
+
         expect(
-            factory.handlerPolicies(ability, [
-                {
-                    subject: EnumPolicySubject.user,
-                    action: [EnumPolicyAction.read, EnumPolicyAction.delete],
-                },
-            ])
+            ability.can(
+                EnumPolicyAction.read,
+                EnumPolicySubject.WorkspaceMember
+            )
         ).toBe(false);
     });
 
-    it('applies an all-subject manage rule using CASL semantics', () => {
-        const ability = factory.createForUser([
-            {
-                ...policy,
-                subject: EnumPolicySubject.all,
-                action: [EnumPolicyAction.manage],
-            },
-        ]);
+    it('drops nested condition objects instead of supporting arbitrary query syntax', () => {
+        const ability = factory.buildFromPolicies(
+            [buildPolicy({ workspace: { id: 'workspace-1' } })],
+            {}
+        );
 
         expect(
-            factory.handlerPolicies(ability, [
-                {
-                    subject: EnumPolicySubject.apiKey,
-                    action: [EnumPolicyAction.delete],
-                },
-            ])
-        ).toBe(true);
+            ability.can(
+                EnumPolicyAction.read,
+                EnumPolicySubject.WorkspaceMember
+            )
+        ).toBe(false);
     });
 });

@@ -11,15 +11,11 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
+    EnumRoleScope,
     EnumWorkspaceInviteStatus,
     Prisma,
 } from '@generated/prisma-client/client';
-import type {
-    Project,
-    User,
-    Workspace,
-    WorkspaceInvite,
-} from '@generated/prisma-client/client';
+import type { Project, User, Workspace } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import type { INotificationWorkspaceInvitePayload } from '@modules/notification/interfaces/notification.interface';
@@ -27,6 +23,9 @@ import { NotificationEmailQueue } from '@modules/notification/queues/notificatio
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
+import type { IRole } from '@modules/role/interfaces/role.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type {
     IUserSignUpWorkspaceContext,
@@ -41,11 +40,13 @@ import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/w
 import { WorkspaceInviteNotFoundException } from '@modules/workspace/exceptions/workspace.invite-not-found.exception';
 import { WorkspaceInviteProjectMismatchException } from '@modules/workspace/exceptions/workspace.invite-project-mismatch.exception';
 import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/exceptions/workspace.invite-role-required.exception';
+import { WorkspaceOwnerRoleNotAssignableException } from '@modules/workspace/exceptions/workspace.owner-role-not-assignable.exception';
 import type {
     IWorkspaceInviteCreate,
     IWorkspaceInviteList,
     IWorkspaceInvitePreview,
     IWorkspaceInviteTokenData,
+    IWorkspaceInviteWithRole,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
@@ -83,7 +84,8 @@ export class WorkspaceInviteDomain {
         private readonly configService: ConfigService,
         private readonly notificationQueue: NotificationQueue,
         private readonly notificationEmailQueue: NotificationEmailQueue,
-        private readonly featureFlagDomain: FeatureFlagDomain
+        private readonly featureFlagDomain: FeatureFlagDomain,
+        private readonly roleDomain: RoleDomain
     ) {
         this.homeUrl = this.configService.get<string>('home.url')!;
         this.inviteExpiredInDays = this.configService.get<number>(
@@ -104,6 +106,53 @@ export class WorkspaceInviteDomain {
         this.inviteSignUpLinkPattern = this.configService.get<string>(
             'workspace.invite.signUpLinkPattern'
         )!;
+    }
+
+    private assertWorkspaceRoleAssignable(role: IRole): void {
+        if (role.key === EnumRoleWorkspaceKey.owner) {
+            throw new WorkspaceOwnerRoleNotAssignableException();
+        }
+    }
+
+    private async resolveWorkspaceRole(
+        workspaceRoleId: string
+    ): Promise<IRole> {
+        const role = await this.roleDomain.resolve(
+            workspaceRoleId,
+            EnumRoleScope.workspace
+        );
+        this.assertWorkspaceRoleAssignable(role);
+
+        return role;
+    }
+
+    private async resolveWorkspaceRoleInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceRoleId: string
+    ): Promise<IRole> {
+        const role = await this.roleDomain.resolveInTx(
+            tx,
+            workspaceRoleId,
+            EnumRoleScope.workspace
+        );
+        this.assertWorkspaceRoleAssignable(role);
+
+        return role;
+    }
+
+    private async resolveProjectRoleInTx(
+        tx: IDatabaseTransactionClient,
+        projectRoleId: string | null
+    ): Promise<IRole | null> {
+        if (!projectRoleId) {
+            return null;
+        }
+
+        return this.roleDomain.resolveInTx(
+            tx,
+            projectRoleId,
+            EnumRoleScope.project
+        );
     }
 
     private async assertInvitationAllowed(): Promise<void> {
@@ -150,7 +199,7 @@ export class WorkspaceInviteDomain {
 
     private async sendInviteNotification(
         workspace: Workspace,
-        invite: WorkspaceInvite,
+        invite: IWorkspaceInviteWithRole,
         tokenData: IWorkspaceInviteTokenData,
         actorId: string,
         existingUser: User | null
@@ -167,7 +216,7 @@ export class WorkspaceInviteDomain {
             workspaceId: invite.workspaceId,
             workspaceName: workspace.name,
             inviterName,
-            workspaceMemberRole: invite.workspaceRole,
+            workspaceRoleName: invite.workspaceRole.name,
             reference: invite.reference,
             expiredAt,
         };
@@ -188,7 +237,9 @@ export class WorkspaceInviteDomain {
         );
     }
 
-    async validateInviteToken(token: string): Promise<WorkspaceInvite> {
+    async validateInviteToken(
+        token: string
+    ): Promise<IWorkspaceInviteWithRole> {
         const hashedToken = this.helperHashService.sha256Hash(token);
         const invite =
             await this.workspaceInviteRepository.findPendingByHashedToken(
@@ -231,9 +282,9 @@ export class WorkspaceInviteDomain {
             workspaceId: invite.workspaceId,
             workspaceInviteId: invite.id,
             invitedByUserId: invite.invitedByUserId,
-            workspaceMemberRole: invite.workspaceRole,
+            workspaceRoleId: invite.workspaceRoleId,
             projectId: invite.projectId ?? null,
-            projectMemberRole: invite.projectRole ?? null,
+            projectRoleId: invite.projectRoleId ?? null,
         };
     }
 
@@ -259,13 +310,23 @@ export class WorkspaceInviteDomain {
         workspace: Workspace,
         actorId: string,
         create: IWorkspaceInviteCreate
-    ): Promise<WorkspaceInvite> {
+    ): Promise<IWorkspaceInviteWithRole> {
         await this.assertInvitationAllowed();
 
         const hasProjectId = !!create.projectId;
-        const hasProjectRole = !!create.projectRole;
+        const hasProjectRole = !!create.projectRoleId;
         if (hasProjectId !== hasProjectRole) {
             throw new WorkspaceInviteRoleRequiredException();
+        }
+
+        let projectRoleLookup: Promise<IRole> | null;
+        if (create.projectRoleId) {
+            projectRoleLookup = this.roleDomain.resolve(
+                create.projectRoleId,
+                EnumRoleScope.project
+            );
+        } else {
+            projectRoleLookup = null;
         }
 
         let projectLookup: Promise<Project | null> | null;
@@ -278,7 +339,9 @@ export class WorkspaceInviteDomain {
             projectLookup = null;
         }
 
-        const [project, duplicate, existingUser] = await Promise.all([
+        const [, , project, duplicate, existingUser] = await Promise.all([
+            this.resolveWorkspaceRole(create.workspaceRoleId),
+            projectRoleLookup,
             projectLookup,
             this.workspaceInviteRepository.existsPendingByWorkspaceAndEmail(
                 workspace.id,
@@ -325,9 +388,9 @@ export class WorkspaceInviteDomain {
             workspaceInviteId,
             workspaceId: workspace.id,
             email: create.email,
-            workspaceRole: create.workspaceRole,
+            workspaceRoleId: create.workspaceRoleId,
             projectId: create.projectId,
-            projectRole: create.projectRole,
+            projectRoleId: create.projectRoleId,
             hashedToken: tokenData.hashedToken,
             reference: tokenData.reference,
             expiredAt: tokenData.expiredAt,
@@ -352,7 +415,7 @@ export class WorkspaceInviteDomain {
         actorId: string,
         workspaceInviteId: string,
         expiryDuration?: EnumWorkspaceInviteExpiry
-    ): Promise<WorkspaceInvite> {
+    ): Promise<IWorkspaceInviteWithRole> {
         await this.assertInvitationAllowed();
 
         const existing =
@@ -449,11 +512,19 @@ export class WorkspaceInviteDomain {
     ): Promise<void> {
         const acceptedAt = this.helperDateService.create();
 
+        const workspaceRole = await this.resolveWorkspaceRoleInTx(
+            tx,
+            context.workspaceRoleId
+        );
+        const projectRole = await this.resolveProjectRoleInTx(
+            tx,
+            context.projectRoleId
+        );
         await this.workspaceMemberDomain.createInTx(
             tx,
             context.workspaceId,
             userId,
-            context.workspaceMemberRole,
+            workspaceRole.id,
             userId
         );
         await this.workspaceInviteRepository.acceptInTx(
@@ -462,12 +533,12 @@ export class WorkspaceInviteDomain {
             userId,
             acceptedAt
         );
-        if (context.projectId && context.projectMemberRole) {
+        if (context.projectId && projectRole) {
             await this.projectMemberDomain.createInTx(
                 tx,
                 context.projectId,
                 userId,
-                context.projectMemberRole,
+                projectRole.id,
                 userId
             );
         }
@@ -519,11 +590,19 @@ export class WorkspaceInviteDomain {
         }
 
         await this.databaseService.withTransaction(async tx => {
+            const workspaceRole = await this.resolveWorkspaceRoleInTx(
+                tx,
+                invite.workspaceRoleId
+            );
+            const projectRole = await this.resolveProjectRoleInTx(
+                tx,
+                invite.projectRoleId
+            );
             await this.workspaceMemberDomain.createInTx(
                 tx,
                 invite.workspaceId,
                 userId,
-                invite.workspaceRole,
+                workspaceRole.id,
                 userId
             );
             await this.workspaceInviteRepository.acceptInTx(
@@ -537,12 +616,12 @@ export class WorkspaceInviteDomain {
                 userId,
                 invite.workspaceId
             );
-            if (invite.projectId && invite.projectRole) {
+            if (invite.projectId && projectRole) {
                 await this.projectMemberDomain.createInTx(
                     tx,
                     invite.projectId,
                     userId,
-                    invite.projectRole,
+                    projectRole.id,
                     userId
                 );
             }

@@ -1,24 +1,20 @@
-import { HttpStatus } from '@nestjs/common';
-import { DocResponseError } from '@common/doc/decorators/doc.decorator';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
+import { Prisma } from '@generated/prisma-client/client';
 
 /**
- * Route metadata key holding the role types `@RoleProtected` requires.
+ * Prisma select for the role identity every assignment and log reads: id, scope, key and name.
  * @public
  */
-export const RoleRequiredMetaKey = 'RoleRequiredMetaKey';
-
-/**
- * Role guard error kit for `@RoleProtected`.
- * @public
- */
-export const DocRoleErrorResponses = {
-    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumRoleStatusCodeError.forbidden,
-        messagePath: 'role.error.forbidden',
-    }),
-    predefinedNotFound: DocResponseError(HttpStatus.INTERNAL_SERVER_ERROR, {
-        statusCode: EnumRoleStatusCodeError.predefinedNotFound,
-        messagePath: 'role.error.predefinedNotFound',
-    }),
+export const RoleSelect = {
+    id: true,
+    scope: true,
+    key: true,
+    name: true,
 } as const;
+
+/**
+ * Prisma include loading a role's policies.
+ * @public
+ */
+export const RolePoliciesInclude = {
+    policies: true,
+} as const satisfies Prisma.RoleInclude;

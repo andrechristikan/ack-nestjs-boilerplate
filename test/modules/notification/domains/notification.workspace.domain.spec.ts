@@ -46,6 +46,7 @@ describe('NotificationWorkspaceDomain', () => {
         workspaceId: 'workspace-id',
         workspaceName: 'Workspace',
         inviterName: 'Inviter',
+        workspaceRoleName: 'Member',
     });
     const request = mock<INotificationWorkspaceJoinRequestEncryptedPayload>({
         encryptedJoinRequestReviewLink: 'ciphertext',
@@ -164,6 +165,10 @@ describe('NotificationWorkspaceDomain', () => {
             expect.not.objectContaining({
                 encryptedInviteAcceptLink: expect.any(String),
             })
+        );
+        expect(notificationPushQueue.sendWorkspaceInvite).toHaveBeenCalledWith(
+            expect.any(Object),
+            expect.objectContaining({ workspaceRoleName: 'Member' })
         );
         expect(
             notificationPushQueue.sendWorkspaceJoinRequest

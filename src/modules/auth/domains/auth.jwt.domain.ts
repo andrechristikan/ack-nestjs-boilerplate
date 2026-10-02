@@ -248,7 +248,8 @@ export class AuthJwtDomain {
 
         const tokens: IAuthToken = {
             tokenType: this.jwtPrefix,
-            roleType: user.role.type,
+            roleKey: user.role.key,
+            roleScope: user.role.scope,
             expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
             accessToken,
             refreshToken,
@@ -318,7 +319,8 @@ export class AuthJwtDomain {
 
         const tokens: IAuthToken = {
             tokenType: this.jwtPrefix,
-            roleType: user.role.type,
+            roleKey: user.role.key,
+            roleScope: user.role.scope,
             expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
             accessToken,
             refreshToken: newRefreshToken,

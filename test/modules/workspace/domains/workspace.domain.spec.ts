@@ -12,9 +12,8 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
-    EnumProjectMemberRole,
+    EnumRoleScope,
     EnumTermPolicyType,
-    EnumWorkspaceMemberRole,
     type Workspace,
 } from '@generated/prisma-client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
@@ -22,6 +21,9 @@ import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.do
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
@@ -108,6 +110,13 @@ describe('WorkspaceDomain', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const featureFlagDomain: MockProxy<FeatureFlagDomain> =
         mock<FeatureFlagDomain>();
+    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
+    const ownerRole = {
+        id: 'owner-role-id',
+        scope: EnumRoleScope.workspace,
+        key: EnumRoleWorkspaceKey.owner,
+        name: 'Owner',
+    };
     const tx = {} as IDatabaseTransactionClient;
     const personalInput: IUserCreateWithWorkspaceInput =
         mock<IUserCreateWithWorkspaceInput>({
@@ -141,15 +150,16 @@ describe('WorkspaceDomain', () => {
                 workspaceId: workspace.id,
                 workspaceInviteId: 'invite-id',
                 invitedByUserId: 'inviter-id',
-                workspaceMemberRole: EnumWorkspaceMemberRole.member,
+                workspaceRoleId: 'member-role-id',
                 projectId: 'project-id',
-                projectMemberRole: EnumProjectMemberRole.member,
+                projectRoleId: 'project-member-role-id',
             },
         });
 
     let domain: WorkspaceDomain;
 
     beforeEach(async () => {
+        vi.resetAllMocks();
         vi.mocked(configService.get).mockImplementation((key: string) => {
             if (key === 'workspace.maxWorkspacesPerUser') return 2;
             if (key === 'workspace.slugRegex') return /^[a-z0-9-]+$/;
@@ -168,6 +178,7 @@ describe('WorkspaceDomain', () => {
             .mockReturnValueOnce('ws-one')
             .mockReturnValueOnce('ws-two');
         workspaceRepository.createInTx.mockResolvedValue(workspace);
+        roleDomain.getByScopeAndKeyInTx.mockResolvedValue(ownerRole);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -221,6 +232,7 @@ describe('WorkspaceDomain', () => {
                 { provide: HelperStringService, useValue: helperStringService },
                 { provide: ConfigService, useValue: configService },
                 { provide: FeatureFlagDomain, useValue: featureFlagDomain },
+                { provide: RoleDomain, useValue: roleDomain },
             ],
         }).compile();
         domain = module.get(WorkspaceDomain);
@@ -251,10 +263,15 @@ describe('WorkspaceDomain', () => {
         ).resolves.toBe(result);
     });
 
-    it('creates a workspace and owner in transaction order', async () => {
+    it('creates a workspace and owner in transaction order with the resolved owner role', async () => {
         await expect(
             domain.createInTx(tx, 'owner-id', { name: 'Name' }, 'slug', 'id')
         ).resolves.toBe(workspace);
+        expect(roleDomain.getByScopeAndKeyInTx).toHaveBeenCalledWith(
+            tx,
+            EnumRoleScope.workspace,
+            EnumRoleWorkspaceKey.owner
+        );
         expect(workspaceRepository.createInTx).toHaveBeenCalledWith(
             tx,
             'owner-id',
@@ -262,18 +279,73 @@ describe('WorkspaceDomain', () => {
             'slug',
             'id'
         );
+        expect(workspaceMemberRepository.createOwnerInTx).toHaveBeenCalledWith(
+            tx,
+            workspace.id,
+            'owner-id',
+            ownerRole.id
+        );
         expect(workspaceMemberRepository.createOwnerInTx).toHaveBeenCalledAfter(
             workspaceRepository.createInTx
         );
     });
 
-    it('creates personal and owned-user workspaces', async () => {
+    it('rejects with RoleNotFoundException before creating the workspace when the owner role is missing', async () => {
+        roleDomain.getByScopeAndKeyInTx.mockResolvedValue(null);
+
+        await expect(
+            domain.createInTx(tx, 'owner-id', { name: 'Name' }, 'slug', 'id')
+        ).rejects.toBeInstanceOf(RoleNotFoundException);
+        expect(workspaceRepository.createInTx).not.toHaveBeenCalled();
+        expect(
+            workspaceMemberRepository.createOwnerInTx
+        ).not.toHaveBeenCalled();
+    });
+
+    it('creates a personal workspace through the same owner path', async () => {
         await domain.createPersonalInTx(tx, 'owner-id', 'Name', 'slug', 'id');
+
+        expect(workspaceRepository.createInTx).toHaveBeenCalledOnce();
+        expect(workspaceMemberRepository.createOwnerInTx).toHaveBeenCalledWith(
+            tx,
+            workspace.id,
+            'owner-id',
+            ownerRole.id
+        );
+    });
+
+    it('creates owned-user workspaces resolving the owner role once for the whole batch', async () => {
         await domain.createOwnedForUsersInTx(tx, [
             { userId: 'a', workspaceId: 'wa', name: 'A', slug: 'a' },
             { userId: 'b', workspaceId: 'wb', name: 'B', slug: 'b' },
         ]);
-        expect(workspaceRepository.createInTx).toHaveBeenCalledTimes(3);
+
+        expect(roleDomain.getByScopeAndKeyInTx).toHaveBeenCalledOnce();
+        expect(workspaceRepository.createInTx).toHaveBeenCalledTimes(2);
+        expect(workspaceMemberRepository.createOwnerInTx).toHaveBeenCalledTimes(
+            2
+        );
+        expect(
+            workspaceMemberRepository.createOwnerInTx
+        ).toHaveBeenNthCalledWith(1, tx, workspace.id, 'a', ownerRole.id);
+    });
+
+    it('resolves no role and creates nothing for an empty owned-user batch', async () => {
+        await domain.createOwnedForUsersInTx(tx, []);
+
+        expect(roleDomain.getByScopeAndKeyInTx).not.toHaveBeenCalled();
+        expect(workspaceRepository.createInTx).not.toHaveBeenCalled();
+    });
+
+    it('rejects an owned-user batch with RoleNotFoundException when the owner role is missing', async () => {
+        roleDomain.getByScopeAndKeyInTx.mockResolvedValue(null);
+
+        await expect(
+            domain.createOwnedForUsersInTx(tx, [
+                { userId: 'a', workspaceId: 'wa', name: 'A', slug: 'a' },
+            ])
+        ).rejects.toBeInstanceOf(RoleNotFoundException);
+        expect(workspaceRepository.createInTx).not.toHaveBeenCalled();
     });
 
     it('commits mixed onboarding and stages prepared activities', async () => {
@@ -494,14 +566,41 @@ describe('WorkspaceDomain', () => {
             result
         );
         workspaceRepository.findByIdForAdmin.mockResolvedValue(workspace);
+        const where = { isPublic: true };
         await expect(
-            domain.getListForAdmin(pagination, {
-                public: { equal: true },
-            } as never)
+            domain.getListForAdmin(
+                pagination,
+                {
+                    public: { equal: true },
+                } as never,
+                where
+            )
         ).resolves.toBe(result);
+        expect(
+            workspaceRepository.findWithPaginationOffsetForAdmin
+        ).toHaveBeenCalledWith(
+            pagination,
+            {
+                public: { equal: true },
+            },
+            where
+        );
         await expect(domain.getByIdForAdmin(workspace.id)).resolves.toBe(
             workspace
         );
+    });
+
+    it('lists workspaces for a caller that supplies no where', async () => {
+        const pagination = { page: 1, perPage: 10 } as never;
+        const result = { data: [workspace], pagination: {} } as never;
+        workspaceRepository.findWithPaginationOffsetForAdmin.mockResolvedValue(
+            result
+        );
+
+        await expect(domain.getListForAdmin(pagination)).resolves.toBe(result);
+        expect(
+            workspaceRepository.findWithPaginationOffsetForAdmin
+        ).toHaveBeenCalledWith(pagination, undefined, undefined);
     });
 
     it('rejects an unknown workspace administrator read', async () => {

@@ -16,7 +16,7 @@ TypeScript runs with `strict`, `strictNullChecks`, and `noImplicitAny`. Two rule
 | Exception options / options bag | `field?: Type` |
 | Config interface (`src/configs/`) | `field: Type \| null` |
 | Domain / HTTP / processor / Repository — data param | `param: Type \| null` |
-| Domain / HTTP / processor / Repository — filter param | `param: Type \| null` (an additive domain-level filter may use `?`) |
+| Domain / HTTP / processor / Repository — filter param | `param: Type \| null` (an additive domain-level filter may use `?`). A `where` predicate that callers legitimately omit (processors, internal callers) is an optional trailing `where?` after the required params, an additive filter |
 | Prisma return | `Type \| null` |
 
 ## The controller and the boundary

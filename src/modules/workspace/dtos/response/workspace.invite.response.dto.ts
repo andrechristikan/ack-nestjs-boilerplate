@@ -2,10 +2,12 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import {
-    EnumProjectMemberRole,
+    EnumRoleScope,
     EnumWorkspaceInviteStatus,
-    EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
+import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
+import { RoleRefResponseSchema } from '@modules/role/dtos/response/role.ref.response.dto';
 
 /**
  * Base workspace-invite shape: the stored invite row, without the hashed token.
@@ -23,17 +25,27 @@ export const WorkspaceInviteResponseSchema = DatabaseResponseSchema.omit({
         description: 'Email address the invite is sent to',
         example: faker.internet.email(),
     }),
-    workspaceRole: z.enum(EnumWorkspaceMemberRole).meta({
+    workspaceRole: RoleRefResponseSchema.meta({
         description: 'Workspace role granted when the invite is accepted',
-        example: EnumWorkspaceMemberRole.member,
+        example: {
+            id: faker.string.uuid(),
+            scope: EnumRoleScope.workspace,
+            key: EnumRoleWorkspaceKey.member,
+            name: 'Member',
+        },
     }),
     projectId: z.string().nullable().meta({
         description: 'Identifier of the project the invite also grants, if any',
         example: faker.string.uuid(),
     }),
-    projectRole: z.enum(EnumProjectMemberRole).nullable().meta({
+    projectRole: RoleRefResponseSchema.nullable().meta({
         description: 'Project role granted when the invite is accepted, if any',
-        example: EnumProjectMemberRole.member,
+        example: {
+            id: faker.string.uuid(),
+            scope: EnumRoleScope.project,
+            key: EnumRoleProjectKey.member,
+            name: 'Member',
+        },
     }),
     reference: z.string().meta({
         description: 'Human-readable reference of the invite',

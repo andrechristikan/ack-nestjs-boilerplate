@@ -16,13 +16,12 @@ import type {
 } from '@common/response/interfaces/response.interface';
 
 import {
-    EnumProjectMemberRole,
-    EnumWorkspaceMemberRole,
+    EnumPolicyAction,
+    EnumPolicySubject,
 } from '@generated/prisma-client/client';
 
 import type {
     Project,
-    ProjectMember,
     Workspace,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
@@ -30,6 +29,7 @@ import type {
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 
 import { ProjectCreateRequestSchema } from '@modules/project/dtos/request/project.create.request.dto';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
@@ -42,12 +42,18 @@ import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/
 import { ProjectUpdateRequestSchema } from '@modules/project/dtos/request/project.update.request.dto';
 import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseSchema } from '@modules/project/dtos/response/project.member.response.dto';
+import { ProjectPermissionResponseSchema } from '@modules/project/dtos/response/project.permission.response.dto';
 import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
-import type { IProjectMember } from '@modules/project/interfaces/project.interface';
+import type { IEffectivePermission } from '@modules/policy/interfaces/policy.interface';
+import type {
+    IProjectMember,
+    IProjectMemberWithRole,
+} from '@modules/project/interfaces/project.interface';
 import {
     ProjectCurrent,
     ProjectMemberCurrent,
     ProjectMemberProtected,
+    ProjectPolicyProtected,
     ProjectProtected,
 } from '@modules/project/decorators/project.decorator';
 
@@ -59,6 +65,7 @@ import {
     WorkspaceCurrent,
     WorkspaceMemberCurrent,
     WorkspaceMemberProtected,
+    WorkspacePolicyProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
 
@@ -91,12 +98,13 @@ export class ProjectUserController {
 
     @Doc({
         summary:
-            'list projects in the current workspace; workspace owner/admin see all, others only assigned projects',
+            'list projects in the current workspace; a caller whose platform or workspace role holds Project read sees every project that read allows, others only their assigned projects',
     })
     @ResponsePagination('project.list', {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
@@ -121,7 +129,11 @@ export class ProjectUserController {
     @Doc({ summary: 'create a project in the current workspace' })
     @Response('project.create', { schema: ProjectResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @WorkspacePolicyProtected({
+        subject: EnumPolicySubject.Project,
+        action: [EnumPolicyAction.create],
+    })
+    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
@@ -142,16 +154,16 @@ export class ProjectUserController {
         );
     }
 
-    @Doc({ summary: 'get a project by id, subject to visibility' })
+    @Doc({ summary: 'get a project by id; requires the project read policy' })
     @Response('project.get', {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(
-        EnumProjectMemberRole.admin,
-        EnumProjectMemberRole.member,
-        EnumProjectMemberRole.viewer
-    )
+    @ProjectPolicyProtected({
+        subject: EnumPolicySubject.Project,
+        action: [EnumPolicyAction.read],
+    })
+    @ProjectMemberProtected({ required: false })
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -169,13 +181,41 @@ export class ProjectUserController {
 
     @Doc({
         summary:
-            'update a project name/description; workspace owner/admin or project admin',
+            "get the caller's effective permissions for the current project",
+    })
+    @Response('project.permissions', {
+        schema: ProjectPermissionResponseSchema,
+    })
+    @PolicyAbilityProtected()
+    @ProjectMemberProtected()
+    @ProjectProtected()
+    @WorkspaceMemberProtected()
+    @WorkspaceProtected()
+    @UserProtected()
+    @FeatureFlagProtected('workspace')
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true })
+    @Get('/permissions/:projectId')
+    async permissions(): Promise<
+        IResponseReturn<{ permissions: IEffectivePermission[] }>
+    > {
+        return this.projectHttpService.getEffectivePermissions();
+    }
+
+    @Doc({
+        summary:
+            'update a project name/description; requires the project update policy',
     })
     @Response('project.update', {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(EnumProjectMemberRole.admin)
+    @ProjectPolicyProtected({
+        subject: EnumPolicySubject.Project,
+        action: [EnumPolicyAction.update],
+    })
+    @ProjectMemberProtected({ required: false })
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -199,14 +239,17 @@ export class ProjectUserController {
     }
 
     @Doc({
-        summary:
-            'update a project slug; workspace owner/admin or project admin',
+        summary: 'update a project slug; requires the project update policy',
     })
     @Response('project.updateSlug', {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(EnumProjectMemberRole.admin)
+    @ProjectPolicyProtected({
+        subject: EnumPolicySubject.Project,
+        action: [EnumPolicyAction.update],
+    })
+    @ProjectMemberProtected({ required: false })
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -229,11 +272,18 @@ export class ProjectUserController {
         );
     }
 
-    @Doc({ summary: 'soft-delete a project; workspace owner/admin only' })
+    @Doc({
+        summary: 'soft-delete a project; requires the project delete policy',
+    })
     @Response('project.softDelete')
     @TermPolicyAcceptanceProtected()
+    @ProjectPolicyProtected({
+        subject: EnumPolicySubject.Project,
+        action: [EnumPolicyAction.delete],
+    })
+    @ProjectMemberProtected({ required: false })
     @ProjectProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
@@ -251,16 +301,18 @@ export class ProjectUserController {
         );
     }
 
-    @Doc({ summary: 'list members of a project, subject to visibility' })
+    @Doc({
+        summary: 'list members of a project; requires the project read policy',
+    })
     @ResponsePagination('project.member.list', {
         schema: ProjectMemberResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(
-        EnumProjectMemberRole.admin,
-        EnumProjectMemberRole.member,
-        EnumProjectMemberRole.viewer
-    )
+    @ProjectPolicyProtected({
+        subject: EnumPolicySubject.Project,
+        action: [EnumPolicyAction.read],
+    })
+    @ProjectMemberProtected({ required: false })
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -280,11 +332,15 @@ export class ProjectUserController {
 
     @Doc({
         summary:
-            'assign a workspace member to a project; assigning admin requires workspace owner/admin',
+            'assign a workspace member to a project with a project role; assigning the admin role requires the project member manage policy',
     })
     @Response('project.member.assign', { schema: ProjectMemberResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(EnumProjectMemberRole.admin)
+    @ProjectPolicyProtected({
+        subject: EnumPolicySubject.ProjectMember,
+        action: [EnumPolicyAction.create],
+    })
+    @ProjectMemberProtected({ required: false })
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -309,11 +365,15 @@ export class ProjectUserController {
 
     @Doc({
         summary:
-            'update a project member role; setting/touching admin requires workspace owner/admin',
+            'update a project member role; setting or touching the admin role requires the project member manage policy',
     })
     @Response('project.member.updateRole')
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(EnumProjectMemberRole.admin)
+    @ProjectPolicyProtected({
+        subject: EnumPolicySubject.ProjectMember,
+        action: [EnumPolicyAction.update],
+    })
+    @ProjectMemberProtected({ required: false })
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -326,6 +386,8 @@ export class ProjectUserController {
     async memberUpdateRole(
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
+        @Param('projectMemberId', { schema: RequestUuidSchema })
+        _projectMemberId: string,
         @Param('projectMemberId', { schema: RequestUuidSchema })
         projectMemberId: string,
         @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
@@ -341,11 +403,15 @@ export class ProjectUserController {
 
     @Doc({
         summary:
-            'remove a project member; project admin cannot remove another admin or self (use leave)',
+            'remove a project member; removing an admin requires the project member manage policy, and removing oneself goes through leave',
     })
     @Response('project.member.remove')
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(EnumProjectMemberRole.admin)
+    @ProjectPolicyProtected({
+        subject: EnumPolicySubject.ProjectMember,
+        action: [EnumPolicyAction.delete],
+    })
+    @ProjectMemberProtected({ required: false })
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -359,6 +425,8 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Param('projectMemberId', { schema: RequestUuidSchema })
+        _projectMemberId: string,
+        @Param('projectMemberId', { schema: RequestUuidSchema })
         projectMemberId: string
     ): Promise<void> {
         await this.projectMemberHttpService.removeMember(
@@ -368,7 +436,10 @@ export class ProjectUserController {
         );
     }
 
-    @Doc({ summary: 'leave a project; any project role may leave' })
+    @Doc({
+        summary:
+            'leave a project; requires a project membership, any project role may leave',
+    })
     @Response('project.member.leave')
     @TermPolicyAcceptanceProtected()
     @ProjectMemberProtected()
@@ -384,7 +455,7 @@ export class ProjectUserController {
     @Post('/member/:projectId/leave')
     async memberLeave(
         @ProjectCurrent() project: Project,
-        @ProjectMemberCurrent() projectMember: ProjectMember
+        @ProjectMemberCurrent() projectMember: IProjectMemberWithRole
     ): Promise<void> {
         await this.projectMemberHttpService.leaveProject(
             project,

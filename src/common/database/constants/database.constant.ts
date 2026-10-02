@@ -12,7 +12,14 @@ export const DatabaseClientToken = Symbol('DatabaseClient');
  */
 export const DatabaseModelRelations = {
     ApiKey: {},
-    Role: { policies: 'Policy', users: 'User' },
+    Role: {
+        policies: 'Policy',
+        users: 'User',
+        workspaceMembers: 'WorkspaceMember',
+        projectMembers: 'ProjectMember',
+        workspaceInvitesAsWorkspaceRole: 'WorkspaceInvite',
+        workspaceInvitesAsProjectRole: 'WorkspaceInvite',
+    },
     Policy: { role: 'Role' },
     Country: { mobileNumbers: 'UserMobileNumber', users: 'User' },
     UserMobileNumber: {
@@ -84,10 +91,12 @@ export const DatabaseModelRelations = {
         activityLogs: 'ActivityLog',
         lastUsers: 'User',
     },
-    WorkspaceMember: { workspace: 'Workspace', user: 'User' },
+    WorkspaceMember: { workspace: 'Workspace', user: 'User', role: 'Role' },
     WorkspaceInvite: {
         workspace: 'Workspace',
+        workspaceRole: 'Role',
         project: 'Project',
+        projectRole: 'Role',
         invitedBy: 'User',
         acceptedBy: 'User',
     },
@@ -101,5 +110,5 @@ export const DatabaseModelRelations = {
         members: 'ProjectMember',
         invites: 'WorkspaceInvite',
     },
-    ProjectMember: { project: 'Project', user: 'User' },
+    ProjectMember: { project: 'Project', user: 'User', role: 'Role' },
 } as const satisfies IDatabaseModelRelations;

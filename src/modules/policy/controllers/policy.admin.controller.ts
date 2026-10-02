@@ -6,21 +6,19 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { PolicySchema } from '@modules/policy/dtos/policy.dto';
 import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
-import { PolicyRequestSchema } from '@modules/policy/dtos/request/policy.request.dto';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import { PolicyCreateRequestSchema } from '@modules/policy/dtos/request/policy.create.request.dto';
+import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
 import { PolicyUpdateRequestSchema } from '@modules/policy/dtos/request/policy.update.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import { PolicyListResponseSchema } from '@modules/policy/dtos/response/policy.list.response.dto';
 import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
 import { PolicyHttpService } from '@modules/policy/services/policy.http.service';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -45,11 +43,10 @@ export class PolicyAdminController {
     @Doc({ summary: 'get all policies granted by a role' })
     @Response('policy.listByRole', { schema: PolicyListResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.role,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -62,14 +59,13 @@ export class PolicyAdminController {
         return this.policyHttpService.listByRole(roleId);
     }
 
-    @Doc({ summary: 'grant a policy to a role' })
+    @Doc({ summary: 'grant a rule to a role' })
     @Response('policy.create', { schema: PolicySchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.role,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -78,20 +74,19 @@ export class PolicyAdminController {
     async create(
         @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
-        @Body({ schema: PolicyRequestSchema })
-        body: PolicyRequestDto
+        @Body({ schema: PolicyCreateRequestSchema })
+        body: PolicyCreateRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
         return this.policyHttpService.createByAdmin(roleId, body);
     }
 
-    @Doc({ summary: 'update the action list of a role policy' })
+    @Doc({ summary: 'update the full rule of a role policy' })
     @Response('policy.update', { schema: PolicySchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.role,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -111,11 +106,10 @@ export class PolicyAdminController {
     @Doc({ summary: 'revoke a policy from a role' })
     @Response('policy.delete')
     @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.role,
+    @PlatformPolicyProtected({
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

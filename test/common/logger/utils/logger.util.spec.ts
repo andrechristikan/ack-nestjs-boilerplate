@@ -10,7 +10,6 @@ import { LoggerUtil } from '@common/logger/utils/logger.util';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import {
-    EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
@@ -146,7 +145,7 @@ describe('LoggerUtil', () => {
                 userId: 'user-id',
                 sessionId: 'session-id',
                 deviceOwnershipId: 'ownership-id',
-                roleId: EnumRoleType.user,
+                roleId: 'role-id',
             };
             request.user = user;
             request.query = { token: 'secret' };

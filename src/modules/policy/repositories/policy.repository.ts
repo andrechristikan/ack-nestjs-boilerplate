@@ -1,7 +1,7 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { EnumPolicySubject } from '@generated/prisma-client/client';
+import { Prisma } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import type { IPolicyRepository } from '@modules/policy/interfaces/policy.repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -16,15 +16,13 @@ export class PolicyRepository implements IPolicyRepository {
         });
     }
 
-    async existsByRoleIdAndSubject(
+    async findOneByRoleIdAndId(
         roleId: string,
-        subject: EnumPolicySubject
-    ): Promise<boolean> {
-        const count = await this.databaseService.client.policy.count({
-            where: { roleId, subject },
+        id: string
+    ): Promise<Policy | null> {
+        return this.databaseService.client.policy.findFirst({
+            where: { id, roleId },
         });
-
-        return count > 0;
     }
 
     async existsByRoleIdAndId(roleId: string, id: string): Promise<boolean> {
@@ -35,16 +33,40 @@ export class PolicyRepository implements IPolicyRepository {
         return count > 0;
     }
 
-    async create(roleId: string, data: PolicyRequestDto): Promise<Policy> {
+    async create(
+        roleId: string,
+        {
+            subject,
+            action,
+            conditions,
+            inverted,
+            reason,
+        }: PolicyCreateRequestDto
+    ): Promise<Policy> {
         return this.databaseService.client.policy.create({
-            data: { ...data, roleId },
+            data: {
+                roleId,
+                subject,
+                action,
+                conditions: conditions ?? Prisma.DbNull,
+                inverted: inverted ?? false,
+                reason: reason ?? null,
+            },
         });
     }
 
-    async update(id: string, data: PolicyUpdateRequestDto): Promise<Policy> {
+    async update(
+        id: string,
+        { action, conditions, inverted, reason }: PolicyUpdateRequestDto
+    ): Promise<Policy> {
         return this.databaseService.client.policy.update({
             where: { id },
-            data,
+            data: {
+                action,
+                conditions: conditions ?? Prisma.DbNull,
+                inverted: inverted ?? false,
+                reason: reason ?? null,
+            },
         });
     }
 

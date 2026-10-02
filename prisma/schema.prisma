@@ -27,27 +27,31 @@ model ApiKey {
 
   @@unique(fields: [key])
   @@unique(fields: [hash])
-  @@index(fields: [isActive, type, createdAt(sort: Desc)])
-  @@index(fields: [name])
+  @@index(fields: [isActive, type, createdAt])
   @@map("api_keys")
 }
 
 model Role {
-  id          String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id          String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  scope       EnumRoleScope
+  key         String
   name        String
   description String?
-  type        EnumRoleType @default(user)
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.Uuid
 
-  policies Policy[] @relation("RolePolicy")
-  users    User[]   @relation("UserRole")
+  policies                        Policy[]          @relation("RolePolicy")
+  users                           User[]            @relation("UserRole")
+  workspaceMembers                WorkspaceMember[] @relation("WorkspaceMemberRole")
+  projectMembers                  ProjectMember[]   @relation("ProjectMemberRole")
+  workspaceInvitesAsWorkspaceRole WorkspaceInvite[] @relation("WorkspaceInviteWorkspaceRole")
+  workspaceInvitesAsProjectRole   WorkspaceInvite[] @relation("WorkspaceInviteProjectRole")
 
-  @@unique(fields: [name])
-  @@index(fields: [type, createdAt(sort: Desc)])
+  @@unique(fields: [scope, key])
+  @@index(fields: [scope, createdAt])
   @@map("roles")
 }
 
@@ -57,6 +61,10 @@ model Policy {
   subject EnumPolicySubject
   action  EnumPolicyAction[]
 
+  conditions Json?
+  inverted   Boolean @default(false)
+  reason     String?
+
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
   updatedAt DateTime @updatedAt
@@ -64,7 +72,7 @@ model Policy {
 
   role Role @relation("RolePolicy", fields: [roleId], references: [id], onDelete: Cascade)
 
-  @@unique(fields: [roleId, subject])
+  @@index(fields: [roleId, subject])
   @@map("policies")
 }
 
@@ -111,7 +119,6 @@ model UserMobileNumber {
   verifications Verification[] @relation("UserMobileNumberVerification")
 
   @@unique(fields: [userId, countryId, phoneCode, number])
-  @@index(fields: [userId, isVerified])
   @@map("user_mobile_numbers")
 }
 
@@ -152,40 +159,38 @@ model User {
   cookiesAccepted        Boolean @default(false)
   marketingAccepted      Boolean @default(false)
 
-  mobileNumbers            UserMobileNumber[]         @relation("UserMobileNumberUser")
-  verifications            Verification[]             @relation("UserVerifications")
-  passwordHistories        PasswordHistory[]          @relation("UserPasswordHistories")
-  activityLogs             ActivityLog[]              @relation("UserActivityLogs")
-  role                     Role                       @relation("UserRole", fields: [roleId], references: [id])
-  country                  Country                    @relation("UserCountry", fields: [countryId], references: [id])
-  sessions                 Session[]                  @relation("UserSessions")
-  acceptances              TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
-  forgotPasswords          ForgotPassword[]           @relation("UserForgotPassword")
-  twoFactor                TwoFactor?                 @relation("UserTwoFactor")
-  photo                    UserPhoto?                 @relation("UserPhoto")
-  notifications            Notification[]             @relation("UserNotifications")
-  notificationSettings     NotificationUserSetting[]  @relation("UserNotificationSettings")
-  deviceOwnerships         DeviceOwnership[]          @relation("DeviceOwnershipUser")
-  featureFlagUsers         FeatureFlagUser[]          @relation("FeatureFlagUserUser")
-  revokedSessions          Session[]                  @relation("SessionRevokedByUser")
-  revokedDeviceOwnerships  DeviceOwnership[]          @relation("DeviceOwnershipRevokedByUser")
-  workspaceMembers         WorkspaceMember[]          @relation("UserWorkspaceMembers")
-  workspaceJoinRequests    WorkspaceJoinRequest[]     @relation("UserWorkspaceJoinRequests")
-  reviewedWorkspaceRequests WorkspaceJoinRequest[]    @relation("WorkspaceJoinRequestReviewedBy")
-  sentWorkspaceInvites      WorkspaceInvite[]         @relation("WorkspaceInviteInvitedBy")
-  acceptedWorkspaceInvites  WorkspaceInvite[]         @relation("WorkspaceInviteAcceptedBy")
-  projectMembers           ProjectMember[]            @relation("UserProjectMembers")
-  lastWorkspace            Workspace?                 @relation("UserLastWorkspace", fields: [lastWorkspaceId], references: [id], onDelete: SetNull)
+  mobileNumbers             UserMobileNumber[]         @relation("UserMobileNumberUser")
+  verifications             Verification[]             @relation("UserVerifications")
+  passwordHistories         PasswordHistory[]          @relation("UserPasswordHistories")
+  activityLogs              ActivityLog[]              @relation("UserActivityLogs")
+  role                      Role                       @relation("UserRole", fields: [roleId], references: [id])
+  country                   Country                    @relation("UserCountry", fields: [countryId], references: [id])
+  sessions                  Session[]                  @relation("UserSessions")
+  acceptances               TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
+  forgotPasswords           ForgotPassword[]           @relation("UserForgotPassword")
+  twoFactor                 TwoFactor?                 @relation("UserTwoFactor")
+  photo                     UserPhoto?                 @relation("UserPhoto")
+  notifications             Notification[]             @relation("UserNotifications")
+  notificationSettings      NotificationUserSetting[]  @relation("UserNotificationSettings")
+  deviceOwnerships          DeviceOwnership[]          @relation("DeviceOwnershipUser")
+  featureFlagUsers          FeatureFlagUser[]          @relation("FeatureFlagUserUser")
+  revokedSessions           Session[]                  @relation("SessionRevokedByUser")
+  revokedDeviceOwnerships   DeviceOwnership[]          @relation("DeviceOwnershipRevokedByUser")
+  workspaceMembers          WorkspaceMember[]          @relation("UserWorkspaceMembers")
+  workspaceJoinRequests     WorkspaceJoinRequest[]     @relation("UserWorkspaceJoinRequests")
+  reviewedWorkspaceRequests WorkspaceJoinRequest[]     @relation("WorkspaceJoinRequestReviewedBy")
+  sentWorkspaceInvites      WorkspaceInvite[]          @relation("WorkspaceInviteInvitedBy")
+  acceptedWorkspaceInvites  WorkspaceInvite[]          @relation("WorkspaceInviteAcceptedBy")
+  projectMembers            ProjectMember[]            @relation("UserProjectMembers")
+  lastWorkspace             Workspace?                 @relation("UserLastWorkspace", fields: [lastWorkspaceId], references: [id], onDelete: SetNull)
 
   @@unique(fields: [username])
   @@unique(fields: [email])
-  @@index(fields: [id, deletedAt])
-  @@index(fields: [email, deletedAt])
-  @@index(fields: [status, deletedAt, createdAt(sort: Desc)])
-  @@index(fields: [roleId, status, deletedAt])
-  @@index(fields: [countryId, status, signUpAt(sort: Desc)])
-  @@index(fields: [signUpAt(sort: Desc)])
-  @@index(fields: [deletedAt, signUpAt(sort: Desc)])
+  @@index(fields: [status, deletedAt, createdAt])
+  @@index(fields: [roleId, deletedAt, createdAt])
+  @@index(fields: [countryId, deletedAt, createdAt])
+  @@index(fields: [deletedAt, createdAt])
+  @@index(fields: [signUpAt])
   @@map("users")
 }
 
@@ -224,8 +229,9 @@ model Verification {
   mobileNumber UserMobileNumber? @relation("UserMobileNumberVerification", fields: [mobileNumberId], references: [id], onDelete: Cascade)
 
   @@unique(fields: [reference])
-  @@index(fields: [token, expiredAt, isUsed, type])
-  @@index(fields: [userId, type, isUsed])
+  @@index(fields: [token])
+  @@index(fields: [userId, type, createdAt])
+  @@index(fields: [expiredAt])
   @@map("verifications")
 }
 
@@ -241,9 +247,8 @@ model PasswordHistory {
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
 
-  @@index(fields: [userId, expiredAt(sort: Desc)])
-  @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [userId, type, createdAt(sort: Desc)])
+  @@index(fields: [userId, expiredAt])
+  @@index(fields: [userId, createdAt, id])
   @@map("password_histories")
 }
 
@@ -266,11 +271,11 @@ model ActivityLog {
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
 
-  @@index(fields: [userId, workspaceId, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [workspaceId, createdAt(sort: Desc)])
-  @@index(fields: [action, createdAt(sort: Desc)])
-  @@index(fields: [userId, action, createdAt(sort: Desc)])
+  @@index(fields: [userId, workspaceId, createdAt, id])
+  @@index(fields: [userId, createdAt, id])
+  @@index(fields: [workspaceId, createdAt])
+  @@index(fields: [action, createdAt])
+  @@index(fields: [createdAt], type: Brin)
   @@map("activity_logs")
 }
 
@@ -297,12 +302,9 @@ model Session {
   updatedBy String?  @db.Uuid
 
   @@unique(fields: [userId, jti])
-  @@index(fields: [userId, expiredAt(sort: Desc), isRevoked])
-  @@index(fields: [userId, isRevoked, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [isRevoked, expiredAt(sort: Asc)])
-  @@index(fields: [userId, deviceOwnershipId, isRevoked])
-  @@index(fields: [deviceOwnershipId])
-  @@index(fields: [createdAt(sort: Desc)])
+  @@index(fields: [userId, isRevoked, createdAt, id])
+  @@index(fields: [deviceOwnershipId, isRevoked, expiredAt])
+  @@index(fields: [expiredAt])
   @@map("sessions")
 }
 
@@ -323,7 +325,7 @@ model Device {
   ownerships DeviceOwnership[] @relation("DeviceOwnershipDevice")
 
   @@unique(fields: [fingerprint])
-  @@index(fields: [createdAt(sort: Desc)])
+  @@index(fields: [lastActiveAt])
   @@map("devices")
 }
 
@@ -351,11 +353,9 @@ model DeviceOwnership {
   user      User      @relation("DeviceOwnershipUser", fields: [userId], references: [id], onDelete: Cascade)
   sessions  Session[] @relation("DeviceOwnershipSessions")
 
-  @@index(fields: [deviceId, revokedAt])
-  @@index(fields: [userId, isRevoked, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [userId, revokedAt])
-  @@index(fields: [deviceId, userId, revokedAt])
-  @@index(fields: [userId, lastActiveAt(sort: Desc)])
+  @@index(fields: [userId, isRevoked, createdAt, id])
+  @@index(fields: [deviceId, userId, isRevoked])
+  @@index(fields: [userId, lastActiveAt])
   @@map("device_ownerships")
 }
 
@@ -392,7 +392,6 @@ model TwoFactorBackupCode {
   twoFactor TwoFactor @relation(fields: [twoFactorId], references: [id], onDelete: Cascade)
 
   @@unique(fields: [twoFactorId, codeHash])
-  @@index(fields: [twoFactorId, usedAt])
   @@map("two_factor_backup_codes")
 }
 
@@ -412,7 +411,7 @@ model TermPolicy {
   userAcceptances TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceTermPolicy")
 
   @@unique(fields: [type, version])
-  @@index(fields: [type, status, publishedAt(sort: Desc)])
+  @@index(fields: [type, status, publishedAt])
   @@map("term_policies")
 }
 
@@ -448,8 +447,7 @@ model TermPolicyUserAcceptance {
   createdBy String?  @db.Uuid
 
   @@unique(fields: [userId, termPolicyId])
-  @@index(fields: [termPolicyId, acceptedAt(sort: Desc)])
-  @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [userId, createdAt, id])
   @@map("term_policy_user_acceptances")
 }
 
@@ -469,7 +467,6 @@ model FeatureFlag {
   targetUsers FeatureFlagUser[] @relation("FeatureFlagUserFeatureFlag")
 
   @@unique(fields: [key])
-  @@index(fields: [isEnable])
   @@map("feature_flags")
 }
 
@@ -482,7 +479,6 @@ model FeatureFlagUser {
   user        User        @relation("FeatureFlagUserUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique(fields: [featureFlagId, userId])
-  @@index(fields: [userId])
   @@map("feature_flag_users")
 }
 
@@ -502,8 +498,10 @@ model ForgotPassword {
   user User @relation("UserForgotPassword", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique(fields: [reference])
-  @@index(fields: [token, expiredAt, isUsed])
-  @@index(fields: [isUsed, createdAt(sort: Desc)])
+  @@index(fields: [token])
+  @@index(fields: [userId, createdAt])
+  @@index(fields: [createdAt])
+  @@index(fields: [expiredAt])
   @@map("forgot_passwords")
 }
 
@@ -526,10 +524,7 @@ model Notification {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.Uuid
 
-  @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [userId, isRead, createdAt(sort: Desc)])
-  @@index(fields: [userId, type, createdAt(sort: Desc)])
-  @@index(fields: [userId, priority, isRead, createdAt(sort: Desc)])
+  @@index(fields: [userId, createdAt, id])
   @@map("notifications")
 }
 
@@ -547,7 +542,6 @@ model NotificationDelivery {
   updatedAt DateTime @updatedAt
 
   @@unique(fields: [notificationId, channel])
-  @@index(fields: [channel, createdAt(sort: Desc)])
   @@map("notification_deliveries")
 }
 
@@ -566,7 +560,6 @@ model NotificationUserSetting {
   updatedBy String?  @db.Uuid
 
   @@unique(fields: [userId, channel, type])
-  @@index(fields: [userId, isActive])
   @@map("notification_user_settings")
 }
 
@@ -592,21 +585,20 @@ model Workspace {
   deletedBy String?   @db.Uuid
 
   @@unique(fields: [slug])
-  @@index(fields: [isPublic, deletedAt, createdAt(sort: Desc)])
-  @@index(fields: [deletedAt, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [deletedAt, name])
+  @@index(fields: [deletedAt, createdAt, id])
   @@map("workspaces")
 }
 
 model WorkspaceMember {
-  id          String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  workspaceId String                  @db.Uuid
-  userId      String                  @db.Uuid
-  role        EnumWorkspaceMemberRole
-  joinedAt    DateTime                @default(now())
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId String   @db.Uuid
+  userId      String   @db.Uuid
+  roleId      String   @db.Uuid
+  joinedAt    DateTime @default(now())
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation("UserWorkspaceMembers", fields: [userId], references: [id], onDelete: Cascade)
+  role      Role      @relation("WorkspaceMemberRole", fields: [roleId], references: [id])
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
@@ -615,8 +607,7 @@ model WorkspaceMember {
 
   @@unique(fields: [workspaceId, userId])
   @@index(fields: [userId])
-  @@index(fields: [workspaceId, role, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [workspaceId, roleId, joinedAt, id])
   @@index(fields: [workspaceId, joinedAt, id])
   @@map("workspace_members")
 }
@@ -625,9 +616,9 @@ model WorkspaceInvite {
   id               String                    @id @default(dbgenerated("uuidv7()")) @db.Uuid
   workspaceId      String                    @db.Uuid
   email            String
-  workspaceRole    EnumWorkspaceMemberRole
+  workspaceRoleId  String                    @db.Uuid
   projectId        String?                   @db.Uuid
-  projectRole      EnumProjectMemberRole?
+  projectRoleId    String?                   @db.Uuid
   token            String
   reference        String
   expiredAt        DateTime
@@ -636,10 +627,12 @@ model WorkspaceInvite {
   acceptedAt       DateTime?
   acceptedByUserId String?                   @db.Uuid
 
-  workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  project    Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  invitedBy  User?     @relation("WorkspaceInviteInvitedBy", fields: [invitedByUserId], references: [id], onDelete: SetNull)
-  acceptedBy User?     @relation("WorkspaceInviteAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceRole Role      @relation("WorkspaceInviteWorkspaceRole", fields: [workspaceRoleId], references: [id])
+  project       Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectRole   Role?     @relation("WorkspaceInviteProjectRole", fields: [projectRoleId], references: [id])
+  invitedBy     User?     @relation("WorkspaceInviteInvitedBy", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+  acceptedBy    User?     @relation("WorkspaceInviteAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
@@ -648,11 +641,10 @@ model WorkspaceInvite {
 
   @@unique(fields: [token])
   @@unique(fields: [reference])
-  @@index(fields: [workspaceId, status, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [workspaceId, status, createdAt, id])
+  @@index(fields: [workspaceId, createdAt, id])
+  @@index(fields: [status, expiredAt])
   @@index(fields: [email, status])
-  @@index(fields: [token, expiredAt, status])
-  @@index(fields: [workspaceId, expiredAt])
   @@map("workspace_invites")
 }
 
@@ -675,9 +667,8 @@ model WorkspaceJoinRequest {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.Uuid
 
-  @@index(fields: [workspaceId, status, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [userId, status])
+  @@index(fields: [workspaceId, status, createdAt, id])
+  @@index(fields: [workspaceId, createdAt, id])
   @@map("workspace_join_requests")
 }
 
@@ -700,19 +691,20 @@ model Project {
   deletedBy String?   @db.Uuid
 
   @@unique(fields: [workspaceId, slug])
-  @@index(fields: [workspaceId, deletedAt, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [workspaceId, deletedAt, createdAt, id])
   @@map("projects")
 }
 
 model ProjectMember {
-  id        String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  projectId String                @db.Uuid
-  userId    String                @db.Uuid
-  role      EnumProjectMemberRole
-  joinedAt  DateTime              @default(now())
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  projectId String   @db.Uuid
+  userId    String   @db.Uuid
+  roleId    String   @db.Uuid
+  joinedAt  DateTime @default(now())
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user    User    @relation("UserProjectMembers", fields: [userId], references: [id], onDelete: Cascade)
+  role    Role    @relation("ProjectMemberRole", fields: [roleId], references: [id])
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
@@ -721,8 +713,7 @@ model ProjectMember {
 
   @@unique(fields: [projectId, userId])
   @@index(fields: [userId])
-  @@index(fields: [projectId, role, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [projectId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [projectId, roleId, joinedAt, id])
   @@index(fields: [projectId, joinedAt, id])
   @@map("project_members")
 }
@@ -762,10 +753,10 @@ enum EnumUserLoginWith {
   socialApple
 }
 
-enum EnumRoleType {
-  superAdmin
-  admin
-  user
+enum EnumRoleScope {
+  platform
+  workspace
+  project
 }
 
 enum EnumPolicyAction {
@@ -778,18 +769,22 @@ enum EnumPolicyAction {
 
 enum EnumPolicySubject {
   all
-  apiKey
-  role
-  user
-  session
-  activityLog
-  passwordHistory
-  termPolicy
-  featureFlag
-  device
-  workspace
-  project
+  ApiKey
+  Role
+  User
+  Session
+  ActivityLog
+  PasswordHistory
+  TermPolicy
+  FeatureFlag
+  Device
+  Workspace
+  Project
   analytic
+  WorkspaceMember
+  WorkspaceInvite
+  WorkspaceJoinRequest
+  ProjectMember
 }
 
 enum EnumApiKeyType {
@@ -879,9 +874,7 @@ enum EnumActivityLogAction {
   adminApiKeyUpdateDate
   adminApiKeyUpdateStatus
   adminApiKeyDelete
-  adminRoleCreate
   adminRoleUpdate
-  adminRoleDelete
   adminPolicyCreate
   adminPolicyUpdate
   adminPolicyDelete
@@ -973,12 +966,6 @@ enum EnumBiometricType {
   faceId
 }
 
-enum EnumWorkspaceMemberRole {
-  owner
-  admin
-  member
-}
-
 enum EnumWorkspaceInviteStatus {
   pending
   accepted
@@ -1001,10 +988,4 @@ enum EnumWorkspaceJoinRejectReason {
   wrongWorkspace
   memberLimitReached
   other
-}
-
-enum EnumProjectMemberRole {
-  admin
-  member
-  viewer
 }

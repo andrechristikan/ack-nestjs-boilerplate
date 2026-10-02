@@ -36,6 +36,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
     const invite = mock<INotificationWorkspaceInviteEncryptedPayload>({
         encryptedInviteAcceptLink: 'invite-ciphertext',
         reference: 'WI-REF',
+        workspaceRoleName: 'Member',
     });
     const unregistered = mock<INotificationEmailSendUnregisteredPayload>({
         email: 'invitee@example.com',
@@ -44,6 +45,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
         mock<INotificationWorkspaceInviteUnregisteredEncryptedPayload>({
             encryptedInviteAcceptLink: 'unregistered-ciphertext',
             reference: 'WI-UNREGISTERED',
+            workspaceRoleName: 'Member',
         });
     const request = mock<INotificationWorkspaceJoinRequestEncryptedPayload>({
         encryptedJoinRequestReviewLink: 'review-ciphertext',
@@ -171,6 +173,24 @@ describe('NotificationEmailWorkspaceDomain', () => {
                 }),
             })
         );
+    });
+
+    it('puts the workspace role name in the invitation template data for registered and unregistered recipients', async () => {
+        await service.processWorkspaceInvite(payload, invite);
+        await service.processWorkspaceInviteUnregistered(
+            unregistered,
+            unregisteredInvite
+        );
+
+        for (const call of awsSESService.send.mock.calls) {
+            expect(call[0].templateData).toEqual(
+                expect.objectContaining({ workspaceRoleName: 'Member' })
+            );
+            expect(call[0].templateData).not.toHaveProperty(
+                'workspaceMemberRole'
+            );
+        }
+        expect(awsSESService.send).toHaveBeenCalledTimes(2);
     });
 
     it('rethrows unregistered invitation provider failures', async () => {

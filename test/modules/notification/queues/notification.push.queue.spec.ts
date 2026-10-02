@@ -83,6 +83,36 @@ describe('NotificationPushQueue', () => {
         );
     });
 
+    it('enqueues the workspace invite push with the workspace role name', async () => {
+        await service.sendWorkspaceInvite(
+            send,
+            mock<INotificationWorkspaceInvitePushPayload>({
+                workspaceId: 'workspace-id',
+                workspaceName: 'Workspace',
+                inviterName: 'Inviter',
+                workspaceRoleName: 'Member',
+                reference: 'invite-ref',
+                expiredAt: '2026-01-02T00:00:00.000Z',
+            })
+        );
+
+        expect(queue.add).toHaveBeenCalledWith(
+            expect.any(String),
+            {
+                send,
+                data: {
+                    workspaceId: 'workspace-id',
+                    workspaceName: 'Workspace',
+                    inviterName: 'Inviter',
+                    workspaceRoleName: 'Member',
+                    reference: 'invite-ref',
+                    expiredAt: '2026-01-02T00:00:00.000Z',
+                },
+            },
+            expect.anything()
+        );
+    });
+
     it('only schedules token cleanup when Firebase rejected tokens', async () => {
         await service.sendCleanupTokens('user-id', []);
         expect(queue.add).not.toHaveBeenCalled();

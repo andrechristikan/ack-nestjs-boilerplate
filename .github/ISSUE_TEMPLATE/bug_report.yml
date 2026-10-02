@@ -82,13 +82,13 @@ body:
       id: environment
       attributes:
           label: Environment
-          description: Node, pnpm, Mongo setup, how you run the stack, and project version or commit. Engines are Node >= 24.15.0 and pnpm >= 10.25.0 (packageManager pin `pnpm@12.5.1`).
+          description: Node, pnpm, PostgreSQL setup, how you run the stack, and project version or commit. Engines are Node >= 24.15.0 and pnpm >= 10.25.0 (packageManager pin `pnpm@12.5.1`).
           placeholder: |
               OS: macOS 14
               Node: v24.15.0
               pnpm: 12.5.1
               Project: 9.0.0 / commit hash
-              MongoDB: replica set (Compose) | standalone
+              PostgreSQL: Docker Compose | managed instance
               Running via: Docker Compose | manual
               Redis: (optional)
               Notes: e.g. after fresh `pnpm migration:seed`, specific `.env` values

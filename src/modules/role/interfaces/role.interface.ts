@@ -1,9 +1,10 @@
-import { EnumRoleType } from '@generated/prisma-client/client';
+import type { EnumRoleScope } from '@generated/prisma-client/client';
 import type { Policy, Role } from '@generated/prisma-client/client';
 
 export interface IRole {
     id: string;
-    type: EnumRoleType;
+    scope: EnumRoleScope;
+    key: string;
     name: string;
 }
 
@@ -16,10 +17,6 @@ export type IRoleWithPolicyCount = Role & {
 };
 
 export interface IRoleUpdate {
+    name: string;
     description?: string;
-    type: EnumRoleType;
-}
-
-export interface IRoleCreate extends IRoleUpdate {
-    name: Lowercase<string>;
 }

@@ -8,7 +8,8 @@ export const ActivityLogRoleMetadataSchema = z
     .strictObject({
         roleId: z.string(),
         roleName: z.string(),
-        roleType: z.string(),
+        roleKey: z.string(),
+        roleScope: z.string(),
         timestamp: z.union([z.string(), z.date()]),
     })
     .partial();

@@ -8,10 +8,8 @@ import {
 } from '@migration/data/migration.user.data';
 import type { IMigrationUserData } from '@migration/interfaces/migration.interface';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import {
-    EnumWorkspaceMemberRole,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumRoleScope, Prisma } from '@generated/prisma-client/client';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -93,6 +91,25 @@ export class MigrationWorkspaceSeed
             return;
         }
 
+        const ownerRole = await this.databaseService.client.role.findUnique({
+            where: {
+                scope_key: {
+                    scope: EnumRoleScope.workspace,
+                    key: EnumRoleWorkspaceKey.owner,
+                },
+            },
+            select: {
+                id: true,
+            },
+        });
+
+        if (!ownerRole) {
+            this.logger.warn(
+                'Workspace owner role not found, cannot seed workspaces.'
+            );
+            return;
+        }
+
         this.logger.log(
             `Found ${seededUsers.length} Users to seed a default Workspace for.`
         );
@@ -123,7 +140,7 @@ export class MigrationWorkspaceSeed
                                 tx,
                                 workspace.id,
                                 user.id,
-                                EnumWorkspaceMemberRole.owner,
+                                ownerRole.id,
                                 MigrationUserSuperAdminId
                             );
                         },
@@ -174,7 +191,10 @@ export class MigrationWorkspaceSeed
                                 members: {
                                     some: {
                                         userId: user.id,
-                                        role: EnumWorkspaceMemberRole.owner,
+                                        role: {
+                                            scope: EnumRoleScope.workspace,
+                                            key: EnumRoleWorkspaceKey.owner,
+                                        },
                                     },
                                 },
                             })

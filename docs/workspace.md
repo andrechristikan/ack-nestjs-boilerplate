@@ -6,7 +6,7 @@ Workspace lives in `src/modules/workspace`.
 
 A workspace is the tenancy boundary. Every platform user belongs to at least one, and workspace-scoped `/user` routes select the active workspace through the **`x-workspace-id` request header**, never through the path.
 
-The module covers four things: the workspace itself and its membership roles, invites addressed to an email, join requests raised against a public workspace, and the ownership rules that keep a workspace from ending up with nobody in charge.
+The module covers four things: the workspace itself and its member roles, invites addressed to an email, join requests raised against a public workspace, and the ownership rules that keep a workspace from ending up with nobody in charge.
 
 ## Related Documents
 
@@ -25,7 +25,7 @@ The module covers four things: the workspace itself and its membership roles, in
 - [Selecting the Active Workspace](#selecting-the-active-workspace)
 - [Guards and Decorators](#guards-and-decorators)
     - [WorkspaceProtected()](#workspaceprotected)
-    - [WorkspaceMemberProtected(...roles)](#workspacememberprotectedroles)
+    - [WorkspaceMemberProtected()](#workspacememberprotected)
     - [WorkspaceCurrent() / WorkspaceMemberCurrent()](#workspacecurrent--workspacemembercurrent)
     - [The /admin scope takes none of this](#the-admin-scope-takes-none-of-this)
 - [Personal Workspace](#personal-workspace)
@@ -46,7 +46,7 @@ The module covers four things: the workspace itself and its membership roles, in
 
 ## Data Model
 
-### `Workspace` (`Workspaces`)
+### `Workspace` (`workspaces`)
 
 | Field | Type | Notes |
 |---|---|---|
@@ -63,11 +63,11 @@ The module covers four things: the workspace itself and its membership roles, in
 
 `WorkspaceResponseSchema` declares every audit column, `deletedBy` included, so each workspace row in a response carries it. The user routes read live rows only, so `deletedBy` is `null` there; the admin routes apply no live filter, so a soft-deleted row shows who deleted it.
 
-### `WorkspaceMember` (`WorkspaceMembers`)
+### `WorkspaceMember` (`workspace_members`)
 
 Fields:
 
-- `workspaceId`, `userId`, `role` (`EnumWorkspaceMemberRole`), `joinedAt`
+- `workspaceId`, `userId`, `roleId` (foreign key to a `Role` of scope `workspace`), `joinedAt`
 - plus the audit columns
 
 `@@unique([workspaceId, userId])`. No soft-delete columns: removing a member is a hard delete.
@@ -77,12 +77,12 @@ A member row is created with `createdBy` and `updatedBy` set to the same user:
 - `WorkspaceMemberRepository.createOwnerInTx`, called when a workspace is created, writes the owner
 - `WorkspaceMemberRepository.createInTx` writes the acting user it receives: the reviewer on a join-request accept, the invitee on an invite accept, and the seed actor in the workspace seed
 
-### `WorkspaceInvite` (`WorkspaceInvites`)
+### `WorkspaceInvite` (`workspace_invites`)
 
 Fields:
 
-- `workspaceId`, `email`, `workspaceRole`
-- optional `projectId` + `projectRole`
+- `workspaceId`, `email`, `workspaceRoleId` (foreign key to a `Role` of scope `workspace`)
+- optional `projectId` + `projectRoleId` (foreign key to a `Role` of scope `project`)
 - `token`, `reference`, `expiredAt`, `status`
 - `invitedByUserId`, `acceptedAt`, `acceptedByUserId`
 
@@ -90,15 +90,18 @@ Fields:
 
 **`token` stores the SHA-256 hash, never the plain token.** The plain token exists only in the invite link that is emailed; a lookup hashes the incoming token and matches on that.
 
-### `WorkspaceJoinRequest` (`WorkspaceJoinRequests`)
+### `WorkspaceJoinRequest` (`workspace_join_requests`)
 
 `workspaceId`, `userId`, `status`, optional `message`, `rejectReasonCode`, `reviewedByUserId`, `reviewedAt`.
+
+### Roles
+
+The member and invite roles are rows of the shared `Role` model, with scope `workspace` and keys `owner`, `admin`, `member` (`EnumRoleWorkspaceKey`). Member and invite reads return `role: { id, scope, key, name }` (`RoleRefResponseSchema`). Role assignment validates the scope: a role of another scope is rejected with `RoleScopeMismatchException` (400, `50501`). See [Authorization][ref-doc-authorization].
 
 ### Enums
 
 | Enum | Values |
 |---|---|
-| `EnumWorkspaceMemberRole` | `owner`, `admin`, `member` |
 | `EnumWorkspaceInviteStatus` | `pending`, `accepted`, `revoked`, `expired` |
 | `EnumWorkspaceJoinRequestStatus` | `pending`, `accepted`, `rejected`, `cancelled` |
 | `EnumWorkspaceJoinRejectReason` | `notAFit`, `incompleteProfile`, `spam`, `unknownRequester`, `wrongWorkspace`, `memberLimitReached`, `other` |
@@ -110,7 +113,8 @@ Fields:
 
 1. `RequestWorkspaceMiddleware` copies the `x-workspace-id` header into the request store under the key from `workspace.storeKey` (`workspaceId`), or `null` when the header is absent. It performs no validation.
 2. `WorkspaceGuard` reads that key, loads the active workspace, and stores the row under `WorkspaceStoreKey`. A missing header and an unknown id both throw `WorkspaceNotFoundException` (404, `51600`).
-3. `WorkspaceMemberGuard` then confirms the caller's membership and stores the `WorkspaceMember` row.
+3. `WorkspaceMemberGuard` then confirms the caller's membership and stores the `WorkspaceMember` row with its role under `WorkspaceMemberStoreKey`. It loads no policies.
+4. A policy decorator, when the route carries one, builds the request ability from the platform role and the workspace role of that member.
 
 `POST /user/workspace/switch` takes the target id from the body, re-runs the same two checks the guards would have run (the workspace resolves and is active, the caller is a member of it), then records the choice on `user.lastWorkspaceId` and `lastWorkspaceChangedAt`. It does **not** change how a request is scoped: the client still has to send `x-workspace-id` on every workspace-scoped call.
 
@@ -132,17 +136,29 @@ Located at `src/modules/workspace/decorators`. For where these sit in the full p
 
 Requires `x-workspace-id` to resolve to an existing, non-deleted workspace, through `WorkspaceDomain.validateWorkspaceGuard`, and stores the row under `WorkspaceStoreKey`. A missing header and an id that matches no active workspace both throw `WorkspaceNotFoundException` (404, `51600`) - the two cases are deliberately indistinguishable.
 
-### `WorkspaceMemberProtected(...roles)`
+### `WorkspaceMemberProtected()`
 
-**Method decorator**. Stack it above `@WorkspaceProtected()`. With no arguments it applies `WorkspaceMemberGuard` alone; with roles it applies `WorkspaceMemberGuard` **and** `WorkspaceRoleGuard`.
+**Method decorator**. Takes no arguments. Stack it above `@WorkspaceProtected()`. It applies `WorkspaceMemberGuard`.
 
-- `WorkspaceMemberGuard` confirms the user loaded by `UserGuard` has a `WorkspaceMember` row in the resolved workspace, and stores it under `WorkspaceMemberStoreKey`. No membership throws `WorkspaceMemberForbiddenException` (403, `51601`).
-- `WorkspaceRoleGuard` enforces the declared roles against that stored membership. A mismatch throws `WorkspaceRoleForbiddenException` (403, `51602`).
-- **The `owner` role always passes, whatever roles were declared.** Owner is never listed in a route's `allowedRoles`; folding it in would make every `@WorkspaceMemberProtected(admin)` route reject the owner.
+- `WorkspaceMemberGuard` confirms the user loaded by `UserGuard` has a `WorkspaceMember` row in the resolved workspace, and stores it with its minimal role (`id`, `scope`, `key`, `name`, no policies) under `WorkspaceMemberStoreKey`. No membership throws `WorkspaceMemberForbiddenException` (403, `51601`).
+- The guard is membership-only: it loads no policies and builds no ability.
+- What a member may do is decided by a workspace policy decorator (below). A route with no policy decorator is open to every member.
+
+### Workspace policy decorators
+
+Located at `src/modules/workspace/decorators`. Each composes `WorkspacePolicyAbilityGuard` with one enforcement guard and sits above `@WorkspaceMemberProtected()`. `WorkspacePolicyAbilityGuard` builds the ability from the platform role and the acting member's workspace role, with the workspace rules after the platform rules, and stores it under `PolicyAbilityStoreKey`. An ability a guard already stored is reused and never overwritten.
+
+| Decorator | Enforcement guard | Judges |
+|---|---|---|
+| `@WorkspacePolicyProtected(...actions)` | `WorkspacePolicyGuard` | The workspace record, tagged as `Workspace`. A route carrying `:workspaceId` (admin) resolves that workspace itself, soft-deleted ones included; a user route judges the workspace `WorkspaceGuard` stored |
+| `@WorkspaceMemberPolicyProtected(...actions)` | `WorkspaceMemberPolicyGuard` | The target member: `:workspaceMemberId`, or the acting member when the route carries no param. The target loads through the policy predicate, so a record the ability does not reach answers `WorkspaceMemberNotFoundException`, then the record is judged and stored for `@WorkspaceMemberTargetCurrent()` |
+| `@WorkspaceSubjectPolicyProtected({ subject, action })` | `PolicyGuard` | A subject-type check with no record: invite create, resend and revoke, join-request accept and reject, member list, analytics, project create |
+
+The `Workspace` and `WorkspaceMember` decorators take actions only, so the subject is fixed.
 
 ### `WorkspaceCurrent()` / `WorkspaceMemberCurrent()`
 
-**Parameter decorators** that read back the `Workspace` and `WorkspaceMember` the guards stored.
+**Parameter decorators** that read back the `Workspace` and the `WorkspaceMember` with its role that the guards stored. `@WorkspaceMemberTargetCurrent()` reads the target member `WorkspaceMemberPolicyGuard` authorized, which is the addressed member rather than the caller.
 
 - Each takes an optional field name typed against its model: `@WorkspaceCurrent()` returns the whole row, `@WorkspaceCurrent('id')` returns that field
 - Both return a non-null value, so a route that reads one without the matching guard, or names a field holding `null`, answers `RequestContextMissingException` (500, `50304`)
@@ -151,7 +167,7 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 
 ### The `/admin` scope takes none of this
 
-Admin routes reach the same resources through `@RoleProtected()` + `@PolicyProtected()` and take the workspace id from the **path**. They never read `x-workspace-id` and never carry a workspace guard.
+Admin routes reach the same resources through `@PlatformPolicyProtected()` and take the workspace id from the **path**. They never read `x-workspace-id` and never carry a workspace guard. A route that judges a workspace record writes `@WorkspacePolicyProtected()` above `@PlatformPolicyProtected()`, so the platform ability is stored first and the workspace decorator reuses it.
 
 ## Personal Workspace
 
@@ -194,34 +210,36 @@ Global prefix `/api` and version prefix `v1` apply as elsewhere. The controller 
 
 Mounted under `/user`. Every route carries `@FeatureFlagProtected('workspace')`.
 
-| Method | Path | Header | Minimum role |
+| Method | Path | Header | Gate |
 |---|---|---|---|
 | `GET` | `/user/workspace/list` | no | authenticated |
 | `POST` | `/user/workspace/create` | no | authenticated |
-| `GET` | `/user/workspace/get` | yes | `member` |
-| `PUT` | `/user/workspace/update` | yes | `admin` |
-| `PATCH` | `/user/workspace/update/is-public` | yes | `admin` |
-| `PATCH` | `/user/workspace/update/slug` | yes | `admin` |
+| `GET` | `/user/workspace/get` | yes | `workspace:[read]` |
+| `PUT` | `/user/workspace/update` | yes | `workspace:[update]` |
+| `PATCH` | `/user/workspace/update/is-public` | yes | `workspace:[update]` |
+| `PATCH` | `/user/workspace/update/slug` | yes | `workspace:[update]` |
 | `POST` | `/user/workspace/switch` | no | authenticated |
-| `POST` | `/user/workspace/ownership/transfer` | yes | `owner` |
-| `POST` | `/user/workspace/leave` | yes | `member` |
-| `DELETE` | `/user/workspace/delete` | yes | `owner` |
-| `GET` | `/user/workspace/member/list` | yes | `member` |
-| `PATCH` | `/user/workspace/member/:workspaceMemberId/role/update` | yes | `admin` |
-| `DELETE` | `/user/workspace/member/:workspaceMemberId/remove` | yes | `admin` |
-| `GET` | `/user/workspace/invite/list` | yes | `admin` |
-| `POST` | `/user/workspace/invite/create` | yes | `admin` |
-| `POST` | `/user/workspace/invite/:workspaceInviteId/resend` | yes | `admin` |
-| `DELETE` | `/user/workspace/invite/:workspaceInviteId/revoke` | yes | `admin` |
+| `POST` | `/user/workspace/ownership/transfer` | yes | `workspace:[update]`, and the actor holds the `owner` role |
+| `POST` | `/user/workspace/leave` | yes | any member |
+| `DELETE` | `/user/workspace/delete` | yes | `workspace:[delete]` |
+| `GET` | `/user/workspace/member/list` | yes | `workspaceMember:[read]` |
+| `PATCH` | `/user/workspace/member/:workspaceMemberId/role/update` | yes | `workspaceMember:[update]` |
+| `DELETE` | `/user/workspace/member/:workspaceMemberId/remove` | yes | `workspaceMember:[delete]` |
+| `GET` | `/user/workspace/invite/list` | yes | any member |
+| `POST` | `/user/workspace/invite/create` | yes | `workspaceInvite:[create]` |
+| `POST` | `/user/workspace/invite/:workspaceInviteId/resend` | yes | `workspaceInvite:[update]` |
+| `DELETE` | `/user/workspace/invite/:workspaceInviteId/revoke` | yes | `workspaceInvite:[delete]` |
 | `POST` | `/user/workspace/invite/claim` | no | authenticated |
 | `POST` | `/user/workspace/join-request/create` | no | authenticated |
-| `GET` | `/user/workspace/join-request/list` | yes | `admin` |
-| `POST` | `/user/workspace/join-request/:workspaceJoinRequestId/accept` | yes | `admin` |
-| `POST` | `/user/workspace/join-request/:workspaceJoinRequestId/reject` | yes | `admin` |
+| `GET` | `/user/workspace/join-request/list` | yes | any member |
+| `POST` | `/user/workspace/join-request/:workspaceJoinRequestId/accept` | yes | `workspaceJoinRequest:[update]` |
+| `POST` | `/user/workspace/join-request/:workspaceJoinRequestId/reject` | yes | `workspaceJoinRequest:[update]` |
 
-The `owner` role satisfies every `admin` and `member` requirement above.
+`GET /user/workspace/permissions` (header required) carries `@PolicyAbilityProtected(workspace)` and `@WorkspaceMemberProtected()` and returns the caller's effective actions per workspace-level subject. It enforces no policy.
 
-Current-workspace analytic metrics for the active `x-workspace-id` live under `/user/analytic/workspace/*` (summary for any member; invite funnel, join outcomes, member roles, and activity for workspace admin). See [Analytic](analytic.md).
+"Any member" means the route carries `@WorkspaceMemberProtected()` and no policy decorator. Every other gate is a CASL policy the caller's workspace role must grant. `workspaceInvite:[manage]` held by the seeded `owner` and `admin` covers create, resend, and revoke. The seeded `owner` holds every gate, and the seeded `admin` holds every one except `workspace:[delete]` and the `owner` check of the ownership transfer.
+
+Current-workspace analytic metrics for the active `x-workspace-id` live under `/user/analytic/workspace/*` (summary for any member; invite funnel, join outcomes, member roles, and activity for a role that holds `analytic:[read]`). See [Analytic](analytic.md).
 
 ### Public Scope
 
@@ -232,11 +250,11 @@ Mounted under `/public`. Unauthenticated, but still behind `@ApiKeyProtected()` 
 | `GET` | `/public/workspace/invite/:inviteToken/preview` | Shows workspace name, inviter name, offered role, and expiry for a pending invite. Nothing else |
 | `GET` | `/public/workspace/preview/:slug` | Shows `id`, `name`, `slug`, `description`, and the `createdAt` / `updatedAt` / `deletedAt` timestamps of a **public** workspace. The `createdBy` / `updatedBy` / `deletedBy` audit columns are excluded, so the preview never names who runs it |
 
-Neither preview answers `forbidden` for a resource that exists but is not eligible, so nothing can be probed: the slug preview collapses "private" and "unknown" into `notFound` (404, `51600`), and the invite preview collapses an unknown, expired, non-pending, or dead-workspace token into `inviteInvalid` (400, `51603`).
+Neither preview answers `forbidden` for a resource that exists but is not eligible, so nothing can be probed: the slug preview collapses "private" and "unknown" into `notFound` (404, `51600`), and the invite preview collapses an unknown, expired, non-pending, or dead-workspace token into `inviteInvalid` (400, `51602`).
 
 ### Admin Scope
 
-Mounted under `/admin`. Gated by `@RoleProtected(EnumRoleType.admin)` + `@PolicyProtected({ subject: workspace, action: [read] })`. **Not feature-flagged**, does not read `x-workspace-id`, read-only.
+Mounted under `/admin`. Gated by `@PlatformPolicyProtected({ subject: Workspace, action: [read] })` against the caller's platform role; the get and members routes add `@WorkspacePolicyProtected(read)`. **Not feature-flagged**, does not read `x-workspace-id`, read-only.
 
 | Method | Path | Description |
 |---|---|---|
@@ -246,32 +264,32 @@ Mounted under `/admin`. Gated by `@RoleProtected(EnumRoleType.admin)` + `@Policy
 
 ## Roles and Ownership
 
-| Role | May |
+| Role | Policies |
 |---|---|
-| `member` | Read the workspace, list members, leave |
-| `admin` | Everything a `member` may, plus update the workspace, manage members, and manage invites and join requests |
-| `owner` | Everything, plus transfer ownership and soft-delete the workspace |
+| `member` | `workspace:[read]`, `workspaceMember:[read]`. Lists members, invites, and join requests, and leaves |
+| `admin` | `workspace:[read, update]`, `workspaceMember:[read, update, delete]`, `workspaceInvite:[manage]`, `workspaceJoinRequest:[update]`, `project:[create, delete]`, `analytic:[read]` |
+| `owner` | `workspace:[manage]`, `workspaceMember:[read, update, delete]`, `workspaceInvite:[manage]`, `workspaceJoinRequest:[update]`, `project:[create, read, update, delete]`, `projectMember:[create, update, delete]`, `analytic:[read]` |
 
-**`owner` short-circuits the role guard.** It is never listed in a route's allowed roles; folding it in would make every `admin`-gated route reject the owner.
+Ownership transfer needs `workspace:[update]` and the `owner` role (`WorkspaceMemberPeerForbiddenException` otherwise), and workspace deletion needs `workspace:[delete]`, which only `owner` holds. The `owner` role is not assignable through a member role update or an invite (`WorkspaceOwnerRoleNotAssignableException`, 400, `51620`); ownership moves through the transfer route.
 
-**Peer rules** throw `WorkspaceMemberPeerForbiddenException` (403, `51608`). `assertPeerActionAllowed`, called on member role update and member removal, covers:
+**Peer rules** throw `WorkspaceMemberPeerForbiddenException` (403, `51607`). `assertPeerActionAllowed`, called on member role update and member removal, covers:
 
 - the target is an `owner`, or
 - the actor is an `admin` and the target is an `admin`.
 
 `removeMember` adds one check of its own, ahead of that call: the actor targets themselves. Use leave instead.
 
-**Transfer ownership** demotes the actor to `admin` and promotes the target to `owner` in one transaction, which `WorkspaceMemberRepository.transferOwnership` opens itself. Transferring to yourself throws `WorkspaceSelfTransferException` (400, `51619`); a non-member target throws `WorkspaceMemberNotFoundException` (404, `51606`).
+**Transfer ownership** demotes the actor to `admin` and promotes the target to `owner` in one transaction, which `WorkspaceMemberRepository.transferOwnership` opens itself. Transferring to yourself throws `WorkspaceSelfTransferException` (400, `51618`); a non-member target throws `WorkspaceMemberNotFoundException` (404, `51605`).
 
-**Leave** hard-deletes the caller's membership. The last remaining `owner` cannot leave: `WorkspaceLastOwnerException` (400, `51607`). Transfer ownership first.
+**Leave** hard-deletes the caller's membership. The last remaining `owner` cannot leave: `WorkspaceLastOwnerException` (400, `51606`). Transfer ownership first.
 
-**Workspace cap.** `workspace.maxWorkspacesPerUser` (10) counts memberships with role `owner` on non-deleted workspaces, and is enforced **only in `POST /user/workspace/create`**, throwing `WorkspaceCapReachedException` (400, `51604`). Personal workspaces created during user creation, invite claims, and join-request acceptance do not consult the cap.
+**Workspace cap.** `workspace.maxWorkspacesPerUser` (10) counts memberships with the `owner` role on non-deleted workspaces, and is enforced **only in `POST /user/workspace/create`**, throwing `WorkspaceCapReachedException` (400, `51603`). Personal workspaces created during user creation, invite claims, and join-request acceptance do not consult the cap.
 
 ## Invites
 
 An invite is addressed to an email, not to a user, so it works whether or not that address already has an account.
 
-**Create.** `POST /user/workspace/invite/create` requires `admin`. Steps:
+**Create.** `POST /user/workspace/invite/create` requires `workspaceInvite:[create]`. The body carries `workspaceRoleId` and, for a project invite, `projectId` with `projectRoleId`; both role ids come from `GET /shared/role/list` and are validated against their scope. Steps:
 
 1. Generates a random token and stores only its SHA-256 hash
 2. Mints a `WIN-` prefixed reference
@@ -279,9 +297,12 @@ An invite is addressed to an email, not to a user, so it works whether or not th
 
 Constraints:
 
-- `projectId` and `projectRole` must be supplied together or not at all (`WorkspaceInviteRoleRequiredException`, 400, `51611`)
-- the project must belong to this workspace (`WorkspaceInviteProjectMismatchException`, 400, `51610`)
-- a second pending invite to the same address in the same workspace throws `WorkspaceInviteDuplicateException` (400, `51609`)
+- `projectId` and `projectRoleId` must be supplied together or not at all (`WorkspaceInviteRoleRequiredException`, 400, `51610`)
+- the project must belong to this workspace (`WorkspaceInviteProjectMismatchException`, 400, `51609`)
+- a second pending invite to the same address in the same workspace throws `WorkspaceInviteDuplicateException` (400, `51608`)
+- the `owner` role is rejected as `workspaceRoleId` (`WorkspaceOwnerRoleNotAssignableException`, 400, `51620`)
+
+**Response.** Create and resend both return `WorkspaceInviteResponseDto`, built by `WorkspaceUtil.mapInvite`. The hashed token is not part of it, and `workspaceRole` and `projectRole` each hold `{ id, scope, key, name }` (`RoleRefResponseSchema`).
 
 **Expiry** comes from the request's `expiryDuration` (`EnumWorkspaceInviteExpiry`), defaulting to `workspace.invite.expiredInDays` (7).
 
@@ -297,21 +318,21 @@ Create and resend look the invited address up among active users. `sendInviteNot
 
 The two processes share one SES template. See [Notification][ref-doc-notification] for the payload encryption.
 
-**Resend** rotates the token, reference, and expiry, then sends again. Its body is optional and carries `expiryDuration` alone (`WorkspaceInviteResendRequestSchema`, a `.pick()` of the create schema); omitting it falls back to `workspace.invite.expiredInDays` (7) rather than to the duration the original invite was created with. Only a `pending` invite may be resent or revoked, otherwise `WorkspaceInviteAlreadyProcessedException` (400, `51613`).
+**Resend** rotates the token, reference, and expiry, then sends again. Its body is optional and carries `expiryDuration` alone (`WorkspaceInviteResendRequestSchema`, a `.pick()` of the create schema); omitting it falls back to `workspace.invite.expiredInDays` (7) rather than to the duration the original invite was created with. Only a `pending` invite may be resent or revoked, otherwise `WorkspaceInviteAlreadyProcessedException` (400, `51612`).
 
 **Claim.** `POST /user/workspace/invite/claim` is for an already-authenticated user.
 
-Preconditions (anything else, including an existing membership, collapses into `WorkspaceInviteInvalidException` (400, `51603`)):
+Preconditions (anything else, including an existing membership, collapses into `WorkspaceInviteInvalidException` (400, `51602`)):
 
 - the token must hash to a `pending`, unexpired invite on an active workspace
 - the invite email must match the caller's email (case-insensitive)
 
 On success one transaction:
 
-1. creates the membership with `invite.workspaceRole`
+1. creates the membership with the invite's workspace role
 2. marks the invite `accepted` with `acceptedAt` / `acceptedByUserId`
 3. sets `user.lastWorkspaceId` and `lastWorkspaceChangedAt` to the joined workspace
-4. creates the project membership when the invite carried one
+4. creates the project membership with the invite's project role when the invite carried one
 
 The `workspaceInviteAccepted` / `workspaceInviteAcceptedByInvitee` pair is prepared before the transaction and staged after it commits.
 
@@ -321,23 +342,23 @@ A user who has no account yet redeems the invite through sign-up instead, by pas
 
 ## Join Requests
 
-A user asks to join a workspace they can see; an admin decides.
+A user asks to join a workspace they can see; a member whose role holds `workspaceJoinRequest:[update]` decides. Any member may list the requests.
 
-- Only a workspace with `isPublic: true` accepts requests. A private one throws `WorkspaceNotPublicException` (400, `51614`).
-- Already being a member throws `WorkspaceJoinRequestAlreadyMemberException` (400, `51615`); a second pending request throws `WorkspaceJoinRequestDuplicateException` (400, `51616`).
+- Only a workspace with `isPublic: true` accepts requests. A private one throws `WorkspaceNotPublicException` (400, `51613`).
+- Already being a member throws `WorkspaceJoinRequestAlreadyMemberException` (400, `51614`); a second pending request throws `WorkspaceJoinRequestDuplicateException` (400, `51615`).
 - On create, every reviewer (`owner` and `admin`) is notified. Each reviewer's review link is sealed (AES-256-GCM) with **that reviewer's** user id as authenticated data, so a link sealed for one reviewer does not open in another reviewer's job.
 - **Accept always creates a `member` membership.** The role is not configurable on this path. The membership creation and the status flip to `accepted` with `reviewedByUserId` / `reviewedAt` run in one transaction; the activity pair is prepared before it and staged after it commits. Reject is a single update with no transaction.
 - Accept does **not** point the requester's `lastWorkspaceId` at the workspace they just joined, unlike an invite claim. They still have to switch to it.
 - Reject requires a `rejectReasonCode` from `EnumWorkspaceJoinRejectReason`.
 - Both outcomes notify the requester after the transaction commits: `workspaceJoinAccepted` on accept, `workspaceJoinRejected` (carrying the reason code) on reject.
-- Only a `pending` request may be accepted or rejected, otherwise `WorkspaceJoinRequestAlreadyProcessedException` (400, `51618`). An id that does not belong to the resolved workspace is `WorkspaceJoinRequestNotFoundException` (404, `51617`).
+- Only a `pending` request may be accepted or rejected, otherwise `WorkspaceJoinRequestAlreadyProcessedException` (400, `51617`). An id that does not belong to the resolved workspace is `WorkspaceJoinRequestNotFoundException` (404, `51616`).
 
 The `cancelled` status is written only by workspace soft-delete. A requester has no endpoint to withdraw their own request.
 
 ## Slug
 
 - **Creation always generates the slug.** `WorkspaceCreateRequestDto` carries no slug field: `WorkspaceDomain.createWorkspace` draws `workspace.slugMaxAttempts` (5) candidates of `workspace.slugPrefix` plus random characters up to `slugMaxLength` and walks them itself. Choosing a slug is what `PATCH /user/workspace/update/slug` is for.
-- A slug sent to `update/slug` is validated by `WorkspaceDomain.assertSlugAllowed` against `workspace.slugRegex` and `workspace.slugMaxLength`, throwing `WorkspaceSlugInvalidException` (400, `51620`), then checked against `WorkspaceRepository.existsBySlug`, which answers `WorkspaceSlugAlreadyExistsException` (400, `51605`) with no retry.
+- A slug sent to `update/slug` is validated by `WorkspaceDomain.assertSlugAllowed` against `workspace.slugRegex` and `workspace.slugMaxLength`, throwing `WorkspaceSlugInvalidException` (400, `51619`), then checked against `WorkspaceRepository.existsBySlug`, which answers `WorkspaceSlugAlreadyExistsException` (400, `51604`) with no retry.
 - Uniqueness is **global**, matching `@@unique([slug])`.
 - `existsBySlug` counts holders across **all** rows including soft-deleted ones: the unique index has no `deletedAt` component, so a soft-deleted workspace still holds its slug, and the check agrees with the index.
 - `createWorkspace` walks its candidates and, for each one, draws the workspace id, prepares `workspaceCreated`, and opens a `withTransaction` that calls `createInTx` (`WorkspaceRepository.createInTx` plus `WorkspaceMemberRepository.createOwnerInTx`). The event is staged only after a commit. A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`).
@@ -345,7 +366,7 @@ The `cancelled` status is written only by workspace soft-delete. A requester has
 
 ## Soft Delete
 
-`DELETE /user/workspace/delete` requires `owner`. `WorkspaceDomain.softDeleteWorkspace` prepares `workspaceDeleted`, then opens one `withTransaction`:
+`DELETE /user/workspace/delete` requires `workspace:[delete]`. `WorkspaceDomain.softDeleteWorkspace` prepares `workspaceDeleted`, then opens one `withTransaction`:
 
 1. `WorkspaceRepository.softDeleteInTx` calls `tx.workspace.softDelete`, which sets `deletedAt` and stamps `deletedBy` and `updatedBy` from the caller.
 2. `ProjectDomain.softDeleteByWorkspaceInTx` soft-deletes every still-active project in it with the same `deletedAt` and `deletedBy` set to the caller.
@@ -432,25 +453,25 @@ Each link key is a full URL template. `{homeUrl}` is filled from `home.url`, so 
 |---|---|---|
 | `notFound` | `51600` | 404 |
 | `memberForbidden` | `51601` | 403 |
-| `roleForbidden` | `51602` | 403 |
-| `inviteInvalid` | `51603` | 400 |
-| `capReached` | `51604` | 400 |
-| `slugAlreadyExists` | `51605` | 400 |
-| `memberNotFound` | `51606` | 404 |
-| `lastOwner` | `51607` | 400 |
-| `memberPeerForbidden` | `51608` | 403 |
-| `inviteDuplicate` | `51609` | 400 |
-| `inviteProjectMismatch` | `51610` | 400 |
-| `inviteRoleRequired` | `51611` | 400 |
-| `inviteNotFound` | `51612` | 404 |
-| `inviteAlreadyProcessed` | `51613` | 400 |
-| `notPublic` | `51614` | 400 |
-| `joinRequestAlreadyMember` | `51615` | 400 |
-| `joinRequestDuplicate` | `51616` | 400 |
-| `joinRequestNotFound` | `51617` | 404 |
-| `joinRequestAlreadyProcessed` | `51618` | 400 |
-| `selfTransfer` | `51619` | 400 |
-| `slugInvalid` | `51620` | 400 |
+| `inviteInvalid` | `51602` | 400 |
+| `capReached` | `51603` | 400 |
+| `slugAlreadyExists` | `51604` | 400 |
+| `memberNotFound` | `51605` | 404 |
+| `lastOwner` | `51606` | 400 |
+| `memberPeerForbidden` | `51607` | 403 |
+| `inviteDuplicate` | `51608` | 400 |
+| `inviteProjectMismatch` | `51609` | 400 |
+| `inviteRoleRequired` | `51610` | 400 |
+| `inviteNotFound` | `51611` | 404 |
+| `inviteAlreadyProcessed` | `51612` | 400 |
+| `notPublic` | `51613` | 400 |
+| `joinRequestAlreadyMember` | `51614` | 400 |
+| `joinRequestDuplicate` | `51615` | 400 |
+| `joinRequestNotFound` | `51616` | 404 |
+| `joinRequestAlreadyProcessed` | `51617` | 400 |
+| `selfTransfer` | `51618` | 400 |
+| `slugInvalid` | `51619` | 400 |
+| `ownerRoleNotAssignable` | `51620` | 400 |
 
 Full catalog: [Status Codes][ref-doc-status-codes].
 

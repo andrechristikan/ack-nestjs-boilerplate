@@ -4,7 +4,7 @@
 
 How to clone, install, seed, and run the project locally.
 
-**Docker is the recommended path.** Compose gives you a MongoDB replica set, Redis, a JWKS server, and BullBoard with almost no manual wiring. Use [MongoDB Atlas][ref-mongodb] and your own Redis only when you cannot run Docker.
+**Docker is the recommended path.** Compose gives you PostgreSQL, Redis, a JWKS server, and BullBoard with almost no manual wiring. Use a managed PostgreSQL instance and your own Redis only when you cannot run Docker.
 
 ## Related Documents
 
@@ -26,7 +26,7 @@ How to clone, install, seed, and run the project locally.
   - [Run Containers](#run-containers)
   - [Troubleshooting](#troubleshooting)
 - [Installation without Docker](#installation-without-docker)
-  - [Hosted MongoDB and Redis](#hosted-mongodb-and-redis)
+  - [Hosted PostgreSQL and Redis](#hosted-postgresql-and-redis)
   - [Install Packages](#install-packages-1)
   - [Create Environment](#create-environment-1)
   - [Generate Keys](#generate-keys-1)
@@ -49,16 +49,16 @@ How to clone, install, seed, and run the project locally.
 | [Node.js](https://nodejs.org) | >= 24.15.0 | Always required |
 | [PNPM](http://pnpm.io) | >= 10.25.0 (pin `pnpm@12.5.1`) | Always required |
 | [Git](https://git-scm.com) | v2.39.x+ | Always required |
-| [Docker](https://docs.docker.com) | v28.5.x+ | **Recommended** for local MongoDB, Redis, JWKS, BullBoard |
+| [Docker](https://docs.docker.com) | v28.5.x+ | **Recommended** for local PostgreSQL, Redis, JWKS, BullBoard |
 | [Docker Compose](https://docs.docker.com/compose/) | v2.40.x+ | With Docker |
 
 Without Docker you also need:
 
-- A [MongoDB Atlas][ref-mongodb] cluster (or any MongoDB 8+ **replica set**; Prisma transactions need one)
+- A PostgreSQL 18 instance, hosted or self-managed
 - A Redis 8+ instance for cache (`db:0`) and queues (`db:1`)
 
 > [!IMPORTANT]
-> Prefer [Installation with Docker](#installation-with-docker-recommended). Local single-node MongoDB without a replica set will break Prisma transactions.
+> Prefer [Installation with Docker](#installation-with-docker-recommended).
 
 ## Clone Repository
 
@@ -70,11 +70,11 @@ git branch
 
 ## Installation with Docker (Recommended)
 
-Compose starts MongoDB, Redis, JWKS, and BullBoard already wired for this app. Run the API on the host with `pnpm start:dev`, or add the `apis` profile to run it in Compose too.
+Compose starts PostgreSQL, Redis, JWKS, and BullBoard already wired for this app. Run the API on the host with `pnpm start:dev`, or add the `apis` profile to run it in Compose too.
 
 ### What's Included
 
-- **MongoDB replica set** - Ready for Prisma transactions (port 27017)
+- **PostgreSQL** - Ready for Prisma migrations and transactions (port 5432)
 - **Redis** - Cache on `db:0`, queues on `db:1` (port 6379)
 - **JWKS server** - Serves your JWT public keys (port 3011)
 - **BullMQ Dashboard** - Queue UI (port 3010; default `admin` / `admin123`)
@@ -95,7 +95,7 @@ Point the app at the Compose services:
 
 **Database**
 ```bash
-DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
+DATABASE_URL=postgresql://ack:ack_password@localhost:5432/ACKNestJs?schema=public
 ```
 
 **Redis**
@@ -155,7 +155,7 @@ JWKS URLs after Compose is up:
 
 ### Run Containers
 
-By default Compose starts dependencies only (MongoDB, Redis, JWKS, BullBoard). The API stays on the host unless you enable the `apis` profile.
+By default Compose starts dependencies only (PostgreSQL, Redis, JWKS, BullBoard). The API stays on the host unless you enable the `apis` profile.
 
 **Dependencies only:**
 ```bash
@@ -169,7 +169,7 @@ docker-compose --profile apis up -d
 
 That brings up:
 
-- MongoDB single-node replica set on `27017`
+- PostgreSQL on `5432`
 - Redis on `6379`
 - JWKS server on `3011`
 - BullBoard on `3010`
@@ -184,26 +184,22 @@ Health checks mark each service ready only after its check passes.
 
 ### Troubleshooting
 
-- **Port conflicts** - Free `27017`, `6379`, `3010`, and `3011`
+- **Port conflicts** - Free `5432`, `6379`, `3010`, and `3011`
 - **Host resolution** - Add `127.0.0.1 host.docker.internal` to `/etc/hosts` if needed
-- **Replica set still starting** - Wait a minute or two after first `up`
 - **Permissions** - Confirm Docker can create volumes and networks
 
 ## Installation without Docker
 
-Use this only when Docker is not an option. You still run the Node app on the host with PNPM; MongoDB and Redis come from hosted services.
+Use this only when Docker is not an option. You still run the Node app on the host with PNPM; PostgreSQL and Redis come from hosted services.
 
-### Hosted MongoDB and Redis
+### Hosted PostgreSQL and Redis
 
-1. **MongoDB** - Create a [MongoDB Atlas][ref-mongodb] cluster (or any MongoDB 8+ deployment that is a **replica set**). Copy the connection string into `DATABASE_URL`.
+1. **PostgreSQL** - Create a managed PostgreSQL 18 instance. Copy the connection string into `DATABASE_URL`.
 2. **Redis** - Use a hosted Redis 8+ service such as [Amazon ElastiCache][ref-elasticache]. Point cache and queues at different logical DBs when you can:
    ```bash
    CACHE_REDIS_URL=redis://<host>:6379/0
    QUEUE_REDIS_URL=redis://<host>:6379/1
    ```
-
-> [!IMPORTANT]
-> Atlas (and any other MongoDB you use) must be a replica set. Prisma transactions fail without one.
 
 ### Install Packages
 
@@ -220,7 +216,7 @@ cp .env.example .env
 Set at least:
 
 ```bash
-DATABASE_URL=<your Atlas (or other replica-set) connection string>
+DATABASE_URL=<your PostgreSQL connection string>
 CACHE_REDIS_URL=redis://<your-redis-host>:6379/0
 QUEUE_REDIS_URL=redis://<your-redis-host>:6379/1
 ```
@@ -276,7 +272,7 @@ Run this after `pnpm install`, and again after changes to `prisma/schema.prisma`
 
 ## Database Migration & Seeding
 
-**Sync schema to MongoDB:**
+**Apply Prisma migrations to PostgreSQL:**
 ```bash
 pnpm db:migrate
 ```
@@ -289,7 +285,7 @@ pnpm migration:seed
 **Remove seeded data:**
 
 > [!WARNING]
-> `migration:remove` deletes more than the seeded rows: the `user` seed's removal deletes every user, session, and activity log, and the API key, country, feature flag, role, and term policy seeds each delete their whole collection.
+> `migration:remove` deletes more than the seeded rows: the `user` seed's removal deletes every user, session, and activity log, and the API key, country, feature flag, role, and term policy seeds each delete their whole table.
 
 ```bash
 pnpm migration:remove
@@ -300,7 +296,7 @@ Every seeded row names the superadmin's fixed id (`MigrationUserSuperAdminId`) a
 **Reset and reseed:**
 
 > [!WARNING]
-> `migration:fresh` runs `prisma db push --force-reset`, which drops all existing data.
+> `migration:fresh` runs `prisma migrate reset --force`, which drops all existing data.
 
 ```bash
 pnpm migration:fresh
@@ -335,7 +331,7 @@ Database row seeds and schema sync: [Database Documentation][ref-doc-database].
 
 ## Run Project
 
-With MongoDB and Redis reachable (Compose or hosted):
+With PostgreSQL and Redis reachable (Compose or hosted):
 
 ```bash
 pnpm start:dev
@@ -394,14 +390,13 @@ Quick checks:
 
 1. `http://localhost:3000/api/public/hello`
 2. Swagger at `http://localhost:3000/docs`
-3. App logs for MongoDB and Redis connections
+3. App logs for PostgreSQL and Redis connections
 
 
 
 <!-- REFERENCES -->
 
 [ref-vault]: https://developer.hashicorp.com/vault
-[ref-mongodb]: https://www.mongodb.com/products/platform/atlas-database
 [ref-elasticache]: https://aws.amazon.com/elasticache/
 
 [ref-doc-environment]: environment.md

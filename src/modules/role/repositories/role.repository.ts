@@ -1,5 +1,7 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import type {
+    IPaginationEqual,
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -8,15 +10,17 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
     IRole,
-    IRoleCreate,
     IRoleUpdate,
     IRoleWithPolicies,
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
+import {
+    RolePoliciesInclude,
+    RoleSelect,
+} from '@modules/role/constants/role.constant';
 import type { IRoleRepository } from '@modules/role/interfaces/role.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client/client';
-import type { Role } from '@generated/prisma-client/client';
+import type { EnumRoleScope, Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class RoleRepository implements IRoleRepository {
@@ -30,7 +34,7 @@ export class RoleRepository implements IRoleRepository {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
-        type?: Record<string, IPaginationIn>
+        scope?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.paginationService.offset<
             IRoleWithPolicyCount,
@@ -39,7 +43,7 @@ export class RoleRepository implements IRoleRepository {
             ...params,
             where: {
                 ...where,
-                ...type,
+                ...scope,
             },
             include: { _count: { select: { policies: true } } },
         });
@@ -50,7 +54,7 @@ export class RoleRepository implements IRoleRepository {
             where,
             ...params
         }: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
-        type?: Record<string, IPaginationIn>
+        scope?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.paginationService.cursor<
             IRoleWithPolicyCount,
@@ -59,7 +63,27 @@ export class RoleRepository implements IRoleRepository {
             ...params,
             where: {
                 ...where,
-                ...type,
+                ...scope,
+            },
+            include: { _count: { select: { policies: true } } },
+        });
+    }
+
+    async findWithPaginationOffsetByShared(
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
+        scope?: Record<string, IPaginationEqual>
+    ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
+        return this.paginationService.offset<
+            IRoleWithPolicyCount,
+            Prisma.RoleWhereInput
+        >(this.databaseService.client.role, {
+            ...params,
+            where: {
+                ...where,
+                ...scope,
             },
             include: { _count: { select: { policies: true } } },
         });
@@ -70,64 +94,52 @@ export class RoleRepository implements IRoleRepository {
     ): Promise<IRoleWithPolicies | null> {
         return this.databaseService.client.role.findUnique({
             where: { id },
-            include: { policies: true },
+            include: RolePoliciesInclude,
         });
     }
 
     async findOneById(id: string): Promise<IRole | null> {
         return this.databaseService.client.role.findUnique({
             where: { id },
-            select: { id: true, type: true, name: true },
+            select: RoleSelect,
         });
     }
 
-    async findOneByName(name: string): Promise<IRole | null> {
-        return this.databaseService.client.role.findFirst({
-            where: { name },
-            select: { id: true, type: true, name: true },
+    async findManyByIds(ids: string[]): Promise<IRole[]> {
+        return this.databaseService.client.role.findMany({
+            where: { id: { in: ids } },
+            select: RoleSelect,
         });
     }
 
-    async existsById(id: string): Promise<boolean> {
-        const count = await this.databaseService.client.role.count({
+    async findOneByIdInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<IRole | null> {
+        return tx.role.findUnique({
             where: { id },
+            select: RoleSelect,
         });
-
-        return count > 0;
     }
 
-    async existsByName(name: string): Promise<boolean> {
-        const count = await this.databaseService.client.role.count({
-            where: { name },
+    async findOneByScopeAndKey(
+        scope: EnumRoleScope,
+        key: string
+    ): Promise<IRole | null> {
+        return this.databaseService.client.role.findUnique({
+            where: { scope_key: { scope, key } },
+            select: RoleSelect,
         });
-
-        return count > 0;
     }
 
-    async isUsedById(id: string): Promise<boolean> {
-        const count = await this.databaseService.client.role.count({
-            where: {
-                users: {
-                    some: {
-                        roleId: id,
-                    },
-                },
-            },
-        });
-
-        return count > 0;
-    }
-
-    async create(
-        roleId: string,
-        data: IRoleCreate
-    ): Promise<IRoleWithPolicies> {
-        return this.databaseService.client.role.create({
-            data: {
-                ...data,
-                id: roleId,
-            },
-            include: { policies: true },
+    async findOneByScopeAndKeyInTx(
+        tx: IDatabaseTransactionClient,
+        scope: EnumRoleScope,
+        key: string
+    ): Promise<IRole | null> {
+        return tx.role.findUnique({
+            where: { scope_key: { scope, key } },
+            select: RoleSelect,
         });
     }
 
@@ -135,11 +147,7 @@ export class RoleRepository implements IRoleRepository {
         return this.databaseService.client.role.update({
             where: { id },
             data,
-            include: { policies: true },
+            include: RolePoliciesInclude,
         });
-    }
-
-    async delete(id: string): Promise<Role> {
-        return this.databaseService.client.role.delete({ where: { id } });
     }
 }

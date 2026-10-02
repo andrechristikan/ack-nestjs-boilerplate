@@ -1,14 +1,10 @@
 {
     "list": "Roles retrieved successfully.",
     "get": "Role details fetched successfully.",
-    "create": "New role created successfully.",
+    "sharedList": "Role catalog retrieved successfully.",
     "update": "Role updated successfully.",
-    "delete": "Role deleted successfully.",
     "error": {
         "notFound": "Sorry, we couldn't find the requested role.",
-        "exist": "A role with this name already exists.",
-        "used": "This role is currently in use and cannot be deleted.",
-        "forbidden": "Sorry, your role doesn't grant access to this resource.",
-        "predefinedNotFound": "Predefined roles not setted."
+        "scopeMismatch": "This role cannot be used for this assignment."
     }
 }

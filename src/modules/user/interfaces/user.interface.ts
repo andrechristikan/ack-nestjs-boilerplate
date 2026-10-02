@@ -2,14 +2,12 @@ import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
-    EnumProjectMemberRole,
     EnumTermPolicyType,
     EnumUserGender,
     EnumUserLoginFrom,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumVerificationType,
-    EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import type {
@@ -32,7 +30,6 @@ import type {
     IAuthTwoFactorVerify,
 } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
-import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 
 export interface IUserTwoFactor extends TwoFactor {
@@ -40,7 +37,7 @@ export interface IUserTwoFactor extends TwoFactor {
 }
 
 export interface IUser extends User {
-    role: IRoleWithPolicies;
+    role: Role;
     twoFactor: IUserTwoFactor | null;
 }
 
@@ -129,9 +126,9 @@ export interface IUserSignUpWorkspaceInvite {
     workspaceId: string;
     workspaceInviteId: string;
     invitedByUserId: string | null;
-    workspaceMemberRole: EnumWorkspaceMemberRole;
+    workspaceRoleId: string;
     projectId: string | null;
-    projectMemberRole: EnumProjectMemberRole | null;
+    projectRoleId: string | null;
 }
 
 export type IUserSignUpWorkspaceContext =

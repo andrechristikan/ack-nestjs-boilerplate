@@ -9,9 +9,9 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumActivityLogAction,
+    EnumRoleScope,
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceJoinRequestStatus,
-    EnumWorkspaceMemberRole,
     type Workspace,
     type WorkspaceJoinRequest,
     type WorkspaceMember,
@@ -19,6 +19,9 @@ import {
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
@@ -86,6 +89,13 @@ describe('WorkspaceJoinRequestDomain', () => {
         mock<NotificationQueue>();
     const featureFlagDomain: MockProxy<FeatureFlagDomain> =
         mock<FeatureFlagDomain>();
+    const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
+    const memberRole = {
+        id: 'member-role-id',
+        scope: EnumRoleScope.workspace,
+        key: EnumRoleWorkspaceKey.member,
+        name: 'Member',
+    };
     const workspace = buildWorkspace({
         id: 'workspace-id',
         name: 'Workspace',
@@ -101,7 +111,7 @@ describe('WorkspaceJoinRequestDomain', () => {
         id: 'member-id',
         workspaceId: 'workspace-id',
         userId: 'user-id',
-        role: EnumWorkspaceMemberRole.member,
+        roleId: memberRole.id,
         joinedAt: now,
         createdAt: now,
         createdBy: null,
@@ -116,6 +126,8 @@ describe('WorkspaceJoinRequestDomain', () => {
     let domain: WorkspaceJoinRequestDomain;
 
     beforeEach(async () => {
+        vi.resetAllMocks();
+        roleDomain.getByScopeAndKeyInTx.mockResolvedValue(memberRole);
         databaseService.withTransaction.mockImplementation(async callback =>
             callback(transactionClient)
         );
@@ -151,6 +163,7 @@ describe('WorkspaceJoinRequestDomain', () => {
                 { provide: ConfigService, useValue: configService },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: FeatureFlagDomain, useValue: featureFlagDomain },
+                { provide: RoleDomain, useValue: roleDomain },
             ],
         }).compile();
 
@@ -283,8 +296,13 @@ describe('WorkspaceJoinRequestDomain', () => {
             expect.anything(),
             'workspace-id',
             'requester-id',
-            EnumWorkspaceMemberRole.member,
+            memberRole.id,
             'reviewer-id'
+        );
+        expect(roleDomain.getByScopeAndKeyInTx).toHaveBeenCalledWith(
+            expect.anything(),
+            EnumRoleScope.workspace,
+            EnumRoleWorkspaceKey.member
         );
         expect(joinRepository.acceptInTx).toHaveBeenCalledWith(
             expect.anything(),
@@ -299,6 +317,21 @@ describe('WorkspaceJoinRequestDomain', () => {
             { workspaceId: 'workspace-id', workspaceName: 'Workspace' },
             'reviewer-id'
         );
+    });
+
+    it('rejects the acceptance when the member role is missing from the catalog and creates nothing', async () => {
+        joinRepository.findByIdAndWorkspace.mockResolvedValue(joinRequest);
+        roleDomain.getByScopeAndKeyInTx.mockResolvedValue(null);
+
+        await expect(
+            domain.acceptJoinRequest(workspace, 'reviewer-id', 'join-id')
+        ).rejects.toBeInstanceOf(RoleNotFoundException);
+        expect(memberDomain.createInTx).not.toHaveBeenCalled();
+        expect(joinRepository.acceptInTx).not.toHaveBeenCalled();
+        expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        expect(
+            notificationQueue.sendWorkspaceJoinAccepted
+        ).not.toHaveBeenCalled();
     });
 
     it('checks the join-request feature before loading the request to reject', async () => {
