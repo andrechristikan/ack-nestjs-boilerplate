@@ -8,8 +8,13 @@ export enum EnumPolicyConditionPlaceholder {
     projectId = '${projectId}',
 }
 
-/** Matches a whole condition value written as a `${...}` placeholder token. */
-export const PolicyPlaceholderPattern = /^\$\{[^}]+\}$/;
+const PolicyPlaceholderPattern = /^\$\{[^}]+\}$/;
+
+/** True when a whole condition value is written as a `${...}` placeholder token, known or not. */
+export const isPolicyPlaceholder = (
+    value: unknown
+): value is EnumPolicyConditionPlaceholder =>
+    typeof value === 'string' && PolicyPlaceholderPattern.test(value);
 
 /**
  * Route metadata key holding the `{ subject, action }` requirements `@PolicyProtected` declares.

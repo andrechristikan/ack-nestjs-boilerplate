@@ -106,8 +106,7 @@ describe('ProjectHttpService', () => {
     describe('getListForMember', () => {
         const query = {} satisfies ProjectUserListRequestDto;
 
-        it('lists every project and passes the read predicate when the ability can read projects', async () => {
-            ability.can.mockReturnValue(true);
+        it('passes the member and read predicates to the domain', async () => {
             policyAbilityDomain.accessibleWhere.mockReturnValue(
                 accessibleWhere
             );
@@ -119,10 +118,6 @@ describe('ProjectHttpService', () => {
                 query
             );
 
-            expect(ability.can).toHaveBeenCalledWith(
-                EnumPolicyAction.read,
-                EnumPolicySubject.Project
-            );
             expect(policyAbilityDomain.accessibleWhere).toHaveBeenCalledWith(
                 ability,
                 EnumPolicyAction.read,
@@ -136,14 +131,12 @@ describe('ProjectHttpService', () => {
                 'workspace-id',
                 workspaceMember,
                 cursorResult.params,
-                true,
                 accessibleWhere
             );
             expect(result).toEqual(page);
         });
 
-        it('limits the list to member projects and passes no where when the ability cannot read projects', async () => {
-            ability.can.mockReturnValue(false);
+        it('passes no policy predicate when the ability has no project read rules', async () => {
             policyAbilityDomain.accessibleWhere.mockReturnValue(null);
             projectDomain.getListForMember.mockResolvedValue(page);
 
@@ -157,7 +150,6 @@ describe('ProjectHttpService', () => {
                 'workspace-id',
                 workspaceMember,
                 cursorResult.params,
-                false,
                 undefined
             );
         });
@@ -204,16 +196,28 @@ describe('ProjectHttpService', () => {
     });
 
     describe('getProject', () => {
-        it('wraps the project the domain returns', () => {
-            projectDomain.getProject.mockReturnValue(project);
-
+        it('authorizes and wraps the guarded project', () => {
             expect(service.getProject(project)).toEqual({ data: project });
             expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
                 ability,
                 EnumPolicyAction.read,
                 subject(EnumPolicySubject.Project, project)
             );
-            expect(projectDomain.getProject).toHaveBeenCalledWith(project);
+        });
+    });
+
+    describe('getForAdmin', () => {
+        it('authorizes and wraps the project loaded for administration', async () => {
+            projectDomain.getByIdForAdmin.mockResolvedValue(project);
+
+            await expect(service.getForAdmin('project-id')).resolves.toEqual({
+                data: project,
+            });
+            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.read,
+                subject(EnumPolicySubject.Project, project)
+            );
         });
     });
 

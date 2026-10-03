@@ -2,6 +2,8 @@ import { PolicyImmutableException } from '@modules/policy/exceptions/policy.immu
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
 import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
+import { PolicyCache } from '@modules/policy/caches/policy.cache';
+import type { IPolicyRule } from '@modules/policy/interfaces/policy.interface';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
@@ -18,6 +20,7 @@ import type { Policy } from '@generated/prisma-client/client';
 export class PolicyDomain {
     constructor(
         private readonly policyRepository: PolicyRepository,
+        private readonly policyCache: PolicyCache,
         private readonly roleDomain: RoleDomain,
         private readonly activityLogDomain: ActivityLogDomain
     ) {}
@@ -40,6 +43,11 @@ export class PolicyDomain {
         return this.policyRepository.findManyByRoleId(roleId);
     }
 
+    /** Returns the policy rows of every role, read through the policy cache. */
+    async findManyByRoleIds(...roleIds: string[]): Promise<IPolicyRule[]> {
+        return this.policyCache.getByRoleIdsAndCache(roleIds);
+    }
+
     async createByAdmin(
         roleId: string,
         dto: PolicyCreateRequestDto
@@ -53,6 +61,7 @@ export class PolicyDomain {
         ];
 
         const created = await this.policyRepository.create(roleId, dto);
+        await this.policyCache.deleteCacheByRoleId(roleId);
 
         this.activityLogDomain.stagePrepared(events);
 
@@ -81,6 +90,7 @@ export class PolicyDomain {
         ];
 
         const updated = await this.policyRepository.update(id, dto);
+        await this.policyCache.deleteCacheByRoleId(roleId);
 
         this.activityLogDomain.stagePrepared(events);
 
@@ -104,6 +114,7 @@ export class PolicyDomain {
             }),
         ];
         const deleted = await this.policyRepository.delete(id);
+        await this.policyCache.deleteCacheByRoleId(roleId);
 
         this.activityLogDomain.stagePrepared(events);
 

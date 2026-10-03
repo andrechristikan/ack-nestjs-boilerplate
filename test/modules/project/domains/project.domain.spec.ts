@@ -127,7 +127,7 @@ describe('ProjectDomain', () => {
             workspaceId: 'workspace-id',
         };
 
-        it('lists every project of the workspace for a caller that can read all of them', async () => {
+        it('forwards the effective where predicate', async () => {
             projectRepository.findWithPaginationCursorForWorkspace.mockResolvedValue(
                 page
             );
@@ -137,36 +137,14 @@ describe('ProjectDomain', () => {
                     'workspace-id',
                     workspaceMember,
                     pagination,
-                    true,
                     where
                 )
             ).resolves.toBe(page);
             expect(
                 projectRepository.findWithPaginationCursorForWorkspace
-            ).toHaveBeenCalledWith('workspace-id', null, pagination, where);
-        });
-
-        it('scopes the list to the projects the caller is a member of when the caller cannot read all', async () => {
-            projectRepository.findWithPaginationCursorForWorkspace.mockResolvedValue(
-                page
-            );
-
-            await expect(
-                domain.getListForMember(
-                    'workspace-id',
-                    workspaceMember,
-                    pagination,
-                    false
-                )
-            ).resolves.toBe(page);
-            expect(
-                projectRepository.findWithPaginationCursorForWorkspace
-            ).toHaveBeenCalledWith(
-                'workspace-id',
-                'user-id',
-                pagination,
-                undefined
-            );
+            ).toHaveBeenCalledWith('workspace-id', pagination, {
+                AND: [{ members: { some: { userId: 'user-id' } } }, where],
+            });
         });
     });
 

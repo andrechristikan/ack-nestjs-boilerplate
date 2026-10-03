@@ -1,5 +1,4 @@
 import { subject } from '@casl/ability';
-import { mock } from 'vitest-mock-extended';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import {
     EnumPolicyAction,
@@ -9,11 +8,9 @@ import {
 } from '@generated/prisma-client';
 import { MigrationPolicyData } from '@migration/data/migration.policy.data';
 import type { IMigrationPolicyData } from '@migration/interfaces/migration.interface';
-import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
-import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
-import { RequestStoreService } from '@common/request/services/request.store.service';
+import { EnumPolicyConditionPlaceholder } from '@modules/policy/constants/policy.constant';
 import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
 import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
@@ -22,12 +19,7 @@ describe('MigrationPolicyData seed invariants', () => {
     const now = new Date('2026-01-01T00:00:00.000Z');
     const seeded: IMigrationPolicyData[] =
         MigrationPolicyData[EnumAppEnvironment.test];
-    const policyRepository = mock<PolicyRepository>();
-    const domain = new PolicyAbilityDomain(
-        policyRepository,
-        new PolicyAbilityFactory(),
-        mock<RequestStoreService>()
-    );
+    const factory = new PolicyAbilityFactory();
 
     const roleIdOf = (data: IMigrationPolicyData): string =>
         `${data.scope}:${data.key}`;
@@ -47,45 +39,26 @@ describe('MigrationPolicyData seed invariants', () => {
             updatedBy: null,
         }));
 
-    const abilityFor = (
-        scope: EnumRoleScope,
-        key: string
-    ): Promise<PolicyAbility> => {
+    const abilityFor = (scope: EnumRoleScope, key: string): PolicyAbility => {
         const roleId = `${scope}:${key}`;
-        const empty = 'empty-role';
+        const policies = seeded
+            .filter(row => roleIdOf(row) === roleId)
+            .flatMap(toPolicies);
 
-        return domain.buildAbility({
-            user: {
-                id: 'user-1',
-                roleId: scope === EnumRoleScope.platform ? roleId : empty,
-            },
-            workspace: {
-                id: 'workspace-1',
-                memberRoleId:
-                    scope === EnumRoleScope.workspace ? roleId : empty,
-            },
-            project: {
-                id: 'project-1',
-                memberRoleId: scope === EnumRoleScope.project ? roleId : null,
-            },
+        return factory.build(policies, {
+            [EnumPolicyConditionPlaceholder.userId]: 'user-1',
+            [EnumPolicyConditionPlaceholder.workspaceId]: 'workspace-1',
+            [EnumPolicyConditionPlaceholder.projectId]: 'project-1',
         });
     };
 
     const member = (projectId: string) =>
         subject(EnumPolicySubject.ProjectMember, { projectId });
 
-    beforeEach(() => {
-        policyRepository.findManyByRoleId.mockImplementation(async roleId => {
-            const data = seeded.find(row => roleIdOf(row) === roleId);
-
-            return data ? toPolicies(data) : [];
-        });
-    });
-
     it.each(seeded.map(data => [data.scope, data.key, data] as const))(
         'drops no rule of %s role %s under its richest context',
-        async (scope, key, data) => {
-            const ability = await abilityFor(scope, key);
+        (scope, key, data) => {
+            const ability = abilityFor(scope, key);
 
             expect(ability.rules).toHaveLength(data.policies.length);
         }
@@ -93,8 +66,8 @@ describe('MigrationPolicyData seed invariants', () => {
 
     it.each([EnumRoleWorkspaceKey.owner, EnumRoleWorkspaceKey.admin])(
         'lets workspace %s manage ProjectMember of the current project only',
-        async key => {
-            const ability = await abilityFor(EnumRoleScope.workspace, key);
+        key => {
+            const ability = abilityFor(EnumRoleScope.workspace, key);
 
             for (const action of [
                 EnumPolicyAction.create,
@@ -108,8 +81,8 @@ describe('MigrationPolicyData seed invariants', () => {
         }
     );
 
-    it('keeps workspace member away from ProjectMember', async () => {
-        const ability = await abilityFor(
+    it('keeps workspace member away from ProjectMember', () => {
+        const ability = abilityFor(
             EnumRoleScope.workspace,
             EnumRoleWorkspaceKey.member
         );
@@ -119,8 +92,8 @@ describe('MigrationPolicyData seed invariants', () => {
         );
     });
 
-    it('lets project admin manage ProjectMember of its project only', async () => {
-        const ability = await abilityFor(
+    it('lets project admin manage ProjectMember of its project only', () => {
+        const ability = abilityFor(
             EnumRoleScope.project,
             EnumRoleProjectKey.admin
         );
@@ -138,8 +111,8 @@ describe('MigrationPolicyData seed invariants', () => {
 
     it.each([EnumRoleProjectKey.member, EnumRoleProjectKey.viewer])(
         'limits project %s to reading ProjectMember of its project',
-        async key => {
-            const ability = await abilityFor(EnumRoleScope.project, key);
+        key => {
+            const ability = abilityFor(EnumRoleScope.project, key);
 
             expect(
                 ability.can(EnumPolicyAction.read, member('project-1'))
@@ -159,8 +132,8 @@ describe('MigrationPolicyData seed invariants', () => {
         }
     );
 
-    it('gives platform admin no ProjectMember access', async () => {
-        const ability = await abilityFor(
+    it('gives platform admin no ProjectMember access', () => {
+        const ability = abilityFor(
             EnumRoleScope.platform,
             EnumRolePlatformKey.admin
         );

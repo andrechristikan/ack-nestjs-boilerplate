@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+    EnumPolicyConditionPlaceholder,
+    isPolicyPlaceholder,
+} from '@modules/policy/constants/policy.constant';
 import { PolicySchema } from '@modules/policy/dtos/policy.dto';
 
 /**
@@ -13,10 +17,24 @@ export const PolicyCreateRequestSchema = PolicySchema.pick({
     .partial({ inverted: true })
     .extend({
         conditions: z
-            .record(z.string(), z.json())
+            .record(
+                z.string(),
+                z.union([z.string(), z.number(), z.boolean(), z.null()])
+            )
+            .refine(
+                conditions =>
+                    Object.values(conditions).every(
+                        value =>
+                            !isPolicyPlaceholder(value) ||
+                            Object.values<string>(
+                                EnumPolicyConditionPlaceholder
+                            ).includes(value)
+                    ),
+                { message: 'Unknown condition placeholder' }
+            )
             .meta({
                 description:
-                    'Prisma where-input conditions the rule applies to; absent for the whole subject',
+                    'Flat scalar field conditions the rule applies to, or a known ${...} placeholder as a value; absent for the whole subject',
                 example: { workspaceId: '${workspaceId}' },
             })
             .optional(),

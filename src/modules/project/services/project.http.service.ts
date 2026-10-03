@@ -49,10 +49,6 @@ export class ProjectHttpService {
         const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
             PolicyAbilityStoreKey
         );
-        const canReadAllProjects = ability.can(
-            EnumPolicyAction.read,
-            EnumPolicySubject.Project
-        );
         const accessibleWhere =
             this.policyAbilityDomain.accessibleWhere<Prisma.ProjectWhereInput>(
                 ability,
@@ -70,7 +66,6 @@ export class ProjectHttpService {
             workspaceId,
             workspaceMember,
             params,
-            canReadAllProjects,
             accessibleWhere ?? undefined
         );
 
@@ -111,9 +106,7 @@ export class ProjectHttpService {
             EnumPolicyAction.read,
             subject(EnumPolicySubject.Project, project)
         );
-        const current = this.projectDomain.getProject(project);
-
-        return { data: current };
+        return { data: project };
     }
 
     async updateProject(
@@ -213,6 +206,15 @@ export class ProjectHttpService {
 
     async getForAdmin(projectId: string): Promise<IResponseReturn<Project>> {
         const project = await this.projectDomain.getByIdForAdmin(projectId);
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        this.policyAbilityDomain.assertCan(
+            ability,
+            EnumPolicyAction.read,
+            subject(EnumPolicySubject.Project, project)
+        );
+
         return { data: project };
     }
 

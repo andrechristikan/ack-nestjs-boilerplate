@@ -7,58 +7,17 @@ import {
 } from '@generated/prisma-client/client';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumPolicyConditionPlaceholder } from '@modules/policy/constants/policy.constant';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
-import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import type {
     IEffectivePermission,
-    IPolicyAbilityBuildInput,
     PolicyAbility,
     PolicyAbilitySubject,
-    PolicyPlaceholderValues,
 } from '@modules/policy/interfaces/policy.interface';
-import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
 
-/** Loads the policies of every role in the request context, builds one ability from them, and answers what that ability allows. */
+/** Reads required request context and answers what a built ability allows. */
 @Injectable()
 export class PolicyAbilityDomain {
-    constructor(
-        private readonly policyRepository: PolicyRepository,
-        private readonly policyAbilityFactory: PolicyAbilityFactory,
-        private readonly requestStoreService: RequestStoreService
-    ) {}
-
-    /**
-     * Builds one ability from every role available in the request context. All roles resolve from
-     * one placeholder map: the layer decides which roles load, the context decides which values
-     * exist.
-     */
-    async buildAbility(
-        input: IPolicyAbilityBuildInput
-    ): Promise<PolicyAbility> {
-        const placeholders: PolicyPlaceholderValues = {
-            [EnumPolicyConditionPlaceholder.userId]: input.user.id,
-            [EnumPolicyConditionPlaceholder.workspaceId]: input.workspace?.id,
-            [EnumPolicyConditionPlaceholder.projectId]: input.project?.id,
-        };
-        const roleIds = [
-            input.user.roleId,
-            input.workspace?.memberRoleId,
-            input.project?.memberRoleId,
-        ].filter(roleId => roleId !== undefined && roleId !== null);
-
-        const policiesByRole = await Promise.all(
-            roleIds.map(roleId =>
-                this.policyRepository.findManyByRoleId(roleId)
-            )
-        );
-
-        return this.policyAbilityFactory.build(
-            policiesByRole.flatMap(policies =>
-                this.policyAbilityFactory.resolveRules(policies, placeholders)
-            )
-        );
-    }
+    constructor(private readonly requestStoreService: RequestStoreService) {}
 
     /** Reads a value an earlier guard stored for the request, and throws `RequestContextMissingException` naming the key when nothing is stored. The one place a guard or an HTTP service reads required request context. */
     requireStored<T>(key: string): T {

@@ -15,6 +15,7 @@ import { PolicyImmutableException } from '@modules/policy/exceptions/policy.immu
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
 import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
+import { PolicyCache } from '@modules/policy/caches/policy.cache';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { RoleDomain } from '@modules/role/domains/role.domain';
@@ -58,6 +59,7 @@ describe('PolicyDomain', () => {
     };
     const policyRepository: MockProxy<PolicyRepository> =
         mock<PolicyRepository>();
+    const policyCache: MockProxy<PolicyCache> = mock<PolicyCache>();
     const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
     const activityLogDomain: MockProxy<ActivityLogDomain> =
         mock<ActivityLogDomain>();
@@ -70,6 +72,7 @@ describe('PolicyDomain', () => {
             providers: [
                 PolicyDomain,
                 { provide: PolicyRepository, useValue: policyRepository },
+                { provide: PolicyCache, useValue: policyCache },
                 { provide: RoleDomain, useValue: roleDomain },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
             ],
@@ -94,6 +97,21 @@ describe('PolicyDomain', () => {
         ]);
     });
 
+    describe('findManyByRoleIds', () => {
+        it('reads the rules of every role through the policy cache', async () => {
+            policyCache.getByRoleIdsAndCache.mockResolvedValue([policy]);
+
+            await expect(service.findManyByRoleIds('a', 'b')).resolves.toEqual([
+                policy,
+            ]);
+            expect(policyCache.getByRoleIdsAndCache).toHaveBeenCalledWith([
+                'a',
+                'b',
+            ]);
+            expect(policyRepository.findManyByRoleIds).not.toHaveBeenCalled();
+        });
+    });
+
     describe('createByAdmin', () => {
         it('creates a policy and stages its activity', async () => {
             const event = mock<ReturnType<ActivityLogDomain['prepare']>>();
@@ -114,6 +132,9 @@ describe('PolicyDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 event,
             ]);
+            expect(policyCache.deleteCacheByRoleId).toHaveBeenCalledWith(
+                'role-id'
+            );
         });
 
         it('rethrows any other write error and stages nothing', async () => {
@@ -126,6 +147,18 @@ describe('PolicyDomain', () => {
             ).rejects.toBe(error);
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
         });
+    });
+
+    it('rejects the write when the cache invalidation fails', async () => {
+        const error = new Error('redis down');
+        roleDomain.getById.mockResolvedValue(role);
+        policyRepository.create.mockResolvedValue(policy);
+        policyCache.deleteCacheByRoleId.mockRejectedValue(error);
+
+        await expect(
+            service.createByAdmin('role-id', ruleRequest)
+        ).rejects.toBe(error);
+        expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
     });
 
     describe('updateByAdmin', () => {
@@ -159,6 +192,9 @@ describe('PolicyDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 event,
             ]);
+            expect(policyCache.deleteCacheByRoleId).toHaveBeenCalledWith(
+                'role-id'
+            );
         });
 
         it('rethrows any other write error and stages nothing', async () => {
@@ -195,6 +231,7 @@ describe('PolicyDomain', () => {
         );
         expect(policyRepository.delete).toHaveBeenCalledWith(policy.id);
         expect(activityLogDomain.stagePrepared).toHaveBeenCalledOnce();
+        expect(policyCache.deleteCacheByRoleId).toHaveBeenCalledWith('role-id');
     });
 
     describe('super administrator policy immutability', () => {
@@ -235,6 +272,7 @@ describe('PolicyDomain', () => {
                 expect(policyRepository.delete).not.toHaveBeenCalled();
                 expect(activityLogDomain.prepare).not.toHaveBeenCalled();
                 expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+                expect(policyCache.deleteCacheByRoleId).not.toHaveBeenCalled();
             }
         );
 

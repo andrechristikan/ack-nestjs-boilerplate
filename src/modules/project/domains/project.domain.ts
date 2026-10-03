@@ -140,21 +140,22 @@ export class ProjectDomain {
         );
     }
 
-    /** Lists projects in the workspace: a caller holding project read sees every project, everyone else sees only the ones they hold a `ProjectMember` row for. */
+    /** Lists projects in the workspace using the effective access predicate from the HTTP layer. */
     async getListForMember(
         workspaceId: string,
         workspaceMember: WorkspaceMember,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
-        canReadAllProjects: boolean,
         where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
-        const memberUserId = canReadAllProjects ? null : workspaceMember.userId;
-
         return this.projectRepository.findWithPaginationCursorForWorkspace(
             workspaceId,
-            memberUserId,
             pagination,
-            where
+            {
+                AND: [
+                    { members: { some: { userId: workspaceMember.userId } } },
+                    ...(where ? [where] : []),
+                ],
+            }
         );
     }
 
@@ -211,10 +212,6 @@ export class ProjectDomain {
         }
 
         throw new DatabaseUniqueValueGenerationFailedException();
-    }
-
-    getProject(project: Project): Project {
-        return project;
     }
 
     async updateProject(

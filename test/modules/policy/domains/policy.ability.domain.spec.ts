@@ -3,30 +3,17 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
-import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
-import type {
-    PolicyAbility,
-    PolicyAbilityRule,
-} from '@modules/policy/interfaces/policy.interface';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { subject } from '@casl/ability';
 import type { RawRuleOf } from '@casl/ability';
 import { createPrismaAbility } from '@casl/prisma';
-import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-    type Policy,
-} from '@generated/prisma-client';
+import { EnumPolicyAction, EnumPolicySubject } from '@generated/prisma-client';
 
 describe('PolicyAbilityDomain', () => {
-    const policyRepository: MockProxy<PolicyRepository> =
-        mock<PolicyRepository>();
-    const policyAbilityFactory: MockProxy<PolicyAbilityFactory> =
-        mock<PolicyAbilityFactory>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
@@ -37,18 +24,9 @@ describe('PolicyAbilityDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        policyRepository.findManyByRoleId.mockResolvedValue([]);
-        policyAbilityFactory.resolveRules.mockReturnValue([]);
-        policyAbilityFactory.build.mockReturnValue(ability);
-
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 PolicyAbilityDomain,
-                { provide: PolicyRepository, useValue: policyRepository },
-                {
-                    provide: PolicyAbilityFactory,
-                    useValue: policyAbilityFactory,
-                },
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
@@ -56,108 +34,6 @@ describe('PolicyAbilityDomain', () => {
             ],
         }).compile();
         domain = moduleRef.get(PolicyAbilityDomain);
-    });
-
-    it('loads the platform role and returns one ability', async () => {
-        await expect(
-            domain.buildAbility({
-                user: { id: 'user-1', roleId: 'platform-role' },
-            })
-        ).resolves.toBe(ability);
-
-        expect(policyRepository.findManyByRoleId).toHaveBeenCalledWith(
-            'platform-role'
-        );
-        expect(policyRepository.findManyByRoleId).toHaveBeenCalledTimes(1);
-        expect(policyAbilityFactory.build).toHaveBeenCalledTimes(1);
-    });
-
-    it('adds workspace and project roles to the same ability', async () => {
-        await domain.buildAbility({
-            user: { id: 'user-1', roleId: 'platform-role' },
-            workspace: { id: 'workspace-1', memberRoleId: 'workspace-role' },
-            project: { id: 'project-1', memberRoleId: 'project-role' },
-        });
-
-        expect(policyRepository.findManyByRoleId).toHaveBeenNthCalledWith(
-            1,
-            'platform-role'
-        );
-        expect(policyRepository.findManyByRoleId).toHaveBeenNthCalledWith(
-            2,
-            'workspace-role'
-        );
-        expect(policyRepository.findManyByRoleId).toHaveBeenNthCalledWith(
-            3,
-            'project-role'
-        );
-        expect(policyRepository.findManyByRoleId).toHaveBeenCalledTimes(3);
-    });
-
-    it('does not load a project role when project membership is absent', async () => {
-        await domain.buildAbility({
-            user: { id: 'user-1', roleId: 'platform-role' },
-            project: { id: 'project-1', memberRoleId: null },
-        });
-
-        expect(policyRepository.findManyByRoleId).toHaveBeenCalledTimes(1);
-    });
-
-    it('resolves each role with one placeholder map and builds one ability from every resolved rule', async () => {
-        const platformPolicies = [mock<Policy>()];
-        const workspacePolicies = [mock<Policy>()];
-        const platformRule: PolicyAbilityRule = {
-            subject: 'User',
-            action: EnumPolicyAction.read,
-        };
-        const workspaceRule: PolicyAbilityRule = {
-            subject: 'Project',
-            action: EnumPolicyAction.read,
-        };
-        policyRepository.findManyByRoleId.mockImplementation(async roleId =>
-            roleId === 'platform-role' ? platformPolicies : workspacePolicies
-        );
-        policyAbilityFactory.resolveRules.mockImplementation(policies =>
-            policies === platformPolicies ? [platformRule] : [workspaceRule]
-        );
-
-        await domain.buildAbility({
-            user: { id: 'user-1', roleId: 'platform-role' },
-            workspace: { id: 'workspace-1', memberRoleId: 'workspace-role' },
-            project: { id: 'project-1', memberRoleId: null },
-        });
-
-        const placeholders = {
-            '${userId}': 'user-1',
-            '${workspaceId}': 'workspace-1',
-            '${projectId}': 'project-1',
-        };
-        expect(policyAbilityFactory.resolveRules).toHaveBeenNthCalledWith(
-            1,
-            platformPolicies,
-            placeholders
-        );
-        expect(policyAbilityFactory.resolveRules).toHaveBeenNthCalledWith(
-            2,
-            workspacePolicies,
-            placeholders
-        );
-        expect(policyAbilityFactory.build).toHaveBeenCalledExactlyOnceWith([
-            platformRule,
-            workspaceRule,
-        ]);
-    });
-
-    it('rejects when a role load fails and builds nothing', async () => {
-        const error = new Error('db down');
-        policyRepository.findManyByRoleId.mockRejectedValue(error);
-
-        await expect(
-            domain.buildAbility({
-                user: { id: 'user-1', roleId: 'platform-role' },
-            })
-        ).rejects.toBe(error);
-        expect(policyAbilityFactory.build).not.toHaveBeenCalled();
     });
 
     describe('requireStored', () => {
@@ -460,71 +336,5 @@ describe('PolicyAbilityDomain', () => {
                 Object.values(EnumPolicyAction).length
             );
         });
-    });
-});
-
-describe('PolicyAbilityDomain placeholder resolution with the real factory', () => {
-    const now = new Date('2026-01-01T00:00:00.000Z');
-    const workspaceProjectMemberPolicy = {
-        id: 'policy-1',
-        roleId: 'workspace-role',
-        subject: EnumPolicySubject.ProjectMember,
-        action: [EnumPolicyAction.read],
-        conditions: { projectId: '${projectId}' },
-        inverted: false,
-        reason: null,
-        createdAt: now,
-        createdBy: null,
-        updatedAt: now,
-        updatedBy: null,
-    } satisfies Policy;
-    const policyRepository: MockProxy<PolicyRepository> =
-        mock<PolicyRepository>();
-    let domain: PolicyAbilityDomain;
-
-    beforeEach(() => {
-        policyRepository.findManyByRoleId.mockImplementation(async roleId =>
-            roleId === 'workspace-role' ? [workspaceProjectMemberPolicy] : []
-        );
-        domain = new PolicyAbilityDomain(
-            policyRepository,
-            new PolicyAbilityFactory(),
-            mock<RequestStoreService>()
-        );
-    });
-
-    it('resolves a project placeholder held by a workspace role when a project is in context', async () => {
-        const ability = await domain.buildAbility({
-            user: { id: 'user-1', roleId: 'platform-role' },
-            workspace: { id: 'workspace-1', memberRoleId: 'workspace-role' },
-            project: { id: 'project-1', memberRoleId: null },
-        });
-
-        expect(ability.rules).toHaveLength(1);
-        expect(
-            ability.can(
-                EnumPolicyAction.read,
-                subject(EnumPolicySubject.ProjectMember, {
-                    projectId: 'project-1',
-                })
-            )
-        ).toBe(true);
-        expect(
-            ability.can(
-                EnumPolicyAction.read,
-                subject(EnumPolicySubject.ProjectMember, {
-                    projectId: 'project-2',
-                })
-            )
-        ).toBe(false);
-    });
-
-    it('omits the rule when no project is in context', async () => {
-        const ability = await domain.buildAbility({
-            user: { id: 'user-1', roleId: 'platform-role' },
-            workspace: { id: 'workspace-1', memberRoleId: 'workspace-role' },
-        });
-
-        expect(ability.rules).toHaveLength(0);
     });
 });

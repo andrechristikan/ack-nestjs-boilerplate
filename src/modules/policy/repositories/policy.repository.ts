@@ -3,6 +3,7 @@ import { Prisma } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
 import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
+import type { IPolicyRuleWithRole } from '@modules/policy/interfaces/policy.interface';
 import type { IPolicyRepository } from '@modules/policy/interfaces/policy.repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -13,6 +14,20 @@ export class PolicyRepository implements IPolicyRepository {
     async findManyByRoleId(roleId: string): Promise<Policy[]> {
         return this.databaseService.client.policy.findMany({
             where: { roleId },
+        });
+    }
+
+    async findManyByRoleIds(roleIds: string[]): Promise<IPolicyRuleWithRole[]> {
+        return this.databaseService.client.policy.findMany({
+            where: { roleId: { in: roleIds } },
+            select: {
+                roleId: true,
+                subject: true,
+                action: true,
+                conditions: true,
+                inverted: true,
+                reason: true,
+            },
         });
     }
 

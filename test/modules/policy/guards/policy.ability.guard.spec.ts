@@ -4,7 +4,12 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyAbilityGuard } from '@modules/policy/guards/policy.ability.guard';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import type {
+    IPolicyRule,
+    PolicyAbility,
+} from '@modules/policy/interfaces/policy.interface';
 import {
     ProjectMemberStoreKey,
     ProjectStoreKey,
@@ -17,6 +22,9 @@ import {
 
 describe('PolicyAbilityGuard', () => {
     const policyAbilityDomain: MockProxy<PolicyAbilityDomain> = mock();
+    const policyDomain: MockProxy<PolicyDomain> = mock();
+    const policyAbilityFactory: MockProxy<PolicyAbilityFactory> = mock();
+    const policies: IPolicyRule[] = [];
     const requestStoreService: MockProxy<RequestStoreService> = mock();
     const ability: MockProxy<PolicyAbility> = mock();
     const user = { id: 'user-id', roleId: 'user-role-id' };
@@ -36,10 +44,13 @@ describe('PolicyAbilityGuard', () => {
         vi.resetAllMocks();
         guard = new PolicyAbilityGuard(
             policyAbilityDomain,
+            policyDomain,
+            policyAbilityFactory,
             requestStoreService
         );
         policyAbilityDomain.requireStored.mockReturnValue(user);
-        policyAbilityDomain.buildAbility.mockResolvedValue(ability);
+        policyDomain.findManyByRoleIds.mockResolvedValue(policies);
+        policyAbilityFactory.build.mockReturnValue(ability);
     });
 
     it('reuses an ability already stored on the request', async () => {
@@ -50,7 +61,7 @@ describe('PolicyAbilityGuard', () => {
             PolicyAbilityStoreKey
         );
         expect(policyAbilityDomain.requireStored).not.toHaveBeenCalled();
-        expect(policyAbilityDomain.buildAbility).not.toHaveBeenCalled();
+        expect(policyDomain.findManyByRoleIds).not.toHaveBeenCalled();
         expect(requestStoreService.set).not.toHaveBeenCalled();
     });
 
@@ -65,101 +76,76 @@ describe('PolicyAbilityGuard', () => {
         expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
             UserStoreKey
         );
-        expect(policyAbilityDomain.buildAbility).not.toHaveBeenCalled();
+        expect(policyDomain.findManyByRoleIds).not.toHaveBeenCalled();
         expect(requestStoreService.set).not.toHaveBeenCalled();
     });
 
-    it('builds a user-only ability when no workspace or project is stored', async () => {
-        stubStore({});
+    it('loads user, workspace and project roles in order and builds with the placeholder map', async () => {
+        stubStore({
+            [WorkspaceStoreKey]: workspace,
+            [WorkspaceMemberStoreKey]: workspaceMember,
+            [ProjectStoreKey]: project,
+            [ProjectMemberStoreKey]: projectMember,
+        });
 
         await expect(guard.canActivate()).resolves.toBe(true);
-        expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
-            UserStoreKey
+        expect(policyDomain.findManyByRoleIds).toHaveBeenCalledWith(
+            'user-role-id',
+            'workspace-member-role-id',
+            'project-member-role-id'
         );
-        expect(policyAbilityDomain.buildAbility).toHaveBeenCalledWith({
-            user: { id: user.id, roleId: user.roleId },
+        expect(policyAbilityFactory.build).toHaveBeenCalledWith(policies, {
+            '${userId}': 'user-id',
+            '${workspaceId}': 'workspace-id',
+            '${projectId}': 'project-id',
         });
-    });
-
-    it('adds the workspace scope when workspace and member are stored', async () => {
-        stubStore({
-            [WorkspaceStoreKey]: workspace,
-            [WorkspaceMemberStoreKey]: workspaceMember,
-        });
-
-        await guard.canActivate();
-
-        expect(policyAbilityDomain.buildAbility).toHaveBeenCalledWith({
-            user: { id: user.id, roleId: user.roleId },
-            workspace: {
-                id: workspace.id,
-                memberRoleId: workspaceMember.roleId,
-            },
-        });
-    });
-
-    it.each([
-        ['workspace without member', { [WorkspaceStoreKey]: workspace }],
-        [
-            'member without workspace',
-            { [WorkspaceMemberStoreKey]: workspaceMember },
-        ],
-    ])('omits the workspace scope for %s', async (_, store) => {
-        stubStore(store);
-
-        await guard.canActivate();
-
-        expect(policyAbilityDomain.buildAbility).toHaveBeenCalledWith({
-            user: { id: user.id, roleId: user.roleId },
-        });
-    });
-
-    it('adds the project scope with the member role when a project member is stored', async () => {
-        stubStore({
-            [ProjectStoreKey]: project,
-            [ProjectMemberStoreKey]: projectMember,
-        });
-
-        await guard.canActivate();
-
-        expect(policyAbilityDomain.buildAbility).toHaveBeenCalledWith({
-            user: { id: user.id, roleId: user.roleId },
-            project: { id: project.id, memberRoleId: projectMember.roleId },
-        });
-    });
-
-    it('adds the project scope with a null member role when no project member is stored', async () => {
-        stubStore({ [ProjectStoreKey]: project });
-
-        await guard.canActivate();
-
-        expect(policyAbilityDomain.buildAbility).toHaveBeenCalledWith({
-            user: { id: user.id, roleId: user.roleId },
-            project: { id: project.id, memberRoleId: null },
-        });
-    });
-
-    it('stores the built ability on the request', async () => {
-        stubStore({
-            [WorkspaceStoreKey]: workspace,
-            [WorkspaceMemberStoreKey]: workspaceMember,
-            [ProjectStoreKey]: project,
-            [ProjectMemberStoreKey]: projectMember,
-        });
-
-        await expect(guard.canActivate()).resolves.toBe(true);
-        expect(policyAbilityDomain.buildAbility).toHaveBeenCalledWith({
-            user: { id: user.id, roleId: user.roleId },
-            workspace: {
-                id: workspace.id,
-                memberRoleId: workspaceMember.roleId,
-            },
-            project: { id: project.id, memberRoleId: projectMember.roleId },
-        });
-        expect(requestStoreService.set).toHaveBeenCalledTimes(1);
-        expect(requestStoreService.set).toHaveBeenCalledWith(
+        expect(requestStoreService.set).toHaveBeenCalledExactlyOnceWith(
             PolicyAbilityStoreKey,
             ability
         );
+    });
+
+    it('loads only the user role and leaves scope placeholders undefined when no scope is stored', async () => {
+        stubStore({});
+
+        await guard.canActivate();
+
+        expect(policyDomain.findManyByRoleIds).toHaveBeenCalledWith(
+            'user-role-id'
+        );
+        expect(policyAbilityFactory.build).toHaveBeenCalledWith(policies, {
+            '${userId}': 'user-id',
+            '${workspaceId}': undefined,
+            '${projectId}': undefined,
+        });
+    });
+
+    it('skips a missing project member role but keeps the project placeholder', async () => {
+        stubStore({
+            [WorkspaceStoreKey]: workspace,
+            [WorkspaceMemberStoreKey]: workspaceMember,
+            [ProjectStoreKey]: project,
+        });
+
+        await guard.canActivate();
+
+        expect(policyDomain.findManyByRoleIds).toHaveBeenCalledWith(
+            'user-role-id',
+            'workspace-member-role-id'
+        );
+        expect(policyAbilityFactory.build).toHaveBeenCalledWith(
+            policies,
+            expect.objectContaining({ '${projectId}': 'project-id' })
+        );
+    });
+
+    it('propagates a policy load failure and stores nothing', async () => {
+        stubStore({});
+        const error = new Error('db down');
+        policyDomain.findManyByRoleIds.mockRejectedValue(error);
+
+        await expect(guard.canActivate()).rejects.toBe(error);
+        expect(policyAbilityFactory.build).not.toHaveBeenCalled();
+        expect(requestStoreService.set).not.toHaveBeenCalled();
     });
 });
