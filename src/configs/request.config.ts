@@ -3,6 +3,7 @@ import {
     RequestCorrelationIdHeaderName,
     RequestCustomLangHeaderName,
     RequestIdHeaderName,
+    RequestThrottleHeaderName,
     RequestWorkspaceIdHeaderName,
 } from '@common/request/constants/request.constant';
 import {
@@ -46,7 +47,6 @@ export interface IConfigRequest {
         default: IRequestThrottlePolicy;
         user: IRequestThrottlePolicy;
         route: Record<EnumRequestThrottleRoute, IRequestThrottlePolicy>;
-        headerPrefix: string;
         keyPattern: string;
         blockKeyPattern: string;
         sequenceKeyPattern: string;
@@ -54,7 +54,6 @@ export interface IConfigRequest {
 }
 
 export default registerAs('request', (): IConfigRequest => {
-    const throttleHeaderPrefix = 'X-RateLimit';
     const throttleHeaderSuffixes = [
         '',
         `-${EnumRequestThrottleName.route}`,
@@ -117,7 +116,7 @@ export default registerAs('request', (): IConfigRequest => {
                 'Retry-After',
                 ...throttleHeaderSuffixes.flatMap(suffix =>
                     ['Limit', 'Remaining', 'Reset'].map(
-                        name => `${throttleHeaderPrefix}-${name}${suffix}`
+                        name => `${RequestThrottleHeaderName}-${name}${suffix}`
                     )
                 ),
                 RequestCustomLangHeaderName,
@@ -162,7 +161,6 @@ export default registerAs('request', (): IConfigRequest => {
                     blockDurationInMs: ms('5m'),
                 },
             },
-            headerPrefix: throttleHeaderPrefix,
             keyPattern: 'Request:Throttle:{name}:{tracker}',
             blockKeyPattern: 'Request:Throttle:Block:{name}:{tracker}',
             sequenceKeyPattern: 'Request:Throttle:Seq:{name}:{tracker}',

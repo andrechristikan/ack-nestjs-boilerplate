@@ -145,10 +145,9 @@ export class FeatureFlagDomain {
             throw new FeatureFlagNotFoundException();
         }
 
-        const [updated] = await Promise.all([
-            this.featureFlagRepository.updateStatus(id, data),
-            this.featureFlagCache.deleteCacheByKey(featureFlag.key),
-        ]);
+        const updated = await this.featureFlagRepository.updateStatus(id, data);
+        // Sequential by design: the cache entry is deleted only after the write commits, so a concurrent read cannot re-cache the old row.
+        await this.featureFlagCache.deleteCacheByKey(featureFlag.key);
 
         return updated;
     }
@@ -170,10 +169,12 @@ export class FeatureFlagDomain {
             throw new FeatureFlagInvalidMetadataException();
         }
 
-        const [updated] = await Promise.all([
-            this.featureFlagRepository.updateMetadata(id, data),
-            this.featureFlagCache.deleteCacheByKey(featureFlag.key),
-        ]);
+        const updated = await this.featureFlagRepository.updateMetadata(
+            id,
+            data
+        );
+        // Sequential by design: the cache entry is deleted only after the write commits, so a concurrent read cannot re-cache the old row.
+        await this.featureFlagCache.deleteCacheByKey(featureFlag.key);
 
         return updated;
     }

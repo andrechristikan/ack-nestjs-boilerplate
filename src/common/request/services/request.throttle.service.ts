@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ThrottlerException } from '@nestjs/throttler';
 import type { Response } from 'express';
+import { RequestThrottleHeaderName } from '@common/request/constants/request.constant';
 import type { EnumRequestThrottleName } from '@common/request/enums/request.enum';
 import type { IRequestThrottlePolicy } from '@common/request/interfaces/request.interface';
 import { RequestThrottleStorageService } from '@common/request/services/request.throttle-storage.service';
@@ -12,16 +12,9 @@ import { RequestThrottleStorageService } from '@common/request/services/request.
  */
 @Injectable()
 export class RequestThrottleService {
-    private readonly headerPrefix: string;
-
     constructor(
-        private readonly configService: ConfigService,
         private readonly storageService: RequestThrottleStorageService
-    ) {
-        this.headerPrefix = this.configService.get<string>(
-            'request.throttle.headerPrefix'
-        )!;
-    }
+    ) {}
 
     async evaluate(
         response: Response,
@@ -43,13 +36,16 @@ export class RequestThrottleService {
             throw new ThrottlerException();
         }
 
-        response.setHeader(`${this.headerPrefix}-Limit-${name}`, policy.limit);
         response.setHeader(
-            `${this.headerPrefix}-Remaining-${name}`,
+            `${RequestThrottleHeaderName}-Limit-${name}`,
+            policy.limit
+        );
+        response.setHeader(
+            `${RequestThrottleHeaderName}-Remaining-${name}`,
             Math.max(0, policy.limit - record.totalHits)
         );
         response.setHeader(
-            `${this.headerPrefix}-Reset-${name}`,
+            `${RequestThrottleHeaderName}-Reset-${name}`,
             record.timeToExpire
         );
     }

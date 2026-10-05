@@ -85,6 +85,12 @@ export const RequestCorrelationIdHeaderName = 'x-correlation-id';
 export const RequestIdHeaderName = 'x-request-id';
 
 /**
+ * Prefix of the `-Limit-`, `-Remaining-`, and `-Reset-` throttle response headers.
+ * @public
+ */
+export const RequestThrottleHeaderName = 'X-RateLimit';
+
+/**
  * Request header naming the active workspace.
  * @public
  */

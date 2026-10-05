@@ -17,6 +17,7 @@ export class NotificationEmailTermPolicyDomain {
     private readonly homeUrl: string;
 
     private readonly batchSize: number;
+    private readonly batchDelayInMs: number;
 
     private readonly defaultTemplateData: Record<string, string>;
 
@@ -35,6 +36,9 @@ export class NotificationEmailTermPolicyDomain {
         this.homeUrl = this.configService.get<string>('home.url')!;
 
         this.batchSize = this.configService.get<number>('email.batchSize')!;
+        this.batchDelayInMs = this.configService.get<number>(
+            'email.batchDelayInMs'
+        )!;
 
         this.defaultTemplateData = {
             homeName: this.homeName,
@@ -68,7 +72,9 @@ export class NotificationEmailTermPolicyDomain {
 
             results.push(result);
 
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve =>
+                setTimeout(resolve, this.batchDelayInMs)
+            );
         }
 
         return { message: 'Publish term policy email processed', results };

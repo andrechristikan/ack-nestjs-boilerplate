@@ -83,7 +83,9 @@ export class MessageService {
     }
 
     filterLanguage(customLanguage: string): string {
-        return this.availableLanguage.find(e => e === customLanguage)!;
+        const language = this.availableLanguage.find(e => e === customLanguage);
+
+        return language ?? this.defaultLanguage;
     }
 
     setMessage(path: string, options?: IMessageSetOptions): string {
