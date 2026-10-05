@@ -38,7 +38,7 @@ status-code enums, app), `queue.md` (processors, queues, notification), `securit
 session, api-key, user, request, instrument), `config.md` (configs, env example, logger,
 sentry, cache, redis), `i18n.md` (languages, message), `file.md` (file, aws),
 `feature-flag.md` (its module), `enum.md` (enums), `testing.md` (test, Vitest config),
-`seeding.md` (migration), `docker.md` (compose, dockerfiles, ci, test container helper),
+`seeding.md` (migration), `docker.md` (compose, ci, test container helper),
 `authoring.md` (docs, `.claude`, `.github`, `AGENTS.md`, root people files).
 
 ## Explorer
@@ -87,11 +87,9 @@ Test first: when the task changes src/ behaviour, write the failing spec under t
   e2e proof) are written as listed; no other spec (coverage work is tester).
 Acceptance: `pnpm typecheck` exit 0; the task's own acceptance commands when the plan
   names them (`pnpm test:integration`, `pnpm test:e2e`, the parity counts), otherwise
-  `pnpm test <module>` green with the new spec named; the run surface (package.json
-  scripts, scripts/, ci/, ci/docker-compose.yml, ci/dockerfile.local, docker-compose.yml,
-  the root dockerfile.local, .github/workflows/, .github/dependabot.yml, nest-cli.json,
-  vitest.config.ts, knip.json, tsconfig*.json, eslint.config.mjs, .husky/, .gitignore)
-  repaired where this change moved a command, port, path, or script name.
+  `pnpm test <module>` green with the new spec named; the run surface
+  (`.claude/rules/layering.md`, The run surface is a call site) repaired where this change
+  moved a command, port, path, or script name.
 Schema: when prisma/schema.prisma changes, run `pnpm db:generate` and hand back the
   model, field, index, data consequence, and `pnpm db:migrate` for the owner. Do not
   run db:migrate, migration:*, db:studio, mongosh, or redis-cli.
@@ -109,7 +107,8 @@ Depth: task | plan | docs | harness | rules and boot | end to end through guards
 Scope: <files and modules from git status --short, a plan path, docs files, or harness files, as the depth needs>
 Requirement: <the task brief, the plan path, or the settled paragraph>
 Checks: at task, rules and boot, and end to end: every rule file that binds a changed path,
-  named in the report; boot (pnpm start:dev until the routes mount, then stop it) when the
+  named in the report; every sequential await of independent work (.claude/rules/code-style.md,
+  Concurrency and errors); boot (pnpm start:dev until the routes mount, then stop it) when the
   depth includes it; pnpm typecheck, pnpm lint, pnpm deadcode, pnpm spell. At plan, docs,
   and harness: only what the depth names in .claude/agents/reviewer.md. Never the full pnpm
   test.

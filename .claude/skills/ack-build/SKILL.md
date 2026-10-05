@@ -72,7 +72,8 @@ applies. A pin is one dispatch carrying the pin instead of a plan path.
 After each task, dispatch `reviewer` at `Depth: task` with the task brief as the
 requirement and the task's files as the scope (`references/dispatch.md`, Reviewer). After
 the last task, dispatch one `reviewer` at the plan's review depth over the whole scope; its
-findings run the same loop under the same stop and park rule.
+findings run the same loop under the same stop and park rule. Every review checks
+concurrency: `.claude/rules/code-style.md`, Concurrency and errors.
 
 Every finding passes `superpowers:receiving-code-review` here, in this orchestration:
 
@@ -136,9 +137,8 @@ runs in the session from `/ack-pr create`, not here.
 - Per task: what `coder` produced and the decisive test line; the task review's findings
   and each one's state (fixed, rejected with the reason, parked with the ruling, open); a
   `blocked` or `stopped` line with the question the owner answers.
-- The final review at the plan's depth.
-- Every run-surface file checked and whether it changed; every status code allocated.
-- The schema delta and the owner's push command.
+- The final review at the plan's depth; every run-surface file checked and whether it
+  changed; every status code allocated; the schema delta and the owner's push command.
 - The output of the five checks and of every task acceptance command run.
 - The proposed commit subject.
 - One line per thing noticed outside the scope.

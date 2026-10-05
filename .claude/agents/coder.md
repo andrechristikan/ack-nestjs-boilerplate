@@ -35,10 +35,10 @@ disk, never from `HEAD` or a ref. To list what changed, use `git status --short`
 
 ## Order
 
-1. Read the rules the dispatch names and the files the task touches; rules under
-   `.claude/rules/` bind by path. A procedure (a module, a status code, a queue, a seed, a
-   notification) lives at `.claude/skills/ack-build/references/add-<topic>.md`; read the
-   one the task names before writing.
+1. Read the rules the dispatch names and the files the task touches; rules under `.claude/rules/`
+   bind by path. A procedure (a module, a status code, a queue, a seed, a notification) lives at
+   `.claude/skills/ack-build/references/add-<topic>.md`; read the one the task names before
+   writing. Write `src/` and specs async-first: `.claude/rules/code-style.md`, Concurrency and errors.
 2. When the task changes `src/` behaviour, the test-driven-development skill is in force:
    write the failing unit spec under `test/unit/` mirroring the subject, run
    `pnpm test <path filter>`, quote the failing line, then write the minimum `src/` that

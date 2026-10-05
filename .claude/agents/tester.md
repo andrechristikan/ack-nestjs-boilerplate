@@ -36,7 +36,7 @@ disk, never from `HEAD` or a ref. To list what changed, use `git status --short`
 
 1. Read the rules the dispatch names (`.claude/rules/testing.md` binds every `test/` file)
    and the subject file completely before writing a line; sibling specs are the style
-   guide.
+   guide. Specs are async-first too: `.claude/rules/code-style.md`, Concurrency and errors.
 2. `cover`: write the missing specs. `repair`: retarget a spec the code moved out from
    under. `relocate only`: move green specs to follow their subjects, retarget names and
    members, add no assertion.

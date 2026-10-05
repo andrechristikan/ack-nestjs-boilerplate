@@ -14,11 +14,10 @@ Redis client.
 
 ## Where things live
 
-- `src/queues/` is the framework layer: `EnumQueue` and `EnumQueuePriority`
-  (`enums/queue.enum.ts`), `QueueConfigKey` and `QueueProcessorConfigKey`
-  (`constants/queue.constant.ts`), `@QueueProcessor()`, `QueueProcessorBase`,
-  `QueueException`, `IQueueResponse`. `QueueModule.forRoot()` in `common.module.ts` holds the
-  two `BullModule.forRootAsync` connections. No processor lives here.
+- `src/queues/` is the framework layer: `EnumQueue` and `EnumQueuePriority` (`enums/queue.enum.ts`),
+  `QueueConfigKey` and `QueueProcessorConfigKey` (`constants/queue.constant.ts`), `@QueueProcessor()`,
+  `QueueProcessorBase`, `QueueException`, `IQueueResponse`. `QueueModule.forRoot()` in `common.module.ts`
+  holds the two `BullModule.forRootAsync` connections. No processor lives here.
 - `<module>.domain.module.ts` registers each owned queue with
   `BullModule.registerQueueAsync({ name: EnumQueue.<member>, configKey: QueueConfigKey,
   useClass: <Module>[<Concern>]QueueFactory })` and exports `BullModule`. The factory
@@ -30,19 +29,20 @@ Redis client.
   it alone: `@InjectQueue`, the BullMQ `Queue` type, `EnumQueuePriority`, `jobId`,
   `deduplication`, `add`, `upsertJobScheduler` appear nowhere else under `src/modules/` except
   `src/modules/health/indicators/health.queue.indicator.ts`, which reads depth only.
-- `processors/<module>[.<concern>].processor.ts` is provided by `<module>.processor.module.ts`
-  beside its processor service; `src/router/processor/router.processor.module.ts` aggregates
-  those modules.
+- `processors/<module>[.<concern>].processor.ts` is provided by `<module>.processor.module.ts` beside its
+  processor service; `src/router/processor/router.processor.module.ts` aggregates those modules.
 
 ## Enqueuing
 
 A domain or a processor service injects the queue class and calls a named method that takes
-domain values, builds the typed payload, and passes job name, priority, and options it owns.
-A controller or HTTP service never enqueues. A sensitive payload field (a generated password,
+domain values, builds the typed payload, and passes job name, priority, and options it owns;
+a controller or HTTP service never enqueues. A `jobId` or `deduplication` id is a
+`<Module>*JobIdPattern` `{token}` constant in `<module>.constant.ts`, filled in the queue class
+through `HelperStringService.fillPattern`. A sensitive payload field (a generated password,
 a verification, reset, invite, or review link) is encrypted by the queue class with
 `HelperEncryptionService`, the root secret, the module's `*EncryptionPurpose` constant, and
-the recipient id as context; the field is named `encrypted<Field>`. Job data sits in Redis
-and is readable in BullBoard. One moment, one mechanism: a job or an event, not both.
+the recipient id as context; the field is named `encrypted<Field>`. Job data sits in Redis,
+readable in BullBoard. One moment, one mechanism: a job or an event, not both.
 
 ## Processors
 

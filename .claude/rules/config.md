@@ -35,7 +35,7 @@ paths:
 - A URL is a `*Pattern` key with `{placeholder}` segments: an emitted URL is full with its own host key, a path a fragment.
 - `request.throttle.default.limit` stays above `request.throttle.user.limit`, or the per-IP default fires first.
 - A header name, CLS store key, metadata key, or wire label is a constant or enum, never config; a header is
-  `<Module><Concern>HeaderName`, in `src/common/` when the kit reads it. `request.config.ts` builds the CORS header
+  `<Module>[<Concern>]HeaderName`, in `src/common/` when the kit reads it. `request.config.ts` builds the CORS header
   lists from those constants, the one config importing from `@modules`.
 - A credential has no literal default; it comes from the environment (Vault through `pnpm vault:pull` when
   deployed), `.env.example` carries every key empty, and a config interface holds no `Buffer`. An encryption
@@ -52,11 +52,11 @@ paths:
 - One `private readonly logger = new Logger(ClassName.name)` per class, never module-level, no `console.*` in `src/`;
   `error` is object-first (`this.logger.error(error, 'context')`, the reverse drops the stack), the rest message-first.
 - `EnumLoggerLevel` is the Pino level (`logger.level` config); `EnumLoggerSeverity` is the `severity` field
-  `LoggerUtil.mapLevelToSeverity` (`:256`) writes. Pick by who must act: `fatal` process cannot continue, `error`
+  `LoggerUtil.mapLevelToSeverity` (`:254`) writes. Pick by who must act: `fatal` process cannot continue, `error`
   someone must look, `warn` degraded but handled, `info` a lifecycle fact, `debug` / `trace` detail.
-- `LoggerSensitiveFields` (`src/common/logger/constants/logger.constant.ts:56`) is the one list of sensitive keys;
-  `LoggerUtil.redactValue` (`:172`) masks them at any depth, a request log carries a masked `route` and never a
-  body, and `src/instrument.ts` `beforeSend`, `beforeSendTransaction`, `beforeBreadcrumb`, `beforeSendLog` (`:312`
+- `LoggerSensitiveFields` (`src/common/logger/constants/logger.constant.ts:44`) is the one list of sensitive keys;
+  `LoggerUtil.redactValue` (`logger.util.ts:172`) masks them at any depth, a request log carries a masked `route` and never a
+  body, and `src/instrument.ts` `beforeSend`, `beforeSendTransaction`, `beforeBreadcrumb`, `beforeSendLog` (`:311`
   on) scrub Sentry from the same constants. A new credential key goes on that list.
 - `SentryService` (`src/common/sentry/services/sentry.service.ts`: `captureException`, `captureMessage`, `log`,
   `withScope`) is the one way to report. Callers: the `APP_FILTER` chain by `httpStatus`, `QueueProcessorBase.onFailed`

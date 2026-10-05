@@ -29,9 +29,9 @@ owner's `pnpm db:migrate`; hand the command back.
 | util (optional) | `utils/<module>.util.ts` | `src/modules/device/utils/device.util.ts:10` |
 | exceptions | `exceptions/<module>.<descriptor>.exception.ts`, one class per file | `src/modules/device/exceptions/device.not-found.exception.ts:9-18` |
 | request DTO | `dtos/request/<module>.<action>.request.dto.ts`: a zod schema plus `z.infer` type | `src/modules/device/dtos/request/device.refresh.request.dto.ts` |
-| response DTO | `dtos/response/<module>.response.dto.ts`: `DatabaseResponseSchema` extended, `.meta()` on every field | `src/modules/device/dtos/response/device.response.dto.ts:13-25` |
-| HTTP service | `services/<module>.http.service.ts` | `src/modules/device/services/device.http.service.ts:21` |
-| controller | `controllers/<module>.<scope>.controller.ts`, one per scope | `src/modules/device/controllers/device.shared.controller.ts:40-65` |
+| response DTO | `dtos/response/<module>.response.dto.ts`: `DatabaseResponseSchema` extended, `.meta()` on every field | `src/modules/device/dtos/response/device.response.dto.ts:13-36` |
+| HTTP service | `services/<module>.http.service.ts` | `src/modules/device/services/device.http.service.ts:18` |
+| controller | `controllers/<module>.<scope>.controller.ts`, one per scope | `src/modules/device/controllers/device.shared.controller.ts:39-64` |
 
 A queue, a processor, and a processor service follow
 `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`,
@@ -59,8 +59,8 @@ Copy the shape, not the names:
 - Controller: add the class to `controllers` and `<Module>HttpModule` to `imports` of
   `src/router/http/router.http.<scope>.module.ts`
   (`src/router/http/router.http.shared.module.ts:22-45`). Both entries, or boot fails.
-- Processor module: `src/router/processor/router.processor.module.ts:8-11`.
-- A `@Global()` domain module: `src/common/common.module.ts:63-71` `imports`. Read the
+- Processor module: `src/router/processor/router.processor.module.ts:8-14`.
+- A `@Global()` domain module: `src/common/common.module.ts:64-72` `imports`. Read the
   `@Global()` decision from a sibling that needs to be reachable everywhere
   (`src/modules/notification/notification.domain.module.ts:32`); the default is not global.
 

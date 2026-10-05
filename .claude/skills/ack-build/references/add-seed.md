@@ -12,8 +12,8 @@ Follow the sibling seed that writes the same kind of row:
 | Seed needs | Inject | Reference |
 |---|---|---|
 | plain rows on one model | `DatabaseService` | `src/migration/seeds/migration.country.seed.ts:30-33` |
-| a feature's write rules | that feature's repository, with `<Feature>RepositoryModule` in `MigrationModule` `imports` | `src/migration/migration.module.ts:22-27` |
-| a feature's domain | that feature's domain module in `imports` | `UserDomainModule`, `src/migration/migration.module.ts:25` |
+| a feature's write rules | that feature's repository, with `<Feature>RepositoryModule` in `MigrationModule` `imports` | `src/migration/migration.module.ts:37-42` |
+| a feature's domain | that feature's domain module in `imports` | `UserDomainModule`, `src/migration/migration.module.ts:40` |
 | a kit service | `AwsSESService` or `AwsS3Service`, with `AwsModule` imported | `src/migration/seeds/migration.template-notification.seed.ts:27-35` |
 
 Do not add a second path to a collection a sibling already seeds.
@@ -53,8 +53,8 @@ message naming the email and both ids (`src/migration/seeds/migration.user.seed.
 
 ## 4. Register
 
-Add the class to `providers` in `src/migration/migration.module.ts:28-40` and any module
-it injects from to `imports` (`:22-27`). The `providers` order does not decide run order.
+Add the class to `providers` in `src/migration/migration.module.ts:23-35` and any module
+it injects from to `imports` (`:37-42`). The `providers` order does not decide run order.
 
 ## 5. Place it in the scripts
 

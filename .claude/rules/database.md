@@ -58,7 +58,7 @@ without the suffix takes no `tx`, and there is no `tx?` fallback (`create` and `
 statement, `updateMany` and `createMany` included, opens no transaction. A guarded state transition is one
 `updateMany` whose `where` carries the expected state, returning `count > 0`
 (`src/modules/session/repositories/session.repository.ts:174`). `options` come only from the caller's own
-`*TimeoutInMs` key (`user.onboarding.createBulkTimeoutInMs` reaches `src/modules/workspace/domains/workspace.domain.ts:366`;
+`*TimeoutInMs` key (`user.onboarding.createBulkTimeoutInMs` reaches `src/modules/workspace/domains/workspace.domain.ts:368`;
 a seed passes `database.seedTransactionTimeoutInMs`). A write conflict (`P2034`) is not retried.
 
 ## Dates

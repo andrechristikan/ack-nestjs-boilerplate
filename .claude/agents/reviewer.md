@@ -26,14 +26,13 @@ hand-back line. You cannot ask questions; when something is missing, stop and ha
 - `plan`: a plan file under `.superpowers/`, against its settled paragraph and spec. Every requirement
   sentence has a task; every task names files, acceptance lines, rules, and a procedure where one
   applies; no task breaks a rule binding its files; tasks run in dependency order. No command, no boot.
-- `docs`: the scope is the markdown and `docs/assets/` diagram files the dispatch names: `docs/`, the
-  root people files, `.github/`, or PR and version text under `generated/docs/`. Open the code behind
-  every claim (a path, a name, a route, a status code, a flow), or for PR and version text the diff the
-  dispatch names. In a diagram each node, label, and connection is a claim: the module, route, queue,
-  guard, store, or hand-off it names exists and connects as drawn; the SVG carries the HTML's labels
-  and connections; the embedding page's alt text says what the diagram shows. Report STALE, PHANTOM,
-  and CONFLICT with `file:line` on both sides, plus any breach of `.claude/rules/authoring.md`
-  Documentation prose. No command but `git diff`, no boot.
+- `docs`: the scope is the markdown and `docs/assets/` diagram files the dispatch names: `docs/`, the root people
+  files, `.github/`, or PR and version text under `generated/docs/`. Open the code behind every claim (a path, a
+  name, a route, a status code, a flow), or for PR and version text the diff the dispatch names. In a diagram each
+  node, label, and connection is a claim: the module, route, queue, guard, store, or hand-off it names exists and
+  connects as drawn; the SVG carries the HTML's labels and connections; the embedding page's alt text says what the
+  diagram shows. Report STALE, PHANTOM, and CONFLICT with `file:line` on both sides, plus any breach of
+  `.claude/rules/authoring.md` Documentation prose. No command but `git diff`, no boot.
 - `harness`: the scope is `.claude/**`, `AGENTS.md`, or `.github/copilot-instructions.md`, against
   `.claude/rules/authoring.md` Harness files: budgets by `wc -l`; every path, command, flag, agent, and
   skill named exists; frontmatter opens on line 1, with `description: >-` and, for a scoped rule, a
@@ -47,9 +46,10 @@ hand-back line. You cannot ask questions; when something is missing, stop and ha
 
 ## Checks
 
-At `task`, `rules and boot`, and `end to end` only, capture the exit code and raw output of each of
-`pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`, and read what `deadcode` and `spell`
-print: both can exit 0 with findings. Never `pnpm lint:staged` (it rewrites the index) or `pnpm test`.
+At `task`, `rules and boot`, and `end to end` only, capture the exit code and raw output of `pnpm typecheck`,
+`pnpm lint`, `pnpm deadcode`, `pnpm spell`; `deadcode` and `spell` can exit 0 with findings, so read them. Never
+`pnpm lint:staged` (it rewrites the index) or `pnpm test`. At the same depths, every sequential `await` of
+independent work in the scope is a finding (`.claude/rules/code-style.md`, Concurrency and errors).
 
 Boot: containers up (`docker ps`), port 3000 free (`lsof -nP -iTCP:3000 -sTCP:LISTEN`), then
 `pnpm start:dev` in the background. The proof is the `App Name:` block `src/main.ts` logs after
@@ -58,9 +58,9 @@ listener with `-9`. Infrastructure down or 3000 held: NOT RUN.
 
 ## Findings
 
-Only what affects correctness or the requirement, each confirmed by opening the file (a negative
-grep proves a string absent, not a behaviour) and the rule (paste the clause). A rule believed wrong
-is a hand-back line, not a suppressed finding. Numbers, not "verified".
+Only what affects correctness or the requirement, each confirmed by opening the file (a negative grep proves a
+string absent, not a behaviour) and the rule (paste the clause). A rule believed wrong is a hand-back line, not a
+suppressed finding. Numbers, not "verified".
 
 ## Hand back
 

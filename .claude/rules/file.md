@@ -17,7 +17,7 @@ never re-implements them, and S3 goes through `AwsS3Service`, never a hand-built
   `file.buffer`. An upload route carries `@RequestTimeout('1m')` (placement: `http.md`).
 - The extension allow-list is `EnumFileExtension` (`src/common/file/enums/file.enum.ts`).
   `FileExtensionPipe` reads the extension from `originalname`, then sniffs the buffer through
-  `FileService.sniffExtensionFromBuffer` (`src/common/file/services/file.service.ts:74`); a
+  `FileService.sniffExtensionFromBuffer` (`src/common/file/services/file.service.ts:73`); a
   sniffed type passes when `FileExtensionContract`
   (`src/common/file/contracts/file.extension.contract.ts`) maps it onto a member of the
   allow-list. `csv` is signature-less, so an empty sniff is accepted for it only. Adding an
@@ -57,7 +57,7 @@ download headers, and wraps it in `StreamableFile`. `file.maxDataExport` is the 
 `FileExceedMaxDataExportException`, and a PDF counts no rows. `file.maxSizeExportInBytes` is checked next,
 `FileExceedMaxSizeExportException` on the finished buffer. The domain producing the rows bounds its query at `cap + 1`
 and throws the same row exception before formatting (`UserImportDomain.exportByAdmin`). `Content-Disposition` is built
-through `FileService.sanitizeFilename` (`src/common/file/services/file.service.ts:67`) and `encodeURIComponent`, never
+through `FileService.sanitizeFilename` (`src/common/file/services/file.service.ts:66`) and `encodeURIComponent`, never
 interpolated.
 
 ## S3 presign
@@ -77,4 +77,4 @@ response and nowhere else. Expiry stays short.
 (`src/modules/user/domains/user.profile.domain.ts:134`); a presign, upload, or publish never succeeds without S3.
 `AwsSESService` passes `aws.ses.identityArn` as `SourceArn` on `send` and `sendBulk` when set. `AWS_S3_ENDPOINT`
 and `AWS_SES_ENDPOINT` (`src/app/dtos/app.env.dto.ts:82`, `:92`) point the clients elsewhere, S3 path-style; object
-URLs come from `aws.s3.baseUrlPattern` (`src/configs/aws.config.ts:64`).
+URLs come from `aws.s3.baseUrlPattern` (`src/configs/aws.config.ts:61`).

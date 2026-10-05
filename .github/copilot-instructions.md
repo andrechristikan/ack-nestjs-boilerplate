@@ -39,14 +39,14 @@ beside a schema, no class DTO. Folders: `dtos/request/`, `dtos/response/`. Rule:
 
 ## Concurrency
 
-Async-first: independent calls start into `const`s and are awaited in one `Promise.all` or `Promise.allSettled`. A sequential
-await with a visible dependency carries no comment; any other is a defect outside the three commented cases in
-`.claude/rules/code-style.md`. A `this.` call lands in a `const` before its value is used.
+Async-first: independent operations always run concurrently. Start each into a `const`, then `await Promise.all([...])`
+when one failure fails the whole, `await Promise.allSettled([...])` when each outcome is handled on its own. A sequential
+`await` of independent work is a defect outside the commented cases in `.claude/rules/code-style.md`.
 
 ## Imports
 
-Alias imports only; the alias table is `tsconfig.json` `paths`. A class Nest injects is a value import, not
-`import type`. Rule: `.claude/rules/code-style.md`.
+The alias table is `tsconfig.json` `paths`. A class Nest injects is a value import, not `import type`. Rule:
+`.claude/rules/code-style.md`.
 
 ## Tests
 

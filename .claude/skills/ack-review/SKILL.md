@@ -63,6 +63,9 @@ pnpm deadcode
 pnpm spell
 ```
 
+At the same depths, every sequential `await` of independent work in the scope is a finding
+(`.claude/rules/code-style.md`, Concurrency and errors).
+
 How to read `deadcode` and `spell`: `.claude/CLAUDE.md` Gotchas. At `plan`, `docs`, and
 `harness`, run no command beyond what `reviewer` ran. Never run `pnpm test` or
 `pnpm test:cov`; those belong to `/ack-spec`.

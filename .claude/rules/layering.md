@@ -74,7 +74,7 @@ broken `imports:` array; a cycle raises `ReferenceError` at bootstrap, a missing
 
 ## The run surface is a call site
 
-A command, port, path, or script a change moves also moves in `package.json`, `scripts/`, `ci/`, `ci/docker-compose.yml`,
-`docker-compose.yml`, the root `dockerfile.local`, `.dockerignore`, `.github/workflows/`, `.github/dependabot.yml`,
-`nest-cli.json`, `.swcrc`, `vitest.config.ts`, `knip.json`, `cspell.json`, `tsconfig*.json`, `eslint.config.mjs`,
-`.husky/`, and `.gitignore`.
+A command, port, path, or script a change moves also moves in `package.json`, `scripts/`, `ci/` (`dockerfile`,
+`dockerfile.local`, mongo, vault, jwks-server), `docker-compose.yml`, `.dockerignore`, `.github/workflows/`,
+`.github/dependabot.yml`, `nest-cli.json`, `.swcrc`, `vitest.config.ts`, `knip.json`, `cspell.json`, `tsconfig*.json`,
+`eslint.config.mjs`, `.husky/`, and `.gitignore`.

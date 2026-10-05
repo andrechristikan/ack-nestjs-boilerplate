@@ -39,7 +39,7 @@ a rate limiter). Framework files live in `src/queues/`; nothing else goes there.
    service, importing the domain module when the feature is not `@Global()`
    (`src/modules/workspace/workspace.processor.module.ts:6-12`).
 9. Aggregate: add the processor module to
-   `src/router/processor/router.processor.module.ts:8-11`.
+   `src/router/processor/router.processor.module.ts:8-14`.
 
 ## New job on an existing queue
 
@@ -50,12 +50,13 @@ a rate limiter). Framework files live in `src/queues/`; nothing else goes there.
    camelCase fields, `Queue` last, `Bulk` before it
    (`src/modules/notification/interfaces/notification.interface.ts:216-224`).
 3. Queue-class method: takes domain values, builds the typed payload, calls `add(jobName,
-   payload, { priority: EnumQueuePriority.<x>, jobId?, deduplication? })`
-   (`src/modules/notification/queues/notification.email.queue.ts:518-539`). A recurring
+   payload, { priority: EnumQueuePriority.<x>, jobId?, deduplication? })`, the id filled from
+   a `<Module>*JobIdPattern` constant through `HelperStringService.fillPattern`
+   (`src/modules/notification/queues/notification.email.queue.ts:607-636`). A recurring
    job uses `upsertJobScheduler` (`src/modules/workspace/queues/workspace.queue.ts:33-49`).
    A sensitive field is encrypted here with `HelperEncryptionService.aes256Encrypt`, the
    root secret, the module's `*EncryptionPurpose` constant, and the recipient id, and is
-   named `encrypted<Field>` (`src/modules/notification/queues/notification.queue.ts:55-62`).
+   named `encrypted<Field>` (`src/modules/notification/queues/notification.queue.ts:64-71`).
 4. Processor case: one `case` in `handle` awaiting the processor-service method
    (`src/modules/notification/processors/notification.email.processor.ts:173-180`). A
    failure no retry fixes is rethrown as `UnrecoverableError` inside `handle` (`:224-230`).

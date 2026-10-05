@@ -64,7 +64,7 @@ exception first, rethrown unwrapped by `AuthDomain`. CASL abilities come from th
 ## Activity log
 
 `ActivityLogDomain.prepare` (`activity-log.domain.ts:199`) builds and validates one event against
-`ActivityLogActionContract`; `stagePrepared` (`:226`) puts it on the CLS queue; `ActivityLogInterceptor` flushes.
+`ActivityLogActionContract`; `stagePrepared` (`:225`) puts it on the CLS queue; `ActivityLogInterceptor` flushes.
 Prepare before the write, stage after it; a value only the write produces is drawn before it
 (`DatabaseUtil.createId()`) or prepared after the commit. `prepare({ onError: true })` also flushes on the error path;
 an event on a path that always throws carries it. Every `EnumActivityLogAction` member has a contract row and an

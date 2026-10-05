@@ -37,9 +37,9 @@ another guard sets sits above it. Reordering is a defect even when boot passes.
   `{ user: true, route? }` when JWT-protected and `{ route }` only on `public` and `system` (`EnumRequestThrottleRoute`).
 - A `@Post` whose action creates the row its path names (`/create`, `/sign-up`, `/mobile-number/add`) keeps the
   default 201; every other `@Post` carries `@HttpCode(HttpStatus.OK)`.
-- `@WorkspaceMemberProtected(...roles)` adds `WorkspaceRoleGuard` with roles (`workspace.decorator.ts:76`).
+- `@WorkspaceMemberProtected(...roles)` adds `WorkspaceRoleGuard` with roles (`workspace.decorator.ts:78`).
   `@ProjectMemberProtected(...roles)` uses `ProjectMemberGuard` with no roles and `ProjectRoleGuard` alone with
-  roles (`project.decorator.ts:82`); `@ProjectMemberCurrent()` is valid only on the role-less form.
+  roles (`project.decorator.ts:84`); `@ProjectMemberCurrent()` is valid only on the role-less form.
 - Admin scope carries no `Workspace*` or `Project*` guard (they resolve `x-workspace-id` from CLS; an admin reads
   across workspaces): it scopes through `@RoleProtected` plus `@PolicyProtected` and a validated `:workspaceId` /
   `:projectId` param. `@RoleProtected` never lists `superAdmin`; `role.domain.ts:181` and `policy.domain.ts:50` pass it.
@@ -77,4 +77,4 @@ emits the global error kit; the summary is a lowercase phrase (`get list of role
 `@DocErrors(httpStatus, ...entries)`. Kit `DocResponseError` calls live in `src/common/doc/constants/doc.constant.ts`
 and `Doc<Module>ErrorResponses` in `<module>.constant.ts`; a `*Protected` decorator emits its guard's throw set plus
 its security scheme, named by a module constant (`AuthJwtAccessDocSecurityName`) shared with `src/swagger.ts`.
-Request shape comes from the zod schema through `standardSchemaConverter` (`src/swagger.ts:77`).
+Request shape comes from the zod schema through `standardSchemaConverter` (`src/swagger.ts:80`).

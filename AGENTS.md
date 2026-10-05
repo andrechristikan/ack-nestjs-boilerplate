@@ -43,8 +43,7 @@ test/e2e/               HTTP route and flow specs on Testcontainers
 test/helpers/           helpers two or more test types share
 docs/                   durable project documentation
 scripts/                generate-secret.ts, generate-package.ts
-dockerfile.local        local app image, built by docker-compose.yml
-ci/                     production dockerfile and docker-compose.yml, mongo, vault, jwks-server
+ci/                     dockerfile (production), dockerfile.local (the compose apis service), mongo, vault, jwks-server
 keys/                   generated JWT keys and encryption secret, gitignored
 generated/              swagger, vault init, agent reports under docs/, gitignored
 ```
@@ -65,7 +64,8 @@ validation-import; NestJS evaluates them in reverse, so the most specific runs f
 - `pnpm typecheck` · `pnpm test` (unit) · `pnpm test <path-filter>` · `pnpm test:cov` (unit coverage)
 - `pnpm test:integration` · `pnpm test:e2e`: need a running Docker daemon; they start throwaway containers.
 - `pnpm lint` · `pnpm lint:fix` · `pnpm format` · `pnpm deadcode` (knip) · `pnpm spell`
-- `docker-compose up -d`: MongoDB replica set, Redis, BullBoard, JWKS server, Vault. Ports are in `docker-compose.yml`.
+- `docker-compose up -d`: MongoDB replica set, Redis, BullBoard, JWKS server. `docker-compose --profile vault up -d`
+  adds Vault, `--profile apis` the app container. Ports are in `docker-compose.yml`.
 
 ## Prisma schema
 

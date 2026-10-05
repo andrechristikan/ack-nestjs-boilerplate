@@ -49,5 +49,5 @@ the ambiguity one layer deeper.
   a Prisma `where`, `data`, `select`, or `cursor` arg (`undefined` skips, `null` matches null; prefer a
   conditional spread), zod `.optional()`, and a third-party type, normalized with `?? null` where it
   enters our types.
-- `??` defaults a value; `||` is boolean logic only. Where `''` or `0` must also fall back, write it
-  (`name === '' ? fallback : name`).
+- `||` is boolean logic only, on a non-nullable operand too. Where `''` or `0` must also fall back, write the
+  comparison (`name === '' ? fallback : name`).
