@@ -30,7 +30,7 @@ owner's `pnpm db:migrate`; hand the command back.
 | exceptions | `exceptions/<module>.<descriptor>.exception.ts`, one class per file | `src/modules/device/exceptions/device.not-found.exception.ts:9-18` |
 | request DTO | `dtos/request/<module>.<action>.request.dto.ts`: a zod schema plus `z.infer` type | `src/modules/device/dtos/request/device.refresh.request.dto.ts` |
 | response DTO | `dtos/response/<module>.response.dto.ts`: `DatabaseResponseSchema` extended, `.meta()` on every field | `src/modules/device/dtos/response/device.response.dto.ts:13-36` |
-| HTTP service | `services/<module>.http.service.ts` | `src/modules/device/services/device.http.service.ts:18` |
+| HTTP service | `services/<module>.http.service.ts` | `src/modules/device/services/device.http.service.ts:19` |
 | controller | `controllers/<module>.<scope>.controller.ts`, one per scope | `src/modules/device/controllers/device.shared.controller.ts:39-64` |
 
 A queue, a processor, and a processor service follow

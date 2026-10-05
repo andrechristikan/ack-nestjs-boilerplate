@@ -35,15 +35,13 @@ unchanged; a response schema is declared on the route. No third model between co
 
 ## The pipe and the interceptor
 
-`RequestSchemaValidationPipe` (`src/common/request/pipes/request.schema-validation.pipe.ts:13`) is the single
-`APP_PIPE`. A body or path param with no schema attached raises `RequestSchemaMissingException` (`:35`), so each binds
-`{ schema }` (`@Body({ schema })`); a query with no schema passes unvalidated. The response schema is what reaches the
-wire: `z.object` strips undeclared keys, `@Response()` with no schema declares a route returning no data, and a
-payload the schema rejects raises `ResponseSerializationException`. Every handler returns an envelope
-(`IResponseReturn<T>`, `IResponsePaginationReturn<T>`, `IResponseFileReturn`), built by the HTTP service; the controller returns the
-HTTP service's result as is. A route with no data: the HTTP service method returns `Promise<IResponseReturn<void>>`
-and ends with `return {};`, the controller `return this.<module>HttpService.<method>(...)`. A response schema never
-reaches a domain.
+`RequestSchemaValidationPipe` (`src/common/request/pipes/request.schema-validation.pipe.ts:13`) is the single `APP_PIPE`.
+A body or path param with no schema attached raises `RequestSchemaMissingException` (`:35`), so each binds `{ schema }`
+(`@Body({ schema })`); a query with no schema passes unvalidated. The response schema is what reaches the wire: `z.object`
+strips undeclared keys, `@Response()` with no schema declares a route returning no data, and a payload the schema rejects
+raises `ResponseSerializationException`. Every handler returns an envelope its HTTP service builds (`IResponseReturn<T>`,
+`IResponsePaginationReturn<T>`, `IResponseFileReturn`; `http.md`); a no-data method is `Promise<IResponseReturn<void>>`
+and returns `{}`, or `{ metadata }` alone to override status or message. A response schema never reaches a domain.
 
 ## Pagination
 
