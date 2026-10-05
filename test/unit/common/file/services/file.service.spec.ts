@@ -42,6 +42,29 @@ describe('FileService', () => {
                 { name: 'bar', age: '5' },
             ]);
         });
+
+        it('keeps a quoted field holding the delimiter, a newline, or a quote as one value', () => {
+            const result = service.readCsv(
+                'name;note\nfoo;"line one\nline two"\nbar;"a;b"\nbaz;"say ""hi"""\n'
+            );
+
+            expect(result).toEqual([
+                { name: 'foo', note: 'line one\nline two' },
+                { name: 'bar', note: 'a;b' },
+                { name: 'baz', note: 'say "hi"' },
+            ]);
+        });
+
+        it('reads back the rows writeCsv produced', () => {
+            const rows = [
+                { name: 'foo', note: 'line one\nline two' },
+                { name: 'bar', note: 'a;b' },
+            ];
+
+            const result = service.readCsv(service.writeCsv(rows));
+
+            expect(result).toEqual(rows);
+        });
     });
 
     describe('createRandomFilename', () => {
