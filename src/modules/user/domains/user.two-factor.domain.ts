@@ -432,14 +432,15 @@ export class UserTwoFactorDomain {
                 }),
                 this.authCache.clearLockTwoFactorAttempt(user),
             ]);
-            await this.sessionDomain.purgeLoginsByUser(userId);
+            const purgePromise = this.sessionDomain.purgeLoginsByUser(userId);
+            const notifyPromise =
+                this.notificationQueue.sendResetTwoFactorByAdmin(
+                    user.id,
+                    updatedBy
+                );
+            await Promise.all([purgePromise, notifyPromise]);
 
             this.activityLogDomain.stagePrepared(events);
-
-            await this.notificationQueue.sendResetTwoFactorByAdmin(
-                user.id,
-                updatedBy
-            );
 
             return;
         } catch (err: unknown) {

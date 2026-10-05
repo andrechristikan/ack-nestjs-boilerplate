@@ -133,7 +133,7 @@ export class NotificationPushSecurityDomain {
             }
         );
 
-        await Promise.all([
+        await Promise.allSettled([
             this.notificationPushQueue.sendCleanupTokens(
                 userId,
                 result.failureTokens
@@ -201,7 +201,7 @@ export class NotificationPushSecurityDomain {
             }
         );
 
-        await Promise.all([
+        await Promise.allSettled([
             this.notificationPushQueue.sendCleanupTokens(
                 userId,
                 result.failureTokens
@@ -259,7 +259,7 @@ export class NotificationPushSecurityDomain {
             }
         );
 
-        await Promise.all([
+        await Promise.allSettled([
             this.notificationPushQueue.sendCleanupTokens(
                 userId,
                 result.failureTokens
@@ -317,7 +317,7 @@ export class NotificationPushSecurityDomain {
             }
         );
 
-        await Promise.all([
+        await Promise.allSettled([
             this.notificationPushQueue.sendCleanupTokens(
                 userId,
                 result.failureTokens

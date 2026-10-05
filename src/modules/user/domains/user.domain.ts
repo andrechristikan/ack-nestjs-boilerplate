@@ -269,10 +269,29 @@ export class UserDomain {
         { countryId, email, name, roleId, username }: IUserCreateByAdmin,
         createdBy: string
     ): Promise<IUserCreateByAdminPrepared> {
-        const [checkRole, emailExist, checkCountry] = await Promise.all([
-            this.roleDomain.getById(roleId),
-            this.userRepository.existsByEmail(email),
-            this.countryDomain.existsById(countryId),
+        const checkRolePromise = this.roleDomain.getById(roleId);
+        const emailExistPromise = this.userRepository.existsByEmail(email);
+        const checkCountryPromise = this.countryDomain.existsById(countryId);
+        const checkUsernamePatternPromise =
+            this.userUtil.checkUsernamePattern(username);
+        const checkUsernameBadWordPromise =
+            this.userUtil.checkBadWord(username);
+        const usernameExistPromise =
+            this.userRepository.existsByUsername(username);
+        const [
+            checkRole,
+            emailExist,
+            checkCountry,
+            checkUsernamePattern,
+            checkUsernameBadWord,
+            usernameExist,
+        ] = await Promise.all([
+            checkRolePromise,
+            emailExistPromise,
+            checkCountryPromise,
+            checkUsernamePatternPromise,
+            checkUsernameBadWordPromise,
+            usernameExistPromise,
         ]);
 
         if (!checkRole) {
@@ -283,12 +302,6 @@ export class UserDomain {
             throw new UserEmailExistException();
         }
 
-        const [checkUsernamePattern, checkUsernameBadWord, usernameExist] =
-            await Promise.all([
-                this.userUtil.checkUsernamePattern(username),
-                this.userUtil.checkBadWord(username),
-                this.userRepository.existsByUsername(username),
-            ]);
         if (checkUsernamePattern) {
             throw new UserUsernameNotAllowedException();
         } else if (checkUsernameBadWord) {

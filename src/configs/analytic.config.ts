@@ -87,6 +87,7 @@ export interface IConfigAnalytic {
             reviewMax: number;
             elevateMax: number;
         };
+        concurrency: number;
     };
 }
 
@@ -176,5 +177,6 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
             reviewMax: 60,
             elevateMax: 90,
         },
+        concurrency: 10,
     },
 }));

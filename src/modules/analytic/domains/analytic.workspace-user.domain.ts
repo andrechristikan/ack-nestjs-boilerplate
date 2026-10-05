@@ -47,20 +47,24 @@ export class AnalyticWorkspaceUserDomain {
             return cached;
         }
 
-        const [memberCount, projectCount] = await Promise.all([
-            this.workspaceMemberAnalyticDomain.getCountByWorkspace(workspaceId),
-            this.projectAnalyticDomain.getCountByWorkspace(workspaceId),
-        ]);
-
-        let activityCount = 0;
+        const memberCountPromise =
+            this.workspaceMemberAnalyticDomain.getCountByWorkspace(workspaceId);
+        const projectCountPromise =
+            this.projectAnalyticDomain.getCountByWorkspace(workspaceId);
+        let activityCountPromise: Promise<number> = Promise.resolve(0);
         if (startDate && endDate) {
-            activityCount =
-                await this.activityLogAnalyticDomain.getCountByWorkspaceInRange(
+            activityCountPromise =
+                this.activityLogAnalyticDomain.getCountByWorkspaceInRange(
                     workspaceId,
                     startDate,
                     endDate
                 );
         }
+        const [memberCount, projectCount, activityCount] = await Promise.all([
+            memberCountPromise,
+            projectCountPromise,
+            activityCountPromise,
+        ]);
 
         const value: IAnalyticWorkspaceSummary = {
             memberCount,

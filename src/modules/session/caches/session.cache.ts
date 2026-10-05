@@ -2,6 +2,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import type KeyvRedis from '@keyv/redis';
+import type { RedisClientType } from '@keyv/redis';
 import {
     SessionCacheProvider,
     SessionCachePurgeScanCount,
@@ -39,6 +40,21 @@ export class SessionCache {
 
     private getStore(): KeyvRedis<string> {
         return this.keyv.store as KeyvRedis<string>;
+    }
+
+    private async deleteMatchingOnNode(
+        client: RedisClientType,
+        match: string
+    ): Promise<void> {
+        for await (const keys of client.scanIterator({
+            MATCH: match,
+            COUNT: SessionCachePurgeScanCount,
+            TYPE: 'string',
+        })) {
+            if (keys.length > 0) {
+                await client.unlink(keys);
+            }
+        }
     }
 
     async getLogin(
@@ -110,22 +126,14 @@ export class SessionCache {
         );
     }
 
-    /** Deletes every session login entry of a user, found by `SCAN` on the shared client. */
+    /** Deletes every session login entry of a user, found by `SCAN` on every master node of the shared client. */
     async deleteLoginsByUser(userId: string): Promise<void> {
         const store = this.getStore();
         const userKey = this.buildKey(userId, '*');
         const match = store.createKeyPrefix(userKey, store.namespace);
         const clients = await store.getMasterNodes();
-        for (const client of clients) {
-            for await (const keys of client.scanIterator({
-                MATCH: match,
-                COUNT: SessionCachePurgeScanCount,
-                TYPE: 'string',
-            })) {
-                if (keys.length > 0) {
-                    await client.unlink(keys);
-                }
-            }
-        }
+        await Promise.all(
+            clients.map(client => this.deleteMatchingOnNode(client, match))
+        );
     }
 }

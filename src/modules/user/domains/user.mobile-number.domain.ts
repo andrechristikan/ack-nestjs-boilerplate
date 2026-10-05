@@ -27,19 +27,32 @@ export class UserMobileNumberDomain {
         private readonly userUtil: UserUtil
     ) {}
 
+    private async checkPhoneCode(
+        countryId: string,
+        phoneCode: string
+    ): Promise<boolean> {
+        const country = await this.countryDomain.getOne(countryId);
+
+        return this.userUtil.checkMobileNumber(country.phoneCode, phoneCode);
+    }
+
     async addMobileNumber(
         userId: string,
         { number, countryId, phoneCode }: IUserMobileNumberInput
     ): Promise<IUserMobileNumber> {
-        const country = await this.countryDomain.getOne(countryId);
-
-        const [checkValidMobileNumber, checkExist] = await Promise.all([
-            this.userUtil.checkMobileNumber(country.phoneCode, phoneCode),
+        const checkValidMobileNumberPromise = this.checkPhoneCode(
+            countryId,
+            phoneCode
+        );
+        const checkExistPromise =
             this.userMobileNumberRepository.existsMobileNumber(userId, {
                 number,
-                countryId: country.id,
+                countryId,
                 phoneCode,
-            }),
+            });
+        const [checkValidMobileNumber, checkExist] = await Promise.all([
+            checkValidMobileNumberPromise,
+            checkExistPromise,
         ]);
         if (!checkValidMobileNumber) {
             throw new UserMobileNumberInvalidException();
@@ -82,24 +95,24 @@ export class UserMobileNumberDomain {
         mobileNumberId: string,
         { number, countryId, phoneCode }: IUserMobileNumberInput
     ): Promise<IUserMobileNumber> {
-        const [checkMobileNumberExist, country] = await Promise.all([
+        const checkMobileNumberExistPromise =
             this.userMobileNumberRepository.findOneMobileNumber(
                 userId,
                 mobileNumberId
-            ),
-            this.countryDomain.getOne(countryId),
-        ]);
-        if (!checkMobileNumberExist) {
-            throw new UserMobileNumberNotFoundException();
-        }
-
-        const checkExist =
-            await this.userMobileNumberRepository.existsMobileNumber(
+            );
+        const countryPromise = this.countryDomain.getOne(countryId);
+        const checkExistPromise =
+            this.userMobileNumberRepository.existsMobileNumber(
                 userId,
                 { number, countryId, phoneCode },
                 mobileNumberId
             );
-        if (checkExist) {
+        const [checkMobileNumberExist, country, checkExist] = await Promise.all(
+            [checkMobileNumberExistPromise, countryPromise, checkExistPromise]
+        );
+        if (!checkMobileNumberExist) {
+            throw new UserMobileNumberNotFoundException();
+        } else if (checkExist) {
             throw new UserMobileNumberExistException();
         }
 

@@ -1,3 +1,4 @@
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
@@ -79,6 +80,7 @@ export class AnalyticFraudDomain {
     private readonly bandMonitorMax: number;
     private readonly bandReviewMax: number;
     private readonly bandElevateMax: number;
+    private readonly concurrency: number;
 
     constructor(
         private readonly analyticCache: AnalyticCache,
@@ -87,6 +89,7 @@ export class AnalyticFraudDomain {
         private readonly paginationService: PaginationService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
+        private readonly helperArrayService: HelperArrayService,
         private readonly activityLogAnalyticDomain: ActivityLogAnalyticDomain,
         private readonly userLoginAnalyticDomain: UserLoginAnalyticDomain,
         private readonly userAnalyticDomain: UserAnalyticDomain,
@@ -189,6 +192,9 @@ export class AnalyticFraudDomain {
         this.bandElevateMax = this.configService.get<number>(
             'analytic.fraud.bands.elevateMax'
         )!;
+        this.concurrency = this.configService.get<number>(
+            'analytic.fraud.concurrency'
+        )!;
     }
 
     private resolveWindow(
@@ -260,25 +266,37 @@ export class AnalyticFraudDomain {
             endDate
         );
         const flagged: IAnalyticAccountTakeover[] = [];
-        for (const change of changes) {
-            const windowEnd = this.helperDateService.forward(
-                change.createdAt,
-                Duration.fromMillis(
-                    this.accountTakeoverNewDeviceAfterPasswordChangeInMs
-                )
-            );
-            const devices = await this.deviceAnalyticDomain.getCreatedInRange(
-                change.createdAt,
-                windowEnd
-            );
-            const forUser = devices.filter(d => d.userId === change.userId);
-            if (forUser.length > 0) {
-                flagged.push({
-                    userId: change.userId,
-                    indicatorCodes: ['newDeviceAfterPasswordChange'],
-                    passwordChangedAt: change.createdAt,
-                });
-            }
+        const batches = this.helperArrayService.chunk(
+            changes,
+            this.concurrency
+        );
+        for (const batch of batches) {
+            const devicePromises = batch.map(change => {
+                const windowEnd = this.helperDateService.forward(
+                    change.createdAt,
+                    Duration.fromMillis(
+                        this.accountTakeoverNewDeviceAfterPasswordChangeInMs
+                    )
+                );
+                return this.deviceAnalyticDomain.getCreatedInRange(
+                    change.createdAt,
+                    windowEnd
+                );
+            });
+            // Sequential by design: bounded chunks, concurrent within a chunk
+            const devicesPerChange = await Promise.all(devicePromises);
+            batch.forEach((change, index) => {
+                const forUser = devicesPerChange[index].filter(
+                    d => d.userId === change.userId
+                );
+                if (forUser.length > 0) {
+                    flagged.push({
+                        userId: change.userId,
+                        indicatorCodes: ['newDeviceAfterPasswordChange'],
+                        passwordChangedAt: change.createdAt,
+                    });
+                }
+            });
         }
         return flagged;
     }
@@ -347,23 +365,35 @@ export class AnalyticFraudDomain {
                 endDate
             );
         const flagged: IAnalyticSessionAfterAdmin[] = [];
-        for (const revoke of revokes) {
-            const windowEnd = this.helperDateService.forward(
-                revoke.createdAt,
-                Duration.fromMillis(this.sessionAfterAdminRevokeInMs)
-            );
-            const logins = await this.userLoginAnalyticDomain.getLoginEvents(
-                revoke.createdAt,
-                windowEnd
-            );
-            const hit = logins.find(l => l.userId === revoke.userId);
-            if (hit) {
-                flagged.push({
-                    userId: revoke.userId,
-                    revokedAt: revoke.createdAt,
-                    loginAt: hit.createdAt,
-                });
-            }
+        const batches = this.helperArrayService.chunk(
+            revokes,
+            this.concurrency
+        );
+        for (const batch of batches) {
+            const loginPromises = batch.map(revoke => {
+                const windowEnd = this.helperDateService.forward(
+                    revoke.createdAt,
+                    Duration.fromMillis(this.sessionAfterAdminRevokeInMs)
+                );
+                return this.userLoginAnalyticDomain.getLoginEvents(
+                    revoke.createdAt,
+                    windowEnd
+                );
+            });
+            // Sequential by design: bounded chunks, concurrent within a chunk
+            const loginsPerRevoke = await Promise.all(loginPromises);
+            batch.forEach((revoke, index) => {
+                const hit = loginsPerRevoke[index].find(
+                    l => l.userId === revoke.userId
+                );
+                if (hit) {
+                    flagged.push({
+                        userId: revoke.userId,
+                        revokedAt: revoke.createdAt,
+                        loginAt: hit.createdAt,
+                    });
+                }
+            });
         }
         return flagged;
     }
@@ -426,21 +456,35 @@ export class AnalyticFraudDomain {
                 end
             );
         const flagged: IAnalyticBackupCodeNewDevice[] = [];
-        for (const regeneration of regenerations) {
-            const windowEnd = this.helperDateService.forward(
-                regeneration.createdAt,
-                Duration.fromMillis(windowMs)
-            );
-            const devices = await this.deviceAnalyticDomain.getCreatedInRange(
-                regeneration.createdAt,
-                windowEnd
-            );
-            if (devices.some(d => d.userId === regeneration.userId)) {
-                flagged.push({
-                    userId: regeneration.userId,
-                    regeneratedAt: regeneration.createdAt,
-                });
-            }
+        const batches = this.helperArrayService.chunk(
+            regenerations,
+            this.concurrency
+        );
+        for (const batch of batches) {
+            const devicePromises = batch.map(regeneration => {
+                const windowEnd = this.helperDateService.forward(
+                    regeneration.createdAt,
+                    Duration.fromMillis(windowMs)
+                );
+                return this.deviceAnalyticDomain.getCreatedInRange(
+                    regeneration.createdAt,
+                    windowEnd
+                );
+            });
+            // Sequential by design: bounded chunks, concurrent within a chunk
+            const devicesPerRegeneration = await Promise.all(devicePromises);
+            batch.forEach((regeneration, index) => {
+                if (
+                    devicesPerRegeneration[index].some(
+                        d => d.userId === regeneration.userId
+                    )
+                ) {
+                    flagged.push({
+                        userId: regeneration.userId,
+                        regeneratedAt: regeneration.createdAt,
+                    });
+                }
+            });
         }
         return flagged;
     }
@@ -976,7 +1020,11 @@ export class AnalyticFraudDomain {
             return cached;
         }
 
-        const user = await this.userAnalyticDomain.getOneById(userId);
+        const userPromise = this.userAnalyticDomain.getOneById(userId);
+        const sharedPromise = this.deviceAnalyticDomain.getSharedFingerprints(
+            this.sharedFingerprintMinUsersPerFingerprint
+        );
+        const [user, shared] = await Promise.all([userPromise, sharedPromise]);
         if (!user) {
             throw new UserNotFoundException();
         }
@@ -1010,9 +1058,6 @@ export class AnalyticFraudDomain {
             );
         }
 
-        const shared = await this.deviceAnalyticDomain.getSharedFingerprints(
-            this.sharedFingerprintMinUsersPerFingerprint
-        );
         if (shared.some(s => s.userIds.includes(userId))) {
             score += weights.sharedFingerprint;
             contributingSignalCodes.push(
@@ -1036,13 +1081,11 @@ export class AnalyticFraudDomain {
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
         const near = await this.userAnalyticDomain.getNearLockout(1);
-        const scored: IAnalyticFraudRiskScore[] = [];
-        for (const u of near.slice(0, 100)) {
-            const s = await this.riskScore(u.id);
-            if (minScore === null || s.score >= minScore) {
-                scored.push(s);
-            }
-        }
+        const scorePromises = near.slice(0, 100).map(u => this.riskScore(u.id));
+        const all = await Promise.all(scorePromises);
+        const scored = all.filter(
+            s => minScore === null || s.score >= minScore
+        );
         scored.sort((a, b) => b.score - a.score);
         const { skip, limit, orderBy } = params;
         const sorted = this.analyticSortUtil.sortRows(

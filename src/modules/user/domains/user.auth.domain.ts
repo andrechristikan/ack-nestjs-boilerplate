@@ -140,31 +140,45 @@ export class UserAuthDomain {
         }: IUserLoginSocial,
         workspaceContext: IUserSignUpWorkspaceContext
     ): Promise<IUserCreateWithWorkspaceInput | null> {
-        const featureFlag =
-            await this.featureFlagCache.getMetadataByKeyAndCache<{
+        const featureFlagPromise =
+            this.featureFlagCache.getMetadataByKeyAndCache<{
                 signUpAllowed: boolean;
             }>(
                 loginWith === EnumUserLoginWith.socialGoogle
                     ? 'loginWithGoogle'
                     : 'loginWithApple'
             );
-        const user = await this.userRepository.findOneWithRoleByEmail(email);
+        const userPromise = this.userRepository.findOneWithRoleByEmail(email);
+        const [featureFlag, user] = await Promise.all([
+            featureFlagPromise,
+            userPromise,
+        ]);
+        // Sequential by design: gate before the work it guards
         if (user || !featureFlag?.signUpAllowed) {
             return null;
         }
 
-        const role = await this.roleDomain.getByName(this.userRoleName);
+        const rolePromise = this.roleDomain.getByName(this.userRoleName);
+        const checkUsernamePatternPromise =
+            this.userUtil.checkUsernamePattern(username);
+        const checkUsernameBadWordPromise =
+            this.userUtil.checkBadWord(username);
+        const usernameExistPromise =
+            this.userRepository.existsByUsername(username);
+        const [
+            role,
+            checkUsernamePattern,
+            checkUsernameBadWord,
+            usernameExist,
+        ] = await Promise.all([
+            rolePromise,
+            checkUsernamePatternPromise,
+            checkUsernameBadWordPromise,
+            usernameExistPromise,
+        ]);
         if (!role) {
             throw new RoleNotFoundException();
-        }
-
-        const [checkUsernamePattern, checkUsernameBadWord, usernameExist] =
-            await Promise.all([
-                this.userUtil.checkUsernamePattern(username),
-                this.userUtil.checkBadWord(username),
-                this.userRepository.existsByUsername(username),
-            ]);
-        if (checkUsernamePattern) {
+        } else if (checkUsernamePattern) {
             throw new UserUsernameNotAllowedException();
         } else if (checkUsernameBadWord) {
             throw new UserUsernameContainBadWordException();
@@ -255,10 +269,29 @@ export class UserAuthDomain {
         input: IUserCreateWithWorkspaceInput;
         emailVerification: IUserVerificationEmailCreate;
     }> {
-        const [role, emailExist, checkCountry] = await Promise.all([
-            this.roleDomain.getByName(this.userRoleName),
-            this.userRepository.existsByEmail(email),
-            this.countryDomain.existsById(countryId),
+        const rolePromise = this.roleDomain.getByName(this.userRoleName);
+        const emailExistPromise = this.userRepository.existsByEmail(email);
+        const checkCountryPromise = this.countryDomain.existsById(countryId);
+        const checkUsernamePatternPromise =
+            this.userUtil.checkUsernamePattern(username);
+        const checkUsernameBadWordPromise =
+            this.userUtil.checkBadWord(username);
+        const usernameExistPromise =
+            this.userRepository.existsByUsername(username);
+        const [
+            role,
+            emailExist,
+            checkCountry,
+            checkUsernamePattern,
+            checkUsernameBadWord,
+            usernameExist,
+        ] = await Promise.all([
+            rolePromise,
+            emailExistPromise,
+            checkCountryPromise,
+            checkUsernamePatternPromise,
+            checkUsernameBadWordPromise,
+            usernameExistPromise,
         ]);
         if (!role) {
             throw new RoleNotFoundException();
@@ -268,12 +301,6 @@ export class UserAuthDomain {
             throw new UserEmailExistException();
         }
 
-        const [checkUsernamePattern, checkUsernameBadWord, usernameExist] =
-            await Promise.all([
-                this.userUtil.checkUsernamePattern(username),
-                this.userUtil.checkBadWord(username),
-                this.userRepository.existsByUsername(username),
-            ]);
         if (checkUsernamePattern) {
             throw new UserUsernameNotAllowedException();
         } else if (checkUsernameBadWord) {

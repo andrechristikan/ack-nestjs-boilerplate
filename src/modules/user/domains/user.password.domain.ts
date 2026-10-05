@@ -268,9 +268,7 @@ export class UserPasswordDomain {
                         ],
                     };
                 });
-            await this.sessionDomain.purgeLoginsByUser(userId);
-
-            this.activityLogDomain.stagePrepared(events);
+            const purgePromise = this.sessionDomain.purgeLoginsByUser(userId);
 
             const passwordCreatedAt = this.helperDateService.formatToIso(
                 password.passwordCreated
@@ -278,15 +276,19 @@ export class UserPasswordDomain {
             const passwordExpiredAt = this.helperDateService.formatToIso(
                 password.passwordExpired
             );
-            await this.notificationQueue.sendTemporaryPasswordByAdmin(
-                updated.id,
-                {
-                    password: passwordString,
-                    passwordCreatedAt,
-                    passwordExpiredAt,
-                },
-                updatedBy
-            );
+            const notifyPromise =
+                this.notificationQueue.sendTemporaryPasswordByAdmin(
+                    updated.id,
+                    {
+                        password: passwordString,
+                        passwordCreatedAt,
+                        passwordExpiredAt,
+                    },
+                    updatedBy
+                );
+            await Promise.all([purgePromise, notifyPromise]);
+
+            this.activityLogDomain.stagePrepared(events);
 
             return;
         } catch (err: unknown) {
@@ -325,10 +327,15 @@ export class UserPasswordDomain {
                 throw new UserPasswordNotMatchException();
             }
 
-            await this.userDomain.resetPasswordAttempt(user.id);
-
-            const passwordHistories =
-                await this.passwordHistoryDomain.getActiveByUser(user.id);
+            const resetAttemptPromise = this.userDomain.resetPasswordAttempt(
+                user.id
+            );
+            const passwordHistoriesPromise =
+                this.passwordHistoryDomain.getActiveByUser(user.id);
+            const [, passwordHistories] = await Promise.all([
+                resetAttemptPromise,
+                passwordHistoriesPromise,
+            ]);
             const passwordCheck = this.authPasswordUtil.checkPasswordPeriod(
                 passwordHistories,
                 newPassword
@@ -397,11 +404,13 @@ export class UserPasswordDomain {
                     );
                 }
             });
-            await this.sessionDomain.purgeLoginsByUser(user.id);
+            const purgePromise = this.sessionDomain.purgeLoginsByUser(user.id);
+            const notifyPromise = this.notificationQueue.sendChangePassword(
+                user.id
+            );
+            await Promise.all([purgePromise, notifyPromise]);
 
             this.activityLogDomain.stagePrepared(events);
-
-            await this.notificationQueue.sendChangePassword(user.id);
 
             return;
         } catch (err: unknown) {
@@ -586,13 +595,15 @@ export class UserPasswordDomain {
                     );
                 }
             });
-            await this.sessionDomain.purgeLoginsByUser(resetPassword.userId);
-
-            this.activityLogDomain.stagePrepared(events);
-
-            await this.notificationQueue.sendResetPassword(
+            const purgePromise = this.sessionDomain.purgeLoginsByUser(
                 resetPassword.userId
             );
+            const notifyPromise = this.notificationQueue.sendResetPassword(
+                resetPassword.userId
+            );
+            await Promise.all([purgePromise, notifyPromise]);
+
+            this.activityLogDomain.stagePrepared(events);
 
             return;
         } catch (err: unknown) {
