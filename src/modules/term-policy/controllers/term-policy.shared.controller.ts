@@ -82,8 +82,6 @@ export class TermPolicySharedController {
         @Body({ schema: TermPolicyAcceptRequestSchema })
         body: TermPolicyAcceptRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyAcceptanceHttpService.userAccept(user, body);
-
-        return {};
+        return this.termPolicyAcceptanceHttpService.userAccept(user, body);
     }
 }

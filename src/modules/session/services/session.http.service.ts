@@ -1,3 +1,4 @@
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -73,25 +74,31 @@ export class SessionHttpService {
         };
     }
 
-    async revoke(userId: string, sessionId: string): Promise<void> {
+    async revoke(
+        userId: string,
+        sessionId: string
+    ): Promise<IResponseReturn<void>> {
         await this.sessionDomain.revoke(userId, sessionId);
 
-        return;
+        return {};
     }
 
     async revokeByAdmin(
         userId: string,
         sessionId: string,
         revokedBy: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.sessionDomain.revokeByAdmin(userId, sessionId, revokedBy);
 
-        return;
+        return {};
     }
 
-    async revokeAllByAdmin(userId: string, revokedBy: string): Promise<void> {
+    async revokeAllByAdmin(
+        userId: string,
+        revokedBy: string
+    ): Promise<IResponseReturn<void>> {
         await this.sessionDomain.revokeAllByAdmin(userId, revokedBy);
 
-        return;
+        return {};
     }
 }

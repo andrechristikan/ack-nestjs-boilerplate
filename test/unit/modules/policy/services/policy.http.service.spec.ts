@@ -93,12 +93,12 @@ describe('PolicyHttpService', () => {
     });
 
     describe('deleteByAdmin', () => {
-        it('returns nothing after deleting the policy', async () => {
+        it('returns an empty response after deleting the policy', async () => {
             policyDomain.deleteByAdmin.mockResolvedValue(policy);
 
             const result = await service.deleteByAdmin('role-1', 'policy-1');
 
-            expect(result).toBeUndefined();
+            expect(result).toEqual({});
             expect(policyDomain.deleteByAdmin).toHaveBeenCalledWith(
                 'role-1',
                 'policy-1'

@@ -127,9 +127,9 @@ export class RoleHttpService {
         return { data: updated };
     }
 
-    async deleteByAdmin(id: string): Promise<void> {
+    async deleteByAdmin(id: string): Promise<IResponseReturn<void>> {
         await this.roleDomain.deleteByAdmin(id);
 
-        return;
+        return {};
     }
 }

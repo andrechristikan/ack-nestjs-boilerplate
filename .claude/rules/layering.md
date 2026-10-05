@@ -22,11 +22,12 @@ module: `.claude/skills/ack-build/references/add-module.md`.
   DTO in a signature. Injects `DatabaseService` only to call `withTransaction`; a model query on `client`
   here is the defect. The only layer another feature consumes.
 - HTTP service (`services/<module>[.<concern>].http.service.ts`): the controller's only collaborator.
-  Translates a request DTO into the domain call and the result into a response DTO or pagination
-  envelope. No business rule, no repository.
+  Translates a request DTO into the domain call and the result into the response envelope, `{}` for a route
+  with no data. No business rule, no repository.
 - Processor service (`services/<module>[.<concern>].processor.service.ts`): the same shape on the queue
   side; translates a job payload and returns `IQueueResponse` (`queue.md`).
-- Controller: one endpoint, one HTTP service method. Decorators and param extraction only.
+- Controller: one endpoint, one HTTP service method. Decorators and param extraction only; returns the HTTP
+  service's envelope as is, never builds one (`return {};` lives in the HTTP service).
 - Util (`utils/<module>[.<concern>].util.ts`): pure shaping, arguments in and a value out. Injects
   `ConfigService` and the in-memory kit only (`Helper*`, `MessageService`, `DatabaseUtil`); no cache,
   repository, `Queue`, `RequestStoreService`, `FileService`, or another module's util. Maps an error to

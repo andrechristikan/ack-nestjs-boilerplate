@@ -1,3 +1,4 @@
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
@@ -33,7 +34,7 @@ export class UserImportHttpService {
     async importByAdmin(
         data: UserImportRequestDto[],
         createdBy: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         const { inputs, passwordHasheds, passwordStrings } =
             await this.userImportDomain.prepareImportByAdmin(
                 data.map(({ email, name, username }) => ({
@@ -57,6 +58,8 @@ export class UserImportHttpService {
             passwordStrings,
             createdBy
         );
+
+        return {};
     }
 
     async exportByAdmin(

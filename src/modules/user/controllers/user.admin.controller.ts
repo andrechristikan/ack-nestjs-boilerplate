@@ -164,9 +164,11 @@ export class UserAdminController {
         @Body({ schema: UserUpdateStatusRequestSchema })
         body: UserUpdateStatusRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.userHttpService.updateStatusByAdmin(userId, body, updatedBy);
-
-        return {};
+        return this.userHttpService.updateStatusByAdmin(
+            userId,
+            body,
+            updatedBy
+        );
     }
 
     @Doc({ summary: 'update password of user' })
@@ -187,12 +189,10 @@ export class UserAdminController {
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.userPasswordHttpService.updatePasswordByAdmin(
+        return this.userPasswordHttpService.updatePasswordByAdmin(
             userId,
             updatedBy
         );
-
-        return {};
     }
 
     @Doc({ summary: 'reset user' })
@@ -213,12 +213,10 @@ export class UserAdminController {
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.userTwoFactorHttpService.resetTwoFactorByAdmin(
+        return this.userTwoFactorHttpService.resetTwoFactorByAdmin(
             userId,
             updatedBy
         );
-
-        return {};
     }
 
     @Doc({ summary: 'import users via csv file' })
@@ -250,9 +248,7 @@ export class UserAdminController {
         )
         data: UserImportRequestDto[]
     ): Promise<IResponseReturn<void>> {
-        await this.userImportHttpService.importByAdmin(data, createdBy);
-
-        return {};
+        return this.userImportHttpService.importByAdmin(data, createdBy);
     }
 
     @Doc({ summary: 'export users via csv file' })

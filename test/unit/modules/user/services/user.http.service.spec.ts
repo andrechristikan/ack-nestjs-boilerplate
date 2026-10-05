@@ -306,14 +306,14 @@ describe('UserHttpService', () => {
     });
 
     describe('updateStatusByAdmin', () => {
-        it('delegates to the domain and returns nothing', async () => {
+        it('delegates to the domain and returns an empty response', async () => {
             const dto: UserUpdateStatusRequestDto = {
                 status: EnumUserStatus.blocked,
             };
 
             await expect(
                 service.updateStatusByAdmin('user-cinder', dto, 'admin-cinder')
-            ).resolves.toBeUndefined();
+            ).resolves.toEqual({});
             expect(userDomain.updateStatusByAdmin).toHaveBeenCalledWith(
                 'user-cinder',
                 dto.status,

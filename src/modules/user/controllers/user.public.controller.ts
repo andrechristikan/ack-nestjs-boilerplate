@@ -133,9 +133,7 @@ export class UserPublicController {
         @Body({ schema: UserSignUpRequestSchema })
         body: UserSignUpRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.userAuthHttpService.signUp(body);
-
-        return {};
+        return this.userAuthHttpService.signUp(body);
     }
 
     @Doc({ summary: 'user email verification' })
@@ -147,9 +145,7 @@ export class UserPublicController {
         @Body({ schema: UserVerifyEmailRequestSchema })
         body: UserVerifyEmailRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.userVerificationHttpService.verifyEmail(body);
-
-        return {};
+        return this.userVerificationHttpService.verifyEmail(body);
     }
 
     @Doc({ summary: 'user resend email verification' })
@@ -162,9 +158,7 @@ export class UserPublicController {
         @Body({ schema: UserSendEmailVerificationRequestSchema })
         body: UserSendEmailVerificationRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.userVerificationHttpService.sendVerificationEmail(body);
-
-        return {};
+        return this.userVerificationHttpService.sendVerificationEmail(body);
     }
 
     @Doc({ summary: 'user forgot password' })
@@ -178,9 +172,7 @@ export class UserPublicController {
         @Body({ schema: UserForgotPasswordRequestSchema })
         body: UserForgotPasswordRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.userPasswordHttpService.forgotPassword(body);
-
-        return {};
+        return this.userPasswordHttpService.forgotPassword(body);
     }
 
     @Doc({ summary: 'user reset password' })
@@ -193,9 +185,7 @@ export class UserPublicController {
         @Body({ schema: UserForgotPasswordResetRequestSchema })
         body: UserForgotPasswordResetRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.userPasswordHttpService.resetPassword(body);
-
-        return {};
+        return this.userPasswordHttpService.resetPassword(body);
     }
 
     @Doc({ summary: 'user verify two factor during login' })

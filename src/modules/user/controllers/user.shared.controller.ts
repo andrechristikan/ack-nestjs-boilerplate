@@ -146,9 +146,7 @@ export class UserSharedController {
         @Body({ schema: UserUpdateProfileRequestSchema })
         body: UserUpdateProfileRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.userProfileHttpService.updateProfile(userId, body);
-
-        return {};
+        return this.userProfileHttpService.updateProfile(userId, body);
     }
 
     @Doc({ summary: 'generate upload photo profile presign' })
@@ -188,9 +186,7 @@ export class UserSharedController {
         @Body({ schema: UserUpdateProfilePhotoRequestSchema })
         body: UserUpdateProfilePhotoRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.userProfileHttpService.updatePhotoProfile(userId, body);
-
-        return {};
+        return this.userProfileHttpService.updatePhotoProfile(userId, body);
     }
 
     @Doc({ summary: 'upload photo profile' })
@@ -217,9 +213,7 @@ export class UserSharedController {
         )
         file: IFile
     ): Promise<IResponseReturn<void>> {
-        await this.userProfileHttpService.uploadPhotoProfile(userId, file);
-
-        return {};
+        return this.userProfileHttpService.uploadPhotoProfile(userId, file);
     }
 
     @Doc({ summary: 'change password' })
@@ -236,9 +230,7 @@ export class UserSharedController {
         @Body({ schema: UserChangePasswordRequestSchema })
         body: UserChangePasswordRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.userPasswordHttpService.changePassword(user, body);
-
-        return {};
+        return this.userPasswordHttpService.changePassword(user, body);
     }
 
     @Doc({ summary: 'user add mobile number' })
@@ -318,9 +310,7 @@ export class UserSharedController {
         @Body({ schema: UserClaimUsernameRequestSchema })
         body: UserClaimUsernameRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.userProfileHttpService.claimUsername(userId, body);
-
-        return {};
+        return this.userProfileHttpService.claimUsername(userId, body);
     }
 
     @Doc({ summary: 'get current two-factor authentication status' })
@@ -393,9 +383,7 @@ export class UserSharedController {
         @Body({ schema: UserTwoFactorDisableRequestSchema })
         body: UserTwoFactorDisableRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.userTwoFactorHttpService.disableTwoFactor(user, body);
-
-        return {};
+        return this.userTwoFactorHttpService.disableTwoFactor(user, body);
     }
 
     @Doc({ summary: 'regenerate two-factor backup codes' })
@@ -436,13 +424,11 @@ export class UserSharedController {
         @AuthJwtPayload()
         { sessionId, userId, deviceOwnershipId }: IAuthJwtAccessTokenPayload
     ): Promise<IResponseReturn<void>> {
-        await this.userAuthHttpService.logout(
+        return this.userAuthHttpService.logout(
             userId,
             sessionId,
             deviceOwnershipId
         );
-
-        return {};
     }
 
     // TODO: Verify number implementation, but which provider?

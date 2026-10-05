@@ -96,9 +96,7 @@ export class NotificationSharedController {
         @Param('notificationId', { schema: RequestMongoIdSchema })
         notificationId: string
     ): Promise<IResponseReturn<void>> {
-        await this.notificationHttpService.markAsRead(userId, notificationId);
-
-        return {};
+        return this.notificationHttpService.markAsRead(userId, notificationId);
     }
 
     @Doc({ summary: 'mark all notifications as read' })
@@ -130,8 +128,6 @@ export class NotificationSharedController {
         @Body({ schema: NotificationUserSettingRequestSchema })
         body: NotificationUserSettingRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.notificationHttpService.updateUserSetting(userId, body);
-
-        return {};
+        return this.notificationHttpService.updateUserSetting(userId, body);
     }
 }

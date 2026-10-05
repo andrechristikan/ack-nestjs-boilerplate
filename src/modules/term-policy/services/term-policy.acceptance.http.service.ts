@@ -1,3 +1,4 @@
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -47,9 +48,9 @@ export class TermPolicyAcceptanceHttpService {
     async userAccept(
         user: IUser,
         { type }: TermPolicyAcceptRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.termPolicyAcceptanceDomain.userAccept(user, type);
 
-        return;
+        return {};
     }
 }

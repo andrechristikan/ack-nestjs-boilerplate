@@ -250,7 +250,7 @@ describe('TermPolicyHttpService', () => {
     });
 
     describe('publishByAdmin', () => {
-        it('returns nothing after publishing', async () => {
+        it('returns an empty response after publishing', async () => {
             termPolicyDomain.publishByAdmin.mockResolvedValue(undefined);
 
             const result = await service.publishByAdmin(
@@ -258,7 +258,7 @@ describe('TermPolicyHttpService', () => {
                 'user-1'
             );
 
-            expect(result).toBeUndefined();
+            expect(result).toEqual({});
             expect(termPolicyDomain.publishByAdmin).toHaveBeenCalledWith(
                 'term-policy-1',
                 'user-1'

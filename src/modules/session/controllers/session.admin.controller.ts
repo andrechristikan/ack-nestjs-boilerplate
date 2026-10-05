@@ -93,13 +93,11 @@ export class SessionAdminController {
         sessionId: string,
         @AuthJwtPayload('userId') revokedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.sessionHttpService.revokeByAdmin(
+        return this.sessionHttpService.revokeByAdmin(
             userId,
             sessionId,
             revokedBy
         );
-
-        return {};
     }
 
     @Doc({ summary: 'admin revoke all user Sessions' })
@@ -126,8 +124,6 @@ export class SessionAdminController {
         userId: string,
         @AuthJwtPayload('userId') revokedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.sessionHttpService.revokeAllByAdmin(userId, revokedBy);
-
-        return {};
+        return this.sessionHttpService.revokeAllByAdmin(userId, revokedBy);
     }
 }

@@ -101,8 +101,13 @@ export class ProjectHttpService {
         return { data: updated };
     }
 
-    async softDeleteProject(project: Project, actorId: string): Promise<void> {
+    async softDeleteProject(
+        project: Project,
+        actorId: string
+    ): Promise<IResponseReturn<void>> {
         await this.projectDomain.softDeleteProject(project, actorId);
+
+        return {};
     }
 
     async getListOffsetByAdmin(

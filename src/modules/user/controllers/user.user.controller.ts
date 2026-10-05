@@ -36,8 +36,6 @@ export class UserUserController {
     async deleteSelf(
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<void>> {
-        await this.userHttpService.deleteSelf(userId);
-
-        return {};
+        return this.userHttpService.deleteSelf(userId);
     }
 }

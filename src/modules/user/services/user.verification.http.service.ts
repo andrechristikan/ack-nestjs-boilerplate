@@ -1,3 +1,4 @@
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import type { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
@@ -9,13 +10,19 @@ export class UserVerificationHttpService {
         private readonly userVerificationDomain: UserVerificationDomain
     ) {}
 
-    async verifyEmail({ token }: UserVerifyEmailRequestDto): Promise<void> {
+    async verifyEmail({
+        token,
+    }: UserVerifyEmailRequestDto): Promise<IResponseReturn<void>> {
         await this.userVerificationDomain.verifyEmail(token);
+
+        return {};
     }
 
     async sendVerificationEmail({
         email,
-    }: UserSendEmailVerificationRequestDto): Promise<void> {
+    }: UserSendEmailVerificationRequestDto): Promise<IResponseReturn<void>> {
         await this.userVerificationDomain.sendVerificationEmail(email);
+
+        return {};
     }
 }

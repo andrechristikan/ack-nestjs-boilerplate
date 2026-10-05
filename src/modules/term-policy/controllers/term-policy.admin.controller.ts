@@ -179,12 +179,10 @@ export class TermPolicyAdminController {
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyContentHttpService.updateContentByAdmin(
+        return this.termPolicyContentHttpService.updateContentByAdmin(
             termPolicyId,
             body
         );
-
-        return {};
     }
 
     @Doc({ summary: 'add content to a term or policy by ID' })
@@ -206,12 +204,10 @@ export class TermPolicyAdminController {
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyContentHttpService.addContentByAdmin(
+        return this.termPolicyContentHttpService.addContentByAdmin(
             termPolicyId,
             body
         );
-
-        return {};
     }
 
     @Doc({ summary: 'remove content of a term or policy by ID' })
@@ -233,12 +229,10 @@ export class TermPolicyAdminController {
         @Body({ schema: TermPolicyRemoveContentRequestSchema })
         body: TermPolicyRemoveContentRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyContentHttpService.removeContentByAdmin(
+        return this.termPolicyContentHttpService.removeContentByAdmin(
             termPolicyId,
             body
         );
-
-        return {};
     }
 
     @Doc({ summary: 'get content of a term or policy by ID and language' })
@@ -286,11 +280,9 @@ export class TermPolicyAdminController {
         termPolicyId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyHttpService.publishByAdmin(
+        return this.termPolicyHttpService.publishByAdmin(
             termPolicyId,
             updatedBy
         );
-
-        return {};
     }
 }

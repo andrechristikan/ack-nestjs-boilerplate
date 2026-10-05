@@ -1,3 +1,4 @@
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
@@ -12,10 +13,10 @@ export class UserPasswordHttpService {
     async updatePasswordByAdmin(
         userId: string,
         updatedBy: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userPasswordDomain.updatePasswordByAdmin(userId, updatedBy);
 
-        return;
+        return {};
     }
 
     async changePassword(
@@ -27,7 +28,7 @@ export class UserPasswordHttpService {
             code,
             method,
         }: UserChangePasswordRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userPasswordDomain.changePassword(user, {
             newPassword,
             oldPassword,
@@ -35,12 +36,16 @@ export class UserPasswordHttpService {
             code,
             method,
         });
+
+        return {};
     }
 
     async forgotPassword({
         email,
-    }: UserForgotPasswordRequestDto): Promise<void> {
+    }: UserForgotPasswordRequestDto): Promise<IResponseReturn<void>> {
         await this.userPasswordDomain.forgotPassword(email);
+
+        return {};
     }
 
     async resetPassword({
@@ -49,7 +54,7 @@ export class UserPasswordHttpService {
         backupCode,
         code,
         method,
-    }: UserForgotPasswordResetRequestDto): Promise<void> {
+    }: UserForgotPasswordResetRequestDto): Promise<IResponseReturn<void>> {
         await this.userPasswordDomain.resetPassword({
             newPassword,
             token,
@@ -57,5 +62,7 @@ export class UserPasswordHttpService {
             code,
             method,
         });
+
+        return {};
     }
 }

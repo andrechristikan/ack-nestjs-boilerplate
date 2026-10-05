@@ -62,7 +62,7 @@ describe('TermPolicyContentHttpService', () => {
     });
 
     describe('updateContentByAdmin', () => {
-        it('returns nothing after updating the content', async () => {
+        it('returns an empty response after updating the content', async () => {
             const body: TermPolicyContentRequestDto = {
                 language: EnumMessageLanguage.en,
                 size: 1024,
@@ -77,7 +77,7 @@ describe('TermPolicyContentHttpService', () => {
                 body
             );
 
-            expect(result).toBeUndefined();
+            expect(result).toEqual({});
             expect(
                 termPolicyContentDomain.updateContentByAdmin
             ).toHaveBeenCalledWith('term-policy-1', body);
@@ -85,7 +85,7 @@ describe('TermPolicyContentHttpService', () => {
     });
 
     describe('addContentByAdmin', () => {
-        it('returns nothing after adding the content', async () => {
+        it('returns an empty response after adding the content', async () => {
             const body: TermPolicyContentRequestDto = {
                 language: EnumMessageLanguage.en,
                 size: 1024,
@@ -100,7 +100,7 @@ describe('TermPolicyContentHttpService', () => {
                 body
             );
 
-            expect(result).toBeUndefined();
+            expect(result).toEqual({});
             expect(
                 termPolicyContentDomain.addContentByAdmin
             ).toHaveBeenCalledWith('term-policy-1', body);
@@ -108,7 +108,7 @@ describe('TermPolicyContentHttpService', () => {
     });
 
     describe('removeContentByAdmin', () => {
-        it('returns nothing after removing the content', async () => {
+        it('returns an empty response after removing the content', async () => {
             termPolicyContentDomain.removeContentByAdmin.mockResolvedValue(
                 undefined
             );
@@ -117,7 +117,7 @@ describe('TermPolicyContentHttpService', () => {
                 language: EnumMessageLanguage.en,
             });
 
-            expect(result).toBeUndefined();
+            expect(result).toEqual({});
             expect(
                 termPolicyContentDomain.removeContentByAdmin
             ).toHaveBeenCalledWith('term-policy-1', EnumMessageLanguage.en);

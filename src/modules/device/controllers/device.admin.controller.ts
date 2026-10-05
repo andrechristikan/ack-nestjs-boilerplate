@@ -95,12 +95,10 @@ export class DeviceAdminController {
         @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
-        await this.deviceHttpService.removeByAdmin(
+        return this.deviceHttpService.removeByAdmin(
             userId,
             deviceOwnershipId,
             removedBy
         );
-
-        return {};
     }
 }

@@ -143,14 +143,14 @@ describe('TermPolicyAcceptanceHttpService', () => {
     });
 
     describe('userAccept', () => {
-        it('accepts the given term policy type for the user and returns nothing', async () => {
+        it('accepts the given term policy type for the user and returns an empty response', async () => {
             termPolicyAcceptanceDomain.userAccept.mockResolvedValue(undefined);
 
             const result = await service.userAccept(user, {
                 type: EnumTermPolicyType.privacy,
             });
 
-            expect(result).toBeUndefined();
+            expect(result).toEqual({});
             expect(termPolicyAcceptanceDomain.userAccept).toHaveBeenCalledWith(
                 user,
                 EnumTermPolicyType.privacy

@@ -247,7 +247,7 @@ describe('DeviceHttpService', () => {
     });
 
     describe('refresh', () => {
-        it('forwards the refresh body to the domain and returns nothing', async () => {
+        it('forwards the refresh body to the domain and returns an empty response', async () => {
             const body: DeviceRefreshRequestDto = { name: 'iPhone 13' };
             deviceDomain.refresh.mockResolvedValue(undefined);
 
@@ -257,7 +257,7 @@ describe('DeviceHttpService', () => {
                 body
             );
 
-            expect(result).toBeUndefined();
+            expect(result).toEqual({});
             expect(deviceDomain.refresh).toHaveBeenCalledWith(
                 'user-1',
                 'device-ownership-1',
@@ -267,12 +267,12 @@ describe('DeviceHttpService', () => {
     });
 
     describe('remove', () => {
-        it('forwards the removal to the domain and returns nothing', async () => {
+        it('forwards the removal to the domain and returns an empty response', async () => {
             deviceDomain.remove.mockResolvedValue(undefined);
 
             const result = await service.remove('user-1', 'device-ownership-1');
 
-            expect(result).toBeUndefined();
+            expect(result).toEqual({});
             expect(deviceDomain.remove).toHaveBeenCalledWith(
                 'user-1',
                 'device-ownership-1'
@@ -281,7 +281,7 @@ describe('DeviceHttpService', () => {
     });
 
     describe('removeByAdmin', () => {
-        it('forwards the admin removal to the domain and returns nothing', async () => {
+        it('forwards the admin removal to the domain and returns an empty response', async () => {
             deviceDomain.removeByAdmin.mockResolvedValue(undefined);
 
             const result = await service.removeByAdmin(
@@ -290,7 +290,7 @@ describe('DeviceHttpService', () => {
                 'admin-1'
             );
 
-            expect(result).toBeUndefined();
+            expect(result).toEqual({});
             expect(deviceDomain.removeByAdmin).toHaveBeenCalledWith(
                 'user-1',
                 'device-ownership-1',

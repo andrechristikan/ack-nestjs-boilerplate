@@ -91,10 +91,10 @@ describe('UserPasswordHttpService', () => {
     });
 
     describe('updatePasswordByAdmin', () => {
-        it('delegates to the domain and returns nothing', async () => {
+        it('delegates to the domain and returns an empty response', async () => {
             await expect(
                 service.updatePasswordByAdmin('user-linden', 'admin-linden')
-            ).resolves.toBeUndefined();
+            ).resolves.toEqual({});
             expect(
                 userPasswordDomain.updatePasswordByAdmin
             ).toHaveBeenCalledWith('user-linden', 'admin-linden');

@@ -72,28 +72,37 @@ export class ProjectMemberHttpService {
         actorId: string,
         targetMemberId: string,
         { role }: ProjectMemberUpdateRoleRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.projectMemberDomain.updateMemberRole(
             project,
             actorId,
             targetMemberId,
             role
         );
+
+        return {};
     }
 
     async removeMember(
         project: Project,
         actorId: string,
         targetMemberId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.projectMemberDomain.removeMember(
             project,
             actorId,
             targetMemberId
         );
+
+        return {};
     }
 
-    async leaveProject(project: Project, member: ProjectMember): Promise<void> {
+    async leaveProject(
+        project: Project,
+        member: ProjectMember
+    ): Promise<IResponseReturn<void>> {
         await this.projectMemberDomain.leaveProject(project, member);
+
+        return {};
     }
 }

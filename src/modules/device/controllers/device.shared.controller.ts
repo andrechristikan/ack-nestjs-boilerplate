@@ -78,9 +78,7 @@ export class DeviceSharedController {
         @Body({ schema: DeviceRefreshRequestSchema })
         body: DeviceRefreshRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.deviceHttpService.refresh(userId, deviceOwnershipId, body);
-
-        return {};
+        return this.deviceHttpService.refresh(userId, deviceOwnershipId, body);
     }
 
     @Doc({ summary: 'remove a user device' })
@@ -96,8 +94,6 @@ export class DeviceSharedController {
         @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
-        await this.deviceHttpService.remove(userId, deviceOwnershipId);
-
-        return {};
+        return this.deviceHttpService.remove(userId, deviceOwnershipId);
     }
 }

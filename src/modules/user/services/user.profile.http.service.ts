@@ -22,12 +22,14 @@ export class UserProfileHttpService {
     async updateProfile(
         userId: string,
         { countryId, gender, name }: UserUpdateProfileRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userProfileDomain.updateProfile(userId, {
             countryId,
             gender,
             name,
         });
+
+        return {};
     }
 
     async generatePhotoProfilePresign(
@@ -46,21 +48,30 @@ export class UserProfileHttpService {
     async updatePhotoProfile(
         userId: string,
         { key, size }: UserUpdateProfilePhotoRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userProfileDomain.updatePhotoProfile(userId, {
             key,
             size,
         });
+
+        return {};
     }
 
-    async uploadPhotoProfile(userId: string, file: IFile): Promise<void> {
+    async uploadPhotoProfile(
+        userId: string,
+        file: IFile
+    ): Promise<IResponseReturn<void>> {
         await this.userProfileDomain.uploadPhotoProfile(userId, file);
+
+        return {};
     }
 
     async claimUsername(
         userId: string,
         { username }: UserClaimUsernameRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userProfileDomain.claimUsername(userId, username);
+
+        return {};
     }
 }

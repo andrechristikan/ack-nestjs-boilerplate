@@ -114,15 +114,19 @@ export class WorkspaceHttpService {
     async switchWorkspace(
         userId: string,
         { workspaceId }: WorkspaceSwitchRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceDomain.switchWorkspace(userId, workspaceId);
+
+        return {};
     }
 
     async softDeleteWorkspace(
         workspaceId: string,
         actorId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceDomain.softDeleteWorkspace(workspaceId, actorId);
+
+        return {};
     }
 
     async getListOffsetByAdmin(

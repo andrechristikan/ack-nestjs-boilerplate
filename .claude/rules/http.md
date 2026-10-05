@@ -52,6 +52,8 @@ another guard sets sits above it. Reordering is a defect even when boot passes.
   only the health and hello controllers are `VERSION_NEUTRAL`.
 - One `async` endpoint, one `<Module>HttpService` method; no domain, repository, business rule, or hand-built
   pagination metadata. Pass the whole request DTO (`null-safety.md`); return types are `dto.md`.
+- The body is `return this.<module>HttpService.<method>(...);`: the HTTP service builds every envelope, `{}`
+  included. No `await` then `return {};`, no object literal in a controller.
 - One controller per scope (`admin public user system shared`), registered by `router.http.<scope>.module.ts`
   (`src/router/http/`) with the feature's `<Module>HttpModule` in `imports`, never the domain module.
 - A path or query value binds a zod schema (`@Param('userId', { schema: RequestMongoIdSchema })`; a token or slug

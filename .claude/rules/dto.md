@@ -40,8 +40,10 @@ unchanged; a response schema is declared on the route. No third model between co
 `{ schema }` (`@Body({ schema })`); a query with no schema passes unvalidated. The response schema is what reaches the
 wire: `z.object` strips undeclared keys, `@Response()` with no schema declares a route returning no data, and a
 payload the schema rejects raises `ResponseSerializationException`. Every handler returns an envelope
-(`IResponseReturn<T>`, `IResponsePaginationReturn<T>`, `IResponseFileReturn`); a route with no data returns
-`Promise<IResponseReturn<void>>` and ends with `return {};`. A response schema never reaches a domain.
+(`IResponseReturn<T>`, `IResponsePaginationReturn<T>`, `IResponseFileReturn`), built by the HTTP service; the controller returns the
+HTTP service's result as is. A route with no data: the HTTP service method returns `Promise<IResponseReturn<void>>`
+and ends with `return {};`, the controller `return this.<module>HttpService.<method>(...)`. A response schema never
+reaches a domain.
 
 ## Pagination
 

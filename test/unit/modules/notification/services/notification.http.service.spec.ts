@@ -97,7 +97,7 @@ describe('NotificationHttpService', () => {
     });
 
     describe('markAsRead', () => {
-        it('returns nothing after marking the notification read', async () => {
+        it('returns an empty response after marking the notification read', async () => {
             notificationDomain.markAsRead.mockResolvedValue(undefined);
 
             const result = await service.markAsRead(
@@ -109,7 +109,7 @@ describe('NotificationHttpService', () => {
                 'user-id',
                 'notification-id'
             );
-            expect(result).toBeUndefined();
+            expect(result).toEqual({});
         });
     });
 
@@ -129,7 +129,7 @@ describe('NotificationHttpService', () => {
     });
 
     describe('updateUserSetting', () => {
-        it('returns nothing after updating the setting', async () => {
+        it('returns an empty response after updating the setting', async () => {
             const data: NotificationUserSettingRequestDto = {
                 channel: EnumNotificationChannel.email,
                 type: EnumNotificationType.userActivity,
@@ -143,7 +143,7 @@ describe('NotificationHttpService', () => {
                 'user-id',
                 data
             );
-            expect(result).toBeUndefined();
+            expect(result).toEqual({});
         });
     });
 });
