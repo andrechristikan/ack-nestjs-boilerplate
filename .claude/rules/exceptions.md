@@ -3,6 +3,8 @@ paths:
   - "**/exceptions/**"
   - "**/*.status-code.enum.ts"
   - "src/app/**"
+  - "src/modules/*/domains/**"
+  - "src/common/firebase/**"
 ---
 
 # Exceptions and status codes
@@ -27,53 +29,52 @@ export class UserNotFoundException extends AppBaseException {
 
 - `statusCodeKey` is the reverse lookup on the same member, never a hardcoded string.
 - Interpolated messages take named constructor params mapped into `messageProperties`.
-- A caught error is wrapped, never swallowed: `throw new AppUnknownException(err)`. The cause
-  rides in `rawError`, reaches Sentry for 5xx, and never reaches the response body.
-- `httpStatus` is the wire status and the Sentry switch: filters report at 500 and above.
+- A caught error is wrapped, never swallowed: `throw new AppUnknownException(err)`. The cause rides in `rawError`,
+  reaches Sentry for 5xx, and never reaches the response body. A best-effort side effect a rule names (a cache read or
+  write, the post-commit session purge, throttle storage, a job-log line) logs the failure and continues.
+- `httpStatus` is the wire status and the Sentry switch: filters report at 500 and above. A request that needs an
+  unset optional integration (`config.md`) throws its not-configured exception, 404 and so outside Sentry:
+  `AwsS3NotConfiguredException`, `AuthSocialGoogleNotConfiguredException`, `AuthSocialAppleNotConfiguredException`.
 
 ## Who throws
 
-- The domain throws the typed exception of the subject that failed, never `new Error()` or a
-  Nest `BadRequestException` / `NotFoundException`; another module's exception is correct when
-  that module owns the entity (`cross-module.md`). A plain `Error` is correct only where no
-  request or job reaches and no filter maps it: config parsed at construction (the JWT key
-  parse in `AuthJwtDomain`) and a seed command under `src/migration/`.
+- The domain throws the typed exception of the subject that failed, never `new Error()` or a Nest
+  `BadRequestException` / `NotFoundException`; another module's exception is correct when that module owns the entity
+  (`cross-module.md`). A plain `Error` is correct only where no request or job reaches and no filter maps it: config
+  parsed at construction or boot (the JWT key parse in `AuthJwtDomain`, `FirebaseService.onModuleInit`) and a seed
+  command under `src/migration/`.
 - An HTTP service and a processor service throw nothing of their own.
-- A util maps an error to an exception and returns it; the caller throws
-  (`const exception = this.util.mapCollision(error); throw exception;`).
+- A util maps an error and returns it (`layering.md`; `UserOnboardingUtil.mapCreateCollision`,
+  `src/modules/user/utils/user.onboarding.util.ts:12`). `PaginationQueryUtil` is the one util that throws, and only
+  its own `pagination` exceptions.
 - A repository throws no HTTP-shaped error; the one typed exception it raises is
   `DatabaseUniqueValueGenerationFailedException` (`database.md`).
-- A param decorator throws `RequestContextMissingException` (`50304`, HTTP 500) when its store
-  key or field is missing, so a handler never receives `null` from `@UserCurrent()` and its
-  siblings.
+- A param decorator reading the store throws `RequestContextMissingException` (HTTP 500) when
+  its key or field is missing; a handler never receives `null` from `@UserCurrent()`.
 - A controller does not catch `AppBaseException`; the filter chain owns the mapping.
-- Framework `HttpException`s (route 404, throttler 429) are the framework's to throw and
-  `AppHttpFilter`'s to handle; multipart limits are the one surface the kit maps onto typed
-  `file` exceptions first (`file.md`).
+- Framework `HttpException`s (route 404, throttler 429) are the framework's to throw and `AppHttpFilter`'s to handle;
+  multipart limits are the one surface the kit maps onto typed `file` exceptions first (`file.md`).
 
 ## The filter chain
 
-`src/app/app.module.ts` registers `APP_FILTER` in array order general → base-exception →
-http → validation → validation-import; Nest evaluates them in reverse, so the most specific
-runs first. `AppValidationImportFilter` (`FileImportException`, no Sentry),
-`AppValidationFilter` (`RequestValidationException`, no Sentry), `AppHttpFilter`
-(`HttpException`, Sentry at 500+), `AppBaseExceptionFilter` (`AppBaseException`, Sentry when
-`httpStatus >= 500`, reporting `rawError` when set), `AppGeneralFilter` (fallback, always
-500, always Sentry). Do not reorder the array. The error body is `ResponseErrorDto`:
-`{ statusCode, statusCodeKey, module, message, metadata, data?, errors? }`.
+`AGENTS.md` states the `APP_FILTER` order in `src/app/app.module.ts`; do not reorder the array. Most specific first:
+`AppValidationImportFilter` (`FileImportException`, no Sentry), `AppValidationFilter` (`RequestValidationException`,
+no Sentry), `AppHttpFilter` (`HttpException`, Sentry at 500+), `AppBaseExceptionFilter` (`AppBaseException`, Sentry at
+500+ with `rawError` when set), `AppGeneralFilter` (fallback, always 500 and Sentry). The body is `ResponseErrorSchema`
+(`src/common/response/dtos/response.error.dto.ts`).
 
 ## Status codes
 
-`statusCode` is a 5-digit integer in `Enum<Module>StatusCodeError` at
-`<module>/enums/<module>.status-code.enum.ts`, camelCase keys, referenced by member name
-only. Each owner (a feature module, or a `src/common/` sub-tree such as `file`, `pagination`,
-`request`, `database`) holds one contiguous hundred (`51000`–`51099`), members sequential from
-the block base with no gaps. The enum files are the registry: scan them before allocating,
-never allocate from memory. Reuse a member that already means the thing before adding one.
-The integer is client-visible; prefer keying a client on `module` + `statusCodeKey`.
-Procedure (scan, add, claim a block, remove, move): the `ack-add-status-code` skill.
+`statusCode` is a 5-digit integer in `Enum<Module>StatusCodeError` at `<module>/enums/<module>.status-code.enum.ts`,
+camelCase keys, referenced by member name only. Each owner (a feature module, or a `src/common/` sub-tree such as
+`file`, `pagination`, `request`, `database`) holds one contiguous hundred (`51000`–`51099`), members sequential from
+the block base with no gaps. The enum files are the registry: scan them before allocating, never allocate from memory.
+Reuse a member that already means the thing before adding one. The integer is client-visible; prefer keying a client
+on `module` + `statusCodeKey`. Procedure (scan, add, claim a block, remove, move):
+`.claude/skills/ack-build/references/add-status-code.md`.
 
 ## Messages
 
 `messagePath` is `<module>.error.<descriptor>`; the first segment is the language file name
-and every language directory carries the key (`i18n.md`).
+and every language directory carries the key (`i18n.md`). A generic transport failure reuses
+`http.<class>.<descriptor>` (`http.clientError.forbidden`, `http.serverError.internalServerError`).

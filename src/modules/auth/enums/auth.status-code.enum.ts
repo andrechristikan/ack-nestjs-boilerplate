@@ -20,4 +20,6 @@ export enum EnumAuthStatusCodeError {
     twoFactorSetupRequired = 50814,
     twoFactorSecretUnavailable = 50815,
     twoFactorBackupCodeRequired = 50816,
+    socialGoogleNotConfigured = 50817,
+    socialAppleNotConfigured = 50818,
 }

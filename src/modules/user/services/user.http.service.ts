@@ -118,10 +118,10 @@ export class UserHttpService {
         userId: string,
         { status }: UserUpdateStatusRequestDto,
         updatedBy: string
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         await this.userDomain.updateStatusByAdmin(userId, status, updatedBy);
 
-        return {};
+        return;
     }
 
     async checkUsername({

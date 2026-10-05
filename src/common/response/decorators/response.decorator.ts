@@ -29,7 +29,10 @@ import { ResponseFileInterceptor } from '@common/response/interceptors/response.
 import { ResponseInterceptor } from '@common/response/interceptors/response.interceptor';
 import { ResponsePaginationInterceptor } from '@common/response/interceptors/response.pagination.interceptor';
 import { ResponsePaginationSchema } from '@common/response/dtos/response.pagination.dto';
-import type { IResponseOptions } from '@common/response/interfaces/response.interface';
+import type {
+    IResponseFileInterceptorOptions,
+    IResponseOptions,
+} from '@common/response/interfaces/response.interface';
 
 /**
  * Standardizes a route's response via `ResponseInterceptor` and documents the JSON success
@@ -173,9 +176,11 @@ export function ResponsePagination(
  * The handler must return `IResponseFileReturn`.
  * @public
  */
-export function ResponseFile(options?: {
-    extension?: EnumFileExtensionDocument;
-}): MethodDecorator {
+export function ResponseFile(
+    options?: IResponseFileInterceptorOptions & {
+        extension?: EnumFileExtensionDocument;
+    }
+): MethodDecorator {
     return (target, propertyKey, descriptor): void => {
         const handler = descriptor.value as unknown;
         let httpStatus: HttpStatus = HttpStatus.OK;
@@ -199,7 +204,11 @@ export function ResponseFile(options?: {
         const mediaType = ResponseFileMediaTypes[extension];
 
         applyDecorators(
-            UseInterceptors(ResponseFileInterceptor),
+            UseInterceptors(
+                ResponseFileInterceptor({
+                    maxDataExportConfigKey: options?.maxDataExportConfigKey,
+                })
+            ),
             ApiResponse({
                 description: httpStatus.toString(),
                 status: httpStatus,

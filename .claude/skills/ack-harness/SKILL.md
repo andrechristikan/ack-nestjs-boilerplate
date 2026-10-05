@@ -19,9 +19,7 @@ argument-hint: "<settled requirement: files, the change, expected outcomes> | di
 This skill runs in the session because the requirement is settled with the owner. `harness`
 writes `.claude/**`, `AGENTS.md`, and `.github/copilot-instructions.md`; this skill does not
 edit those trees, and no other agent runs while `harness` is writing because it would read
-the tree the run is rewriting. Every file produced here is final state only: how the thing
-works now, with no history, decision log, "changed on", "applies from", "previously", or
-rationale for a change (`.claude/rules/authoring.md`, Final state only).
+the tree the run is rewriting. Final state only: `.claude/rules/authoring.md`.
 
 ## 1. Settle
 
@@ -65,8 +63,7 @@ Report: files written with wc -l, files deleted, what each file now says, the
   the scope
 ```
 
-Add the working-tree line and the no-questions line from
-`../ack-build/references/dispatch.md`. A follow-up dispatch is a fresh instance reading
+Add the Every dispatch block from `../ack-build/references/dispatch.md`. A follow-up dispatch is a fresh instance reading
 the tree as the previous one left it.
 
 ## 3. Review, through `reviewer`

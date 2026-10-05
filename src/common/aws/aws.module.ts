@@ -6,9 +6,9 @@ import { AwsSESService } from '@common/aws/services/aws.ses.service';
  * Provides and exports `AwsS3Service` and `AwsSESService`.
  */
 @Module({
-    exports: [AwsS3Service, AwsSESService],
-    providers: [AwsS3Service, AwsSESService],
-    imports: [],
     controllers: [],
+    providers: [AwsS3Service, AwsSESService],
+    exports: [AwsS3Service, AwsSESService],
+    imports: [],
 })
 export class AwsModule {}

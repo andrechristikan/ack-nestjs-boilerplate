@@ -43,9 +43,11 @@ not installed, stop and say `claude plugin install superpowers@claude-plugins-of
 ## 3. Explore, through `explorer`
 
 Dispatch `explorer` with the settled paragraph (template `../ack-build/references/dispatch.md`,
-Explorer). It returns the location table, the third-party contract when one is involved,
-approaches with trade-offs, and open questions. Its open questions go back to the owner
-through `AskUserQuestion`.
+Explorer). `Mode:` is `locate` when only the touch points are missing, `contract` when a
+third-party contract is unknown, and `assess` when the shape of the change is open; when
+more than one applies, send one dispatch per mode in one message. It returns the location
+table, the third-party contract when one is involved, approaches with trade-offs, and open
+questions. Its open questions go back to the owner through `AskUserQuestion`.
 
 Skip this step when the session already holds the location table and no contract is
 unknown.
@@ -66,12 +68,15 @@ Invoke `superpowers:writing-plans` on the approved design; the output is
 `.superpowers/<date>-<slug>-plan.md`. Its Execution Handoff is not taken: the plan ends
 here, and execution is `/ack-build` after step 7.
 
-The plan opens with a three-line header block:
+The plan opens with the writing-plans header. Its `**Spec:**` line names the spec, and
+two lines follow it directly, before `## Global Constraints`:
 
 ```
-Requirement: <the settled paragraph>
-Review depth: rules and boot | end to end
-Spec: <.superpowers/<date>-<slug>-spec.md | none>
+**Spec:** <.superpowers/<date>-<slug>-spec.md | none>
+
+**Requirement:** <the settled paragraph>
+
+**Review depth:** rules and boot | end to end
 ```
 
 Each task carries:
@@ -79,9 +84,9 @@ Each task carries:
 - `Complexity: simple | complex`
 - `Files:` every path the task writes
 - `Rules to read:` from the path list in `../ack-build/references/dispatch.md`
-- `Procedure: ack-add-<topic>` when the task adds a module, status code, queue, seed, or
-  notification (`ack-add-module`, `ack-add-status-code`, `ack-add-queue`, `ack-add-seed`,
-  `ack-add-notification`)
+- `Procedure: .claude/skills/ack-build/references/add-<topic>.md` when the task adds a
+  module, status code, queue, seed, or notification (`add-module.md`, `add-status-code.md`,
+  `add-queue.md`, `add-seed.md`, `add-notification.md`)
 - its acceptance lines
 
 ## 6. Check the plan, through `reviewer`

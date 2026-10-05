@@ -13,7 +13,7 @@ export class PolicyHttpService {
     async listByRole(
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
-        const policies = await this.policyDomain.findManyByRole(roleId);
+        const policies = await this.policyDomain.getManyByRole(roleId);
 
         return {
             data: { policies },
@@ -39,12 +39,9 @@ export class PolicyHttpService {
         return { data: updated };
     }
 
-    async deleteByAdmin(
-        roleId: string,
-        id: string
-    ): Promise<IResponseReturn<void>> {
+    async deleteByAdmin(roleId: string, id: string): Promise<void> {
         await this.policyDomain.deleteByAdmin(roleId, id);
 
-        return {};
+        return;
     }
 }

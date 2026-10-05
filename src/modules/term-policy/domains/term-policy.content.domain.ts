@@ -1,7 +1,7 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import { AwsServiceUnavailableException } from '@common/aws/exceptions/aws.service-unavailable.exception';
+import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -103,7 +103,7 @@ export class TermPolicyContentDomain {
             );
 
         if (!aws) {
-            throw new AwsServiceUnavailableException();
+            throw new AwsS3NotConfiguredException();
         }
 
         return aws;
@@ -114,6 +114,11 @@ export class TermPolicyContentDomain {
         { key, size, language }: ITermPolicyContentUpload
     ): Promise<void> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
+
+        const isS3Initialized = this.awsS3Service.isInitialized();
+        if (!isS3Initialized) {
+            throw new AwsS3NotConfiguredException();
+        }
 
         try {
             const presign = this.awsS3Service.mapPresign(
@@ -164,6 +169,11 @@ export class TermPolicyContentDomain {
         );
         if (existingContent) {
             throw new TermPolicyContentExistException();
+        }
+
+        const isS3Initialized = this.awsS3Service.isInitialized();
+        if (!isS3Initialized) {
+            throw new AwsS3NotConfiguredException();
         }
 
         try {
@@ -267,7 +277,7 @@ export class TermPolicyContentDomain {
             });
 
         if (!awsPresign) {
-            throw new AwsServiceUnavailableException();
+            throw new AwsS3NotConfiguredException();
         }
 
         return awsPresign;

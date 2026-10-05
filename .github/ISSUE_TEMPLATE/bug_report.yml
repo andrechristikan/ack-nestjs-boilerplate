@@ -75,7 +75,7 @@ body:
       attributes:
           label: Error identity (if applicable)
           description: From the API error body — `statusCode`, `statusCodeKey`, and/or `messagePath`.
-          placeholder: e.g. 51501 / userNotFound / user.error.notFound
+          placeholder: e.g. 51000 / notFound / user.error.notFound
       validations:
           required: false
     - type: textarea
@@ -87,7 +87,7 @@ body:
               OS: macOS 14
               Node: v24.15.0
               pnpm: 12.5.1
-              Project: 9.0.0 / commit hash
+              Project: 9.1.0 / commit hash
               MongoDB: replica set (Compose) | standalone
               Running via: Docker Compose | manual
               Redis: (optional)
@@ -112,8 +112,8 @@ body:
 
               # Response
               {
-                "statusCode": 51501,
-                "statusCodeKey": "userNotFound",
+                "statusCode": 51000,
+                "statusCodeKey": "notFound",
                 "module": "user",
                 "message": "..."
               }

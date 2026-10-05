@@ -20,7 +20,6 @@ export class FileService {
             header: true,
             skipEmptyLines: true,
             delimiter: ';',
-            fastMode: true,
             transform(value) {
                 return value === '' ? null : value;
             },

@@ -185,6 +185,6 @@ export function Doc(options?: IDocOptions): MethodDecorator {
         DocGlobalErrorResponses.schemaMissing,
         DocGlobalErrorResponses.contextMissing,
         DocGlobalErrorResponses.uniqueValueGenerationFailed,
-        DocGlobalErrorResponses.serviceUnavailable
+        DocGlobalErrorResponses.s3NotConfigured
     );
 }

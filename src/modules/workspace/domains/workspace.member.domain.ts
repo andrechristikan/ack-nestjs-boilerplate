@@ -292,12 +292,12 @@ export class WorkspaceMemberDomain {
         this.activityLogDomain.stagePrepared(events);
     }
 
-    async getMembersListForAdmin(
+    async getMembersListByAdmin(
         workspaceId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const [workspace, paginated] = await Promise.all([
-            this.workspaceRepository.findByIdForAdmin(workspaceId),
+            this.workspaceRepository.findByIdByAdmin(workspaceId),
             this.workspaceMemberRepository.findWithPaginationOffset(
                 workspaceId,
                 pagination

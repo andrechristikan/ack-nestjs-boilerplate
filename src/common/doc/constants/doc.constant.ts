@@ -20,7 +20,7 @@ export const DocResponseEntryMetaKey = 'DocResponseEntryMetaKey';
 /**
  * Error responses every documented endpoint can return: server error, timeout, validation,
  * rate limit, the helper failures, a missing request schema, a missing request context, a
- * failed unique-value generation and an unavailable AWS service.
+ * failed unique-value generation and an S3 integration that is not configured.
  * @public
  */
 export const DocGlobalErrorResponses = {
@@ -70,9 +70,9 @@ export const DocGlobalErrorResponses = {
             messagePath: 'database.error.uniqueValueGenerationFailed',
         }
     ),
-    serviceUnavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
-        statusCode: EnumAwsStatusCodeError.serviceUnavailable,
-        messagePath: 'aws.error.serviceUnavailable',
+    s3NotConfigured: DocResponseError(HttpStatus.NOT_FOUND, {
+        statusCode: EnumAwsStatusCodeError.s3NotConfigured,
+        messagePath: 'aws.error.s3NotConfigured',
     }),
 } as const;
 

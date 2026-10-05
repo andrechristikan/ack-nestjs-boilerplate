@@ -46,14 +46,14 @@ export class AnalyticWorkspaceUserDomain {
         }
 
         const [memberCount, projectCount] = await Promise.all([
-            this.workspaceMemberAnalyticDomain.countByWorkspace(workspaceId),
-            this.projectAnalyticDomain.countByWorkspace(workspaceId),
+            this.workspaceMemberAnalyticDomain.getCountByWorkspace(workspaceId),
+            this.projectAnalyticDomain.getCountByWorkspace(workspaceId),
         ]);
 
         let activityCount = 0;
         if (startDate && endDate) {
             activityCount =
-                await this.activityLogAnalyticDomain.countByWorkspaceInRange(
+                await this.activityLogAnalyticDomain.getCountByWorkspaceInRange(
                     workspaceId,
                     startDate,
                     endDate
@@ -79,7 +79,7 @@ export class AnalyticWorkspaceUserDomain {
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticStatusCount[]> {
-        return this.workspaceInviteAnalyticDomain.funnel(
+        return this.workspaceInviteAnalyticDomain.getFunnel(
             startDate,
             endDate,
             workspaceId
@@ -91,7 +91,7 @@ export class AnalyticWorkspaceUserDomain {
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticStatusCount[]> {
-        return this.workspaceJoinRequestAnalyticDomain.outcomes(
+        return this.workspaceJoinRequestAnalyticDomain.getOutcomes(
             startDate,
             endDate,
             workspaceId
@@ -99,7 +99,7 @@ export class AnalyticWorkspaceUserDomain {
     }
 
     memberRoles(workspaceId: string): Promise<IAnalyticRoleCount[]> {
-        return this.workspaceMemberAnalyticDomain.roles(workspaceId);
+        return this.workspaceMemberAnalyticDomain.getRoles(workspaceId);
     }
 
     async activity(
@@ -108,7 +108,7 @@ export class AnalyticWorkspaceUserDomain {
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
         const count =
-            await this.activityLogAnalyticDomain.countByWorkspaceInRange(
+            await this.activityLogAnalyticDomain.getCountByWorkspaceInRange(
                 workspaceId,
                 startDate,
                 endDate

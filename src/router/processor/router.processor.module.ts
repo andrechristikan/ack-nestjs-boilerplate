@@ -6,6 +6,9 @@ import { Module } from '@nestjs/common';
  * Root processor mount that aggregates every feature processor module.
  */
 @Module({
+    controllers: [],
+    providers: [],
+    exports: [],
     imports: [NotificationProcessorModule, WorkspaceProcessorModule],
 })
 export class RouterProcessorModule {}

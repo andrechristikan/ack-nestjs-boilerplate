@@ -95,7 +95,7 @@ export class ProjectDomain {
     }
 
     /** Lists projects in the workspace: a workspace `owner` sees every project, everyone else sees only the ones they hold a `ProjectMember` row for. */
-    async getListForMember(
+    async getListCursorByMember(
         workspaceId: string,
         workspaceMember: WorkspaceMember,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
@@ -227,19 +227,18 @@ export class ProjectDomain {
         );
     }
 
-    async getListForAdmin(
+    async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
         workspaceId?: string
     ): Promise<IResponsePaginationReturn<Project>> {
-        return this.projectRepository.findWithPaginationOffsetForAdmin(
+        return this.projectRepository.findWithPaginationOffsetByAdmin(
             pagination,
             workspaceId
         );
     }
 
-    async getByIdForAdmin(projectId: string): Promise<Project> {
-        const project =
-            await this.projectRepository.findByIdForAdmin(projectId);
+    async getByIdByAdmin(projectId: string): Promise<Project> {
+        const project = await this.projectRepository.findByIdByAdmin(projectId);
         if (!project) {
             throw new ProjectNotFoundException();
         }

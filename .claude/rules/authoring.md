@@ -30,14 +30,14 @@ needed to apply it; a document carries no obligation.
 
 ## Final state only
 
-`docs/*.md`, the root people files, `.github/**`, `AGENTS.md`, and `.claude/**` describe how the project works
-now. Not in any of them: an issue, a bug, a fix, a change, a decision and its reasoning, a rejected
-alternative, a migration note, a date, a version, a changelog line, an owner quote or attribution. The test:
-would this sentence exist if the thing had always been this way? "previously", "no longer", "instead of", and
-"rather than" are banned where they contrast with an earlier state and fine where they contrast two options a
-reader is choosing between now. A negation that states a contract stays (`an admin route carries no workspace
-guard`); a negation that rebuts a former state goes (`the count is not stored on the model`). Rewrite it as
-what is (`activeSessionCount is computed per read`).
+`docs/*.md`, the root people files, `.github/**`, `AGENTS.md`, and `.claude/**` describe how the project works now. Not
+in any of them: an issue, a bug, a fix, a change, a decision and its reasoning, a rejected alternative, a migration
+note, a date, a version, a changelog line, an owner quote or attribution. Attribution has one home: the root `README.md`
+`## Contributors` section names each contributor with a link and the feature contributed. The test: would this sentence
+exist if the thing had always been this way? "previously", "no longer", "instead of", and "rather than" are banned where
+they contrast with an earlier state and fine where they contrast two options a reader is choosing between now. A
+negation that states a contract stays (`an admin route carries no workspace guard`); a negation that rebuts a former
+state goes (`the count is not stored on the model`). Rewrite it as what is (`activeSessionCount is computed per read`).
 
 ## Documentation prose
 
@@ -68,7 +68,7 @@ entry under a "Move to ESLint" heading in `rules/code-style.md`, created with it
 path, command, and flag against the checkout before writing it. `copilot-instructions.md` states nothing the rules do not.
 
 Budgets: `.claude/CLAUDE.md` ≤ 120 lines; `AGENTS.md` ≤ 80; `copilot-instructions.md` ≤ 60; a rule ≤ 80; an
-agent body ≤ 60 after frontmatter; a workflow `SKILL.md` ≤ 150 (long material in `references/`); a knowledge one ≤ 120.
+agent body ≤ 60 after frontmatter; a `SKILL.md` ≤ 150 (long material in `references/`); a reference file ≤ 120.
 
 A rule file opens with `paths:` as a YAML list unless it is one of the four unscoped ones. A skill's `SKILL.md`
 and an agent's `.md` open with YAML frontmatter whose `description` is a folded block scalar (`description: >-`);

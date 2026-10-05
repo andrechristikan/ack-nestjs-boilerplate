@@ -68,7 +68,7 @@ export class WorkspaceAdminController {
         @Query({ schema: WorkspaceAdminListRequestSchema })
         query: WorkspaceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Workspace>> {
-        return this.workspaceHttpService.getListForAdmin(query);
+        return this.workspaceHttpService.getListOffsetByAdmin(query);
     }
 
     @Doc({
@@ -93,7 +93,7 @@ export class WorkspaceAdminController {
         @Param('workspaceId', { schema: RequestMongoIdSchema })
         workspaceId: string
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.getByIdForAdmin(workspaceId);
+        return this.workspaceHttpService.getByIdByAdmin(workspaceId);
     }
 
     @Doc({ summary: 'admin list members of a workspace (read-only)' })
@@ -117,7 +117,7 @@ export class WorkspaceAdminController {
         @Param('workspaceId', { schema: RequestMongoIdSchema })
         workspaceId: string
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
-        return this.workspaceMemberHttpService.getMembersListForAdmin(
+        return this.workspaceMemberHttpService.getMembersListByAdmin(
             workspaceId,
             query
         );

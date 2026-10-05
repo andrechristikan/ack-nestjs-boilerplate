@@ -20,6 +20,7 @@ import { TerminusModule } from '@nestjs/terminus';
  * Wires Terminus and the custom indicators for system health checks.
  */
 @Module({
+    controllers: [],
     providers: [
         HealthDomain,
         HealthUtil,

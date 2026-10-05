@@ -58,7 +58,26 @@ ConfigModule.forRoot({
 - An env boolean is `RequestBooleanStringSchema` (a case-sensitive `z.stringbool` accepting exactly `'true'` or `'false'`)
 - An encryption secret is `RequestEncryptionSecretSchema` (exactly 64 base64url characters)
 - A port is `z.coerce.number().int()`
-- An enum-valued variable is `z.enum` over the matching `Enum*`, so a typo is caught by name rather than surfacing later as a runtime error
+- An enum-valued variable is `z.enum` over the matching `Enum*`, so a typo is caught by name at boot
+- A third-party key is `RequestOptionalEnvSchema(...)` or one of its named instances in `src/common/request/validations/request.optional-env.validation.ts`: an absent value and a blank `.env` line (`KEY=`) both parse as unset; any other value must satisfy the inner schema
+  - `RequestOptionalEnvStringSchema`: a non-empty string (social client IDs, AWS credentials, regions, buckets, CDNs, `FIREBASE_PROJECT_ID`, `FIREBASE_PRIVATE_KEY`)
+  - `RequestOptionalEnvEmailSchema`: an email checked by the custom `validateEmail` validator (`EMAIL_NO_REPLY`, `EMAIL_SUPPORT`, `FIREBASE_CLIENT_EMAIL`)
+  - `RequestOptionalEnvSesIdentityArnSchema`: an SES identity ARN (`AWS_SES_IDENTITY_ARN`)
+  - `RequestOptionalEnvUrlNoTrailingSlashSchema`: an absolute URL without a trailing slash (`AWS_S3_ENDPOINT`, `AWS_SES_ENDPOINT`)
+  - `RequestOptionalEnvSchema(z.url())`: a URL (`SENTRY_DSN`)
+
+Each third-party integration is optional and validated as a group by a `superRefine` on `AppEnvSchema`:
+
+| Integration | Turned on by | Then required |
+|---|---|---|
+| AWS S3 | `AWS_S3_IAM_CREDENTIAL_KEY` or `AWS_S3_IAM_CREDENTIAL_SECRET` | `AWS_S3_IAM_CREDENTIAL_KEY`, `AWS_S3_IAM_CREDENTIAL_SECRET`, `AWS_S3_REGION`, `AWS_S3_PUBLIC_BUCKET`, `AWS_S3_PRIVATE_BUCKET` |
+| AWS SES | `AWS_SES_IAM_CREDENTIAL_KEY` or `AWS_SES_IAM_CREDENTIAL_SECRET` | `AWS_SES_IAM_CREDENTIAL_KEY`, `AWS_SES_IAM_CREDENTIAL_SECRET`, `AWS_SES_REGION`, `EMAIL_NO_REPLY`, `EMAIL_SUPPORT` |
+| Firebase | any `FIREBASE_*` key | all three `FIREBASE_*` keys |
+| Google sign-in | `AUTH_SOCIAL_GOOGLE_CLIENT_ID` | nothing else |
+| Apple sign-in | `AUTH_SOCIAL_APPLE_CLIENT_ID` or `AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID` | nothing else |
+| Sentry | `SENTRY_DSN` | nothing else |
+
+An integration left unset boots fine. A request that needs it answers a not-configured error (`AwsS3NotConfiguredException`, `AuthSocialGoogleNotConfiguredException`, `AuthSocialAppleNotConfiguredException`, each 404), its health indicator reports it down (`AWS S3 is not configured`, `Google is not configured`, and so on) while `GET /api/system/health/aws` (S3 and SES) and `GET /api/system/health/third-party` (Sentry, Firebase, Google, Apple) still answer 200, and a seed that needs it logs a warning and skips: `templateEmailNotification` needs SES, `templateTermPolicy` needs S3, and `awsS3Config` needs S3 plus `AWS_S3_IAM_ARN`.
 
 If validation fails, the application does not start and reports which environment variables are missing or invalid. The error reaches the `bootstrap().catch()` handler in `src/main.ts`, which writes the stack to `stderr` and calls `process.exit(1)`.
 
@@ -67,7 +86,7 @@ If validation fails, the application does not start and reports which environmen
 Below is an example `.env` file based on the current `.env.example`:
 
 > [!WARNING]
-> **Security**: All secret and key values below (`*_ENCRYPTION_SECRET_KEY`, `*_ENCRYPTION_KEY`, `AUTH_JWT_*_KEY`) are placeholders for illustration only. They are empty in `.env.example`, so startup validation fails until they are set. `pnpm generate:secret` generates a unique set: the JWT keys and KIDs under `keys/`, and both encryption secrets in `keys/encryption-secret.env`. With `--direct-insert` it also writes them into `.env`. See [Installation][ref-doc-installation].
+> **Security**: All secret and key values below (`*_ENCRYPTION_SECRET_KEY`, `*_ENCRYPTION_KEY`, `AUTH_JWT_*_KEY`) are placeholders for illustration only. They are empty in `.env.example`, so startup validation fails until they are set. `AUTH_TWO_FACTOR_ISSUER` is also required and empty in `.env.example`, and `pnpm generate:secret` does not set it, so it is set by hand. `pnpm generate:secret` generates a unique set: the JWT keys and KIDs under `keys/`, and both encryption secrets in `keys/encryption-secret.env`. With `--direct-insert` it also writes them into `.env`. See [Installation][ref-doc-installation].
 
 ```bash
 # Application Settings
@@ -128,7 +147,6 @@ AUTH_TWO_FACTOR_ENCRYPTION_KEY=<your_two_factor_encryption_key>
 
 # Social Authentication (Optional)
 AUTH_SOCIAL_GOOGLE_CLIENT_ID=
-AUTH_SOCIAL_GOOGLE_CLIENT_SECRET=
 AUTH_SOCIAL_APPLE_CLIENT_ID=
 AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
 
@@ -137,6 +155,7 @@ AWS_S3_IAM_CREDENTIAL_KEY=
 AWS_S3_IAM_CREDENTIAL_SECRET=
 AWS_S3_IAM_ARN=
 AWS_S3_REGION=
+AWS_S3_ENDPOINT=
 AWS_S3_PUBLIC_BUCKET=
 AWS_S3_PUBLIC_CDN=
 AWS_S3_PRIVATE_BUCKET=
@@ -145,20 +164,19 @@ AWS_S3_PRIVATE_CDN=
 # AWS SES Configuration (Optional)
 AWS_SES_IAM_CREDENTIAL_KEY=
 AWS_SES_IAM_CREDENTIAL_SECRET=
-AWS_SES_IAM_ARN=
+AWS_SES_IDENTITY_ARN=
 AWS_SES_REGION=
+AWS_SES_ENDPOINT=
 
-# Email
-EMAIL_NO_REPLY=noreply@mail.com
-EMAIL_SUPPORT=support@mail.com
-EMAIL_ADMIN=admin@mail.com
+# Email (Optional; required with SES)
+EMAIL_NO_REPLY=
+EMAIL_SUPPORT=
 
 # Firebase (Optional)
 FIREBASE_PROJECT_ID=
 FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY=
 
-# Redis
 # Redis (Compose locally; ElastiCache without Docker)
 CACHE_REDIS_URL=redis://localhost:6379/0
 QUEUE_REDIS_URL=redis://localhost:6379/1
@@ -290,11 +308,11 @@ LOGGER_AUTO=false
 Comma-separated list of allowed CORS origins. Supports subdomain wildcards and explicit ports, but not port wildcards.
 
 **Syntax:**
-- `*` — Allow all origins (credentials disabled)
-- `hostname` — Single origin (e.g., `example.com`)
-- `*.subdomain` — Wildcard subdomains (e.g., `*.example.com` matches `api.example.com` and `example.com`)
-- `hostname:port` — Specific hostname with port (e.g., `api.example.com:3000`)
-- `*.subdomain:port` — Wildcard with explicit port (e.g., `*.example.com:3000`)
+- `*`: allow all origins (credentials disabled)
+- `hostname`: single origin (e.g., `example.com`)
+- `*.subdomain`: wildcard subdomains (e.g., `*.example.com` matches `api.example.com` and `example.com`)
+- `hostname:port`: specific hostname with port (e.g., `api.example.com:3000`)
+- `*.subdomain:port`: wildcard with explicit port (e.g., `*.example.com:3000`)
 
 **Examples:**
 ```bash
@@ -450,28 +468,22 @@ AUTH_JWT_REFRESH_TOKEN_EXPIRED=30d
 ### Social Authentication Settings
 
 > [!NOTE]
-> All social authentication settings are optional. Leave empty if not using social login.
+> All social authentication settings are optional. Leave them blank to keep social sign-in off; the matching sign-in route then answers 404 (`AuthSocialGoogleNotConfiguredException` or `AuthSocialAppleNotConfiguredException`).
 
 **`AUTH_SOCIAL_GOOGLE_CLIENT_ID`** *(optional)*  
-Google OAuth client ID.
+Google OAuth client ID, used as the audience when verifying a Google ID token. Setting it turns Google sign-in on.
 ```bash
 AUTH_SOCIAL_GOOGLE_CLIENT_ID=
 ```
 
-**`AUTH_SOCIAL_GOOGLE_CLIENT_SECRET`** *(optional)*  
-Google OAuth client secret.
-```bash
-AUTH_SOCIAL_GOOGLE_CLIENT_SECRET=
-```
-
 **`AUTH_SOCIAL_APPLE_CLIENT_ID`** *(optional)*  
-Apple OAuth client ID.
+First of the two accepted Apple audiences. Either Apple client ID turns Apple sign-in on; an Apple ID token is accepted when its audience matches any client ID that is set.
 ```bash
 AUTH_SOCIAL_APPLE_CLIENT_ID=
 ```
 
 **`AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID`** *(optional)*  
-Apple Sign In client ID.
+Second of the two accepted Apple audiences, checked alongside `AUTH_SOCIAL_APPLE_CLIENT_ID`.
 ```bash
 AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
 ```
@@ -479,7 +491,7 @@ AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
 ### Two-Factor Authentication Settings
 
 **`AUTH_TWO_FACTOR_ISSUER`** *(required)*  
-Issuer name displayed in authenticator apps. Empty by default; startup validation rejects an unset value.  
+Issuer name displayed in authenticator apps. Empty in `.env.example`, and `pnpm generate:secret` leaves it alone; startup validation rejects an unset value. The value below is illustrative.  
 ```bash
 AUTH_TWO_FACTOR_ISSUER=ACKNestJsTwoFactor
 ```
@@ -493,38 +505,41 @@ AUTH_TWO_FACTOR_ENCRYPTION_KEY=<your_two_factor_encryption_key>
 ### AWS Settings
 
 > [!NOTE]
-> AWS settings are optional by default. However, if you want to test file uploads (S3) or email functionality (SES), these become required for those specific features to work.
+> AWS settings are optional. S3 turns on when an S3 credential is set, SES when an SES credential is set; each then requires its group (see [Environment Validation](#environment-validation)). Without S3, file upload and term-policy content routes answer `AwsS3NotConfiguredException` (404); without SES, email is off.
 
 #### S3 Configuration
 
-**`AWS_S3_IAM_CREDENTIAL_KEY`** *(optional/required for file uploads)*  
+**`AWS_S3_IAM_CREDENTIAL_KEY`** *(optional; turns S3 on)*  
 AWS IAM access key ID for S3 bucket operations.
 ```bash
 AWS_S3_IAM_CREDENTIAL_KEY=
 ```
 
-**`AWS_S3_IAM_CREDENTIAL_SECRET`** *(optional/required for file uploads)*  
+**`AWS_S3_IAM_CREDENTIAL_SECRET`** *(optional; turns S3 on)*  
 AWS IAM secret access key for S3 bucket operations.
 ```bash
 AWS_S3_IAM_CREDENTIAL_SECRET=
 ```
 
-**`AWS_S3_IAM_ARN`** *(required when S3 credentials are set)*  
-AWS IAM Role ARN for S3 operations. Used for role-based access control and temporary credentials. Validation requires it whenever `AWS_S3_IAM_CREDENTIAL_KEY` or `AWS_S3_IAM_CREDENTIAL_SECRET` is provided.
+**`AWS_S3_IAM_ARN`** *(optional; needed by the `awsS3Config` seed)*  
+IAM principal ARN the public bucket policy grants full access to. Only the `awsS3Config` seed reads it, and that seed skips with a warning when it is unset. The application authenticates with the credential key and secret.
 ```bash
 AWS_S3_IAM_ARN=
 ```
 
-> [!TIP]
-> Prefer `AWS_S3_IAM_ARN` in production over long-lived keys. Role assumption issues temporary credentials and rotates them.
-
-**`AWS_S3_REGION`** *(optional/required for file uploads)*  
+**`AWS_S3_REGION`** *(required with S3)*  
 AWS region for S3 services.
 ```bash
 AWS_S3_REGION=
 ```
 
-**`AWS_S3_PUBLIC_BUCKET`** *(optional/required for file uploads)*  
+**`AWS_S3_ENDPOINT`** *(optional)*  
+Custom S3 endpoint, such as LocalStack. A URL without a trailing slash. When set, the client uses path-style addressing and object URLs are built as `{endpoint}/{bucket}/{key}`.
+```bash
+AWS_S3_ENDPOINT=http://localhost:4566
+```
+
+**`AWS_S3_PUBLIC_BUCKET`** *(required with S3)*  
 Name of the public S3 bucket for file storage.
 ```bash
 AWS_S3_PUBLIC_BUCKET=
@@ -538,7 +553,7 @@ AWS_S3_PUBLIC_CDN=
 
 #### S3 Private Bucket (for private files)
 
-**`AWS_S3_PRIVATE_BUCKET`** *(optional/required for private file uploads)*  
+**`AWS_S3_PRIVATE_BUCKET`** *(required with S3)*  
 Name of the private S3 bucket for secure file storage.
 ```bash
 AWS_S3_PRIVATE_BUCKET=
@@ -552,74 +567,71 @@ AWS_S3_PRIVATE_CDN=
 
 #### SES (Email Service)
 
-**`AWS_SES_IAM_CREDENTIAL_KEY`** *(optional/required for email features)*  
+**`AWS_SES_IAM_CREDENTIAL_KEY`** *(optional; turns SES on)*  
 AWS IAM access key ID for SES email service.
 ```bash
 AWS_SES_IAM_CREDENTIAL_KEY=
 ```
 
-**`AWS_SES_IAM_CREDENTIAL_SECRET`** *(optional/required for email features)*  
+**`AWS_SES_IAM_CREDENTIAL_SECRET`** *(optional; turns SES on)*  
 AWS IAM secret access key for SES email service.
 ```bash
 AWS_SES_IAM_CREDENTIAL_SECRET=
 ```
 
-**`AWS_SES_IAM_ARN`** *(required when SES credentials are set)*  
-AWS IAM Role ARN for SES operations. Used for role-based access control and temporary credentials. Validation requires it whenever `AWS_SES_IAM_CREDENTIAL_KEY` or `AWS_SES_IAM_CREDENTIAL_SECRET` is provided.
+**`AWS_SES_IDENTITY_ARN`** *(optional)*  
+ARN of a verified SES identity, in the form `arn:aws:ses:<region>:<account-id>:identity/<identity>`. When set, every send passes it as `SourceArn` (sending authorization).
 ```bash
-AWS_SES_IAM_ARN=
+AWS_SES_IDENTITY_ARN=
 ```
 
-> [!TIP]
-> Prefer `AWS_SES_IAM_ARN` in production over long-lived keys. Role assumption issues temporary credentials and rotates them.
-
-**`AWS_SES_REGION`** *(optional/required for email features)*  
+**`AWS_SES_REGION`** *(required with SES)*  
 AWS region for SES service.
 ```bash
 AWS_SES_REGION=
 ```
 
+**`AWS_SES_ENDPOINT`** *(optional)*  
+Custom SES endpoint, such as LocalStack. A URL without a trailing slash.
+```bash
+AWS_SES_ENDPOINT=http://localhost:4566
+```
+
 ### Email Settings
 
 > [!NOTE]
-> Email settings are optional.
+> Email settings are optional and required together with SES.
 
-**`EMAIL_NO_REPLY`** *(optional/required for email features)*  
+**`EMAIL_NO_REPLY`** *(required with SES)*  
 Sender email address used for no-reply emails (e.g., transactional, notifications).
 ```bash
 EMAIL_NO_REPLY=noreply@mail.com
 ```
 
-**`EMAIL_SUPPORT`** *(optional/required for email features)*  
+**`EMAIL_SUPPORT`** *(required with SES)*  
 Support email address shown in email templates.
 ```bash
 EMAIL_SUPPORT=support@mail.com
 ```
 
-**`EMAIL_ADMIN`** *(optional/required for email features)*  
-Admin email address for internal notifications.
-```bash
-EMAIL_ADMIN=admin@mail.com
-```
-
 ### Firebase Settings
 
 > [!NOTE]
-> Firebase settings are optional. Required only if push notification features are enabled.
+> Firebase settings are optional and all-or-none: setting any one requires all three. With none set, push delivery is off.
 
-**`FIREBASE_PROJECT_ID`** *(optional/required for push notifications)*  
+**`FIREBASE_PROJECT_ID`** *(optional; all three together)*  
 Firebase project ID from your Firebase console.
 ```bash
 FIREBASE_PROJECT_ID=
 ```
 
-**`FIREBASE_CLIENT_EMAIL`** *(optional/required for push notifications)*  
+**`FIREBASE_CLIENT_EMAIL`** *(optional; all three together)*  
 Firebase service account client email.
 ```bash
 FIREBASE_CLIENT_EMAIL=
 ```
 
-**`FIREBASE_PRIVATE_KEY`** *(optional/required for push notifications)*  
+**`FIREBASE_PRIVATE_KEY`** *(optional; all three together)*  
 Firebase service account private key, accepted either as the PEM block with its newlines written as `\n`, or as the bare base64 PKCS#8 DER body. `FirebaseUtil.normalizePrivateKey` in `src/common/firebase/utils/firebase.util.ts` turns either form into the PEM the Admin SDK expects.
 ```bash
 FIREBASE_PRIVATE_KEY=
@@ -644,7 +656,7 @@ QUEUE_REDIS_URL=redis://localhost:6379/1
 ### Debug Settings
 
 **`SENTRY_DSN`** *(optional)*  
-Sentry DSN for error tracking and monitoring.
+Sentry DSN for error tracking and monitoring. A URL when set; blank leaves Sentry off.
 ```bash
 SENTRY_DSN=
 ```

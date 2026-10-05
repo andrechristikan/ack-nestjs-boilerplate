@@ -56,6 +56,8 @@ export default registerAs(
 );
 ```
 
+`MessageModule.forRoot()` registers nestjs-i18n with `I18nJsonLoader` over `src/languages/`, a `HeaderResolver` on `x-custom-lang`, and `fallbackLanguage` set to `message.language`, so a key missing from the requested language resolves from the default one.
+
 Language options are defined in the enum:
 
 ```typescript
@@ -125,17 +127,13 @@ Access pattern:
 
 ### Basic Translation
 
-Inject `MessageService` and use `setMessage` method:
+Inject `MessageService` and call `setMessage` with a key path. `NotificationEmailWorkspaceDomain` labels a join-request rejection reason this way:
 
 ```typescript
-@Injectable()
-export class UserDomain {
-    constructor(private readonly messageService: MessageService) {}
-
-    getUpdateProfileMessage(): string {
-        return this.messageService.setMessage('user.updateProfile');
-    }
-}
+const rejectReasonLabel = this.messageService.setMessage(
+    `notification.rejectReason.${rejectReasonCode}`
+);
+// rejectReasonCode 'spam' → "Spam"
 ```
 
 ### Filter Language
@@ -218,8 +216,8 @@ throw new UserEmailExistException();
 With variables, the exception class accepts constructor params and maps them to `messageProperties` internally:
 
 ```typescript
-throw new UserVerificationEmailResendLimitExceededException(resendIn);
-// the class internally calls super('user.error.verificationEmailResendLimitExceeded', { messageProperties: { resendIn } })
+throw new UserVerificationEmailResendLimitExceededException(minutes);
+// the class internally calls super('user.error.verificationEmailResendLimitExceeded', { messageProperties: { minutes } })
 ```
 
 ### Response Decorator
@@ -242,6 +240,7 @@ With variables, the HTTP service returns `messageProperties` on the `metadata` f
 ```typescript
 // controller
 @Response('notification.markAllAsRead')
+@HttpCode(HttpStatus.OK)
 @Post('/update/read')
 async markAllAsRead(
     @AuthJwtPayload('userId') userId: string

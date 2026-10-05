@@ -30,10 +30,7 @@ import {
 import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/term-policy.acceptance.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import type {
-    IResponsePaginationReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 
 import { TermPolicyUserAcceptanceResponseSchema } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
 import { TermPolicyAcceptRequestSchema } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
@@ -52,7 +49,7 @@ export class TermPolicySharedController {
         private readonly termPolicyAcceptanceHttpService: TermPolicyAcceptanceHttpService
     ) {}
 
-    @Doc({ summary: 'List of terms or policies accepted by the user' })
+    @Doc({ summary: 'list of terms or policies accepted by the user' })
     @ResponsePagination('termPolicy.listAccepted', {
         schema: TermPolicyUserAcceptanceResponseSchema,
     })
@@ -73,7 +70,7 @@ export class TermPolicySharedController {
         );
     }
 
-    @Doc({ summary: 'User accepts term or policy' })
+    @Doc({ summary: 'user accepts term or policy' })
     @Response('termPolicy.accept')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -86,7 +83,7 @@ export class TermPolicySharedController {
         @UserCurrent() user: IUser,
         @Body({ schema: TermPolicyAcceptRequestSchema })
         body: TermPolicyAcceptRequestDto
-    ): Promise<IResponseReturn<void>> {
-        return this.termPolicyAcceptanceHttpService.userAccept(user, body);
+    ): Promise<void> {
+        await this.termPolicyAcceptanceHttpService.userAccept(user, body);
     }
 }

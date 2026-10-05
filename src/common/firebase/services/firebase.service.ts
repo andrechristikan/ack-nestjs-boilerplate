@@ -22,7 +22,8 @@ export class FirebaseService implements OnModuleInit {
 
     private readonly projectId: string | null;
     private readonly clientEmail: string | null;
-    private privateKey: string | null;
+    private readonly hasPrivateKey: boolean;
+    private readonly privateKey: string | null;
 
     private app: FirebaseApp | null = null;
     private messaging: Messaging | null = null;
@@ -32,17 +33,23 @@ export class FirebaseService implements OnModuleInit {
         private readonly helperArrayService: HelperArrayService,
         private readonly firebaseUtil: FirebaseUtil
     ) {
-        this.projectId = this.configService.get<string | null>(
+        const projectId = this.configService.get<string | null>(
             'firebase.projectId'
-        )!;
-        this.clientEmail = this.configService.get<string | null>(
+        );
+        const clientEmail = this.configService.get<string | null>(
             'firebase.clientEmail'
-        )!;
-
+        );
         const privateKey = this.configService.get<string | null>(
             'firebase.privateKey'
-        )!;
-        this.privateKey = this.firebaseUtil.normalizePrivateKey(privateKey);
+        );
+        const normalizedPrivateKey = this.firebaseUtil.normalizePrivateKey(
+            privateKey ?? null
+        );
+
+        this.projectId = projectId ?? null;
+        this.clientEmail = clientEmail ?? null;
+        this.hasPrivateKey = !!privateKey;
+        this.privateKey = normalizedPrivateKey;
     }
 
     private isInvalidTokenError(error: { code?: string } | null): boolean {
@@ -50,12 +57,16 @@ export class FirebaseService implements OnModuleInit {
     }
 
     async onModuleInit(): Promise<void> {
-        if (!this.projectId || !this.clientEmail || !this.privateKey) {
+        if (!this.projectId || !this.clientEmail || !this.hasPrivateKey) {
             this.logger.warn(
                 'Firebase credentials not configured. Push notifications will be disabled.'
             );
 
             return;
+        }
+
+        if (!this.privateKey) {
+            throw new Error('Firebase private key could not be normalized');
         }
 
         try {
@@ -68,11 +79,13 @@ export class FirebaseService implements OnModuleInit {
             });
 
             this.messaging = getMessaging(this.app);
-
-            this.logger.log('Firebase Admin SDK initialized successfully');
         } catch (error: unknown) {
-            this.logger.error(error, 'Failed to initialize Firebase Admin SDK');
+            throw new Error('Failed to initialize Firebase Admin SDK', {
+                cause: error,
+            });
         }
+
+        this.logger.log('Firebase Admin SDK initialized successfully');
     }
 
     isInitialized(): boolean {

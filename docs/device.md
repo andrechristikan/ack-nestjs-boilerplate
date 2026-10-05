@@ -46,12 +46,12 @@ Repository boundary:
 A Device represents a physical or virtual client. It is identified by a globally unique `fingerprint` that can be owned by multiple users.
 
 **Fields:**
-- `fingerprint` — Globally unique identifier for the device. The frontend generates this value and sends it with every login request; the device row is upserted on it. It is not sent on refresh, which identifies the device from the `deviceOwnershipId` in the access token. The recommended library is [FingerprintJS](https://fingerprint.com) (or its open-source variant [`@fingerprintjs/fingerprintjs`](https://github.com/fingerprintjs/fingerprintjs))
-- `name` — Human-readable device name (optional, e.g. `"iPhone 15"`, `"Chrome on Windows"`)
-- `platform` — Platform of the device. See `EnumDevicePlatform` below
-- `lastActiveAt` — Stamped on login, on device refresh, on logout, on device removal, on account self-deletion, and on the credential lockout. The stale-token cleanup uses it to decide which push tokens are dead
-- `notificationToken` — FCM/APNs push token (optional, used for push notifications). Set on login and via `POST /shared/user/device/refresh`, cleared on logout, on device removal, on account self-deletion, on the credential lockout, by the stale-token cleanup cron, and by the invalid-token cleanup job that runs after a push provider rejects a token
-- `notificationProvider` — Derived automatically from `platform`. See `EnumDeviceNotificationProvider` below
+- `fingerprint`: Globally unique identifier for the device. The frontend generates this value and sends it with every login request; the device row is upserted on it. It is not sent on refresh, which identifies the device from the `deviceOwnershipId` in the access token. The recommended library is [FingerprintJS](https://fingerprint.com) (or its open-source variant [`@fingerprintjs/fingerprintjs`](https://github.com/fingerprintjs/fingerprintjs))
+- `name`: Human-readable device name (optional, e.g. `"iPhone 15"`, `"Chrome on Windows"`)
+- `platform`: Platform of the device. See `EnumDevicePlatform` below
+- `lastActiveAt`: Stamped on login, on device refresh, on logout, on device removal, on account self-deletion, and on the credential lockout. The stale-token cleanup uses it to decide which push tokens are dead
+- `notificationToken`: FCM/APNs push token (optional, used for push notifications). Set on login and via `POST /shared/user/device/refresh`, cleared on logout, on device removal, on account self-deletion, on the credential lockout, by the stale-token cleanup cron, and by the invalid-token cleanup job that runs after a push provider rejects a token
+- `notificationProvider`: Derived automatically from `platform`. See `EnumDeviceNotificationProvider` below
 
 `DeviceResponseSchema` declares neither `fingerprint` nor `notificationToken`, so neither reaches a response payload nor the OpenAPI schema.
 
@@ -102,7 +102,7 @@ When listing devices, the API shows only the devices owned by the user, with ses
 
 ## What Happens When a Device Ownership is Removed
 
-Removing a device ownership (device per user) is composed by `DeviceDomain.remove` (self-service) and `DeviceDomain.removeByAdmin` (admin). One `withTransaction`, opened by `DeviceDomain`, lands the database effects atomically. Both paths then follow one order: commit, purge Redis, stage the activity rows.
+Removing a device ownership (device per user) is composed by `DeviceDomain.remove` (self-service) and `DeviceDomain.removeByAdmin` (admin). Both first check that the ownership exists, belongs to the user, and is not revoked; otherwise the request answers `DeviceNotFoundException` (404, `51300`) and nothing changes. One `withTransaction`, opened by `DeviceDomain`, lands the database effects atomically. Both paths then follow one order: commit, purge Redis, stage the activity rows.
 
 1. **Revokes the active sessions** for that device-user pair (`SessionDomain.revokeByDeviceOwnershipInTx`): `isRevoked: true`, `revokedAt: now`, `revokedById` and `updatedBy` set to the acting user. The call returns the ids of the sessions it revoked.
 2. **Updates the `DeviceOwnership` record** (`DeviceOwnershipRepository.removeOwnershipInTx`): marks as revoked (`isRevoked: true`, `revokedAt: now`, `revokedBy` connected to the acting user: the owner on the self-service path, the admin on the admin path), with `updatedBy` stamped from the request actor. The ownership record is retained for audit trail; its own `lastActiveAt` is left at the value of the last real activity.

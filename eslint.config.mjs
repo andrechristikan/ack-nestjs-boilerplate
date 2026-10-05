@@ -271,6 +271,25 @@ const importOrderRules = {
     ],
 };
 
+const testSyntaxRestrictions = [
+    {
+        selector:
+            'MemberExpression[property.name="mock"]:not([object.name="vi"])',
+        message:
+            'Assert through toHaveBeenCalledWith and friends, not fn.mock.*',
+    },
+    {
+        selector: 'ClassDeclaration',
+        message:
+            'A spec declares no class; apply the decorator to a plain object and read the metadata',
+    },
+    {
+        selector: 'ClassExpression',
+        message:
+            'A spec declares no class; apply the decorator to a plain object and read the metadata',
+    },
+];
+
 export default [
     eslintConfigPrettier,
     {
@@ -494,25 +513,7 @@ export default [
                 'error',
                 { patterns: [relativeImportPattern] },
             ],
-            'no-restricted-syntax': [
-                'error',
-                {
-                    selector:
-                        'MemberExpression[property.name="mock"]:not([object.name="vi"])',
-                    message:
-                        'Assert through toHaveBeenCalledWith and friends, not fn.mock.*',
-                },
-                {
-                    selector: 'ClassDeclaration',
-                    message:
-                        'A spec declares no class; apply the decorator to a plain object and read the metadata',
-                },
-                {
-                    selector: 'ClassExpression',
-                    message:
-                        'A spec declares no class; apply the decorator to a plain object and read the metadata',
-                },
-            ],
+            'no-restricted-syntax': ['error', ...testSyntaxRestrictions],
             'no-restricted-properties': [
                 'error',
                 {
@@ -532,6 +533,33 @@ export default [
             ],
             ...commentRules,
             ...namingConventionRules,
+        },
+    },
+    {
+        name: 'ts/test-spec',
+        files: ['test/**/*.spec.ts'],
+        rules: {
+            'no-restricted-syntax': [
+                'error',
+                ...testSyntaxRestrictions,
+                {
+                    selector: 'FunctionDeclaration',
+                    message:
+                        'A spec declares no function; move it to test/<type>/helpers/ or test/helpers/',
+                },
+                {
+                    selector:
+                        'VariableDeclarator > :matches(ArrowFunctionExpression, FunctionExpression).init',
+                    message:
+                        'A spec stores no function in a variable; reuse data as a const, logic as a helper',
+                },
+                {
+                    selector:
+                        ':matches(ArrowFunctionExpression, FunctionExpression):not(CallExpression[callee.name=/^(describe|it|test|beforeAll|beforeEach|afterAll|afterEach|expect)$/] > .arguments):not(CallExpression[callee.property.name=/^(fn|mock|hoisted|mockImplementation|mockImplementationOnce|only|skip|todo|each|concurrent|sequential)$/] > .arguments):not(CallExpression[callee.callee.property.name="each"] > .arguments)',
+                    message:
+                        'An arrow is allowed only as a direct argument to describe/it/test/hooks/expect/vi.fn/vi.mock/mockImplementation',
+                },
+            ],
         },
     },
 ];

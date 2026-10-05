@@ -14,7 +14,7 @@ export interface IProjectRepository {
         projectId: string,
         workspaceId: string
     ): Promise<Project | null>;
-    findByIdForAdmin(projectId: string): Promise<Project | null>;
+    findByIdByAdmin(projectId: string): Promise<Project | null>;
     existsBySlugInWorkspace(
         workspaceId: string,
         slug: string,
@@ -28,7 +28,7 @@ export interface IProjectRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
     ): Promise<IResponsePaginationReturn<Project>>;
-    findWithPaginationOffsetForAdmin(
+    findWithPaginationOffsetByAdmin(
         {
             where,
             ...others

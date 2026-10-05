@@ -224,12 +224,12 @@ export class UserVerificationDomain {
 
             if (today < canResendAt) {
                 const resendDuration = this.helperDateService.diff(
-                    today,
-                    canResendAt
+                    canResendAt,
+                    today
                 );
 
                 throw new UserVerificationEmailResendLimitExceededException(
-                    resendDuration.minutes
+                    Math.ceil(resendDuration.as('minutes'))
                 );
             }
         }

@@ -296,7 +296,7 @@ export class ApiKeyDomain {
         return deleted;
     }
 
-    async findOneActiveByKeyAndCache(key: string): Promise<ApiKey | null> {
+    async getOneActiveByKeyAndCache(key: string): Promise<ApiKey | null> {
         const cached = await this.apiKeyCache.getCacheByKey(key);
         if (cached) {
             return cached;
@@ -327,7 +327,7 @@ export class ApiKeyDomain {
 
         const [key, secret] = xApiKey;
         const today = this.helperDateService.create();
-        const apiKey = await this.findOneActiveByKeyAndCache(key);
+        const apiKey = await this.getOneActiveByKeyAndCache(key);
 
         if (!apiKey) {
             throw new ApiKeyXApiKeyNotFoundException();

@@ -43,7 +43,6 @@ Term Policy stores versioned legal documents (terms of service, privacy policy, 
   - [How It Works](#how-it-works)
   - [Important Notes](#important-notes)
 - [Migration & Seeding](#migration--seeding)
-- [Contribution](#contribution)
 
 ## Policy Types
 
@@ -98,23 +97,26 @@ sequenceDiagram
     Note over Admin,Users: Policy Creation & Management
     
     Admin->>API: Generate presign URL
-    API->>Admin: Return presign URL
+    API->>Admin: Return presign URL (404 s3NotConfigured without S3)
     Admin->>S3 Private: Upload content (.hbs file)
     
-    Admin->>API: Create policy (draft)
-    API->>Database: Save policy metadata
+    Admin->>API: Create policy (draft) with uploaded keys
+    API->>API: Reject when S3 is not configured (404)
+    API->>Database: Save policy metadata and contents
     API->>Admin: Policy created (draft status)
     
     Note over Admin,S3 Private: Content Management (Draft Only)
     
+    Admin->>S3 Private: Upload language content through a presign URL
     Admin->>API: Add/Update/Remove language content
-    API->>S3 Private: Upload/Update/Delete content
+    API->>API: Add and update reject when S3 is not configured (404)
     API->>Database: Update policy contents
     
     Note over Admin,Users: Publishing Process
     
     Admin->>API: Publish policy
     API->>Database: Reject an already-published policy, then a policy with no content
+    API->>API: Reject when S3 is not configured (404)
     API->>S3 Public: Copy all content files from the private bucket
     API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to the public items,<br/>active users termPolicy[type] = false
     API->>Users: Queue publishTermPolicy notification
@@ -146,7 +148,8 @@ sequenceDiagram
     User->>API: Accept policy (type)
     API->>Database: Check latest published exists (404 otherwise)
     API->>Database: Check that version not already accepted (409 otherwise)
-    API->>Database: One transaction: create acceptance record,<br/>set user.termPolicy[type] = true,<br/>log activity (IP, userAgent)
+    API->>Database: One transaction: create acceptance record,<br/>set user.termPolicy[type] = true
+    API->>API: Stage activity log (IP, userAgent)
     API->>User: Queue userAcceptTermPolicy notification
     API->>User: Acceptance recorded
     
@@ -154,7 +157,7 @@ sequenceDiagram
     
     User->>API: Request protected endpoint
     API->>Guard: Check term policy requirement
-    Guard->>Database: Verify user.termPolicy[type]=true
+    Guard->>Guard: Check user.termPolicy[type] = true on the stored user
     alt Policy Accepted
         Guard->>API: Allow access
         API->>User: Return response
@@ -204,6 +207,8 @@ Returns all policies the user has accepted with timestamps and policy details.
 
 Admins manage the complete lifecycle of term policies from creation to publishing.
 
+Content lives in S3, so these routes need a configured S3 integration. Without one, each of these throws `AwsS3NotConfiguredException` (`404`, `s3NotConfigured`, message `aws.error.s3NotConfigured`): generate presign, create, add content, update content, get content, and publish. Publishing checks S3 before it copies anything, so a policy is never published with empty contents. Remove content and delete run without S3; delete then removes only the record.
+
 ### Generate Presign URL
 
 Generate presigned URL for uploading content to S3:
@@ -229,15 +234,22 @@ Requesting a presign for a type and version already published returns `400` (`st
 
 ### Create Policy
 
-Create new policy with initial content:
+Create a draft policy with its initial content entries:
 
 ```typescript
 POST /admin/term-policy/create
+{
+  "type": "termsOfService",
+  "version": 1,
+  "contents": [{ "language": "en", "key": "term-policies/termsOfService/v1/en.hbs", "size": 1024 }]
+}
 ```
+
+Each entry names a key the client already uploaded through a presign URL; the API records it against the private bucket and uploads nothing. A duplicate `type` and `version` returns `409` (`exist`); two entries with the same language fail the request schema and return `422` with status code `50300` (`request.error.validation`) from the validation pipe.
 
 ### Add Content
 
-Add new language variant to draft policy:
+Add new language variant to draft policy (`409` `contentExist` when the language already has content):
 
 ```typescript
 PUT /admin/term-policy/content/:termPolicyId/add
@@ -253,7 +265,7 @@ PUT /admin/term-policy/content/:termPolicyId/update
 
 ### Remove Content
 
-Remove specific language variant from draft policy:
+Remove specific language variant from the draft record (`404` `contentNotFound` when the language has none). The S3 object stays in place:
 
 ```typescript
 DELETE /admin/term-policy/content/:termPolicyId/remove
@@ -325,7 +337,7 @@ The guard reads the user out of the request store, which `@UserProtected()` fill
   path: '/user/term-policy',
 })
 export class TermPolicySharedController {
-  @Doc({ summary: 'List of terms or policies accepted by the user' })
+  @Doc({ summary: 'list of terms or policies accepted by the user' })
   @ResponsePagination('termPolicy.listAccepted', {
     schema: TermPolicyUserAcceptanceResponseSchema,
   })
@@ -346,7 +358,7 @@ export class TermPolicySharedController {
     );
   }
 
-  @Doc({ summary: 'User accepts term or policy' })
+  @Doc({ summary: 'user accepts term or policy' })
   @Response('termPolicy.accept')
   @TermPolicyAcceptanceProtected()
   @UserProtected()
@@ -358,8 +370,8 @@ export class TermPolicySharedController {
   async accept(
     @UserCurrent() user: IUser,
     @Body({ schema: TermPolicyAcceptRequestSchema }) body: TermPolicyAcceptRequestDto
-  ): Promise<IResponseReturn<void>> {
-    return this.termPolicyAcceptanceHttpService.userAccept(user, body);
+  ): Promise<void> {
+    await this.termPolicyAcceptanceHttpService.userAccept(user, body);
   }
 }
 ```
@@ -420,20 +432,12 @@ src/migration/seeds/migration.template-term-policy.seed.ts  # command: templateT
 ```
 
 - `termPolicy` is the seed wired into `pnpm migration:seed` and `pnpm migration:remove`. It upserts the rows in `src/migration/data/migration.term-policy.data.ts`: one version 1 record per type, all `published`, with empty `contents`. Details of that seed (actor, order, remove): [Database Documentation][ref-doc-database].
-- `templateTermPolicy` is run on its own. For each type it uploads the bundled `.hbs` document to the private bucket, copies it to the public content path, and upserts a published version 1 record whose single `en` content entry is the public item, so a seeded policy sits in both buckets like any published one. It throws when S3 is not initialized, and its `remove()` is a no-op.
+- `templateTermPolicy` is run on its own. For each type it uploads the bundled `.hbs` document to the private bucket, copies it to the public content path, and upserts a published version 1 record whose single `en` content entry is the public item, so a seeded policy sits in both buckets like any published one. When S3 is not configured it logs a warning and skips, and its `remove()` is a no-op.
 
 ```bash
 pnpm migration templateTermPolicy --type seed
 pnpm migration templateTermPolicy --type remove
 ```
-
-## Contribution
-
-Special thanks to [Gzerox][ref-contributor-gzerox] for contributing to the Term Policy module implementation.
-
-
-
-
 
 <!-- REFERENCES -->
 
@@ -443,5 +447,3 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for contributing to the Term 
 [ref-doc-file-upload]: file-upload.md#presign-upload
 [ref-doc-analytic]: analytic.md
 [ref-doc-email]: email.md
-
-[ref-contributor-gzerox]: https://github.com/Gzerox

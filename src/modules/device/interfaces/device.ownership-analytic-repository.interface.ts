@@ -13,5 +13,7 @@ export interface IDeviceOwnershipAnalyticRepository {
         startDate: Date,
         endDate: Date
     ): Promise<IDeviceOwnershipAnalyticCreated[]>;
-    sharedFingerprints(minUsers: number): Promise<IAnalyticSharedFingerprint[]>;
+    findSharedFingerprints(
+        minUsers: number
+    ): Promise<IAnalyticSharedFingerprint[]>;
 }

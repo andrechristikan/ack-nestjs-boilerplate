@@ -52,7 +52,7 @@ export class NotificationSharedController {
         private readonly notificationHttpService: NotificationHttpService
     ) {}
 
-    @Doc({ summary: 'Get all notifications for current user' })
+    @Doc({ summary: 'get all notifications for current user' })
     @ResponsePagination('notification.list', {
         schema: NotificationResponseSchema,
     })
@@ -70,7 +70,7 @@ export class NotificationSharedController {
         return this.notificationHttpService.getListCursor(userId, query);
     }
 
-    @Doc({ summary: 'Get all notification settings for current user' })
+    @Doc({ summary: 'get all notification settings for current user' })
     @Response('notification.listUserSetting', {
         schema: NotificationUserSettingResponseSchema,
     })
@@ -86,7 +86,7 @@ export class NotificationSharedController {
         return this.notificationHttpService.getListUserSetting(userId);
     }
 
-    @Doc({ summary: 'Mark a notification as read' })
+    @Doc({ summary: 'mark a notification as read' })
     @Response('notification.markAsRead')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -98,11 +98,11 @@ export class NotificationSharedController {
         @AuthJwtPayload('userId') userId: string,
         @Param('notificationId', { schema: RequestMongoIdSchema })
         notificationId: string
-    ): Promise<IResponseReturn<void>> {
-        return this.notificationHttpService.markAsRead(userId, notificationId);
+    ): Promise<void> {
+        await this.notificationHttpService.markAsRead(userId, notificationId);
     }
 
-    @Doc({ summary: 'Mark all notifications as read' })
+    @Doc({ summary: 'mark all notifications as read' })
     @Response('notification.markAllAsRead')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -130,7 +130,7 @@ export class NotificationSharedController {
         userId: string,
         @Body({ schema: NotificationUserSettingRequestSchema })
         body: NotificationUserSettingRequestDto
-    ): Promise<IResponseReturn<void>> {
-        return this.notificationHttpService.updateUserSetting(userId, body);
+    ): Promise<void> {
+        await this.notificationHttpService.updateUserSetting(userId, body);
     }
 }

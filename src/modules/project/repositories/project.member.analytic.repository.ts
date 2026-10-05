@@ -18,7 +18,7 @@ export class ProjectMemberAnalyticRepository implements IProjectMemberAnalyticRe
         private readonly paginationService: PaginationService
     ) {}
 
-    async membershipDistributionOffset(
+    async groupMembershipDistributionOffset(
         params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
         const { where, skip, limit } = params;

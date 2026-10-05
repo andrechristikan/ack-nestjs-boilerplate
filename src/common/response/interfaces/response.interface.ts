@@ -48,3 +48,7 @@ export interface IResponsePdfReturn {
 }
 
 export type IResponseFileReturn = IResponseCsvReturn | IResponsePdfReturn;
+
+export interface IResponseFileInterceptorOptions {
+    maxDataExportConfigKey?: string;
+}

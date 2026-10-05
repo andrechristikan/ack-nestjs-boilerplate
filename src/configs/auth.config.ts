@@ -44,7 +44,6 @@ export interface IConfigAuth {
         header: string;
         prefix: string;
         clientId: string | null;
-        clientSecret: string | null;
     };
     xApiKey: {
         header: string;
@@ -118,14 +117,13 @@ export default registerAs('auth', (): IConfigAuth => ({
     apple: {
         header: 'Authorization',
         prefix: 'Bearer',
-        clientId: process.env.AUTH_SOCIAL_APPLE_CLIENT_ID ?? null,
-        signInClientId: process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID ?? null,
+        clientId: process.env.AUTH_SOCIAL_APPLE_CLIENT_ID || null,
+        signInClientId: process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID || null,
     },
     google: {
         header: 'Authorization',
         prefix: 'Bearer',
-        clientId: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID ?? null,
-        clientSecret: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_SECRET ?? null,
+        clientId: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID || null,
     },
     xApiKey: {
         header: 'x-api-key',

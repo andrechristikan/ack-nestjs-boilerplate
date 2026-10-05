@@ -59,13 +59,10 @@ export class NotificationHttpService {
         };
     }
 
-    async markAsRead(
-        userId: string,
-        notificationId: string
-    ): Promise<IResponseReturn<void>> {
+    async markAsRead(userId: string, notificationId: string): Promise<void> {
         await this.notificationDomain.markAsRead(userId, notificationId);
 
-        return {};
+        return;
     }
 
     async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
@@ -83,9 +80,9 @@ export class NotificationHttpService {
     async updateUserSetting(
         userId: string,
         data: NotificationUserSettingRequestDto
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         await this.notificationDomain.updateUserSetting(userId, data);
 
-        return {};
+        return;
     }
 }

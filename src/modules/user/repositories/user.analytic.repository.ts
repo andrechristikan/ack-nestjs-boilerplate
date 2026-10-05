@@ -166,7 +166,7 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
         });
     }
 
-    async listNearLockoutOffset(
+    async findNearLockoutOffset(
         minAttempt: number,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {

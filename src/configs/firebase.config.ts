@@ -7,7 +7,7 @@ export interface IConfigFirebase {
 }
 
 export default registerAs('firebase', (): IConfigFirebase => ({
-    projectId: process.env.FIREBASE_PROJECT_ID ?? null,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL ?? null,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY ?? null,
+    projectId: process.env.FIREBASE_PROJECT_ID || null,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL || null,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY || null,
 }));

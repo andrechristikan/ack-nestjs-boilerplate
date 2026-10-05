@@ -126,7 +126,7 @@ export class PolicyAdminController {
         roleId: string,
         @Param('policyId', { schema: RequestMongoIdSchema })
         policyId: string
-    ): Promise<IResponseReturn<void>> {
-        return this.policyHttpService.deleteByAdmin(roleId, policyId);
+    ): Promise<void> {
+        await this.policyHttpService.deleteByAdmin(roleId, policyId);
     }
 }

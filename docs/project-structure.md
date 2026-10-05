@@ -78,7 +78,7 @@ CommonModule registers shared infrastructure and the global feature modules. Its
 
 **Location:** `src/configs/`
 
-Typed `registerAs` files. `src/configs/index.ts` loads every `*.config.ts` in that folder into `ConfigModule`. Each file holds env vars, settings, and validation for its concern. The catalog is [Configuration](configuration.md).
+Typed `registerAs` files. `src/configs/index.ts` loads every `*.config.ts` in that folder into `ConfigModule`. Each file maps the env vars and literal settings of its concern; `AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) validates the env vars. The catalog is [Configuration](configuration.md).
 
 ## Languages
 
@@ -123,8 +123,8 @@ The router folder mounts everything the application exposes. It includes:
 
 The instrument file configures Sentry. It is loaded before the application code, through `node --import ./dist/instrument.js` in the start scripts and `import '@instrument'` at the top of `src/main.ts`, so Sentry is initialized before anything else.
 
-- Initializes Sentry with DSN and environment config
-- Sets sampling rates for traces and profiles (higher in development, lower in production)
+- Initializes Sentry only when `SENTRY_DSN` is set, with the environment and the release version
+- Sets sampling rates for traces and profiles from `logger.sentry` (the `*Production` rates in production, lower than the rates every other environment uses)
 - Drops non-fatal `QueueException` events in `beforeSend`, requests to `LoggerExcludedRoutes` (health, docs, hello, metrics, favicon, root), responses with status below 500, and events at `info` or `debug`
 - Forwards Pino logs to Sentry Logs through `Sentry.pinoIntegration`, limited to `warn`, `error`, and `fatal` in production and all levels elsewhere
 - Excludes the same noise routes from traces in `tracesSampler`
@@ -298,19 +298,24 @@ Below are explanations for the root folders and files outside `src/`:
 
 ### Folders
 
-- **.github/**: GitHub-specific configuration including Actions workflows, issue and pull request templates, and Dependabot settings. `.github/workflows/test.yml` runs `NODE_ENV=test pnpm test` on `workflow_dispatch`. `.github/workflows/linter.yml` runs on `pull_request`.
+- **.github/**: GitHub-specific configuration including Actions workflows, issue and pull request templates, and Dependabot settings. `.github/workflows/test.yml` runs `NODE_ENV=test pnpm test` on `workflow_dispatch`. `.github/workflows/linter.yml` runs on `pull_request` and `workflow_dispatch`.
 - **.husky/**: Git hooks. `pre-commit` runs `pnpm lint:staged`, `pnpm typecheck`, `pnpm deadcode`, `pnpm spell`, and `NODE_ENV=test pnpm test`; `commit-msg` runs commitlint.
 - **.vscode/**: Shared editor settings, tasks, launch configurations, and recommended extensions.
 - **ci/**: Dockerfiles (`dockerfile`, `dockerfile.local`), the JWKS server nginx config, the MongoDB replica-set entrypoint, and the Vault bootstrap scripts and policies.
 - **docs/**: Project documentation, including architecture, features, and usage guides.
-- **generated/**: Auto-generated output: the Swagger JSON (`swagger.json`), the Vault init material (`vault/`), and agent reports (`docs/`). Not tracked by git. The Prisma client lives in `src/generated/` (see [Structure](#structure)).
+- **generated/**: Auto-generated output: the Swagger JSON (`swagger.json`) and the Vault init material (`vault/`). Not tracked by git. The Prisma client lives in `src/generated/` (see [Structure](#structure)).
 - **coverage/**: Vitest coverage output from `pnpm test:cov`. Not tracked by git.
-- **.vitest/**: Vitest blob reports and JSON output. Ignored by git, Docker, Prettier, ESLint, and cspell, and listed in `tsconfig.json` / `tsconfig.build.json` `exclude`. `node_modules/.vitest-cache` holds `fsModuleCache`.
+- **.vitest/**: A Vitest report directory; no reporter in `vitest.config.ts` writes to it. Ignored by git, Docker, Prettier, ESLint, and cspell, and listed in `tsconfig.json` / `tsconfig.build.json` `exclude`. `node_modules/.vitest-cache` holds `fsModuleCache`.
 - **keys/**: The JWT key pairs, the JWKS files, and `encryption-secret.env`, all written by `pnpm generate:secret`. Not tracked by git.
 - **logs/**: Directory for application logs. Not tracked by git.
 - **prisma/**: Contains `schema.prisma`, the single source of truth for the database schema. MongoDB has no migration files.
 - **scripts/**: `generate-secret.ts` (JWT keys, JWKS, and encryption secrets; `pnpm generate:secret`) and `generate-package.ts` (`pnpm generate:package`). Node runs both directly as TypeScript.
-- **test/**: The Vitest spec tree, mirroring `src/` (`test/**/*.spec.ts`). The suite is unit: one class, collaborators doubled. `pnpm test` is `TZ=UTC vitest run --passWithNoTests` and does not collect coverage. `pnpm test:cov` adds `--coverage`, which is when the 100% thresholds apply. `coverage.enabled` is `false` in `vitest.config.ts`. Controllers, processors, repositories, contracts, modules, enums, interfaces, and constants sit outside the coverage set. The doc kit in `src/common/doc/` is in it. Integration and e2e tests are not this suite. Specs exist under `test/app/` (app-layer env DTO, exceptions, filters), `test/common/pagination/` (query util and list query schemas), and `test/modules/analytic/`. `test/setup.ts` (`setupFiles`) mutes Nest `Logger` and `ConsoleLogger` by assigning no-ops onto instance and static methods. Specs do not spy loggers or `console`. `pre-commit` and CI (`.github/workflows/test.yml`, `workflow_dispatch`) run `NODE_ENV=test pnpm test`. `testTimeout` is 5000ms.
+- **test/**: The Vitest spec tree.
+    - `test/unit/` holds the unit specs, mirroring `src/` (`test/unit/app/`, `test/unit/common/`, `test/unit/modules/`, `test/unit/queues/`), plus unit-only helpers in `test/unit/helpers/`. A unit spec tests one class with its collaborators doubled.
+    - `test/helpers/test.logger.helper.ts` is the `setupFiles` entry: it mutes Nest `Logger` and `ConsoleLogger` by assigning no-ops onto instance and static methods. Specs do not spy loggers or `console`.
+    - `pnpm test` is `TZ=UTC vitest run --project unit` and does not collect coverage. `pnpm test:cov` adds `--coverage`, which is when the 100% thresholds apply; `coverage.enabled` is `false` in `vitest.config.ts`.
+    - Controllers, processors, repositories, contracts, modules, enums, interfaces, and constants sit outside the coverage set. The doc kit in `src/common/doc/` is in it.
+    - `pre-commit` and CI (`.github/workflows/test.yml`, `workflow_dispatch`) run `NODE_ENV=test pnpm test`. `testTimeout` is 5000ms.
 
 ### Files
 
@@ -332,7 +337,7 @@ Below are explanations for the root folders and files outside `src/`:
 - **pnpm-workspace.yaml**: pnpm settings for this single-package repo: `allowBuilds` (the packages permitted to run install scripts, for example `prisma` and `@swc/core`) and `minimumReleaseAgeExclude` (packages exempted from the minimum release-age hold).
 - **tsconfig.json**: TypeScript configuration read by `pnpm typecheck` (`tsc --noEmit`), by knip, by Vitest (`resolve.tsconfigPaths`), and by the editor. It targets native ESM (`module` and `moduleResolution` `nodenext`, `verbatimModuleSyntax`, `isolatedModules`). Its `include` covers `src/**/*`, `test/**/*`, `scripts/**/*`, and `vitest.config.ts`; its `exclude` includes `.vitest`. Path aliases: `@app/*`, `@common/*`, `@configs/*`, `@modules/*`, `@router/*`, `@migration/*`, `@queues/*`, `@test/*`, `@generated/*`, `@instrument`, `@swagger`, `@main`, `@migration`.
 - **tsconfig.build.json**: The build-time TypeScript configuration, named by `nest-cli.json` under `compilerOptions.tsConfigPath`, so `nest build` and `nest start` read it. It extends `tsconfig.json`, narrows `include` to `src/**/*`, and excludes `test`, `scripts`, and `.vitest`.
-- **vitest.config.ts**: The Vitest configuration behind `pnpm test` and `pnpm test:cov`: SWC compilation through `unplugin-swc`, the tsconfig path aliases, `test/**/*.spec.ts`, `test/setup.ts` as `setupFiles`, `isolate: false` (workers reused across files; `pool` is unset, so Vitest uses `forks`), `fsModuleCache: true` (transforms persist under `node_modules/.vitest-cache`), `testTimeout` 5000ms, and v8 coverage over `src/**/*.ts` (modules, enums, interfaces, constants, contracts, controllers, processors, repositories, `src/generated`, `src/migration`, `src/router`, `src/configs`, `src/languages`, and the root files excluded) with a 100% threshold on branches, functions, lines, and statements. The doc kit in `src/common/doc/` is in the coverage set. Coverage collection is off unless `--coverage` is passed.
+- **vitest.config.ts**: The Vitest configuration behind `pnpm test` and `pnpm test:cov`: SWC compilation through `unplugin-swc`, the tsconfig path aliases, `passWithNoTests: true`, and one project, `unit`: `test/unit/**/*.spec.ts`, `test/helpers/test.logger.helper.ts` as `setupFiles`, `isolate: false` (workers reused across files; `pool` is unset, so Vitest uses `forks`), `fsModuleCache: true` (transforms persist under `node_modules/.vitest-cache`), `testTimeout` 5000ms. Coverage is v8 over `src/**/*.ts` (modules, enums, interfaces, constants, contracts, controllers, processors, repositories, `src/generated`, `src/migration`, `src/router`, `src/configs`, `src/languages`, and the root files excluded) with a 100% threshold on branches, functions, lines, and statements. The doc kit in `src/common/doc/` is in the coverage set. Coverage collection is off unless `--coverage` is passed.
 - **README.md**: Project introduction, feature list, and entry point to the documentation.
 - **CONTRIBUTING.md**: Contribution workflow and standards.
 - **CODE_OF_CONDUCT.md**: Community code of conduct.

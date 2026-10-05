@@ -1,8 +1,7 @@
 # ack-nestjs-boilerplate
 
-An opinionated, production-shaped NestJS starter. It is a boilerplate: no external client depends on it, so
-build the correct shape and change every call site. No compat flag, no `v1`/`v2` pair, no deprecated-but-kept field.
-
+An opinionated, production-shaped NestJS starter. It is a boilerplate: no external client depends on it, so build
+the correct shape and change every call site. No compat flag, no `v1`/`v2` pair, no deprecated-but-kept field.
 Four domain groups:
 - identity and auth: JWT with JWKS, social sign-in, API keys, sessions, devices, two-factor
 - access control: roles, CASL policy abilities, term-policy gating, feature flags
@@ -53,8 +52,8 @@ generated/              swagger, vault init, agent reports under docs/, gitignor
 ## Layering
 
 Every feature module carries one shape: `Controller → HTTP Service → Domain → Repository`, with `Processor →
-Processor Service` joining at the domain. Only a repository queries `databaseService.client` (`.claude/rules/layering.md`).
-
+Processor Service` joining at the domain (`.claude/rules/layering.md`). Only a repository queries
+`databaseService.client`, seeds and health indicators excepted (`.claude/rules/database.md`).
 `src/app/app.module.ts` registers the `APP_FILTER` providers general → base-exception → http → validation →
 validation-import; NestJS evaluates them in reverse, so the most specific runs first.
 
@@ -70,9 +69,10 @@ validation-import; NestJS evaluates them in reverse, so the most specific runs f
 
 ## Prisma schema
 
-`prisma/schema.prisma` is editable. Applying it is the owner's: `pnpm db:migrate`, `pnpm db:studio`,
-`pnpm migration`, `pnpm migration:seed`, `pnpm migration:remove`, `pnpm migration:fresh`,
-`node dist/migration.js`, `mongosh`, `redis-cli`. Edit the schema, then hand back the commands the owner runs.
+`prisma/schema.prisma` is editable. Applying it is the owner's: `pnpm db:migrate`, `pnpm db:studio`, `pnpm migration`,
+`pnpm migration:seed`, `pnpm migration:remove`, `pnpm migration:fresh`, `node dist/migration.js`, `prisma db *`,
+`prisma migrate *`, `prisma studio` (bare, `npx`, `pnpm exec`, `pnpm dlx`), `mongosh`, `redis-cli`. Edit the
+schema, then hand back the commands the owner runs.
 One exception: the integration and e2e global-setup runs `prisma db push --skip-generate` on its throwaway Mongo.
 
 ## Commit gates

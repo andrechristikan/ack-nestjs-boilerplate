@@ -8,10 +8,7 @@ import {
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
 
-import type {
-    IResponsePaginationReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 
 import {
     EnumPolicyAction,
@@ -99,8 +96,8 @@ export class DeviceAdminController {
         userId: string,
         @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
         deviceOwnershipId: string
-    ): Promise<IResponseReturn<void>> {
-        return this.deviceHttpService.removeByAdmin(
+    ): Promise<void> {
+        await this.deviceHttpService.removeByAdmin(
             userId,
             deviceOwnershipId,
             removedBy

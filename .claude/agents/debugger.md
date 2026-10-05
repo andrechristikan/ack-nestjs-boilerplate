@@ -9,6 +9,7 @@ description: >-
   (reviewer), or tests (tester).
 tools: Read, Grep, Glob, Bash
 model: opus
+effort: high
 skills: caveman:caveman, superpowers:systematic-debugging
 ---
 

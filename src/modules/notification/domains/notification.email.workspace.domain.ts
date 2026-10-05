@@ -37,6 +37,8 @@ export class NotificationEmailWorkspaceDomain {
         private readonly messageService: MessageService,
         private readonly helperEncryptionService: HelperEncryptionService
     ) {
+        // AppEnvSchema requires both addresses once AWS SES credentials are set, and
+        // AwsSESService.send is a no-op while SES is uninitialized, so neither is read as null.
         this.noreplyEmail = this.configService.get<string>('email.noreply')!;
         this.supportEmail = this.configService.get<string>('email.support')!;
 

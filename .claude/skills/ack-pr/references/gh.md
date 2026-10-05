@@ -23,7 +23,11 @@ or the one the owner gave. Report the URL `gh` prints.
 
 ## Update an existing description
 
+Mode `description` checks for an open PR on the branch first; `state` `OPEN` gives the
+number, and a "no pull requests found" error means there is none to edit.
+
 ```bash
+gh pr view <branch> --json number,state
 gh pr edit <number> --body-file generated/docs/pr-<slug>.md
 ```
 

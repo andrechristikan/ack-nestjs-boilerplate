@@ -24,7 +24,6 @@ import { RequestThrottleRouteGuard } from '@common/request/guards/request.thrott
  */
 @Module({
     controllers: [],
-    exports: [],
     providers: [
         {
             provide: APP_GUARD,
@@ -35,6 +34,7 @@ import { RequestThrottleRouteGuard } from '@common/request/guards/request.thrott
             useClass: RequestThrottleRouteGuard,
         },
     ],
+    exports: [],
     imports: [
         ThrottlerModule.forRootAsync({
             imports: [ConfigModule, RequestThrottleModule],

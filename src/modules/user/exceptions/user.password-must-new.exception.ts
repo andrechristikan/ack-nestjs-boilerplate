@@ -12,8 +12,8 @@ export class UserPasswordMustNewException extends AppBaseException {
     readonly statusCodeKey = EnumUserStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.BAD_REQUEST;
 
-    constructor(period: string | number) {
-        super('auth.error.passwordMustNew', {
+    constructor(period: number) {
+        super('user.error.passwordMustNew', {
             messageProperties: { period },
         });
     }

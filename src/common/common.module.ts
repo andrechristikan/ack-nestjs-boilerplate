@@ -36,6 +36,7 @@ import { SentryModule } from '@common/sentry/sentry.module';
 @Module({
     controllers: [],
     providers: [],
+    exports: [],
     imports: [
         ConfigModule.forRoot({
             load: configs,

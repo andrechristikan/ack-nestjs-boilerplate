@@ -23,7 +23,7 @@ export interface IActivityLogStagedEvent {
     onError: boolean;
     userId?: string;
     createdBy?: string;
-    workspaceId?: string | null;
+    workspaceId?: string;
 }
 
 export interface IActivityLogActionContract {
@@ -43,7 +43,7 @@ export type IActivityLogStageInput<A extends EnumActivityLogAction> = {
     onError?: boolean;
     userId?: string;
     createdBy?: string;
-    workspaceId?: string | null;
+    workspaceId?: string;
 };
 
 export interface IActivityLogCreate {
@@ -68,5 +68,5 @@ export interface IActivityLogAnalyticEvent {
     ipAddress: string | null;
     createdAt: Date;
     userAgent?: Prisma.JsonValue;
-    workspaceId?: string | null;
+    workspaceId: string | null;
 }

@@ -12,7 +12,7 @@ export class UserForgotPasswordAnalyticDomain {
         private readonly userForgotPasswordAnalyticRepository: UserForgotPasswordAnalyticRepository
     ) {}
 
-    async conversion(
+    async getConversion(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticForgotPasswordConversion> {
@@ -33,7 +33,7 @@ export class UserForgotPasswordAnalyticDomain {
         };
     }
 
-    findCreatedInRange(
+    getCreatedInRange(
         startDate: Date,
         endDate: Date
     ): Promise<IUserForgotPasswordAnalytic[]> {
@@ -43,11 +43,11 @@ export class UserForgotPasswordAnalyticDomain {
         );
     }
 
-    unusedTokenCountsByUser(
+    getUnusedTokenCountsByUser(
         startDate: Date,
         endDate: Date
     ): Promise<IUserForgotPasswordAnalyticUserCount[]> {
-        return this.userForgotPasswordAnalyticRepository.unusedTokenCountsByUser(
+        return this.userForgotPasswordAnalyticRepository.groupUnusedTokenByUser(
             startDate,
             endDate
         );

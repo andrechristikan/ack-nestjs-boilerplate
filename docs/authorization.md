@@ -94,8 +94,8 @@ NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method e
 
 A route takes only the slots it needs; the relative order of the ones it takes never changes. Guard execution therefore runs `@ApiKeyProtected()` → `@AuthJwtAccessProtected()` → `@FeatureFlagProtected()` → `@UserProtected()` → `@WorkspaceProtected()` → `@WorkspaceMemberProtected()` → `@ProjectProtected()` → `@ProjectMemberProtected()` → `@RoleProtected()` → `@PolicyProtected()` → `@TermPolicyAcceptanceProtected()`.
 
-- A social-login guard (`@AuthSocialGoogleProtected()`) takes the JWT slot for that route.
-- `@RequestThrottle({ ... })` sits outside this order. It mounts an interceptor, so it runs after every guard whatever its position in the stack. Routes declare it below `@ApiKeyProtected()`, so the rate limit reads next to the guards protecting the same route. See [Security and Middleware][ref-doc-security-and-middleware].
+- A social-login guard (`@AuthSocialGoogleProtected()`, `@AuthSocialAppleProtected()`) sits ABOVE `@FeatureFlagProtected()`, so it runs after the flag guard: a disabled flag answers `FeatureFlagDisabledException` (404, `50601`) before the provider token is verified, and the flag guard takes its anonymous branch on those routes.
+- `@RequestThrottle({ ... })` sits outside this order. Its `route` tier is read by a global guard, which runs before every route guard, and its `user` switch mounts an interceptor, which runs after every guard; neither depends on its position in the stack. Routes declare it below `@ApiKeyProtected()`, so the rate limit reads next to the guards protecting the same route. See [Security and Middleware][ref-doc-security-and-middleware].
 - Activity logging takes no slot. Domains build events with `ActivityLogDomain.prepare` and queue them with `ActivityLogDomain.stagePrepared`, and the global `ActivityLogInterceptor` writes them after the handler settles. See [Activity Log][ref-doc-activity-log].
 - A guard that depends on state an earlier guard sets sits ABOVE that guard in source, so it runs after it.
 - `@FeatureFlagProtected()` sits ABOVE `@AuthJwtAccessProtected()` so the flag guard sees `request.user`. Below it the guard always takes its anonymous branch, which makes `targetUserIds` and any rollout below 100% inert on that route.
@@ -122,6 +122,8 @@ A route takes only the slots it needs; the relative order of the ones it takes n
 @TermPolicyAcceptanceProtected()
 @UserProtected()
 @AuthJwtAccessProtected()
+@ApiKeyProtected()
+@RequestThrottle({ user: true })
 @Get('/profile/get')
 async profile(
   @AuthJwtPayload('userId') userId: string
@@ -141,8 +143,12 @@ Reads back the authenticated user `UserGuard` stored, or one of its fields when 
 Refresh is a call site:
 
 ```typescript
+@TermPolicyAcceptanceProtected()
 @UserProtected()
 @AuthJwtRefreshProtected()
+@ApiKeyProtected()
+@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.relaxed })
+@HttpCode(HttpStatus.OK)
 @Post('/refresh')
 async refresh(
   @UserCurrent() user: IUser,
@@ -230,9 +236,16 @@ flowchart TD
 **Usage:**
 
 ```typescript
+@TermPolicyAcceptanceProtected()
+@PolicyProtected({
+  subject: EnumPolicySubject.user,
+  action: [EnumPolicyAction.read]
+})
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
+@ApiKeyProtected()
+@RequestThrottle({ user: true })
 @Get('/list')
 async list(
   @Query({ schema: UserListRequestSchema }) query: UserListRequestDto
@@ -247,9 +260,12 @@ The decorator accepts more than one type (`@RoleProtected(EnumRoleType.admin, En
 
 ### Getting Current Role
 
-To access the current user's role, use the `@UserCurrent()` decorator and access the `role` property:
+Two parameter decorators read the role:
 
-`@UserCurrent()` returns the stored `IUser`. The role on that object is what `UserGuard` loaded: `user.role.type`, `user.role.name`, and `user.role.policies`.
+- `@RoleCurrent(field?)` returns the role `UserGuard` loaded (`IRoleWithPolicies`), or one of its fields: `type`, `name`, `policies`, and the rest. It reads `UserStoreKey`, so a missing user, role, or field throws `RequestContextMissingException` (500, `50304`).
+- `@PolicyCurrent()` returns the `Policy[]` `RoleGuard` stored under `PolicyStoreKey`. An empty list is a valid value (a `superAdmin`); a route without `@RoleProtected()` throws `RequestContextMissingException`.
+
+`@UserCurrent()` also carries the role on the returned `IUser`: `user.role.type`, `user.role.name`, and `user.role.policies`.
 
 ### Guards
 
@@ -340,6 +356,7 @@ flowchart TD
 **Usage:**
 
 ```typescript
+@TermPolicyAcceptanceProtected()
 @PolicyProtected({
   subject: EnumPolicySubject.user,
   action: [EnumPolicyAction.read]
@@ -347,6 +364,8 @@ flowchart TD
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
+@ApiKeyProtected()
+@RequestThrottle({ user: true })
 @Get('/list')
 async list(
   @Query({ schema: UserListRequestSchema }) query: UserListRequestDto
@@ -354,6 +373,7 @@ async list(
   return this.userHttpService.getListOffsetByAdmin(query);
 }
 
+@TermPolicyAcceptanceProtected()
 @PolicyProtected({
   subject: EnumPolicySubject.user,
   action: [EnumPolicyAction.read, EnumPolicyAction.update]
@@ -361,15 +381,18 @@ async list(
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
+@ApiKeyProtected()
+@RequestThrottle({ user: true })
 @Patch('/update/:userId/status')
 async updateStatus(
   @Param('userId', { schema: RequestMongoIdSchema }) userId: string,
   @AuthJwtPayload('userId') updatedBy: string,
   @Body({ schema: UserUpdateStatusRequestSchema }) body: UserUpdateStatusRequestDto
-): Promise<IResponseReturn<void>> {
-  return this.userHttpService.updateStatusByAdmin(userId, body, updatedBy);
+): Promise<void> {
+  await this.userHttpService.updateStatusByAdmin(userId, body, updatedBy);
 }
 
+@TermPolicyAcceptanceProtected()
 @PolicyProtected(
   {
     subject: EnumPolicySubject.user,
@@ -383,13 +406,15 @@ async updateStatus(
 @RoleProtected(EnumRoleType.admin)
 @UserProtected()
 @AuthJwtAccessProtected()
+@ApiKeyProtected()
+@RequestThrottle({ user: true })
 @Delete('/revoke/:sessionId')
 async revoke(
   @Param('userId', { schema: RequestMongoIdSchema }) userId: string,
   @Param('sessionId', { schema: RequestMongoIdSchema }) sessionId: string,
   @AuthJwtPayload('userId') revokedBy: string
-): Promise<IResponseReturn<void>> {
-  return this.sessionHttpService.revokeByAdmin(userId, sessionId, revokedBy);
+): Promise<void> {
+  await this.sessionHttpService.revokeByAdmin(userId, sessionId, revokedBy);
 }
 ```
 
@@ -445,7 +470,7 @@ The project uses [CASL][casl] for permission checks:
 
 **PolicyAbilityFactory:**
 
-- `createForUser(policies)`: Builds CASL ability rules from the role's stored policies
+- `createByUser(policies)`: Builds CASL ability rules from the role's stored policies
 - `handlerPolicies(userPolicies, policies)`: Returns true only when every required action on each subject is allowed, using CASL's `can()`
 
 ### Important Notes
@@ -483,6 +508,8 @@ Details: [Term Policy Documentation][ref-doc-term-policy].
 @TermPolicyAcceptanceProtected()
 @UserProtected()
 @AuthJwtAccessProtected()
+@ApiKeyProtected()
+@RequestThrottle({ user: true })
 @Get('/acceptance/list')
 async listAccepted(
   @Query({ schema: TermPolicyAcceptedListRequestSchema })
@@ -628,21 +655,22 @@ A role holds at most one policy per subject: creating a second policy for a subj
 
 Once a custom role is created, it can be assigned to users through:
 
-1. **User creation**: Specify the `roleId` when creating new users
-2. **User update**: Update existing users to assign them the new role
+1. **User creation**: Specify the `roleId` in `POST /admin/user/create`
+
+No admin route changes the role of an existing user.
 
 **How it works automatically:**
 
 - When a user is assigned a role, they immediately inherit every policy attached to that role
-- The `RoleGuard` loads the user's role and its policies during the request
-- The `PolicyGuard` validates permissions based on the role's policies
+- `UserGuard` loads the user with its role and the role's policies on every request
+- `RoleGuard` checks the role type and stores the policies; `PolicyGuard` validates permissions against them
 - No application restart or additional configuration is needed
 
 **Permission enforcement flow:**
 
 ```mermaid
 flowchart LR
-    User[User logs in] --> LoadRole[Role & policies loaded<br/>from database]
+    User[Authenticated request] --> LoadRole[UserGuard loads user,<br/>role & policies from database]
     LoadRole --> RoleGuard[RoleGuard validates<br/>role type]
     RoleGuard --> PolicyGuard[PolicyGuard validates<br/>specific permissions]
     PolicyGuard --> Access[Access granted/denied<br/>based on policies]

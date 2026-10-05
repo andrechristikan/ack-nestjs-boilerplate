@@ -2,10 +2,7 @@ import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import type {
-    IResponsePaginationReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     SessionCursorAvailableOrderBy,
     SessionDefaultAvailableOrderBy,
@@ -86,18 +83,15 @@ export class SessionHttpService {
         userId: string,
         sessionId: string,
         revokedBy: string
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         await this.sessionDomain.revokeByAdmin(userId, sessionId, revokedBy);
 
-        return {};
+        return;
     }
 
-    async revokeAllByAdmin(
-        userId: string,
-        revokedBy: string
-    ): Promise<IResponseReturn<void>> {
+    async revokeAllByAdmin(userId: string, revokedBy: string): Promise<void> {
         await this.sessionDomain.revokeAllByAdmin(userId, revokedBy);
 
-        return {};
+        return;
     }
 }

@@ -9,7 +9,7 @@ Templates live as `.hbs` files under `src/modules/notification/templates/`. Four
 ## Related Documents
 
 - [Notification Documentation][ref-doc-notification] - Queues, channels, and delivery tracking
-- [Third Party Integration][ref-doc-third-party] - SES credentials and no-op mode
+- [Third Party Integration][ref-doc-third-party] - SES credentials and the unconfigured state
 - [Environment Documentation][ref-doc-environment] - `AWS_SES_*` and `HOME_*` / support email vars
 - [Configuration Documentation][ref-doc-configuration] - Email and home config keys
 - [Term Policy Documentation][ref-doc-term-policy] - Policy HTML on S3 (`templateTermPolicy`), not SES
@@ -64,13 +64,16 @@ pnpm migration templateEmailNotification --type seed
 pnpm migration templateEmailNotification --type remove
 ```
 
-On `seed`, each owning domain's `emailImport*` runs (for example `NotificationTemplateAccountDomain.emailImportWelcome()`). On `remove`, the matching `emailDelete*` runs. The command refuses to run when SES reports itself uninitialized.
+On `seed`, the command reads every template from SES through the owning domain's `emailGet*` and runs `emailImport*` only for the ones missing (for example `NotificationTemplateAccountDomain.emailImportWelcome()`); a template already in SES stays as it is. On `remove`, the matching `emailDelete*` runs for all of them. When SES is unconfigured, `seed` logs a warning and skips.
 
-SES credentials and no-op mode: [Third Party Integration; SES][ref-doc-third-party-ses].
+SES credentials and the unconfigured state: [Third Party Integration; SES][ref-doc-third-party-ses].
 
 ## Sending
 
-`NotificationEmailProcessorService` routes each job to an email channel domain (`NotificationEmailAccountDomain`, `NotificationEmailSecurityDomain`, `NotificationEmailTermPolicyDomain`, `NotificationEmailWorkspaceDomain`). That domain calls `AwsSESService.send()` or `sendBulk()` with the named SES template and merges `defaultTemplateData` (`homeName`, `supportEmail`, `homeUrl`).
+`NotificationEmailProcessorService` routes each job to an email channel domain (`NotificationEmailAccountDomain`, `NotificationEmailSecurityDomain`, `NotificationEmailTermPolicyDomain`, `NotificationEmailWorkspaceDomain`). That domain calls `AwsSESService.send()` (or `sendBulk()` for `publishTermPolicy`) with the SES template named after the job's `EnumNotificationProcess` value, sends from `EMAIL_NO_REPLY`, and merges `defaultTemplateData` (`homeName`, `supportEmail` from `EMAIL_SUPPORT`, `homeUrl`) into the template data.
+
+- When `AWS_SES_IDENTITY_ARN` is set, both calls pass it as `SourceArn`.
+- When SES is unconfigured, both calls log a warning and return an empty output; the job completes and no email leaves.
 
 Queue names, rate limits, dedup, and payload encryption: [Notification Documentation][ref-doc-notification].
 

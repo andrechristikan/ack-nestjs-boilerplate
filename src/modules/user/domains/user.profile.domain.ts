@@ -1,7 +1,7 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import { AwsServiceUnavailableException } from '@common/aws/exceptions/aws.service-unavailable.exception';
+import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import type {
     IAwsS3,
     IAwsS3Presign,
@@ -132,7 +132,7 @@ export class UserProfileDomain {
             );
 
         if (!aws) {
-            throw new AwsServiceUnavailableException();
+            throw new AwsS3NotConfiguredException();
         }
 
         return aws;
@@ -142,6 +142,11 @@ export class UserProfileDomain {
         userId: string,
         { key, size }: IUserUpdatePhotoProfile
     ): Promise<void> {
+        const isS3Initialized = this.awsS3Service.isInitialized();
+        if (!isS3Initialized) {
+            throw new AwsS3NotConfiguredException();
+        }
+
         try {
             const aws: IAwsS3 = this.awsS3Service.mapPresign(
                 {
@@ -193,26 +198,28 @@ export class UserProfileDomain {
                 { access: EnumAwsS3Accessibility.public }
             );
 
-            if (aws) {
-                this.logger.debug(
-                    {
-                        userId,
-                        fileSize: file.size,
-                        awsKey: aws.key,
-                        awsBucket: aws.bucket,
-                    },
-                    `Photo profile uploaded to S3 with key: ${key}`
-                );
-
-                const events = [
-                    this.activityLogDomain.prepare({
-                        action: EnumActivityLogAction.userUpdatePhotoProfile,
-                    }),
-                ];
-                await this.userRepository.updatePhotoProfile(userId, aws);
-
-                this.activityLogDomain.stagePrepared(events);
+            if (!aws) {
+                throw new AwsS3NotConfiguredException();
             }
+
+            this.logger.debug(
+                {
+                    userId,
+                    fileSize: file.size,
+                    awsKey: aws.key,
+                    awsBucket: aws.bucket,
+                },
+                `Photo profile uploaded to S3 with key: ${key}`
+            );
+
+            const events = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userUpdatePhotoProfile,
+                }),
+            ];
+            await this.userRepository.updatePhotoProfile(userId, aws);
+
+            this.activityLogDomain.stagePrepared(events);
 
             return;
         } catch (err: unknown) {

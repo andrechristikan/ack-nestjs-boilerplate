@@ -1,6 +1,8 @@
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
+import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/auth.social-apple-not-configured.exception';
 import { AuthSocialAppleInvalidException } from '@modules/auth/exceptions/auth.social-apple-invalid.exception';
+import { AuthSocialGoogleNotConfiguredException } from '@modules/auth/exceptions/auth.social-google-not-configured.exception';
 import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
 import type {
     IAuthJwtAccessTokenPayload,
@@ -98,6 +100,10 @@ export class AuthDomain {
                 emailVerified: payload.email_verified,
             };
         } catch (err: unknown) {
+            if (err instanceof AuthSocialAppleNotConfiguredException) {
+                throw err;
+            }
+
             throw new AuthSocialAppleInvalidException(err);
         }
     }
@@ -112,6 +118,10 @@ export class AuthDomain {
                 emailVerified: payload.email_verified ?? false,
             };
         } catch (err: unknown) {
+            if (err instanceof AuthSocialGoogleNotConfiguredException) {
+                throw err;
+            }
+
             throw new AuthSocialGoogleInvalidException(err);
         }
     }

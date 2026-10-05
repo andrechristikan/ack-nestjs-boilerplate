@@ -42,7 +42,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
     }
 
-    async findByIdForAdmin(workspaceId: string): Promise<Workspace | null> {
+    async findByIdByAdmin(workspaceId: string): Promise<Workspace | null> {
         return this.databaseService.client.workspace.findUnique({
             where: { id: workspaceId },
         });
@@ -87,7 +87,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
     }
 
-    async findWithPaginationOffsetForAdmin(
+    async findWithPaginationOffsetByAdmin(
         {
             where,
             ...others

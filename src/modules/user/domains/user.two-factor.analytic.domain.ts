@@ -16,10 +16,10 @@ export class UserTwoFactorAnalyticDomain {
         private readonly activityLogAnalyticDomain: ActivityLogAnalyticDomain
     ) {}
 
-    async adoption(): Promise<IAnalyticTwoFactorAdoption> {
+    async getAdoption(): Promise<IAnalyticTwoFactorAdoption> {
         const [enabled, total] = await Promise.all([
             this.userTwoFactorAnalyticRepository.countEnabled(),
-            this.userAnalyticDomain.countActive(),
+            this.userAnalyticDomain.getCountActive(),
         ]);
         return {
             enabled,
@@ -28,34 +28,34 @@ export class UserTwoFactorAnalyticDomain {
         };
     }
 
-    adminResetCount(startDate: Date, endDate: Date): Promise<number> {
-        return this.activityLogAnalyticDomain.countByActionsInRange(
+    getAdminResetCount(startDate: Date, endDate: Date): Promise<number> {
+        return this.activityLogAnalyticDomain.getCountByActionsInRange(
             [EnumActivityLogAction.userResetTwoFactorByAdmin],
             startDate,
             endDate
         );
     }
 
-    verifySuccessCount(startDate: Date, endDate: Date): Promise<number> {
-        return this.activityLogAnalyticDomain.countByActionsInRange(
+    getVerifySuccessCount(startDate: Date, endDate: Date): Promise<number> {
+        return this.activityLogAnalyticDomain.getCountByActionsInRange(
             [EnumActivityLogAction.userVerifyTwoFactor],
             startDate,
             endDate
         );
     }
 
-    backupCodeRegenerationCount(
+    getBackupCodeRegenerationCount(
         startDate: Date,
         endDate: Date
     ): Promise<number> {
-        return this.activityLogAnalyticDomain.countByActionsInRange(
+        return this.activityLogAnalyticDomain.getCountByActionsInRange(
             [EnumActivityLogAction.userRegenerateTwoFactorBackupCodes],
             startDate,
             endDate
         );
     }
 
-    attemptSnapshot(): Promise<IAnalyticTwoFactorAttemptSnapshot> {
-        return this.userTwoFactorAnalyticRepository.attemptSnapshot();
+    getAttemptSnapshot(): Promise<IAnalyticTwoFactorAttemptSnapshot> {
+        return this.userTwoFactorAnalyticRepository.findAttemptSnapshot();
     }
 }

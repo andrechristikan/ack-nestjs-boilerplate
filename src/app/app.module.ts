@@ -35,6 +35,7 @@ import { AppValidationImportFilter } from '@app/filters/app.validation-import.fi
             useClass: AppValidationImportFilter,
         },
     ],
+    exports: [],
     imports: [CommonModule, RouterModule],
 })
 export class AppModule {}

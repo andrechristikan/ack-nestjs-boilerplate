@@ -79,7 +79,7 @@ export class ActivityLogDomain {
 
     private assertWorkspaceFields(
         resolution: EnumActivityLogWorkspace,
-        workspaceId: string | null | undefined
+        workspaceId: string | undefined
     ): void {
         if (resolution === EnumActivityLogWorkspace.target) {
             if (!workspaceId) {
@@ -89,7 +89,7 @@ export class ActivityLogDomain {
         }
 
         if (resolution === EnumActivityLogWorkspace.none) {
-            if (workspaceId !== undefined && workspaceId !== null) {
+            if (workspaceId !== undefined) {
                 throw new ActivityLogContractInvalidException();
             }
             return;
@@ -136,7 +136,7 @@ export class ActivityLogDomain {
 
     private resolveWorkspaceId(
         resolution: EnumActivityLogWorkspace,
-        stagedWorkspaceId: string | null | undefined
+        stagedWorkspaceId: string | undefined
     ): string | null {
         if (resolution === EnumActivityLogWorkspace.none) {
             return null;

@@ -8,10 +8,20 @@ import type { HealthIndicatorResult } from '@nestjs/terminus';
  */
 @Injectable()
 export class HealthJwksIndicator {
+    private readonly accessTokenJwksUri: string;
+    private readonly refreshTokenJwksUri: string;
+
     constructor(
         private readonly configService: ConfigService,
         private readonly healthIndicatorService: HealthIndicatorService
-    ) {}
+    ) {
+        this.accessTokenJwksUri = this.configService.get<string>(
+            'auth.jwt.accessToken.jwksUri'
+        )!;
+        this.refreshTokenJwksUri = this.configService.get<string>(
+            'auth.jwt.refreshToken.jwksUri'
+        )!;
+    }
 
     /**
      * Down when the URI is empty or not a valid URL. Does not fetch.
@@ -39,21 +49,13 @@ export class HealthJwksIndicator {
      * Down when the access-token JWKS URI is empty or not a valid URL.
      */
     async isHealthyAccessToken(key: string): Promise<HealthIndicatorResult> {
-        const jwksUri = this.configService.get<string>(
-            'auth.jwt.accessToken.jwksUri'
-        );
-
-        return this.checkUri(key, jwksUri);
+        return this.checkUri(key, this.accessTokenJwksUri);
     }
 
     /**
      * Down when the refresh-token JWKS URI is empty or not a valid URL.
      */
     async isHealthyRefreshToken(key: string): Promise<HealthIndicatorResult> {
-        const jwksUri = this.configService.get<string>(
-            'auth.jwt.refreshToken.jwksUri'
-        );
-
-        return this.checkUri(key, jwksUri);
+        return this.checkUri(key, this.refreshTokenJwksUri);
     }
 }

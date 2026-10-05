@@ -127,7 +127,7 @@ export class WorkspaceUserController {
         query: WorkspaceUserListRequestDto,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePaginationReturn<Workspace>> {
-        return this.workspaceHttpService.getListForMember(userId, query);
+        return this.workspaceHttpService.getListCursorByMember(userId, query);
     }
 
     @Doc({ summary: 'create a new workspace; caller becomes owner' })

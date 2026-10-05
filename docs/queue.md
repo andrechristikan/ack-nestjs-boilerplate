@@ -303,6 +303,9 @@ export class NotificationProcessorModule {}
 
 ```typescript
 @Module({
+    controllers: [],
+    providers: [],
+    exports: [],
     imports: [
         NotificationProcessorModule,
         WorkspaceProcessorModule,

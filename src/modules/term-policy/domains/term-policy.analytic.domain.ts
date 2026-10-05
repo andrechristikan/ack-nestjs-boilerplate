@@ -7,7 +7,7 @@ export class TermPolicyAnalyticDomain {
         private readonly termPolicyAnalyticRepository: TermPolicyAnalyticRepository
     ) {}
 
-    countPublished(): Promise<number> {
+    getCountPublished(): Promise<number> {
         return this.termPolicyAnalyticRepository.countPublished();
     }
 }

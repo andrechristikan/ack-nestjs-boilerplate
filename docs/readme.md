@@ -86,7 +86,7 @@ Install and configure the project.
 26. [Analytic][ref-doc-analytic]; Live admin dashboard metrics, anomaly and fraud reports, current-workspace user metrics
 27. [Term Policy][ref-doc-term-policy]; Legal agreements, versioning, and user consent enforcement
 28. [File Upload][ref-doc-file-upload]; Multipart uploads, CSV processing, and S3 presign (GET, upload, part)
-29. [Third Party Integration][ref-doc-third-party-integration]; AWS S3/SES, Firebase, Sentry, no-op mode, S3 bucket setup
+29. [Third Party Integration][ref-doc-third-party-integration]; AWS S3/SES, Firebase, Sentry, optional configuration and the not-configured behaviour, S3 bucket setup
 30. [Doc][ref-doc-doc]; Swagger/OpenAPI co-located on `@Doc`, `@Response*` / `FileUpload*`, and `*Protected` kits
 31. [Vault][ref-doc-vault]; Optional secret management via HashiCorp Vault
 

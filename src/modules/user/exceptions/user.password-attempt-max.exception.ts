@@ -13,6 +13,6 @@ export class UserPasswordAttemptMaxException extends AppBaseException {
     readonly httpStatus = HttpStatus.FORBIDDEN;
 
     constructor() {
-        super('auth.error.passwordAttemptMax');
+        super('user.error.passwordAttemptMax');
     }
 }

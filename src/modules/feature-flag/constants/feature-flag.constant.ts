@@ -29,8 +29,8 @@ export const DocFeatureFlagErrorResponses = {
             messagePath: 'featureFlag.error.predefinedKeyEmpty',
         }
     ),
-    serviceUnavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
-        statusCode: EnumFeatureFlagStatusCodeError.serviceUnavailable,
-        messagePath: 'featureFlag.error.serviceUnavailable',
+    disabled: DocResponseError(HttpStatus.NOT_FOUND, {
+        statusCode: EnumFeatureFlagStatusCodeError.disabled,
+        messagePath: 'featureFlag.error.disabled',
     }),
 } as const;

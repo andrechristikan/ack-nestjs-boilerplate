@@ -3,5 +3,5 @@ import type { IAnalyticTwoFactorAttemptSnapshot } from '@modules/analytic/interf
 export interface IUserTwoFactorAnalyticRepository {
     countEnabled(): Promise<number>;
     countAll(): Promise<number>;
-    attemptSnapshot(): Promise<IAnalyticTwoFactorAttemptSnapshot>;
+    findAttemptSnapshot(): Promise<IAnalyticTwoFactorAttemptSnapshot>;
 }
