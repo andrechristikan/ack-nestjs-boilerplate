@@ -14,6 +14,6 @@ export function FeatureFlagProtected(keyPath: string): MethodDecorator {
         UseGuards(FeatureFlagGuard),
         SetMetadata(FeatureFlagKeyPathMetaKey, keyPath),
         DocFeatureFlagErrorResponses.predefined,
-        DocFeatureFlagErrorResponses.serviceUnavailable
+        DocFeatureFlagErrorResponses.disabled
     );
 }

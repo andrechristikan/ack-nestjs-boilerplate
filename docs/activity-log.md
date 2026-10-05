@@ -8,7 +8,7 @@ Activity Log records audited user actions:
 
 - During the request, a domain builds each event with `ActivityLogDomain.prepare` and queues it with `ActivityLogDomain.stagePrepared`.
 - The always-on `ActivityLogInterceptor` (registered from `ActivityLogDomainModule`) flushes after the handler settles: success flushes every staged event; an error path flushes only events prepared with `onError: true`.
-- Flushed rows go through `ActivityLogRepository.createMany`, which opens `DatabaseService.withTransaction` itself.
+- Flushed rows go through `ActivityLogRepository.createMany`, one `client.activityLog.createMany` call with no transaction.
 - An action one user takes on another user writes two rows: one owned by the actor and one owned by the affected user. See [Actor and target rows](#actor-and-target-rows).
 
 **Failed credential logins**
@@ -50,10 +50,10 @@ Both paths answer an error; `onError: true` is what writes the rows. All three c
 | `ActivityLogDomain.prepare` | Validates contract and metadata, returns an `IActivityLogStagedEvent`; stages nothing |
 | `ActivityLogDomain.stagePrepared` | Pushes prepared events onto the request-store stage list |
 | `ActivityLogInterceptor` | After the handler settles, calls `ActivityLogDomain.flushStaged` (all staged on success; `onError: true` only on error) |
-| `RequestStoreService` | Per-request carrier for staged events (`ActivityLogStageStoreKey`), request log, and workspace |
+| `RequestStoreService` | Per-request carrier for staged events (`ActivityLogStageStoreKey`, value `'ActivityLogStageStore'`), request log, and workspace |
 | `ActivityLogDomain.flushStaged` | Builds rows and writes them via `ActivityLogRepository.createMany` |
 | `ActivityLogHttpService` | Transport layer for the four list routes; the page it returns is serialized against `ActivityLogResponseSchema` declared on the route |
-| `ActivityLogRepository` | Data access (Prisma), including `createMany`, which runs the insert in its own transaction |
+| `ActivityLogRepository` | Data access (Prisma), including `createMany`, which inserts every flushed row in one call with no transaction |
 | `ActivityLogUtil` | Builds the i18n description (`getDescription`) |
 | `ActivityLogActionContract` | Per-action contract: how `userId` and `workspaceId` resolve, and the metadata schema |
 | `ActivityLogWorkspaceVolumeContract` | Target-side workspace and project actions left out of workspace volume metrics |
@@ -63,7 +63,7 @@ Both paths answer an error; `onError: true` is what writes the rows. All three c
 | Method | Path | Scope |
 |--------|------|-------|
 | `GET` | `/shared/user/activity-log/list` | Authenticated user lists own logs (cursor) |
-| `GET` | `/shared/user/activity-log/workspace/list` | Authenticated user lists own logs in the workspace from `x-workspace-id` (cursor) |
+| `GET` | `/shared/user/activity-log/workspace/list` | Workspace member lists own logs in the workspace from `x-workspace-id`, behind the `workspace` feature flag (cursor) |
 | `GET` | `/admin/activity-log/user/:userId/list` | Admin lists a user's logs (offset) |
 | `GET` | `/admin/activity-log/workspace/:workspaceId/list` | Admin lists a workspace's logs, optionally narrowed by a `userId` query param (offset) |
 
@@ -116,11 +116,12 @@ A session or device path commits, then writes or purges the session cache, then 
 
 ```typescript
 const roleId = this.databaseUtil.createId();
+const timestamp = this.helperDateService.create();
 const events = [
     this.prepareActivityLog(
         EnumActivityLogAction.adminRoleCreate,
         { id: roleId, name: data.name, type: data.type },
-        this.helperDateService.create()
+        timestamp
     ),
 ];
 const created = await this.roleRepository.create(roleId, data);
@@ -144,7 +145,7 @@ await this.userRepository.increasePasswordAttempt(userId);
 this.activityLogDomain.stagePrepared(events);
 ```
 
-Events prepared inside a transaction callback, after a write whose returned row the metadata needs, are returned from the callback and staged after the commit. `SessionDomain.revokeAllByAdmin` prepares its pair after the commit, because `sessionCount` exists only once the revoke has run.
+Events prepared inside a transaction callback, after a write whose returned row the metadata needs, are returned from the callback and staged after the commit. `SessionDomain.revokeAllByAdmin` prepares its pair after the revoke write, because `sessionCount` exists only once the revoke has run.
 
 `onError: true` is set on:
 
@@ -182,7 +183,7 @@ flowchart TD
     C -->|no| D["prepare target row<br/>paired action, userId = affected user,<br/>createdBy = actor, metadata.actorUserId"]
     D --> G[write, then stagePrepared]
     E --> G
-    G --> F[ActivityLogInterceptor flushes every staged row in one transaction]
+    G --> F[ActivityLogInterceptor flushes every staged row in one createMany call]
 ```
 
 | Actor action (row of the actor) | Target action (row of the affected user) | Affected user |

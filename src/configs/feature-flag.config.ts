@@ -7,7 +7,7 @@ export interface IConfigFeatureFlag {
     anonymous: {
         headerName: string;
         idMaxLength: number;
-        idPattern: RegExp;
+        idRegex: RegExp;
     };
 }
 
@@ -17,6 +17,6 @@ export default registerAs('featureFlag', (): IConfigFeatureFlag => ({
     anonymous: {
         headerName: 'x-anonymous-id',
         idMaxLength: 100,
-        idPattern: /^[a-zA-Z0-9-_]+$/,
+        idRegex: /^[a-zA-Z0-9-_]+$/,
     },
 }));

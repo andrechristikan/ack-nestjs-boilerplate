@@ -75,6 +75,8 @@ cp .env.example .env
 # Generate JWT keys and encryption secrets into .env
 pnpm generate:secret --direct-insert
 
+# Set AUTH_TWO_FACTOR_ISSUER in .env (required, empty in .env.example)
+
 # Generate the Prisma client and src/generated/package/package.ts
 pnpm generate
 
@@ -110,9 +112,9 @@ This project uses **TypeScript** with strict mode. Please follow these standards
   ```
 - No `any` types unless absolutely unavoidable. Justify it in a comment
 - All public methods/functions should have proper TypeScript typings
-- **Strict null convention.** `undefined` is only allowed at the input boundary (Request DTO body/form, Query DTO); all other layers use `T | null`. Exceptions: request lifecycle fields (`__user?`, `__apiKey?`), external spec fields (JWT claims, Prisma generated types), exception/options interfaces (e.g. `IAppBaseExceptionOptions`), response DTO structural/wrapper fields (e.g. `data?` on `ResponseDto<T>`), and service/util additive filter params
+- **Strict null convention.** `undefined` is only allowed at the input boundary (request DTO body, query DTO); every deeper layer uses `T | null`. Exceptions: request lifecycle fields (`user?` on `IRequestApp`), external spec fields (JWT claims, Prisma generated types), exception options and option bags (e.g. `IAppBaseExceptionOptions`), and an additive domain-level filter param
 - Never use `variable?: string | null` (ambiguous). Use `?: string` for input boundary or `string | null` for internal layers
-- Response DTO **domain data fields** must use `field: Type | null`, not `field?: Type`. Only structural/wrapper fields (e.g. `data?`, `errors?` on response wrappers) may use `?:`
+- A response schema field uses `.optional()` when it is genuinely absent and `.nullable()` when it is present-or-null; `data?` on `ResponseDto<T>` is the optional wrapper field
 - Repository filter params use `Type | null`. Normalization `null → {}` is done inside the repository before Prisma, not at the caller
 - `src/configs/` config interfaces use `field: Type | null`. Callers must be explicit. Exception/options bag interfaces outside `src/configs/` may use `field?: Type`
 

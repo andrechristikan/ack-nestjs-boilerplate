@@ -9,6 +9,7 @@ description: >-
   (explorer), tests (tester), or fixing (coder).
 tools: Read, Grep, Glob, Bash
 model: opus
+effort: high
 skills: caveman:caveman, superpowers:verification-before-completion
 ---
 
@@ -35,9 +36,9 @@ hand-back line. You cannot ask questions; when something is missing, stop and ha
   Documentation prose. No command but `git diff`, no boot.
 - `harness`: the scope is `.claude/**`, `AGENTS.md`, or `.github/copilot-instructions.md`, against
   `.claude/rules/authoring.md` Harness files: budgets by `wc -l`; every path, command, flag, agent, and
-  skill named exists; frontmatter opens on line 1 with `description: >-` and a YAML-list `paths:`; no
-  all-caps emphasis; no retired file named; `jq . .claude/settings.json`; `bash -n` and the executable
-  bit on every hook. No boot.
+  skill named exists; frontmatter opens on line 1, with `description: >-` and, for a scoped rule, a
+  YAML-list `paths:`; no all-caps emphasis; no retired file named; `jq . .claude/settings.json`; `bash -n`
+  and the executable bit on every hook. No boot.
 - `rules and boot`: the changed files against every rule file that binds them, then boot.
 - `end to end`: from each entry point the scope reaches, trace to the deepest write and back, following
   every hand-off (queue `add`, processor that enqueues, notification fan-out, soft-delete cascade,

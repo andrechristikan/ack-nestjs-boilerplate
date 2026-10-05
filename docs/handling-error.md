@@ -188,13 +188,13 @@ A rate-limited 429 also carries `Retry-After`, in seconds. It is set by whicheve
 
 **Behavior**:
 - Always returns HTTP 500
-- Uses message path `http.500`
+- Uses message path `http.serverError.internalServerError` and status code `50000` (`EnumAppStatusCodeError.unknown`)
 - Sends all exceptions to Sentry
 
 **Response example**:
 ```json
 {
-  "statusCode": 500,
+  "statusCode": 50000,
   "statusCodeKey": "unknown",
   "module": "app",
   "message": "Internal Server Error",
@@ -336,10 +336,10 @@ throw new UserPasswordMustNewException(period);
 
 The class wires it internally:
 ```typescript
-super('auth.error.passwordMustNew', { messageProperties: { period } });
+super('user.error.passwordMustNew', { messageProperties: { period } });
 ```
 
-**Message file** (`en/auth.json`):
+**Message file** (`en/user.json`):
 ```json
 {
   "error": {

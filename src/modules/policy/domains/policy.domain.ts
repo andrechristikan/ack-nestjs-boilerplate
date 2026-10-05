@@ -53,7 +53,7 @@ export class PolicyDomain {
             throw new PolicyPredefinedNotFoundException();
         }
 
-        const userPolicies = this.policyAbilityFactory.createForUser(
+        const userPolicies = this.policyAbilityFactory.createByUser(
             policies ?? []
         );
         const policyHandler = this.policyAbilityFactory.handlerPolicies(
@@ -67,7 +67,7 @@ export class PolicyDomain {
         return true;
     }
 
-    async findManyByRole(roleId: string): Promise<Policy[]> {
+    async getManyByRole(roleId: string): Promise<Policy[]> {
         await this.validateRoleExists(roleId);
 
         return this.policyRepository.findManyByRoleId(roleId);

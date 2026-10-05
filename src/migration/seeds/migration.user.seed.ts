@@ -105,7 +105,7 @@ export class MigrationUserSeed
             ]);
 
         if (roles.length !== uniqueRoles.length) {
-            this.logger.warn('Roles not found for users, cannot seed.');
+            this.logger.error('Roles not found for users, cannot seed.');
             return;
         }
 

@@ -6,7 +6,7 @@ import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-p
  * Route metadata key holding the term-policy types `@TermPolicyAcceptanceProtected` requires.
  * @public
  */
-export const TermPolicyRequiredGuardMetaKey = 'TermPolicyRequiredMetaKey';
+export const TermPolicyRequiredGuardMetaKey = 'TermPolicyRequiredGuardMetaKey';
 
 /**
  * Term-policy acceptance guard error kit for `@TermPolicyAcceptanceProtected`.

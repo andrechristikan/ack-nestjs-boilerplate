@@ -6,17 +6,18 @@ paths:
 
 # File: upload, CSV import, export, S3 presign
 
-`FileService`, the pipes under `src/common/file/pipes/`, and `AwsS3Service` are the kit; a
-feature never re-implements them, and S3 goes through `AwsS3Service`, never a hand-built
-`S3Client`.
+`FileService`, the pipes under `src/common/file/pipes/`, and `AwsS3Service` are the kit; a feature
+never re-implements them, and S3 goes through `AwsS3Service`, never a hand-built `S3Client`.
 
 ## Upload validation is a pipe
 
-- An uploaded file is validated by a pipe composed on the route, never by an `if` in a
-  controller or service. A controller does not read `file.buffer`.
+- An uploaded file is validated by pipes on `@UploadedFile(...)`, never by an `if` in a controller or
+  service: `FileRequiredPipe()`, then `FileExtensionPipe([...])`, then for a CSV the import pair below
+  (`src/modules/user/controllers/user.admin.controller.ts:244`). A controller does not read
+  `file.buffer`. An upload route carries `@RequestTimeout('1m')` (placement: `http.md`).
 - The extension allow-list is `EnumFileExtension` (`src/common/file/enums/file.enum.ts`).
   `FileExtensionPipe` reads the extension from `originalname`, then sniffs the buffer through
-  `FileService.sniffExtensionFromBuffer` (`src/common/file/services/file.service.ts:72`); a
+  `FileService.sniffExtensionFromBuffer` (`src/common/file/services/file.service.ts:74`); a
   sniffed type passes when `FileExtensionContract`
   (`src/common/file/contracts/file.extension.contract.ts`) maps it onto a member of the
   allow-list. `csv` is signature-less, so an empty sniff is accepted for it only. Adding an
@@ -28,39 +29,36 @@ feature never re-implements them, and S3 goes through `AwsS3Service`, never a ha
 ## Transport limits are the framework's, the exceptions are ours
 
 `FileUploadSingle`, `FileUploadMultiple`, and `FileUploadMultipleFields`
-(`src/common/file/decorators/file.decorator.ts`) compose `FileUploadErrorInterceptor` ahead
-of the multer interceptor. It maps every multer and busboy limit failure onto a typed
-exception (`FileExceedMaxSizeUploadException` 413, `FileExceedMaxFilesException`,
-`FileFieldUnexpectedException`, `FileMultipartInvalidException`) by matching the framework's
-own message strings, segment before the first ` - `. `FileSizeInBytes` and
-`FileMaxMultiple` (`src/common/file/constants/file.constant.ts`) are the defaults;
-`FileUploadMultipleFields` derives its global `files` limit from the sum of the per-field
-caps. These decorators also emit the multipart OpenAPI: `ApiConsumes`, a binary `ApiBody`
-from the field names, and the upload error kit.
+(`src/common/file/decorators/file.decorator.ts`) compose `FileUploadErrorInterceptor` ahead of the multer interceptor.
+It maps every multer and busboy limit failure onto a typed exception (`FileExceedMaxSizeUploadException` 413,
+`FileExceedMaxFilesException`, `FileFieldUnexpectedException`, `FileMultipartInvalidException`) by matching the
+framework's own message strings, segment before the first ` - `. `FileSizeInBytes` and `FileMaxMultiple`
+(`src/common/file/constants/file.constant.ts`) are the defaults; `FileUploadMultipleFields` derives its global `files`
+limit from the sum of the per-field caps. These decorators also emit the multipart OpenAPI: `ApiConsumes`, a binary
+`ApiBody` from the field names, and the upload error kit.
 
 ## CSV import: the two-pipe chain
 
-1. `FileCsvParsePipe<T>` validates a non-empty `.csv` and parses it through
-   `FileService.readCsv`.
-2. `FileCsvValidationPipe(schema)` validates every row against a request schema
-   (`dto.md`) and collects every failure into one `FileImportException` carrying
+1. `FileCsvParsePipe` validates a non-empty `.csv` and parses it through `FileService.readCsv`.
+2. `FileCsvValidationPipe(schema, { maxDataImportConfigKey })` validates every row against a request
+   schema (`dto.md`) and collects every failure into one `FileImportException` carrying
    `{ row, errors }[]`; it never fails fast.
 
-`file.maxDataImport` is the row cap, overridden per module through
-`maxDataImportConfigKey` (`user.maxDataImport`); exceeding it throws
-`FileExceedMaxDataImportException`. `FileImportException` is caught by
-`AppValidationImportFilter`, maps to 422, and reports no Sentry.
+`file.maxDataImport` is the row cap, overridden per module through `maxDataImportConfigKey`
+(`user.maxDataImport`); exceeding it throws `FileExceedMaxDataImportException`.
+`FileImportException` is caught by `AppValidationImportFilter`, maps to 422, and reports no Sentry.
 
 ## CSV and PDF export: capped, then streamed
 
-A handler returning `IResponseFileReturn` hands `ResponseFileInterceptor`
-(`src/common/response/interceptors/response.file.interceptor.ts`) a finished buffer; it caps
-it, sets the download headers, and wraps it in `StreamableFile`. The row cap belongs to the
-domain producing the rows (`file.maxDataExport`, overridden per module): the query asks for
-`cap + 1` and the domain throws `FileExceedMaxDataExportException` before formatting.
-`file.maxSizeExportInBytes` is the backstop, `FileExceedMaxSizeExportException` on the
-finished buffer. `Content-Disposition` is built through `FileService.sanitizeFilename`
-(`:65`) and `encodeURIComponent`, never interpolated.
+`@ResponseFile({ maxDataExportConfigKey })` applies the mixin `ResponseFileInterceptor`
+(`src/common/response/interceptors/response.file.interceptor.ts`): it caps the handler's `IResponseFileReturn`, sets the
+download headers, and wraps it in `StreamableFile`. `file.maxDataExport` is the row cap, overridden per module through
+`maxDataExportConfigKey` (`user.maxDataExport`); a CSV whose `FileService.readCsv` row count exceeds it throws
+`FileExceedMaxDataExportException`, and a PDF counts no rows. `file.maxSizeExportInBytes` is checked next,
+`FileExceedMaxSizeExportException` on the finished buffer. The domain producing the rows bounds its query at `cap + 1`
+and throws the same row exception before formatting (`UserImportDomain.exportByAdmin`). `Content-Disposition` is built
+through `FileService.sanitizeFilename` (`src/common/file/services/file.service.ts:67`) and `encodeURIComponent`, never
+interpolated.
 
 ## S3 presign
 
@@ -70,3 +68,13 @@ The browser PUTs straight to S3; the API signs and never proxies bytes. The pres
 an `AwsS3Service` method reaches a bucket (`copyItem` names `accessFrom` and `accessTo`);
 when in doubt, `private`. A presign signature is a credential (`security.md`): returned in the
 response and nowhere else. Expiry stays short.
+
+## AWS without credentials
+
+`AwsS3Service` and `AwsSESService` are optional adapters (`config.md`). A domain that needs S3 throws
+`AwsS3NotConfiguredException`, either up front when `isInitialized()` is `false`
+(`src/modules/term-policy/domains/term-policy.domain.ts:126`) or on a `null` adapter result
+(`src/modules/user/domains/user.profile.domain.ts:134`); a presign, upload, or publish never succeeds without S3.
+`AwsSESService` passes `aws.ses.identityArn` as `SourceArn` on `send` and `sendBulk` when set. `AWS_S3_ENDPOINT`
+and `AWS_SES_ENDPOINT` (`src/app/dtos/app.env.dto.ts:82`, `:92`) point the clients elsewhere, S3 path-style; object
+URLs come from `aws.s3.baseUrlPattern` (`src/configs/aws.config.ts:64`).

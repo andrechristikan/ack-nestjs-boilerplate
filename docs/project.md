@@ -12,7 +12,7 @@ Projects carry their own membership with three roles, independent of the caller'
 - `member`
 - `viewer`
 
-One deliberate exception: a workspace `owner` reaches every project in the workspace without holding a `ProjectMember` row.
+One exception: a workspace `owner` reaches every project in the workspace without holding a `ProjectMember` row.
 
 ## Related Documents
 
@@ -38,7 +38,6 @@ One deliberate exception: a workspace `owner` reaches every project in the works
 - [Soft Delete](#soft-delete)
 - [Configuration](#configuration)
 - [Status Codes](#status-codes)
-- [Contribution](#contribution)
 
 ## Data Model
 
@@ -77,7 +76,7 @@ One deliberate exception: a workspace `owner` reaches every project in the works
 
 `EnumProjectMemberRole`: `admin`, `member`, `viewer`.
 
-**Active filter.** `ProjectActiveFilter` (`src/modules/project/constants/project.constant.ts`) is `[{ deletedAt: null }, { deletedAt: { isSet: false } }]`. Prisma's MongoDB connector compiles a bare `{ deletedAt: null }` into a query that also requires the field to be present, which silently drops rows written before the field existed. Every active-only read uses the `OR` form instead.
+**Active filter.** `ProjectActiveFilter` (`src/modules/project/constants/project.constant.ts`) is `[{ deletedAt: null }, { deletedAt: { isSet: false } }]`. Prisma's MongoDB connector compiles a bare `{ deletedAt: null }` into a query that also requires the field to be present, which silently drops rows written before the field existed. Every active-only read uses the `OR` form.
 
 ## Endpoints
 
@@ -128,7 +127,7 @@ Located at `src/modules/project/decorators`. For where these sit in the full pro
 
 #### `ProjectProtected()`
 
-**Method decorator** that applies `ProjectGuard`. It requires `@WorkspaceProtected()` below it - a project is always reached through its workspace.
+**Method decorator** that applies `ProjectGuard`. It requires `@WorkspaceProtected()` below it: a project is always reached through its workspace.
 
 Reads the `projectId` **route parameter** (there is no project header) and resolves it through `ProjectDomain.validateProjectGuard`, constrained to the workspace `WorkspaceGuard` resolved. The result is stored under `ProjectStoreKey`. No active workspace throws `WorkspaceNotFoundException` (404, `51600`).
 
@@ -159,12 +158,12 @@ Admin routes carry no project or workspace guard. They take the project id from 
 - **Creation always generates the slug.** `ProjectCreateRequestDto` carries no slug field: `ProjectDomain.createProject` draws `project.slugMaxAttempts` (5) candidates of `project.slugPrefix` plus random characters up to `slugMaxLength` and passes them to `ProjectRepository.create`, which walks them. Choosing a slug is what `PATCH /user/project/update/:projectId/slug` is for, and only that path runs `assertSlugAllowed`.
 - A slug sent to `update/:projectId/slug` is validated by `ProjectDomain.assertSlugAllowed`: over `project.slugMaxLength`, or failing `project.slugRegex`, throws `ProjectSlugInvalidException` (400, `51707`). A slug already held in the workspace throws `ProjectSlugAlreadyExistsException` (400, `51706`), with no retry.
 - **Uniqueness is per workspace**, matching the `@@unique([workspaceId, slug])` index.
-- `existsBySlugInWorkspace`, the check behind slug update, counts holders across **all** rows including soft-deleted ones. The unique index has no `deletedAt` component, so a soft-deleted project still holds its slug, and the check agrees with the index.
+- `existsBySlugInWorkspace`, the check behind slug update, counts holders other than the project itself across **all** rows in the workspace, soft-deleted ones included. The unique index has no `deletedAt` component, so a soft-deleted project still holds its slug, and the check agrees with the index.
 - `createProject` prepares `projectCreated`, then calls `ProjectRepository.create(workspaceId, dto, slugCandidates)`. The repository runs one `client.project.create` per candidate with no transaction; a unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate. The event is staged once, after the create resolves, so a collision stages nothing. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
 
 ## Membership
 
-A project member must already be a workspace member. `assignMember` resolves the target's `WorkspaceMember` row first and throws `WorkspaceMemberNotFoundException` (404, `51606`) when there is none. That check runs at assign time only.
+A project member must already be a workspace member. `ProjectMemberHttpService.assignMember` resolves the target's `WorkspaceMember` row through `WorkspaceMemberDomain.getOneByWorkspaceAndUser`; `ProjectMemberDomain.assignMember` applies the peer rule, then throws `WorkspaceMemberNotFoundException` (404, `51606`) when there is no row in the project's workspace. That check runs at assign time only.
 
 | Operation | Rules |
 |---|---|
@@ -227,11 +226,6 @@ Deleting the **workspace** soft-deletes its still-active projects in the same tr
 Full catalog: [Status Codes][ref-doc-status-codes].
 
 
-## Contribution
-
-Special thanks to [Gzerox][ref-contributor-gzerox] for main contributor for this feature.
-
-
 <!-- REFERENCES -->
 
 [ref-doc-workspace]: workspace.md
@@ -242,5 +236,3 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for main contributor for this
 [ref-doc-database-generated-unique-values]: database.md#generated-unique-values
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
-
-[ref-contributor-gzerox]: https://github.com/Gzerox

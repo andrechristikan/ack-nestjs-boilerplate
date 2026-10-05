@@ -14,7 +14,7 @@ import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/
 export interface IWorkspaceRepository {
     findActiveById(workspaceId: string): Promise<Workspace | null>;
     findActivePublicBySlug(slug: string): Promise<Workspace | null>;
-    findByIdForAdmin(workspaceId: string): Promise<Workspace | null>;
+    findByIdByAdmin(workspaceId: string): Promise<Workspace | null>;
     existsBySlug(slug: string, excludeWorkspaceId?: string): Promise<boolean>;
     findWithPaginationCursorByMember(
         userId: string,
@@ -23,7 +23,7 @@ export interface IWorkspaceRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>
     ): Promise<IPaginationCursorReturn<Workspace>>;
-    findWithPaginationOffsetForAdmin(
+    findWithPaginationOffsetByAdmin(
         {
             where,
             ...others

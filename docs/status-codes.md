@@ -30,7 +30,7 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `50500` | `role` | `50500`–`50504` | 5 |
 | `50600` | `feature-flag` | `50600`–`50606` | 7 |
 | `50700` | `api-key` | `50700`–`50708` | 9 |
-| `50800` | `auth` | `50800`–`50816` | 17 |
+| `50800` | `auth` | `50800`–`50818` | 19 |
 | `50900` | `country` | `50900`–`50902` | 3 |
 | `51000` | `user` | `51000`–`51027` | 28 |
 | `51100` | `policy` | `51100`–`51103` | 4 |
@@ -134,12 +134,14 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
 | `notFound` | `50600` | `notFound` | 404 (`NOT_FOUND`) | `featureFlag.error.notFound` | Feature flag not found. |
-| `serviceUnavailable` | `50601` | `serviceUnavailable` | 503 (`SERVICE_UNAVAILABLE`) | `featureFlag.error.serviceUnavailable` | Feature flag service is currently unavailable. |
+| `disabled` | `50601` | `disabled` | 404 (`NOT_FOUND`) | `featureFlag.error.disabled` | This feature is not available. |
 | `invalidMetadata` | `50602` | `invalidMetadata` | 400 (`BAD_REQUEST`) | `featureFlag.error.invalidMetadata` | Feature flag metadata is invalid. |
 | `predefinedKeyLengthExceeded` | `50603` | `predefinedKeyLengthExceeded` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyLengthExceeded` | Predefined key length exceeded the maximum allowed. |
 | `predefinedKeyEmpty` | `50604` | `predefinedKeyEmpty` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyEmpty` | Predefined key cannot be empty. |
 | `predefinedKeyTypeInvalid` | `50605` | `predefinedKeyTypeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyTypeInvalid` | Predefined key type is invalid. |
 | `predefinedKeyNotFound` | `50606` | `predefinedKeyNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyNotFound` | Predefined key is not registered as a feature flag. |
+
+`disabled` is raised by `FeatureFlagDomain` when the flag is off, when its rollout excludes the caller, when a partial rollout meets a request with no user and no anonymous id, or when the boolean metadata key a route checks is `false`.
 
 ## `api-key`
 
@@ -176,14 +178,18 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `twoFactorSetupRequired` | `50814` | `twoFactorSetupRequired` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorSetupRequired` | Start two-factor setup before confirming the code. |
 | `twoFactorSecretUnavailable` | `50815` | `twoFactorSecretUnavailable` | 409 (`CONFLICT`) | `auth.error.twoFactorSecretUnavailable` | Authenticator codes can't be checked for this account. Sign in with a backup code, then set up two-factor authentication again using another backup code. |
 | `twoFactorBackupCodeRequired` | `50816` | `twoFactorBackupCodeRequired` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorBackupCodeRequired` | Two-factor authentication is already enabled. Provide an unused backup code to set up a new authenticator. |
+| `socialGoogleNotConfigured` | `50817` | `socialGoogleNotConfigured` | 404 (`NOT_FOUND`) | `auth.error.socialGoogleNotConfigured` | Google login is not configured. |
+| `socialAppleNotConfigured` | `50818` | `socialAppleNotConfigured` | 404 (`NOT_FOUND`) | `auth.error.socialAppleNotConfigured` | Apple login is not configured. |
+
+`socialGoogleNotConfigured` and `socialAppleNotConfigured` are raised by `AuthSocialDomain` when no Google client ID or no Apple client ID is set; `AuthDomain` passes them through unwrapped, so they never become `socialGoogleInvalid` or `socialAppleInvalid`.
 
 ## `country`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
 | `notFound` | `50900` | `notFound` | 404 (`NOT_FOUND`) | `country.error.notFound` | Country not found. |
-| `inactive` | `50901` | `inactive` | — | — | Reserved enum member; no exception or i18n path yet. |
-| `exist` | `50902` | `exist` | — | — | Reserved enum member; no exception or i18n path yet. |
+| `inactive` | `50901` | `inactive` | none | none | Reserved enum member; no exception or i18n path. |
+| `exist` | `50902` | `exist` | none | none | Reserved enum member; no exception or i18n path. |
 
 ## `user`
 
@@ -194,25 +200,25 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `emailExist` | `51002` | `emailExist` | 409 (`CONFLICT`) | `user.error.emailExist` | This email already exists. |
 | `usernameExist` | `51003` | `usernameExist` | 409 (`CONFLICT`) | `user.error.usernameExist` | This username has already been taken. |
 | `mobileNumberNotFound` | `51004` | `mobileNumberNotFound` | 404 (`NOT_FOUND`) | `user.error.mobileNumberNotFound` | Mobile number not found. |
-| `statusInvalid` | `51005` | `statusInvalid` | — | `user.error.statusInvalid` | Invalid user status. |
+| `statusInvalid` | `51005` | `statusInvalid` | none | `user.error.statusInvalid` | Invalid user status. |
 | `blockedInvalid` | `51006` | `blockedInvalid` | 400 (`BAD_REQUEST`) | `user.error.blockedInvalid` | This user account has been blocked. |
 | `inactiveForbidden` | `51007` | `inactiveForbidden` | 403 (`FORBIDDEN`) | `user.error.inactive` | This user is inactive. |
 | `blockedForbidden` | `51008` | `blockedForbidden` | 403 (`FORBIDDEN`) | `user.error.blocked` | This user account has been blocked. |
-| `passwordNotMatch` | `51009` | `passwordNotMatch` | 400 (`BAD_REQUEST`) | `auth.error.passwordNotMatch` | Passwords do not match. |
-| `passwordMustNew` | `51010` | `passwordMustNew` | 400 (`BAD_REQUEST`) | `auth.error.passwordMustNew` | New password must be different from previous passwords within the past {period} days. |
-| `passwordExpired` | `51011` | `passwordExpired` | 403 (`FORBIDDEN`) | `auth.error.passwordExpired` | Your password has expired. |
-| `passwordAttemptMax` | `51012` | `passwordAttemptMax` | 403 (`FORBIDDEN`) | `auth.error.passwordAttemptMax` | Maximum password attempts exceeded. |
+| `passwordNotMatch` | `51009` | `passwordNotMatch` | 400 (`BAD_REQUEST`) | `user.error.passwordNotMatch` | Passwords do not match. |
+| `passwordMustNew` | `51010` | `passwordMustNew` | 400 (`BAD_REQUEST`) | `user.error.passwordMustNew` | New password must be different from previous passwords within the past {period} days. |
+| `passwordExpired` | `51011` | `passwordExpired` | 403 (`FORBIDDEN`) | `user.error.passwordExpired` | Your password has expired. |
+| `passwordAttemptMax` | `51012` | `passwordAttemptMax` | 403 (`FORBIDDEN`) | `user.error.passwordAttemptMax` | Maximum password attempts exceeded. |
 | `mobileNumberInvalid` | `51013` | `mobileNumberInvalid` | 400 (`BAD_REQUEST`) | `user.error.mobileNumberInvalid` | This mobile number is invalid. |
 | `usernameNotAllowed` | `51014` | `usernameNotAllowed` | 400 (`BAD_REQUEST`) | `user.error.usernameNotAllowed` | This username is not allowed. |
 | `usernameContainBadWord` | `51015` | `usernameContainBadWord` | 400 (`BAD_REQUEST`) | `user.error.usernameContainBadWord` | Username contains inappropriate words. |
 | `emailNotVerified` | `51016` | `emailNotVerified` | 403 (`FORBIDDEN`) | `user.error.emailNotVerified` | Email not verified. |
-| `passwordNotSet` | `51017` | `passwordNotSet` | 400 (`BAD_REQUEST`) | `auth.error.passwordNotSet` | Password has not been set for this account. |
+| `passwordNotSet` | `51017` | `passwordNotSet` | 400 (`BAD_REQUEST`) | `user.error.passwordNotSet` | Password has not been set for this account. |
 | `tokenInvalid` | `51018` | `tokenInvalid` | 400 (`BAD_REQUEST`) | `user.error.verificationTokenInvalid` | Verification token is invalid or expired. |
 | `emailAlreadyVerified` | `51019` | `emailAlreadyVerified` | 400 (`BAD_REQUEST`) | `user.error.emailAlreadyVerified` | This email has already been verified. |
 | `mobileNumberExist` | `51020` | `mobileNumberExist` | 409 (`CONFLICT`) | `user.error.mobileNumberExist` | This mobile number already exists. |
 | `verificationEmailResendLimitExceeded` | `51021` | `verificationEmailResendLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.verificationEmailResendLimitExceeded` | You have exceeded the limit for resending verification emails. Try again after {minutes} minutes. |
 | `forgotPasswordRequestLimitExceeded` | `51022` | `forgotPasswordRequestLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.forgotPasswordRequestLimitExceeded` | You have exceeded the limit for password reset requests. Try again after {minutes} minutes. |
-| `twoFactorMethodRequired` | `51023` | `twoFactorMethodRequired` | — | — | Reserved user enum member; live path uses auth `50813` + `auth.error.twoFactorMethodRequired`. |
+| `twoFactorMethodRequired` | `51023` | `twoFactorMethodRequired` | none | none | Reserved user enum member; live path uses auth `50813` + `auth.error.twoFactorMethodRequired`. |
 | `notFoundForbidden` | `51024` | `notFoundForbidden` | 403 (`FORBIDDEN`) | `user.error.notFound` | Sorry, we couldn't find the user you requested. |
 | `importEmailExist` | `51025` | `importEmailExist` | 409 (`CONFLICT`) | `user.error.importEmailExist` | There are existing users with the provided email addresses. Email: {emails} |
 | `importUsernameExist` | `51026` | `importUsernameExist` | 409 (`CONFLICT`) | `user.error.importUsernameExist` | There are existing users with the provided usernames. Username: {usernames} |
@@ -223,7 +229,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
 | `forbidden` | `51100` | `forbidden` | 403 (`FORBIDDEN`) | `policy.error.forbidden` | Sorry, you don't have the necessary permissions to perform this action. |
-| `predefinedNotFound` | `51101` | `predefinedNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `policy.error.predefinedNotFound` | Predefined abilities not setted. |
+| `predefinedNotFound` | `51101` | `predefinedNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `policy.error.predefinedNotFound` | Predefined policies not setted. |
 | `notFound` | `51102` | `notFound` | 404 (`NOT_FOUND`) | `policy.error.notFound` | Sorry, we couldn't find the requested policy. |
 | `exist` | `51103` | `exist` | 409 (`CONFLICT`) | `policy.error.exist` | This role already grants a policy for that subject. |
 
@@ -246,15 +252,15 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
-| `serviceUnavailable` | `51400` | `serviceUnavailable` | 503 (`SERVICE_UNAVAILABLE`) | `aws.error.serviceUnavailable` | The AWS service is currently unavailable. Please try again later. |
-| `s3KeyInvalid` | `51401` | `s3KeyInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3KeyInvalid` | The storage key is invalid. |
-| `s3FileRequired` | `51402` | `s3FileRequired` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3FileRequired` | A file is required for this storage operation. |
-| `s3ObjectExist` | `51403` | `s3ObjectExist` | 409 (`CONFLICT`) | `aws.error.s3ObjectExist` | A file already exists at this location. |
-| `s3MaxPartNumberExceeded` | `51404` | `s3MaxPartNumberExceeded` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3MaxPartNumberExceeded` | The multipart upload exceeds the maximum number of parts. |
-| `s3IterationLimitExceeded` | `51405` | `s3IterationLimitExceeded` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3IterationLimitExceeded` | The storage operation exceeded its iteration limit. |
-| `sesTemplateBodyRequired` | `51406` | `sesTemplateBodyRequired` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.sesTemplateBodyRequired` | An email template needs an HTML or plain-text body. |
+| `s3KeyInvalid` | `51400` | `s3KeyInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3KeyInvalid` | The storage key is invalid. |
+| `s3FileRequired` | `51401` | `s3FileRequired` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3FileRequired` | A file is required for this storage operation. |
+| `s3ObjectExist` | `51402` | `s3ObjectExist` | 409 (`CONFLICT`) | `aws.error.s3ObjectExist` | A file already exists at this location. |
+| `s3MaxPartNumberExceeded` | `51403` | `s3MaxPartNumberExceeded` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3MaxPartNumberExceeded` | The multipart upload exceeds the maximum number of parts. |
+| `s3IterationLimitExceeded` | `51404` | `s3IterationLimitExceeded` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3IterationLimitExceeded` | The storage operation exceeded its iteration limit. |
+| `sesTemplateBodyRequired` | `51405` | `sesTemplateBodyRequired` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.sesTemplateBodyRequired` | An email template needs an HTML or plain-text body. |
+| `s3NotConfigured` | `51406` | `s3NotConfigured` | 404 (`NOT_FOUND`) | `aws.error.s3NotConfigured` | File storage is not configured. |
 
-`s3KeyInvalid` is the shape guard inside `AwsS3Service`: a key, path, source, or destination that starts with `/`, plus a `..` or `//` in a `putItem` key. A client-supplied key meets `AwsS3ObjectKeyRegex` in the request schema first and answers 422 (`50300`) there. `s3ObjectExist` is raised when an upload or presign targets a key that already holds an object and `forceUpdate` is off.
+`s3KeyInvalid` is the shape guard inside `AwsS3Service`: a key, path, source, or destination that starts with `/`, plus a `..` or `//` in a `putItem` key. A client-supplied key meets `AwsS3ObjectKeyRegex` in the request schema first and answers 422 (`50300`) there. `s3ObjectExist` is raised when an upload or presign targets a key that already holds an object and `forceUpdate` is off. `s3NotConfigured` is raised by `UserProfileDomain`, `TermPolicyDomain`, and `TermPolicyContentDomain` when `AwsS3Service` has no credentials and the request needs S3 (a presign, a photo update, a content upload).
 
 ## `term-policy`
 

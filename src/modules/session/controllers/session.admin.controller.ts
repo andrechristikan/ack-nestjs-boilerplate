@@ -8,10 +8,7 @@ import {
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
 
-import type {
-    IResponsePaginationReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
@@ -97,8 +94,8 @@ export class SessionAdminController {
         @Param('sessionId', { schema: RequestMongoIdSchema })
         sessionId: string,
         @AuthJwtPayload('userId') revokedBy: string
-    ): Promise<IResponseReturn<void>> {
-        return this.sessionHttpService.revokeByAdmin(
+    ): Promise<void> {
+        await this.sessionHttpService.revokeByAdmin(
             userId,
             sessionId,
             revokedBy
@@ -128,7 +125,7 @@ export class SessionAdminController {
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
         @AuthJwtPayload('userId') revokedBy: string
-    ): Promise<IResponseReturn<void>> {
-        return this.sessionHttpService.revokeAllByAdmin(userId, revokedBy);
+    ): Promise<void> {
+        await this.sessionHttpService.revokeAllByAdmin(userId, revokedBy);
     }
 }

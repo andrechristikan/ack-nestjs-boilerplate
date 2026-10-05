@@ -103,6 +103,10 @@ export const DocAuthSocialGoogleErrorResponses = {
             statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
         }
     ),
+    notConfigured: DocResponseError(HttpStatus.NOT_FOUND, {
+        messagePath: 'auth.error.socialGoogleNotConfigured',
+        statusCode: EnumAuthStatusCodeError.socialGoogleNotConfigured,
+    }),
 } as const;
 
 /**
@@ -121,4 +125,8 @@ export const DocAuthSocialAppleErrorResponses = {
             statusCode: EnumAuthStatusCodeError.socialAppleRequired,
         }
     ),
+    notConfigured: DocResponseError(HttpStatus.NOT_FOUND, {
+        messagePath: 'auth.error.socialAppleNotConfigured',
+        statusCode: EnumAuthStatusCodeError.socialAppleNotConfigured,
+    }),
 } as const;

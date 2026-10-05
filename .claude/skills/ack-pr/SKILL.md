@@ -31,18 +31,19 @@ not a mode: propose the subject in the session.
 
 ## 2. Finish the branch (`create` only)
 
-Invoke `superpowers:finishing-a-development-branch`: it supplies the full-suite run
-(`pnpm test`) and the owner's integration choice. A red suite stops the mode with the
-failing line. When the choice is the pull request, its own push-and-create step is not
-taken: the push and `gh pr create` run in step 6 with `writer`'s text. `merge` stays under
-`ask` and is not run by this skill.
+Invoke `superpowers:finishing-a-development-branch` for its full-suite run (`pnpm test`).
+A red suite stops the mode with the failing line. Of its options, only the pull request is
+offered; merge locally and discard are not taken. Its own push-and-create step is not
+taken either: the push and `gh pr create` run in step 6 with `writer`'s text. `merge`
+stays under `ask` and is not run by this skill.
 
 ## 3. Resolve the compare refs
 
 Follow `references/refs.md`: fetch, point a local `ack-pr/*` ref at the fetched tip, count
-the commits ahead. Zero means nothing to describe; say so and stop. The dispatch names the
-local ref, never `origin/*` alone. `description` and `create` diff with no second ref so
-uncommitted and staged work is included; `version` diffs the resolved range.
+the commits ahead, and read the diff. When the stop condition there holds, there is nothing
+to describe; say so and stop. The dispatch names the local ref, never `origin/*` alone.
+`description` and `create` diff with no second ref so uncommitted and staged work is
+included; `version` diffs the resolved range.
 
 ## 4. Dispatch `writer`
 
@@ -64,8 +65,7 @@ Report: the file path, and every open question the diff could not settle (hand-b
   not a document section).
 ```
 
-Add the working-tree line and the no-questions line from
-`../ack-build/references/dispatch.md`.
+Add the Every dispatch block from `../ack-build/references/dispatch.md`.
 
 ## 5. Review the text, through `reviewer`
 
@@ -78,7 +78,9 @@ scoped re-review.
 ## 6. GitHub, in the session
 
 `create`, `comment`, and an edit to an existing PR run in the session: the exact command
-is shown to the owner and runs on their word (`references/gh.md`). Merge is not part of
+is shown to the owner and runs on their word (`references/gh.md`). `description` on a
+branch with an open PR ends with `gh pr edit` (`references/gh.md`, Update an existing
+description); with none, it ends at the document. Merge is not part of
 any mode: `gh pr merge` stays under `ask` and is not proposed by this skill.
 
 ## Verify

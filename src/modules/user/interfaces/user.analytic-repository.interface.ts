@@ -36,7 +36,7 @@ export interface IUserAnalyticRepository {
     findNearLockout(minAttempt: number): Promise<IAnalyticNearLockout[]>;
     groupPasswordAttemptBuckets(): Promise<IAnalyticCountBucket[]>;
     findOneById(id: string): Promise<IUserAnalyticRef | null>;
-    listNearLockoutOffset(
+    findNearLockoutOffset(
         minAttempt: number,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>>;

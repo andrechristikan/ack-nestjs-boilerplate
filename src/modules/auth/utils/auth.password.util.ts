@@ -99,7 +99,7 @@ export class AuthPasswordUtil {
     }
 
     /** True when the expiry date has passed; false when no expiry is set. */
-    checkPasswordExpired(passwordExpired?: Date | null): boolean {
+    checkPasswordExpired(passwordExpired: Date | null): boolean {
         if (!passwordExpired) {
             return false;
         }

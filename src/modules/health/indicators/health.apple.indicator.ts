@@ -4,45 +4,38 @@ import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 
 /**
- * Reports Apple Sign In credential presence as a Terminus health indicator.
+ * Reports Apple Sign In client id presence as a Terminus health indicator.
  */
 @Injectable()
 export class HealthAppleIndicator {
+    private readonly clientId: string | null;
+    private readonly signInClientId: string | null;
+
     constructor(
         private readonly configService: ConfigService,
         private readonly healthIndicatorService: HealthIndicatorService
-    ) {}
+    ) {
+        const clientId = this.configService.get<string | null>(
+            'auth.apple.clientId'
+        );
+        const signInClientId = this.configService.get<string | null>(
+            'auth.apple.signInClientId'
+        );
+
+        this.clientId = clientId ?? null;
+        this.signInClientId = signInClientId ?? null;
+    }
 
     /**
-     * Down when the Apple client id or sign-in client id is missing or empty.
+     * Down when neither the Apple client id nor the sign-in client id is set.
      */
     async isHealthy(key: string): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
 
-        try {
-            const clientId = this.configService.get<string | null>(
-                'auth.apple.clientId'
-            );
-            const signInClientId = this.configService.get<string | null>(
-                'auth.apple.signInClientId'
-            );
-
-            if (!clientId) {
-                return indicator.down('Apple client id is not configured');
-            }
-
-            if (!signInClientId) {
-                return indicator.down(
-                    'Apple sign-in client id is not configured'
-                );
-            }
-
-            return indicator.up();
-        } catch (err: unknown) {
-            const message =
-                err instanceof Error ? err.message : 'Unknown error';
-
-            return indicator.down(`HealthAppleIndicator Failed - ${message}`);
+        if (!this.clientId && !this.signInClientId) {
+            return indicator.down('Apple is not configured');
         }
+
+        return indicator.up();
     }
 }

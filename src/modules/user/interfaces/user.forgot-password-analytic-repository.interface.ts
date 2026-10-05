@@ -10,7 +10,7 @@ export interface IUserForgotPasswordAnalyticRepository {
         startDate: Date,
         endDate: Date
     ): Promise<IUserForgotPasswordAnalytic[]>;
-    unusedTokenCountsByUser(
+    groupUnusedTokenByUser(
         startDate: Date,
         endDate: Date
     ): Promise<IUserForgotPasswordAnalyticUserCount[]>;

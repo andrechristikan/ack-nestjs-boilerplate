@@ -4,6 +4,19 @@
 
 Third-party clients are configured through environment variables. Each section below names the package and the env vars.
 
+### Optional integrations
+
+AWS S3, AWS SES, Firebase, Sentry, Google, and Apple are optional. `AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) validates every key at boot:
+
+- A blank `.env` line (`KEY=`) and an absent key both parse as unset.
+- S3 and SES turn on when `*_IAM_CREDENTIAL_KEY` or `*_IAM_CREDENTIAL_SECRET` is set; Firebase turns on when any `FIREBASE_*` key is set. Once on, a missing member of the group fails boot with `<KEY> is required when ...`. A region, bucket, or `EMAIL_*` value set alone does not turn an integration on and boots fine.
+- Google turns on with `AUTH_SOCIAL_GOOGLE_CLIENT_ID`, Apple with either Apple client id, Sentry with `SENTRY_DSN`; each needs nothing else. The groups are listed under each integration below.
+- An unconfigured adapter (`AwsS3Service`, `AwsSESService`, `FirebaseService`) logs a warning at startup and stays uninitialized. `isInitialized()` reports its state. A call that reaches the provider logs a warning and returns without calling it: S3 returns `null`, `[]`, `false`, or nothing, SES returns an empty SDK output, and Firebase returns `false` from `sendPush` and a result with `failureCount: tokens.length` and `failureTokens: []` from `sendMulticast`. Two S3 calls behave differently: `putItemMultiPart` returns the multipart record it received unchanged, and `mapPresign` never checks initialization because it builds the record from config without a provider call.
+- A request path that cannot work without S3 throws `AwsS3NotConfiguredException` (HTTP 404). See [Error Codes](#error-codes).
+- A disabled or unconfigured capability answers 404 (`FeatureFlagDisabledException`, `AwsS3NotConfiguredException`, `AuthSocialGoogleNotConfiguredException`, `AuthSocialAppleNotConfiguredException`); the exception filters report only 5xx to Sentry, so these stay out of it.
+- A seed that needs an integration logs a warning and skips without it: `templateEmailNotification` needs SES, `templateTermPolicy` needs S3, and `awsS3Config` needs S3 plus `AWS_S3_IAM_ARN`.
+- The health indicators report an unconfigured integration as `down` with the message `<name> is not configured`; the health endpoints still answer HTTP 200.
+
 ## Related Documents
 
 - [Configuration Documentation][ref-doc-configuration] - AWS, Firebase, Sentry config keys
@@ -19,6 +32,7 @@ Third-party clients are configured through environment variables. Each section b
 ## Table of Contents
 
 - [Overview](#overview)
+  - [Optional integrations](#optional-integrations)
 - [Related Documents](#related-documents)
 - [AWS Services](#aws-services)
   - [S3 Storage](#s3-storage)
@@ -50,6 +64,7 @@ AWS_S3_IAM_CREDENTIAL_KEY=<your_aws_s3_access_key>
 AWS_S3_IAM_CREDENTIAL_SECRET=<your_aws_s3_secret_key>
 AWS_S3_IAM_ARN=<your_aws_s3_iam_arn>
 AWS_S3_REGION=ap-southeast-3
+AWS_S3_ENDPOINT=
 AWS_S3_PUBLIC_BUCKET=<your_aws_s3_public_bucket>
 AWS_S3_PUBLIC_CDN=<your_aws_s3_public_cdn>
 AWS_S3_PRIVATE_BUCKET=<your_aws_s3_private_bucket>
@@ -61,19 +76,20 @@ AWS_S3_PRIVATE_CDN=<your_aws_s3_private_cdn>
 - Private file storage (sensitive documents)
 - Presigned URL generation for secure access
 
-**No-Op Mode:**
+**Required group:** setting `AWS_S3_IAM_CREDENTIAL_KEY` or `AWS_S3_IAM_CREDENTIAL_SECRET` makes `AWS_S3_IAM_CREDENTIAL_KEY`, `AWS_S3_IAM_CREDENTIAL_SECRET`, `AWS_S3_REGION`, `AWS_S3_PUBLIC_BUCKET`, and `AWS_S3_PRIVATE_BUCKET` required. The CDN keys are optional; without one, objects carry `cdnUrl: null`.
 
-If any of these is not set, the S3 integration runs in no-op mode (disabled, logs a warning on startup, S3 operations return safe defaults instead of failing):
+**Optional keys:**
 
-- `AWS_S3_IAM_CREDENTIAL_KEY`
-- `AWS_S3_IAM_CREDENTIAL_SECRET`
-- `AWS_S3_REGION`
+- `AWS_S3_ENDPOINT`: a URL with no trailing slash for an S3-compatible store (MinIO, LocalStack). When set, the client uses path-style addressing and object URLs follow `{endpoint}/{bucket}/{key}`; otherwise they follow `https://{bucket}.s3.{region}.amazonaws.com/{key}` (config `aws.s3.baseUrlPattern`).
+- `AWS_S3_IAM_ARN`: read only by the `awsS3Config` command, as the principal of the public bucket policy. The application never assumes a role with it.
+
+**Unconfigured:** with the credential pair blank, `AwsS3Service` stays uninitialized. Its provider methods return `null`, `[]`, `false`, or nothing; `putItemMultiPart` returns its input unchanged, and `mapPresign` runs without the check. The request paths that need S3 throw `AwsS3NotConfiguredException` (HTTP 404): profile photo presign, upload, and update; term-policy create and publish; term-policy content presign, add, update, and get.
 
 For detailed upload and presign behavior, see [File Upload][ref-doc-file-upload].
 
 ### Bucket setup
 
-`pnpm migration awsS3Config` is a migration command, not a database seed. It applies bucket policy and settings on AWS for both the public and private buckets. It writes no MongoDB rows.
+`pnpm migration awsS3Config` is a migration command that applies bucket policy and settings on AWS for both the public and private buckets. It writes no MongoDB rows. It logs a warning and skips when S3 is unconfigured or `AWS_S3_IAM_ARN` is blank.
 
 ```bash
 pnpm migration awsS3Config --type seed
@@ -89,11 +105,11 @@ Applied in this order (later steps depend on earlier ones):
 4. **CORS** - Cross-origin rules
 5. **Lifecycle** - Deletes incomplete multipart uploads
 
-**Public buckets:** public read (`s3:GetObject`), full IAM management access, CORS GET/HEAD from any origin and PUT/POST/DELETE from whitelisted origins.
+**Public buckets:** public ACLs blocked and public policies allowed; a bucket policy granting public read (`s3:GetObject`) and `s3:*` to the `AWS_S3_IAM_ARN` principal; CORS GET/HEAD from any origin and PUT/POST/DELETE from the origins in `CORS_ALLOWED_ORIGIN`.
 
-**Private buckets:** all public access blocked, CORS only for whitelisted origins, full IAM access for every operation.
+**Private buckets:** all public access blocked; the bucket policy deleted, so access comes from IAM permissions alone; CORS GET/HEAD/PUT/POST/DELETE only from the origins in `CORS_ALLOWED_ORIGIN`.
 
-Needs valid AWS credentials, IAM permission to change those bucket settings, and the bucket names/ARNs in your environment.
+Needs valid AWS credentials, IAM permission to change those bucket settings, `AWS_S3_IAM_ARN`, and both bucket names. The bucket ARNs derive from the bucket names.
 
 ### SES Email
 
@@ -106,8 +122,12 @@ Needs valid AWS credentials, IAM permission to change those bucket settings, and
 ```dotenv
 AWS_SES_IAM_CREDENTIAL_KEY=<your_aws_ses_access_key>
 AWS_SES_IAM_CREDENTIAL_SECRET=<your_aws_ses_secret_key>
-AWS_SES_IAM_ARN=<your_aws_ses_iam_arn>
+AWS_SES_IDENTITY_ARN=
 AWS_SES_REGION=ap-southeast-3
+AWS_SES_ENDPOINT=
+
+EMAIL_NO_REPLY=<no_reply_address>
+EMAIL_SUPPORT=<support_address>
 ```
 
 **Use Cases:**
@@ -116,13 +136,14 @@ AWS_SES_REGION=ap-southeast-3
 - Email verification
 - Notification emails
 
-**No-Op Mode:**
+**Required group:** setting `AWS_SES_IAM_CREDENTIAL_KEY` or `AWS_SES_IAM_CREDENTIAL_SECRET` makes `AWS_SES_IAM_CREDENTIAL_KEY`, `AWS_SES_IAM_CREDENTIAL_SECRET`, `AWS_SES_REGION`, `EMAIL_NO_REPLY`, and `EMAIL_SUPPORT` required. Both email keys are validated as addresses.
 
-If any of these is not set, the SES integration runs in no-op mode (disabled, logs a warning on startup, email operations return safe defaults instead of failing):
+**Optional keys:**
 
-- `AWS_SES_IAM_CREDENTIAL_KEY`
-- `AWS_SES_IAM_CREDENTIAL_SECRET`
-- `AWS_SES_REGION`
+- `AWS_SES_IDENTITY_ARN`: an SES identity ARN (`arn:aws:ses:<region>:<account>:identity/<identity>`, config `aws.ses.identityArn`). When set, `send` and `sendBulk` pass it as `SourceArn`.
+- `AWS_SES_ENDPOINT`: a URL with no trailing slash for an SES-compatible endpoint (LocalStack).
+
+**Unconfigured:** with the credential pair blank, `AwsSESService` stays uninitialized; `send` and `sendBulk` return an empty output and send nothing, and template calls return an empty output.
 
 Templates, the sync command, and send flow: [Email Documentation][ref-doc-email]. Queue wiring: [Notification][ref-doc-notification] and [Queue][ref-doc-queue].
 
@@ -132,15 +153,15 @@ AWS service errors use `EnumAwsStatusCodeError` located at `src/common/aws/enums
 
 | Enum | Code | i18n Key | Description |
 |---|---|---|---|
-| `EnumAwsStatusCodeError.serviceUnavailable` | `51400` | `aws.error.serviceUnavailable` | AWS service is unavailable |
-| `EnumAwsStatusCodeError.s3KeyInvalid` | `51401` | `aws.error.s3KeyInvalid` | A key, path, source, or destination starts with `/`, or a `putItem` key contains `..` or `//` |
-| `EnumAwsStatusCodeError.s3FileRequired` | `51402` | `aws.error.s3FileRequired` | `putItem` received no file content |
-| `EnumAwsStatusCodeError.s3ObjectExist` | `51403` | `aws.error.s3ObjectExist` | The target key already holds an object and `forceUpdate` is off (HTTP 409) |
-| `EnumAwsStatusCodeError.s3MaxPartNumberExceeded` | `51404` | `aws.error.s3MaxPartNumberExceeded` | A multipart upload asks for more parts than `AwsS3MaxPartNumber` |
-| `EnumAwsStatusCodeError.s3IterationLimitExceeded` | `51405` | `aws.error.s3IterationLimitExceeded` | `deleteDir` reached its iteration cap before the prefix was empty |
-| `EnumAwsStatusCodeError.sesTemplateBodyRequired` | `51406` | `aws.error.sesTemplateBodyRequired` | An SES template create or update has neither an HTML nor a plain-text body |
+| `EnumAwsStatusCodeError.s3KeyInvalid` | `51400` | `aws.error.s3KeyInvalid` | A key, path, source, or destination starts with `/`, or a `putItem` key contains `..` or `//` |
+| `EnumAwsStatusCodeError.s3FileRequired` | `51401` | `aws.error.s3FileRequired` | `putItem` received no file content |
+| `EnumAwsStatusCodeError.s3ObjectExist` | `51402` | `aws.error.s3ObjectExist` | The target key already holds an object and `forceUpdate` is off (HTTP 409) |
+| `EnumAwsStatusCodeError.s3MaxPartNumberExceeded` | `51403` | `aws.error.s3MaxPartNumberExceeded` | A multipart upload asks for more parts than `AwsS3MaxPartNumber` |
+| `EnumAwsStatusCodeError.s3IterationLimitExceeded` | `51404` | `aws.error.s3IterationLimitExceeded` | `deleteDir` reached its iteration cap before the prefix was empty |
+| `EnumAwsStatusCodeError.sesTemplateBodyRequired` | `51405` | `aws.error.sesTemplateBodyRequired` | An SES template create or update has neither an HTML nor a plain-text body |
+| `EnumAwsStatusCodeError.s3NotConfigured` | `51406` | `aws.error.s3NotConfigured` | A request path needs S3 and S3 is unconfigured (HTTP 404) |
 
-Every code except `51400` (503) and `51403` (409) answers HTTP 500.
+Every code except `51402` (409) and `51406` (404) answers HTTP 500.
 
 ## Firebase
 
@@ -161,7 +182,11 @@ FIREBASE_PRIVATE_KEY=<your_firebase_private_key>
 - Batch send support
 - Invalid token detection and cleanup
 
-Leave `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` empty to disable Firebase in development.
+**Required group:** setting any of `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, or `FIREBASE_PRIVATE_KEY` makes all three required; `FIREBASE_CLIENT_EMAIL` is validated as an address.
+
+**Unconfigured:** with all three blank, `FirebaseService` stays uninitialized; `sendPush` returns `false` and `sendMulticast` returns `failureCount: tokens.length` with `failureTokens: []`, with no call to FCM. The push domains check `isInitialized()` first and skip the job before calling `sendMulticast`, so no token cleanup runs.
+
+**Configured but broken:** a private key that does not normalize to PEM, or an Admin SDK initialization error, fails boot.
 
 `FirebaseService.sendMulticast` raises `FirebaseChunkSizeInvalidException` (`52300`, `firebase.error.chunkSizeInvalid`, HTTP 500) when the chunk size falls outside 1 to `FirebaseMaxSendPushBatchSize` (500).
 
@@ -180,13 +205,22 @@ For notification details, see [Notification Documentation][ref-doc-notification]
 SENTRY_DSN=<your_sentry_dsn>
 ```
 
+`src/instrument.ts` initializes Sentry only when `SENTRY_DSN` is set; it is validated as a URL. The sample rates are logger config keys, chosen by `APP_ENV`:
+
+| Config key | Value | Applies |
+|---|---|---|
+| `logger.sentry.tracesSampleRate` | `1` | outside production |
+| `logger.sentry.tracesSampleRateProduction` | `0.3` | production |
+| `logger.sentry.profilesSampleRate` | `0.5` | outside production |
+| `logger.sentry.profilesSampleRateProduction` | `0.1` | production |
+
 **Features:**
 - Automatic error tracking through `SentryService` (`src/common/sentry`), used by the exception filters and `QueueProcessorBase`
 - Performance monitoring and profiling
 - Queue job failure tracking (integrated in `QueueProcessorBase`)
 - Request context capture, scrubbed in `src/instrument.ts` before it leaves the process (URLs masked, sensitive headers, cookies, and body fields redacted). See [Logger][ref-doc-logger]
 
-Leave `SENTRY_DSN` empty to disable Sentry in development.
+With `SENTRY_DSN` blank, Sentry stays uninitialized and `SentryService` calls send nothing.
 
 ## Redis
 
@@ -244,8 +278,11 @@ For database setup and usage, see [Database][ref-doc-database].
 **Environment Variables:**
 ```dotenv
 AUTH_SOCIAL_GOOGLE_CLIENT_ID=<your_google_client_id>
-AUTH_SOCIAL_GOOGLE_CLIENT_SECRET=<your_google_client_secret>
 ```
+
+**Turned on by:** `AUTH_SOCIAL_GOOGLE_CLIENT_ID`; nothing else is required. The client id is the audience `verifyIdToken` checks.
+
+**Unconfigured:** with the client id blank, Google sign-in throws `AuthSocialGoogleNotConfiguredException` (`50817`, HTTP 404) and the `google` health indicator reports it down.
 
 For authentication flow details, see [Authentication][ref-doc-authentication].
 
@@ -262,11 +299,15 @@ AUTH_SOCIAL_APPLE_CLIENT_ID=<your_apple_client_id>
 AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=<your_apple_sign_in_client_id>
 ```
 
+**Turned on by:** either Apple client id; nothing else is required. A token is accepted when its audience matches any client id that is set.
+
+**Unconfigured:** with both ids blank, Apple sign-in throws `AuthSocialAppleNotConfiguredException` (`50818`, HTTP 404) and the `apple` health indicator reports it down.
+
 For authentication flow details, see [Authentication][ref-doc-authentication].
 
 ## HashiCorp Vault
 
-[HashiCorp Vault][ref-vault] is integrated as an **optional** secret store. Rather than connecting to the app at runtime, it acts as the source of truth for local secrets and writes them into `.env` on demand.
+[HashiCorp Vault][ref-vault] is integrated as an **optional** secret store. It acts as the source of truth for local secrets and writes them into `.env` on demand; the app never connects to it.
 
 **Gated by the `vault` Docker Compose profile**, so it never starts unless you opt in.
 

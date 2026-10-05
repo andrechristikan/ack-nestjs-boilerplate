@@ -14,27 +14,30 @@ export class UserPasswordAnalyticDomain {
         private readonly helperDateService: HelperDateService
     ) {}
 
-    passwordChangeCount(startDate: Date, endDate: Date): Promise<number> {
-        return this.passwordHistoryAnalyticDomain.countByTypeInRange(
+    getPasswordChangeCount(startDate: Date, endDate: Date): Promise<number> {
+        return this.passwordHistoryAnalyticDomain.getCountByTypeInRange(
             EnumPasswordHistoryType.profile,
             startDate,
             endDate
         );
     }
 
-    adminForcePasswordCount(startDate: Date, endDate: Date): Promise<number> {
-        return this.passwordHistoryAnalyticDomain.countByTypeInRange(
+    getAdminForcePasswordCount(
+        startDate: Date,
+        endDate: Date
+    ): Promise<number> {
+        return this.passwordHistoryAnalyticDomain.getCountByTypeInRange(
             EnumPasswordHistoryType.admin,
             startDate,
             endDate
         );
     }
 
-    async passwordExpiryCompliance(): Promise<IAnalyticPasswordExpiry> {
+    async getPasswordExpiryCompliance(): Promise<IAnalyticPasswordExpiry> {
         const now = this.helperDateService.create();
         const [expired, total] = await Promise.all([
-            this.userAnalyticDomain.countPasswordExpired(now),
-            this.userAnalyticDomain.countActive(),
+            this.userAnalyticDomain.getCountPasswordExpired(now),
+            this.userAnalyticDomain.getCountActive(),
         ]);
         return {
             expired,
@@ -44,11 +47,11 @@ export class UserPasswordAnalyticDomain {
         };
     }
 
-    findProfileChanges(
+    getProfileChanges(
         startDate: Date,
         endDate: Date
     ): Promise<IPasswordHistoryAnalytic[]> {
-        return this.passwordHistoryAnalyticDomain.findByTypeInRange(
+        return this.passwordHistoryAnalyticDomain.getByTypeInRange(
             EnumPasswordHistoryType.profile,
             startDate,
             endDate

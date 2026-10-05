@@ -64,7 +64,7 @@ List query parsing is zod on `@Query({ schema })` plus `PaginationQueryUtil` in 
 
 ### PaginationService
 
-Core service that pages at the database. Repositories call it; HTTP services and controllers do not.
+Core service that pages at the database. Repositories call it, and the analytic anomaly and fraud domains call `offsetPage`; HTTP services and controllers do not.
 
 **Two tiers of parameter types.** The controller-facing types carry only what a client may influence; the repository-facing types add what only server code may set:
 
@@ -159,7 +159,7 @@ offsetPage<TReturn>(
 ): IPaginationOffsetReturn<TReturn>
 ```
 
-`offset()` calls it once its count and `findMany` queries resolve. It is also public: the analytic anomaly and fraud detail lists compute their rows, slice `[skip, skip + limit)`, and pass the slice with the full length.
+`offset()` calls it once its count and `findMany` queries resolve. It is also public: the analytic anomaly and fraud detail lists compute their rows, slice `[skip, skip + limit)`, and pass the slice with the full length. The workspace-member, project-member, and activity-log analytic repositories do the same over grouped rows.
 
 The page arithmetic lives here, and every offset response carries the result of it:
 
@@ -293,7 +293,7 @@ export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
 
 #### PaginationQueryUtil
 
-**Two tiers of parameter types** (unchanged from the table under `PaginationService`):
+**Two protections** guard what a list query reaches:
 
 | Protection | Defends against | Needs an allow-list? |
 |---|---|---|
@@ -678,14 +678,14 @@ The page fields (`type`, `count`, `page`, `perPage`, `totalPage`, `hasNext`, `ha
 
 **Controller:**
 ```typescript
-@Doc({ summary: 'list workspaces for member' })
+@Doc({ summary: 'list workspaces the caller is a member of' })
 @ResponsePagination('workspace.list', { schema: WorkspaceResponseSchema })
 @Get('/list')
 async list(
-    @Query({ schema: WorkspaceListRequestSchema }) query: WorkspaceListRequestDto,
+    @Query({ schema: WorkspaceUserListRequestSchema }) query: WorkspaceUserListRequestDto,
     @AuthJwtPayload('userId') userId: string
-): Promise<IResponsePaginationReturn<WorkspaceResponseDto>> {
-    return this.workspaceHttpService.getListForMember(userId, query);
+): Promise<IResponsePaginationReturn<Workspace>> {
+    return this.workspaceHttpService.getListCursorByMember(userId, query);
 }
 ```
 

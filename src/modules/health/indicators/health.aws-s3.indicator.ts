@@ -15,13 +15,19 @@ export class HealthAwsS3BucketIndicator {
     ) {}
 
     /**
-     * Down when the bucket check for the given accessibility fails or throws.
+     * Down when S3 is not configured, or when the bucket check for the given accessibility
+     * fails or throws.
      */
     async isHealthy(
         key: string,
         access: EnumAwsS3Accessibility
     ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
+
+        const isInitialized = this.awsS3Service.isInitialized();
+        if (!isInitialized) {
+            return indicator.down('AWS S3 is not configured');
+        }
 
         try {
             await this.awsS3Service.checkBucket({

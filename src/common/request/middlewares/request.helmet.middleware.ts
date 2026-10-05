@@ -9,19 +9,23 @@ import helmet from 'helmet';
  */
 @Injectable()
 export class RequestHelmetMiddleware implements NestMiddleware {
-    constructor(private readonly configService: ConfigService) {}
+    private readonly maxAgeInSeconds: number;
+    private readonly includeSubDomains: boolean;
+    private readonly preload: boolean;
 
-    use(req: Request, res: Response, next: NextFunction): void {
-        const maxAgeInSeconds = this.configService.get<number>(
+    constructor(private readonly configService: ConfigService) {
+        this.maxAgeInSeconds = this.configService.get<number>(
             'request.helmet.maxAgeInSeconds'
         )!;
-        const includeSubDomains = this.configService.get<boolean>(
+        this.includeSubDomains = this.configService.get<boolean>(
             'request.helmet.includeSubDomains'
         )!;
-        const preload = this.configService.get<boolean>(
+        this.preload = this.configService.get<boolean>(
             'request.helmet.preload'
         )!;
+    }
 
+    use(req: Request, res: Response, next: NextFunction): void {
         helmet({
             contentSecurityPolicy: false,
             crossOriginOpenerPolicy: false,
@@ -31,9 +35,9 @@ export class RequestHelmetMiddleware implements NestMiddleware {
             xXssProtection: false,
             crossOriginResourcePolicy: { policy: 'same-origin' },
             strictTransportSecurity: {
-                maxAge: maxAgeInSeconds,
-                includeSubDomains,
-                preload,
+                maxAge: this.maxAgeInSeconds,
+                includeSubDomains: this.includeSubDomains,
+                preload: this.preload,
             },
             xContentTypeOptions: true,
             xDownloadOptions: true,

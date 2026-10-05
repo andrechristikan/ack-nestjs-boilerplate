@@ -14,7 +14,7 @@ export class HealthFirebaseIndicator {
     ) {}
 
     /**
-     * Down unless the Admin SDK finished initializing.
+     * Down when Firebase is not configured, or unless the Admin SDK finished initializing.
      */
     async isHealthy(key: string): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
@@ -22,7 +22,7 @@ export class HealthFirebaseIndicator {
         try {
             const isInitialized = this.firebaseService.isInitialized();
             if (!isInitialized) {
-                return indicator.down('Firebase Admin SDK not initialized');
+                return indicator.down('Firebase is not configured');
             }
 
             return indicator.up();

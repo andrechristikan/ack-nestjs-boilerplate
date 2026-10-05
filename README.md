@@ -54,12 +54,14 @@ A good fit when you are building:
   - [Installation](#installation)
   - [License](#license)
   - [Contribute](#contribute)
+  - [Contributors](#contributors)
   - [Contact](#contact)
     - [Support This Project](#support-this-project)
 
 ## Important
 
 - MongoDB must run as a replica set; Prisma transactions need it.
+- Third-party integrations (AWS S3, AWS SES, Firebase, Google and Apple sign-in, Sentry) are optional. A blank `.env` line leaves one unset. S3 and SES turn on when their IAM credential key or secret is set, Firebase on any of its three keys; once on, a missing member of the group fails startup validation. Google, Apple, and Sentry each turn on from their own id or DSN and need nothing else. A region, bucket, or `EMAIL_*` value set alone boots fine. A route that needs S3 or a social sign-in that is unset answers 404.
 - When `APP_ENV` is `production`, Swagger is off, and Sentry Logs only get `warn`, `error`, and `fatal` (other environments send every level).
 - Protection decorators follow a fixed stack. Use only the ones you need, and keep that relative order. Activity logging is separate: domains stage events, and a global interceptor writes them.
     ```typescript
@@ -178,7 +180,7 @@ See [package.json][ref-package-json] for the full list.
 ### 🩺 Monitoring
 
 - **Sentry** - Errors, performance, and Pino logs, with credentials scrubbed before send
-- **Health checks** - `/system/health` for database, AWS, third-party, and instance status
+- **Health checks** - `/api/system/health/{database,aws,third-party,instance}` behind a system API key; each answers 200 and reports an unconfigured integration as down
 
 ### 🛠 Development
 
@@ -186,7 +188,7 @@ See [package.json][ref-package-json] for the full list.
 - **OpenAPI 3.1** - Swagger UI and `generated/swagger.json` from the same route schemas (off in production)
 - **Zod contracts** - Request and response shapes checked end to end
 - **i18n** - Localized messages via `x-custom-lang`
-- **Vitest** - Unit suite under `test/`; `pnpm test:cov` aims for full coverage
+- **Vitest** - Unit suite under `test/unit/`; `pnpm test:cov` enforces 100% coverage
 - **Lint & hooks** - ESLint (incl. security), Prettier, cspell, knip, Husky, and commitlint
 - **Docker Compose** - MongoDB replica set, Redis, BullBoard, and JWKS locally; optional `apis` and `vault` profiles
 - **HashiCorp Vault** - Optional secret sync into `.env` ([docs][ref-doc-vault])
@@ -206,6 +208,8 @@ cp .env.example .env
 
 # Generate JWT keys and encryption secrets into .env
 pnpm generate:secret --direct-insert
+
+# Set AUTH_TWO_FACTOR_ISSUER in .env (required, empty in .env.example)
 
 # Generate the Prisma client and src/generated/package/package.ts
 pnpm generate
@@ -245,6 +249,15 @@ Docker is the recommended setup. Step-by-step (Compose first, then Atlas + Redis
 ## Contribute
 
 Contributions are welcome. Start with [CONTRIBUTING.md][ref-doc-contributing].
+
+## Contributors
+
+- [Gzerox][ref-contributor-gzerox]
+  - [Workspace][ref-doc-workspace] (main contributor)
+  - [Project][ref-doc-project] (main contributor)
+- [ak2g][ref-contributor-ak2g]
+  - [Two-Factor Authentication][ref-doc-two-factor]
+  - [Notification][ref-doc-notification]
 
 ## Contact
 
@@ -300,6 +313,11 @@ If this boilerplate helped you, buy me a coffee to keep this project alive.
 [ref-author-github]: https://github.com/andrechristikan
 [ref-author-paypal]: https://www.paypal.me/andrechristikan
 [ref-author-kofi]: https://ko-fi.com/andrechristikan
+
+<!-- CONTRIBUTORS -->
+
+[ref-contributor-gzerox]: https://github.com/Gzerox
+[ref-contributor-ak2g]: https://github.com/ak2g
 
 <!-- Repo LINKS -->
 

@@ -9,6 +9,7 @@ description: >-
   stale-fact repairs in .github/ YAML (writer); or prisma/.
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: opus
+effort: high
 skills: caveman:caveman
 ---
 
@@ -47,8 +48,8 @@ disk, never from `HEAD` or a ref. To list what changed, use `git status --short`
 4. When a rule that `.github/copilot-instructions.md` or `AGENTS.md` summarises changed,
    update that digest so it states nothing the rules do not.
 5. Verify: `jq . .claude/settings.json`; `bash -n` and the executable bit on every hook, plus
-   a smoke test piping sample JSON; frontmatter opens on line 1 with a folded
-   `description: >-` and a YAML-list `paths:`; no all-caps emphasis; budgets by `wc -l`
+   a smoke test piping sample JSON; frontmatter opens on line 1, with a folded
+   `description: >-` and, for a scoped rule, a YAML-list `paths:`; no all-caps emphasis; budgets by `wc -l`
    (`.claude/rules/authoring.md`, Harness files); no file names a deleted file, a retired
    agent, or a retired skill.
 
@@ -66,5 +67,5 @@ every `src/` finding recorded, one line per thing noticed outside the scope.
 ## Not this agent
 
 No `src/`, `test/`, `docs/`, `prisma/`, root people files, or `.github/**` beyond the
-Copilot digest; no `settings.local.json`; no DB or seed command; no dispatching. Commit
-only when the dispatch says the owner asked, under `.claude/CLAUDE.md` Etiquette.
+Copilot digest; no `settings.local.json`; no DB or seed command; no dispatching. No commit,
+no staging.

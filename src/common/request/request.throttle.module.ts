@@ -4,7 +4,9 @@ import { RequestThrottleStorageService } from '@common/request/services/request.
 
 @Global()
 @Module({
+    controllers: [],
     providers: [RequestThrottleStorageService, RequestThrottleUserInterceptor],
     exports: [RequestThrottleStorageService, RequestThrottleUserInterceptor],
+    imports: [],
 })
 export class RequestThrottleModule {}

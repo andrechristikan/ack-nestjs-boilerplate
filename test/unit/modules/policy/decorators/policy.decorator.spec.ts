@@ -1,0 +1,172 @@
+import { GUARDS_METADATA } from '@nestjs/common/constants';
+import type { ExecutionContext, Type } from '@nestjs/common';
+import { ClsServiceManager } from 'nestjs-cls';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { Policy } from '@generated/prisma-client/client';
+import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
+import { PolicyRequiredMetaKey } from '@modules/policy/constants/policy.constant';
+import {
+    PolicyCurrent,
+    PolicyProtected,
+} from '@modules/policy/decorators/policy.decorator';
+import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
+import { PolicyGuard } from '@modules/policy/guards/policy.guard';
+import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
+
+describe('policy.decorator', () => {
+    describe('PolicyProtected', () => {
+        it('mounts PolicyGuard, the required policies, and the policy error kit on the handler', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+            const requiredPolicies = [
+                {
+                    subject: EnumPolicySubject.user,
+                    action: [EnumPolicyAction.manage],
+                },
+            ];
+
+            PolicyProtected(...requiredPolicies)(target, 'method', descriptor);
+
+            expect(
+                Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
+            ).toEqual([PolicyGuard]);
+            expect(
+                Reflect.getMetadata(PolicyRequiredMetaKey, descriptor.value)
+            ).toEqual(requiredPolicies);
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual([
+                expect.objectContaining({
+                    messagePath: 'policy.error.forbidden',
+                }),
+                expect.objectContaining({
+                    messagePath: 'policy.error.predefinedNotFound',
+                }),
+            ]);
+        });
+
+        it('mounts an empty required-policy list when none is given', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+
+            PolicyProtected()(target, 'method', descriptor);
+
+            expect(
+                Reflect.getMetadata(PolicyRequiredMetaKey, descriptor.value)
+            ).toEqual([]);
+        });
+    });
+
+    describe('PolicyCurrent', () => {
+        const clsService: MockProxy<
+            ReturnType<typeof ClsServiceManager.getClsService>
+        > = mock<ReturnType<typeof ClsServiceManager.getClsService>>();
+        const executionContext: MockProxy<ExecutionContext> =
+            mock<ExecutionContext>();
+
+        beforeEach(() => {
+            vi.resetAllMocks();
+            vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue(
+                clsService
+            );
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it('throws RequestContextMissingException when the policy store is undefined', () => {
+            clsService.get.mockReturnValue(undefined);
+            const target = {} as Type<unknown>;
+            PolicyCurrent()(target, 'policies', 0);
+            const factory = getParamDecoratorFactory(target, 'policies');
+
+            let thrown: unknown;
+            try {
+                factory(undefined, executionContext);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toMatchObject({
+                module: 'request',
+                statusCode: EnumRequestStatusCodeError.contextMissing,
+                statusCodeKey:
+                    EnumRequestStatusCodeError[
+                        EnumRequestStatusCodeError.contextMissing
+                    ],
+                messagePath: 'request.error.contextMissing',
+                rawError: expect.objectContaining({
+                    message:
+                        'RequestContextMissingException: no value for "PolicyStore"',
+                }),
+            });
+        });
+
+        it('throws RequestContextMissingException when the policy store is null', () => {
+            clsService.get.mockReturnValue(null);
+            const target = {} as Type<unknown>;
+            PolicyCurrent()(target, 'policies', 0);
+            const factory = getParamDecoratorFactory(target, 'policies');
+
+            let thrown: unknown;
+            try {
+                factory(undefined, executionContext);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toMatchObject({
+                module: 'request',
+                statusCode: EnumRequestStatusCodeError.contextMissing,
+                statusCodeKey:
+                    EnumRequestStatusCodeError[
+                        EnumRequestStatusCodeError.contextMissing
+                    ],
+                messagePath: 'request.error.contextMissing',
+                rawError: expect.objectContaining({
+                    message:
+                        'RequestContextMissingException: no value for "PolicyStore"',
+                }),
+            });
+        });
+
+        it('returns an empty policy list as a valid value', () => {
+            clsService.get.mockReturnValue([]);
+            const target = {} as Type<unknown>;
+            PolicyCurrent()(target, 'policies', 0);
+            const factory = getParamDecoratorFactory(target, 'policies');
+
+            expect(factory(undefined, executionContext)).toEqual([]);
+        });
+
+        it('returns the resolved policies', () => {
+            const policies: Policy[] = [
+                {
+                    id: 'policy-1',
+                    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                    createdBy: null,
+                    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+                    updatedBy: null,
+                    roleId: 'role-1',
+                    subject: EnumPolicySubject.user,
+                    action: [EnumPolicyAction.manage],
+                },
+            ];
+            clsService.get.mockReturnValue(policies);
+            const target = {} as Type<unknown>;
+            PolicyCurrent()(target, 'policies', 0);
+            const factory = getParamDecoratorFactory(target, 'policies');
+
+            expect(factory(undefined, executionContext)).toBe(policies);
+        });
+    });
+});

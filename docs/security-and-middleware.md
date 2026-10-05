@@ -177,13 +177,15 @@ Their responses are therefore identical in shape. `RequestThrottleStorageService
 Every handler carrying `@AuthJwtAccessProtected()` or `@AuthJwtRefreshProtected()` also carries `@RequestThrottle({ user: true })`:
 
 - `user: true` on a request with no authenticated user is a silent no-op
-- the `public` and `system` scopes, which never populate `req.user`, deliberately omit the switch
+- the `public` and `system` scopes, which never populate `req.user`, omit the switch
 - a JWT-protected handler that omits it keeps only the global per-IP limit, and nothing fails or logs to say so
 
 ```typescript
+@TermPolicyAcceptanceProtected()
 @UserProtected()
 @FeatureFlagProtected('changePassword')
 @AuthJwtAccessProtected()
+@ApiKeyProtected()
 @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
 @Patch('/password/change')
 async changePassword(
@@ -255,13 +257,13 @@ Manages cross-origin resource sharing (CORS): origin matching with wildcard subd
 **Implementation:** `RequestCorsMiddleware`
 
 **Features:**
-- **Protocol-agnostic matching** — Accepts both `http` and `https` origins
-- **Dynamic origin validation** — Supports exact hostname matching, wildcard subdomains, and specific ports
-- **Automatic credential handling** — Credentials allowed only when using specific origins (not wildcard)
-- **Configurable methods and headers** — Define allowed HTTP methods and accepted request headers
-- **Exposed response headers** — `request.cors.exposedHeader` is emitted as `Access-Control-Expose-Headers`; it carries `Retry-After` and all nine `X-RateLimit-*` variants, so a browser client can read its rate-limit state cross-origin. See [Rate Limiting](#rate-limiting)
-- **Preflight request support** — Handles OPTIONS requests with proper cache control (max-age: 86400s)
-- **Flexible configuration** — Accept single string, array of origins, boolean (true=allow all, false=deny all), or wildcard `*`
+- Accepts both `http` and `https` origins for the same pattern
+- Matches an origin by exact hostname, wildcard subdomain, or explicit port
+- Allows credentials unless the configured origins include the wildcard `*`
+- Takes the allowed methods and request headers from config
+- Emits `request.cors.exposedHeader` as `Access-Control-Expose-Headers`; it carries `Retry-After` and all nine `X-RateLimit-*` variants, so a browser client can read its rate-limit state cross-origin. See [Rate Limiting](#rate-limiting)
+- Answers OPTIONS preflight requests with `204` and `max-age` 86400 seconds
+- Accepts a single string, an array of origins, a boolean (`true` allows all, `false` denies all), or the wildcard `*`
 
 **Origin Matching Rules:**
 
@@ -520,8 +522,10 @@ interface IRequestThrottleOptions {
 
 **Example:**
 ```typescript
+@TermPolicyAcceptanceProtected()
 @UserProtected()
 @AuthJwtAccessProtected()
+@ApiKeyProtected()
 @RequestThrottle({ user: true })
 @Get('/profile/get')
 async profile(
@@ -548,13 +552,15 @@ StoreReader<K extends Extract<keyof Model, string>>(field?: K): ParameterDecorat
 ```
 
 - Without `field`, the decorator returns the whole stored value; with `field`, it returns that property, typed as a key of the model and non-nullable.
-- Every reader fails fast. An empty store key, or a `field` whose value is `null` or `undefined`, throws `RequestContextMissingException` (500, `50304`, message `request.error.contextMissing`). The key name travels only in the exception's `rawError` and never reaches the response body. A missing value means the guard or middleware that writes the key did not run on the route.
+- Every reader fails fast. An empty store key, or a `field` whose value is `null` or `undefined`, throws `RequestContextMissingException` (500, `50304`, message `request.error.contextMissing`). `@PolicyCurrent()` takes no field and accepts an empty list, which is what a `superAdmin` carries. The key name travels only in the exception's `rawError` and never reaches the response body. A missing value means the guard or middleware that writes the key did not run on the route.
 - A handler parameter therefore takes the non-null type, as in `@UserCurrent() user: IUser`.
 
 | Decorator | Reads | Store key | Written by |
 |---|---|---|---|
 | `@RequestIPAddress()`, `@RequestGeoLocation()`, `@RequestUserAgent()` | one fixed field of the request log, no argument | `RequestLogStoreKey` | `RequestRequestLogMiddleware` |
 | `@UserCurrent(field?)` | `IUser` | `UserStoreKey` | `UserGuard` |
+| `@RoleCurrent(field?)` | `IRoleWithPolicies`, the role on the stored user | `UserStoreKey` | `UserGuard` |
+| `@PolicyCurrent()` | `Policy[]`, no argument | `PolicyStoreKey` | `RoleGuard` |
 | `@ApiKeyPayload(field?)` | `ApiKey` | `ApiKeyStoreKey` | `ApiKeyXApiKeyGuard` |
 | `@WorkspaceCurrent(field?)` | `Workspace` | `WorkspaceStoreKey` | `WorkspaceGuard` |
 | `@WorkspaceMemberCurrent(field?)` | `WorkspaceMember` | `WorkspaceMemberStoreKey` | `WorkspaceMemberGuard` |

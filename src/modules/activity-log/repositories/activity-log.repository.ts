@@ -188,10 +188,8 @@ export class ActivityLogRepository implements IActivityLogRepository {
     async createMany(rows: IActivityLogCreate[]): Promise<Prisma.BatchPayload> {
         const createManyData = this.mapCreateManyData(rows);
 
-        return this.databaseService.withTransaction(async tx =>
-            tx.activityLog.createMany({
-                data: createManyData,
-            })
-        );
+        return this.databaseService.client.activityLog.createMany({
+            data: createManyData,
+        });
     }
 }

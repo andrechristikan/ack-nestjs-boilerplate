@@ -64,7 +64,7 @@ export class DeviceSharedController {
         return this.deviceHttpService.getListCursor(userId, sessionId, query);
     }
 
-    @Doc({ summary: 'Refresh device information' })
+    @Doc({ summary: 'refresh device information' })
     @Response('device.refresh')
     @TermPolicyAcceptanceProtected()
     @UserProtected()

@@ -14,7 +14,7 @@ export class UserMobileNumberAnalyticDomain {
         private readonly activityLogAnalyticDomain: ActivityLogAnalyticDomain
     ) {}
 
-    async verificationRate(): Promise<IAnalyticMetricRate> {
+    async getVerificationRate(): Promise<IAnalyticMetricRate> {
         const [verified, total] = await Promise.all([
             this.userMobileNumberAnalyticRepository.countVerified(),
             this.userMobileNumberAnalyticRepository.countAll(),
@@ -26,19 +26,22 @@ export class UserMobileNumberAnalyticDomain {
         };
     }
 
-    async churn(startDate: Date, endDate: Date): Promise<IAnalyticMobileChurn> {
+    async getChurn(
+        startDate: Date,
+        endDate: Date
+    ): Promise<IAnalyticMobileChurn> {
         const [added, updated, deleted] = await Promise.all([
-            this.activityLogAnalyticDomain.countByActionsInRange(
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
                 [EnumActivityLogAction.userAddMobileNumber],
                 startDate,
                 endDate
             ),
-            this.activityLogAnalyticDomain.countByActionsInRange(
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
                 [EnumActivityLogAction.userUpdateMobileNumber],
                 startDate,
                 endDate
             ),
-            this.activityLogAnalyticDomain.countByActionsInRange(
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
                 [EnumActivityLogAction.userDeleteMobileNumber],
                 startDate,
                 endDate

@@ -106,7 +106,7 @@ export class WorkspaceMemberHttpService {
         );
     }
 
-    async getMembersListForAdmin(
+    async getMembersListByAdmin(
         workspaceId: string,
         query: WorkspaceAdminMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
@@ -120,7 +120,7 @@ export class WorkspaceMemberHttpService {
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =
-            await this.workspaceMemberDomain.getMembersListForAdmin(
+            await this.workspaceMemberDomain.getMembersListByAdmin(
                 workspaceId,
                 params
             );

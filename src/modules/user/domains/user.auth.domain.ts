@@ -111,7 +111,7 @@ export class UserAuthDomain {
         await this.userPasswordDomain.resetPasswordAttempt(user.id);
 
         const checkPasswordExpired: boolean =
-            this.authPasswordUtil.checkPasswordExpired(user.passwordExpired!);
+            this.authPasswordUtil.checkPasswordExpired(user.passwordExpired);
         if (checkPasswordExpired) {
             throw new UserPasswordExpiredException();
         }

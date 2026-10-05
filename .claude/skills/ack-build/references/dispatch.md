@@ -1,5 +1,22 @@
 # ack-build dispatch templates
 
+## Foreground dispatch
+
+Binds the fork skills `ack-build` and `ack-spec`: a fork's run is one turn, and a result
+that returns after the turn ends lands in the parent session and never reaches the fork.
+`ack-doc` runs in the session and follows the same rules.
+
+- Pass `run_in_background: false` on every Agent call where the tool offers the parameter;
+  where it does not, a subagent already runs synchronously. Either way, end the turn only
+  when no dispatched agent is running and every result has been read and acted on. A step
+  whose agent is still running is unfinished work, not a hand-back.
+- Run parallel work (a review split into parts, one reader test per file) as several calls
+  in one message. They run concurrently; the next step starts when every call in the
+  message has returned.
+- Read each result and act on it (confirm or reject, route, record) before the next step.
+
+## Every dispatch
+
 Every dispatch carries these lines verbatim after the template body:
 
 ```
@@ -13,14 +30,16 @@ Reply in English.
 ```
 
 Rules by path: the four unscoped rules bind every file (`.claude/rules/layering.md`,
-`cross-module.md`, `null-safety.md`, `naming.md`). Add the scoped rule whose `paths:`
-matches a file in the dispatch: `code-style.md` (src, test), `http.md` (controllers,
-router, app), `dto.md` (dtos, request, response, pagination), `database.md`
-(repositories, prisma), `exceptions.md` (exceptions, status-code enums), `queue.md`
-(processors, queues, notification), `security.md` (auth, session, api-key, user),
-`config.md` (configs, logger, sentry, cache, redis), `i18n.md` (languages, message),
-`file.md`, `feature-flag.md`, `enum.md`, `testing.md` (test), `seeding.md` (migration),
-`docker.md` (docker-compose, dockerfiles, ci, the test container helper).
+`cross-module.md`, `null-safety.md`, `naming.md`). Add each scoped rule whose `paths:`
+frontmatter (the source) matches a file in the dispatch; by area: `code-style.md` (src,
+test), `http.md` (controllers, router, app), `dto.md` (dtos, request, response, pagination),
+`database.md` (repositories, prisma, common database), `exceptions.md` (exceptions,
+status-code enums, app), `queue.md` (processors, queues, notification), `security.md` (auth,
+session, api-key, user, request, instrument), `config.md` (configs, env example, logger,
+sentry, cache, redis), `i18n.md` (languages, message), `file.md` (file, aws),
+`feature-flag.md` (its module), `enum.md` (enums), `testing.md` (test, Vitest config),
+`seeding.md` (migration), `docker.md` (compose, dockerfiles, ci, test container helper),
+`authoring.md` (docs, `.claude`, `.github`, `AGENTS.md`, root people files).
 
 ## Explorer
 
@@ -69,14 +88,14 @@ Test first: when the task changes src/ behaviour, write the failing spec under t
 Acceptance: `pnpm typecheck` exit 0; the task's own acceptance commands when the plan
   names them (`pnpm test:integration`, `pnpm test:e2e`, the parity counts), otherwise
   `pnpm test <module>` green with the new spec named; the run surface (package.json
-  scripts, scripts/, ci/, ci/docker-compose.yml, docker-compose.yml, the root
-  dockerfile.local, .github/workflows/, .github/dependabot.yml, nest-cli.json,
-  vitest.config.ts, knip.json, tsconfig*.json, eslint.config.mjs, .husky/, .gitignore) repaired where this change
-  moved a command, port, path, or script name.
+  scripts, scripts/, ci/, ci/docker-compose.yml, ci/dockerfile.local, docker-compose.yml,
+  the root dockerfile.local, .github/workflows/, .github/dependabot.yml, nest-cli.json,
+  vitest.config.ts, knip.json, tsconfig*.json, eslint.config.mjs, .husky/, .gitignore)
+  repaired where this change moved a command, port, path, or script name.
 Schema: when prisma/schema.prisma changes, run `pnpm db:generate` and hand back the
   model, field, index, data consequence, and `pnpm db:migrate` for the owner. Do not
   run db:migrate, migration:*, db:studio, mongosh, or redis-cli.
-Seeds: a seed under src/migration/ follows the `ack-add-seed` skill.
+Seeds: a seed under src/migration/ follows `.claude/skills/ack-build/references/add-seed.md`.
 Rules to read: <paths from the list above>
 Report: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED; files changed; the decisive
   test and typecheck lines; open items.
@@ -89,13 +108,13 @@ Agent: reviewer
 Depth: task | plan | docs | harness | rules and boot | end to end through guards, services, repository, processors
 Scope: <files and modules from git status --short, a plan path, docs files, or harness files, as the depth needs>
 Requirement: <the task brief, the plan path, or the settled paragraph>
-Checks: at task, rules and boot, and end to end: every rule file that binds a changed
-  path, named in the report; boot (pnpm start:dev until the routes mount, then stop it)
-  when the depth includes it; pnpm typecheck, pnpm lint, pnpm deadcode, pnpm spell. At
-  plan, docs, and harness: only what the depth names in .claude/agents/reviewer.md.
-  Never the full pnpm test.
-Report: only what affects correctness or the stated requirement, each with file:line and
-  the rule or requirement it breaks; the rule files read; the surfaces checked and found
-  clean. Do not fix anything.
+Checks: at task, rules and boot, and end to end: every rule file that binds a changed path,
+  named in the report; boot (pnpm start:dev until the routes mount, then stop it) when the
+  depth includes it; pnpm typecheck, pnpm lint, pnpm deadcode, pnpm spell. At plan, docs,
+  and harness: only what the depth names in .claude/agents/reviewer.md. Never the full pnpm
+  test.
+Report: only what affects correctness or the stated requirement, each labelled Critical,
+  Important, or Minor, with file:line and the rule or requirement it breaks; the rule
+  files read; the surfaces checked and found clean. Do not fix anything.
 Rules to read: <paths from the list above>
 ```

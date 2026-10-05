@@ -4,9 +4,8 @@
 
 1. `undefined` is legal only at the input boundary: request DTO body and query DTO. Every
    layer deeper speaks `null`.
-2. Do not write `field?: Type | null` on new code. A caller cannot tell whether omitting the
-   field and passing `null` mean the same thing. Pick one; clean an existing union when the
-   file is touched.
+2. Never write `field?: Type | null`: a caller cannot tell whether omitting the field and
+   passing `null` mean the same thing. Pick one.
 
 ## Where each convention applies
 
@@ -31,14 +30,15 @@ the ambiguity one layer deeper.
 
 ## Consequences
 
-- No `any`, as a param, a cast, or a generic argument.
 - Every public method on a controller, HTTP service, domain, or repository names its shape:
   an `I*` interface, a Prisma model, a primitive, or a DTO type. `Promise<unknown>`,
   `Record<string, unknown>`, and `Record<string, any>` are not stand-ins for an owned
   payload; map a Prisma `groupBy` or aggregate into the named type inside the repository.
 - `unknown` is a narrowing input only: a `catch` binding before a type guard, or a
-  third-party callback value before it is narrowed into a type we own. Not a return type,
-  not a field on an `I*`, not a way to silence typecheck.
+  third-party callback value before it is narrowed into a type we own. Not a field on an
+  `I*`, not a way to silence typecheck, and a return type only where a function hands back
+  its own `unknown` input untouched: an error mapper returns an unmatched error as it came
+  (`src/modules/user/utils/user.onboarding.util.ts:12`).
 - A non-null assertion (`!`) is permitted only where the value is structurally guaranteed and
   the compiler cannot see it; `ConfigService.get` for a key `AppEnvSchema` requires is the
   canonical case. Anywhere else, handle the null.

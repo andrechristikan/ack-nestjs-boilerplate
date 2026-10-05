@@ -8,18 +8,18 @@ export class ProjectAnalyticDomain {
         private readonly projectAnalyticRepository: ProjectAnalyticRepository
     ) {}
 
-    async creation(
+    async getCreation(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticProjectCreation> {
         const [created, perWorkspace] = await Promise.all([
             this.projectAnalyticRepository.countCreated(startDate, endDate),
-            this.projectAnalyticRepository.perWorkspace(),
+            this.projectAnalyticRepository.groupByWorkspace(),
         ]);
         return { created, perWorkspace };
     }
 
-    countByWorkspace(workspaceId: string): Promise<number> {
+    getCountByWorkspace(workspaceId: string): Promise<number> {
         return this.projectAnalyticRepository.countByWorkspace(workspaceId);
     }
 }

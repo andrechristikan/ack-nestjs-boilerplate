@@ -9,6 +9,7 @@ description: >-
   a workflow or dependabot.yml a change moves or a plan task lists (coder).
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: opus
+effort: medium
 skills: caveman:caveman, humanizer:humanizer, example-skills:doc-coauthoring, diagram-design:diagram-design
 ---
 

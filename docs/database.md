@@ -290,7 +290,7 @@ Every model in `prisma/schema.prisma` maps to a MongoDB collection through `@@ma
 
 ## Composite Types
 
-Prisma composite types are embedded sub-documents in MongoDB (not separate collections). They are defined with the `type` keyword in `prisma/schema.prisma` and stored inline within the parent document rather than in separate collections.
+Prisma composite types are embedded sub-documents in MongoDB. They are defined with the `type` keyword in `prisma/schema.prisma` and stored inline in the parent document, with no collection of their own.
 
 ### GeoLocation
 
@@ -466,8 +466,8 @@ type TermPolicyContent {
 | `key` | `String` | S3 object key |
 | `cdnUrl` | `String?` | Full CDN URL of the object, `null` for a bucket with no CDN configured |
 | `completedUrl` | `String` | Full S3 URL of the object |
-| `mime` | `String` | MIME type (e.g. `application/pdf`) |
-| `extension` | `String` | File extension (e.g. `pdf`) |
+| `mime` | `String` | MIME type (e.g. `text/x-handlebars-template`) |
+| `extension` | `String` | File extension (e.g. `hbs`) |
 | `access` | `String` | Access level (`public` or `private`) |
 | `size` | `Int` | File size in bytes |
 
@@ -512,10 +512,10 @@ What that means for callers:
 - Repositories and migration seeds read and write through `databaseService.client.<model>`. There is no alternative: `DatabaseService` does not extend `PrismaClient` and exposes no model delegate. Every query through `client` participates in actor stamping and gains the `softDelete` / `restore` methods.
 - A Prisma extended client does not expose `$on`, so the event log handlers are registered against the raw `DatabaseClientFactory` instance. `$connect`, `$disconnect`, `$transaction`, and `$runCommandRaw` all work on `client`.
 - In `src/modules`, every transaction opens through `DatabaseService.withTransaction`, which is Prisma's callback form of `$transaction` on `client`, so audit stamping still fires inside it. Every statement in the callback uses the `tx` client; a call back to `databaseService.client` escapes the transaction.
-- A repository issues statements only against the model it owns, plus satellite models that have no repository of their own (`NotificationRepository` writes `NotificationDelivery` rows through a nested `createMany`). `DeviceRepository` owns `Device` and `DeviceOwnershipRepository` owns `DeviceOwnership`; `DeviceDomain` composes the two. Another model's row is reached through that model's repository, composed by a domain. `ActivityLog` is written only by `ActivityLogRepository.createMany`: feature domains prepare events with `ActivityLogDomain.prepare`, stage them with `ActivityLogDomain.stagePrepared` after the audited write, and `ActivityLogInterceptor` flushes them after the handler settles. See [Activity Log][ref-doc-activity-log].
+- A repository issues statements only against the model it owns, plus satellite models that have no repository of their own (`NotificationRepository` writes `NotificationDelivery` rows through a nested `createMany`). `DeviceRepository` owns `Device` and `DeviceOwnershipRepository` owns `DeviceOwnership`; `DeviceDomain` composes the two. Another model's row is reached through that model's repository, composed by a domain. Outside the seeds (the `user` seed writes its activity rows on `tx`), `ActivityLog` is written only by `ActivityLogRepository.createMany`: feature domains prepare events with `ActivityLogDomain.prepare`, stage them with `ActivityLogDomain.stagePrepared` after the audited write, and `ActivityLogInterceptor` flushes them after the handler settles. See [Activity Log][ref-doc-activity-log].
 - Who opens the transaction depends on how many statements and repositories the write spans:
   - A single-statement write against one document runs on `databaseService.client` with no transaction. MongoDB applies a single-document write atomically.
-  - More than one statement, or a multi-document write, on one repository's own models: the repository method calls `this.databaseService.withTransaction` itself and takes no `tx`. `SessionRepository.revokeActiveByUser`, `ActivityLogRepository.createMany`, and `NotificationRepository.createMany` are examples.
+  - More than one statement, or a multi-document write, on one repository's own models: the repository method calls `this.databaseService.withTransaction` itself and takes no `tx`. `SessionRepository.revokeActiveByUser` and `NotificationRepository.createMany` are examples. `ActivityLogRepository.createMany` is one `createMany` statement and runs on `client` with no transaction.
   - A write that spans more than one repository: the domain calls `this.databaseService.withTransaction` and each collaborator is an `*InTx(tx, ...)` method with required `tx: IDatabaseTransactionClient`. A method that does not join a caller-owned transaction takes no `tx`. `DeviceDomain.refresh` opens the transaction around `DeviceOwnershipRepository.touchInTx` and `DeviceRepository.refreshInTx`. `WorkspaceDomain.commitOnboarding` opens the onboarding `withTransaction` (`UserHttpModule` imports `WorkspaceDomainModule`; `UserDomainModule` does not).
 - `withTransaction(fn, options?)` takes `IDatabaseTransactionOptions` (`interfaces/database.client.interface.ts`), Prisma's `transactionOptions` shape. Omitted options keep Prisma's defaults (`maxWait` 2 s, `timeout` 5 s). A caller passes options only from its own `*TimeoutInMs` config key: `WorkspaceDomain.commitOnboarding` receives `user.onboarding.createTimeoutInMs` or `createBulkTimeoutInMs`, and the seeds read `database.seedTransactionTimeoutInMs`.
 - The MongoDB ping lives in `HealthDatabaseIndicator.isHealthy()` (`src/modules/health/indicators/health.database.indicator.ts`), which calls `databaseService.client.$runCommandRaw({ ping: 1 })`. `DatabaseService` carries no health method.
@@ -539,11 +539,11 @@ The extension adds two methods to every model. They are meaningful only on model
 - `restore({ where, data? })` clears `deletedAt` and `deletedBy` back to null, sets `updatedBy` from the actor, and merges caller `data`. An explicit `updatedBy` in `data` wins.
 - A hard delete (`delete` / `deleteMany`) writes no audit fields.
 
-**Reads are not filtered.** The extension only writes audit fields; it never rewrites a `where`. Excluding soft-deleted rows stays explicit, so a read against a soft-deletable model carries `deletedAt: null` itself. An automatic read filter is deliberately not applied: `PaginationService` counts through `repository.count()`, which such a filter would leave unfiltered, making a page and its total disagree.
+**Reads are not filtered.** The extension only writes audit fields; it never rewrites a `where`. Excluding soft-deleted rows stays explicit: an active-only read on `Workspace` or `Project` carries `OR: WorkspaceActiveFilter` or `OR: ProjectActiveFilter`, each `[{ deletedAt: null }, { deletedAt: { isSet: false } }]`, because the MongoDB connector compiles a bare `{ deletedAt: null }` into a query that also requires the field to be present. A `User` read carries `deletedAt: null`. `PaginationService` counts through `repository.count()` with the same explicit `where`, so a page and its total agree.
 
 ## Generated Unique Values
 
-Some columns carry a server-generated value that must be unique: workspace and project slugs today. A random draw can collide with a row that already holds it, so every generator works from a **bounded candidate list that ends in a thrown exception**, never an unbounded loop and never a leaked Prisma error.
+Some columns carry a server-generated value that must be unique: workspace and project slugs. A random draw can collide with a row that already holds it, so each consumer below works from a **bounded candidate list that ends in a thrown exception**, never an unbounded loop and never a leaked Prisma error.
 
 The shape is the same in all three places:
 
@@ -575,7 +575,7 @@ The database client is **[Prisma][ref-prisma] v6.19.x**. Repositories talk to Pr
 
 This boilerplate uses **MongoDB** (`provider = "mongodb"`). ObjectId helpers, replica-set transactions, and seed commands assume MongoDB. There is no `prisma migrate` history; shape changes go through `db push`.
 
-PostgreSQL is on the project TODO. Setup and seeding for the current MongoDB path are in the sections above.
+Setup and seeding for MongoDB are in the sections above.
 
 #### Learn More
 

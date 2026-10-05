@@ -6,8 +6,8 @@ Only the latest minor release line receives security updates. Please upgrade bef
 
 | Version | Supported |
 |---------|-----------|
-| 9.0.x   | ✅        |
-| < 9.0   | ❌        |
+| 9.1.x   | ✅        |
+| < 9.1   | ❌        |
 
 ## Reporting a Vulnerability
 

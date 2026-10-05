@@ -237,7 +237,6 @@ google: {
   header: string;                 // HTTP header for Google auth
   prefix: string;                 // Token prefix for Google auth
   clientId: string | null;        // Google OAuth client ID
-  clientSecret: string | null;    // Google OAuth client secret
 }
 ```
 
@@ -292,24 +291,24 @@ s3: {
   maxAttempts: number;            // Maximum retry attempts for S3 operations (default: 3)
   timeoutInMs: number;            // Request timeout in milliseconds (default: 30000ms)
   region: string | null;          // AWS region for S3
+  endpoint: string | null;        // Custom S3 endpoint (LocalStack or another S3-compatible store), from AWS_S3_ENDPOINT
+  baseUrlPattern: string;         // Bucket base URL template; '{endpoint}/{bucket}' with an endpoint, 'https://{bucket}.s3.{region}.amazonaws.com' without
   objectUrlPattern: string;       // Object URL template ('{baseUrl}/{key}')
   cdnUrlPattern: string;          // CDN URL template ('{cdnUrl}/{key}')
   iam: {
     key: string | null;           // AWS IAM access key ID
     secret: string | null;        // AWS IAM secret access key
-    arn: string | null;           // AWS IAM Role ARN for role-based access
+    arn: string | null;           // IAM principal ARN granted full access in the public bucket policy
   };
   config: {
     public: {
       bucket: string | null;      // Public S3 bucket name
       arn: string | null;         // Public S3 bucket ARN
-      baseUrl: string | null;     // S3 base URL (auto-generated)
       cdnUrl: string | null;      // CDN URL if available
     };
     private: {
       bucket: string | null;      // Private S3 bucket name
       arn: string | null;         // Private S3 bucket ARN
-      baseUrl: string | null;     // S3 base URL (auto-generated)
       cdnUrl: string | null;      // CDN URL if available
     };
   };
@@ -317,13 +316,13 @@ s3: {
 ```
 
 > [!NOTE]
-> **IAM Configuration Notes**:
-> - The `iam.key` and `iam.secret` are used for standard IAM user credentials
-> - The `iam.arn` is used for IAM role assumption (recommended for production)
-> - When using IAM roles, temporary credentials are automatically rotated
-> - Bucket ARNs are auto-generated as `arn:aws:s3:::{bucket-name}`
-> - Base URLs are built from the `https://{bucket}.s3.{region}.amazonaws.com` template, and a CDN URL from `https://{cdn}`
-> - `AwsS3Service.buildUrls` fills `objectUrlPattern` with the bucket `baseUrl` and the object key, and `cdnUrlPattern` with the bucket `cdnUrl` and the same key; a bucket without a `cdnUrl` reports `cdnUrl: null`
+> **S3 Configuration Notes**:
+> - `AwsS3Service` builds its client from `iam.key`, `iam.secret`, and `region` on module init. With any of the three missing, S3 stays unconfigured: the service logs a warning, and a request that needs S3 answers `AwsS3NotConfiguredException` (404)
+> - With an `endpoint`, the client targets that endpoint with path-style addressing
+> - `iam.arn` is read only by the bucket policy the `awsS3Config` seed applies to the public bucket; the seed skips with a warning when S3 or `iam.arn` is unset
+> - Bucket ARNs are built as `arn:aws:s3:::{bucket-name}`, and a CDN URL as `https://{cdn}`
+> - `AwsS3Service` fills `baseUrlPattern` per bucket at construction; a bucket with no name, or with neither `endpoint` nor `region`, has no base URL
+> - `AwsS3Service.buildUrls` fills `objectUrlPattern` with the bucket base URL and the object key, and `cdnUrlPattern` with the bucket `cdnUrl` and the same key; a bucket without a `cdnUrl` reports `cdnUrl: null`
 
 **`ses`** - Simple Email Service configuration
 ```typescript
@@ -331,22 +330,22 @@ ses: {
   iam: {
     key: string | null;           // AWS IAM access key ID for SES
     secret: string | null;        // AWS IAM secret access key for SES
-    arn: string | null;           // AWS IAM Role ARN for SES operations
   };
+  identityArn: string | null;     // SES identity ARN, sent as `SourceArn` on every send when set
   region: string | null;          // AWS region for SES
+  endpoint: string | null;        // Custom SES endpoint (LocalStack), from AWS_SES_ENDPOINT
 }
 ```
 
 > [!NOTE]
-> **SES IAM Configuration**:
-> - Similar to S3, SES supports both standard credentials and IAM role-based access
-> - Using IAM roles (`iam.arn`) is recommended for better security
-> - Credentials are used for sending emails and managing SES operations
+> **SES Configuration Notes**:
+> - `AwsSESService` builds its client from `iam.key`, `iam.secret`, and `region` on module init. With any of the three missing, SES stays unconfigured and logs a warning; email features are off
+> - `identityArn` is the ARN of a verified SES identity, used for sending authorization
 
 ### Logger Configuration
 
 **File**: `src/configs/logger.config.ts`
-**Interface**: `IConfigDebug`
+**Interface**: `IConfigLogger`
 
 
 
@@ -385,10 +384,16 @@ prettier: boolean               // Format logs for better readability
 **`sentry`** - Sentry integration configuration
 ```typescript
 sentry: {
-  dsn: string | null;           // Sentry DSN for error tracking; null when unset
-  timeoutInMs: number;          // Sentry timeout in milliseconds
+  dsn: string | null;                    // Sentry DSN for error tracking; null when unset
+  timeoutInMs: number;                   // Sentry timeout in milliseconds (ms('10s'))
+  tracesSampleRate: number;              // Trace sample rate outside production (1)
+  tracesSampleRateProduction: number;    // Trace sample rate in production (0.3)
+  profilesSampleRate: number;            // Profile sample rate outside production (0.5)
+  profilesSampleRateProduction: number;  // Profile sample rate in production (0.1)
 }
 ```
+
+> `src/instrument.ts` picks the production or non-production rate from `APP_ENV`.
 
 ### Request Configuration
 
@@ -512,14 +517,14 @@ queue: {
 ### User Configuration
 
 **File**: `src/configs/user.config.ts`
-**Interface**: `IUserConfig`
+**Interface**: `IConfigUser`
 
 
 #### Configuration Keys:
 
-**`usernamePattern`** - Username validation pattern
+**`usernameRegex`** - Username validation expression
 ```typescript
-usernamePattern: RegExp         // Regex pattern for valid usernames
+usernameRegex: RegExp           // Regular expression a valid username matches (/^[a-zA-Z0-9-_]+$/)
 ```
 
 **`uploadPhotoProfilePath`** - User profile photo upload path template
@@ -529,12 +534,12 @@ uploadPhotoProfilePath: string  // Path template for user profile photo uploads
 
 **`maxDataImport`** - User CSV import row cap
 ```typescript
-maxDataImport: number           // Maximum rows accepted in a user CSV import (default: 50)
+maxDataImport: number           // Maximum rows accepted in a user CSV import (default: 50); the user import route hands this key to `FileCsvValidationPipe`
 ```
 
 **`maxDataExport`** - User CSV export row cap
 ```typescript
-maxDataExport: number           // Maximum users `UserImportDomain.exportByAdmin` returns (default: 500); one row more raises FileExceedMaxDataExportException
+maxDataExport: number           // User CSV export row cap (default: 500), overriding `file.maxDataExport`; the user export route hands this key to `@ResponseFile`, and `UserImportDomain.exportByAdmin` bounds its query by it; one row more raises FileExceedMaxDataExportException
 ```
 
 **`default`** - Default role and country assigned to new users
@@ -545,7 +550,7 @@ default: {
 }
 ```
 
-**`onboarding`** - `withTransaction` timeouts `WorkspaceDomain.commitOnboarding` applies to the onboarding compose
+**`onboarding`** - `withTransaction` timeouts `WorkspaceDomain.commitOnboarding` applies to the onboarding compose; `UserOnboardingDomain` reads them
 ```typescript
 onboarding: {
   createTimeoutInMs: number;      // Single-user compose (`WorkspaceDomain.commitOnboarding`) (ms('10s'))
@@ -553,7 +558,7 @@ onboarding: {
 }
 ```
 
-> Single-user callers (`UserHttpService.createByAdmin`, `UserAuthHttpService` sign-up and social create) pass `createTimeoutInMs`. `UserImportHttpService.importByAdmin` passes `createBulkTimeoutInMs`. Both reach `WorkspaceDomain.commitOnboarding` as `timeoutInMs`.
+> Single-user callers (`UserHttpService.createByAdmin`, `UserAuthHttpService` sign-up and social create) pass `createTimeoutInMs` from `UserOnboardingDomain.getCreateTimeoutInMs`. `UserImportHttpService.importByAdmin` passes `createBulkTimeoutInMs` from `UserOnboardingDomain.getCreateBulkTimeoutInMs`. Both reach `WorkspaceDomain.commitOnboarding` as `timeoutInMs`.
 
 ### Documentation Configuration
 
@@ -615,17 +620,12 @@ language: string                // Default application language
 
 **`noreply`** - No-reply email address
 ```typescript
-noreply: string | null          // No-reply email address for system emails
+noreply: string | null          // No-reply email address for system emails, from EMAIL_NO_REPLY
 ```
 
 **`support`** - Support email address
 ```typescript
-support: string | null          // Support/contact email address
-```
-
-**`admin`** - Admin email address
-```typescript
-admin: string | null            // Administrator email address
+support: string | null          // Support/contact email address, from EMAIL_SUPPORT
 ```
 
 **`batchSize`** - Email batch size
@@ -783,7 +783,7 @@ cacheTtlInMs: number            // Cache TTL in milliseconds for feature flag da
 anonymous: {
   headerName: string;           // HTTP header carrying the anonymous id (default: 'x-anonymous-id')
   idMaxLength: number;          // Maximum anonymous id length (default: 100)
-  idPattern: RegExp;            // Regex pattern for a valid anonymous id
+  idRegex: RegExp;              // Regular expression a valid anonymous id matches (/^[a-zA-Z0-9-_]+$/)
 }
 ```
 
@@ -830,7 +830,7 @@ privateKey: string | null       // Service account private key (PEM), verbatim f
 ```
 
 > [!NOTE]
-> All Firebase config fields are optional. They are required only when push notification features are enabled. The `FirebaseConfig` is registered in `src/configs/index.ts` alongside other config modules.
+> The three Firebase fields are all set or all unset: `AppEnvSchema` rejects a partial set at boot. With all three unset, push delivery is off. The `FirebaseConfig` is registered in `src/configs/index.ts` alongside other config modules.
 
 ### Queue Configuration
 
@@ -844,6 +844,7 @@ privateKey: string | null       // Service account private key (PEM), verbatim f
 ```typescript
 job: {
   attempts: number;                    // Retry attempts per job (default: 3)
+  keepLogs: number;                    // Log lines BullMQ keeps per job (default: 20)
   removeOnCompleteAgeInSeconds: number; // How long a completed job is kept (`ms('7d') / 1000`)
   removeOnFailAgeInSeconds: number;    // How long a failed job is kept (`ms('14d') / 1000`)
   emailBackoffDelayInMs: number;       // Email queue exponential backoff delay (ms('10s'))
@@ -918,12 +919,12 @@ push: {
 
 **`maxDataImport`** - CSV import row cap
 ```typescript
-maxDataImport: number           // Maximum rows accepted in a CSV import (default: 100); read by `FileCsvValidationPipe`
+maxDataImport: number           // Maximum rows accepted in a CSV import (default: 100); `FileCsvValidationPipe` reads it unless the route passes its own config key
 ```
 
 **`maxDataExport`** - CSV export row cap
 ```typescript
-maxDataExport: number           // Default export row cap (default: 1000)
+maxDataExport: number           // Maximum data rows in a CSV export (default: 1000); `ResponseFileInterceptor` reads it unless the route passes its own config key through `@ResponseFile`; one row more raises FileExceedMaxDataExportException
 ```
 
 **`maxSizeExportInBytes`** - Export file size cap

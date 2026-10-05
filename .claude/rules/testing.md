@@ -11,7 +11,7 @@ A spec succeeds when it fails on a behaviour change. Load tests are not this sui
 | Type | Subject | Runs against |
 |---|---|---|
 | unit | one class: domain, HTTP or processor service, util, guard, pipe, interceptor, filter, queue class, DTO | nothing; every collaborator doubled |
-| integration | a repository, a domain whose invariant needs real storage, a kit adapter (`AwsS3Service`, `AwsSesService`, `DatabaseService`, cache), a queue class | Mongo, Redis, LocalStack; FCM faked |
+| integration | a repository, a domain whose invariant needs real storage, a kit adapter (`AwsS3Service`, `AwsSESService`, `DatabaseService`, cache), a queue class | Mongo, Redis, LocalStack; FCM faked |
 | e2e | a route or a flow over HTTP, BullMQ workers included | Mongo, Redis, LocalStack, nginx serving JWKS; FCM faked |
 
 Integration asserts only what a mock cannot: a rollback, a unique index rejecting a duplicate, the rows a filter, select,
@@ -20,40 +20,40 @@ branch logic a unit spec covers; a domain enters it only for a transaction or cr
 
 ## Layout and runs
 
-- `vitest.config.ts` is the only config; `test.projects` holds `unit`, `integration`, `e2e`, and each project runs
-  only `test/<type>/**/*.spec.ts`. A spec with a subject file mirrors that file's `src/` path under `test/<type>/`;
-  an e2e spec for a flow across several routes lives at `test/e2e/flows/<module>.<flow>.spec.ts`.
-- A helper for one type lives in `test/<type>/helpers/` and moves to `test/helpers/` when a second type imports
-  it. File names: `naming.md`. Specs import helpers through `@test/*`.
-- `pnpm test` runs unit with no Docker (pre-commit and `verify.sh` run it); `pnpm test:integration` and
-  `pnpm test:e2e` need a running Docker daemon. Each takes a path filter (`pnpm test user.domain`); name it when
-  reporting. `pnpm test:cov` runs unit with the 100% thresholds over `src/**/*.ts` minus `coverage.exclude`
-  (`coverage.enabled` is `false` otherwise). An excluded file gets no spec.
-- `test/helpers/test.logger.helper.ts`, first in every project's `setupFiles`, mutes Nest `Logger` and `ConsoleLogger`;
-  never re-mock, spy, or assert on a logger.
+- `vitest.config.ts` is the only config; `test.projects` holds `unit`, `integration`, `e2e`, each running only
+  `test/<type>/**/*.spec.ts`. A spec mirrors its subject's `src/` path under `test/<type>/`; an e2e flow across
+  several routes is `test/e2e/flows/<module>.<flow>.spec.ts`. A helper for one type lives in `test/<type>/helpers/`
+  and moves to `test/helpers/` when a second type imports it (names: `naming.md`); specs import it through `@test/*`.
+- `pnpm test` (unit, no Docker; pre-commit and `verify.sh` run it), `pnpm test:integration`, and `pnpm test:e2e`
+  (Docker daemon) take a path filter (`pnpm test user.domain`); name it when reporting. `pnpm test:cov` applies the
+  100% thresholds to `src/**/*.ts` minus `coverage.exclude`; an excluded file gets no spec.
+- `test/helpers/test.logger.helper.ts`, first in every `setupFiles`, mutes Nest loggers; never mock, spy, or assert one.
 
 ## Spec content
 
-- A spec declares no function and stores none in a variable, at any depth; an arrow is only a direct argument to
-  `describe`, `it`, `test`, a hook, `expect`, `vi.fn`, `vi.mock`, `vi.hoisted`, or `mockImplementation[Once]`.
-- Reused data is a `const` inside the `describe`; a variant is a spread (`{ ...user, status }`); a stubbed member is
-  `vi.fn().mockReturnValue(...)`. Logic (a builder, a deferred, a transaction body) is an exported helper function;
-  a helper takes no function parameter.
-- No `class` under `test/`: a fake is a plain object, a decorator is applied to a plain object and its metadata read,
-  a class ref is `{} as Type<unknown>` plus `Reflect.defineMetadata`.
+- The `ts/test` and `ts/test-spec` blocks in `eslint.config.mjs` place functions, arrows, and classes. A fake is a plain
+  object, a decorator is applied to one and its metadata read, a class ref is `{} as Type<unknown>` plus metadata.
+- One root `describe` per spec, named for the subject class or schema (a decorator spec: its file stem); inside it one
+  `describe` per method under its bare name, privates last. An `it` label opens on a present-tense third-person verb
+  (`returns`, `throws`), never `should`. The subject variable is its class's last word, lowercased (`domain`, `guard`).
+- Reused data is a `const` in the `describe`; a variant is a spread (`{ ...user, status }`), and so is a fixture the
+  subject mutates (`{ ...baseUser }`). A first-party fixture is complete, never cast; a date is a fixed ISO-8601 UTC literal.
+- Logic (a builder, a deferred, a transaction body) is an exported helper taking no function parameter: async
+  `create<Subject>` through `Test.createTestingModule` (`createInitialized<Subject>` also runs `onModuleInit`), sync
+  `build<Thing>`, `expect<Outcome>`, `stub<Scenario>`; a doubles bag is `I<Subject>Doubles` (`test.unit.aws.helper.ts`).
 
 ## Unit
 
-- Doubles: `mock<T>()` from `vitest-mock-extended`; `mockDeep<T>()` only for a nested reach (`DatabaseService.client`).
-- A shared double is a `const` at the root `describe`. The subject is `let`, rebuilt in `beforeEach` after `vi.resetAllMocks()`
-  through `Test.createTestingModule`, every DI dependency doubled by class. A `vi.mock('<pkg>')` identical in three or more
-  specs, none needing the real module, moves to `test/unit/test.unit.setup.ts`, created then and added to the unit `setupFiles`.
+- A double is `const userRepository: MockProxy<UserRepository> = mock<UserRepository>()`, shared at the root
+  `describe`; `mockDeep<T>()` only for a nested reach (`DatabaseService.client`); a stub is `vi.fn().mockReturnValue()`.
+- The subject is rebuilt in `beforeEach` after `vi.resetAllMocks()` through `Test.createTestingModule`, every DI
+  dependency doubled by class. A `vi.mock('<pkg>')` identical in three or more specs, none needing the real module,
+  moves to a `test/unit/test.unit.setup.ts` added to the unit `setupFiles`.
 - `beforeAll` holds immutable setup (`vi.useFakeTimers()`); `afterEach` runs `vi.restoreAllMocks()` after `vi.spyOn`;
   `afterAll` undoes `beforeAll`; no empty hook.
-- Matchers name the thing (`toHaveBeenCalledWith`, `expect.objectContaining`); capture a built argument through
-  `mockImplementation`. A thrown `AppBaseException` is asserted through `rejects.toMatchObject` on `module`,
-  `statusCode`, `statusCodeKey`, `messagePath`. A first-party fixture is complete, never cast; dates are `Date`s.
-- Each private method gets a `describe` by index access after the public ones, which call the real private. Cover every branch.
+- Matchers name the thing (`toHaveBeenCalledWith`, `expect.objectContaining`); a built argument is captured through
+  `mockImplementation`; a thrown `AppBaseException` through `rejects.toMatchObject` on `module`, `statusCode`,
+  `statusCodeKey`, `messagePath`. A private is called by index access and never stubbed. Cover every branch.
 - Per layer: a domain asserts orchestration and the exception per branch; an HTTP or processor service the shaping and
   hand-off; a queue class job name, payload with every encrypted field, and options; a guard transport behaviour; an
   interceptor or filter the envelope and headers; a DTO per `dto.md`; an exception its five fields. A controller,

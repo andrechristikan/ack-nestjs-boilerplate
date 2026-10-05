@@ -86,11 +86,16 @@ export interface IAwsS3PutItem extends IAwsS3CreateMultiplePart {
 export interface IAwsS3ConfigBucket {
     region: string;
     bucket: string;
-    baseUrl: string;
+    baseUrl: string | null;
     access: EnumAwsS3Accessibility;
     arn: string;
     cdnUrl: string | null;
 }
+
+export type IAwsS3ConfigBucketSource = Omit<
+    IAwsS3ConfigBucket,
+    'baseUrl' | 'access'
+>;
 
 export interface IAwsS3FileInfo {
     pathWithFilename: string;

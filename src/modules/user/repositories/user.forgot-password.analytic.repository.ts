@@ -41,7 +41,7 @@ export class UserForgotPasswordAnalyticRepository implements IUserForgotPassword
         });
     }
 
-    async unusedTokenCountsByUser(
+    async groupUnusedTokenByUser(
         startDate: Date,
         endDate: Date
     ): Promise<IUserForgotPasswordAnalyticUserCount[]> {

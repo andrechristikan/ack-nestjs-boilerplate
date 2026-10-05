@@ -18,7 +18,7 @@ Key features:
 
 - [Authentication][ref-doc-authentication] - Session management and push token linking
 - [Email][ref-doc-email] - SES templates, sync command, and send mapping
-- [Third-Party Integration][ref-doc-third-party] - Firebase and AWS SES credentials / no-op mode
+- [Third-Party Integration][ref-doc-third-party] - Firebase and AWS SES credentials and the unconfigured state
 - [Queue][ref-doc-queue] - Background job processing
 - [Configuration][ref-doc-configuration] - App configuration
 - [Environment][ref-doc-environment] - Environment variables
@@ -116,7 +116,7 @@ That domain then:
 
 Step 3 runs both sides in one batch: the id exists before either side runs, so a queued delivery job references a record the same batch is writing. `allSettled` also means a failed dispatch does not undo the notification record, and one channel failing does not stop the other. A push job is only added when the user has at least one device token.
 
-Jobs reach this queue through `NotificationQueue`, which deduplicates on the process name plus whatever identifies that event: the target user for the account and security events, the workspace and the target user for a join request, the invite `reference` for an invite, and the policy type and version for a publication. The TTL is `notification.dedupTtlInMs` (1 second), so two different events for the same user never collapse into one.
+Jobs reach this queue through `NotificationQueue`, which deduplicates on the process name plus whatever identifies that event: the target user for the account and security events, the workspace and the target user for a join request and its acceptance or rejection, the invite `reference` for an invite, the target user and the term policy id for an acceptance, and the policy type and version for a publication. The TTL is `notification.dedupTtlInMs` (1 second), so two different events for the same user never collapse into one.
 
 **Supported processes (`EnumNotificationProcess`):**
 
@@ -163,7 +163,7 @@ Jobs reach this queue through `NotificationEmailQueue`, deduplicated through Bul
 |---|---|
 | target user | account and security events |
 | invite `reference` | the two invite emails |
-| workspace and target user | a join request |
+| workspace and target user | a join request, a join acceptance, a join rejection |
 | policy type and version | a publication |
 
 Most templates use `notification.dedupTtlInMs` (1 second). A template carrying a time-limited link uses the config value matching that link's expiry or resend window instead:
@@ -263,7 +263,7 @@ The push processor is configured with a BullMQ rate limiter:
 
 `FirebaseService.sendMulticast()` also enforces a per-call chunk size of at most `FirebaseMaxSendPushBatchSize` (500) tokens per FCM `sendEachForMulticast` call, with chunks processed via `Promise.allSettled`. A chunk size outside 1 to 500 raises `FirebaseChunkSizeInvalidException` (500, `52300`).
 
-For Firebase configuration and no-op mode (disabled when credentials are missing), see [Third-Party Integration; Firebase][ref-doc-third-party].
+With Firebase unconfigured, `FirebaseService` stays uninitialized and the push channel domains skip every send (see [Delivery Tracking](#delivery-tracking)). For Firebase configuration, see [Third-Party Integration; Firebase][ref-doc-third-party].
 
 ## Email Notifications
 
@@ -312,7 +312,7 @@ sequenceDiagram
 
 Both skips return a message rather than throwing, so a push job on a deployment with Firebase disabled completes instead of being retried.
 
-The email lifecycle is only: job dequeued, sealed fields opened, `AwsSESService.send()` or `sendBulk()`, done. A send failure is logged and rethrown, so the job retries under the queue's own retry policy; a field that fails to open ends the job without retries (see [Payload Encryption](#payload-encryption)).
+The email lifecycle is only: job dequeued, sealed fields opened, `AwsSESService.send()` or `sendBulk()`, done. With SES unconfigured, both calls log a warning and return an empty output, so the job completes and no email leaves. A send failure is logged and rethrown, so the job retries under the queue's own retry policy; a field that fails to open ends the job without retries (see [Payload Encryption](#payload-encryption)).
 
 ## User Notification Settings
 
@@ -344,11 +344,6 @@ Under router prefix `/shared` and controller path `/notification` (plus global `
 | `POST` | `/shared/notification/update/read` | Mark all notifications read |
 | `PUT` | `/shared/notification/setting/update` | Update a type+channel setting |
 
-## Contribution
-
-Special thanks to [ak2g][ref-contributor-ak2g] for contributing to the Notification module implementation.
-
-
 <!-- REFERENCES -->
 
 [ref-firebase]: https://firebase.google.com/docs/cloud-messaging
@@ -361,5 +356,3 @@ Special thanks to [ak2g][ref-contributor-ak2g] for contributing to the Notificat
 [ref-doc-queue]: queue.md
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
-
-[ref-contributor-ak2g]: https://github.com/ak2g

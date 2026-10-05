@@ -16,22 +16,22 @@ export class ApiKeyAnalyticDomain {
         private readonly activityLogAnalyticDomain: ActivityLogAnalyticDomain
     ) {}
 
-    async lifecycle(
+    async getLifecycle(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticApiKeyLifecycle> {
         const [created, reset, updated, deleted] = await Promise.all([
-            this.activityLogAnalyticDomain.countByActionsInRange(
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
                 [EnumActivityLogAction.adminApiKeyCreate],
                 startDate,
                 endDate
             ),
-            this.activityLogAnalyticDomain.countByActionsInRange(
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
                 [EnumActivityLogAction.adminApiKeyReset],
                 startDate,
                 endDate
             ),
-            this.activityLogAnalyticDomain.countByActionsInRange(
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
                 [
                     EnumActivityLogAction.adminApiKeyUpdate,
                     EnumActivityLogAction.adminApiKeyUpdateDate,
@@ -40,7 +40,7 @@ export class ApiKeyAnalyticDomain {
                 startDate,
                 endDate
             ),
-            this.activityLogAnalyticDomain.countByActionsInRange(
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
                 [EnumActivityLogAction.adminApiKeyDelete],
                 startDate,
                 endDate
@@ -49,7 +49,7 @@ export class ApiKeyAnalyticDomain {
         return { created, reset, updated, deleted };
     }
 
-    async activeExpired(): Promise<IAnalyticApiKeyActiveExpired> {
+    async getActiveExpired(): Promise<IAnalyticApiKeyActiveExpired> {
         const [active, expired] = await Promise.all([
             this.apiKeyAnalyticRepository.countActive(),
             this.apiKeyAnalyticRepository.countExpired(),
@@ -57,11 +57,11 @@ export class ApiKeyAnalyticDomain {
         return { active, expired };
     }
 
-    typeMix(): Promise<IAnalyticCountBucket[]> {
+    getTypeMix(): Promise<IAnalyticCountBucket[]> {
         return this.apiKeyAnalyticRepository.groupByType();
     }
 
-    findCreatedInRange(
+    getCreatedInRange(
         startDate: Date,
         endDate: Date
     ): Promise<IApiKeyAnalyticCreated[]> {

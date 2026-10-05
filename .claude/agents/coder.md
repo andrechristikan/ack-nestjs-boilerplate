@@ -10,6 +10,7 @@ description: >-
   (tester), reviewing (reviewer), docs (writer), or .claude/** (harness).
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
+effort: high
 skills: caveman:caveman, superpowers:test-driven-development
 ---
 
@@ -36,8 +37,8 @@ disk, never from `HEAD` or a ref. To list what changed, use `git status --short`
 
 1. Read the rules the dispatch names and the files the task touches; rules under
    `.claude/rules/` bind by path. A procedure (a module, a status code, a queue, a seed, a
-   notification) is a knowledge skill at `.claude/skills/ack-add-<topic>/SKILL.md`; read
-   the one the task touches before writing.
+   notification) lives at `.claude/skills/ack-build/references/add-<topic>.md`; read the
+   one the task names before writing.
 2. When the task changes `src/` behaviour, the test-driven-development skill is in force:
    write the failing unit spec under `test/unit/` mirroring the subject, run
    `pnpm test <path filter>`, quote the failing line, then write the minimum `src/` that

@@ -55,7 +55,7 @@ flowchart TD
     I --> J{Feature flag row exists?}
     J -->|No| J1[Throw: predefinedKeyNotFound]
     J -->|Yes| L{isEnable = true?}
-    L -->|No| K[Throw: serviceUnavailable]
+    L -->|No| K[Throw: disabled]
     L -->|Yes| S{User exists in request?}
     S -->|Yes| S1{userId in targetUserIds?}
     S1 -->|Yes| T[Allow access]
@@ -72,11 +72,13 @@ flowchart TD
     W -->|No| K
     W -->|Yes| T
     T --> X[Return true - Access granted]
-    K --> Y[Return 503 Service Unavailable]
+    K --> Y[Return 404 Not Found]
     F --> Z[Return 500 Internal Server Error]
     H --> Z
     J1 --> Z
 ```
+
+Every denial (a disabled flag, a lost rollout bucket, an anonymous caller below 100% without a valid `x-anonymous-id`) throws `FeatureFlagDisabledException`: HTTP 404, status code `disabled` (50601), message `featureFlag.error.disabled`. A route behind a disabled flag answers as if it does not exist.
 
 ## Usage
 
@@ -133,7 +135,7 @@ const featureFlag =
   );
 ```
 
-`FeatureFlagDomain` is the other reader: `getByKeyAndCache` on evaluation, `deleteCacheByKey` after an admin update.
+`FeatureFlagDomain` reads through the same cache: `getByKeyAndCache` on evaluation, `deleteCacheByKey` after an admin update.
 
 `FeatureFlagUtil` sits beside it and holds the metadata shape checks (`checkMetadataKey`) the domain applies on update.
 
@@ -177,9 +179,9 @@ It throws:
 | Condition | statusCode | HTTP |
 |---|---|---|
 | flag row is missing | `predefinedKeyNotFound` | 500 |
-| flag is disabled | `serviceUnavailable` | 503 |
+| flag is disabled | `disabled` | 404 |
 | metadata value is not a boolean | `predefinedKeyTypeInvalid` | 500 |
-| boolean is `false` | `serviceUnavailable` | 503 |
+| boolean is `false` | `disabled` | 404 |
 
 Metadata is per-feature config (small on/off and typed values). For per-user targeting use `targetUserIds` (see [Targeting](#targeting)), not metadata.
 
@@ -219,8 +221,8 @@ The flag key and the caller identifier are combined and hashed with SHA-256 (`He
 **Anonymous callers** are handled separately:
 
 - `rolloutPercent >= 100` passes without any identifier.
-- Below 100, the identifier comes from the `x-anonymous-id` request header. Its name, max length (100) and allowed charset (`/^[a-zA-Z0-9-_]+$/`) live in `src/configs/feature-flag.config.ts`.
-- The evaluation **fails closed** with 503 when that header is absent, empty, over length, or does not match the pattern. An anonymous caller lands in the same bucket only while it sends the same `x-anonymous-id`.
+- Below 100, the identifier comes from the `x-anonymous-id` request header. Its name (`headerName`), max length (`idMaxLength`, 100) and allowed charset (`idRegex`, `/^[a-zA-Z0-9-_]+$/`) live in `src/configs/feature-flag.config.ts`.
+- The evaluation **fails closed** with 404 (`disabled`) when that header is absent, empty, over length, or does not match the pattern. An anonymous caller lands in the same bucket only while it sends the same `x-anonymous-id`.
 
 ## Caching
 
@@ -232,7 +234,7 @@ Feature flags are cached. Configuration in `src/configs/feature-flag.config.ts`:
   anonymous: {
     headerName: 'x-anonymous-id',
     idMaxLength: 100,
-    idPattern: /^[a-zA-Z0-9-_]+$/
+    idRegex: /^[a-zA-Z0-9-_]+$/
   }
 }
 ```
@@ -241,7 +243,7 @@ Feature flags are cached. Configuration in `src/configs/feature-flag.config.ts`:
 - Cache on first read
 - Cache invalidation on updates
 - Key format: `FeatureFlag:{key}`
-- Best-effort: cache read/write/delete failures are logged and fall through to the database, so a cache outage never breaks evaluation. There is no fail-open: an unknown flag key still returns 500 (`predefinedKeyNotFound`) and a disabled flag still returns 503 (`serviceUnavailable`).
+- Best-effort: cache read/write/delete failures are logged and fall through to the database, so a cache outage never breaks evaluation. There is no fail-open: an unknown flag key still returns 500 (`predefinedKeyNotFound`) and a disabled flag still returns 404 (`disabled`).
 
 See [Cache Documentation][ref-doc-cache] for cache system details.
 
@@ -253,14 +255,7 @@ See [Cache Documentation][ref-doc-cache] for cache system details.
 - Only values can be updated: `isEnable`, `rolloutPercent`, `targetUserIds`, metadata values
 
 
-## Contribution
-
-Thanks to [Gzerox][ref-contributor-gzerox] for this feature.
-
-
 <!-- REFERENCES -->
 
 [ref-doc-cache]: cache.md
 [ref-doc-authorization]: authorization.md
-
-[ref-contributor-gzerox]: https://github.com/Gzerox

@@ -177,7 +177,7 @@ export class WorkspaceDomain {
                     action: activity.action,
                     userId: activity.userId,
                     createdBy: activity.createdBy,
-                    workspaceId: activity.workspaceId,
+                    workspaceId: activity.workspaceId ?? undefined,
                     metadata: activity.metadata,
                 });
                 events.push(activityEvent);
@@ -203,7 +203,7 @@ export class WorkspaceDomain {
         return workspace;
     }
 
-    async getListForMember(
+    async getListCursorByMember(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>
     ): Promise<IResponsePaginationReturn<Workspace>> {
@@ -581,19 +581,19 @@ export class WorkspaceDomain {
         this.activityLogDomain.stagePrepared(events);
     }
 
-    async getListForAdmin(
+    async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
         isPublic?: Record<string, IPaginationEqual>
     ): Promise<IResponsePaginationReturn<Workspace>> {
-        return this.workspaceRepository.findWithPaginationOffsetForAdmin(
+        return this.workspaceRepository.findWithPaginationOffsetByAdmin(
             pagination,
             isPublic
         );
     }
 
-    async getByIdForAdmin(workspaceId: string): Promise<Workspace> {
+    async getByIdByAdmin(workspaceId: string): Promise<Workspace> {
         const workspace =
-            await this.workspaceRepository.findByIdForAdmin(workspaceId);
+            await this.workspaceRepository.findByIdByAdmin(workspaceId);
         if (!workspace) {
             throw new WorkspaceNotFoundException();
         }

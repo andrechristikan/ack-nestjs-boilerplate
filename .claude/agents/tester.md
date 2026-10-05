@@ -8,6 +8,7 @@ description: >-
   edit under src/.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
+effort: medium
 skills: caveman:caveman
 ---
 

@@ -61,7 +61,7 @@ export class DeviceOwnershipAnalyticRepository implements IDeviceOwnershipAnalyt
         });
     }
 
-    async sharedFingerprints(
+    async findSharedFingerprints(
         minUsers: number
     ): Promise<IAnalyticSharedFingerprint[]> {
         const ownerships =

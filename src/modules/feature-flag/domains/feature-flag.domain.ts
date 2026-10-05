@@ -11,7 +11,7 @@ import { FeatureFlagPredefinedKeyEmptyException } from '@modules/feature-flag/ex
 import { FeatureFlagPredefinedKeyLengthExceededException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-length-exceeded.exception';
 import { FeatureFlagPredefinedKeyNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-not-found.exception';
 import { FeatureFlagPredefinedKeyTypeInvalidException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-type-invalid.exception';
-import { FeatureFlagServiceUnavailableException } from '@modules/feature-flag/exceptions/feature-flag.service-unavailable.exception';
+import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import type {
     IFeatureFlagMetadata,
     IFeatureFlagUpdateMetadata,
@@ -43,7 +43,7 @@ export class FeatureFlagDomain {
             identifier
         );
         if (!checkRollout) {
-            throw new FeatureFlagServiceUnavailableException();
+            throw new FeatureFlagDisabledException();
         }
     }
 
@@ -77,7 +77,7 @@ export class FeatureFlagDomain {
         if (!featureFlag) {
             throw new FeatureFlagPredefinedKeyNotFoundException();
         } else if (!featureFlag.isEnable) {
-            throw new FeatureFlagServiceUnavailableException();
+            throw new FeatureFlagDisabledException();
         }
 
         if (userId) {
@@ -95,7 +95,7 @@ export class FeatureFlagDomain {
         }
 
         if (!anonymousId) {
-            throw new FeatureFlagServiceUnavailableException();
+            throw new FeatureFlagDisabledException();
         }
 
         this.assertRollout(featureFlag.rolloutPercent, key, anonymousId);
@@ -109,7 +109,7 @@ export class FeatureFlagDomain {
         if (!featureFlag) {
             throw new FeatureFlagPredefinedKeyNotFoundException();
         } else if (!featureFlag.isEnable) {
-            throw new FeatureFlagServiceUnavailableException();
+            throw new FeatureFlagDisabledException();
         }
 
         const metadata: unknown =
@@ -118,7 +118,7 @@ export class FeatureFlagDomain {
         if (typeof metadata !== 'boolean') {
             throw new FeatureFlagPredefinedKeyTypeInvalidException();
         } else if (!metadata) {
-            throw new FeatureFlagServiceUnavailableException();
+            throw new FeatureFlagDisabledException();
         }
     }
 

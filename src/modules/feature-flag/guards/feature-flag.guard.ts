@@ -13,7 +13,7 @@ import { Reflector } from '@nestjs/core';
 export class FeatureFlagGuard implements CanActivate {
     private readonly anonymousHeaderName: string;
     private readonly anonymousIdMaxLength: number;
-    private readonly anonymousIdPattern: RegExp;
+    private readonly anonymousIdRegex: RegExp;
 
     constructor(
         private readonly featureFlagDomain: FeatureFlagDomain,
@@ -26,8 +26,8 @@ export class FeatureFlagGuard implements CanActivate {
         this.anonymousIdMaxLength = this.configService.get<number>(
             'featureFlag.anonymous.idMaxLength'
         )!;
-        this.anonymousIdPattern = this.configService.get<RegExp>(
-            'featureFlag.anonymous.idPattern'
+        this.anonymousIdRegex = this.configService.get<RegExp>(
+            'featureFlag.anonymous.idRegex'
         )!;
     }
 
@@ -46,7 +46,7 @@ export class FeatureFlagGuard implements CanActivate {
             rawAnonymousId.length <= this.anonymousIdMaxLength
         ) {
             const isAnonymousIdValid =
-                this.anonymousIdPattern.test(rawAnonymousId);
+                this.anonymousIdRegex.test(rawAnonymousId);
             if (isAnonymousIdValid) {
                 anonymousId = rawAnonymousId;
             }

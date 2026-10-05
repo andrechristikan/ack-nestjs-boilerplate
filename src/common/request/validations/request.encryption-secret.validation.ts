@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 /**
  * Encryption secret: exactly 64 base64url characters.
- * @public
  */
 export const RequestEncryptionSecretSchema = z
     .string()
