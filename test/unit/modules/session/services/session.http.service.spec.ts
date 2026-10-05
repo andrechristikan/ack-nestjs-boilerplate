@@ -177,10 +177,10 @@ describe('SessionHttpService', () => {
     });
 
     describe('revoke', () => {
-        it('delegates to the domain and returns nothing', async () => {
+        it('delegates to the domain and returns an empty response', async () => {
             const result = await service.revoke('user-1', 'session-1');
 
-            expect(result).toBeUndefined();
+            expect(result).toEqual({});
             expect(sessionDomain.revoke).toHaveBeenCalledWith(
                 'user-1',
                 'session-1'
@@ -189,14 +189,14 @@ describe('SessionHttpService', () => {
     });
 
     describe('revokeByAdmin', () => {
-        it('delegates to the domain and returns nothing', async () => {
+        it('delegates to the domain and returns an empty response', async () => {
             const result = await service.revokeByAdmin(
                 'user-1',
                 'session-1',
                 'admin-1'
             );
 
-            expect(result).toBeUndefined();
+            expect(result).toEqual({});
             expect(sessionDomain.revokeByAdmin).toHaveBeenCalledWith(
                 'user-1',
                 'session-1',
@@ -206,10 +206,10 @@ describe('SessionHttpService', () => {
     });
 
     describe('revokeAllByAdmin', () => {
-        it('delegates to the domain and returns nothing', async () => {
+        it('delegates to the domain and returns an empty response', async () => {
             const result = await service.revokeAllByAdmin('user-1', 'admin-1');
 
-            expect(result).toBeUndefined();
+            expect(result).toEqual({});
             expect(sessionDomain.revokeAllByAdmin).toHaveBeenCalledWith(
                 'user-1',
                 'admin-1'

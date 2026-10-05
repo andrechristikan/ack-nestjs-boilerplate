@@ -256,9 +256,7 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceSwitchRequestSchema })
         body: WorkspaceSwitchRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.workspaceHttpService.switchWorkspace(userId, body);
-
-        return {};
+        return this.workspaceHttpService.switchWorkspace(userId, body);
     }
 
     @Doc({ summary: 'transfer workspace ownership to another member' })
@@ -279,13 +277,11 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceTransferOwnershipRequestSchema })
         body: WorkspaceTransferOwnershipRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.workspaceMemberHttpService.transferOwnership(
+        return this.workspaceMemberHttpService.transferOwnership(
             workspace.id,
             member,
             body
         );
-
-        return {};
     }
 
     @Doc({ summary: 'leave the current workspace' })
@@ -304,12 +300,10 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() member: WorkspaceMember
     ): Promise<IResponseReturn<void>> {
-        await this.workspaceMemberHttpService.leaveWorkspace(
+        return this.workspaceMemberHttpService.leaveWorkspace(
             workspace.id,
             member
         );
-
-        return {};
     }
 
     @Doc({ summary: 'soft-delete the current workspace' })
@@ -327,12 +321,10 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<void>> {
-        await this.workspaceHttpService.softDeleteWorkspace(
+        return this.workspaceHttpService.softDeleteWorkspace(
             workspace.id,
             userId
         );
-
-        return {};
     }
 
     @Doc({ summary: 'list members of the current workspace' })
@@ -378,14 +370,12 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceMemberUpdateRoleRequestSchema })
         body: WorkspaceMemberUpdateRoleRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.workspaceMemberHttpService.updateMemberRole(
+        return this.workspaceMemberHttpService.updateMemberRole(
             workspace.id,
             actorMember,
             workspaceMemberId,
             body
         );
-
-        return {};
     }
 
     @Doc({ summary: 'remove a member from the current workspace' })
@@ -405,13 +395,11 @@ export class WorkspaceUserController {
         @Param('workspaceMemberId', { schema: RequestMongoIdSchema })
         workspaceMemberId: string
     ): Promise<IResponseReturn<void>> {
-        await this.workspaceMemberHttpService.removeMember(
+        return this.workspaceMemberHttpService.removeMember(
             workspace.id,
             actorMember,
             workspaceMemberId
         );
-
-        return {};
     }
 
     @Doc({ summary: 'list invites for the current workspace' })
@@ -517,13 +505,11 @@ export class WorkspaceUserController {
         @Param('workspaceInviteId', { schema: RequestMongoIdSchema })
         workspaceInviteId: string
     ): Promise<IResponseReturn<void>> {
-        await this.workspaceInviteHttpService.revokeInvite(
+        return this.workspaceInviteHttpService.revokeInvite(
             workspace.id,
             userId,
             workspaceInviteId
         );
-
-        return {};
     }
 
     @Doc({
@@ -545,9 +531,7 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceInviteClaimRequestSchema })
         body: WorkspaceInviteClaimRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.workspaceInviteHttpService.claimInvite(userId, email, body);
-
-        return {};
+        return this.workspaceInviteHttpService.claimInvite(userId, email, body);
     }
 
     @Doc({
@@ -620,13 +604,11 @@ export class WorkspaceUserController {
         @Param('workspaceJoinRequestId', { schema: RequestMongoIdSchema })
         workspaceJoinRequestId: string
     ): Promise<IResponseReturn<void>> {
-        await this.workspaceJoinRequestHttpService.acceptJoinRequest(
+        return this.workspaceJoinRequestHttpService.acceptJoinRequest(
             workspace,
             userId,
             workspaceJoinRequestId
         );
-
-        return {};
     }
 
     @Doc({ summary: 'reject a pending join request with a reason code' })
@@ -649,13 +631,11 @@ export class WorkspaceUserController {
         @Body({ schema: WorkspaceJoinRequestRejectRequestSchema })
         body: WorkspaceJoinRequestRejectRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.workspaceJoinRequestHttpService.rejectJoinRequest(
+        return this.workspaceJoinRequestHttpService.rejectJoinRequest(
             workspace,
             userId,
             workspaceJoinRequestId,
             body
         );
-
-        return {};
     }
 }

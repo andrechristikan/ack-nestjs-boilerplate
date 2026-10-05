@@ -118,10 +118,10 @@ export class UserHttpService {
         userId: string,
         { status }: UserUpdateStatusRequestDto,
         updatedBy: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userDomain.updateStatusByAdmin(userId, status, updatedBy);
 
-        return;
+        return {};
     }
 
     async checkUsername({
@@ -142,7 +142,9 @@ export class UserHttpService {
         return { data: checkEmail };
     }
 
-    async deleteSelf(userId: string): Promise<void> {
+    async deleteSelf(userId: string): Promise<IResponseReturn<void>> {
         await this.userDomain.deleteSelf(userId);
+
+        return {};
     }
 }

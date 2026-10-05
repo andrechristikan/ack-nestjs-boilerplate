@@ -116,9 +116,9 @@ export class TermPolicyHttpService {
     async publishByAdmin(
         termPolicyId: string,
         updatedBy: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.termPolicyDomain.publishByAdmin(termPolicyId, updatedBy);
 
-        return;
+        return {};
     }
 }

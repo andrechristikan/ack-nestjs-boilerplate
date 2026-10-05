@@ -27,37 +27,37 @@ export class TermPolicyContentHttpService {
     async updateContentByAdmin(
         termPolicyId: string,
         body: TermPolicyContentRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.termPolicyContentDomain.updateContentByAdmin(
             termPolicyId,
             body
         );
 
-        return;
+        return {};
     }
 
     async addContentByAdmin(
         termPolicyId: string,
         body: TermPolicyContentRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.termPolicyContentDomain.addContentByAdmin(
             termPolicyId,
             body
         );
 
-        return;
+        return {};
     }
 
     async removeContentByAdmin(
         termPolicyId: string,
         { language }: TermPolicyRemoveContentRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.termPolicyContentDomain.removeContentByAdmin(
             termPolicyId,
             language
         );
 
-        return;
+        return {};
     }
 
     async getContentByAdmin(

@@ -30,6 +30,7 @@ The decorator nearest the method runs first. Keep this order; omit what a route 
 
 `@RequestThrottle` takes `{ user: true, route? }` on a JWT route and `{ route }` only on `public` and `system`.
 A creating `@Post` keeps 201. An admin-scope controller carries no `Workspace*` or `Project*` guard.
+An endpoint body is `return this.<module>HttpService.<method>(...);`: the HTTP service builds every envelope, `{}` included.
 
 ## DTOs are zod
 
@@ -45,8 +46,7 @@ when one failure fails the whole, `await Promise.allSettled([...])` when each ou
 
 ## Imports
 
-The alias table is `tsconfig.json` `paths`. A class Nest injects is a value import, not `import type`. Rule:
-`.claude/rules/code-style.md`.
+Aliases: `tsconfig.json` `paths`. A class Nest injects is a value import, not `import type`. Rule: `.claude/rules/code-style.md`.
 
 ## Tests
 

@@ -39,9 +39,12 @@ export class PolicyHttpService {
         return { data: updated };
     }
 
-    async deleteByAdmin(roleId: string, id: string): Promise<void> {
+    async deleteByAdmin(
+        roleId: string,
+        id: string
+    ): Promise<IResponseReturn<void>> {
         await this.policyDomain.deleteByAdmin(roleId, id);
 
-        return;
+        return {};
     }
 }

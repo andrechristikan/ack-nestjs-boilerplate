@@ -1,3 +1,4 @@
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -102,29 +103,32 @@ export class DeviceHttpService {
         userId: string,
         deviceOwnershipId: string,
         body: DeviceRefreshRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.deviceDomain.refresh(userId, deviceOwnershipId, body);
 
-        return;
+        return {};
     }
 
-    async remove(userId: string, deviceOwnershipId: string): Promise<void> {
+    async remove(
+        userId: string,
+        deviceOwnershipId: string
+    ): Promise<IResponseReturn<void>> {
         await this.deviceDomain.remove(userId, deviceOwnershipId);
 
-        return;
+        return {};
     }
 
     async removeByAdmin(
         userId: string,
         deviceOwnershipId: string,
         removedBy: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.deviceDomain.removeByAdmin(
             userId,
             deviceOwnershipId,
             removedBy
         );
 
-        return;
+        return {};
     }
 }

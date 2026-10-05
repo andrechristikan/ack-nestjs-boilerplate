@@ -122,7 +122,7 @@ export class UserAuthHttpService {
         from,
         cookies,
         marketing,
-    }: UserSignUpRequestDto): Promise<void> {
+    }: UserSignUpRequestDto): Promise<IResponseReturn<void>> {
         const workspaceContext =
             await this.workspaceInviteDomain.resolveForSignUp(
                 inviteToken ?? null,
@@ -152,13 +152,17 @@ export class UserAuthHttpService {
             createTimeoutInMs
         );
         await this.userAuthDomain.notifyWelcome(created.id, emailVerification);
+
+        return {};
     }
 
     async logout(
         userId: string,
         sessionId: string,
         deviceOwnershipId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userAuthDomain.logout(userId, sessionId, deviceOwnershipId);
+
+        return {};
     }
 }

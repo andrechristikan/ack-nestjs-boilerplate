@@ -1,3 +1,4 @@
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -28,19 +29,23 @@ export class WorkspaceMemberHttpService {
         workspaceId: string,
         actorMember: WorkspaceMember,
         { targetUserId }: WorkspaceTransferOwnershipRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceMemberDomain.transferOwnership(
             workspaceId,
             actorMember,
             targetUserId
         );
+
+        return {};
     }
 
     async leaveWorkspace(
         workspaceId: string,
         member: WorkspaceMember
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceMemberDomain.leaveWorkspace(workspaceId, member);
+
+        return {};
     }
 
     async getMembersList(
@@ -85,25 +90,29 @@ export class WorkspaceMemberHttpService {
         actorMember: WorkspaceMember,
         targetMemberId: string,
         { role }: WorkspaceMemberUpdateRoleRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceMemberDomain.updateMemberRole(
             workspaceId,
             actorMember,
             targetMemberId,
             role
         );
+
+        return {};
     }
 
     async removeMember(
         workspaceId: string,
         actorMember: WorkspaceMember,
         targetMemberId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceMemberDomain.removeMember(
             workspaceId,
             actorMember,
             targetMemberId
         );
+
+        return {};
     }
 
     async getMembersListByAdmin(

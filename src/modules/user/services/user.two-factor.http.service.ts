@@ -90,12 +90,14 @@ export class UserTwoFactorHttpService {
     async disableTwoFactor(
         user: IUser,
         { code, backupCode, method }: UserTwoFactorDisableRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userTwoFactorDomain.disableTwoFactor(user, {
             code,
             backupCode,
             method,
         });
+
+        return {};
     }
 
     async regenerateTwoFactorBackupCodes(
@@ -114,7 +116,9 @@ export class UserTwoFactorHttpService {
     async resetTwoFactorByAdmin(
         userId: string,
         updatedBy: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userTwoFactorDomain.resetTwoFactorByAdmin(userId, updatedBy);
+
+        return {};
     }
 }

@@ -237,12 +237,10 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember
     ): Promise<IResponseReturn<void>> {
-        await this.projectHttpService.softDeleteProject(
+        return this.projectHttpService.softDeleteProject(
             project,
             workspaceMember.userId
         );
-
-        return {};
     }
 
     @Doc({ summary: 'list members of a project, subject to visibility' })
@@ -325,14 +323,12 @@ export class ProjectUserController {
         @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
         body: ProjectMemberUpdateRoleRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.projectMemberHttpService.updateMemberRole(
+        return this.projectMemberHttpService.updateMemberRole(
             project,
             workspaceMember.userId,
             projectMemberId,
             body
         );
-
-        return {};
     }
 
     @Doc({
@@ -357,13 +353,11 @@ export class ProjectUserController {
         @Param('projectMemberId', { schema: RequestMongoIdSchema })
         projectMemberId: string
     ): Promise<IResponseReturn<void>> {
-        await this.projectMemberHttpService.removeMember(
+        return this.projectMemberHttpService.removeMember(
             project,
             workspaceMember.userId,
             projectMemberId
         );
-
-        return {};
     }
 
     @Doc({ summary: 'leave a project; any project role may leave' })
@@ -384,11 +378,9 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project,
         @ProjectMemberCurrent() projectMember: ProjectMember
     ): Promise<IResponseReturn<void>> {
-        await this.projectMemberHttpService.leaveProject(
+        return this.projectMemberHttpService.leaveProject(
             project,
             projectMember
         );
-
-        return {};
     }
 }
