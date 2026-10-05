@@ -1,0 +1,365 @@
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import {
+    EnumActivityLogAction,
+    EnumRoleType,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
+    EnumUserStatus,
+} from '@generated/prisma-client/client';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { UserDomain } from '@modules/user/domains/user.domain';
+import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
+import { UserHttpService } from '@modules/user/services/user.http.service';
+import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
+import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
+import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
+import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/user.check-username.request.dto';
+import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.request.dto';
+import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
+import type {
+    IUser,
+    IUserCreateWithWorkspaceInput,
+    IUserList,
+} from '@modules/user/interfaces/user.interface';
+import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+
+describe('UserHttpService', () => {
+    const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
+    const userOnboardingDomain: MockProxy<UserOnboardingDomain> =
+        mock<UserOnboardingDomain>();
+    const workspaceDomain: MockProxy<WorkspaceDomain> = mock<WorkspaceDomain>();
+    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
+        mock<PaginationQueryUtil>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
+
+    let service: UserHttpService;
+
+    const baseUser: IUser = {
+        id: 'user-cinder',
+        name: 'Cinder Wolfe',
+        username: 'cinder2wolfe',
+        isVerified: true,
+        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
+        email: 'cinder@example.com',
+        roleId: 'role-cinder',
+        password: 'hashed-password',
+        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
+        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
+        passwordAttempt: 0,
+        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
+        signUpFrom: EnumUserSignUpFrom.website,
+        signUpWith: EnumUserSignUpWith.credential,
+        status: EnumUserStatus.active,
+        gender: null,
+        countryId: 'country-cinder',
+        lastLoginAt: null,
+        lastIPAddress: null,
+        lastLoginFrom: null,
+        lastLoginWith: null,
+        lastWorkspaceId: null,
+        lastWorkspaceChangedAt: null,
+        termPolicy: {
+            termsOfService: true,
+            privacy: true,
+            marketing: false,
+            cookies: false,
+        },
+        photo: null,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+        deletedAt: null,
+        deletedBy: null,
+        role: {
+            id: 'role-cinder',
+            name: 'user',
+            description: null,
+            type: EnumRoleType.user,
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdBy: null,
+            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+            updatedBy: null,
+            policies: [],
+        },
+        twoFactor: null,
+    };
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                UserHttpService,
+                { provide: UserDomain, useValue: userDomain },
+                {
+                    provide: UserOnboardingDomain,
+                    useValue: userOnboardingDomain,
+                },
+                { provide: WorkspaceDomain, useValue: workspaceDomain },
+                {
+                    provide: PaginationQueryUtil,
+                    useValue: paginationQueryUtil,
+                },
+                {
+                    provide: RequestStoreService,
+                    useValue: requestStoreService,
+                },
+            ],
+        }).compile();
+        service = module.get(UserHttpService);
+    });
+
+    describe('getListOffsetByAdmin', () => {
+        const query: UserListRequestDto = { page: 1, perPage: 20 };
+        const response: IResponsePaginationReturn<IUserList> = {
+            type: EnumPaginationType.offset,
+            count: 0,
+            perPage: 20,
+            page: 1,
+            totalPage: 0,
+            hasNext: false,
+            hasPrevious: false,
+            data: [],
+        };
+
+        it('merges every filter into the pagination store and calls the domain with each where', async () => {
+            const params = { skip: 0, limit: 20, orderBy: [] };
+            paginationQueryUtil.offset.mockReturnValue({
+                params,
+                storePatch: { filters: {} },
+            });
+            paginationQueryUtil.inEnum.mockReturnValue({
+                where: { status: { in: [EnumUserStatus.active] } },
+                storeFilter: { status: [EnumUserStatus.active] },
+            });
+            paginationQueryUtil.equalString
+                .mockReturnValueOnce({
+                    where: { roleId: { equals: 'role-cinder' } },
+                    storeFilter: { roleId: 'role-cinder' },
+                })
+                .mockReturnValueOnce({
+                    where: { countryId: { equals: 'country-cinder' } },
+                    storeFilter: { countryId: 'country-cinder' },
+                });
+            userDomain.getListOffsetByAdmin.mockResolvedValue(response);
+
+            await expect(service.getListOffsetByAdmin(query)).resolves.toBe(
+                response
+            );
+            expect(requestStoreService.merge).toHaveBeenCalledWith(
+                PaginationStoreKey,
+                expect.objectContaining({
+                    filters: expect.objectContaining({
+                        status: [EnumUserStatus.active],
+                        roleId: 'role-cinder',
+                        countryId: 'country-cinder',
+                    }),
+                })
+            );
+            expect(userDomain.getListOffsetByAdmin).toHaveBeenCalledWith(
+                params,
+                { status: { in: [EnumUserStatus.active] } },
+                { roleId: { equals: 'role-cinder' } },
+                { countryId: { equals: 'country-cinder' } }
+            );
+        });
+
+        it('calls the domain with undefined wheres when no filter applies', async () => {
+            const params = { skip: 0, limit: 20, orderBy: [] };
+            paginationQueryUtil.offset.mockReturnValue({
+                params,
+                storePatch: { filters: {} },
+            });
+            paginationQueryUtil.inEnum.mockReturnValue(undefined);
+            paginationQueryUtil.equalString.mockReturnValue(undefined);
+            userDomain.getListOffsetByAdmin.mockResolvedValue(response);
+
+            await service.getListOffsetByAdmin(query);
+
+            expect(userDomain.getListOffsetByAdmin).toHaveBeenCalledWith(
+                params,
+                undefined,
+                undefined,
+                undefined
+            );
+        });
+    });
+
+    describe('getOne', () => {
+        it('wraps the user in a response envelope', async () => {
+            const user = baseUser;
+            userDomain.getOne.mockResolvedValue({
+                ...user,
+                mobileNumbers: [],
+                country: {
+                    id: user.countryId,
+                    name: 'Cinder Coast',
+                    alpha2Code: 'CD',
+                    alpha3Code: 'CDL',
+                    phoneCode: ['+1'],
+                    continent: 'Atlantis',
+                    timezone: 'UTC',
+                    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                    createdBy: null,
+                    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+                    updatedBy: null,
+                },
+            });
+
+            await expect(service.getOne(user.id)).resolves.toMatchObject({
+                data: { id: user.id },
+            });
+        });
+    });
+
+    describe('createByAdmin', () => {
+        const dto: UserCreateRequestDto = {
+            username: 'cinder2wolfe',
+            email: 'cinder@example.com' as Lowercase<string>,
+            roleId: 'role-cinder',
+            countryId: 'country-cinder',
+        };
+        const input: IUserCreateWithWorkspaceInput = {
+            userId: 'user-cinder',
+            email: dto.email,
+            name: null,
+            username: dto.username,
+            countryId: dto.countryId,
+            roleId: dto.roleId,
+            signUpFrom: EnumUserSignUpFrom.admin,
+            signUpWith: EnumUserSignUpWith.credential,
+            isVerified: false,
+            termPolicy: {
+                termsOfService: true,
+                privacy: true,
+                marketing: false,
+                cookies: false,
+            },
+            acceptedTermPolicyTypes: [],
+            password: {
+                passwordHash: 'hashed',
+                passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
+                passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
+                passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
+            },
+            passwordHistoryType: null,
+            verification: null,
+            workspaceContext: {
+                type: EnumUserSignUpWorkspaceContextType.personal,
+                workspaceId: 'workspace-cinder',
+                slugCandidates: ['w-cinder'],
+                name: "cinder2wolfe's Workspace",
+            },
+            createdBy: 'admin-cinder',
+        };
+
+        it('creates the user and notifies them of the temporary password', async () => {
+            userDomain.prepareCreateByAdmin.mockResolvedValue({
+                input,
+                passwordString: 'random-password',
+            });
+            userOnboardingDomain.getCreateTimeoutInMs.mockReturnValue(10000);
+            const created = baseUser;
+            workspaceDomain.commitOnboarding.mockResolvedValue([created]);
+
+            const result = await service.createByAdmin(dto, 'admin-cinder');
+
+            expect(result.data).toEqual({ id: created.id });
+            expect(workspaceDomain.commitOnboarding).toHaveBeenCalledWith(
+                [input],
+                EnumUserCreateMode.admin,
+                10000,
+                EnumActivityLogAction.adminUserCreate
+            );
+            expect(userDomain.notifyWelcomeByAdmin).toHaveBeenCalledWith(
+                created.id,
+                'random-password',
+                input.password!.passwordCreated,
+                input.password!.passwordExpired,
+                'admin-cinder'
+            );
+        });
+
+        it('skips the welcome notification when no password was generated', async () => {
+            userDomain.prepareCreateByAdmin.mockResolvedValue({
+                input: { ...input, password: null },
+                passwordString: 'random-password',
+            });
+            userOnboardingDomain.getCreateTimeoutInMs.mockReturnValue(10000);
+            const created = baseUser;
+            workspaceDomain.commitOnboarding.mockResolvedValue([created]);
+
+            await service.createByAdmin(dto, 'admin-cinder');
+
+            expect(userDomain.notifyWelcomeByAdmin).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('updateStatusByAdmin', () => {
+        it('delegates to the domain and returns nothing', async () => {
+            const dto: UserUpdateStatusRequestDto = {
+                status: EnumUserStatus.blocked,
+            };
+
+            await expect(
+                service.updateStatusByAdmin('user-cinder', dto, 'admin-cinder')
+            ).resolves.toBeUndefined();
+            expect(userDomain.updateStatusByAdmin).toHaveBeenCalledWith(
+                'user-cinder',
+                dto.status,
+                'admin-cinder'
+            );
+        });
+    });
+
+    describe('checkUsername', () => {
+        it('wraps the check in a response envelope', async () => {
+            const dto: UserCheckUsernameRequestDto = {
+                username: 'cinder2wolfe' as Lowercase<string>,
+            };
+            userDomain.checkUsername.mockResolvedValue({
+                badWord: false,
+                exist: false,
+                pattern: false,
+            });
+
+            await expect(service.checkUsername(dto)).resolves.toEqual({
+                data: { badWord: false, exist: false, pattern: false },
+            });
+        });
+    });
+
+    describe('checkEmail', () => {
+        it('wraps the check in a response envelope', async () => {
+            const dto: UserCheckEmailRequestDto = {
+                email: 'cinder@example.com' as Lowercase<string>,
+            };
+            userDomain.checkEmail.mockResolvedValue({
+                badWord: false,
+                exist: true,
+            });
+
+            await expect(service.checkEmail(dto)).resolves.toEqual({
+                data: { badWord: false, exist: true },
+            });
+        });
+    });
+
+    describe('deleteSelf', () => {
+        it('delegates to the domain', async () => {
+            await service.deleteSelf('user-cinder');
+
+            expect(userDomain.deleteSelf).toHaveBeenCalledWith('user-cinder');
+        });
+    });
+});

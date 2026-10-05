@@ -9,7 +9,7 @@ import { Logger } from '@nestjs/common';
 import { Command } from 'nest-commander';
 
 /**
- * Imports email notification templates into AWS SES, skipping any already present. Throws if SES is uninitialized.
+ * Imports email notification templates into AWS SES, skipping any already present. Skips with a warning when SES is not configured.
  */
 @Command({
     name: 'templateEmailNotification',
@@ -39,11 +39,11 @@ export class MigrationTemplateEmailNotificationSeed
 
         const isSESInitialized = this.awsSESService.isInitialized();
         if (!isSESInitialized) {
-            this.logger.error(
-                'AWS SES is not initialized. Cannot seed email templates.'
+            this.logger.warn(
+                'AWS SES is not configured. Skipping email template seed.'
             );
 
-            throw new Error('AWS SES is not initialized');
+            return;
         }
 
         const [

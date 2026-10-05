@@ -34,6 +34,14 @@ const sentryLogLevels: LogSeverityLevel[] =
         ? ['warn', 'error', 'fatal']
         : ['trace', 'debug', 'info', 'warn', 'error', 'fatal'];
 
+const isProduction = appConfigs.env === EnumAppEnvironment.production;
+const tracesSampleRate = isProduction
+    ? loggerConfigs.sentry.tracesSampleRateProduction
+    : loggerConfigs.sentry.tracesSampleRate;
+const profilesSampleRate = isProduction
+    ? loggerConfigs.sentry.profilesSampleRateProduction
+    : loggerConfigs.sentry.profilesSampleRate;
+
 const sensitiveFields = new Set(
     LoggerSensitiveFields.map(field => field.toLowerCase())
 );
@@ -294,10 +302,8 @@ if (loggerConfigs.sentry.dsn) {
             nodeProfilingIntegration(),
             Sentry.pinoIntegration({ log: { levels: sentryLogLevels } }),
         ],
-        tracesSampleRate:
-            appConfigs.env === EnumAppEnvironment.production ? 0.3 : 1.0,
-        profilesSampleRate:
-            appConfigs.env === EnumAppEnvironment.production ? 0.1 : 0.5,
+        tracesSampleRate,
+        profilesSampleRate,
         normalizeDepth: 3,
         maxValueLength: 1000,
         attachStacktrace: true,
@@ -366,7 +372,7 @@ if (loggerConfigs.sentry.dsn) {
                 return 0;
             }
 
-            return appConfigs.env === EnumAppEnvironment.production ? 0.3 : 1.0;
+            return tracesSampleRate;
         },
     });
 }

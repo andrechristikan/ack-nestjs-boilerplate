@@ -5,6 +5,7 @@ import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 
 @Global()
 @Module({
+    controllers: [],
     providers: [PolicyAbilityFactory, PolicyDomain],
     exports: [PolicyDomain],
     imports: [PolicyRepositoryModule],

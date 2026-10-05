@@ -14,7 +14,7 @@ import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.reque
  */
 @Injectable()
 export class PolicyAbilityFactory {
-    createForUser(policies: Policy[]): IPolicyAbilityRule {
+    createByUser(policies: Policy[]): IPolicyAbilityRule {
         const { can, build } = new AbilityBuilder<IPolicyAbilityRule>(
             createMongoAbility
         );

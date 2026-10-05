@@ -334,12 +334,10 @@ export class UserPasswordDomain {
                 newPassword
             );
             if (passwordCheck) {
-                const passwordExpiredAt =
-                    this.helperDateService.formatToRFC2822(
-                        passwordCheck.expiredAt
-                    );
+                const passwordPeriodInDays =
+                    this.authPasswordUtil.getPasswordPeriodInDays();
 
-                throw new UserPasswordMustNewException(passwordExpiredAt);
+                throw new UserPasswordMustNewException(passwordPeriodInDays);
             }
         }
 
@@ -438,12 +436,12 @@ export class UserPasswordDomain {
 
             if (today < canResendAt) {
                 const resendDuration = this.helperDateService.diff(
-                    today,
-                    canResendAt
+                    canResendAt,
+                    today
                 );
 
                 throw new UserForgotPasswordRequestLimitExceededException(
-                    resendDuration.minutes
+                    Math.ceil(resendDuration.as('minutes'))
                 );
             }
         }

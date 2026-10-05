@@ -5,6 +5,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
+import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import type {
     IPaginationIn,
@@ -122,6 +123,11 @@ export class TermPolicyDomain {
             throw new TermPolicyLanguageDuplicateException();
         }
 
+        const isS3Initialized = this.awsS3Service.isInitialized();
+        if (!isS3Initialized) {
+            throw new AwsS3NotConfiguredException();
+        }
+
         try {
             const mappedContents: ITermPolicyContent[] = contents.map(
                 ({ language, key, size }: ITermPolicyContentUpload) => {
@@ -218,6 +224,11 @@ export class TermPolicyDomain {
             0
         ) {
             throw new TermPolicyContentEmptyException();
+        }
+
+        const isS3Initialized = this.awsS3Service.isInitialized();
+        if (!isS3Initialized) {
+            throw new AwsS3NotConfiguredException();
         }
 
         try {

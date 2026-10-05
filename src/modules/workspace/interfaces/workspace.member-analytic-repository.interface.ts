@@ -9,7 +9,7 @@ import type {
 export interface IWorkspaceMemberAnalyticRepository {
     groupByRole(workspaceId: string | null): Promise<IAnalyticRoleCount[]>;
     countByWorkspace(workspaceId: string): Promise<number>;
-    membershipDistributionOffset(
+    groupMembershipDistributionOffset(
         params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>>;
 }

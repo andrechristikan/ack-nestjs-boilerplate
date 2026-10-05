@@ -13,9 +13,9 @@ export class UserForgotPasswordRequestLimitExceededException extends AppBaseExce
     readonly statusCodeKey = EnumUserStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.BAD_REQUEST;
 
-    constructor(resendIn: number) {
+    constructor(minutes: number) {
         super('user.error.forgotPasswordRequestLimitExceeded', {
-            messageProperties: { resendIn },
+            messageProperties: { minutes },
         });
     }
 }

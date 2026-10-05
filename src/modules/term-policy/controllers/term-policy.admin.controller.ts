@@ -73,7 +73,7 @@ export class TermPolicyAdminController {
         private readonly termPolicyContentHttpService: TermPolicyContentHttpService
     ) {}
 
-    @Doc({ summary: 'Retrieve list of terms and policies for admin' })
+    @Doc({ summary: 'retrieve list of terms and policies for admin' })
     @ResponsePagination('termPolicy.list', {
         schema: TermPolicyResponseSchema,
     })
@@ -95,7 +95,7 @@ export class TermPolicyAdminController {
         return this.termPolicyHttpService.getListByAdmin(query);
     }
 
-    @Doc({ summary: 'Create a new term or policy' })
+    @Doc({ summary: 'create a new term or policy' })
     @Response('termPolicy.create', { schema: TermPolicyResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -115,7 +115,7 @@ export class TermPolicyAdminController {
         return this.termPolicyHttpService.createByAdmin(body);
     }
 
-    @Doc({ summary: 'Delete a term or policy by ID' })
+    @Doc({ summary: 'delete a term or policy by ID' })
     @Response('termPolicy.delete', {
         schema: TermPolicyResponseSchema,
     })
@@ -137,7 +137,7 @@ export class TermPolicyAdminController {
         return this.termPolicyHttpService.deleteByAdmin(termPolicyId);
     }
 
-    @Doc({ summary: 'Generate presign url for term or policy content upload' })
+    @Doc({ summary: 'generate presign url for term or policy content upload' })
     @Response('termPolicy.generateContentPresign', {
         schema: AwsS3PresignResponseSchema,
     })
@@ -166,7 +166,7 @@ export class TermPolicyAdminController {
         );
     }
 
-    @Doc({ summary: 'Update content of a term or policy by ID' })
+    @Doc({ summary: 'update content of a term or policy by ID' })
     @Response('termPolicy.updateContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -184,14 +184,14 @@ export class TermPolicyAdminController {
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto
-    ): Promise<IResponseReturn<void>> {
-        return this.termPolicyContentHttpService.updateContentByAdmin(
+    ): Promise<void> {
+        await this.termPolicyContentHttpService.updateContentByAdmin(
             termPolicyId,
             body
         );
     }
 
-    @Doc({ summary: 'Add content to a term or policy by ID' })
+    @Doc({ summary: 'add content to a term or policy by ID' })
     @Response('termPolicy.addContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -209,14 +209,14 @@ export class TermPolicyAdminController {
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto
-    ): Promise<IResponseReturn<void>> {
-        return this.termPolicyContentHttpService.addContentByAdmin(
+    ): Promise<void> {
+        await this.termPolicyContentHttpService.addContentByAdmin(
             termPolicyId,
             body
         );
     }
 
-    @Doc({ summary: 'Remove content of a term or policy by ID' })
+    @Doc({ summary: 'remove content of a term or policy by ID' })
     @Response('termPolicy.removeContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -234,14 +234,14 @@ export class TermPolicyAdminController {
         termPolicyId: string,
         @Body({ schema: TermPolicyRemoveContentRequestSchema })
         body: TermPolicyRemoveContentRequestDto
-    ): Promise<IResponseReturn<void>> {
-        return this.termPolicyContentHttpService.removeContentByAdmin(
+    ): Promise<void> {
+        await this.termPolicyContentHttpService.removeContentByAdmin(
             termPolicyId,
             body
         );
     }
 
-    @Doc({ summary: 'Get content of a term or policy by ID and language' })
+    @Doc({ summary: 'get content of a term or policy by ID and language' })
     @Response('termPolicy.getContent', {
         schema: AwsS3PresignResponseSchema,
     })
@@ -268,7 +268,7 @@ export class TermPolicyAdminController {
         );
     }
 
-    @Doc({ summary: 'Publish a term or policy by ID' })
+    @Doc({ summary: 'publish a term or policy by ID' })
     @Response('termPolicy.publish')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -285,8 +285,8 @@ export class TermPolicyAdminController {
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
         @AuthJwtPayload('userId') updatedBy: string
-    ): Promise<IResponseReturn<void>> {
-        return this.termPolicyHttpService.publishByAdmin(
+    ): Promise<void> {
+        await this.termPolicyHttpService.publishByAdmin(
             termPolicyId,
             updatedBy
         );

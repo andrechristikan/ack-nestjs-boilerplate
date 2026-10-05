@@ -40,7 +40,7 @@ export const DocUserErrorResponses = {
         },
         {
             statusCode: EnumUserStatusCodeError.passwordExpired,
-            messagePath: 'auth.error.passwordExpired',
+            messagePath: 'user.error.passwordExpired',
         },
         {
             statusCode: EnumUserStatusCodeError.emailNotVerified,

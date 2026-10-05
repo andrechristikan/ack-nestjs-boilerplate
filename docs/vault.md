@@ -251,8 +251,9 @@ The seeded `development` secret copies `.env.example`. These fields are empty th
 - JWT keys and KIDs
 - `APP_ENCRYPTION_SECRET_KEY`
 - `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
+- `AUTH_TWO_FACTOR_ISSUER`
 
-Until those fields hold real values in Vault, `pnpm generate:secret --direct-insert` fills them in the pulled `.env`; the next `pnpm vault:pull` overwrites that file again. See [Installation][ref-doc-installation].
+Until those fields hold real values in Vault, `pnpm generate:secret --direct-insert` fills the keys, KIDs, and both encryption secrets in the pulled `.env`, and `AUTH_TWO_FACTOR_ISSUER` is set by hand; the next `pnpm vault:pull` overwrites that file again. The third-party fields (AWS, Firebase, social sign-in, Sentry) also arrive empty, and validation reads an empty value as unset, so those integrations stay off until their values are filled in. See [Installation][ref-doc-installation].
 
 ### Reading the Root Token
 

@@ -283,7 +283,7 @@ sequenceDiagram
     end
 ```
 
-The route itself is gated by `@FeatureFlagProtected('loginWithCredential')` and `@ApiKeyProtected()`, so a disabled flag rejects the request before any credential is read.
+The route itself is gated by `@FeatureFlagProtected('loginWithCredential')` and `@ApiKeyProtected()`, so a disabled flag rejects the request with `FeatureFlagDisabledException` (404, `50601`) before any credential is read.
 
 Credential checks run in a fixed order. Each one throws before the next is reached:
 
@@ -527,8 +527,13 @@ A type alias derived from `IAuthJwtAccessTokenPayload` with `Omit`. The refresh 
 To protect an endpoint with JWT access token validation, use the `@AuthJwtAccessProtected` decorator:
 
 ```typescript
+@Doc({ summary: 'get profile' })
+@Response('user.profile', { schema: UserProfileResponseSchema })
+@TermPolicyAcceptanceProtected()
 @UserProtected()
 @AuthJwtAccessProtected()
+@ApiKeyProtected()
+@RequestThrottle({ user: true })
 @Get('/profile/get')
 async profile(
     @AuthJwtPayload('userId') userId: string
@@ -540,8 +545,14 @@ async profile(
 Refresh uses `@AuthJwtRefreshProtected` on `POST /refresh`:
 
 ```typescript
+@Doc({ summary: 'refresh token' })
+@Response('user.refresh', { schema: AuthTokenResponseSchema })
+@TermPolicyAcceptanceProtected()
 @UserProtected()
 @AuthJwtRefreshProtected()
+@ApiKeyProtected()
+@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.relaxed })
+@HttpCode(HttpStatus.OK)
 @Post('/refresh')
 async refresh(
     @UserCurrent() user: IUser,
@@ -558,8 +569,11 @@ To access the JWT payload in your controller, use the `@AuthJwtPayload()` decora
 Shared profile reads `userId` from the payload:
 
 ```typescript
+@TermPolicyAcceptanceProtected()
 @UserProtected()
 @AuthJwtAccessProtected()
+@ApiKeyProtected()
+@RequestThrottle({ user: true })
 @Get('/profile/get')
 async profile(
     @AuthJwtPayload('userId') userId: string
@@ -586,8 +600,12 @@ To access the raw JWT token string, use the `@AuthJwtToken()` decorator:
 Refresh is the call site:
 
 ```typescript
+@TermPolicyAcceptanceProtected()
 @UserProtected()
 @AuthJwtRefreshProtected()
+@ApiKeyProtected()
+@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.relaxed })
+@HttpCode(HttpStatus.OK)
 @Post('/refresh')
 async refresh(
     @UserCurrent() user: IUser,
@@ -657,6 +675,7 @@ sequenceDiagram
     participant GoogleApple as Google/Apple
     participant Guard
     participant API
+    participant AuthDomain
     participant AuthSocialDomain
     participant AuthJwtDomain
     participant Redis
@@ -668,54 +687,67 @@ sequenceDiagram
     
     Client->>API: POST /public/user/login/social/{google|apple}
     Note over Client,API: Authorization: Bearer <oauth_token>
-    
-    Client->>Guard: AuthSocialGoogleGuard / AuthSocialAppleGuard
+
+    API->>API: ApiKeyProtected, then FeatureFlagProtected<br/>(disabled flag: 404 FeatureFlagDisabledException)
+    API->>Guard: AuthSocialGoogleGuard / AuthSocialAppleGuard
     Guard->>Guard: Split the Authorization header on the configured prefix
-    
+
     alt Google Authentication
-        Guard->>AuthSocialDomain: verifyGoogle(token)
-        Note over AuthSocialDomain: Uses OAuth2Client from<br/>google-auth-library
-        AuthSocialDomain-->>Guard: TokenPayload {email, email_verified}
+        Guard->>AuthDomain: validateOAuthGoogle(token)
+        AuthDomain->>AuthSocialDomain: verifyGoogle(token)
+        Note over AuthSocialDomain: OAuth2Client from google-auth-library,<br/>built from the client id; verifyIdToken<br/>with audience = the client id
+        AuthSocialDomain-->>AuthDomain: TokenPayload {email, email_verified}
+        AuthDomain-->>Guard: {email, emailVerified}
     else Apple Authentication
-        Guard->>AuthSocialDomain: verifyApple(token)
-        Note over AuthSocialDomain: Uses verifyAppleToken from<br/>verify-apple-id-token
-        AuthSocialDomain-->>Guard: Payload {email, email_verified}
+        Guard->>AuthDomain: validateOAuthApple(token)
+        AuthDomain->>AuthSocialDomain: verifyApple(token)
+        Note over AuthSocialDomain: verifyAppleToken from verify-apple-id-token,<br/>against every configured Apple client id
+        AuthSocialDomain-->>AuthDomain: Payload {email, email_verified}
+        AuthDomain-->>Guard: {email, emailVerified}
     end
-    
-    alt Token Valid
+    Note over AuthDomain: Rethrows a not-configured exception as is;<br/>wraps any other verification error in<br/>AuthSocialGoogleInvalidException / AuthSocialAppleInvalidException
+
+    alt Provider not configured
+        Guard-->>Client: 404 Not Found (AuthSocialGoogleNotConfiguredException 50817 /<br/>AuthSocialAppleNotConfiguredException 50818)
+    else Token Valid
         Guard->>API: request.user = {email, emailVerified}
         API->>Database: Find user by email
         Note over API,Database: Created only when the flag's<br/>signUpAllowed metadata is true
         Database-->>API: User record
-        
+
         API->>AuthJwtDomain: createTokens(user, loginFrom, loginWith)
-        Note over AuthJwtDomain: Mints sessionId, deviceOwnershipId<br/>and a 32-char random jti through AuthUtil
+        Note over AuthJwtDomain: Mints sessionId and deviceOwnershipId through DatabaseUtil<br/>and a 32-char random jti through AuthUtil
         AuthJwtDomain-->>API: Access Token (ES256) + Refresh Token (ES512), both carrying the jti
-        
-        par Store in Database
-            API->>Database: Create session record with jti
-            Database-->>API: Session created
-        and Store in Redis
-            API->>Redis: Store session with jti and TTL
-            Note over Redis: Key: User:{userId}:Session:{sessionId}<br/>Value: {userId, sessionId, jti, expiredAt}<br/>TTL: follows AUTH_JWT_REFRESH_TOKEN_EXPIRED
-            Redis-->>API: Session cached
-        end
-        
+
+        API->>Database: One transaction: upsert device, resolve device ownership,<br/>revoke prior active sessions on that ownership,<br/>create session record with jti, update last-login fields
+        Database-->>API: Committed
+        API->>Redis: Store session with jti and TTL
+        Note over Redis: Key: User:{userId}:Session:{sessionId}<br/>Value: {userId, sessionId, jti, expiredAt}<br/>TTL: follows AUTH_JWT_REFRESH_TOKEN_EXPIRED
+        Redis-->>API: Session cached
+
         API-->>Client: Response with tokens
         Note over Client: Same UserLoginResponseDto as<br/>credential login: isTwoFactorEnable<br/>plus tokens or twoFactor
-        
+
         Client->>Client: Store tokens securely
-        
+
     else Token Invalid
-        API-->>Client: 401 Unauthorized (AuthSocialGoogleInvalidException / AuthSocialAppleInvalidException)
+        Guard-->>Client: 401 Unauthorized (AuthSocialGoogleInvalidException / AuthSocialAppleInvalidException)
     end
 ```
 
 Social login joins the credential login path once the user is resolved, so the two-factor branch and the device constraint apply exactly as they do for credential login. The email-verification branch does not: a social user who is not yet verified is marked verified in place before the shared path runs, so `UserEmailNotVerifiedException` is never reached from a social login. A user whose status is not `active` is rejected with `UserInactiveForbiddenException` at the same point, whether the record was just created or already existed.
 
-Both routes are also gated by `@FeatureFlagProtected('loginWithGoogle')` / `@FeatureFlagProtected('loginWithApple')` and `@ApiKeyProtected()`. A missing or malformed `Authorization` header fails with `AuthSocialGoogleRequiredException` / `AuthSocialAppleRequiredException` (401) before any token verification runs.
+Both routes are also gated by `@FeatureFlagProtected('loginWithGoogle')` / `@FeatureFlagProtected('loginWithApple')` and `@ApiKeyProtected()`. The social guard sits above `@FeatureFlagProtected()` in source, so guards run in this order:
 
-When the account does not exist and the flag's `signUpAllowed` metadata is true, the user is created on this path: the default user role is resolved, the username is checked against the allowed pattern, the bad-word list, and existing usernames, the workspace context is resolved (from `inviteToken` when present, otherwise a personal workspace), the record is created, and a welcome email is sent. Supplying an `inviteToken` also requires the `workspace` flag's `invitationAllowed` metadata, and an invite token that resolves to nothing fails with `WorkspaceInviteInvalidException`.
+1. `@ApiKeyProtected()`
+2. `@FeatureFlagProtected()`, on its anonymous branch; a disabled flag answers `FeatureFlagDisabledException` (404, `50601`) before any provider call
+3. the social guard
+
+A missing or malformed `Authorization` header fails with `AuthSocialGoogleRequiredException` / `AuthSocialAppleRequiredException` (401) before any token verification runs.
+
+A provider with no client id configured answers 404 before the token is verified: `AuthSocialGoogleNotConfiguredException` (`50817`) or `AuthSocialAppleNotConfiguredException` (`50818`). `AuthDomain` rethrows these two as they are; every other verification failure becomes `AuthSocialGoogleInvalidException` / `AuthSocialAppleInvalidException` (401).
+
+Every social login first resolves the workspace context: from `inviteToken` when present, otherwise a personal workspace. Supplying an `inviteToken` requires the `workspace` flag's `invitationAllowed` metadata, and an invite token that resolves to nothing, or to an invite for another email, fails with `WorkspaceInviteInvalidException`. When the account does not exist and the flag's `signUpAllowed` metadata is true, the user is created on this path: the default user role is resolved, the username is checked against the allowed pattern, the bad-word list, and existing usernames, the record is created already verified, and a welcome email is sent. When the account does not exist and `signUpAllowed` is false, the login fails with `UserNotFoundException`.
 
 ### Google Authentication
 
@@ -730,16 +762,16 @@ export default registerAs(
         google: {
             header: 'Authorization',
             prefix: 'Bearer',
-            clientId: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID ?? null,
-            clientSecret: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_SECRET ?? null,
+            clientId: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID || null,
         }
     })
 );
 ```
 
 **Environment Variables:**
-- `AUTH_SOCIAL_GOOGLE_CLIENT_ID`: Google OAuth 2.0 client ID
-- `AUTH_SOCIAL_GOOGLE_CLIENT_SECRET`: Google OAuth 2.0 client secret
+- `AUTH_SOCIAL_GOOGLE_CLIENT_ID`: Google OAuth 2.0 client ID; empty or unset leaves Google sign-in unconfigured
+
+`AuthSocialDomain` builds one `OAuth2Client` from the client id alone and verifies every Google ID token with `audience` set to that client id, so a token minted for another client is rejected. With no client id, `verifyGoogle` throws `AuthSocialGoogleNotConfiguredException` (404, `50817`) before any verification.
 
 #### Setup Google OAuth 2.0
 
@@ -750,7 +782,7 @@ To obtain Google OAuth credentials:
 3. Enable Google+ API
 4. Create OAuth 2.0 credentials (Web application)
 5. Configure authorized redirect URIs
-6. Copy Client ID and Client Secret to your `.env` file
+6. Copy the Client ID to your `.env` file
 
 Setup: [Google OAuth 2.0 Documentation][ref-google-client-secret]
 
@@ -759,7 +791,7 @@ Setup: [Google OAuth 2.0 Documentation][ref-google-client-secret]
 **Protecting the Endpoint:**
 
 ```typescript
-@AuthPublicLoginSocialGoogleDoc()
+@Doc({ summary: 'login with social google' })
 @Response('user.loginWithSocialGoogle', { schema: UserLoginResponseSchema })
 @AuthSocialGoogleProtected()
 @FeatureFlagProtected('loginWithGoogle')
@@ -795,9 +827,8 @@ export default registerAs(
         apple: {
             header: 'Authorization',
             prefix: 'Bearer',
-            clientId: process.env.AUTH_SOCIAL_APPLE_CLIENT_ID ?? null,
-            signInClientId:
-                process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID ?? null,
+            clientId: process.env.AUTH_SOCIAL_APPLE_CLIENT_ID || null,
+            signInClientId: process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID || null,
         }
     })
 );
@@ -825,7 +856,7 @@ Setup: [Apple Sign In Documentation](https://developer.apple.com/sign-in-with-ap
 **Protecting the Endpoint:**
 
 ```typescript
-@AuthPublicLoginSocialAppleDoc()
+@Doc({ summary: 'login with social apple' })
 @Response('user.loginWithSocialApple', { schema: UserLoginResponseSchema })
 @AuthSocialAppleProtected()
 @FeatureFlagProtected('loginWithApple')
@@ -846,7 +877,7 @@ async loginWithApple(
 }
 ```
 
-The Apple token is verified against both `clientId` and `signInClientId`, so one route serves the web Services ID and the native app.
+The Apple token is verified against whichever of `clientId` and `signInClientId` are set, so one route serves the web Services ID and the native app. With neither set, `verifyApple` throws `AuthSocialAppleNotConfiguredException` (404, `50818`) before any verification.
 
 ## Two-Factor Authentication (TOTP)
 
@@ -913,7 +944,7 @@ sequenceDiagram
     User->>API: POST /public/user/login/credential
     API->>Cache: Store challenge token
     API->>User: Return challengeToken
-    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, code}
+    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, method: code, code}
     API->>Cache: Validate challenge
     API->>User: Return JWT tokens
 ```
@@ -971,6 +1002,8 @@ Public login stacks it:
 ```typescript
 @FeatureFlagProtected('loginWithCredential')
 @ApiKeyProtected()
+@RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+@HttpCode(HttpStatus.OK)
 @Post('/login/credential')
 async loginWithCredential(
     @Body({ schema: UserLoginRequestSchema })
@@ -1031,6 +1064,8 @@ x-api-key: ${key}:${secret}
 ```typescript
 @FeatureFlagProtected('loginWithCredential')
 @ApiKeyProtected()
+@RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+@HttpCode(HttpStatus.OK)
 @Post('/login/credential')
 async loginWithCredential(
     @Body({ schema: UserLoginRequestSchema })
@@ -1370,10 +1405,6 @@ sequenceDiagram
     end
 ```
 
-## Contribution
-
-Special thanks to [Gzerox][ref-contributor-gzerox] for providing the idea and contribution for Refresh Token Rotation and JWT ID (jti) validation mechanism.
-
 <!-- REFERENCES -->
 
 [ref-jwt]: https://jwt.io
@@ -1392,5 +1423,3 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for providing the idea and co
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-status-codes]: status-codes.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
-
-[ref-contributor-gzerox]: https://github.com/Gzerox

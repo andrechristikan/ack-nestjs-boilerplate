@@ -110,7 +110,14 @@ AUTH_JWT_ACCESS_TOKEN_JWKS_URI=http://localhost:3011/.well-known/access-jwks.jso
 AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://localhost:3011/.well-known/refresh-jwks.json
 ```
 
+**Two-factor issuer** (required; empty in `.env.example`, and `pnpm generate:secret` leaves it alone)
+```bash
+AUTH_TWO_FACTOR_ISSUER=ACKNestJs
+```
+
 Full variable list: [Environment Documentation][ref-doc-environment].
+
+Third-party integrations (AWS S3, AWS SES, Firebase, Google and Apple sign-in, Sentry) are optional. Leave their lines blank in `.env` and the app boots without them: a route that needs S3 or a social sign-in that is not set up answers 404, email and push delivery are skipped, and the health indicator of each missing integration reports it down. S3 and SES turn on when their IAM credential key or secret is set, and Firebase on any of its three keys; once one is on, startup validation fails with the keys it still needs. Google, Apple, and Sentry turn on from their client id or DSN alone. A region, bucket, or `EMAIL_*` value set on its own boots fine. The full trigger table is in [Environment Documentation][ref-doc-environment].
 
 ### Generate Keys
 
@@ -180,7 +187,7 @@ docker-compose ps
 docker-compose logs -f
 ```
 
-Health checks mark each service ready only after its check passes.
+MongoDB, Redis, the JWKS server, the API container, and Vault (profile `vault`) carry health checks; a service that depends on one starts after that check passes, so `vault-bootstrap` waits for Vault.
 
 ### Troubleshooting
 
@@ -223,6 +230,7 @@ Set at least:
 DATABASE_URL=<your Atlas (or other replica-set) connection string>
 CACHE_REDIS_URL=redis://<your-redis-host>:6379/0
 QUEUE_REDIS_URL=redis://<your-redis-host>:6379/1
+AUTH_TWO_FACTOR_ISSUER=ACKNestJs
 ```
 
 Other variables: [Environment Documentation][ref-doc-environment].
@@ -272,7 +280,7 @@ The bundled config uses a persistent file backend, auto-initialized and auto-uns
 pnpm generate
 ```
 
-Run this after `pnpm install`, and again after changes to `prisma/schema.prisma` or those `package.json` fields. CI and both dockerfiles run it before building.
+Run this after `pnpm install`, and again after changes to `prisma/schema.prisma` or those `package.json` fields. The CI workflows and both dockerfiles (`ci/dockerfile`, `ci/dockerfile.local`) run it before building.
 
 ## Database Migration & Seeding
 
@@ -308,7 +316,7 @@ pnpm migration:fresh
 
 **Seed email templates:**
 
-SES template sync (not a database seed). Commands and template list: [Email Documentation][ref-doc-email].
+SES template sync (not a database seed). With SES unconfigured, the seed logs a warning and skips. Commands and template list: [Email Documentation][ref-doc-email].
 
 ```bash
 pnpm migration templateEmailNotification --type seed
@@ -316,7 +324,7 @@ pnpm migration templateEmailNotification --type seed
 
 **Seed term policies (HTML on S3):**
 
-See [Term Policy Documentation][ref-doc-term-policy].
+With S3 unconfigured, the seed logs a warning and skips. See [Term Policy Documentation][ref-doc-term-policy].
 
 ```bash
 pnpm migration templateTermPolicy --type seed
@@ -324,7 +332,7 @@ pnpm migration templateTermPolicy --type seed
 
 **S3 bucket policy / CORS:**
 
-See [Third Party Integration; Bucket setup][ref-doc-third-party-s3].
+Needs S3 and `AWS_S3_IAM_ARN` (the principal the public bucket policy grants); with either unset, the seed logs a warning and skips. See [Third Party Integration; Bucket setup][ref-doc-third-party-s3].
 
 ```bash
 pnpm migration awsS3Config --type seed
@@ -363,13 +371,13 @@ pnpm deadcode
 pnpm spell
 ```
 
-`pnpm test` is `TZ=UTC vitest run --passWithNoTests`:
+`pnpm test` is `TZ=UTC vitest run --project unit`:
 
+- `vitest.config.ts` declares one project, `unit`: specs under `test/unit/` mirroring `src/`, with `test/helpers/test.logger.helper.ts` as the setup file
 - No coverage by default (`coverage.enabled` is `false` in `vitest.config.ts`)
 - `pnpm test:cov` adds `--coverage` and applies the 100% thresholds
-- The suite is unit specs only
 - `pre-commit` and CI (`.github/workflows/test.yml`, `workflow_dispatch`) run `NODE_ENV=test pnpm test`
-- `.github/workflows/linter.yml` runs on `pull_request`
+- `.github/workflows/linter.yml` runs on `pull_request` and `workflow_dispatch`
 - `testTimeout` is 5000ms
 
 Dependency helpers:
@@ -381,7 +389,7 @@ pnpm clean && pnpm install
 ```
 
 > [!NOTE]
-> `pnpm clean` removes `node_modules`, `dist`, and the pnpm cache before a fresh install. Useful after dependency conflicts or a broken build.
+> `pnpm clean` removes `dist` and `node_modules` and prunes the pnpm store before a fresh install. Useful after dependency conflicts or a broken build.
 
 
 ## Accessing the Application

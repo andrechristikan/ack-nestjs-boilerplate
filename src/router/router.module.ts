@@ -12,9 +12,9 @@ import { RouterProcessorModule } from '@router/processor/router.processor.module
  * (`/public`, `/system`, `/admin`, `/user`, `/shared`) and the queue processors.
  */
 @Module({
+    controllers: [],
     providers: [],
     exports: [],
-    controllers: [],
     imports: [
         RouterProcessorModule,
         RouterHttpPublicModule,

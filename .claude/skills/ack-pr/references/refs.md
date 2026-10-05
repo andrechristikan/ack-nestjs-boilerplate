@@ -11,9 +11,12 @@ Base is the branch the PR targets (`main` or `development`; ask when not given).
 git fetch origin <base>
 git branch -f ack-pr/base-<base> origin/<base>
 git rev-list --count ack-pr/base-<base>..HEAD
+git diff --stat ack-pr/base-<base>
 ```
 
-Zero commits ahead means the branch has nothing to describe: say so and stop.
+Zero commits ahead and an empty `git diff ack-pr/base-<base>` mean the branch has nothing
+to describe: say so and stop. Uncommitted and staged work counts, so zero commits ahead
+with a non-empty diff continues.
 
 The dispatch names `ack-pr/base-<base>`. `writer` diffs with no second ref and no `..`:
 `git diff ack-pr/base-<base>` includes uncommitted and staged work, which

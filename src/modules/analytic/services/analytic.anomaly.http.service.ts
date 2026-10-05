@@ -13,11 +13,11 @@ import {
     AnalyticLoginTimeAnomalyAvailableOrderBy,
     AnalyticNearLockoutAvailableOrderBy,
 } from '@modules/analytic/constants/analytic.list.constant';
-import type { AnalyticDeviceProliferationListRequestDto } from '@modules/analytic/dtos/request/analytic-device-proliferation-list.request.dto';
-import type { AnalyticImpossibleTravelListRequestDto } from '@modules/analytic/dtos/request/analytic-impossible-travel-list.request.dto';
-import type { AnalyticLoginSpikeIpListRequestDto } from '@modules/analytic/dtos/request/analytic-login-spike-ip-list.request.dto';
-import type { AnalyticLoginTimeAnomalyListRequestDto } from '@modules/analytic/dtos/request/analytic-login-time-anomaly-list.request.dto';
-import type { AnalyticNearLockoutListRequestDto } from '@modules/analytic/dtos/request/analytic-near-lockout-list.request.dto';
+import type { AnalyticDeviceProliferationListRequestDto } from '@modules/analytic/dtos/request/analytic.device-proliferation-list.request.dto';
+import type { AnalyticImpossibleTravelListRequestDto } from '@modules/analytic/dtos/request/analytic.impossible-travel-list.request.dto';
+import type { AnalyticLoginSpikeIpListRequestDto } from '@modules/analytic/dtos/request/analytic.login-spike-ip-list.request.dto';
+import type { AnalyticLoginTimeAnomalyListRequestDto } from '@modules/analytic/dtos/request/analytic.login-time-anomaly-list.request.dto';
+import type { AnalyticNearLockoutListRequestDto } from '@modules/analytic/dtos/request/analytic.near-lockout-list.request.dto';
 import { AnalyticAnomalyDomain } from '@modules/analytic/domains/analytic.anomaly.domain';
 import type {
     IAnalyticAnomalySummary,

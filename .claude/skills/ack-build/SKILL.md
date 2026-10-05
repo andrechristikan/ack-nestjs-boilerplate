@@ -25,17 +25,28 @@ through `/ack-harness`, before any `src/` work; code is written against the rule
 stands after that. If a `superpowers:*` skill is not installed, stop and say
 `claude plugin install superpowers@claude-plugins-official`.
 
+## Dispatch in the foreground
+
+- Pass `run_in_background: false` on every Agent call where the tool offers the parameter;
+  where it does not, a subagent already runs synchronously. Parallel work, such as a review
+  split into parts, is several calls in one message; they run concurrently, and the next
+  step starts once all have returned (`references/dispatch.md`, Foreground dispatch).
+- Either way, end the turn only after every dispatched agent has returned and its result is
+  read, acted on, and, on a plan run, in the progress ledger (Ledger lines). A re-run
+  resumes from the ledger. The waiting guidance in `superpowers:subagent-driven-development`
+  covers background children; this fork has none.
+
 ## Input
 
-- A plan path: read the plan whole. Its header carries `Review depth: rules and boot | end
-  to end`, set by `/ack-plan`. A header without it means `rules and boot`.
+- A plan path: read the plan whole. Its header carries `**Review depth:** rules and boot |
+  end to end`, set by `/ack-plan`. A header without it means `rules and boot`.
 - A pin: files, the cause at `file:line`, and the change. Missing any of the three, stop
   and hand back.
 - Nothing open is decided here. An open product question, a shape with two readings, or a
   cause not in hand is a hand-back naming `/ack-plan` or `/ack-debug`.
 - The progress ledger is `.superpowers/sdd/<plan-basename>/progress.md`, in the per-plan
   workspace `superpowers:subagent-driven-development` keeps (its `scripts/sdd-workspace`
-  prints the path). It lists the tasks a previous run finished; skip those on a re-run. A
+  prints the path). Read it before the first dispatch and resume where its lines end. A
   `progress.md` directly under `.superpowers/sdd/` belongs to another plan; leave it alone.
 
 ## Build, through `coder`
@@ -54,21 +65,46 @@ applies. A pin is one dispatch carrying the pin instead of a plan path.
   made stale.
 - A schema delta is `coder`'s edit and the owner's push: `coder` runs `pnpm db:generate`;
   relay the model, the field, the index, the data consequence, and `pnpm db:migrate`.
-- A `NEEDS_CONTEXT` or `BLOCKED` hand-back goes to the session as an open question; do
-  not fix it here.
+- A `NEEDS_CONTEXT` or `BLOCKED` report stops the build (Ledger lines); do not fix it here.
 
 ## Review every task, through `reviewer`
 
 After each task, dispatch `reviewer` at `Depth: task` with the task brief as the
 requirement and the task's files as the scope (`references/dispatch.md`, Reviewer). After
-the last task, dispatch one `reviewer` at the plan's review depth over the whole scope.
+the last task, dispatch one `reviewer` at the plan's review depth over the whole scope; its
+findings run the same loop under the same stop and park rule.
 
 Every finding passes `superpowers:receiving-code-review` here, in this orchestration:
 
-- Open the file and confirm or reject the claim, with a reason.
-- Confirmed findings go to `coder` in one fix dispatch, then one scoped re-review.
-- Rejected findings, and what stays open after that round, are lines in the hand-back.
-- A task does not start while its predecessor has a confirmed finding unfixed.
+- Open the file; confirm or reject the claim with a reason. Severity is the reviewer's label.
+- Confirmed findings go to `coder` in one fix dispatch, then one scoped re-review: one round.
+- After the re-review, a Critical or Important finding still open stops the build: the task
+  gets no `complete` line and the fork hands back to the owner. A Minor one still open is
+  parked with a ruling; the task is complete and the next task starts.
+- A task waits while its predecessor has a confirmed Critical or Important finding unfixed.
+
+### Ledger lines
+
+Append to the progress ledger as each agent returns, before the next dispatch:
+
+- `coder` reports `DONE` or `DONE_WITH_CONCERNS`:
+  `Task <N>: implemented (<status>; files <paths>; <decisive test line>)`.
+- `coder` reports `NEEDS_CONTEXT` or `BLOCKED`: `Task <N>: blocked (<status>: <question>)`.
+- Each `reviewer` round, every finding judged: `Task <N>: review <R> clean` or
+  `Task <N>: review <R> (<finding> at <file:line>: <state>; ...)`, the state confirmed,
+  rejected with the reason, fixed, open, or `parked, <ruling>` (Minor only).
+- A fix `coder`: `Task <N>: fix (<findings fixed>; <decisive test line>)`.
+- Loop end: `Task <N>: stopped (<finding> at <file:line>: open)` when a Critical or
+  Important finding is open, otherwise `Task <N>: complete (<K> fixed, <J> rejected, <P> parked)`.
+- The final review: `Final review: <depth> (<finding> at <file:line>: <state>; ...)` per
+  round, `Final review: fix (<findings fixed>; <decisive test line>)`, then
+  `Final review: stopped (<finding> at <file:line>: open)` or `Final review: complete`.
+
+On a re-run, skip every task with a `Task <N>: complete` line. A task whose last line is
+`blocked` resumes at the `coder` dispatch, one whose last line is `stopped` at its fix step,
+each with the owner's answer; any other task resumes at the step after its last line. With
+every task complete, resume after the last `Final review:` line, at the final fix step with
+the owner's answer when that line is `Final review: stopped`.
 
 ## Verify
 
@@ -85,8 +121,8 @@ pnpm test <module>
 `<module>` is a path filter naming each module the work changed; a module only read is
 out of scope. When a plan task names its own acceptance commands (`pnpm test:integration`,
 `pnpm test:e2e`, the unit parity counts), run and read each of those too. How to read
-`deadcode`, `spell`, and a scoped `test:cov`: `.claude/CLAUDE.md` Gotchas. A coverage gap beyond the TDD specs is named with file and lines; closing it is
-`/ack-spec`.
+`deadcode`, `spell`, and a scoped `test:cov`: `.claude/CLAUDE.md` Gotchas. A coverage gap
+beyond the TDD specs is named with file and lines; closing it is `/ack-spec`.
 
 ## Finish
 
@@ -98,7 +134,8 @@ runs in the session from `/ack-pr create`, not here.
 
 - The input: the plan path or the pin.
 - Per task: what `coder` produced and the decisive test line; the task review's findings
-  and each one's state (fixed, rejected with the reason, open).
+  and each one's state (fixed, rejected with the reason, parked with the ruling, open); a
+  `blocked` or `stopped` line with the question the owner answers.
 - The final review at the plan's depth.
 - Every run-surface file checked and whether it changed; every status code allocated.
 - The schema delta and the owner's push command.

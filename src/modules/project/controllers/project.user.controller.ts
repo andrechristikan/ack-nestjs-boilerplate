@@ -111,7 +111,7 @@ export class ProjectUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember
     ): Promise<IResponsePaginationReturn<Project>> {
-        return this.projectHttpService.getListForMember(
+        return this.projectHttpService.getListCursorByMember(
             workspace.id,
             workspaceMember,
             query

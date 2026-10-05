@@ -13,7 +13,7 @@ Fraud and anomaly routes are report-only:
 - They return summaries, lists, and risk scores.
 - They do not block users, revoke sessions, or change credentials.
 
-Analytic injects owner `*AnalyticDomain` / `*AnalyticRepository` pairs and never opens foreign Prisma models.
+Analytic injects the owner modules' `*AnalyticDomain` classes; each one reads through its own module's `*AnalyticRepository`. The analytic module owns no repository and opens no Prisma model. Every public read on a `*.analytic.domain.ts` is a `get*` method.
 
 Status codes for this module live in the `52100` block. Catalog: [Status Codes](status-codes.md).
 
@@ -176,6 +176,8 @@ Mounted at `/admin/analytic`. One controller: `AnalyticAdminController` (`analyt
 | `GET` | `/admin/analytic/projects/creation` | Project creation counts for a required date range |
 | `GET` | `/admin/analytic/projects/membership` | Offset-paginated member counts per project |
 
+Workspace and project counts cover live rows only: `WorkspaceAnalyticRepository` and `ProjectAnalyticRepository` filter with `OR: WorkspaceActiveFilter` and `OR: ProjectActiveFilter`, so a soft-deleted workspace or project drops out of creation, visibility, and per-workspace project counts.
+
 ### Admin fraud
 
 Fraud routes live under `/admin/analytic/fraud`. Each signal exposes a summary and a matching `/list` (offset-paginated detail), except risk score which is per-user or a paginated roster.
@@ -292,8 +294,8 @@ Credential-failure rows (`UserAuthDomain` calls both writers; every row uses `on
 
 How Analytic reads them:
 
-- `UserLoginAnalyticDomain.lockoutMetrics` (`GET /admin/analytic/auth/lockout`) counts `userLoginFailed` and `userReachMaxPasswordAttempt`
-- `findFailedLoginEvents` lists those two for the credential-stuffing signal
+- `UserLoginAnalyticDomain.getLockoutMetrics` (`GET /admin/analytic/auth/lockout`) counts `userLoginFailed` and `userReachMaxPasswordAttempt`
+- `UserLoginAnalyticDomain.getFailedLoginEvents` lists those two for the credential-stuffing signal
 
 An action one user takes on another writes an actor row and a target row ([Activity Log](activity-log.md#actor-and-target-rows)). The metrics that read those actions count one side of each pair:
 

@@ -11,7 +11,7 @@ Login can require a TOTP (RFC 6238) from an authenticator app, plus one-time bac
 - Challenge-based verification flow
 - Session revocation on security changes
 - Account protection with failed attempts tracking
-- 2FA on login, password change, password reset, disable 2FA, and backup code regeneration
+- 2FA on login, password change, password reset, disable 2FA, backup code regeneration, and a new setup while 2FA is enabled (backup code)
 
 ## Related Documents
 
@@ -45,7 +45,6 @@ Login can require a TOTP (RFC 6238) from an authenticator app, plus one-time bac
     - [Password Operations with 2FA Flow](#password-operations-with-2fa-flow)
 - [Error Handling](#error-handling)
     - [HTTP Status Codes](#http-status-codes)
-- [Contribution](#contribution)
 
 ## Configuration
 
@@ -253,8 +252,9 @@ sequenceDiagram
         API->>User: Error (500)
     end
     API->>User: Return challengeToken
-    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, code}
+    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, method: code, code}
     API->>Cache: Validate challenge
+    API->>Database: Load user, reject unless active, verified,<br/>2FA enabled, and not awaiting forced setup
     API->>Cache: Check if user is locked
     alt User Locked
         API->>Cache: Get TTL (remaining lock time)
@@ -308,7 +308,7 @@ sequenceDiagram
     API->>Database: Move pendingSecret to secret, save backup codes
     API->>Database: Set requiredSetup=false, attempt=0
     API->>User: Return backup codes
-    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, code}
+    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, method: code, code}
     API->>User: Return tokens
 ```
 
@@ -322,7 +322,7 @@ sequenceDiagram
     participant Cache
     participant Database
 
-    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, backupCode}
+    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, method: backupCodes, backupCode}
     API->>Cache: Validate challenge
     API->>Database: Load user, reject unless active, verified,<br/>2FA enabled, and not awaiting forced setup
     API->>Cache: Check if user is locked
@@ -364,7 +364,7 @@ sequenceDiagram
     participant Cache
     participant Database
 
-    User->>API: PATCH /public/user/login/2fa/verify {code}
+    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, method: code, code}
     API->>Cache: Check if user is locked
     
     alt User Already Locked
@@ -422,9 +422,9 @@ sequenceDiagram
     Note over User: User must setup 2FA again on next login
     User->>API: POST /public/user/login/credential
     API->>User: Return secret + otpauthUrl + challengeToken
-    User->>API: POST /public/user/login/2fa/enable {code}
+    User->>API: POST /public/user/login/2fa/enable {challengeToken, code}
     API->>Database: Complete setup, attempt=0
-    User->>API: PATCH /public/user/login/2fa/verify {code}
+    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, method: code, code}
     API->>User: Return tokens
 ```
 
@@ -441,6 +441,9 @@ sequenceDiagram
     participant Database
 
     User->>API: PATCH /shared/user/password/change<br/>{oldPassword, newPassword, code/backupCode, method}
+    alt Password attempt limit already reached
+        API->>User: Error: Password attempt max (403)
+    end
     API->>Database: Verify old password
     alt Old Password Invalid
         API->>Database: Increment password attempt counter
@@ -482,7 +485,7 @@ sequenceDiagram
     end
 ```
 
-The password-history check is what makes the reuse window real: a password still held in history for `auth.password.periodInDays` is rejected before the 2FA step, so a user cannot rotate back to a recent password by passing 2FA.
+The password-history check is what makes the reuse window real: a password still held in history for `auth.password.periodInDays` is rejected before the 2FA step, so a user cannot rotate back to a recent password by passing 2FA. A user with no password set (a social sign-up) skips the attempt-limit, old-password, and history checks and goes straight to the 2FA step.
 
 **Reset Password (Forgot Password):**
 ```mermaid
@@ -587,10 +590,6 @@ sequenceDiagram
 
 `twoFactorAttemptTemporaryLock` answers a verification attempted while the account is locked. The remaining lock time is interpolated into the localized `message` string (`Please try again after {retryAfterSeconds}s.`) and carries no separate response field. The lock is written once the attempt counter reaches 5, and each further lockout lasts exponentially longer.
 
-## Contribution
-
-Thanks to [ak2g][ref-contributor-ak2g] for this feature.
-
 <!-- REFERENCES -->
 
 [ref-doc-authentication]: authentication.md
@@ -599,5 +598,3 @@ Thanks to [ak2g][ref-contributor-ak2g] for this feature.
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-installation]: installation.md
 [ref-doc-environment]: environment.md
-
-[ref-contributor-ak2g]: https://github.com/ak2g

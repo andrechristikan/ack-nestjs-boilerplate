@@ -17,7 +17,7 @@ export class UserTwoFactorAnalyticRepository implements IUserTwoFactorAnalyticRe
         return this.databaseService.client.twoFactor.count();
     }
 
-    async attemptSnapshot(): Promise<IAnalyticTwoFactorAttemptSnapshot> {
+    async findAttemptSnapshot(): Promise<IAnalyticTwoFactorAttemptSnapshot> {
         const rows = await this.databaseService.client.twoFactor.findMany({
             where: { attempt: { gt: 0 } },
             select: { userId: true, attempt: true },

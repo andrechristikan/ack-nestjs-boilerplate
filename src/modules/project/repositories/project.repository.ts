@@ -37,7 +37,7 @@ export class ProjectRepository implements IProjectRepository {
         });
     }
 
-    async findByIdForAdmin(projectId: string): Promise<Project | null> {
+    async findByIdByAdmin(projectId: string): Promise<Project | null> {
         return this.databaseService.client.project.findUnique({
             where: { id: projectId },
         });
@@ -86,7 +86,7 @@ export class ProjectRepository implements IProjectRepository {
         );
     }
 
-    async findWithPaginationOffsetForAdmin(
+    async findWithPaginationOffsetByAdmin(
         {
             where,
             ...others

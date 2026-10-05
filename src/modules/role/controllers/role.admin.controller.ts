@@ -153,7 +153,7 @@ export class RoleAdminController {
     async delete(
         @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string
-    ): Promise<IResponseReturn<void>> {
-        return this.roleHttpService.deleteByAdmin(roleId);
+    ): Promise<void> {
+        await this.roleHttpService.deleteByAdmin(roleId);
     }
 }

@@ -1,6 +1,7 @@
 ---
 paths:
   - "src/modules/feature-flag/**"
+  - "src/migration/data/migration.feature-flag.data.ts"
 ---
 
 # Feature flags
@@ -14,7 +15,8 @@ Decorator position is `http.md`. This file is key shape, metadata, gating, and r
   (`src/modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto.ts:10`)
   rejects any key failing `/^[a-z][a-zA-Z0-9]*$/`. The regex is the single source of the rule.
 - A gate reference is the bare key: `@FeatureFlagProtected('changePassword')`. A dotted
-  `key.metadataKey` is rejected by `validateFeatureFlagGuard` (`predefinedKeyEmpty` on an
+  `key.metadataKey` is rejected by `FeatureFlagDomain.validateFeatureFlag`
+  (`src/modules/feature-flag/domains/feature-flag.domain.ts:63`; `predefinedKeyEmpty` on an
   empty segment, `predefinedKeyLengthExceeded` on a second one).
 
 ## Metadata
@@ -26,9 +28,9 @@ Decorator position is `http.md`. This file is key shape, metadata, gating, and r
 - A metadata sub-key used as a gate holds a boolean and is asserted in the domain, never in
   the decorator: `await this.featureFlagDomain.validateFeatureFlagMetadata(key, metadataKey)`
   (`src/modules/feature-flag/domains/feature-flag.domain.ts:104`) at the top of the domain
-  method; it throws `predefinedKeyTypeInvalid` for a non-boolean and `serviceUnavailable`
-  (503) for `false`. Written into the decorator it would gate one route instead of every
-  caller.
+  method; it throws `predefinedKeyTypeInvalid` for a non-boolean and
+  `FeatureFlagDisabledException` for `false`. Written into the decorator it would gate one
+  route instead of every caller.
 - Per-feature config lives in metadata; per-user rollout lives in `targetUserIds` and
   `rolloutPercent`, never in metadata.
 
@@ -58,5 +60,7 @@ rollout, which is what makes it a kill switch.
 - Flags are seeded (`src/migration/data/migration.feature-flag.data.ts`, `seeding.md`), not
   created or deleted through the admin API.
 - Cache is best-effort: a read, write, or delete failure falls through to the database.
-- An unknown key is a server misconfiguration: `predefinedKeyNotFound` (HTTP 500), distinct
-  from the 503 of a disabled flag, a false sub-key, or a lost bucket. No fail-open either way.
+- An unknown key is a server misconfiguration: `predefinedKeyNotFound` (HTTP 500). A
+  disabled flag, a false sub-key, an anonymous caller with no id, and a lost bucket throw
+  `FeatureFlagDisabledException` (`disabled`, HTTP 404), so a gated feature answers as
+  absent. No fail-open either way.

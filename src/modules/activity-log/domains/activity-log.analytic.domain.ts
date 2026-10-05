@@ -16,7 +16,7 @@ export class ActivityLogAnalyticDomain {
         private readonly activityLogAnalyticRepository: ActivityLogAnalyticRepository
     ) {}
 
-    countByActionsInRange(
+    getCountByActionsInRange(
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date,
@@ -30,7 +30,7 @@ export class ActivityLogAnalyticDomain {
         );
     }
 
-    groupByActionInRange(
+    getGroupByActionInRange(
         actions: EnumActivityLogAction[],
         startDate?: Date,
         endDate?: Date
@@ -42,7 +42,7 @@ export class ActivityLogAnalyticDomain {
         );
     }
 
-    findManyByActionsInRange(
+    getManyByActionsInRange(
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date
@@ -54,7 +54,7 @@ export class ActivityLogAnalyticDomain {
         );
     }
 
-    countByWorkspaceInRange(
+    getCountByWorkspaceInRange(
         workspaceId: string,
         startDate: Date,
         endDate: Date
@@ -67,7 +67,7 @@ export class ActivityLogAnalyticDomain {
         );
     }
 
-    groupActivityByWorkspaceOffset(
+    getGroupActivityByWorkspaceOffset(
         startDate: Date,
         endDate: Date,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>

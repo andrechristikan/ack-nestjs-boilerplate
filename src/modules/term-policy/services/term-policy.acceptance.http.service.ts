@@ -2,10 +2,7 @@ import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import type {
-    IResponsePaginationReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 import type { TermPolicyAcceptedListRequestDto } from '@modules/term-policy/dtos/request/term-policy.accepted-list.request.dto';
 import type { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
@@ -50,9 +47,9 @@ export class TermPolicyAcceptanceHttpService {
     async userAccept(
         user: IUser,
         { type }: TermPolicyAcceptRequestDto
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         await this.termPolicyAcceptanceDomain.userAccept(user, type);
 
-        return {};
+        return;
     }
 }

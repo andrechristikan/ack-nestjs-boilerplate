@@ -1,4 +1,3 @@
-import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
@@ -13,10 +12,10 @@ export class UserPasswordHttpService {
     async updatePasswordByAdmin(
         userId: string,
         updatedBy: string
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         await this.userPasswordDomain.updatePasswordByAdmin(userId, updatedBy);
 
-        return {};
+        return;
     }
 
     async changePassword(

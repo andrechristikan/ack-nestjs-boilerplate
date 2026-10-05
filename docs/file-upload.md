@@ -15,7 +15,7 @@ Two upload transports:
 - [Handling Error Documentation][ref-doc-handling-error] - Upload exceptions
 - [Language Message Documentation][ref-doc-message] - i18n for upload errors
 - [Doc Documentation][ref-doc-doc] - OpenAPI for multipart and presign routes
-- [Third Party Integration][ref-doc-third-party] - S3 credentials, no-op mode, bucket setup
+- [Third Party Integration][ref-doc-third-party] - S3 credentials, the unconfigured state, bucket setup
 - [Environment Documentation][ref-doc-environment] - `AWS_S3_*` variables
 - [Term Policy Documentation][ref-doc-term-policy] - Admin content GET and content upload that use presign
 
@@ -328,8 +328,8 @@ const aws: IAwsS3 | null = await this.awsS3Service.putItem(
 
 `putItem` behaviour:
 
-- returns `null` when S3 credentials are not configured, and the domain skips the database write in that case
-- raises `AwsS3ObjectExistException` (409, `51403`) when the generated key already holds an object, since this call leaves `forceUpdate` off
+- returns `null` when S3 is not configured, and the domain answers `AwsS3NotConfiguredException` (404, `51406`) with no database write
+- raises `AwsS3ObjectExistException` (409, `51402`) when the generated key already holds an object, since this call leaves `forceUpdate` off
 - otherwise the domain prepares `userUpdatePhotoProfile`, stores the S3 reference with one `UserRepository.updatePhotoProfile` update (no transaction), and then stages the event
 
 **Multiple Files Upload:**
@@ -554,13 +554,13 @@ async presignGetItem(
 
 ### Parameters
 
-- `key`: the S3 object key. A key that starts with `/` raises `AwsS3KeyInvalidException` (500, `51401`).
+- `key`: the S3 object key. A key that starts with `/` raises `AwsS3KeyInvalidException` (500, `51400`).
 - `options.access`: `EnumAwsS3Accessibility.public` or `EnumAwsS3Accessibility.private`, required. It selects which configured bucket is signed against, and the compiler refuses a call that leaves it out.
 - `options.expiredInSeconds`: signature lifetime in seconds. When omitted it falls back to `aws.s3.presignExpiredInSeconds`, defined in `aws.config.ts` as `ms('30m') / 1000` and handed to the signer as it stands.
 
 ### Behaviour
 
-- Returns `null` when S3 credentials are not configured, and logs a warning. A caller that needs a URL treats `null` as the S3 service being unavailable.
+- Returns `null` when S3 is not configured, and logs a warning. `TermPolicyContentDomain.getContentByAdmin` turns that `null` into `AwsS3NotConfiguredException` (404, `51406`).
 - Sends a `HeadObjectCommand` before signing. A `NotFound` is swallowed; any other S3 error propagates.
 - Derives `extension` and `mime` from the key itself.
 - The returned `IAwsS3Presign` carries `key`, `mime`, `extension`, `presignUrl`, and `expiredInSeconds`, where `expiredInSeconds` is the same lifetime that was used to sign.
@@ -684,7 +684,7 @@ export class UserProfileDomain {
     );
 
     if (!aws) {
-      throw new AwsServiceUnavailableException();
+      throw new AwsS3NotConfiguredException();
     }
 
     return aws;
@@ -694,6 +694,11 @@ export class UserProfileDomain {
     userId: string,
     { key, size }: IUserUpdatePhotoProfile
   ): Promise<void> {
+    const isS3Initialized = this.awsS3Service.isInitialized();
+    if (!isS3Initialized) {
+      throw new AwsS3NotConfiguredException();
+    }
+
     try {
       const aws: IAwsS3 = this.awsS3Service.mapPresign(
         { key, size },
@@ -726,7 +731,7 @@ Two things follow from the options passed:
 - `presignPutItem` and `mapPresign` both name `EnumAwsS3Accessibility.public`, so the photo is signed against, and stored in, the public bucket. `access` is a required option on both, so the value a call means is always written at the call site.
 - No `expiredInSeconds` is passed, so the signature lives for `aws.s3.presignExpiredInSeconds`, which is 30 minutes.
 
-`presignPutItem` returns `null` when S3 credentials are not configured, and the service converts that into `AwsServiceUnavailableException`.
+`presignPutItem` returns `null` when S3 is not configured, and the domain converts that into `AwsS3NotConfiguredException` (404, `51406`). `updatePhotoProfile` checks `AwsS3Service.isInitialized()` first and throws the same exception, since `mapPresign` builds the reference without calling S3.
 
 `createRandomFilenamePhotoProfileWithPath` is a method on `UserProfileDomain`. It substitutes `{userId}` into `user.uploadPhotoProfilePath` and delegates to `FileService.createRandomFilename` with a 20-character random segment.
 
@@ -918,6 +923,7 @@ async generate(
 - `TermPolicyContentDomain.generateContentPresignByAdmin` rejects the request with `TermPolicyStatusInvalidException` when a policy of that version and type is already `published`.
 - The key is built by `TermPolicyUtil.createRandomFilenameContentWithPath` from `termPolicy.uploadContentPath` (`term-policies/{type}/v{version}`) plus `<language>.hbs`, so the same type, version and language always resolve to the same key.
 - `presignPutItem` is called with `{ forceUpdate: true, access: EnumAwsS3Accessibility.private }`, so term policy content is signed against the private bucket. Expiry is the 30 minute config default.
+- With S3 unconfigured, the route answers `AwsS3NotConfiguredException` (404, `51406`).
 
 ### Multipart Part Presign
 

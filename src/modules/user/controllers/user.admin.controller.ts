@@ -170,12 +170,8 @@ export class UserAdminController {
         @AuthJwtPayload('userId') updatedBy: string,
         @Body({ schema: UserUpdateStatusRequestSchema })
         body: UserUpdateStatusRequestDto
-    ): Promise<IResponseReturn<void>> {
-        return this.userHttpService.updateStatusByAdmin(
-            userId,
-            body,
-            updatedBy
-        );
+    ): Promise<void> {
+        await this.userHttpService.updateStatusByAdmin(userId, body, updatedBy);
     }
 
     @Doc({ summary: 'update password of user' })
@@ -195,14 +191,14 @@ export class UserAdminController {
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
-    ): Promise<IResponseReturn<void>> {
-        return this.userPasswordHttpService.updatePasswordByAdmin(
+    ): Promise<void> {
+        await this.userPasswordHttpService.updatePasswordByAdmin(
             userId,
             updatedBy
         );
     }
 
-    @Doc({ summary: 'Reset user' })
+    @Doc({ summary: 'reset user' })
     @Response('user.twoFactor.resetByAdmin')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({

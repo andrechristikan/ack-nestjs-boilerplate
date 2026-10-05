@@ -8,8 +8,9 @@ paths:
 
 # Queues and notifications
 
-Redis `db:1` carries BullMQ (`QUEUE_REDIS_URL`); `db:0` is the cache. One connection per
-backing service; never open a second Redis client.
+Redis `db:1` carries BullMQ (`QUEUE_REDIS_URL`); `db:0` is the cache. BullMQ uses the two
+connections `QueueModule.forRoot()` registers, producer and processor; never open another
+Redis client.
 
 ## Where things live
 
@@ -29,7 +30,7 @@ backing service; never open a second Redis client.
   it alone: `@InjectQueue`, the BullMQ `Queue` type, `EnumQueuePriority`, `jobId`,
   `deduplication`, `add`, `upsertJobScheduler` appear nowhere else under `src/modules/` except
   `src/modules/health/indicators/health.queue.indicator.ts`, which reads depth only.
-- `processors/<module>.<concern>.processor.ts` is provided by `<module>.processor.module.ts`
+- `processors/<module>[.<concern>].processor.ts` is provided by `<module>.processor.module.ts`
   beside its processor service; `src/router/processor/router.processor.module.ts` aggregates
   those modules.
 
@@ -50,17 +51,19 @@ and is readable in BullBoard. One moment, one mechanism: a job or an event, not 
 base owns `process(job)` (`:30`): job-log lines (start, input metadata without `job.data`,
 success with the returned `IQueueResponse`, one failure line) and the try / await / catch.
 Subclasses implement `protected abstract handle(job): Promise<IQueueResponse>` (`:28`) as a
-dispatcher: switch on `job.name`, await a processor-service method (never a bare `return
-this.service.x()`), map a hopeless failure to BullMQ's `UnrecoverableError` there. The
-processor service owns no business rule; it calls a domain. `onFailed` (`:61`) reports to
-Sentry once, only when fatal: final attempt (`attemptsMade >= maxAttempts`),
-`UnrecoverableError`, or `QueueException.isFatal`. No per-processor logger and no
-log-and-rethrow. A job may run more than once; a handler is safe to repeat.
+dispatcher: switch on `job.name` against `Enum<Module>[<Channel>]Process` (`<module>.enum.ts`, the
+job names), await a processor-service method (never a bare `return this.service.x()`), map a
+hopeless failure to BullMQ's `UnrecoverableError` there. The processor service owns no business
+rule; it calls a domain. `onFailed` (`:61`) reports to Sentry once, on the last attempt
+(`attemptsMade >= maxAttempts` or `UnrecoverableError`), and skips a `QueueException` whose
+`isFatal` is false. No per-processor logger and no log-and-rethrow. A job may run more than
+once; a handler is safe to repeat.
 
-Payloads are `I<Module><Action>QueuePayload` in `<module>/interfaces/`, camelCase fields,
-kind word last, `Bulk` before the kind. Renaming a queue, a job name, or a payload field
-strands in-flight jobs: drain the queue before deploying and say so in the hand-back.
-Procedure: the `ack-add-queue` skill.
+In `<module>/interfaces/`, the envelope is `I<Module>[<Channel>][Bulk]QueuePayload<T>` and the
+data is `I<Module><Action>Payload`, `I<Module><Action>EncryptedPayload` once a field is encrypted;
+fields are camelCase. Renaming a queue, a job name, or a payload field strands in-flight jobs:
+drain the queue before deploying and say so in the hand-back.
+Procedure: `.claude/skills/ack-build/references/add-queue.md`.
 
 ## Notifications
 
@@ -74,4 +77,4 @@ Handlebars template under `src/modules/notification/templates/`, uploaded to SES
 passes `templateData`. The main queue forwards ciphertext unchanged; the email domain
 decrypts immediately before the SES call and the value goes into `templateData` only. A push
 job carries no secret. `NotificationEmailProcessor` rethrows `HelperDecryptFailedException`
-as `UnrecoverableError`. Procedure: the `ack-add-notification` skill.
+as `UnrecoverableError`. Procedure: `.claude/skills/ack-build/references/add-notification.md`.

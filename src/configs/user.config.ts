@@ -1,8 +1,8 @@
 import { registerAs } from '@nestjs/config';
 import ms from 'ms';
 
-export interface IUserConfig {
-    usernamePattern: RegExp;
+export interface IConfigUser {
+    usernameRegex: RegExp;
     uploadPhotoProfilePath: string;
     maxDataImport: number;
     maxDataExport: number;
@@ -16,8 +16,8 @@ export interface IUserConfig {
     };
 }
 
-export default registerAs('user', (): IUserConfig => ({
-    usernamePattern: /^[a-zA-Z0-9-_]+$/,
+export default registerAs('user', (): IConfigUser => ({
+    usernameRegex: /^[a-zA-Z0-9-_]+$/,
     uploadPhotoProfilePath: 'users/{userId}/profile',
     maxDataImport: 50,
     maxDataExport: 500,

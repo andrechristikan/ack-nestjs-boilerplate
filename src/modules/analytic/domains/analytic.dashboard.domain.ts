@@ -110,10 +110,11 @@ export class AnalyticDashboardDomain {
             startDate,
             endDate,
             async () => {
-                const count = await this.userAnalyticDomain.countRegistrations(
-                    startDate,
-                    endDate
-                );
+                const count =
+                    await this.userAnalyticDomain.getCountRegistrations(
+                        startDate,
+                        endDate
+                    );
 
                 return { count };
             }
@@ -122,7 +123,7 @@ export class AnalyticDashboardDomain {
 
     usersChurn(startDate: Date, endDate: Date): Promise<IAnalyticMetricRate> {
         return this.cached('users.churn', startDate, endDate, () =>
-            this.userAnalyticDomain.churnRate(startDate, endDate)
+            this.userAnalyticDomain.getChurnRate(startDate, endDate)
         );
     }
 
@@ -132,12 +133,14 @@ export class AnalyticDashboardDomain {
     ): Promise<IAnalyticBlockedUsers> {
         return this.cached('users.blocked', startDate, endDate, async () => {
             const [trend, current] = await Promise.all([
-                this.activityLogAnalyticDomain.countByActionsInRange(
+                this.activityLogAnalyticDomain.getCountByActionsInRange(
                     [EnumActivityLogAction.userBlocked],
                     startDate,
                     endDate
                 ),
-                this.userAnalyticDomain.countByStatus(EnumUserStatus.blocked),
+                this.userAnalyticDomain.getCountByStatus(
+                    EnumUserStatus.blocked
+                ),
             ]);
             return { trend, current };
         });
@@ -148,7 +151,7 @@ export class AnalyticDashboardDomain {
         endDate?: Date
     ): Promise<IAnalyticBucketsResult> {
         return this.cached('users.signUpWith', startDate, endDate, async () => {
-            const rows = await this.userAnalyticDomain.groupBySignUpWith(
+            const rows = await this.userAnalyticDomain.getGroupBySignUpWith(
                 startDate,
                 endDate
             );
@@ -166,7 +169,7 @@ export class AnalyticDashboardDomain {
         endDate?: Date
     ): Promise<IAnalyticBucketsResult> {
         return this.cached('users.signUpFrom', startDate, endDate, async () => {
-            const rows = await this.userAnalyticDomain.groupBySignUpFrom(
+            const rows = await this.userAnalyticDomain.getGroupBySignUpFrom(
                 startDate,
                 endDate
             );
@@ -184,7 +187,7 @@ export class AnalyticDashboardDomain {
         endDate?: Date
     ): Promise<IAnalyticMetricRate> {
         return this.cached('users.emailVerification', startDate, endDate, () =>
-            this.userAnalyticDomain.emailVerificationRate()
+            this.userAnalyticDomain.getEmailVerificationRate()
         );
     }
 
@@ -193,13 +196,13 @@ export class AnalyticDashboardDomain {
         endDate?: Date
     ): Promise<IAnalyticMetricRate> {
         return this.cached('users.mobileVerification', startDate, endDate, () =>
-            this.userMobileNumberAnalyticDomain.verificationRate()
+            this.userMobileNumberAnalyticDomain.getVerificationRate()
         );
     }
 
     usersStatusDistribution(): Promise<IAnalyticBucketsResult> {
         return this.cached('users.status', undefined, undefined, async () => {
-            const rows = await this.userAnalyticDomain.groupByStatus();
+            const rows = await this.userAnalyticDomain.getGroupByStatus();
             return {
                 buckets: rows.map(r => ({
                     key: String(r.key),
@@ -211,14 +214,14 @@ export class AnalyticDashboardDomain {
 
     usersCountryDistribution(): Promise<IAnalyticBucketsResult> {
         return this.cached('users.country', undefined, undefined, async () => {
-            const rows = await this.userAnalyticDomain.groupByCountry();
+            const rows = await this.userAnalyticDomain.getGroupByCountry();
             return { buckets: rows };
         });
     }
 
     usersRoleDistribution(): Promise<IAnalyticBucketsResult> {
         return this.cached('users.role', undefined, undefined, async () => {
-            const rows = await this.userAnalyticDomain.groupByRole();
+            const rows = await this.userAnalyticDomain.getGroupByRole();
             return { buckets: rows };
         });
     }
@@ -229,7 +232,7 @@ export class AnalyticDashboardDomain {
     ): Promise<IAnalyticMetricCount> {
         return this.cached('users.selfDelete', startDate, endDate, async () => {
             const count =
-                await this.activityLogAnalyticDomain.countByActionsInRange(
+                await this.activityLogAnalyticDomain.getCountByActionsInRange(
                     [EnumActivityLogAction.userDeleteSelf],
                     startDate,
                     endDate
@@ -249,7 +252,7 @@ export class AnalyticDashboardDomain {
             endDate,
             async () => {
                 const count =
-                    await this.activityLogAnalyticDomain.countByActionsInRange(
+                    await this.activityLogAnalyticDomain.getCountByActionsInRange(
                         [EnumActivityLogAction.userClaimUsername],
                         startDate,
                         endDate
@@ -265,7 +268,7 @@ export class AnalyticDashboardDomain {
         endDate: Date
     ): Promise<IAnalyticMobileChurn> {
         return this.cached('users.mobileChurn', startDate, endDate, () =>
-            this.userMobileNumberAnalyticDomain.churn(startDate, endDate)
+            this.userMobileNumberAnalyticDomain.getChurn(startDate, endDate)
         );
     }
 
@@ -278,10 +281,11 @@ export class AnalyticDashboardDomain {
             startDate,
             endDate,
             async () => {
-                const count = await this.userLoginAnalyticDomain.loginFrequency(
-                    startDate,
-                    endDate
-                );
+                const count =
+                    await this.userLoginAnalyticDomain.getLoginFrequency(
+                        startDate,
+                        endDate
+                    );
 
                 return { count };
             }
@@ -293,7 +297,7 @@ export class AnalyticDashboardDomain {
         endDate?: Date
     ): Promise<IAnalyticBucketsResult> {
         return this.cached('auth.loginMethod', startDate, endDate, async () => {
-            const rows = await this.userLoginAnalyticDomain.loginMethodMix(
+            const rows = await this.userLoginAnalyticDomain.getLoginMethodMix(
                 startDate ?? null,
                 endDate ?? null
             );
@@ -318,7 +322,7 @@ export class AnalyticDashboardDomain {
         endDate: Date
     ): Promise<IAnalyticLockoutMetrics> {
         return this.cached('auth.lockout', startDate, endDate, () =>
-            this.userLoginAnalyticDomain.lockoutMetrics(startDate, endDate)
+            this.userLoginAnalyticDomain.getLockoutMetrics(startDate, endDate)
         );
     }
 
@@ -332,7 +336,7 @@ export class AnalyticDashboardDomain {
             endDate,
             async () => {
                 const count =
-                    await this.activityLogAnalyticDomain.countByActionsInRange(
+                    await this.activityLogAnalyticDomain.getCountByActionsInRange(
                         [
                             EnumActivityLogAction.userRevokeSession,
                             EnumActivityLogAction.userRevokeSessionByAdmin,
@@ -355,7 +359,7 @@ export class AnalyticDashboardDomain {
             undefined,
             async () => {
                 const rows =
-                    await this.sessionAnalyticDomain.countActiveByUser();
+                    await this.sessionAnalyticDomain.getCountActiveByUser();
                 return {
                     buckets: rows.map(r => ({
                         key: r.userId,
@@ -371,7 +375,7 @@ export class AnalyticDashboardDomain {
         endDate?: Date
     ): Promise<IAnalyticBucketsResult> {
         return this.cached('auth.sessionsGeo', startDate, endDate, async () => {
-            const rows = await this.sessionAnalyticDomain.groupByCountry(
+            const rows = await this.sessionAnalyticDomain.getGroupByCountry(
                 startDate,
                 endDate
             );
@@ -385,7 +389,7 @@ export class AnalyticDashboardDomain {
     ): Promise<IAnalyticBucketsResult> {
         return this.cached('auth.sessionsUa', startDate, endDate, async () => {
             const sessions =
-                await this.sessionAnalyticDomain.findActiveWithGeoInRange(
+                await this.sessionAnalyticDomain.getActiveWithGeoInRange(
                     startDate,
                     endDate
                 );
@@ -412,7 +416,7 @@ export class AnalyticDashboardDomain {
     ): Promise<IAnalyticMetricCount> {
         return this.cached('auth.refresh', startDate, endDate, async () => {
             const count =
-                await this.activityLogAnalyticDomain.countByActionsInRange(
+                await this.activityLogAnalyticDomain.getCountByActionsInRange(
                     [EnumActivityLogAction.userRefreshToken],
                     startDate,
                     endDate
@@ -428,7 +432,7 @@ export class AnalyticDashboardDomain {
     ): Promise<IAnalyticMetricCount> {
         return this.cached('auth.logout', startDate, endDate, async () => {
             const count =
-                await this.activityLogAnalyticDomain.countByActionsInRange(
+                await this.activityLogAnalyticDomain.getCountByActionsInRange(
                     [EnumActivityLogAction.userLogout],
                     startDate,
                     endDate
@@ -448,12 +452,12 @@ export class AnalyticDashboardDomain {
             endDate,
             async () => {
                 const [email, mobile] = await Promise.all([
-                    this.userVerificationAnalyticDomain.funnel(
+                    this.userVerificationAnalyticDomain.getFunnel(
                         EnumVerificationType.email,
                         startDate,
                         endDate
                     ),
-                    this.userVerificationAnalyticDomain.funnel(
+                    this.userVerificationAnalyticDomain.getFunnel(
                         EnumVerificationType.mobileNumber,
                         startDate,
                         endDate
@@ -466,7 +470,7 @@ export class AnalyticDashboardDomain {
 
     authPasswordExpiry(): Promise<IAnalyticPasswordExpiry> {
         return this.cached('auth.passwordExpiry', undefined, undefined, () =>
-            this.userPasswordAnalyticDomain.passwordExpiryCompliance()
+            this.userPasswordAnalyticDomain.getPasswordExpiryCompliance()
         );
     }
 
@@ -480,7 +484,7 @@ export class AnalyticDashboardDomain {
             endDate,
             async () => {
                 const count =
-                    await this.userPasswordAnalyticDomain.passwordChangeCount(
+                    await this.userPasswordAnalyticDomain.getPasswordChangeCount(
                         startDate,
                         endDate
                     );
@@ -495,7 +499,10 @@ export class AnalyticDashboardDomain {
         endDate: Date
     ): Promise<IAnalyticForgotPasswordConversion> {
         return this.cached('auth.forgotConversion', startDate, endDate, () =>
-            this.userForgotPasswordAnalyticDomain.conversion(startDate, endDate)
+            this.userForgotPasswordAnalyticDomain.getConversion(
+                startDate,
+                endDate
+            )
         );
     }
 
@@ -509,7 +516,7 @@ export class AnalyticDashboardDomain {
             endDate,
             async () => {
                 const count =
-                    await this.userPasswordAnalyticDomain.adminForcePasswordCount(
+                    await this.userPasswordAnalyticDomain.getAdminForcePasswordCount(
                         startDate,
                         endDate
                     );
@@ -521,7 +528,7 @@ export class AnalyticDashboardDomain {
 
     authTwoFactorAdoption(): Promise<IAnalyticTwoFactorAdoption> {
         return this.cached('auth.twoFactorAdoption', undefined, undefined, () =>
-            this.userTwoFactorAnalyticDomain.adoption()
+            this.userTwoFactorAnalyticDomain.getAdoption()
         );
     }
 
@@ -535,7 +542,7 @@ export class AnalyticDashboardDomain {
             endDate,
             async () => {
                 const count =
-                    await this.userTwoFactorAnalyticDomain.adminResetCount(
+                    await this.userTwoFactorAnalyticDomain.getAdminResetCount(
                         startDate,
                         endDate
                     );
@@ -555,7 +562,7 @@ export class AnalyticDashboardDomain {
             endDate,
             async () => {
                 const count =
-                    await this.userTwoFactorAnalyticDomain.verifySuccessCount(
+                    await this.userTwoFactorAnalyticDomain.getVerifySuccessCount(
                         startDate,
                         endDate
                     );
@@ -575,7 +582,7 @@ export class AnalyticDashboardDomain {
             endDate,
             async () => {
                 const count =
-                    await this.userTwoFactorAnalyticDomain.backupCodeRegenerationCount(
+                    await this.userTwoFactorAnalyticDomain.getBackupCodeRegenerationCount(
                         startDate,
                         endDate
                     );
@@ -587,7 +594,7 @@ export class AnalyticDashboardDomain {
 
     authTwoFactorAttempt(): Promise<IAnalyticTwoFactorAttemptSnapshot> {
         return this.cached('auth.twoFactorAttempt', undefined, undefined, () =>
-            this.userTwoFactorAnalyticDomain.attemptSnapshot()
+            this.userTwoFactorAnalyticDomain.getAttemptSnapshot()
         );
     }
 
@@ -601,7 +608,7 @@ export class AnalyticDashboardDomain {
             endDate,
             async () => {
                 const count =
-                    await this.deviceAnalyticDomain.countRegistrations(
+                    await this.deviceAnalyticDomain.getCountRegistrations(
                         startDate,
                         endDate
                     );
@@ -617,7 +624,8 @@ export class AnalyticDashboardDomain {
             undefined,
             undefined,
             async () => {
-                const rows = await this.deviceAnalyticDomain.groupByPlatform();
+                const rows =
+                    await this.deviceAnalyticDomain.getGroupByPlatform();
                 return { buckets: rows };
             }
         );
@@ -625,7 +633,7 @@ export class AnalyticDashboardDomain {
 
     devicesPushToken(): Promise<IAnalyticMetricRate> {
         return this.cached('devices.pushToken', undefined, undefined, () =>
-            this.deviceAnalyticDomain.pushTokenRate()
+            this.deviceAnalyticDomain.getPushTokenRate()
         );
     }
 
@@ -639,7 +647,7 @@ export class AnalyticDashboardDomain {
             endDate,
             async () => {
                 const count =
-                    await this.activityLogAnalyticDomain.countByActionsInRange(
+                    await this.activityLogAnalyticDomain.getCountByActionsInRange(
                         [EnumActivityLogAction.userDeviceRefresh],
                         startDate,
                         endDate
@@ -657,8 +665,8 @@ export class AnalyticDashboardDomain {
             undefined,
             async () => {
                 const [sessions, devices] = await Promise.all([
-                    this.sessionAnalyticDomain.countActive(),
-                    this.deviceAnalyticDomain.countOwnerships(),
+                    this.sessionAnalyticDomain.getCountActive(),
+                    this.deviceAnalyticDomain.getCountOwnerships(),
                 ]);
                 return {
                     sessions,
@@ -675,7 +683,7 @@ export class AnalyticDashboardDomain {
             undefined,
             undefined,
             async () => {
-                const rows = await this.deviceAnalyticDomain.countPerUser();
+                const rows = await this.deviceAnalyticDomain.getCountPerUser();
                 return {
                     buckets: rows.map(r => ({
                         key: r.userId,
@@ -698,7 +706,7 @@ export class AnalyticDashboardDomain {
                     Duration.fromObject({ days: 30 })
                 );
                 const rows =
-                    await this.deviceAnalyticDomain.findInactive(before);
+                    await this.deviceAnalyticDomain.getInactive(before);
                 return { count: rows.length };
             }
         );
@@ -709,13 +717,13 @@ export class AnalyticDashboardDomain {
         endDate: Date
     ): Promise<IAnalyticApiKeyLifecycle> {
         return this.cached('apiKeys.lifecycle', startDate, endDate, () =>
-            this.apiKeyAnalyticDomain.lifecycle(startDate, endDate)
+            this.apiKeyAnalyticDomain.getLifecycle(startDate, endDate)
         );
     }
 
     apiKeysActiveExpired(): Promise<IAnalyticApiKeyActiveExpired> {
         return this.cached('apiKeys.activeExpired', undefined, undefined, () =>
-            this.apiKeyAnalyticDomain.activeExpired()
+            this.apiKeyAnalyticDomain.getActiveExpired()
         );
     }
 
@@ -725,7 +733,7 @@ export class AnalyticDashboardDomain {
             undefined,
             undefined,
             async () => {
-                const rows = await this.apiKeyAnalyticDomain.typeMix();
+                const rows = await this.apiKeyAnalyticDomain.getTypeMix();
                 return { buckets: rows };
             }
         );
@@ -736,7 +744,7 @@ export class AnalyticDashboardDomain {
         endDate?: Date
     ): Promise<IAnalyticTermPolicyAcceptanceRate> {
         return this.cached('termPolicies.acceptance', startDate, endDate, () =>
-            this.termPolicyAcceptanceAnalyticDomain.acceptanceRate(
+            this.termPolicyAcceptanceAnalyticDomain.getAcceptanceRate(
                 startDate ?? null,
                 endDate ?? null
             )
@@ -752,7 +760,7 @@ export class AnalyticDashboardDomain {
             startDate,
             endDate,
             () =>
-                this.termPolicyAcceptanceAnalyticDomain.timeToAccept(
+                this.termPolicyAcceptanceAnalyticDomain.getTimeToAccept(
                     startDate ?? null,
                     endDate ?? null
                 )
@@ -768,10 +776,11 @@ export class AnalyticDashboardDomain {
             startDate,
             endDate,
             async () => {
-                const count = await this.workspaceAnalyticDomain.countCreated(
-                    startDate,
-                    endDate
-                );
+                const count =
+                    await this.workspaceAnalyticDomain.getCountCreated(
+                        startDate,
+                        endDate
+                    );
 
                 return { count };
             }
@@ -785,7 +794,7 @@ export class AnalyticDashboardDomain {
             undefined,
             async () => {
                 const rows =
-                    await this.workspaceAnalyticDomain.groupByVisibility();
+                    await this.workspaceAnalyticDomain.getGroupByVisibility();
                 return { buckets: rows };
             }
         );
@@ -796,7 +805,11 @@ export class AnalyticDashboardDomain {
         endDate: Date
     ): Promise<IAnalyticStatusCount[]> {
         return this.cached('workspaces.inviteFunnel', startDate, endDate, () =>
-            this.workspaceInviteAnalyticDomain.funnel(startDate, endDate, null)
+            this.workspaceInviteAnalyticDomain.getFunnel(
+                startDate,
+                endDate,
+                null
+            )
         );
     }
 
@@ -805,7 +818,7 @@ export class AnalyticDashboardDomain {
         endDate: Date
     ): Promise<IAnalyticStatusCount[]> {
         return this.cached('workspaces.joinOutcomes', startDate, endDate, () =>
-            this.workspaceJoinRequestAnalyticDomain.outcomes(
+            this.workspaceJoinRequestAnalyticDomain.getOutcomes(
                 startDate,
                 endDate,
                 null
@@ -820,7 +833,7 @@ export class AnalyticDashboardDomain {
         const metric = `workspaces.membership:${token}`;
 
         return this.cached(metric, undefined, undefined, () =>
-            this.workspaceMemberAnalyticDomain.membershipDistributionOffset(
+            this.workspaceMemberAnalyticDomain.getMembershipDistributionOffset(
                 params
             )
         );
@@ -835,7 +848,7 @@ export class AnalyticDashboardDomain {
         const metric = `workspaces.activity:${token}`;
 
         return this.cached(metric, startDate, endDate, () =>
-            this.activityLogAnalyticDomain.groupActivityByWorkspaceOffset(
+            this.activityLogAnalyticDomain.getGroupActivityByWorkspaceOffset(
                 startDate,
                 endDate,
                 params
@@ -848,7 +861,7 @@ export class AnalyticDashboardDomain {
         endDate: Date
     ): Promise<IAnalyticProjectCreation> {
         return this.cached('projects.creation', startDate, endDate, () =>
-            this.projectAnalyticDomain.creation(startDate, endDate)
+            this.projectAnalyticDomain.getCreation(startDate, endDate)
         );
     }
 
@@ -859,7 +872,7 @@ export class AnalyticDashboardDomain {
         const metric = `projects.membership:${token}`;
 
         return this.cached(metric, undefined, undefined, () =>
-            this.projectMemberAnalyticDomain.membershipDistributionOffset(
+            this.projectMemberAnalyticDomain.getMembershipDistributionOffset(
                 params
             )
         );

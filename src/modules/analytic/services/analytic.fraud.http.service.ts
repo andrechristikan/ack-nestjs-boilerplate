@@ -17,17 +17,17 @@ import {
     AnalyticSharedFingerprintAvailableOrderBy,
     AnalyticUserCountAvailableOrderBy,
 } from '@modules/analytic/constants/analytic.list.constant';
-import type { AnalyticAccountTakeoverListRequestDto } from '@modules/analytic/dtos/request/analytic-account-takeover-list.request.dto';
-import type { AnalyticApiKeyBurstListRequestDto } from '@modules/analytic/dtos/request/analytic-api-key-burst-list.request.dto';
-import type { AnalyticBackupCodeNewDeviceListRequestDto } from '@modules/analytic/dtos/request/analytic-backup-code-new-device-list.request.dto';
-import type { AnalyticCredentialStuffingListRequestDto } from '@modules/analytic/dtos/request/analytic-credential-stuffing-list.request.dto';
-import type { AnalyticForgotPasswordAbuseListRequestDto } from '@modules/analytic/dtos/request/analytic-forgot-password-abuse-list.request.dto';
-import type { AnalyticFraudRiskScoresListRequestDto } from '@modules/analytic/dtos/request/analytic-fraud-risk-scores-list.request.dto';
-import type { AnalyticMassRegistrationListRequestDto } from '@modules/analytic/dtos/request/analytic-mass-registration-list.request.dto';
-import type { AnalyticPasswordResetEnumerationListRequestDto } from '@modules/analytic/dtos/request/analytic-password-reset-enumeration-list.request.dto';
-import type { AnalyticRefreshSpikeListRequestDto } from '@modules/analytic/dtos/request/analytic-refresh-spike-list.request.dto';
-import type { AnalyticSessionAfterAdminListRequestDto } from '@modules/analytic/dtos/request/analytic-session-after-admin-list.request.dto';
-import type { AnalyticSharedFingerprintListRequestDto } from '@modules/analytic/dtos/request/analytic-shared-fingerprint-list.request.dto';
+import type { AnalyticAccountTakeoverListRequestDto } from '@modules/analytic/dtos/request/analytic.account-takeover-list.request.dto';
+import type { AnalyticApiKeyBurstListRequestDto } from '@modules/analytic/dtos/request/analytic.api-key-burst-list.request.dto';
+import type { AnalyticBackupCodeNewDeviceListRequestDto } from '@modules/analytic/dtos/request/analytic.backup-code-new-device-list.request.dto';
+import type { AnalyticCredentialStuffingListRequestDto } from '@modules/analytic/dtos/request/analytic.credential-stuffing-list.request.dto';
+import type { AnalyticForgotPasswordAbuseListRequestDto } from '@modules/analytic/dtos/request/analytic.forgot-password-abuse-list.request.dto';
+import type { AnalyticFraudRiskScoresListRequestDto } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores-list.request.dto';
+import type { AnalyticMassRegistrationListRequestDto } from '@modules/analytic/dtos/request/analytic.mass-registration-list.request.dto';
+import type { AnalyticPasswordResetEnumerationListRequestDto } from '@modules/analytic/dtos/request/analytic.password-reset-enumeration-list.request.dto';
+import type { AnalyticRefreshSpikeListRequestDto } from '@modules/analytic/dtos/request/analytic.refresh-spike-list.request.dto';
+import type { AnalyticSessionAfterAdminListRequestDto } from '@modules/analytic/dtos/request/analytic.session-after-admin-list.request.dto';
+import type { AnalyticSharedFingerprintListRequestDto } from '@modules/analytic/dtos/request/analytic.shared-fingerprint-list.request.dto';
 import { AnalyticFraudDomain } from '@modules/analytic/domains/analytic.fraud.domain';
 import type {
     IAnalyticAccountTakeover,

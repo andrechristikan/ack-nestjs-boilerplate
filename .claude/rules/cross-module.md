@@ -24,9 +24,10 @@ may inject.
 A repository issues statements against the model it owns and satellite models with no
 repository of their own (`NotificationRepository` owns `Notification` and
 `NotificationDelivery`). Ownership is per class: `UserPasswordRepository` does not write
-`User`. A nested write counts as a statement against the related model. A read may
-`include`, `select`, or filter on a relation. `ActivityLog` has one writer,
-`ActivityLogRepository`.
+`User`, and a `*.analytic.repository.ts` reads a model its module's write repository owns and
+writes nothing (`layering.md`). A nested write counts as a statement against the related
+model. A read may `include`, `select`, or filter on a relation. `ActivityLog` has one
+writer, `ActivityLogRepository`.
 
 A repository does not inject or call another repository. Work spanning repositories is a
 domain calling `this.databaseService.withTransaction` and each collaborator as

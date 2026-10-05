@@ -1,11 +1,11 @@
 {
     "error": {
-        "serviceUnavailable": "The AWS service is currently unavailable. Please try again later.",
         "s3KeyInvalid": "The storage key is invalid.",
         "s3FileRequired": "A file is required for this storage operation.",
         "s3ObjectExist": "A file already exists at this location.",
         "s3MaxPartNumberExceeded": "The multipart upload exceeds the maximum number of parts.",
         "s3IterationLimitExceeded": "The storage operation exceeded its iteration limit.",
-        "sesTemplateBodyRequired": "An email template needs an HTML or plain-text body."
+        "sesTemplateBodyRequired": "An email template needs an HTML or plain-text body.",
+        "s3NotConfigured": "File storage is not configured."
     }
 }

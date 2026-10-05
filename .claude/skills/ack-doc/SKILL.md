@@ -9,7 +9,6 @@ description: >-
   docs, or for an architecture diagram. Not for a PR description (ack-pr), src/ (ack-plan,
   ack-build), or .claude/** (ack-harness).
 disable-model-invocation: true
-context: fork
 argument-hint: "<named doc files, or 'all'> [what changed recently] [diagram: <name and subject>]"
 ---
 
@@ -18,10 +17,13 @@ argument-hint: "<named doc files, or 'all'> [what changed recently] [diagram: <n
 # ack-doc
 
 One dispatch to `writer`, the agent that owns reader-facing prose, then a reader test of
-what it added. You do not edit those trees yourself. Every file produced here is final
-state only: how the thing works now, with no history, decision log, "changed on", "applies
-from", "previously", or rationale for a change (`.claude/rules/authoring.md`, Final state
-only).
+what it added. You do not edit those trees yourself. Final state only:
+`.claude/rules/authoring.md`.
+
+Pass `run_in_background: false` on every Agent call where the tool offers the parameter; where
+it does not, a subagent already runs synchronously. Parallel dispatches are several calls in one
+message. Either way, end the turn only after every dispatched agent has returned and its
+result is read and acted on (`../ack-build/references/dispatch.md`, Foreground dispatch).
 
 ## 1. Scope
 
@@ -29,12 +31,15 @@ The checkout as it sits on disk, unstaged and untracked files included. The argu
 the files, or `all` for every `docs/*.md`. Every run also includes the root people files
 and `.github/**` except `copilot-instructions.md`; name them in the dispatch either way.
 
+When the argument leaves the files missing or ambiguous, or asks for a diagram without a clear
+subject, ask the owner with `AskUserQuestion` before the `writer` dispatch; do not guess.
+
 | File | Checkable claims |
 |---|---|
 | `README.md` | version table, prerequisites, Quick Start commands |
 | `SECURITY.md` | supported version line against `package.json` `version`, advisory URL, maintainer contact |
 | `CONTRIBUTING.md` | `engines` and `packageManager`, setup scripts against `package.json` `scripts`, CoC link |
-| `CODE_OF_CONDUCT.md` | maintainer contact aligned with `SECURITY.md`, covenant attribution |
+| `CODE_OF_CONDUCT.md` | maintainer contact aligned with `SECURITY.md`, covenant licence attribution |
 | `.github/workflows/*.yml` | `pnpm` scripts, `engines`, `packageManager` against `package.json` |
 | `.github/pull_request_template.md` | `src/modules/*` names, commit types against `.commitlintrc` |
 | `.github/ISSUE_TEMPLATE/*` | advisory URL, contributing path, docs path |
@@ -65,13 +70,14 @@ Report: findings by class, files changed, every CONFLICT with its evidence, the
   added, and for a diagram the HTML and SVG paths under docs/assets/ and the drawing plan.
 ```
 
-Add the working-tree line and the no-questions line from
-`../ack-build/references/dispatch.md`. Git stays read-only.
+Add the Every dispatch block from `../ack-build/references/dispatch.md`. Git stays
+read-only.
 
 ## 3. Reader test
 
 When `writer`'s report lists a page created or a section added, dispatch one fresh agent
-per such file, in parallel. When it lists none, skip this step and say so in the hand-back.
+per such file, all in one message. When it lists none, skip this step and say so in the
+hand-back.
 
 ```
 Agent: general-purpose
@@ -94,15 +100,21 @@ and the embedding page's alt text says what the diagram shows.
 Every finding, the reviewer's and the reader test's, passes
 `superpowers:receiving-code-review` here: open the code and the doc, confirm or reject with
 a reason. Confirmed findings go back to `writer` in one repair dispatch, then one scoped
-re-review. A CONFLICT is not repaired and joins the owner's list. Rejected findings and
-what stays open are lines in the hand-back.
+re-review. A CONFLICT is not repaired here; step 5 puts it to the owner. Rejected findings
+and what stays open are lines in the hand-back.
 
-## 5. Read what comes back
+## 5. Resolve each CONFLICT
 
-Every CONFLICT goes to the owner as a list with the evidence for both sides. When the
-evidence says the code is wrong (a guard removed by a commit that does not mention it, a
-doc newer than the change, a disagreement about authorization, credentials, or session
-invalidation), that is a suspected defect for `/ack-plan`, not a doc edit.
+Put each CONFLICT to the owner with `AskUserQuestion`, the evidence for both sides as the
+question context. When the evidence says the code is wrong (a guard removed by a commit
+that does not mention it, a doc newer than the change, a disagreement about authorization,
+credentials, or session invalidation), say so in the question and recommend the
+`/ack-plan` route. Route per the answer:
+
+- The doc is wrong: one repair dispatch to `writer` (step 2 template, Scope the files the
+  CONFLICTs name), then one scoped re-review (step 4).
+- The code is suspected wrong: record it as a suspected defect for `/ack-plan`; the doc
+  stays as it is.
 
 ## 6. Verify
 
@@ -116,11 +128,11 @@ seed command. Commits go through `ask`; propose the subject only.
 
 ## Hand back
 
-Findings by class, files repaired, every CONFLICT unresolved with its evidence, the
-humanizer spans touched, the diagram paths when one was drawn, the reader-test result per
-file (unanswered questions, assumptions, ambiguities) or the line that the step was
-skipped, every reviewer and reader-test finding and its state (fixed, rejected with the
-reason, open), and one line per thing noticed outside the scope.
+Findings by class, files repaired, every CONFLICT with its evidence, the owner's answer,
+and its route, the humanizer spans touched, the diagram paths when one was drawn, the
+reader-test result per file (unanswered questions, assumptions, ambiguities) or the line
+that the step was skipped, every reviewer and reader-test finding and its state (fixed,
+rejected with the reason, open), and one line per thing noticed outside the scope.
 
 ## Next
 

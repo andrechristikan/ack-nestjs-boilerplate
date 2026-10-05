@@ -23,7 +23,7 @@ Internal kit plumbing:
 - Kit constants (`DocGlobalErrorResponses`, `DocPaginationErrorResponses`, `DocFileErrorResponses`, …) live in `src/common/doc/constants/doc.constant.ts`
 - Module kits live as `Doc<Module>ErrorResponses` in that module's `constants/<module>.constant.ts`
 
-The kit in `src/common/doc/` is in the coverage set.
+The decorators in `src/common/doc/` are in the coverage set; its constants and interfaces files fall under the `*.constant.ts` and `*.interface.ts` coverage excludes.
 
 ## Related Documents
 
@@ -84,7 +84,7 @@ Basic operation metadata for an endpoint. Every endpoint carries `@Doc({ summary
   - Helper decrypt / encryption-secret / pattern-token failures (500)
   - Missing request schema or request context (500)
   - Unique-value generation failure (500)
-  - AWS service unavailable (503)
+  - S3 integration not configured (404)
 
 **Usage:**
 
@@ -160,7 +160,7 @@ Module `*Protected` / auth kits live as `Doc<Module>ErrorResponses` in that modu
 | Multipart upload | `FileUploadSingle` / `FileUploadMultiple` / `FileUploadMultipleFields`: `ApiConsumes('multipart/form-data')` plus binary `ApiBody` from field name(s) plus upload error kit |
 | List query (`page` / `cursor` / `perPage` / `search` / `orderBy` + filters) | the list zod schema on `@Query({ schema })`, built from `PaginationOffsetQuerySchema` / `PaginationCursorQuerySchema` plus `.extend` |
 
-A hand-written schema object beside a zod schema is a mirror. Every field carries `.meta({ description, example })` on the zod schema. Do not call `faker.seed()`.
+A hand-written schema object beside a zod schema is a mirror. Every field carries `.meta({ description, example })` on the zod schema. No schema calls `faker.seed()`.
 
 ### Success and response-kind errors
 
@@ -188,6 +188,11 @@ OpenAPI security scheme names are the module constants below. `ApiBearerAuth`, `
 | `ApiKeyDocSecurityName` | `xApiKey` | `src/swagger.ts` + `ApiKeyProtected` / `ApiKeySystemProtected` |
 
 Scheme values are camelCase. The API key transport header is `x-api-key` (`addApiKey` `name`).
+
+Two kits carry a 404 beside their other entries:
+
+- `FeatureFlagProtected` publishes `DocFeatureFlagErrorResponses`: the `predefined` group (500) and `disabled` (404, `featureFlag.error.disabled`)
+- `AuthSocialGoogleProtected` and `AuthSocialAppleProtected` publish `DocAuthSocialGoogleErrorResponses` / `DocAuthSocialAppleErrorResponses`: the `unauthorized` group (401) and `notConfigured` (404, `auth.error.socialGoogleNotConfigured` / `auth.error.socialAppleNotConfigured`)
 
 `auth.error.accessTokenUnauthorized` belongs to `AuthJwtAccessProtected`. A Protected decorator whose domain also throws when the principal is missing does not publish that 401 again.
 
@@ -342,14 +347,14 @@ Zod-bound path params reach OpenAPI from the schema on `@Param`. Auth and role k
 async get(
     @Param('userId', { schema: RequestMongoIdSchema }) userId: string
 ): Promise<IResponseReturn<IUserProfile>> {
-    return this.userHttpService.getOneByAdmin(userId);
+    return this.userHttpService.getOne(userId);
 }
 ```
 
 ### Complete Public Endpoint
 
 ```typescript
-@Doc({ summary: 'User sign up' })
+@Doc({ summary: 'user sign up' })
 @Response('user.signUp')
 @FeatureFlagProtected('signUp')
 @ApiKeyProtected()

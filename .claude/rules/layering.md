@@ -1,19 +1,22 @@
 # Layering
 
-Five roles on the request path, one reason to change each:
-`Controller → HTTP Service → Domain → Repository → DatabaseService`, with
-`Processor → Processor Service` joining at the domain. Two supporting classes: a util, which shapes data,
-and a queue class, the one place a job is enqueued. Procedure for a new module: the `ack-add-module` skill.
+Five roles on the request path, one reason to change each: `Controller → HTTP Service → Domain →
+Repository → DatabaseService`, with `Processor → Processor Service` joining at the domain. Two supporting
+classes: a util, which shapes data, and a queue class, the one place a job is enqueued. Procedure for a new
+module: `.claude/skills/ack-build/references/add-module.md`.
 
 ## Roles
 
 - Repository (`repositories/<module>[.<concern>].repository.ts`): data access only. Injects `DatabaseService`
   as a class; every statement runs on `this.databaseService.client` or on the `tx` of an `*InTx` method. Owns
   one Prisma model plus satellite models with no repository of their own, and `null → {}` filter
-  normalization. Returns Prisma models, `I<Module>*` shapes, or primitives; never a response DTO, never
-  `unknown`. Takes a request DTO only when no layer above derived from it. Implements
-  `I<Module>[<Concern>]Repository` from `interfaces/`. Reads `ConfigService` for write mechanics only; a
-  business value arrives as a parameter. Does not inject another repository.
+  normalization. Returns Prisma models, `I<Module>*` shapes, `IResponsePaginationReturn<T>` from `PaginationService`,
+  or primitives; never a response DTO, never `unknown`. Takes a request DTO only when no layer above derived
+  from it. Implements `I<Module>[<Concern>]Repository` from `interfaces/`. Reads `ConfigService` for write
+  mechanics only; a business value arrives as a parameter. Injects no repository.
+- Analytic repository (`repositories/<module>[.<concern>].analytic.repository.ts`): read-only aggregates over
+  a model its module's write repository owns, injected only by that module's `*.analytic.domain.ts`.
+  `AnalyticDomainModule` consumes those domains; `src/modules/analytic/` owns no repository.
 - Domain (`domains/<module>[.<concern>].domain.ts`): business rules, typed exceptions, orchestration across
   its own repositories and other domains. No `IRequestApp`, no `Job`, no response envelope, no response
   DTO in a signature. Injects `DatabaseService` only to call `withTransaction`; a model query on `client`
@@ -29,8 +32,9 @@ and a queue class, the one place a job is enqueued. Procedure for a new module: 
   repository, `Queue`, `RequestStoreService`, `FileService`, or another module's util. Maps an error to
   an exception and returns it; the caller throws. An empty util is deleted with its provider entries.
 - Queue class (`queues/<module>[.<concern>].queue.ts`): holds the `@InjectQueue`, builds the payload,
-  encrypts sensitive fields, calls `add` / `upsertJobScheduler`. Injected by a domain or processor
-  service, never by a controller or HTTP service.
+  encrypts sensitive fields, calls `add` / `upsertJobScheduler`. Injected by a domain or processor service,
+  never by a controller or HTTP service. The one other `@InjectQueue` is a health indicator probing the
+  queue connection (`src/modules/health/indicators/health.queue.indicator.ts:14`).
 
 ## Header interfaces
 
@@ -47,34 +51,30 @@ payloads, option bags) and framework contracts stay. Inject by class; a DI token
 | 3 feature | the rest of `src/modules/` | its own layers; from another module only what its domain module exports, injected by a domain, HTTP service, or processor service |
 
 Read tier 2 from `@Global()` in the code. `AwsModule` is imported where used. A util never injects another
-module's util in any tier. `src/common/` never imports a feature's runtime code; `common.module.ts` composition
-and compile-time enums are the only crossings. Promote only a module-agnostic concept with three or more callers.
+module's util in any tier. `src/common/` reaches a feature only through `common.module.ts` composition and
+`import type` (`src/common/request/interfaces/request.interface.ts:2`). Promote only a module-agnostic concept
+with three or more callers. An exported, complete member of a family with a used member is kit surface whatever
+its call-site count; a `pnpm deadcode` warning on it is not a finding. YAGNI rejects structure: a base, a token,
+a knob, a branch, a stub.
 
 ## Module files
 
 `<module>.repository.module.ts` (repositories, `imports: []`, imported only by its own domain module and
-`MigrationModule`); `<module>.domain.module.ts` (domains, utils, caches, queue classes, factories; registers
-its queues with `BullModule.registerQueueAsync` and exports `BullModule`); `<module>.http.module.ts` (HTTP
-services); `<module>.processor.module.ts` (processors and processor services). The last two are leaves
-imported only by `src/router/`. Only files with something to provide exist. `controllers: []` in all four:
-`src/router/http/router.http.<scope>.module.ts` registers controllers and
+`MigrationModule`); `<module>.domain.module.ts` (domains, utils, caches, queue classes, factories, strategies,
+interceptors, indicators; registers its queues with `BullModule.registerQueueAsync`, exports `BullModule`);
+`<module>.http.module.ts` (HTTP services); `<module>.processor.module.ts` (processors and processor services),
+the last two leaves imported only by `src/router/`. Only files with something to provide exist. A `@Module({})`
+lists `controllers`, `providers`, `exports`, `imports` in that order, none omitted; `controllers` is `[]` in
+these four: `src/router/http/router.http.<scope>.module.ts` registers controllers and
 `src/router/processor/router.processor.module.ts` aggregates processor modules. Composition roots:
 `src/app/app.module.ts`, `src/common/common.module.ts`, `src/router/router.module.ts`; `forRoot()` runs once,
-there. A feature module imports none of the composed kit and never `QueueModule`.
-
-## Boot-only defects
-
-`tsc` and Vitest pass with a broken `imports:` array. A cycle raises `ReferenceError` at bootstrap; a
-missing provider raises `UnknownDependenciesException`; a class injected through `import type` compiles and
-fails DI under `verbatimModuleSyntax`. Verify a wiring change by booting. `forwardRef` is not a fix (`cross-module.md`).
-
-## Kit breadth is not YAGNI
-
-An exported, complete member of a family with a used member is kit surface whatever its call-site count; a
-`pnpm deadcode` warning on it is not a finding. YAGNI rejects structure: a base, a token, a knob, a branch, a stub.
+there. A feature module imports none of the composed kit and never `QueueModule`. `tsc` and Vitest pass with a
+broken `imports:` array; a cycle raises `ReferenceError` at bootstrap, a missing provider raises
+`UnknownDependenciesException`. Verify a wiring change by booting; `forwardRef` is no fix (`cross-module.md`).
 
 ## The run surface is a call site
 
 A command, port, path, or script a change moves also moves in `package.json`, `scripts/`, `ci/`, `ci/docker-compose.yml`,
-`docker-compose.yml`, the root `dockerfile.local`, `.github/workflows/`, `.github/dependabot.yml`, `nest-cli.json`,
-`vitest.config.ts`, `knip.json`, `tsconfig*.json`, `eslint.config.mjs`, `.husky/`, and `.gitignore`.
+`docker-compose.yml`, the root `dockerfile.local`, `.dockerignore`, `.github/workflows/`, `.github/dependabot.yml`,
+`nest-cli.json`, `.swcrc`, `vitest.config.ts`, `knip.json`, `cspell.json`, `tsconfig*.json`, `eslint.config.mjs`,
+`.husky/`, and `.gitignore`.

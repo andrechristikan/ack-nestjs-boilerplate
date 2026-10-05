@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 import * as Sentry from '@sentry/nestjs';
@@ -8,15 +9,26 @@ import * as Sentry from '@sentry/nestjs';
  */
 @Injectable()
 export class HealthSentryIndicator {
+    private readonly dsn: string | null;
+
     constructor(
+        private readonly configService: ConfigService,
         private readonly healthIndicatorService: HealthIndicatorService
-    ) {}
+    ) {
+        const dsn = this.configService.get<string | null>('logger.sentry.dsn');
+
+        this.dsn = dsn ?? null;
+    }
 
     /**
-     * Down unless the client is initialized, has a DSN, and is enabled.
+     * Down when no DSN is configured, or unless the client is initialized and enabled.
      */
     async isHealthy(key: string): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
+
+        if (!this.dsn) {
+            return indicator.down('Sentry is not configured');
+        }
 
         try {
             const client = Sentry.getClient();
@@ -24,12 +36,7 @@ export class HealthSentryIndicator {
                 return indicator.down('Sentry client not initialized');
             }
 
-            const options = client.getOptions();
-            if (!options.dsn) {
-                return indicator.down('Sentry DSN not configured');
-            }
-
-            if (options.enabled === false) {
+            if (client.getOptions().enabled === false) {
                 return indicator.down('Sentry is disabled');
             }
 

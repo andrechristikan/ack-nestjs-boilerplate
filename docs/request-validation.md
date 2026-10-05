@@ -55,20 +55,15 @@ The subclass adds two rules on top of the framework pipe:
 The pipe also strips prototype-polluting keys from the value before validating.
 
 **Processing flow**:
-```
-Request received
-    ↓
-RequestSchemaValidationPipe validates the argument against its schema
-    ↓
-Valid? → parsed and transformed value reaches the controller
-    ↓ No
-RequestValidationException carries the Standard Schema issues
-    ↓
-AppValidationFilter catches the exception
-    ↓
-MessageService localizes each issue
-    ↓
-Standardized error response (HTTP 422)
+```mermaid
+flowchart TD
+    A[Request received] --> P[RequestSchemaValidationPipe validates the argument against its schema]
+    P --> V{Valid?}
+    V -->|yes| C[Parsed and transformed value reaches the controller]
+    V -->|no| E[RequestValidationException carries the Standard Schema issues]
+    E --> F[AppValidationFilter catches the exception]
+    F --> M[MessageService localizes each issue]
+    M --> R[Standardized error response, HTTP 422]
 ```
 
 ## Usage
@@ -231,11 +226,12 @@ A module-specific check goes in that module's `validations/` folder instead.
 
 Shared schemas:
 
-- `RequestMongoIdSchema` — 24-character hex MongoDB ObjectId
-- `RequestRequiredStringSchema` — non-empty string
-- `RequestBooleanStringSchema` — `z.stringbool` accepting exactly `'true'` or `'false'`, case-sensitive; used by the boolean environment variables
-- `RequestEncryptionSecretSchema` — exactly 64 base64url characters; used by `APP_ENCRYPTION_SECRET_KEY` and `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
-- `RequestMessageLanguageSchema` — a member of `EnumMessageLanguage`, carrying its own `.meta()` for the OpenAPI document
+- `RequestMongoIdSchema`: 24-character hex MongoDB ObjectId
+- `RequestRequiredStringSchema`: non-empty string
+- `RequestBooleanStringSchema`: `z.stringbool` accepting exactly `'true'` or `'false'`, case-sensitive; used by the boolean environment variables
+- `RequestEncryptionSecretSchema`: exactly 64 base64url characters; used by `APP_ENCRYPTION_SECRET_KEY` and `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
+- `RequestOptionalEnvSchema(schema)` (`request.optional-env.validation.ts`): wraps an environment schema so a third-party key is optional; an absent value and an empty string both parse to `undefined`, and any other value satisfies `schema`
+- `RequestMessageLanguageSchema`: a member of `EnumMessageLanguage`, carrying its own `.meta()` for the OpenAPI document
 
 ## File Validation Pipes
 
@@ -259,7 +255,7 @@ data: UserImportRequestDto[]
 
 The pipe:
 
-- caps the row count at the `file.maxDataImport` config value (100, overridable per pipe through `maxDataImportConfigKey`) by throwing `FileExceedMaxDataImportException`
+- caps the row count at the `file.maxDataImport` config value (100, overridable per pipe through `maxDataImportConfigKey`; the user import reads `user.maxDataImport`, 50) by throwing `FileExceedMaxDataImportException`
 - rejects an empty file with `FileRequiredExtractFirstException`
 - collects every per-row failure, keyed by row index, into one `FileImportException` handled by `AppValidationImportFilter`
 
@@ -271,6 +267,7 @@ See [File Upload][ref-doc-file-upload].
 
 - An env boolean is `RequestBooleanStringSchema`, exactly `'true'` or `'false'`; every other spelling fails the boot
 - An encryption secret is `RequestEncryptionSecretSchema`, exactly 64 base64url characters
+- An optional third-party key (AWS, Firebase, Sentry, social sign-in) is `RequestOptionalEnvSchema(schema)`, so a blank `.env` line counts as unset; a `superRefine` on `AppEnvSchema` then requires the rest of a group once one of its credentials is set
 
 See [Environment][ref-doc-environment].
 
@@ -316,7 +313,7 @@ Messages are translated using [nestjs-i18n][ref-nestjs-i18n] through the [Messag
     "invalidElement": "{property} contains an element that is not allowed.",
     "custom": "{property} failed a validation rule.",
     "isPassword": {
-      "strong": "{property} must be a strong password containing uppercase, lowercase, numbers, and special characters."
+      "strong": "{property} must contain at least one uppercase letter, one lowercase letter, and one number."
     },
     "email": {
       "invalid": "{property} should be a valid email address."

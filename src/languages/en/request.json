@@ -16,7 +16,7 @@
         "custom": "{property} failed a validation rule.",
         "isPassword": {
             "required": "{property} password is required.",
-            "strong": "{property} must be a strong password containing uppercase, lowercase, numbers, and special characters."
+            "strong": "{property} must contain at least one uppercase letter, one lowercase letter, and one number."
         },
         "isAfterNow": {
             "invalid": "{property} must be a future date."

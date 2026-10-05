@@ -92,6 +92,7 @@ The controller carries the message path and nothing else; the values that fill i
 ```typescript
 // notification.shared.controller.ts
 @Response('notification.markAllAsRead')
+@HttpCode(HttpStatus.OK)
 @Post('/update/read')
 async markAllAsRead(
   @AuthJwtPayload('userId') userId: string
@@ -161,14 +162,14 @@ The handler's generic is the ROW type the repository returns, and the schema on 
 **Cursor-based Pagination:**
 
 ```typescript
-@Doc({ summary: 'list workspaces for member' })
+@Doc({ summary: 'list workspaces the caller is a member of' })
 @ResponsePagination('workspace.list', { schema: WorkspaceResponseSchema })
 @Get('/list')
 async list(
-  @Query({ schema: WorkspaceListRequestSchema }) query: WorkspaceListRequestDto,
+  @Query({ schema: WorkspaceUserListRequestSchema }) query: WorkspaceUserListRequestDto,
   @AuthJwtPayload('userId') userId: string
-): Promise<IResponsePaginationReturn<WorkspaceResponseDto>> {
-  return this.workspaceHttpService.getListForMember(userId, query);
+): Promise<IResponsePaginationReturn<Workspace>> {
+  return this.workspaceHttpService.getListCursorByMember(userId, query);
 }
 ```
 
@@ -268,15 +269,15 @@ The `.meta({ description, example })` on each field is what the OpenAPI document
 
 ### A Route That Returns No Data
 
-`@Response(messagePath)` with no `schema` declares a route whose body carries `statusCode`, `message`, and `metadata` and nothing else. The handler may return `Promise<void>`, or `IResponseReturn<void>` when the service already returns the envelope (for example to pass `metadata` overrides).
+`@Response(messagePath)` with no `schema` declares a route whose body carries `statusCode`, `message`, and `metadata` and nothing else. The handler returns `Promise<void>`. `ResponseInterceptor` builds the same envelope for a `void` result as for `{}`, so `IResponseReturn<void>` is the return type only where the HTTP service passes `metadata` overrides, as `markAllAsRead` does with `messageProperties`.
 
 ```typescript
 @Response('role.delete')
 @Delete('/delete/:roleId')
 async delete(
   @Param('roleId', { schema: RequestMongoIdSchema }) roleId: string
-): Promise<IResponseReturn<void>> {
-  return this.roleHttpService.deleteByAdmin(roleId);
+): Promise<void> {
+  await this.roleHttpService.deleteByAdmin(roleId);
 }
 ```
 
@@ -323,22 +324,17 @@ export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
 
 ### Serialization Flow
 
-```text
-Service returns entity / interface (raw)
-    ↓
-Controller returns { data } / { data: [] } as IResponseReturn / IResponsePaginationReturn
-    ↓
-ResponseInterceptor reads the schema off ResponseSchemaMetaKey
-    ↓
-schema['~standard'].validate(payload): undeclared keys stripped, a rejection raises
-ResponseSerializationException
-    ↓
-Envelope assembled: statusCode, localized message, metadata, data
-    ↓
-ResponseMetadataService.setHeaders mirrors the metadata onto response headers
+```mermaid
+flowchart TD
+    S[Service returns entity or interface, raw] --> C[Controller returns IResponseReturn or IResponsePaginationReturn]
+    C --> I[ResponseInterceptor reads the schema off ResponseSchemaMetaKey]
+    I --> V{"schema['~standard'].validate(payload)"}
+    V -->|issues| X[ResponseSerializationException]
+    V -->|valid, undeclared keys stripped| E[Envelope assembled: statusCode, localized message, metadata, data]
+    E --> H[ResponseMetadataService.setHeaders mirrors the metadata onto response headers]
 ```
 
-Metadata and headers are built by the shared `ResponseMetadataService` (`src/common/response/services/response.metadata.service.ts`): `create()` returns a `ResponseMetadataDto` from the request store, `setHeaders(response, metadata)` mirrors it to response headers. The three response interceptors and the five app filters call it instead of building metadata inline.
+Metadata and headers are built by the shared `ResponseMetadataService` (`src/common/response/services/response.metadata.service.ts`): `create()` returns a `ResponseMetadataDto` from the request store, `setHeaders(response, metadata)` mirrors it to response headers. The three response interceptors and the five app filters build their metadata and headers through it.
 
 ## Response Structure
 

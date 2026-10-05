@@ -9,6 +9,6 @@
         "predefinedKeyLengthExceeded": "Predefined key length exceeded the maximum allowed.",
         "predefinedKeyNotFound": "Predefined key is not registered as a feature flag.",
         "predefinedKeyTypeInvalid": "Predefined key type is invalid.",
-        "serviceUnavailable": "Feature flag service is currently unavailable."
+        "disabled": "This feature is not available."
     }
 }

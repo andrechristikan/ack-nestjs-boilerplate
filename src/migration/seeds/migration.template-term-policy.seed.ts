@@ -16,7 +16,7 @@ import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
 
 /**
- * Uploads term policy documents to S3 and writes their published records; removal is a no-op. Throws if S3 is uninitialized.
+ * Uploads term policy documents to S3 and writes their published records; removal is a no-op. Skips with a warning when S3 is not configured.
  */
 @Command({
     name: 'templateTermPolicy',
@@ -50,11 +50,11 @@ export class MigrationTemplateTermPolicySeed
 
         const isS3Initialized = this.awsS3Service.isInitialized();
         if (!isS3Initialized) {
-            this.logger.error(
-                'AWS S3 is not initialized. Cannot seed term policies.'
+            this.logger.warn(
+                'AWS S3 is not configured. Skipping term policy seed.'
             );
 
-            throw new Error('AWS S3 is not initialized');
+            return;
         }
 
         try {

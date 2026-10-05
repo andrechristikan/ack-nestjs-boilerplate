@@ -20,18 +20,18 @@ export class DeviceAnalyticDomain {
         private readonly deviceAnalyticRepository: DeviceAnalyticRepository
     ) {}
 
-    countRegistrations(startDate: Date, endDate: Date): Promise<number> {
+    getCountRegistrations(startDate: Date, endDate: Date): Promise<number> {
         return this.deviceAnalyticRepository.countRegistrations(
             startDate,
             endDate
         );
     }
 
-    groupByPlatform(): Promise<IAnalyticCountBucket[]> {
+    getGroupByPlatform(): Promise<IAnalyticCountBucket[]> {
         return this.deviceAnalyticRepository.groupByPlatform();
     }
 
-    async pushTokenRate(): Promise<IAnalyticMetricRate> {
+    async getPushTokenRate(): Promise<IAnalyticMetricRate> {
         const [withToken, total] = await Promise.all([
             this.deviceAnalyticRepository.countWithPushToken(),
             this.deviceAnalyticRepository.countDevices(),
@@ -43,23 +43,23 @@ export class DeviceAnalyticDomain {
         };
     }
 
-    countOwnerships(): Promise<number> {
+    getCountOwnerships(): Promise<number> {
         return this.deviceOwnershipAnalyticRepository.countOwnerships();
     }
 
-    countDevices(): Promise<number> {
+    getCountDevices(): Promise<number> {
         return this.deviceAnalyticRepository.countDevices();
     }
 
-    countPerUser(): Promise<IDeviceOwnershipAnalyticUserCount[]> {
+    getCountPerUser(): Promise<IDeviceOwnershipAnalyticUserCount[]> {
         return this.deviceOwnershipAnalyticRepository.countPerUser();
     }
 
-    findInactive(before: Date): Promise<IDeviceOwnershipAnalyticInactive[]> {
+    getInactive(before: Date): Promise<IDeviceOwnershipAnalyticInactive[]> {
         return this.deviceOwnershipAnalyticRepository.findInactive(before);
     }
 
-    findCreatedInRange(
+    getCreatedInRange(
         startDate: Date,
         endDate: Date
     ): Promise<IDeviceOwnershipAnalyticCreated[]> {
@@ -69,18 +69,18 @@ export class DeviceAnalyticDomain {
         );
     }
 
-    sharedFingerprints(
+    getSharedFingerprints(
         minUsers: number
     ): Promise<IAnalyticSharedFingerprint[]> {
-        return this.deviceOwnershipAnalyticRepository.sharedFingerprints(
+        return this.deviceOwnershipAnalyticRepository.findSharedFingerprints(
             minUsers
         );
     }
 
-    async proliferationOutliers(
+    async getProliferationOutliers(
         zScoreThreshold: number
     ): Promise<IAnalyticDeviceProliferationResult> {
-        const counts = await this.countPerUser();
+        const counts = await this.getCountPerUser();
         if (counts.length === 0) {
             return { count: 0, avg: 0, stdDev: 0, rows: [] };
         }

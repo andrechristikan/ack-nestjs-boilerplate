@@ -3,5 +3,5 @@ import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analy
 export interface IProjectAnalyticRepository {
     countCreated(startDate: Date, endDate: Date): Promise<number>;
     countByWorkspace(workspaceId: string): Promise<number>;
-    perWorkspace(): Promise<IAnalyticWorkspaceCount[]>;
+    groupByWorkspace(): Promise<IAnalyticWorkspaceCount[]>;
 }

@@ -13,6 +13,6 @@ export class UserPasswordNotMatchException extends AppBaseException {
     readonly httpStatus = HttpStatus.BAD_REQUEST;
 
     constructor() {
-        super('auth.error.passwordNotMatch');
+        super('user.error.passwordNotMatch');
     }
 }

@@ -42,7 +42,6 @@ The module covers four things: the workspace itself and its membership roles, in
 - [Feature Flag Gating](#feature-flag-gating)
 - [Configuration](#configuration)
 - [Status Codes](#status-codes)
-- [Contribution](#contribution)
 
 ## Data Model
 
@@ -114,7 +113,7 @@ Fields:
 
 `POST /user/workspace/switch` takes the target id from the body, re-runs the same two checks the guards would have run (the workspace resolves and is active, the caller is a member of it), then records the choice on `user.lastWorkspaceId` and `lastWorkspaceChangedAt`. It does **not** change how a request is scoped: the client still has to send `x-workspace-id` on every workspace-scoped call.
 
-Five user-scope routes deliberately carry no workspace header, because they act across workspaces or before membership exists:
+Five user-scope routes carry no workspace header, because they act across workspaces or before membership exists:
 
 - `list`
 - `create`
@@ -130,7 +129,7 @@ Located at `src/modules/workspace/decorators`. For where these sit in the full p
 
 **Method decorator** that applies `WorkspaceGuard`. Place it directly above `@UserProtected()`.
 
-Requires `x-workspace-id` to resolve to an existing, non-deleted workspace, through `WorkspaceDomain.validateWorkspaceGuard`, and stores the row under `WorkspaceStoreKey`. A missing header and an id that matches no active workspace both throw `WorkspaceNotFoundException` (404, `51600`) - the two cases are deliberately indistinguishable.
+Requires `x-workspace-id` to resolve to an existing, non-deleted workspace, through `WorkspaceDomain.validateWorkspaceGuard`, and stores the row under `WorkspaceStoreKey`. A missing header and an id that matches no active workspace both throw `WorkspaceNotFoundException` (404, `51600`), so the two cases are indistinguishable.
 
 ### `WorkspaceMemberProtected(...roles)`
 
@@ -329,7 +328,7 @@ A user asks to join a workspace they can see; an admin decides.
 - **Accept always creates a `member` membership.** The role is not configurable on this path. The membership creation and the status flip to `accepted` with `reviewedByUserId` / `reviewedAt` run in one transaction; the activity pair is prepared before it and staged after it commits. Reject is a single update with no transaction.
 - Accept does **not** point the requester's `lastWorkspaceId` at the workspace they just joined, unlike an invite claim. They still have to switch to it.
 - Reject requires a `rejectReasonCode` from `EnumWorkspaceJoinRejectReason`.
-- Both outcomes notify the requester after the transaction commits: `workspaceJoinAccepted` on accept, `workspaceJoinRejected` (carrying the reason code) on reject.
+- Both outcomes notify the requester once the write commits: `workspaceJoinAccepted` on accept, `workspaceJoinRejected` (carrying the reason code) on reject.
 - Only a `pending` request may be accepted or rejected, otherwise `WorkspaceJoinRequestAlreadyProcessedException` (400, `51618`). An id that does not belong to the resolved workspace is `WorkspaceJoinRequestNotFoundException` (404, `51617`).
 
 The `cancelled` status is written only by workspace soft-delete. A requester has no endpoint to withdraw their own request.
@@ -339,7 +338,7 @@ The `cancelled` status is written only by workspace soft-delete. A requester has
 - **Creation always generates the slug.** `WorkspaceCreateRequestDto` carries no slug field: `WorkspaceDomain.createWorkspace` draws `workspace.slugMaxAttempts` (5) candidates of `workspace.slugPrefix` plus random characters up to `slugMaxLength` and walks them itself. Choosing a slug is what `PATCH /user/workspace/update/slug` is for.
 - A slug sent to `update/slug` is validated by `WorkspaceDomain.assertSlugAllowed` against `workspace.slugRegex` and `workspace.slugMaxLength`, throwing `WorkspaceSlugInvalidException` (400, `51620`), then checked against `WorkspaceRepository.existsBySlug`, which answers `WorkspaceSlugAlreadyExistsException` (400, `51605`) with no retry.
 - Uniqueness is **global**, matching `@@unique([slug])`.
-- `existsBySlug` counts holders across **all** rows including soft-deleted ones: the unique index has no `deletedAt` component, so a soft-deleted workspace still holds its slug, and the check agrees with the index.
+- `existsBySlug` counts holders other than the workspace itself across **all** rows, soft-deleted ones included: the unique index has no `deletedAt` component, so a soft-deleted workspace still holds its slug, and the check agrees with the index.
 - `createWorkspace` walks its candidates and, for each one, draws the workspace id, prepares `workspaceCreated`, and opens a `withTransaction` that calls `createInTx` (`WorkspaceRepository.createInTx` plus `WorkspaceMemberRepository.createOwnerInTx`). The event is staged only after a commit. A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`).
 - The personal-workspace slug follows the same budget inside the onboarding transaction, ending in the same `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
 
@@ -455,11 +454,6 @@ Each link key is a full URL template. `{homeUrl}` is filled from `home.url`, so 
 Full catalog: [Status Codes][ref-doc-status-codes].
 
 
-## Contribution
-
-Special thanks to [Gzerox][ref-contributor-gzerox] for main contributor for this feature.
-
-
 <!-- REFERENCES -->
 
 [ref-doc-project]: project.md
@@ -472,5 +466,3 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for main contributor for this
 [ref-doc-notification]: notification.md
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-analytic]: analytic.md
-
-[ref-contributor-gzerox]: https://github.com/Gzerox

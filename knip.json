@@ -23,9 +23,7 @@
     "ignoreDependencies": [
         "pino-pretty",
         "pino-roll",
-        "@nestjs/testing",
         "@types/supertest",
-        "supertest",
-        "vitest-mock-extended"
+        "supertest"
     ]
 }

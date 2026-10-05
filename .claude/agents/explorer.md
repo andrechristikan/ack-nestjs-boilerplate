@@ -7,6 +7,7 @@ description: >-
   (coder), tests (tester), reviewing (reviewer), prose (writer), or the harness (harness).
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: opus
+effort: medium
 skills: caveman:caveman
 omitClaudeMd: false
 ---

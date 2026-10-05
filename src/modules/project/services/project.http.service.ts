@@ -28,7 +28,7 @@ export class ProjectHttpService {
         private readonly requestStoreService: RequestStoreService
     ) {}
 
-    async getListForMember(
+    async getListCursorByMember(
         workspaceId: string,
         workspaceMember: WorkspaceMember,
         query: ProjectUserListRequestDto
@@ -40,11 +40,12 @@ export class ProjectHttpService {
             });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        const { data, ...others } = await this.projectDomain.getListForMember(
-            workspaceId,
-            workspaceMember,
-            params
-        );
+        const { data, ...others } =
+            await this.projectDomain.getListCursorByMember(
+                workspaceId,
+                workspaceMember,
+                params
+            );
 
         return {
             data,
@@ -104,7 +105,7 @@ export class ProjectHttpService {
         await this.projectDomain.softDeleteProject(project, actorId);
     }
 
-    async getListForAdmin(
+    async getListOffsetByAdmin(
         query: ProjectAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
         const { params, storePatch } =
@@ -122,10 +123,11 @@ export class ProjectHttpService {
             },
         });
 
-        const { data, ...others } = await this.projectDomain.getListForAdmin(
-            params,
-            query.workspaceId as string | undefined
-        );
+        const { data, ...others } =
+            await this.projectDomain.getListOffsetByAdmin(
+                params,
+                query.workspaceId as string | undefined
+            );
 
         return {
             data,
@@ -133,10 +135,8 @@ export class ProjectHttpService {
         };
     }
 
-    async getByIdForAdmin(
-        projectId: string
-    ): Promise<IResponseReturn<Project>> {
-        const project = await this.projectDomain.getByIdForAdmin(projectId);
+    async getByIdByAdmin(projectId: string): Promise<IResponseReturn<Project>> {
+        const project = await this.projectDomain.getByIdByAdmin(projectId);
 
         return { data: project };
     }

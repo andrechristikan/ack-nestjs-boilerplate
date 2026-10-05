@@ -23,7 +23,7 @@ and where the answer's shape is decided.
 - A list endpoint: pagination type, the `search` and `orderBy` allow-lists, filter defaults
   (`.claude/rules/dto.md` Pagination).
 - Status codes and exceptions: which failures are new, which module owns each subject
-  (`ack-add-status-code`, `.claude/rules/exceptions.md`).
+  (`.claude/skills/ack-build/references/add-status-code.md`, `.claude/rules/exceptions.md`).
 - i18n: every new message key, in every language directory under `src/languages/`
   (`.claude/rules/i18n.md`).
 
@@ -31,14 +31,17 @@ and where the answer's shape is decided.
 
 - Prisma delta: model, field, index, relation; the data consequence for existing rows; soft
   delete and what cascades (`.claude/rules/database.md`).
-- A seed and its `remove` pair (`ack-add-seed`, `.claude/rules/seeding.md`).
+- A seed and its `remove` pair (`.claude/skills/ack-build/references/add-seed.md`,
+  `.claude/rules/seeding.md`).
 - Config keys and env variables the change reads (`.claude/rules/config.md`).
 
 ## Side effects
 
 - Activity log row: which action, which subject (`.claude/rules/security.md` Activity log).
-- Notification kind and channel (`ack-add-notification`, `.claude/rules/queue.md`).
-- Queue job: name, payload, retry (`ack-add-queue`, `.claude/rules/queue.md`).
+- Notification kind and channel (`.claude/skills/ack-build/references/add-notification.md`,
+  `.claude/rules/queue.md`).
+- Queue job: name, payload, retry (`.claude/skills/ack-build/references/add-queue.md`,
+  `.claude/rules/queue.md`).
 - Cache key: what it caches and what invalidates it (`.claude/rules/config.md` Cache).
 
 ## Failure

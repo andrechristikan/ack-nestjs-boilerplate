@@ -62,7 +62,7 @@ export class ProjectAdminController {
         @Query({ schema: ProjectAdminListRequestSchema })
         query: ProjectAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
-        return this.projectHttpService.getListForAdmin(query);
+        return this.projectHttpService.getListOffsetByAdmin(query);
     }
 
     @Doc({
@@ -86,6 +86,6 @@ export class ProjectAdminController {
         @Param('projectId', { schema: RequestMongoIdSchema })
         projectId: string
     ): Promise<IResponseReturn<Project>> {
-        return this.projectHttpService.getByIdForAdmin(projectId);
+        return this.projectHttpService.getByIdByAdmin(projectId);
     }
 }

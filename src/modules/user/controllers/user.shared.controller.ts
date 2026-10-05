@@ -313,7 +313,7 @@ export class UserSharedController {
         await this.userProfileHttpService.claimUsername(userId, body);
     }
 
-    @Doc({ summary: 'Get current two-factor authentication status' })
+    @Doc({ summary: 'get current two-factor authentication status' })
     @Response('user.twoFactor.status', {
         schema: UserTwoFactorStatusResponseSchema,
     })
@@ -331,7 +331,7 @@ export class UserSharedController {
 
     @Doc({
         summary:
-            'Start two-factor setup and receive secret; requires an unused backup code while two-factor is enabled',
+            'start two-factor setup and receive secret; requires an unused backup code while two-factor is enabled',
     })
     @Response('user.twoFactor.setup', {
         schema: UserTwoFactorSetupResponseSchema,
@@ -351,7 +351,7 @@ export class UserSharedController {
         return this.userTwoFactorHttpService.setupTwoFactor(user, body);
     }
 
-    @Doc({ summary: 'Enable two-factor authentication' })
+    @Doc({ summary: 'enable two-factor authentication' })
     @Response('user.twoFactor.enable', {
         schema: UserTwoFactorEnableResponseSchema,
     })
@@ -370,7 +370,7 @@ export class UserSharedController {
         return this.userTwoFactorHttpService.enableTwoFactor(user, body);
     }
 
-    @Doc({ summary: 'Disable two-factor authentication' })
+    @Doc({ summary: 'disable two-factor authentication' })
     @Response('user.twoFactor.disable')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -386,7 +386,7 @@ export class UserSharedController {
         await this.userTwoFactorHttpService.disableTwoFactor(user, body);
     }
 
-    @Doc({ summary: 'Regenerate two-factor backup codes' })
+    @Doc({ summary: 'regenerate two-factor backup codes' })
     @Response('user.twoFactor.regenerateBackupCodes', {
         schema: UserTwoFactorEnableResponseSchema,
     })
@@ -395,6 +395,7 @@ export class UserSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @HttpCode(HttpStatus.OK)
     @Post('/2fa/backup-code/regenerate')
     async regenerateTwoFactorBackupCodes(
         @UserCurrent() user: IUser,
@@ -409,7 +410,7 @@ export class UserSharedController {
 
     @Doc({
         summary:
-            'Logout from current session, invalidating the access token and deleting the session.',
+            'logout from current session, invalidating the access token and deleting the session.',
     })
     @Response('user.logout')
     @TermPolicyAcceptanceProtected()

@@ -85,9 +85,11 @@ SENTRY_DSN=<your_sentry_dsn>
 | `LOGGER_INTO_FILE` | Write logs to files | `boolean` | `true` | Yes |
 | `LOGGER_PRETTIER` | Enable pretty-printing in console | `boolean` | `true` | Yes |
 | `LOGGER_AUTO` | Enable automatic HTTP request/response logging | `boolean` | `false` | Yes |
-| `SENTRY_DSN` | Sentry Data Source Name for error tracking | `string` | `null` | No |
+| `SENTRY_DSN` | Sentry Data Source Name for error tracking; a URL, and a blank line counts as unset | `string` | `null` | No |
 
 ### Configuration Interface
+
+`IConfigLogger` (`src/configs/logger.config.ts`), registered under the `logger` key:
 
 | Option | Description | Default |
 |--------|-------------|---------|
@@ -99,6 +101,10 @@ SENTRY_DSN=<your_sentry_dsn>
 | `prettier` | Enable pretty-printing in console | `false` |
 | `sentry.dsn` | Sentry DSN for error tracking | `null` |
 | `sentry.timeoutInMs` | Timeout value carried on the config; `Sentry.init` is configured from `sentry.dsn` | `ms('10s')` |
+| `sentry.tracesSampleRate` | Traces sample rate outside production | `1` |
+| `sentry.tracesSampleRateProduction` | Traces sample rate in production | `0.3` |
+| `sentry.profilesSampleRate` | Profiles sample rate outside production | `0.5` |
+| `sentry.profilesSampleRateProduction` | Profiles sample rate in production | `0.1` |
 
 ## Usage
 
@@ -680,22 +686,26 @@ The Sentry configuration is defined in `src/configs/logger.config.ts`:
 
 ```typescript
 sentry: {
-    dsn: string | null;  // Sentry Data Source Name, null when SENTRY_DSN is unset
-    timeoutInMs: number; // ms('10s')
+    dsn: string | null;                   // Sentry Data Source Name, null when SENTRY_DSN is unset
+    timeoutInMs: number;                  // ms('10s')
+    tracesSampleRate: number;             // 1
+    tracesSampleRateProduction: number;   // 0.3
+    profilesSampleRate: number;           // 0.5
+    profilesSampleRateProduction: number; // 0.1
 }
 ```
 
-`instrument.ts` is loaded first, through `node --import ./dist/instrument.js` in the start scripts and `import '@instrument'` at the top of `src/main.ts`. It reads `sentry.dsn` and skips `Sentry.init` entirely when it is `null`. The rest of the initializer options (sample rates, `normalizeDepth`, `maxValueLength`, `maxBreadcrumbs`, `attachStacktrace`, `sendDefaultPii`) are literals in `instrument.ts`, and the sample rates are the only ones that branch on `app.env`.
+`instrument.ts` is loaded first, through `node --import ./dist/instrument.js` in the start scripts and `import '@instrument'` at the top of `src/main.ts`. It reads `sentry.dsn` and skips `Sentry.init` entirely when it is `null`. The sample rates come from the logger config: in production `tracesSampleRateProduction` and `profilesSampleRateProduction`, in every other environment `tracesSampleRate` and `profilesSampleRate`. `tracesSampler` returns the chosen traces rate for every non-excluded transaction. The rest of the initializer options (`normalizeDepth`, `maxValueLength`, `maxBreadcrumbs`, `attachStacktrace`, `sendDefaultPii`) are literals in `instrument.ts`.
 
 ### Disabling Sentry
 
-Sentry is off when `SENTRY_DSN` is unset or commented out:
+Sentry is off when `SENTRY_DSN` is unset, blank, or commented out:
 
 ```env
 # SENTRY_DSN=https://...
 ```
 
-When DSN is not configured, exceptions are only logged locally without being sent to Sentry.
+When DSN is not configured, `SentryService` calls send nothing, exceptions are only logged locally, and the Sentry health indicator reports `down` with `Sentry is not configured`.
 
 <!-- REFERENCES -->
 

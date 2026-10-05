@@ -9,7 +9,7 @@ export class UserVerificationAnalyticDomain {
         private readonly userVerificationAnalyticRepository: UserVerificationAnalyticRepository
     ) {}
 
-    async funnel(
+    async getFunnel(
         type: EnumVerificationType,
         startDate: Date | null,
         endDate: Date | null

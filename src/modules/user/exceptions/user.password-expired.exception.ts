@@ -13,6 +13,6 @@ export class UserPasswordExpiredException extends AppBaseException {
     readonly httpStatus = HttpStatus.FORBIDDEN;
 
     constructor() {
-        super('auth.error.passwordExpired');
+        super('user.error.passwordExpired');
     }
 }

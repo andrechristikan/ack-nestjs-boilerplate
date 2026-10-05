@@ -32,17 +32,17 @@ Type the name; nothing chains automatically. Each skill ends with a Next line. D
 - `/ack-harness`: `.claude/**`, `AGENTS.md`, `.github/copilot-instructions.md`; `diagnose`
   reads a session transcript first.
 
-Knowledge skills (`ack-add-module`, `ack-add-status-code`, `ack-add-queue`, `ack-add-seed`,
-`ack-add-notification`) hold procedures, load on demand, and are not user-invocable. Workflow skills
-call `superpowers:*` skills at the step that names them, or through an agent's `skills:` preload, and
-nowhere else; outside a workflow skill (a question, a small edit, a script) the session works without
-them. A skill already in the session's context is not invoked again for a reply, a clarifying question,
-or a later step of the same run; its text is present and applies. `.claude/settings.json` declares
-the project marketplaces (`extraKnownMarketplaces`) and plugins (`enabledPlugins`); trusting the folder
-registers the marketplaces. `writer` preloads `example-skills:doc-coauthoring` and
-`diagram-design:diagram-design`; outside `writer` they run when the owner names them.
+The procedures for adding a module, status code, queue, seed, or notification live in
+`.claude/skills/ack-build/references/add-<topic>.md`; `coder` reads the one a task names. Workflow skills call
+`superpowers:*` skills at the step that names them, or through an agent's `skills:` preload, and nowhere
+else; outside a workflow skill (a question, a small edit, a script) the session works without them. A
+skill already in the session's context is not invoked again for a reply, a clarifying question, or a
+later step of the same run; its text is present and applies. `writer` preloads `caveman:caveman`,
+`humanizer:humanizer`, `example-skills:doc-coauthoring`, and `diagram-design:diagram-design`; outside `writer`,
+`doc-coauthoring` and `diagram-design` run when the owner names them. Plugins (`enabledPlugins`, `.claude/settings.json`):
 
-- relative path, no install step: `caveman@caveman`, `humanizer@humanizer`, `diagram-design@diagram-design`
+- GitHub marketplaces in `extraKnownMarketplaces`, registered when the folder is trusted:
+  `caveman@caveman`, `humanizer@humanizer`, `diagram-design@diagram-design`
 - external source, once per machine: `claude plugin install superpowers@claude-plugins-official`
 - user scope, once per machine: `claude plugin marketplace add anthropics/skills`, then
   `claude plugin install example-skills@anthropic-agent-skills --scope user`, which carries `doc-coauthoring`
@@ -63,9 +63,8 @@ Skills dispatch the agents in `.claude/agents/`:
   `copilot-instructions.md`, stale-fact repairs in `.github/` YAML, PR and version text.
 - `harness`: the AI configuration: `.claude/**`, `AGENTS.md`, `.github/copilot-instructions.md`.
 
-No agent can ask a question. An agent missing something stops and hands the question back;
-the session asks the owner and dispatches again. Anything an agent notices outside its
-dispatch is one line in its hand-back.
+No agent can ask a question: one missing something stops and hands the question back, and the session
+asks the owner and dispatches again. Anything outside its dispatch is one line in its hand-back.
 
 graphify (`uv tool install graphifyy`, then `graphify claude install`) writes a knowledge
 graph to `graphify-out/`; `explorer` may run `graphify query "<question>"` to map an
@@ -73,10 +72,10 @@ end-to-end flow. Nothing requires it.
 
 ### Gotchas
 
-- `tsc` aborts on a `tsconfig.json` error and reports zero source errors because it checked
-  nothing. Read the raw output and the exit code.
-- A grep count is not a verification: `| grep -c 'error TS'` prints `0` on empty output from
-  a crashed runner too.
+- `tsc` aborts on a `tsconfig.json` error and reports zero source errors because it checked nothing, and
+  `| grep -c 'error TS'` prints `0` on a crashed runner's empty output too. Read the raw output and exit code.
+- The `Stop` hook `.claude/hooks/verify.sh` runs `pnpm typecheck` and `pnpm test` when a file under `src/` or
+  `test/` differs from `HEAD` or is untracked, and blocks the stop on a failure.
 - `pnpm spell` always exits 0 (`|| true`). Read its output.
 - `pnpm deadcode` is knip: unused files, exports, types, enum members, and dependencies warn
   and exit 0; unlisted dependencies, unresolved imports, unlisted binaries, and duplicate
@@ -100,11 +99,12 @@ end-to-end flow. Nothing requires it.
 - The working tree on disk is the source, unstaged and untracked files included; list
   changes with `git status --short`, `git diff HEAD --name-only`,
   `git ls-files --others --exclude-standard`.
-- Diff with no second ref: `git diff <base>` includes uncommitted and staged work;
-  `<base>..HEAD` omits it. Git stays read-only except in `/ack-pr`.
-- A commit touching neither `src/` nor `test/` passes `--no-verify`: the `pre-commit` gate
-  runs over the whole repository whatever is staged (`AGENTS.md`). A commit touching either
-  tree goes through the hooks, and a red gate is fixed, not skipped.
+- Diff with no second ref: `git diff <base>` includes uncommitted and staged work; `<base>..HEAD` omits
+  it. Reviews and diffs keep git read-only (no fetch, no pull); only `/ack-pr` fetches and moves refs.
+- A commit touching neither `src/` nor `test/` passes `--no-verify`: the `pre-commit` gate runs over the
+  whole repository whatever is staged (`AGENTS.md`). `--no-verify` skips `commit-msg` (commitlint) too, so
+  check the subject against `.commitlintrc` first. A commit touching either tree goes through the hooks,
+  and a red gate is fixed, not skipped.
 - `lint-staged` restages what prettier touches, so a granular commit series is not possible.
 - Working artifacts are gitignored: `.superpowers/` for specs and plans, `generated/docs/`
   for agent reports and PR text, `graphify-out/` for the graph. Do not cite them from

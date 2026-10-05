@@ -8,7 +8,7 @@ export class WorkspaceJoinRequestAnalyticDomain {
         private readonly workspaceJoinRequestAnalyticRepository: WorkspaceJoinRequestAnalyticRepository
     ) {}
 
-    outcomes(
+    getOutcomes(
         startDate: Date,
         endDate: Date,
         workspaceId: string | null
