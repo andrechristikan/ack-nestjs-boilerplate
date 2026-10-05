@@ -109,6 +109,7 @@ export class TermPolicyDomain {
         type,
         version,
     }: ITermPolicyCreate): Promise<TermPolicy> {
+        // Sequential by design: gate before the work it guards
         const isExist = await this.termPolicyRepository.existsByVersionAndType(
             version,
             type
@@ -247,6 +248,7 @@ export class TermPolicyDomain {
 
             const newContents = this.mapPublicContent(newItems, contents);
 
+            // Sequential by design: write must not run if an earlier step throws
             const events = await this.databaseService.withTransaction(
                 async tx => {
                     const row = await this.termPolicyRepository.publishInTx(

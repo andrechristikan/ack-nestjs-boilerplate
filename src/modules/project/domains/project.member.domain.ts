@@ -146,6 +146,7 @@ export class ProjectMemberDomain {
             throw new WorkspaceMemberNotFoundException();
         }
 
+        // Sequential by design: gate before the work it guards
         const existing =
             await this.projectMemberRepository.findOneByProjectAndUser(
                 project.id,

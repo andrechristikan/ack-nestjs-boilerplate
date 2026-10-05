@@ -155,6 +155,7 @@ export class SessionDomain {
     }
 
     async revoke(userId: string, sessionId: string): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.validateActive(userId, sessionId);
 
         const events = [
@@ -183,6 +184,7 @@ export class SessionDomain {
         sessionId: string,
         revokedBy: string
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         const session = await this.validateActive(userId, sessionId);
 
         const revokedAt = this.helperDateService.create();

@@ -96,6 +96,7 @@ export class TermPolicyAcceptanceDomain {
             throw new TermPolicyNotFoundException();
         }
 
+        // Sequential by design: write must not run if an earlier step throws
         const exist =
             await this.termPolicyRepository.existsAcceptanceByPolicyAndUser(
                 user.id,

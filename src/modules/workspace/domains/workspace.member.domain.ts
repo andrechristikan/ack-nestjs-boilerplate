@@ -167,6 +167,7 @@ export class WorkspaceMemberDomain {
         member: WorkspaceMember
     ): Promise<void> {
         if (member.role === EnumWorkspaceMemberRole.owner) {
+            // Sequential by design: gate before the work it guards
             const ownerCount =
                 await this.workspaceMemberRepository.countOwners(workspaceId);
             if (ownerCount <= 1) {

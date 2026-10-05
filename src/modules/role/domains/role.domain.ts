@@ -97,6 +97,7 @@ export class RoleDomain {
     }
 
     async createByAdmin(data: IRoleCreate): Promise<IRoleWithPolicies> {
+        // Sequential by design: gate before the work it guards
         const exist = await this.roleRepository.existsByName(data.name);
         if (exist) {
             throw new RoleExistException();
@@ -122,6 +123,7 @@ export class RoleDomain {
         id: string,
         data: IRoleUpdate
     ): Promise<IRoleWithPolicies> {
+        // Sequential by design: gate before the work it guards
         const role = await this.roleRepository.findOneById(id);
         if (!role) {
             throw new RoleNotFoundException();
@@ -143,6 +145,7 @@ export class RoleDomain {
     }
 
     async deleteByAdmin(id: string): Promise<Role> {
+        // Sequential by design: gate before the work it guards
         const [role, roleUsed] = await Promise.all([
             this.roleRepository.findOneById(id),
             this.roleRepository.isUsedById(id),

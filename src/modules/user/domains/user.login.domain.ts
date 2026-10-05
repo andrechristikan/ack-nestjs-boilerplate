@@ -149,6 +149,7 @@ export class UserLoginDomain {
             }),
         ];
         const now = this.helperDateService.create();
+        // Sequential by design: write must not run if an earlier step throws
         const { isNewDevice, sessionShouldBeInactive } =
             await this.databaseService.withTransaction(async tx => {
                 const notificationProvider =
@@ -241,6 +242,7 @@ export class UserLoginDomain {
                     EnumVerificationType.email
                 ) as IUserVerificationEmailCreate;
 
+            // Sequential by design: write must not run if an earlier step throws
             await this.userVerificationDomain.persistVerificationEmail(
                 user.id,
                 user.email,
@@ -336,6 +338,7 @@ export class UserLoginDomain {
         user: IUser,
         { method, code, backupCode }: IAuthTwoFactorVerify
     ): Promise<IAuthTwoFactorVerifyResult> {
+        // Sequential by design: gate before the work it guards
         await this.assertTwoFactorUnlocked(user);
         if (!method) {
             throw new AuthTwoFactorMethodRequiredException();
@@ -366,6 +369,7 @@ export class UserLoginDomain {
         encryptedPendingSecret: string,
         code: string
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.assertTwoFactorUnlocked(user);
 
         const isValid = this.authTwoFactorDomain.verifySetupCode(
@@ -431,6 +435,7 @@ export class UserLoginDomain {
             refreshToken
         );
 
+        // Sequential by design: gate before the work it guards
         const session = await this.sessionCache.getLogin(userId, sessionId);
         if (!session || !oldJti) {
             throw new AuthJwtRefreshTokenInvalidException();
@@ -458,6 +463,7 @@ export class UserLoginDomain {
                     action: EnumActivityLogAction.userRefreshToken,
                 }),
             ];
+            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.withTransaction(async tx => {
                 await this.sessionDomain.updateJtiInTx(tx, sessionId, newJti);
                 const now = this.helperDateService.create();
@@ -499,6 +505,7 @@ export class UserLoginDomain {
         sessionId: string,
         deviceOwnershipId: string
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.sessionDomain.validateActive(userId, sessionId);
 
         const events = [
@@ -507,6 +514,7 @@ export class UserLoginDomain {
             }),
         ];
         const now = this.helperDateService.create();
+        // Sequential by design: write must not run if an earlier step throws
         await this.databaseService.withTransaction(async tx => {
             await this.sessionDomain.revokeInTx(
                 tx,

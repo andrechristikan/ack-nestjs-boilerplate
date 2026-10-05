@@ -172,6 +172,7 @@ export class ProjectDomain {
     ): Promise<Project> {
         this.assertSlugAllowed(slug);
 
+        // Sequential by design: gate before the work it guards
         const slugTaken = await this.projectRepository.existsBySlugInWorkspace(
             project.workspaceId,
             slug,

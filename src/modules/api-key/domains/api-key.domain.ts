@@ -152,6 +152,7 @@ export class ApiKeyDomain {
 
     async updateStatusByAdmin(id: string, isActive: boolean): Promise<IApiKey> {
         const today = this.helperDateService.create();
+        // Sequential by design: gate before the work it guards
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
             throw new ApiKeyNotFoundException();
@@ -186,6 +187,7 @@ export class ApiKeyDomain {
     }
 
     async updateByAdmin(id: string, name: string): Promise<IApiKey> {
+        // Sequential by design: gate before the work it guards
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
@@ -216,6 +218,7 @@ export class ApiKeyDomain {
     ): Promise<IApiKey> {
         this.validateStartAtIsFuture(startAt);
 
+        // Sequential by design: gate before the work it guards
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
@@ -246,6 +249,7 @@ export class ApiKeyDomain {
     }
 
     async resetByAdmin(id: string): Promise<IApiKeyWithSecret> {
+        // Sequential by design: gate before the work it guards
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
@@ -271,6 +275,7 @@ export class ApiKeyDomain {
     }
 
     async deleteByAdmin(id: string): Promise<IApiKey> {
+        // Sequential by design: gate before the work it guards
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
             throw new ApiKeyNotFoundException();

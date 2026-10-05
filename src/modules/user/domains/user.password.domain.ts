@@ -165,6 +165,7 @@ export class UserPasswordDomain {
         const now = this.helperDateService.create();
 
         try {
+            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.withTransaction(async tx => {
                 await this.userDomain.deactivateForMaxPasswordAttemptInTx(
                     tx,
@@ -204,6 +205,7 @@ export class UserPasswordDomain {
             throw new UserNotSelfException();
         }
 
+        // Sequential by design: gate before the work it guards
         const user = await this.userRepository.findOneById(userId);
         if (!user) {
             throw new UserNotFoundException();
@@ -220,6 +222,7 @@ export class UserPasswordDomain {
                 }
             );
 
+            // Sequential by design: write must not run if an earlier step throws
             const { updated, events } =
                 await this.databaseService.withTransaction(async tx => {
                     const row = await this.userDomain.updatePasswordInTx(
@@ -332,6 +335,7 @@ export class UserPasswordDomain {
             );
             const passwordHistoriesPromise =
                 this.passwordHistoryDomain.getActiveByUser(user.id);
+            // Sequential by design: gate before the work it guards
             const [, passwordHistories] = await Promise.all([
                 resetAttemptPromise,
                 passwordHistoriesPromise,
@@ -374,6 +378,7 @@ export class UserPasswordDomain {
                 events.push(verifyTwoFactorEvent);
             }
 
+            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.withTransaction(async tx => {
                 await this.userDomain.updatePasswordInTx(
                     tx,
@@ -466,6 +471,7 @@ export class UserPasswordDomain {
                     createdBy: user.id,
                 }),
             ];
+            // Sequential by design: write must not run if an earlier step throws
             await this.userPasswordRepository.createReplacingUnused(
                 user.id,
                 email,
@@ -514,6 +520,7 @@ export class UserPasswordDomain {
             throw new UserNotFoundException();
         }
 
+        // Sequential by design: gate before the work it guards
         const passwordHistories =
             await this.passwordHistoryDomain.getActiveByUser(
                 resetPassword.userId
@@ -560,6 +567,7 @@ export class UserPasswordDomain {
                 events.push(verifyTwoFactorEvent);
             }
 
+            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.withTransaction(async tx => {
                 await this.userDomain.updatePasswordInTx(
                     tx,

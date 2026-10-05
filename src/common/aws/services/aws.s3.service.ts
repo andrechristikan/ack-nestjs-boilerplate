@@ -579,6 +579,7 @@ export class AwsS3Service implements OnModuleInit {
             });
 
             try {
+                // Sequential by design: write must not run if an earlier step throws
                 await this.s3Client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput
@@ -768,6 +769,7 @@ export class AwsS3Service implements OnModuleInit {
             });
 
             try {
+                // Sequential by design: write must not run if an earlier step throws
                 await this.s3Client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput
@@ -1010,6 +1012,7 @@ export class AwsS3Service implements OnModuleInit {
             });
 
             try {
+                // Sequential by design: gate before the work it guards
                 await this.s3Client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput

@@ -140,6 +140,7 @@ export class FeatureFlagDomain {
         id: string,
         data: IFeatureFlagUpdateStatus
     ): Promise<FeatureFlag> {
+        // Sequential by design: gate before the work it guards
         const featureFlag = await this.featureFlagRepository.findOneById(id);
         if (!featureFlag) {
             throw new FeatureFlagNotFoundException();
@@ -156,6 +157,7 @@ export class FeatureFlagDomain {
         id: string,
         data: IFeatureFlagUpdateMetadata
     ): Promise<FeatureFlag> {
+        // Sequential by design: gate before the work it guards
         const featureFlag = await this.featureFlagRepository.findOneById(id);
         if (!featureFlag) {
             throw new FeatureFlagNotFoundException();

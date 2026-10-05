@@ -50,6 +50,7 @@ export class UserMobileNumberDomain {
                 countryId,
                 phoneCode,
             });
+        // Sequential by design: gate before the work it guards
         const [checkValidMobileNumber, checkExist] = await Promise.all([
             checkValidMobileNumberPromise,
             checkExistPromise,
@@ -169,6 +170,7 @@ export class UserMobileNumberDomain {
         userId: string,
         mobileNumberId: string
     ): Promise<IUserMobileNumber> {
+        // Sequential by design: gate before the work it guards
         const checkExist =
             await this.userMobileNumberRepository.findOneMobileNumber(
                 userId,

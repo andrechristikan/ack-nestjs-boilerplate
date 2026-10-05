@@ -97,6 +97,7 @@ export class NotificationTermPolicyDomain {
                 })
             );
 
+            // Sequential by design: bounded chunks, concurrent within a chunk
             await Promise.all([
                 this.notificationRepository.createMany(entries),
                 this.notificationEmailQueue.sendPublishTermPolicy(

@@ -102,6 +102,7 @@ export class MigrationApiKeySeed
         this.logger.log('Removing back Api Keys...');
 
         try {
+            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.client.apiKey.deleteMany({});
 
             const deletions = this.apiKeys.map(apiKey => {

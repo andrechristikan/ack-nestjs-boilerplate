@@ -97,6 +97,7 @@ export class UserTwoFactorDomain {
                     createdBy: user.id,
                 }),
             ];
+            // Sequential by design: write must not run if an earlier step throws
             await this.userLoginDomain.recordTwoFactorVerification(
                 user,
                 twoFactorVerified
@@ -155,6 +156,7 @@ export class UserTwoFactorDomain {
             throw new AuthTwoFactorSetupRequiredException();
         }
 
+        // Sequential by design: gate before the work it guards
         await this.userLoginDomain.handleTwoFactorSetupValidation(
             user,
             pendingSecret,
@@ -202,6 +204,7 @@ export class UserTwoFactorDomain {
                 throw new AuthTwoFactorBackupCodeRequiredException();
             }
 
+            // Sequential by design: gate before the work it guards
             backupCodeVerified =
                 await this.userLoginDomain.handleTwoFactorValidation(user, {
                     method: EnumAuthTwoFactorMethod.backupCodes,
@@ -265,6 +268,7 @@ export class UserTwoFactorDomain {
             throw new AuthTwoFactorSetupRequiredException();
         }
 
+        // Sequential by design: gate before the work it guards
         await this.userLoginDomain.handleTwoFactorSetupValidation(
             user,
             pendingSecret,
@@ -304,6 +308,7 @@ export class UserTwoFactorDomain {
             throw new AuthTwoFactorNotEnabledException();
         }
 
+        // Sequential by design: gate before the work it guards
         await this.userLoginDomain.handleTwoFactorValidation(user, {
             method,
             code,
@@ -317,6 +322,7 @@ export class UserTwoFactorDomain {
                 }),
             ];
             const now = this.helperDateService.create();
+            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.withTransaction(async tx => {
                 await this.userTwoFactorRepository.disableTwoFactorInTx(
                     tx,
@@ -351,6 +357,7 @@ export class UserTwoFactorDomain {
             throw new AuthTwoFactorNotEnabledException();
         }
 
+        // Sequential by design: gate before the work it guards
         await this.userLoginDomain.handleTwoFactorValidation(user, {
             method: EnumAuthTwoFactorMethod.code,
             code,
@@ -417,6 +424,7 @@ export class UserTwoFactorDomain {
                 }),
             ];
             const now = this.helperDateService.create();
+            // Sequential by design: write must not run if an earlier step throws
             await Promise.all([
                 this.databaseService.withTransaction(async tx => {
                     await this.userTwoFactorRepository.resetTwoFactorByAdminInTx(

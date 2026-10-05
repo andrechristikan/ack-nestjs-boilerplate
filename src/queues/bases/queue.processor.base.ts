@@ -30,6 +30,7 @@ export abstract class QueueProcessorBase extends WorkerHost {
     async process(job: Job): Promise<IQueueResponse> {
         const maxAttempts = job.opts.attempts ?? 1;
 
+        // Sequential by design: side effects whose order is part of the contract
         await this.writeJobLog(job, 'Job started');
         await this.writeJobLog(
             job,

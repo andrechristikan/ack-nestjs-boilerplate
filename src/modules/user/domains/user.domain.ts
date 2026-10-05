@@ -388,6 +388,7 @@ export class UserDomain {
             throw new UserNotSelfException();
         }
 
+        // Sequential by design: gate before the work it guards
         const user = await this.userRepository.findOneById(userId);
         if (!user) {
             throw new UserNotFoundException();
@@ -403,6 +404,7 @@ export class UserDomain {
         const now = this.helperDateService.create();
 
         try {
+            // Sequential by design: write must not run if an earlier step throws
             const { statusEvents, revokeAllEvents } =
                 await this.databaseService.withTransaction(async tx => {
                     const row =
@@ -508,6 +510,7 @@ export class UserDomain {
                 }),
             ];
             const now = this.helperDateService.create();
+            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.withTransaction(async tx => {
                 await this.userRepository.deleteSelfInTx(tx, userId, now);
                 await this.sessionDomain.revokeActiveByUserInTx(

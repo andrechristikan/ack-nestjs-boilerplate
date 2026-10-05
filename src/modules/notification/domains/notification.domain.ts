@@ -51,6 +51,7 @@ export class NotificationDomain {
     }
 
     async markAsRead(userId: string, notificationId: string): Promise<void> {
+        // Sequential by design: write must not run if an earlier step throws
         const notification = await this.notificationRepository.findIsReadById(
             userId,
             notificationId

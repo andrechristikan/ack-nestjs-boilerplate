@@ -71,6 +71,7 @@ export class TermPolicyContentDomain {
         type,
         version,
     }: ITermPolicyContentPresign): Promise<IAwsS3Presign> {
+        // Sequential by design: gate before the work it guards
         const status =
             await this.termPolicyRepository.findStatusByVersionAndType(
                 version,

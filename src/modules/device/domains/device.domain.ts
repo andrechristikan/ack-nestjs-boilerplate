@@ -182,6 +182,7 @@ export class DeviceDomain {
         deviceOwnershipId: string,
         data: IDeviceRefresh
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         const deviceOwnershipExists =
             await this.deviceOwnershipRepository.existsActive(
                 userId,
@@ -229,6 +230,7 @@ export class DeviceDomain {
     }
 
     async remove(userId: string, deviceOwnershipId: string): Promise<void> {
+        // Sequential by design: gate before the work it guards
         const deviceOwnershipExists =
             await this.deviceOwnershipRepository.existsActive(
                 userId,
@@ -301,6 +303,7 @@ export class DeviceDomain {
         deviceOwnershipId: string,
         removedBy: string
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         const deviceOwnershipExists =
             await this.deviceOwnershipRepository.existsActive(
                 userId,

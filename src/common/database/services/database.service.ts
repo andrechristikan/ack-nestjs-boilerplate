@@ -134,6 +134,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
      */
     async onModuleInit(): Promise<void> {
         try {
+            // Sequential by design: side effects whose order is part of the contract
             await this.setupLogging();
             await this.connect();
         } catch (error: unknown) {

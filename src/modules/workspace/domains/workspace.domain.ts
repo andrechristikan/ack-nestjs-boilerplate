@@ -393,6 +393,7 @@ export class WorkspaceDomain {
         userId: string,
         create: IWorkspaceCreate
     ): Promise<Workspace> {
+        // Sequential by design: gate before the work it guards
         const ownedCount =
             await this.workspaceMemberRepository.countOwnedActiveByUser(userId);
         if (ownedCount >= this.maxWorkspacesPerUser) {
@@ -496,6 +497,7 @@ export class WorkspaceDomain {
     ): Promise<Workspace> {
         this.assertSlugAllowed(slug);
 
+        // Sequential by design: gate before the work it guards
         const slugTaken = await this.workspaceRepository.existsBySlug(
             slug,
             workspaceId

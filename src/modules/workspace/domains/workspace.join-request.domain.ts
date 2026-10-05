@@ -225,6 +225,7 @@ export class WorkspaceJoinRequestDomain {
             events.push(workspaceJoinAcceptedByAdminEvent);
         }
 
+        // Sequential by design: write must not run if an earlier step throws
         await this.databaseService.withTransaction(async tx => {
             await this.workspaceMemberDomain.createInTx(
                 tx,
@@ -289,6 +290,7 @@ export class WorkspaceJoinRequestDomain {
             events.push(workspaceJoinRejectedByAdminEvent);
         }
 
+        // Sequential by design: write must not run if an earlier step throws
         await this.workspaceJoinRequestRepository.reject(
             workspaceJoinRequestId,
             reviewerId,

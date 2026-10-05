@@ -56,6 +56,7 @@ export class NotificationEmailTermPolicyDomain {
 
         const results = [];
         for (const chunk of userChunks) {
+            // Sequential by design: bounded chunks, concurrent within a chunk
             const result = await this.awsSESService.sendBulk({
                 templateName: EnumNotificationProcess.publishTermPolicy,
                 recipients: chunk.map(u => ({

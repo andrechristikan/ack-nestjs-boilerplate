@@ -169,6 +169,7 @@ export class UserVerificationDomain {
                 }),
             ];
             const verifiedAt = this.helperDateService.create();
+            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.withTransaction(async tx => {
                 await this.userVerificationRepository.markUsedInTx(
                     tx,
@@ -209,6 +210,7 @@ export class UserVerificationDomain {
             throw new UserEmailAlreadyVerifiedException();
         }
 
+        // Sequential by design: gate before the work it guards
         const lastVerification =
             await this.userVerificationRepository.findOneLatestByVerificationEmail(
                 user.id
@@ -247,6 +249,7 @@ export class UserVerificationDomain {
                     createdBy: user.id,
                 }),
             ];
+            // Sequential by design: write must not run if an earlier step throws
             await this.userVerificationRepository.createReplacingActive(
                 user.id,
                 user.email,

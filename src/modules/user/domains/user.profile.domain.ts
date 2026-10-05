@@ -80,6 +80,7 @@ export class UserProfileDomain {
         userId: string,
         { countryId, ...data }: IUserUpdateProfile
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         const checkCountry = await this.countryDomain.existsById(countryId);
         if (!checkCountry) {
             throw new CountryNotFoundException();
@@ -235,6 +236,7 @@ export class UserProfileDomain {
         userId: string,
         username: Lowercase<string>
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         const [checkUsername, checkBadWord, exist] = await Promise.all([
             this.userUtil.checkUsernamePattern(username),
             this.userUtil.checkBadWord(username),
