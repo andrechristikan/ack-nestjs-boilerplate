@@ -5,6 +5,7 @@ import type { Queue } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     EnumTermPolicyType,
@@ -60,6 +61,7 @@ describe('NotificationEmailQueue', () => {
                     useValue: emailQueue,
                 },
                 { provide: ConfigService, useValue: configService },
+                HelperStringService,
                 {
                     provide: HelperEncryptionService,
                     useValue: helperEncryptionService,
@@ -83,9 +85,9 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.welcomeByAdmin,
                 { send, data },
                 {
-                    jobId: `${EnumNotificationProcess.welcomeByAdmin}-${send.userId}`,
+                    jobId: 'welcomeByAdmin-user-id',
                     deduplication: {
-                        id: `${EnumNotificationProcess.welcomeByAdmin}-${send.userId}`,
+                        id: 'welcomeByAdmin-user-id',
                         ttl: 60_000,
                     },
                     priority: EnumQueuePriority.medium,
@@ -109,7 +111,7 @@ describe('NotificationEmailQueue', () => {
                 { send, data },
                 {
                     deduplication: {
-                        id: `${EnumNotificationProcess.temporaryPasswordByAdmin}-${send.userId}`,
+                        id: 'temporaryPasswordByAdmin-user-id',
                         ttl: 60_000,
                     },
                     priority: EnumQueuePriority.medium,
@@ -128,7 +130,7 @@ describe('NotificationEmailQueue', () => {
                 {
                     priority: EnumQueuePriority.low,
                     deduplication: {
-                        id: `${EnumNotificationProcess.resetPassword}-${send.userId}`,
+                        id: 'resetPassword-user-id',
                         ttl: 60_000,
                     },
                 }
@@ -146,7 +148,7 @@ describe('NotificationEmailQueue', () => {
                 {
                     priority: EnumQueuePriority.low,
                     deduplication: {
-                        id: `${EnumNotificationProcess.changePassword}-${send.userId}`,
+                        id: 'changePassword-user-id',
                         ttl: 60_000,
                     },
                 }
@@ -170,7 +172,7 @@ describe('NotificationEmailQueue', () => {
                 { send, data },
                 {
                     deduplication: {
-                        id: `${EnumNotificationProcess.verificationEmail}-${send.userId}`,
+                        id: 'verificationEmail-user-id',
                         ttl: 900_000,
                     },
                     priority: EnumQueuePriority.high,
@@ -187,9 +189,9 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.welcome,
                 { send },
                 {
-                    jobId: `${EnumNotificationProcess.welcome}-${send.userId}`,
+                    jobId: 'welcome-user-id',
                     deduplication: {
-                        id: `${EnumNotificationProcess.welcome}-${send.userId}`,
+                        id: 'welcome-user-id',
                         ttl: 60_000,
                     },
                     priority: EnumQueuePriority.low,
@@ -206,9 +208,9 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.welcomeSocial,
                 { send },
                 {
-                    jobId: `${EnumNotificationProcess.welcomeSocial}-${send.userId}`,
+                    jobId: 'welcomeSocial-user-id',
                     deduplication: {
-                        id: `${EnumNotificationProcess.welcomeSocial}-${send.userId}`,
+                        id: 'welcomeSocial-user-id',
                         ttl: 60_000,
                     },
                     priority: EnumQueuePriority.low,
@@ -227,9 +229,9 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.verifiedEmail,
                 { send, data },
                 {
-                    jobId: `${EnumNotificationProcess.verifiedEmail}-${send.userId}`,
+                    jobId: 'verifiedEmail-user-id',
                     deduplication: {
-                        id: `${EnumNotificationProcess.verifiedEmail}-${send.userId}`,
+                        id: 'verifiedEmail-user-id',
                         ttl: 60_000,
                     },
                     priority: EnumQueuePriority.low,
@@ -255,7 +257,7 @@ describe('NotificationEmailQueue', () => {
                 { send, data },
                 {
                     deduplication: {
-                        id: `${EnumNotificationProcess.forgotPassword}-${send.userId}`,
+                        id: 'forgotPassword-user-id',
                         ttl: 300_000,
                     },
                     priority: EnumQueuePriority.high,
@@ -278,9 +280,9 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.verifiedMobileNumber,
                 { send, data },
                 {
-                    jobId: `${EnumNotificationProcess.verifiedMobileNumber}-${send.userId}`,
+                    jobId: 'verifiedMobileNumber-user-id',
                     deduplication: {
-                        id: `${EnumNotificationProcess.verifiedMobileNumber}-${send.userId}`,
+                        id: 'verifiedMobileNumber-user-id',
                         ttl: 120_000,
                     },
                     priority: EnumQueuePriority.low,
@@ -298,7 +300,7 @@ describe('NotificationEmailQueue', () => {
                 { send },
                 {
                     deduplication: {
-                        id: `${EnumNotificationProcess.resetTwoFactorByAdmin}-${send.userId}`,
+                        id: 'resetTwoFactorByAdmin-user-id',
                         ttl: 60_000,
                     },
                     priority: EnumQueuePriority.high,
@@ -335,7 +337,7 @@ describe('NotificationEmailQueue', () => {
                 { send, data },
                 {
                     deduplication: {
-                        id: `${EnumNotificationProcess.newDeviceLogin}-${send.userId}`,
+                        id: 'newDeviceLogin-user-id',
                         ttl: 60_000,
                     },
                     priority: EnumQueuePriority.high,
@@ -359,7 +361,7 @@ describe('NotificationEmailQueue', () => {
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
-                        id: `${EnumNotificationProcess.publishTermPolicy}-${data.type}-${data.version}`,
+                        id: 'publishTermPolicy-privacy-3',
                         ttl: 60_000,
                     },
                 }
@@ -387,7 +389,7 @@ describe('NotificationEmailQueue', () => {
                 {
                     priority: EnumQueuePriority.high,
                     deduplication: {
-                        id: `${EnumNotificationProcess.workspaceInvite}-${data.reference}`,
+                        id: 'workspaceInvite-ref-1',
                         ttl: 60_000,
                     },
                 }
@@ -441,7 +443,7 @@ describe('NotificationEmailQueue', () => {
                 {
                     priority: EnumQueuePriority.high,
                     deduplication: {
-                        id: `${EnumNotificationProcess.workspaceInviteUnregistered}-${invite.reference}`,
+                        id: 'workspaceInviteUnregistered-ref-1',
                         ttl: 60_000,
                     },
                 }
@@ -466,7 +468,7 @@ describe('NotificationEmailQueue', () => {
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
-                        id: `${EnumNotificationProcess.workspaceJoinRequest}-${data.workspaceId}-${send.userId}`,
+                        id: 'workspaceJoinRequest-workspace-id-user-id',
                         ttl: 60_000,
                     },
                 }
@@ -486,7 +488,7 @@ describe('NotificationEmailQueue', () => {
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
-                        id: `${EnumNotificationProcess.workspaceJoinAccepted}-${data.workspaceId}-${send.userId}`,
+                        id: 'workspaceJoinAccepted-workspace-id-user-id',
                         ttl: 60_000,
                     },
                 }
@@ -511,7 +513,7 @@ describe('NotificationEmailQueue', () => {
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
-                        id: `${EnumNotificationProcess.workspaceJoinRejected}-${data.workspaceId}-${send.userId}`,
+                        id: 'workspaceJoinRejected-workspace-id-user-id',
                         ttl: 60_000,
                     },
                 }

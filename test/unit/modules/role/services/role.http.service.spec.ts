@@ -138,7 +138,7 @@ describe('RoleHttpService', () => {
 
         it('merges an empty filter set when type is absent', async () => {
             const query: RoleAdminListRequestDto = {};
-            paginationQueryUtil.inEnum.mockReturnValue(undefined);
+            paginationQueryUtil.inEnum.mockReturnValue(null);
             const emptyOffsetPage: IPaginationOffsetReturn<IRoleWithPolicyCount> =
                 {
                     type: EnumPaginationType.offset,
@@ -201,7 +201,7 @@ describe('RoleHttpService', () => {
 
         it('merges an empty filter set when type is absent', async () => {
             const query: RoleSystemListRequestDto = {};
-            paginationQueryUtil.inEnum.mockReturnValue(undefined);
+            paginationQueryUtil.inEnum.mockReturnValue(null);
             const emptyCursorPage: IPaginationCursorReturn<IRoleWithPolicyCount> =
                 {
                     type: EnumPaginationType.cursor,

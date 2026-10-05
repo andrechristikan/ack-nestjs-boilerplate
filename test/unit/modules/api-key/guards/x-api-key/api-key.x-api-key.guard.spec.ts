@@ -1,13 +1,15 @@
 import type { ExecutionContext } from '@nestjs/common';
 import type { HttpArgumentsHost } from '@nestjs/common/interfaces/index';
-import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { ApiKeyStoreKey } from '@modules/api-key/constants/api-key.constant';
+import {
+    ApiKeyHeaderName,
+    ApiKeyStoreKey,
+} from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 import { ApiKeyXApiKeyGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
@@ -17,10 +19,6 @@ describe('ApiKeyXApiKeyGuard', () => {
     const apiKeyDomain: MockProxy<ApiKeyDomain> = mock<ApiKeyDomain>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const configGet = vi.fn<(key: string) => string | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
 
     const apiKey: ApiKey = {
         id: 'api-key-1',
@@ -41,7 +39,6 @@ describe('ApiKeyXApiKeyGuard', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockReturnValue('X-Api-Key');
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -51,7 +48,6 @@ describe('ApiKeyXApiKeyGuard', () => {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
-                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
 
@@ -59,17 +55,13 @@ describe('ApiKeyXApiKeyGuard', () => {
     });
 
     describe('canActivate', () => {
-        it('reads the lowercased header name from the config service once, in the constructor', () => {
-            expect(configGet).toHaveBeenCalledWith('auth.xApiKey.header');
-        });
-
         it('validates the header value and stores the resolved api key', async () => {
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             const httpArgumentsHost: MockProxy<HttpArgumentsHost> =
                 mock<HttpArgumentsHost>();
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
-            request.headers = { 'x-api-key': 'local_abc123:secret-1' };
+            request.headers = { [ApiKeyHeaderName]: 'local_abc123:secret-1' };
             executionContext.switchToHttp.mockReturnValue(httpArgumentsHost);
             httpArgumentsHost.getRequest.mockReturnValue(request);
             apiKeyDomain.validateXApiKey.mockResolvedValue(apiKey);

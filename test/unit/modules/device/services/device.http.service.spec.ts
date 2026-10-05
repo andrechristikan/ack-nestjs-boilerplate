@@ -148,7 +148,7 @@ describe('DeviceHttpService', () => {
         it('merges an empty filter object when isRevoked is not given', async () => {
             const query: DeviceAdminListRequestDto = {};
             paginationQueryUtil.offset.mockReturnValue({ params, storePatch });
-            paginationQueryUtil.equalBoolean.mockReturnValue(undefined);
+            paginationQueryUtil.equalBoolean.mockReturnValue(null);
             deviceDomain.getListOffsetByAdmin.mockResolvedValue({
                 type: EnumPaginationType.offset,
                 count: 0,

@@ -101,8 +101,8 @@ export class AnalyticDashboardHttpService {
             endDate ?? null
         );
         const data = await this.analyticDashboardDomain.usersSignUpWith(
-            range.startDate ?? undefined,
-            range.endDate ?? undefined
+            range.startDate,
+            range.endDate
         );
 
         return { data };
@@ -117,8 +117,8 @@ export class AnalyticDashboardHttpService {
             endDate ?? null
         );
         const data = await this.analyticDashboardDomain.usersSignUpFrom(
-            range.startDate ?? undefined,
-            range.endDate ?? undefined
+            range.startDate,
+            range.endDate
         );
 
         return { data };
@@ -133,8 +133,8 @@ export class AnalyticDashboardHttpService {
             endDate ?? null
         );
         const data = await this.analyticDashboardDomain.usersEmailVerification(
-            range.startDate ?? undefined,
-            range.endDate ?? undefined
+            range.startDate,
+            range.endDate
         );
 
         return { data };
@@ -149,8 +149,8 @@ export class AnalyticDashboardHttpService {
             endDate ?? null
         );
         const data = await this.analyticDashboardDomain.usersMobileVerification(
-            range.startDate ?? undefined,
-            range.endDate ?? undefined
+            range.startDate,
+            range.endDate
         );
 
         return { data };
@@ -255,8 +255,8 @@ export class AnalyticDashboardHttpService {
             endDate ?? null
         );
         const data = await this.analyticDashboardDomain.authLoginMethod(
-            range.startDate ?? undefined,
-            range.endDate ?? undefined
+            range.startDate,
+            range.endDate
         );
 
         return { data };
@@ -271,8 +271,8 @@ export class AnalyticDashboardHttpService {
             endDate ?? null
         );
         const data = await this.analyticDashboardDomain.authLoginSource(
-            range.startDate ?? undefined,
-            range.endDate ?? undefined
+            range.startDate,
+            range.endDate
         );
 
         return { data };
@@ -328,8 +328,8 @@ export class AnalyticDashboardHttpService {
             endDate ?? null
         );
         const data = await this.analyticDashboardDomain.authSessionsGeo(
-            range.startDate ?? undefined,
-            range.endDate ?? undefined
+            range.startDate,
+            range.endDate
         );
 
         return { data };
@@ -344,8 +344,8 @@ export class AnalyticDashboardHttpService {
             endDate ?? null
         );
         const data = await this.analyticDashboardDomain.authSessionsUserAgent(
-            range.startDate ?? undefined,
-            range.endDate ?? undefined
+            range.startDate,
+            range.endDate
         );
 
         return { data };
@@ -626,8 +626,8 @@ export class AnalyticDashboardHttpService {
         );
         const data =
             await this.analyticDashboardDomain.termPoliciesAcceptanceRate(
-                range.startDate ?? undefined,
-                range.endDate ?? undefined
+                range.startDate,
+                range.endDate
             );
 
         return { data };
@@ -643,8 +643,8 @@ export class AnalyticDashboardHttpService {
         );
         const data =
             await this.analyticDashboardDomain.termPoliciesTimeToAccept(
-                range.startDate ?? undefined,
-                range.endDate ?? undefined
+                range.startDate,
+                range.endDate
             );
 
         return { data };

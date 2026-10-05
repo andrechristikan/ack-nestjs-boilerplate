@@ -125,7 +125,7 @@ export class LoggerUtil {
     }
 
     private serializeParams(
-        params: Record<string, string> | undefined
+        params: Record<string, string> | null
     ): Record<string, string> {
         return Object.fromEntries(
             Object.keys(params ?? {}).map(key => [key, LoggerRedactedValue])
@@ -186,11 +186,9 @@ export class LoggerUtil {
 
     serializeRequest(request: IRequestApp): Record<string, unknown> {
         const route = this.serializeRoute(request);
-        let referer: string | undefined;
+        let referer: string | null = null;
         if (request.headers.referer) {
             referer = this.maskUrl(request.headers.referer);
-        } else {
-            referer = undefined;
         }
         const clientIp = this.extractClientIP(request);
         const user = this.serializeUser(request);

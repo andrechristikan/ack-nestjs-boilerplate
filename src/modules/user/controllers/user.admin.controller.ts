@@ -16,14 +16,12 @@ import {
     Query,
     UploadedFile,
 } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
 import {
     Response,
     ResponseFile,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import { UserHttpService } from '@modules/user/services/user.http.service';
 import { UserImportHttpService } from '@modules/user/services/user.import.http.service';
 import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
@@ -35,25 +33,21 @@ import {
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import type {
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
-
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import type {
     IResponseFileReturn,
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.response.dto';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
@@ -65,7 +59,6 @@ import {
     RequestThrottle,
     RequestTimeout,
 } from '@common/request/decorators/request.decorator';
-
 import { UserUpdateStatusRequestSchema } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -170,8 +163,10 @@ export class UserAdminController {
         @AuthJwtPayload('userId') updatedBy: string,
         @Body({ schema: UserUpdateStatusRequestSchema })
         body: UserUpdateStatusRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userHttpService.updateStatusByAdmin(userId, body, updatedBy);
+
+        return {};
     }
 
     @Doc({ summary: 'update password of user' })
@@ -191,11 +186,13 @@ export class UserAdminController {
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userPasswordHttpService.updatePasswordByAdmin(
             userId,
             updatedBy
         );
+
+        return {};
     }
 
     @Doc({ summary: 'reset user' })
@@ -215,11 +212,13 @@ export class UserAdminController {
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userTwoFactorHttpService.resetTwoFactorByAdmin(
             userId,
             updatedBy
         );
+
+        return {};
     }
 
     @Doc({ summary: 'import users via csv file' })
@@ -250,8 +249,10 @@ export class UserAdminController {
             })
         )
         data: UserImportRequestDto[]
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userImportHttpService.importByAdmin(data, createdBy);
+
+        return {};
     }
 
     @Doc({ summary: 'export users via csv file' })

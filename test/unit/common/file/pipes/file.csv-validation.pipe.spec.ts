@@ -53,7 +53,7 @@ describe('FileCsvValidationPipe', () => {
     });
 
     describe('transform', () => {
-        it('returns undefined when the value is falsy', async () => {
+        it('returns null when the value is falsy', async () => {
             const pipe = await createFileCsvValidationPipe(
                 RowSchema,
                 {},
@@ -65,7 +65,7 @@ describe('FileCsvValidationPipe', () => {
                 metadata
             );
 
-            expect(result).toBeUndefined();
+            expect(result).toBeNull();
         });
 
         it('throws FileRequiredExtractFirstException for an empty array', async () => {

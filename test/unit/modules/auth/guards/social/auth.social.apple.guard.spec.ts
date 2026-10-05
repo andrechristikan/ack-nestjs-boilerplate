@@ -1,6 +1,5 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AuthSocialAppleGuard } from '@modules/auth/guards/social/auth.social.apple.guard';
@@ -12,28 +11,15 @@ import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.executio
 
 describe('AuthSocialAppleGuard', () => {
     const authDomain: MockProxy<AuthDomain> = mock<AuthDomain>();
-    const configGet = vi.fn<(key: string) => string | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
 
     let guard: AuthSocialAppleGuard;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, string> = {
-                'auth.apple.header': 'Authorization',
-                'auth.apple.prefix': 'Bearer',
-            };
-            return values[key];
-        });
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthSocialAppleGuard,
                 { provide: AuthDomain, useValue: authDomain },
-                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
 

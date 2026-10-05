@@ -5,9 +5,10 @@ import { HeaderResolver, I18nJsonLoader, I18nModule } from 'nestjs-i18n';
 import { ConfigService } from '@nestjs/config';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
+import { RequestCustomLangHeaderName } from '@common/request/constants/request.constant';
 
 /**
- * Global i18n module: JSON loader plus `x-custom-lang` header resolver, exposing `MessageService`.
+ * Global i18n module: JSON loader plus custom-language header resolver, exposing `MessageService`.
  */
 @Module({})
 export class MessageModule {
@@ -22,7 +23,9 @@ export class MessageModule {
                     imports: [],
                     loader: I18nJsonLoader,
                     inject: [ConfigService],
-                    resolvers: [new HeaderResolver(['x-custom-lang'])],
+                    resolvers: [
+                        new HeaderResolver([RequestCustomLangHeaderName]),
+                    ],
                     useFactory: (configService: ConfigService) => ({
                         fallbackLanguage:
                             configService.get<string>('message.language')!,

@@ -4,6 +4,7 @@ import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { HealthRedisProbeKey } from '@modules/health/constants/health.constant';
 import { HealthRedisIndicator } from '@modules/health/indicators/health.redis.indicator';
 import type { Cache } from 'cache-manager';
 
@@ -43,7 +44,7 @@ describe('HealthRedisIndicator', () => {
 
             expect(result).toEqual({ redis: { status: 'up' } });
             expect(healthIndicatorService.check).toHaveBeenCalledWith('redis');
-            expect(cacheManager.get).toHaveBeenCalledWith('health-check');
+            expect(cacheManager.get).toHaveBeenCalledWith(HealthRedisProbeKey);
             expect(session.up).toHaveBeenCalledWith();
         });
 

@@ -66,15 +66,16 @@ export function RequestThrottle(
  * @public
  */
 export const RequestIPAddress = createParamDecorator((): string => {
-    const requestLog = ClsServiceManager.getClsService().get<
-        IRequestLog | undefined
-    >(RequestLogStoreKey);
-    if (requestLog === undefined || requestLog === null) {
+    const requestLog =
+        ClsServiceManager.getClsService().get<IRequestLog | null>(
+            RequestLogStoreKey
+        ) ?? null;
+    if (requestLog === null) {
         throw new RequestContextMissingException(RequestLogStoreKey);
     }
 
-    const { ipAddress } = requestLog;
-    if (ipAddress === undefined || ipAddress === null) {
+    const ipAddress = requestLog.ipAddress ?? null;
+    if (ipAddress === null) {
         throw new RequestContextMissingException(
             `${RequestLogStoreKey}.ipAddress`
         );
@@ -88,15 +89,16 @@ export const RequestIPAddress = createParamDecorator((): string => {
  * @public
  */
 export const RequestUserAgent = createParamDecorator((): UserAgent => {
-    const requestLog = ClsServiceManager.getClsService().get<
-        IRequestLog | undefined
-    >(RequestLogStoreKey);
-    if (requestLog === undefined || requestLog === null) {
+    const requestLog =
+        ClsServiceManager.getClsService().get<IRequestLog | null>(
+            RequestLogStoreKey
+        ) ?? null;
+    if (requestLog === null) {
         throw new RequestContextMissingException(RequestLogStoreKey);
     }
 
-    const { userAgent } = requestLog;
-    if (userAgent === undefined || userAgent === null) {
+    const userAgent = requestLog.userAgent ?? null;
+    if (userAgent === null) {
         throw new RequestContextMissingException(
             `${RequestLogStoreKey}.userAgent`
         );
@@ -110,15 +112,16 @@ export const RequestUserAgent = createParamDecorator((): UserAgent => {
  * @public
  */
 export const RequestGeoLocation = createParamDecorator((): GeoLocation => {
-    const requestLog = ClsServiceManager.getClsService().get<
-        IRequestLog | undefined
-    >(RequestLogStoreKey);
-    if (requestLog === undefined || requestLog === null) {
+    const requestLog =
+        ClsServiceManager.getClsService().get<IRequestLog | null>(
+            RequestLogStoreKey
+        ) ?? null;
+    if (requestLog === null) {
         throw new RequestContextMissingException(RequestLogStoreKey);
     }
 
-    const { geoLocation } = requestLog;
-    if (geoLocation === undefined || geoLocation === null) {
+    const geoLocation = requestLog.geoLocation ?? null;
+    if (geoLocation === null) {
         throw new RequestContextMissingException(
             `${RequestLogStoreKey}.geoLocation`
         );

@@ -64,4 +64,4 @@ export const PaginationAllowedOrderDirections: EnumPaginationOrderDirectionType[
  * Request-store key holding the parsed pagination, search and filter state of a list request.
  * @public
  */
-export const PaginationStoreKey = 'PaginationStore';
+export const PaginationStoreKey = 'PaginationStoreKey';

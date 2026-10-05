@@ -6,13 +6,13 @@ import type {
 
 export interface ISessionAnalyticRepository {
     findActiveWithGeoInRange(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<ISessionAnalyticSession[]>;
     countActiveByUser(): Promise<ISessionAnalyticUserCount[]>;
     groupByCountry(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IAnalyticCountBucket[]>;
     countAll(): Promise<number>;
     countActive(): Promise<number>;

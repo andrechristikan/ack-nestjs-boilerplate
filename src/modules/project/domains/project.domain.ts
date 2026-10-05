@@ -229,7 +229,7 @@ export class ProjectDomain {
 
     async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string
+        workspaceId: string | null
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.projectRepository.findWithPaginationOffsetByAdmin(
             pagination,

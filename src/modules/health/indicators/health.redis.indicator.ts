@@ -2,6 +2,7 @@ import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { Inject, Injectable } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
+import { HealthRedisProbeKey } from '@modules/health/constants/health.constant';
 import type { Cache } from 'cache-manager';
 
 /**
@@ -21,7 +22,7 @@ export class HealthRedisIndicator {
         const indicator = this.healthIndicatorService.check(key);
 
         try {
-            await this.cacheManager.get('health-check');
+            await this.cacheManager.get(HealthRedisProbeKey);
 
             return indicator.up();
         } catch (err: unknown) {

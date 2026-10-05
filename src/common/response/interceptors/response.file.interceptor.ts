@@ -123,7 +123,8 @@ export function ResponseFileInterceptor(
         private createDisposition(filename: string, fallback: string): string {
             const sanitizedFilename =
                 this.fileService.sanitizeFilename(filename);
-            const ascii = sanitizedFilename || fallback;
+            const ascii =
+                sanitizedFilename === '' ? fallback : sanitizedFilename;
 
             return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
         }

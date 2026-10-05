@@ -6,6 +6,10 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { Cache } from 'cache-manager';
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import {
+    EnumAnalyticAnomalySignal,
+    EnumAnalyticFraudSignal,
+} from '@modules/analytic/enums/analytic.enum';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 
 describe('AnalyticCache', () => {
@@ -94,23 +98,30 @@ describe('AnalyticCache', () => {
             cacheManager.get.mockResolvedValue({ count: 2 });
 
             const result = await cache.getAnomalySummary<{ count: number }>(
-                'impossible-travel',
+                EnumAnalyticAnomalySignal.impossibleTravel,
                 '3600000'
             );
 
             expect(result).toEqual({ count: 2 });
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
                 'Anomaly:{signal}:{window}',
-                { signal: 'impossible-travel', window: '3600000' }
+                {
+                    signal: EnumAnalyticAnomalySignal.impossibleTravel,
+                    window: '3600000',
+                }
             );
         });
     });
 
     describe('setAnomalySummary', () => {
         it('writes the anomaly summary with the anomaly ttl', async () => {
-            await cache.setAnomalySummary('impossible-travel', '3600000', {
-                count: 2,
-            });
+            await cache.setAnomalySummary(
+                EnumAnalyticAnomalySignal.impossibleTravel,
+                '3600000',
+                {
+                    count: 2,
+                }
+            );
 
             expect(cacheManager.set).toHaveBeenCalledWith(
                 'impossible-travel:3600000',
@@ -125,23 +136,30 @@ describe('AnalyticCache', () => {
             cacheManager.get.mockResolvedValue({ count: 6 });
 
             const result = await cache.getFraudSummary<{ count: number }>(
-                'credential-stuffing',
+                EnumAnalyticFraudSignal.credentialStuffing,
                 '86400000'
             );
 
             expect(result).toEqual({ count: 6 });
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(
                 'Fraud:{signal}:{window}',
-                { signal: 'credential-stuffing', window: '86400000' }
+                {
+                    signal: EnumAnalyticFraudSignal.credentialStuffing,
+                    window: '86400000',
+                }
             );
         });
     });
 
     describe('setFraudSummary', () => {
         it('writes the fraud summary with the fraud ttl', async () => {
-            await cache.setFraudSummary('credential-stuffing', '86400000', {
-                count: 6,
-            });
+            await cache.setFraudSummary(
+                EnumAnalyticFraudSignal.credentialStuffing,
+                '86400000',
+                {
+                    count: 6,
+                }
+            );
 
             expect(cacheManager.set).toHaveBeenCalledWith(
                 'credential-stuffing:86400000',

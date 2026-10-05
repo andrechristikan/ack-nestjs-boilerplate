@@ -1,3 +1,4 @@
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { getQueueToken } from '@nestjs/bullmq';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -52,6 +53,7 @@ describe('NotificationPushQueue', () => {
                     useValue: notificationPushQueue,
                 },
                 { provide: ConfigService, useValue: configService },
+                HelperStringService,
             ],
         }).compile();
         queue = module.get(NotificationPushQueue);
@@ -72,7 +74,7 @@ describe('NotificationPushQueue', () => {
                 {
                     priority: EnumQueuePriority.high,
                     deduplication: {
-                        id: `${EnumNotificationPushProcess.temporaryPasswordByAdmin}-${send.userId}`,
+                        id: 'temporaryPasswordByAdmin-user-id',
                         ttl: 60_000,
                     },
                 }
@@ -90,7 +92,7 @@ describe('NotificationPushQueue', () => {
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
-                        id: `${EnumNotificationPushProcess.resetPassword}-${send.userId}`,
+                        id: 'resetPassword-user-id',
                         ttl: 60_000,
                     },
                 }
@@ -108,7 +110,7 @@ describe('NotificationPushQueue', () => {
                 {
                     priority: EnumQueuePriority.high,
                     deduplication: {
-                        id: `${EnumNotificationPushProcess.resetTwoFactorByAdmin}-${send.userId}`,
+                        id: 'resetTwoFactorByAdmin-user-id',
                         ttl: 60_000,
                     },
                 }
@@ -145,7 +147,7 @@ describe('NotificationPushQueue', () => {
                 {
                     priority: EnumQueuePriority.high,
                     deduplication: {
-                        id: `${EnumNotificationPushProcess.newDeviceLogin}-${send.userId}`,
+                        id: 'newDeviceLogin-user-id',
                         ttl: 60_000,
                     },
                 }
@@ -172,7 +174,7 @@ describe('NotificationPushQueue', () => {
                 {
                     priority: EnumQueuePriority.high,
                     deduplication: {
-                        id: `${EnumNotificationPushProcess.workspaceInvite}-${data.reference}`,
+                        id: 'workspaceInvite-ref-1',
                         ttl: 60_000,
                     },
                 }
@@ -196,7 +198,7 @@ describe('NotificationPushQueue', () => {
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
-                        id: `${EnumNotificationPushProcess.workspaceJoinRequest}-${data.workspaceId}-${send.userId}`,
+                        id: 'workspaceJoinRequest-workspace-id-user-id',
                         ttl: 60_000,
                     },
                 }
@@ -216,7 +218,7 @@ describe('NotificationPushQueue', () => {
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
-                        id: `${EnumNotificationPushProcess.workspaceJoinAccepted}-${data.workspaceId}-${send.userId}`,
+                        id: 'workspaceJoinAccepted-workspace-id-user-id',
                         ttl: 60_000,
                     },
                 }
@@ -241,7 +243,7 @@ describe('NotificationPushQueue', () => {
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
-                        id: `${EnumNotificationPushProcess.workspaceJoinRejected}-${data.workspaceId}-${send.userId}`,
+                        id: 'workspaceJoinRejected-workspace-id-user-id',
                         ttl: 60_000,
                     },
                 }
@@ -264,7 +266,7 @@ describe('NotificationPushQueue', () => {
                 {
                     priority: EnumQueuePriority.low,
                     deduplication: {
-                        id: `${EnumNotificationPushProcess.cleanupTokens}-user-id`,
+                        id: 'cleanupTokens-user-id',
                         ttl: 30_000,
                     },
                 }

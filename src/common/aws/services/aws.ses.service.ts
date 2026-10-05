@@ -149,10 +149,7 @@ export class AwsSESService implements OnModuleInit {
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
 
-            return {
-                $metadata: {},
-                Template: undefined,
-            } as GetTemplateCommandOutput;
+            return { $metadata: {} } as GetTemplateCommandOutput;
         }
 
         const command: GetTemplateCommand = new GetTemplateCommand({
@@ -278,10 +275,7 @@ export class AwsSESService implements OnModuleInit {
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
 
-            return {
-                MessageId: undefined,
-                $metadata: {},
-            } as SendTemplatedEmailCommandOutput;
+            return { $metadata: {} } as SendTemplatedEmailCommandOutput;
         }
 
         const command: SendTemplatedEmailCommand =

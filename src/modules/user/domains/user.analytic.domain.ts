@@ -52,8 +52,8 @@ export class UserAnalyticDomain {
     }
 
     getGroupBySignUpWith(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IUserAnalyticGroupCount<EnumUserSignUpWith>[]> {
         return this.userAnalyticRepository.groupBySignUpWith(
             startDate,
@@ -62,8 +62,8 @@ export class UserAnalyticDomain {
     }
 
     getGroupBySignUpFrom(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IUserAnalyticGroupCount<EnumUserSignUpFrom>[]> {
         return this.userAnalyticRepository.groupBySignUpFrom(
             startDate,

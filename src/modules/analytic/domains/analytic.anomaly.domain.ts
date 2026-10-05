@@ -3,12 +3,14 @@ import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import { AnalyticCacheEmptyToken } from '@modules/analytic/constants/analytic.constant';
 import {
     AnalyticDeviceProliferationAvailableOrderBy,
     AnalyticImpossibleTravelAvailableOrderBy,
     AnalyticLoginSpikeIpAvailableOrderBy,
     AnalyticLoginTimeAnomalyAvailableOrderBy,
 } from '@modules/analytic/constants/analytic.list.constant';
+import { EnumAnalyticAnomalySignal } from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticAnomalySummary,
     IAnalyticDeviceProliferation,
@@ -89,10 +91,7 @@ export class AnalyticAnomalyDomain {
         if (windowMs) {
             return String(windowMs);
         }
-        return this.analyticDateUtil.windowToken(
-            start ?? undefined,
-            end ?? undefined
-        );
+        return this.analyticDateUtil.windowToken(start, end);
     }
 
     private async computeImpossibleTravel(
@@ -101,8 +100,8 @@ export class AnalyticAnomalyDomain {
     ): Promise<IAnalyticImpossibleTravel[]> {
         const sessions =
             await this.sessionAnalyticDomain.getActiveWithGeoInRange(
-                startDate ?? undefined,
-                endDate ?? undefined
+                startDate,
+                endDate
             );
         const byUser = new Map<string, typeof sessions>();
         for (const s of sessions) {
@@ -230,7 +229,7 @@ export class AnalyticAnomalyDomain {
         const window = this.windowToken(startDate, endDate, null);
         const cached =
             await this.analyticCache.getAnomalySummary<IAnalyticAnomalySummary>(
-                'impossible-travel',
+                EnumAnalyticAnomalySignal.impossibleTravel,
                 window
             );
         if (cached) {
@@ -247,7 +246,7 @@ export class AnalyticAnomalyDomain {
             },
         };
         await this.analyticCache.setAnomalySummary(
-            'impossible-travel',
+            EnumAnalyticAnomalySignal.impossibleTravel,
             window,
             summary
         );
@@ -280,7 +279,7 @@ export class AnalyticAnomalyDomain {
         const window = windowMs ?? this.loginSpikeIpWindowInMs;
         const cached =
             await this.analyticCache.getAnomalySummary<IAnalyticAnomalySummary>(
-                'login-spike-ip',
+                EnumAnalyticAnomalySignal.loginSpikeIp,
                 String(window)
             );
         if (cached) {
@@ -296,7 +295,7 @@ export class AnalyticAnomalyDomain {
             },
         };
         await this.analyticCache.setAnomalySummary(
-            'login-spike-ip',
+            EnumAnalyticAnomalySignal.loginSpikeIp,
             String(window),
             summary
         );
@@ -326,8 +325,8 @@ export class AnalyticAnomalyDomain {
     async failedLoginSpikeSummary(): Promise<IAnalyticAnomalySummary> {
         const cached =
             await this.analyticCache.getAnomalySummary<IAnalyticAnomalySummary>(
-                'failed-login-spike',
-                '_'
+                EnumAnalyticAnomalySignal.failedLoginSpike,
+                AnalyticCacheEmptyToken
             );
         if (cached) {
             return cached;
@@ -349,8 +348,8 @@ export class AnalyticAnomalyDomain {
             },
         };
         await this.analyticCache.setAnomalySummary(
-            'failed-login-spike',
-            '_',
+            EnumAnalyticAnomalySignal.failedLoginSpike,
+            AnalyticCacheEmptyToken,
             summary
         );
         return summary;
@@ -371,8 +370,8 @@ export class AnalyticAnomalyDomain {
     async deviceProliferationSummary(): Promise<IAnalyticAnomalySummary> {
         const cached =
             await this.analyticCache.getAnomalySummary<IAnalyticAnomalySummary>(
-                'device-proliferation',
-                '_'
+                EnumAnalyticAnomalySignal.deviceProliferation,
+                AnalyticCacheEmptyToken
             );
         if (cached) {
             return cached;
@@ -390,8 +389,8 @@ export class AnalyticAnomalyDomain {
             },
         };
         await this.analyticCache.setAnomalySummary(
-            'device-proliferation',
-            '_',
+            EnumAnalyticAnomalySignal.deviceProliferation,
+            AnalyticCacheEmptyToken,
             summary
         );
         return summary;
@@ -424,7 +423,7 @@ export class AnalyticAnomalyDomain {
         const window = this.windowToken(startDate, endDate, null);
         const cached =
             await this.analyticCache.getAnomalySummary<IAnalyticAnomalySummary>(
-                'login-time',
+                EnumAnalyticAnomalySignal.loginTime,
                 window
             );
         if (cached) {
@@ -437,7 +436,7 @@ export class AnalyticAnomalyDomain {
             window,
         };
         await this.analyticCache.setAnomalySummary(
-            'login-time',
+            EnumAnalyticAnomalySignal.loginTime,
             window,
             summary
         );

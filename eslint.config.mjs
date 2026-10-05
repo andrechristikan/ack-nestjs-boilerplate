@@ -220,6 +220,7 @@ const codeStyleRules = {
 
 // Enhanced code quality rules
 const codeQualityRules = {
+    '@typescript-eslint/prefer-nullish-coalescing': 'error',
     '@typescript-eslint/no-explicit-any': 'error',
     '@typescript-eslint/explicit-function-return-type': [
         'error',
@@ -268,6 +269,11 @@ const importOrderRules = {
             memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
             allowSeparatedGroups: true,
         },
+    ],
+    'padding-line-between-statements': [
+        'error',
+        { blankLine: 'always', prev: 'import', next: '*' },
+        { blankLine: 'never', prev: 'import', next: 'import' },
     ],
 };
 

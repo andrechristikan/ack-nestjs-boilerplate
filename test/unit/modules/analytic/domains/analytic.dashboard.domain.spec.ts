@@ -1,4 +1,5 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -16,6 +17,7 @@ import type { UserAgent } from '@generated/prisma-client/client';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import { AnalyticDashboardDomain } from '@modules/analytic/domains/analytic.dashboard.domain';
+import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { ApiKeyAnalyticDomain } from '@modules/api-key/domains/api-key.analytic.domain';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
@@ -101,7 +103,7 @@ describe('AnalyticDashboardDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        analyticDateUtil.cacheToken.mockImplementation((date?: Date) =>
+        analyticDateUtil.cacheToken.mockImplementation((date: Date | null) =>
             date ? date.toISOString() : '_'
         );
         analyticCache.getDashboard.mockResolvedValue(null);
@@ -112,6 +114,7 @@ describe('AnalyticDashboardDomain', () => {
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: AnalyticDateUtil, useValue: analyticDateUtil },
                 { provide: HelperDateService, useValue: helperDateService },
+                HelperStringService,
                 { provide: UserAnalyticDomain, useValue: userAnalyticDomain },
                 {
                     provide: UserLoginAnalyticDomain,
@@ -413,7 +416,7 @@ describe('AnalyticDashboardDomain', () => {
                 { action: EnumActivityLogAction.userLoginCredential, count: 7 },
             ]);
 
-            const result = await domain.authLoginMethod();
+            const result = await domain.authLoginMethod(null, null);
 
             expect(result).toEqual({
                 buckets: [
@@ -961,7 +964,7 @@ describe('AnalyticDashboardDomain', () => {
                 rate
             );
 
-            const result = await domain.termPoliciesAcceptanceRate();
+            const result = await domain.termPoliciesAcceptanceRate(null, null);
 
             expect(result).toEqual(rate);
             expect(
@@ -989,7 +992,7 @@ describe('AnalyticDashboardDomain', () => {
                 timing
             );
 
-            const result = await domain.termPoliciesTimeToAccept();
+            const result = await domain.termPoliciesTimeToAccept(null, null);
 
             expect(result).toEqual(timing);
             expect(
@@ -1128,14 +1131,26 @@ describe('AnalyticDashboardDomain', () => {
         });
     });
 
-    describe('pageToken', () => {
-        it('encodes a 1-based page from skip and limit', () => {
+    describe('pagedMetric', () => {
+        it('encodes a 1-based page from skip and limit into the metric', () => {
             expect(
-                domain['pageToken']({ skip: 0, limit: 20, orderBy: [] })
-            ).toBe('page=1:perPage=20');
+                domain['pagedMetric'](
+                    EnumAnalyticDashboardMetric.workspacesMembership,
+                    { skip: 0, limit: 20, orderBy: [] }
+                )
+            ).toBe('workspaces.membership:page=1:perPage=20');
             expect(
-                domain['pageToken']({ skip: 20, limit: 20, orderBy: [] })
-            ).toBe('page=2:perPage=20');
+                domain['pagedMetric'](
+                    EnumAnalyticDashboardMetric.projectsMembership,
+                    { skip: 20, limit: 20, orderBy: [] }
+                )
+            ).toBe('projects.membership:page=2:perPage=20');
+            expect(
+                domain['pagedMetric'](
+                    EnumAnalyticDashboardMetric.workspacesActivity,
+                    { skip: 40, limit: 10, orderBy: [] }
+                )
+            ).toBe('workspaces.activity:page=5:perPage=10');
         });
     });
 

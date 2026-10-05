@@ -11,27 +11,25 @@ import {
     Post,
     Query,
 } from '@nestjs/common';
-
 import {
     UserCurrent,
     UserProtected,
 } from '@modules/user/decorators/user.decorator';
-
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/term-policy.acceptance.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-
+import type {
+    IResponsePaginationReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
 import { TermPolicyUserAcceptanceResponseSchema } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
 import { TermPolicyAcceptRequestSchema } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import type { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
@@ -83,7 +81,9 @@ export class TermPolicySharedController {
         @UserCurrent() user: IUser,
         @Body({ schema: TermPolicyAcceptRequestSchema })
         body: TermPolicyAcceptRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.termPolicyAcceptanceHttpService.userAccept(user, body);
+
+        return {};
     }
 }

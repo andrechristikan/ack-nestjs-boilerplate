@@ -6,7 +6,10 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { NextFunction, Response } from 'express';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { RequestLanguageStoreKey } from '@common/request/constants/request.constant';
+import {
+    RequestCustomLangHeaderName,
+    RequestLanguageStoreKey,
+} from '@common/request/constants/request.constant';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestCustomLanguageMiddleware } from '@common/request/middlewares/request.custom-language.middleware';
 
@@ -56,7 +59,7 @@ describe('RequestCustomLanguageMiddleware', () => {
     describe('use', () => {
         it('stores and echoes back a supported custom language header', async () => {
             const req = {
-                headers: { 'x-custom-lang': 'id' },
+                headers: { [RequestCustomLangHeaderName]: 'id' },
             } as unknown as IRequestApp;
             helperArrayService.intersection.mockReturnValue(['id']);
 
@@ -70,13 +73,13 @@ describe('RequestCustomLanguageMiddleware', () => {
                 RequestLanguageStoreKey,
                 'id'
             );
-            expect(req.headers['x-custom-lang']).toBe('id');
+            expect(req.headers[RequestCustomLangHeaderName]).toBe('id');
             expect(next).toHaveBeenCalledTimes(1);
         });
 
         it('falls back to the default language for an unsupported custom language header', async () => {
             const req = {
-                headers: { 'x-custom-lang': 'fr' },
+                headers: { [RequestCustomLangHeaderName]: 'fr' },
             } as unknown as IRequestApp;
             helperArrayService.intersection.mockReturnValue([]);
 
@@ -86,7 +89,7 @@ describe('RequestCustomLanguageMiddleware', () => {
                 RequestLanguageStoreKey,
                 'en'
             );
-            expect(req.headers['x-custom-lang']).toBe('en');
+            expect(req.headers[RequestCustomLangHeaderName]).toBe('en');
         });
 
         it('falls back to the default language when no custom language header is present', async () => {
@@ -99,7 +102,7 @@ describe('RequestCustomLanguageMiddleware', () => {
                 RequestLanguageStoreKey,
                 'en'
             );
-            expect(req.headers['x-custom-lang']).toBe('en');
+            expect(req.headers[RequestCustomLangHeaderName]).toBe('en');
         });
     });
 

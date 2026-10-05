@@ -113,21 +113,17 @@ export class ProjectHttpService {
                 availableSearch: ProjectDefaultAvailableSearch,
                 availableOrderBy: ProjectDefaultAvailableOrderBy,
             });
+        const workspaceId = query.workspaceId ?? null;
         this.requestStoreService.merge(PaginationStoreKey, {
             ...storePatch,
             filters: {
                 ...storePatch.filters,
-                ...((query.workspaceId as string | undefined)
-                    ? { workspaceId: query.workspaceId as string | undefined }
-                    : {}),
+                ...(workspaceId ? { workspaceId } : {}),
             },
         });
 
         const { data, ...others } =
-            await this.projectDomain.getListOffsetByAdmin(
-                params,
-                query.workspaceId as string | undefined
-            );
+            await this.projectDomain.getListOffsetByAdmin(params, workspaceId);
 
         return {
             data,

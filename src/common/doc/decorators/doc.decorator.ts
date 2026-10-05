@@ -14,6 +14,10 @@ import {
     DocGlobalErrorResponses,
     DocResponseEntryMetaKey,
 } from '@common/doc/constants/doc.constant';
+import {
+    RequestCorrelationIdHeaderName,
+    RequestCustomLangHeaderName,
+} from '@common/request/constants/request.constant';
 import { faker } from '@faker-js/faker';
 
 /**
@@ -155,7 +159,7 @@ export function Doc(options?: IDocOptions): MethodDecorator {
         }),
         ApiHeaders([
             {
-                name: 'x-custom-lang',
+                name: RequestCustomLangHeaderName,
                 description: 'Custom language header',
                 required: false,
                 schema: {
@@ -165,7 +169,7 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                 },
             },
             {
-                name: 'x-correlation-id',
+                name: RequestCorrelationIdHeaderName,
                 description:
                     'Correlation identifier for tracking requests across services',
                 required: false,

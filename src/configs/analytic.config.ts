@@ -87,12 +87,6 @@ export interface IConfigAnalytic {
             reviewMax: number;
             elevateMax: number;
         };
-        bandLabels: {
-            monitor: string;
-            review: string;
-            elevate: string;
-            critical: string;
-        };
     };
 }
 
@@ -103,10 +97,10 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
         fraudSummaryTtlInMs: ms('5m'),
         riskScoreTtlInMs: ms('10m'),
         keyPatterns: {
-            dashboard: 'Analytic:dashboard:{metric}:{start}:{end}',
-            anomaly: 'Analytic:anomaly:{signal}:{window}',
-            fraud: 'Analytic:fraud:{signal}:{window}',
-            riskScore: 'Analytic:fraud:risk:{userId}',
+            dashboard: 'Analytic:Dashboard:{metric}:{start}:{end}',
+            anomaly: 'Analytic:Anomaly:{signal}:{window}',
+            fraud: 'Analytic:Fraud:{signal}:{window}',
+            riskScore: 'Analytic:Fraud:Risk:{userId}',
         },
         windowTokenPattern: '{start}:{end}',
         workspaceWindowTokenPattern: '{workspaceId}:{start}:{end}',
@@ -181,12 +175,6 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
             monitorMax: 30,
             reviewMax: 60,
             elevateMax: 90,
-        },
-        bandLabels: {
-            monitor: 'monitor',
-            review: 'review',
-            elevate: 'elevate',
-            critical: 'critical',
         },
     },
 }));

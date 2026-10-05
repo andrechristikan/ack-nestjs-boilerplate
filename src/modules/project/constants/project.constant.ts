@@ -11,19 +11,19 @@ import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace
  * Request-store key holding the project the project guard resolved.
  * @public
  */
-export const ProjectStoreKey = 'ProjectStore';
+export const ProjectStoreKey = 'ProjectStoreKey';
 
 /**
  * Request-store key holding the caller's project membership.
  * @public
  */
-export const ProjectMemberStoreKey = 'ProjectMemberStore';
+export const ProjectMemberStoreKey = 'ProjectMemberStoreKey';
 
 /**
  * Request-store key holding whether `ProjectRoleGuard` let the caller through on the workspace-owner bypass instead of a `ProjectMember` row.
  * @public
  */
-export const ProjectWorkspaceOwnerStoreKey = 'ProjectWorkspaceOwnerStore';
+export const ProjectWorkspaceOwnerStoreKey = 'ProjectWorkspaceOwnerStoreKey';
 
 /**
  * Route metadata key holding the project roles `@ProjectMemberProtected` requires.

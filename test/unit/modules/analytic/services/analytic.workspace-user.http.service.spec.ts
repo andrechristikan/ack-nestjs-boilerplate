@@ -62,7 +62,7 @@ describe('AnalyticWorkspaceUserHttpService', () => {
             );
         });
 
-        it('passes undefined dates when the optional range is empty', async () => {
+        it('passes null dates when the optional range is empty', async () => {
             analyticDateDomain.optionalRange.mockReturnValue({
                 startDate: null,
                 endDate: null,
@@ -81,8 +81,8 @@ describe('AnalyticWorkspaceUserHttpService', () => {
             );
             expect(analyticWorkspaceUserDomain.summary).toHaveBeenCalledWith(
                 'workspace-1',
-                undefined,
-                undefined
+                null,
+                null
             );
         });
     });

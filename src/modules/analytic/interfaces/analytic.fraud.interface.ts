@@ -1,3 +1,8 @@
+import type {
+    EnumAnalyticFraudBand,
+    EnumAnalyticFraudContributingSignal,
+} from '@modules/analytic/enums/analytic.enum';
+
 export interface IAnalyticFraudSummaryMeta {
     minUniqueAccounts?: number;
 }
@@ -11,8 +16,8 @@ export interface IAnalyticFraudSummary {
 export interface IAnalyticFraudRiskScore {
     userId: string;
     score: number;
-    band: string;
-    contributingSignalCodes: string[];
+    band: EnumAnalyticFraudBand;
+    contributingSignalCodes: EnumAnalyticFraudContributingSignal[];
 }
 
 export interface IAnalyticCredentialStuffing {

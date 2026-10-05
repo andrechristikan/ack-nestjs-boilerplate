@@ -110,16 +110,18 @@ describe('ActivityLogAnalyticDomain', () => {
                 []
             );
 
-            await domain.getGroupByActionInRange([
-                EnumActivityLogAction.userLogout,
-            ]);
+            await domain.getGroupByActionInRange(
+                [EnumActivityLogAction.userLogout],
+                null,
+                null
+            );
 
             expect(
                 activityLogAnalyticRepository.groupByActionInRange
             ).toHaveBeenCalledWith(
                 [EnumActivityLogAction.userLogout],
-                undefined,
-                undefined
+                null,
+                null
             );
         });
     });

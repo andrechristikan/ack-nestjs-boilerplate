@@ -7,13 +7,13 @@ import { EnumSessionStatusCodeError } from '@modules/session/enums/session.statu
  * Passport strategy name of the JWT access-token guard.
  * @public
  */
-export const AuthJwtAccessGuardKey = 'JwtAccess';
+export const AuthJwtAccessGuardKey = 'AuthJwtAccessGuardKey';
 
 /**
  * Passport strategy name of the JWT refresh-token guard.
  * @public
  */
-export const AuthJwtRefreshGuardKey = 'JwtRefresh';
+export const AuthJwtRefreshGuardKey = 'AuthJwtRefreshGuardKey';
 
 /**
  * OpenAPI Bearer scheme name for JWT access-token routes.
@@ -43,7 +43,7 @@ export const AuthSocialAppleDocSecurityName = 'apple';
  * Request-store key holding the verified JWT payload.
  * @public
  */
-export const AuthPayloadStoreKey = 'AuthPayloadStore';
+export const AuthPayloadStoreKey = 'AuthPayloadStoreKey';
 
 /**
  * HKDF purpose that seals stored two-factor secrets.
@@ -130,3 +130,15 @@ export const DocAuthSocialAppleErrorResponses = {
         statusCode: EnumAuthStatusCodeError.socialAppleNotConfigured,
     }),
 } as const;
+
+/**
+ * Request header carrying the JWT or social ID token.
+ * @public
+ */
+export const AuthHeaderName = 'Authorization';
+
+/**
+ * Scheme preceding the token in `AuthHeaderName`, and the `tokenType` a login response reports.
+ * @public
+ */
+export const AuthBearerScheme = 'Bearer';

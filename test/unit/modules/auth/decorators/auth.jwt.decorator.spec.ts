@@ -243,20 +243,20 @@ describe('auth.jwt.decorator', () => {
         AuthJwtToken()(target, 'token', 0);
         const factory = getParamDecoratorFactory(target, 'token');
 
-        it('returns undefined when the authorization header is absent', () => {
+        it('returns null when the authorization header is absent', () => {
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = {};
             httpArgumentsHost.getRequest.mockReturnValue(request);
 
-            expect(factory(undefined, executionContext)).toBeUndefined();
+            expect(factory(undefined, executionContext)).toBeNull();
         });
 
-        it('returns undefined when the authorization header carries no token', () => {
+        it('returns null when the authorization header carries no token', () => {
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = { authorization: 'Bearer' };
             httpArgumentsHost.getRequest.mockReturnValue(request);
 
-            expect(factory(undefined, executionContext)).toBeUndefined();
+            expect(factory(undefined, executionContext)).toBeNull();
         });
 
         it('returns the token stripped of the scheme prefix', () => {

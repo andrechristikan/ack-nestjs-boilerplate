@@ -13,8 +13,8 @@ export class SessionAnalyticDomain {
     ) {}
 
     getActiveWithGeoInRange(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<ISessionAnalyticSession[]> {
         return this.sessionAnalyticRepository.findActiveWithGeoInRange(
             startDate,
@@ -27,8 +27,8 @@ export class SessionAnalyticDomain {
     }
 
     getGroupByCountry(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IAnalyticCountBucket[]> {
         return this.sessionAnalyticRepository.groupByCountry(
             startDate,

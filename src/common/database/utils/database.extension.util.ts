@@ -34,7 +34,7 @@ export class DatabaseExtensionUtil {
      * model is given.
      */
     private modelHasField(
-        model: Prisma.ModelName | undefined,
+        model: Prisma.ModelName | null,
         field: 'createdBy' | 'updatedBy'
     ): boolean {
         if (!model) {
@@ -78,7 +78,7 @@ export class DatabaseExtensionUtil {
      * writes. A field the caller already set is left alone.
      */
     private stampCreate(
-        model: Prisma.ModelName | undefined,
+        model: Prisma.ModelName | null,
         data: unknown,
         actor: string
     ): void {
@@ -103,7 +103,7 @@ export class DatabaseExtensionUtil {
      * the caller already set is left alone.
      */
     private stampUpdate(
-        model: Prisma.ModelName | undefined,
+        model: Prisma.ModelName | null,
         data: unknown,
         actor: string
     ): void {
@@ -124,7 +124,7 @@ export class DatabaseExtensionUtil {
      * resolved from `DatabaseModelRelations`.
      */
     private stampRelations(
-        model: Prisma.ModelName | undefined,
+        model: Prisma.ModelName | null,
         payload: IDatabaseData,
         actor: string
     ): void {

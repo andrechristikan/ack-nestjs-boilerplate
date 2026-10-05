@@ -1,5 +1,4 @@
 import '@instrument';
-
 import { NestApplication, NestFactory } from '@nestjs/core';
 import { Logger, VersioningType } from '@nestjs/common';
 import { AppModule } from '@app/app.module';

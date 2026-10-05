@@ -122,10 +122,8 @@ export const AppEnvSchema = z
         };
 
         requireAll(
-            !!(
-                env.AWS_S3_IAM_CREDENTIAL_KEY ||
-                env.AWS_S3_IAM_CREDENTIAL_SECRET
-            ),
+            env.AWS_S3_IAM_CREDENTIAL_KEY !== undefined ||
+                env.AWS_S3_IAM_CREDENTIAL_SECRET !== undefined,
             [
                 'AWS_S3_IAM_CREDENTIAL_KEY',
                 'AWS_S3_IAM_CREDENTIAL_SECRET',
@@ -137,10 +135,8 @@ export const AppEnvSchema = z
         );
 
         requireAll(
-            !!(
-                env.AWS_SES_IAM_CREDENTIAL_KEY ||
-                env.AWS_SES_IAM_CREDENTIAL_SECRET
-            ),
+            env.AWS_SES_IAM_CREDENTIAL_KEY !== undefined ||
+                env.AWS_SES_IAM_CREDENTIAL_SECRET !== undefined,
             [
                 'AWS_SES_IAM_CREDENTIAL_KEY',
                 'AWS_SES_IAM_CREDENTIAL_SECRET',
@@ -152,11 +148,9 @@ export const AppEnvSchema = z
         );
 
         requireAll(
-            !!(
-                env.FIREBASE_PROJECT_ID ||
-                env.FIREBASE_CLIENT_EMAIL ||
-                env.FIREBASE_PRIVATE_KEY
-            ),
+            env.FIREBASE_PROJECT_ID !== undefined ||
+                env.FIREBASE_CLIENT_EMAIL !== undefined ||
+                env.FIREBASE_PRIVATE_KEY !== undefined,
             [
                 'FIREBASE_PROJECT_ID',
                 'FIREBASE_CLIENT_EMAIL',

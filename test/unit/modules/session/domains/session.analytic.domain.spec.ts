@@ -70,11 +70,11 @@ describe('SessionAnalyticDomain', () => {
                 []
             );
 
-            await domain.getActiveWithGeoInRange();
+            await domain.getActiveWithGeoInRange(null, null);
 
             expect(
                 sessionAnalyticRepository.findActiveWithGeoInRange
-            ).toHaveBeenCalledWith(undefined, undefined);
+            ).toHaveBeenCalledWith(null, null);
         });
     });
 

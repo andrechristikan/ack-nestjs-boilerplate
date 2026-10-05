@@ -50,7 +50,7 @@ rollout, which is what makes it a kill switch.
 - An authenticated caller is bucketed by `userId`; the `x-anonymous-id` header is ignored
   for them. With no user, `rolloutPercent: 100` passes without reading the header; anything
   lower buckets by `x-anonymous-id`, and a caller sending none or a malformed one is
-  rejected. Fail closed. The header name and bounds come from `featureFlag.anonymous.*`
+  rejected. Fail closed. The header is `FeatureFlagAnonymousIdHeaderName`; the bounds come from `featureFlag.anonymous.*`
   config; an invalid value is treated as absent and never reaches the hash, a log, or a key.
 - A flag is never an authorization boundary: the anonymous key is client-supplied and
   forgeable by design. An entitlement is gated by authorization or `isEnable: false`.

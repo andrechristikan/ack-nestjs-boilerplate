@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import type { ThrottlerModuleOptions } from '@nestjs/throttler';
+import { EnumRequestThrottleName } from '@common/request/enums/request.enum';
 import { RequestRequestIdMiddleware } from '@common/request/middlewares/request.request-id.middleware';
 import { RequestRequestLogMiddleware } from '@common/request/middlewares/request.request-log.middleware';
 import { RequestHelmetMiddleware } from '@common/request/middlewares/request.helmet.middleware';
@@ -45,7 +46,7 @@ import { RequestThrottleRouteGuard } from '@common/request/guards/request.thrott
             ): ThrottlerModuleOptions => ({
                 throttlers: [
                     {
-                        name: 'default',
+                        name: EnumRequestThrottleName.default,
                         ttl: config.get<number>(
                             'request.throttle.default.ttlInMs'
                         )!,

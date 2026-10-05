@@ -504,7 +504,7 @@ describe('PaginationService', () => {
 
     describe('resolveOrderBy', () => {
         it('falls back to the default order when none is sent', () => {
-            expect(service['resolveOrderBy'](undefined)).toEqual([
+            expect(service['resolveOrderBy'](null)).toEqual([
                 ...PaginationDefaultOrderBy,
             ]);
         });

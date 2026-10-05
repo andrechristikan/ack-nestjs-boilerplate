@@ -9,7 +9,10 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
-import { FeatureFlagKeyPathMetaKey } from '@modules/feature-flag/constants/feature-flag.constant';
+import {
+    FeatureFlagAnonymousIdHeaderName,
+    FeatureFlagKeyPathMetaKey,
+} from '@modules/feature-flag/constants/feature-flag.constant';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { FeatureFlagGuard } from '@modules/feature-flag/guards/feature-flag.guard';
 import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
@@ -28,9 +31,7 @@ describe('FeatureFlagGuard', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         configGet.mockImplementation(key => {
-            if (key === 'featureFlag.anonymous.headerName') {
-                return 'x-anonymous-id';
-            } else if (key === 'featureFlag.anonymous.idMaxLength') {
+            if (key === 'featureFlag.anonymous.idMaxLength') {
                 return 20;
             } else if (key === 'featureFlag.anonymous.idRegex') {
                 return /^[a-zA-Z0-9-_]+$/;
@@ -50,10 +51,7 @@ describe('FeatureFlagGuard', () => {
         guard = module.get(FeatureFlagGuard);
     });
 
-    it('reads the anonymous header config once, in the constructor', () => {
-        expect(configGet).toHaveBeenCalledWith(
-            'featureFlag.anonymous.headerName'
-        );
+    it('reads the anonymous id config once, in the constructor', () => {
         expect(configGet).toHaveBeenCalledWith(
             'featureFlag.anonymous.idMaxLength'
         );
@@ -113,7 +111,9 @@ describe('FeatureFlagGuard', () => {
         it('passes a valid anonymous header through as the anonymousId', async () => {
             reflector.get.mockReturnValue('changePassword');
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
-            request.headers = { 'x-anonymous-id': 'anon-user-1' };
+            request.headers = {
+                [FeatureFlagAnonymousIdHeaderName]: 'anon-user-1',
+            };
             request.user = undefined;
             const executionContext = buildHttpExecutionContext(request);
             featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
@@ -130,7 +130,9 @@ describe('FeatureFlagGuard', () => {
         it('drops an anonymous header that is not a string', async () => {
             reflector.get.mockReturnValue('changePassword');
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
-            request.headers = { 'x-anonymous-id': ['anon-user-1'] };
+            request.headers = {
+                [FeatureFlagAnonymousIdHeaderName]: ['anon-user-1'],
+            };
             request.user = undefined;
             const executionContext = buildHttpExecutionContext(request);
             featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
@@ -147,7 +149,7 @@ describe('FeatureFlagGuard', () => {
         it('drops an empty anonymous header', async () => {
             reflector.get.mockReturnValue('changePassword');
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
-            request.headers = { 'x-anonymous-id': '' };
+            request.headers = { [FeatureFlagAnonymousIdHeaderName]: '' };
             request.user = undefined;
             const executionContext = buildHttpExecutionContext(request);
             featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
@@ -164,7 +166,9 @@ describe('FeatureFlagGuard', () => {
         it('drops an anonymous header longer than the configured maximum length', async () => {
             reflector.get.mockReturnValue('changePassword');
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
-            request.headers = { 'x-anonymous-id': 'a'.repeat(21) };
+            request.headers = {
+                [FeatureFlagAnonymousIdHeaderName]: 'a'.repeat(21),
+            };
             request.user = undefined;
             const executionContext = buildHttpExecutionContext(request);
             featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
@@ -181,7 +185,9 @@ describe('FeatureFlagGuard', () => {
         it('drops an anonymous header failing the configured pattern', async () => {
             reflector.get.mockReturnValue('changePassword');
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
-            request.headers = { 'x-anonymous-id': 'invalid id!' };
+            request.headers = {
+                [FeatureFlagAnonymousIdHeaderName]: 'invalid id!',
+            };
             request.user = undefined;
             const executionContext = buildHttpExecutionContext(request);
             featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);

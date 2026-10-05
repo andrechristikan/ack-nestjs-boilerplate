@@ -17,6 +17,7 @@ import {
     RequestThrottleHandledStoreKey,
     RequestThrottleOptionsMetaKey,
 } from '@common/request/constants/request.constant';
+import { EnumRequestThrottleName } from '@common/request/enums/request.enum';
 import { RequestThrottleUserInterceptor } from '@common/request/interceptors/request.throttle-user.interceptor';
 import type {
     IRequestApp,
@@ -173,7 +174,7 @@ describe('RequestThrottleUserInterceptor', () => {
             expect(result).toBe('handled');
             expect(requestThrottleService.evaluate).toHaveBeenCalledWith(
                 response,
-                'user',
+                EnumRequestThrottleName.user,
                 'user-1',
                 policy
             );

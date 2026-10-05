@@ -39,21 +39,22 @@ export const UserCurrent = createParamDecorator<
     (
         field: Extract<keyof IUser, string> | undefined
     ): IUser | NonNullable<IUser[Extract<keyof IUser, string>]> => {
-        const user = ClsServiceManager.getClsService().get<IUser | undefined>(
-            UserStoreKey
-        );
-        if (user === undefined || user === null) {
+        const user =
+            ClsServiceManager.getClsService().get<IUser | null>(UserStoreKey) ??
+            null;
+        if (user === null) {
             throw new RequestContextMissingException(UserStoreKey);
         }
 
-        if (field === undefined || field === null) {
+        const fieldKey = field ?? null;
+        if (fieldKey === null) {
             return user;
         }
 
-        const value = user[field];
-        if (value === undefined || value === null) {
+        const value = user[fieldKey] ?? null;
+        if (value === null) {
             throw new RequestContextMissingException(
-                `${UserStoreKey}.${field}`
+                `${UserStoreKey}.${fieldKey}`
             );
         }
 

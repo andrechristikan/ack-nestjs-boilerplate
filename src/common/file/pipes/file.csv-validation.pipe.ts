@@ -77,9 +77,9 @@ export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
 
         async transform(
             value: unknown[]
-        ): Promise<StandardSchemaV1.InferOutput<TSchema>[] | undefined> {
+        ): Promise<StandardSchemaV1.InferOutput<TSchema>[] | null> {
             if (!value) {
-                return undefined;
+                return null;
             }
 
             return this.parse(value);

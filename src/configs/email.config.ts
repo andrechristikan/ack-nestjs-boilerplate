@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+import { readOptionalEnv } from '@common/request/validations/request.optional-env.validation';
 
 export interface IConfigEmail {
     noreply: string | null;
@@ -7,7 +8,7 @@ export interface IConfigEmail {
 }
 
 export default registerAs('email', (): IConfigEmail => ({
-    noreply: process.env.EMAIL_NO_REPLY || null,
-    support: process.env.EMAIL_SUPPORT || null,
+    noreply: readOptionalEnv(process.env.EMAIL_NO_REPLY),
+    support: readOptionalEnv(process.env.EMAIL_SUPPORT),
     batchSize: 100,
 }));

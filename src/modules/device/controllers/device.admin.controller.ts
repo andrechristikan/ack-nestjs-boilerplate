@@ -7,21 +7,20 @@ import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
-import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-
+import type {
+    IResponsePaginationReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceHttpService } from '@modules/device/services/device.http.service';
@@ -30,7 +29,6 @@ import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.admin.user.device')
@@ -96,11 +94,13 @@ export class DeviceAdminController {
         userId: string,
         @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
         deviceOwnershipId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.deviceHttpService.removeByAdmin(
             userId,
             deviceOwnershipId,
             removedBy
         );
+
+        return {};
     }
 }

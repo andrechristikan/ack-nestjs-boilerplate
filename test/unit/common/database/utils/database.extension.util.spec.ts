@@ -373,7 +373,7 @@ describe('DatabaseExtensionUtil', () => {
 
     describe('modelHasField', () => {
         it('returns false when no model is given', () => {
-            expect(util['modelHasField'](undefined, 'createdBy')).toBe(false);
+            expect(util['modelHasField'](null, 'createdBy')).toBe(false);
         });
 
         it('returns true when the model owns the field', () => {
@@ -479,7 +479,7 @@ describe('DatabaseExtensionUtil', () => {
         it('stamps nothing and does not throw when no model is given', () => {
             const payload: IDatabaseData = { name: 'a' };
 
-            util['stampCreate'](undefined, payload, 'actor-1');
+            util['stampCreate'](null, payload, 'actor-1');
 
             expect(payload).toEqual({ name: 'a' });
         });
@@ -530,7 +530,7 @@ describe('DatabaseExtensionUtil', () => {
         it('stamps nothing and does not throw when no model is given', () => {
             const payload: IDatabaseData = { name: 'a' };
 
-            util['stampUpdate'](undefined, payload, 'actor-1');
+            util['stampUpdate'](null, payload, 'actor-1');
 
             expect(payload).toEqual({ name: 'a' });
         });
@@ -539,7 +539,7 @@ describe('DatabaseExtensionUtil', () => {
     describe('stampRelations', () => {
         it('does nothing when no model is given', () => {
             expect(() =>
-                util['stampRelations'](undefined, { user: {} }, 'actor-1')
+                util['stampRelations'](null, { user: {} }, 'actor-1')
             ).not.toThrow();
         });
 

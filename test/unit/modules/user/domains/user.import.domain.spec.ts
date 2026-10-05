@@ -386,7 +386,7 @@ describe('UserImportDomain', () => {
             const users = [{ ...baseUser, id: 'user-export-one' }];
             userRepository.findExport.mockResolvedValue(users);
 
-            const result = await domain.exportByAdmin();
+            const result = await domain.exportByAdmin(null, null, null);
 
             expect(result).toBe(users);
             expect(userRepository.findExport).toHaveBeenCalledWith(
@@ -421,7 +421,9 @@ describe('UserImportDomain', () => {
             ];
             userRepository.findExport.mockResolvedValue(users);
 
-            await expect(domain.exportByAdmin()).rejects.toMatchObject({
+            await expect(
+                domain.exportByAdmin(null, null, null)
+            ).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.exceedMaxDataExport,
                 statusCodeKey:

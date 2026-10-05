@@ -58,7 +58,7 @@ describe('SessionHttpService', () => {
                 availableOrderBy: SessionDefaultAvailableOrderBy,
             };
             paginationQueryUtil.offset.mockReturnValue({ params, storePatch });
-            paginationQueryUtil.equalBoolean.mockReturnValue(undefined);
+            paginationQueryUtil.equalBoolean.mockReturnValue(null);
             const paginationResult: IResponsePaginationReturn<ISessionList> = {
                 type: EnumPaginationType.offset,
                 count: 0,

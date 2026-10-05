@@ -12,7 +12,6 @@ import appConfigFunction from '@configs/app.config';
 import loggerConfigFunction from '@configs/logger.config';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import {
-    LoggerExcludedRoutes,
     LoggerHttpMethodPrefixRegex,
     LoggerRedactedValue,
     LoggerSensitiveFields,
@@ -321,7 +320,7 @@ if (loggerConfigs.sentry.dsn) {
             if (event.request) {
                 const url = event.request.url;
 
-                if (isExcludedUrl(url, LoggerExcludedRoutes)) {
+                if (isExcludedUrl(url, loggerConfigs.excludedRoutes)) {
                     return null;
                 }
             }
@@ -359,14 +358,14 @@ if (loggerConfigs.sentry.dsn) {
             if (
                 isExcludedUrl(
                     samplingContext.normalizedRequest?.url,
-                    LoggerExcludedRoutes
+                    loggerConfigs.excludedRoutes
                 ) ||
                 isExcludedUrl(
                     samplingContext.name.replace(
                         LoggerHttpMethodPrefixRegex,
                         ''
                     ),
-                    LoggerExcludedRoutes
+                    loggerConfigs.excludedRoutes
                 )
             ) {
                 return 0;

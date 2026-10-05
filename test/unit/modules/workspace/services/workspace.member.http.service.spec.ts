@@ -145,7 +145,7 @@ describe('WorkspaceMemberHttpService', () => {
         });
 
         it('merges an empty filter set when role is absent', async () => {
-            paginationQueryUtil.inEnum.mockReturnValue(undefined);
+            paginationQueryUtil.inEnum.mockReturnValue(null);
             const page: IResponsePaginationReturn<IWorkspaceMember> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,

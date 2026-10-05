@@ -115,7 +115,6 @@ describe('AuthJwtDomain', () => {
         'auth.jwt.refreshToken.privateKey': refreshPrivateKeyBase64,
         'auth.jwt.refreshToken.publicKey': refreshPublicKeyBase64,
         'auth.jwt.refreshToken.algorithm': 'ES512',
-        'auth.jwt.prefix': 'Bearer',
         'auth.jwt.audience': 'aud',
         'auth.jwt.issuer': 'iss',
     };

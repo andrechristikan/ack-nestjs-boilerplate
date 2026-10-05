@@ -166,7 +166,7 @@ describe('workspace.decorator', () => {
                 messagePath: 'request.error.contextMissing',
                 rawError: expect.objectContaining({
                     message:
-                        'RequestContextMissingException: no value for "WorkspaceStore"',
+                        'RequestContextMissingException: no value for "WorkspaceStoreKey"',
                 }),
             });
         });
@@ -194,7 +194,7 @@ describe('workspace.decorator', () => {
                 messagePath: 'request.error.contextMissing',
                 rawError: expect.objectContaining({
                     message:
-                        'RequestContextMissingException: no value for "WorkspaceStore"',
+                        'RequestContextMissingException: no value for "WorkspaceStoreKey"',
                 }),
             });
         });
@@ -222,7 +222,7 @@ describe('workspace.decorator', () => {
                 messagePath: 'request.error.contextMissing',
                 rawError: expect.objectContaining({
                     message:
-                        'RequestContextMissingException: no value for "WorkspaceStore.description"',
+                        'RequestContextMissingException: no value for "WorkspaceStoreKey.description"',
                 }),
             });
         });
@@ -301,7 +301,7 @@ describe('workspace.decorator', () => {
                 messagePath: 'request.error.contextMissing',
                 rawError: expect.objectContaining({
                     message:
-                        'RequestContextMissingException: no value for "WorkspaceMemberStore"',
+                        'RequestContextMissingException: no value for "WorkspaceMemberStoreKey"',
                 }),
             });
         });
@@ -329,7 +329,7 @@ describe('workspace.decorator', () => {
                 messagePath: 'request.error.contextMissing',
                 rawError: expect.objectContaining({
                     message:
-                        'RequestContextMissingException: no value for "WorkspaceMemberStore"',
+                        'RequestContextMissingException: no value for "WorkspaceMemberStoreKey"',
                 }),
             });
         });
@@ -357,7 +357,7 @@ describe('workspace.decorator', () => {
                 messagePath: 'request.error.contextMissing',
                 rawError: expect.objectContaining({
                     message:
-                        'RequestContextMissingException: no value for "WorkspaceMemberStore.createdBy"',
+                        'RequestContextMissingException: no value for "WorkspaceMemberStoreKey.createdBy"',
                 }),
             });
         });

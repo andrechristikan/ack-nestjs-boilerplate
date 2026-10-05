@@ -45,19 +45,21 @@ export const WorkspaceCurrent = createParamDecorator<
     (
         field: Extract<keyof Workspace, string> | undefined
     ): Workspace | NonNullable<Workspace[Extract<keyof Workspace, string>]> => {
-        const workspace = ClsServiceManager.getClsService().get<
-            Workspace | undefined
-        >(WorkspaceStoreKey);
-        if (workspace === undefined || workspace === null) {
+        const workspace =
+            ClsServiceManager.getClsService().get<Workspace | null>(
+                WorkspaceStoreKey
+            ) ?? null;
+        if (workspace === null) {
             throw new RequestContextMissingException(WorkspaceStoreKey);
         }
 
-        if (field === undefined || field === null) {
+        const fieldKey = field ?? null;
+        if (fieldKey === null) {
             return workspace;
         }
 
-        const value = workspace[field];
-        if (value === undefined || value === null) {
+        const value = workspace[fieldKey] ?? null;
+        if (value === null) {
             throw new RequestContextMissingException(
                 `${WorkspaceStoreKey}.${field}`
             );
@@ -103,19 +105,21 @@ export const WorkspaceMemberCurrent = createParamDecorator<
         | NonNullable<
               WorkspaceMember[Extract<keyof WorkspaceMember, string>]
           > => {
-        const workspaceMember = ClsServiceManager.getClsService().get<
-            WorkspaceMember | undefined
-        >(WorkspaceMemberStoreKey);
-        if (workspaceMember === undefined || workspaceMember === null) {
+        const workspaceMember =
+            ClsServiceManager.getClsService().get<WorkspaceMember | null>(
+                WorkspaceMemberStoreKey
+            ) ?? null;
+        if (workspaceMember === null) {
             throw new RequestContextMissingException(WorkspaceMemberStoreKey);
         }
 
-        if (field === undefined || field === null) {
+        const fieldKey = field ?? null;
+        if (fieldKey === null) {
             return workspaceMember;
         }
 
-        const value = workspaceMember[field];
-        if (value === undefined || value === null) {
+        const value = workspaceMember[fieldKey] ?? null;
+        if (value === null) {
             throw new RequestContextMissingException(
                 `${WorkspaceMemberStoreKey}.${field}`
             );

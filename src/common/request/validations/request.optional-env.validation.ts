@@ -4,6 +4,15 @@ import { RequestRequiredStringSchema } from '@common/request/validations/request
 import { RequestSesIdentityArnSchema } from '@common/request/validations/request.ses-identity-arn.validation';
 import { RequestUrlNoTrailingSlashSchema } from '@common/request/validations/request.url-no-trailing-slash.validation';
 
+const isBlankEnv = (value: unknown): boolean => value === '';
+
+/**
+ * Reads an optional env value for config: an absent value and an empty string
+ * (a blank `.env` line) both read as `null`.
+ */
+export const readOptionalEnv = (value: string | undefined): string | null =>
+    isBlankEnv(value) ? null : (value ?? null);
+
 /**
  * Wraps an env schema so a third-party key is optional: an absent value and an
  * empty string (a blank `.env` line) both parse to `undefined`; any other
@@ -14,7 +23,7 @@ export const RequestOptionalEnvSchema = <T extends z.ZodType>(
     schema: T
 ): z.ZodPipe<z.core.$ZodTransform<unknown, unknown>, z.ZodOptional<T>> =>
     z.preprocess(
-        value => (value === '' ? undefined : value),
+        value => (isBlankEnv(value) ? undefined : value),
         schema.optional()
     );
 

@@ -10,3 +10,9 @@ export const HealthCacheControlHeaderName = 'Cache-Control';
  */
 export const HealthCacheControlHeaderValue =
     'no-cache, no-store, must-revalidate';
+
+/**
+ * Cache key the Redis health probe reads.
+ * @public
+ */
+export const HealthRedisProbeKey = 'health-check';

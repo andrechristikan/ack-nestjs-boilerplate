@@ -11,6 +11,7 @@ import type {
     IAuthRefreshTokenGenerate,
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
+import { AuthBearerScheme } from '@modules/auth/constants/auth.constant';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
@@ -35,7 +36,6 @@ export class AuthJwtDomain {
     readonly jwtRefreshTokenExpirationTimeInSeconds: number;
     private readonly jwtRefreshTokenAlgorithm: Algorithm;
 
-    private readonly jwtPrefix: string;
     private readonly jwtAudience: string;
     private readonly jwtIssuer: string;
 
@@ -81,7 +81,6 @@ export class AuthJwtDomain {
             'auth.jwt.refreshToken.algorithm'
         )!;
 
-        this.jwtPrefix = this.configService.get<string>('auth.jwt.prefix')!;
         this.jwtAudience = this.configService.get<string>('auth.jwt.audience')!;
         this.jwtIssuer = this.configService.get<string>('auth.jwt.issuer')!;
     }
@@ -249,7 +248,7 @@ export class AuthJwtDomain {
         );
 
         const tokens: IAuthToken = {
-            tokenType: this.jwtPrefix,
+            tokenType: AuthBearerScheme,
             roleType: user.role.type,
             expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
             accessToken,
@@ -319,7 +318,7 @@ export class AuthJwtDomain {
         );
 
         const tokens: IAuthToken = {
-            tokenType: this.jwtPrefix,
+            tokenType: AuthBearerScheme,
             roleType: user.role.type,
             expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
             accessToken,

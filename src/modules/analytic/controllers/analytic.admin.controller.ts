@@ -77,13 +77,11 @@ import type {
     IAnalyticVerificationFunnels,
     IAnalyticWorkspaceCount,
 } from '@modules/analytic/interfaces/analytic.interface';
-
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import { AnalyticApiKeyActiveExpiredResponseSchema } from '@modules/analytic/dtos/response/analytic.api-key-active-expired.response.dto';
 import { AnalyticApiKeyLifecycleResponseSchema } from '@modules/analytic/dtos/response/analytic.api-key-lifecycle.response.dto';
 import { AnalyticBlockedUsersResponseSchema } from '@modules/analytic/dtos/response/analytic.blocked-users.response.dto';
@@ -108,7 +106,6 @@ import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
 import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
 import { AnalyticOptionalDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
@@ -127,10 +124,8 @@ import {
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-
 import { AnalyticFraudSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-summary.response.dto';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
-
 import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import { AnalyticFraudRiskScoreResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-risk-score.response.dto';

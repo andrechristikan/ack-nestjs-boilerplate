@@ -49,7 +49,7 @@ describe('AnalyticDateUtil', () => {
         });
 
         it('returns an underscore when the date is omitted', () => {
-            expect(util.cacheToken()).toBe('_');
+            expect(util.cacheToken(null)).toBe('_');
         });
     });
 
@@ -72,7 +72,7 @@ describe('AnalyticDateUtil', () => {
         it('fills the window pattern with underscores when dates are omitted', () => {
             helperStringService.fillPattern.mockReturnValue('open-window');
 
-            const result = util.windowToken();
+            const result = util.windowToken(null, null);
 
             expect(result).toBe('open-window');
             expect(helperStringService.fillPattern).toHaveBeenCalledWith(

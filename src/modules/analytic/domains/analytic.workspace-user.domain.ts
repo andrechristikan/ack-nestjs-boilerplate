@@ -1,5 +1,7 @@
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import { AnalyticCacheEmptyToken } from '@modules/analytic/constants/analytic.constant';
+import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticMetricCount,
     IAnalyticRoleCount,
@@ -27,8 +29,8 @@ export class AnalyticWorkspaceUserDomain {
 
     async summary(
         workspaceId: string,
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IAnalyticWorkspaceSummary> {
         const key = this.analyticDateUtil.workspaceWindowToken(
             workspaceId,
@@ -37,9 +39,9 @@ export class AnalyticWorkspaceUserDomain {
         );
         const cached =
             await this.analyticCache.getDashboard<IAnalyticWorkspaceSummary>(
-                'workspace.summary',
+                EnumAnalyticDashboardMetric.workspaceSummary,
                 key,
-                '_'
+                AnalyticCacheEmptyToken
             );
         if (cached) {
             return cached;
@@ -66,9 +68,9 @@ export class AnalyticWorkspaceUserDomain {
             activityCount,
         };
         await this.analyticCache.setDashboard(
-            'workspace.summary',
+            EnumAnalyticDashboardMetric.workspaceSummary,
             key,
-            '_',
+            AnalyticCacheEmptyToken,
             value
         );
         return value;

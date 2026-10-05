@@ -7,7 +7,6 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import {
     LoggerAutoContext,
-    LoggerExcludedRoutes,
     LoggerRedactedValue,
     LoggerSensitiveFields,
     LoggerSensitivePaths,
@@ -26,6 +25,7 @@ export class LoggerOptionService {
     private readonly version: string;
 
     private readonly autoLogger: boolean;
+    private readonly excludedRoutes: string[];
 
     private readonly enable: boolean;
     private readonly level: EnumLoggerLevel;
@@ -47,6 +47,9 @@ export class LoggerOptionService {
         this.version = this.configService.get<string>('app.version')!;
 
         this.autoLogger = this.configService.get<boolean>('logger.auto')!;
+        this.excludedRoutes = this.configService.get<string[]>(
+            'logger.excludedRoutes'
+        )!;
 
         this.enable = this.configService.get<boolean>('logger.enable')!;
         this.level = this.configService.get<EnumLoggerLevel>('logger.level')!;
@@ -205,9 +208,9 @@ export class LoggerOptionService {
 
     private addDebugInfo(
         additionalParams: Record<string, unknown>
-    ): ILoggerDebugInfo | undefined {
+    ): ILoggerDebugInfo | null {
         if (this.env === EnumAppEnvironment.production) {
-            return undefined;
+            return null;
         }
 
         const memUsage = process.memoryUsage();
@@ -228,7 +231,7 @@ export class LoggerOptionService {
                   ignore: (req: IRequestApp) =>
                       this.helperStringService.checkUrlMatchesPatterns(
                           req.url,
-                          LoggerExcludedRoutes
+                          this.excludedRoutes
                       ),
               }
             : false;

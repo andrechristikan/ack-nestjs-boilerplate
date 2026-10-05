@@ -15,3 +15,13 @@ export enum EnumRequestThrottleRoute {
     moderate = 'moderate',
     relaxed = 'relaxed',
 }
+
+/**
+ * Named throttlers; the value is the throttler name in Redis keys and the `X-RateLimit-*` header suffix.
+ * @public
+ */
+export enum EnumRequestThrottleName {
+    default = 'default',
+    user = 'user',
+    route = 'route',
+}

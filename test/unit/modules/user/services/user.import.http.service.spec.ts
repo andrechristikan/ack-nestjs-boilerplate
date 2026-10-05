@@ -266,8 +266,8 @@ describe('UserImportHttpService', () => {
         });
 
         it('defaults the status filter and a missing photo when no filter or photo applies', async () => {
-            paginationQueryUtil.inEnum.mockReturnValue(undefined);
-            paginationQueryUtil.equalString.mockReturnValue(undefined);
+            paginationQueryUtil.inEnum.mockReturnValue(null);
+            paginationQueryUtil.equalString.mockReturnValue(null);
             const user = { ...baseUser, photo: null };
             userImportDomain.exportByAdmin.mockResolvedValue([user]);
             fileService.writeCsv.mockReturnValue('csv-content');
@@ -280,9 +280,9 @@ describe('UserImportHttpService', () => {
                 UserDefaultStatus
             );
             expect(userImportDomain.exportByAdmin).toHaveBeenCalledWith(
-                undefined,
-                undefined,
-                undefined
+                null,
+                null,
+                null
             );
             expect(fileService.writeCsv).toHaveBeenCalledWith([
                 expect.objectContaining({ photo: null }),

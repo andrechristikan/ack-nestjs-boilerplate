@@ -27,8 +27,8 @@ export class AnalyticWorkspaceUserHttpService {
         );
         const data = await this.analyticWorkspaceUserDomain.summary(
             workspaceId,
-            range.startDate ?? undefined,
-            range.endDate ?? undefined
+            range.startDate,
+            range.endDate
         );
 
         return { data };

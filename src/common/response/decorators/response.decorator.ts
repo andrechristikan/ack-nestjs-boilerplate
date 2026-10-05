@@ -49,11 +49,10 @@ export function Response(
         const handler = descriptor.value as unknown;
         let httpStatus: HttpStatus = HttpStatus.OK;
         if (typeof handler === 'function') {
-            const httpCode = Reflect.getMetadata(
-                HTTP_CODE_METADATA,
-                handler
-            ) as number | undefined;
-            if (httpCode !== undefined && httpCode !== null) {
+            const httpCode =
+                (Reflect.getMetadata(HTTP_CODE_METADATA, handler) as
+                    number | undefined) ?? null;
+            if (httpCode !== null) {
                 httpStatus = httpCode;
             } else {
                 const method = Reflect.getMetadata(METHOD_METADATA, handler) as
@@ -185,11 +184,10 @@ export function ResponseFile(
         const handler = descriptor.value as unknown;
         let httpStatus: HttpStatus = HttpStatus.OK;
         if (typeof handler === 'function') {
-            const httpCode = Reflect.getMetadata(
-                HTTP_CODE_METADATA,
-                handler
-            ) as number | undefined;
-            if (httpCode !== undefined && httpCode !== null) {
+            const httpCode =
+                (Reflect.getMetadata(HTTP_CODE_METADATA, handler) as
+                    number | undefined) ?? null;
+            if (httpCode !== null) {
                 httpStatus = httpCode;
             } else {
                 const method = Reflect.getMetadata(METHOD_METADATA, handler) as

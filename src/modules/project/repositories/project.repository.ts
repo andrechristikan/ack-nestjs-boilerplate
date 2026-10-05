@@ -91,7 +91,7 @@ export class ProjectRepository implements IProjectRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string
+        workspaceId: string | null
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.offset<Project, Prisma.ProjectWhereInput>(
             this.databaseService.client.project,

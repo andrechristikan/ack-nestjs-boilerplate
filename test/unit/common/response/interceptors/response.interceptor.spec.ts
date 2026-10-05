@@ -240,7 +240,7 @@ describe('ResponseInterceptor', () => {
 
     describe('serialize', () => {
         it('throws ResponseSerializationException when no schema is declared', async () => {
-            const promise = interceptor['serialize'](undefined, {
+            const promise = interceptor['serialize'](null, {
                 foo: 'raw',
             });
 

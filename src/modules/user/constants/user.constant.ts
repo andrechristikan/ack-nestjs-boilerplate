@@ -13,7 +13,7 @@ export const UserGuardIsVerifiedMetaKey = 'UserGuardIsVerifiedMetaKey';
  * Request-store key holding the loaded current user.
  * @public
  */
-export const UserStoreKey = 'UserStore';
+export const UserStoreKey = 'UserStoreKey';
 
 /**
  * User guard error kit for `@UserProtected` (no `auth.error.accessTokenUnauthorized`).

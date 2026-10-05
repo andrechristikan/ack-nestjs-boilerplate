@@ -13,9 +13,9 @@ import { FileExtensionInvalidException } from '@common/file/exceptions/file.exte
 export class FileCsvParsePipe<T> implements PipeTransform {
     constructor(private readonly fileService: FileService) {}
 
-    async transform(value: IFile): Promise<T[] | undefined> {
+    async transform(value: IFile): Promise<T[] | null> {
         if (!value) {
-            return;
+            return null;
         }
 
         await this.validate(value);

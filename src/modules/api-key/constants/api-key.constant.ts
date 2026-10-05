@@ -13,7 +13,7 @@ export const ApiKeyXTypeMetaKey = 'ApiKeyXTypeMetaKey';
  * Request-store key holding the validated API key.
  * @public
  */
-export const ApiKeyStoreKey = 'ApiKeyStore';
+export const ApiKeyStoreKey = 'ApiKeyStoreKey';
 
 /**
  * OpenAPI apiKey scheme name for X-API-Key Protected routes.
@@ -73,3 +73,9 @@ export const ApiKeySelect = {
     updatedAt: true,
     updatedBy: true,
 } satisfies Prisma.ApiKeySelect;
+
+/**
+ * Request header carrying the API key credential.
+ * @public
+ */
+export const ApiKeyHeaderName = 'x-api-key';

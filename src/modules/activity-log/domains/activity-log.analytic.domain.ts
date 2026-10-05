@@ -32,8 +32,8 @@ export class ActivityLogAnalyticDomain {
 
     getGroupByActionInRange(
         actions: EnumActivityLogAction[],
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IActivityLogAnalyticActionCount[]> {
         return this.activityLogAnalyticRepository.groupByActionInRange(
             actions,

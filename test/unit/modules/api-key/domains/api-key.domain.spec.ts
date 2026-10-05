@@ -145,8 +145,6 @@ describe('ApiKeyDomain', () => {
                 {
                     name: 'Acme Api Key',
                     type: EnumApiKeyType.default,
-                    startAt: undefined,
-                    endAt: undefined,
                 },
                 'local_abc123',
                 'hashed-secret'

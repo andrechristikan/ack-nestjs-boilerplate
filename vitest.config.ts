@@ -1,8 +1,6 @@
 import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 
-const loggerHelper = 'test/helpers/test.logger.helper.ts';
-
 export default defineConfig({
     plugins: [
         swc.vite({
@@ -52,7 +50,7 @@ export default defineConfig({
                 test: {
                     name: 'unit',
                     include: ['test/unit/**/*.spec.ts'],
-                    setupFiles: [loggerHelper],
+                    setupFiles: ['test/helpers/test.logger.helper.ts'],
                     isolate: false,
                     testTimeout: 5000,
                     sequence: { groupOrder: 0 },

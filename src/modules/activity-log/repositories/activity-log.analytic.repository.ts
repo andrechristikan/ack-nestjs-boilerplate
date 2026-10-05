@@ -36,8 +36,8 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
 
     async groupByActionInRange(
         actions: EnumActivityLogAction[],
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IActivityLogAnalyticActionCount[]> {
         const rows = await this.databaseService.client.activityLog.groupBy({
             by: ['action'],

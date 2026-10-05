@@ -7,25 +7,23 @@ import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
-import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-
+import type {
+    IResponsePaginationReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
-
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionHttpService } from '@modules/session/services/session.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,
@@ -94,12 +92,14 @@ export class SessionAdminController {
         @Param('sessionId', { schema: RequestMongoIdSchema })
         sessionId: string,
         @AuthJwtPayload('userId') revokedBy: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.sessionHttpService.revokeByAdmin(
             userId,
             sessionId,
             revokedBy
         );
+
+        return {};
     }
 
     @Doc({ summary: 'admin revoke all user Sessions' })
@@ -125,7 +125,9 @@ export class SessionAdminController {
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
         @AuthJwtPayload('userId') revokedBy: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.sessionHttpService.revokeAllByAdmin(userId, revokedBy);
+
+        return {};
     }
 }

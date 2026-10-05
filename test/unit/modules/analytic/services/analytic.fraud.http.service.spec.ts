@@ -6,6 +6,10 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import {
+    EnumAnalyticFraudBand,
+    EnumAnalyticFraudContributingSignal,
+} from '@modules/analytic/enums/analytic.enum';
 import { AnalyticFraudDomain } from '@modules/analytic/domains/analytic.fraud.domain';
 import { AnalyticFraudHttpService } from '@modules/analytic/services/analytic.fraud.http.service';
 import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
@@ -769,8 +773,10 @@ describe('AnalyticFraudHttpService', () => {
             analyticFraudDomain.riskScore.mockResolvedValue({
                 userId: 'user-1',
                 score: 42,
-                band: 'medium',
-                contributingSignalCodes: ['signal-1'],
+                band: EnumAnalyticFraudBand.review,
+                contributingSignalCodes: [
+                    EnumAnalyticFraudContributingSignal.sharedFingerprint,
+                ],
             });
 
             const result = await service.riskScore('user-1');
@@ -779,8 +785,10 @@ describe('AnalyticFraudHttpService', () => {
                 data: {
                     userId: 'user-1',
                     score: 42,
-                    band: 'medium',
-                    contributingSignalCodes: ['signal-1'],
+                    band: EnumAnalyticFraudBand.review,
+                    contributingSignalCodes: [
+                        EnumAnalyticFraudContributingSignal.sharedFingerprint,
+                    ],
                 },
             });
             expect(analyticFraudDomain.riskScore).toHaveBeenCalledWith(
@@ -797,8 +805,10 @@ describe('AnalyticFraudHttpService', () => {
                     {
                         userId: 'user-1',
                         score: 42,
-                        band: 'medium',
-                        contributingSignalCodes: ['nearLockout'],
+                        band: EnumAnalyticFraudBand.review,
+                        contributingSignalCodes: [
+                            EnumAnalyticFraudContributingSignal.nearLockout,
+                        ],
                     },
                 ],
             };

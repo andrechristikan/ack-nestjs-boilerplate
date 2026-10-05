@@ -125,25 +125,21 @@ export class ApiKeyDomain {
                 false
             ),
         ];
-        let startAtDay: Date | undefined;
-        let endAtDay: Date | undefined;
+        let dateWindow: { startAt: Date; endAt: Date } | null = null;
         if (startAt && endAt) {
-            startAtDay = this.helperDateService.create(startAt, {
+            const startAtDay = this.helperDateService.create(startAt, {
                 dayOf: EnumHelperDateDayOf.start,
             });
-            endAtDay = this.helperDateService.create(endAt, {
+            const endAtDay = this.helperDateService.create(endAt, {
                 dayOf: EnumHelperDateDayOf.end,
             });
-        } else {
-            startAtDay = undefined;
-            endAtDay = undefined;
+            dateWindow = { startAt: startAtDay, endAt: endAtDay };
         }
         const created = await this.apiKeyRepository.create(
             apiKeyId,
             {
                 ...others,
-                startAt: startAtDay,
-                endAt: endAtDay,
+                ...dateWindow,
             },
             key,
             hash

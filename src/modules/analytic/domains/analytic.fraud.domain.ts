@@ -4,6 +4,7 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import { AnalyticCacheEmptyToken } from '@modules/analytic/constants/analytic.constant';
 import {
     AnalyticAccountTakeoverAvailableOrderBy,
     AnalyticBackupCodeNewDeviceAvailableOrderBy,
@@ -15,6 +16,11 @@ import {
     AnalyticSharedFingerprintAvailableOrderBy,
     AnalyticUserCountAvailableOrderBy,
 } from '@modules/analytic/constants/analytic.list.constant';
+import {
+    EnumAnalyticFraudBand,
+    EnumAnalyticFraudContributingSignal,
+    EnumAnalyticFraudSignal,
+} from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticAccountTakeover,
     IAnalyticApiKeyBurst,
@@ -73,10 +79,6 @@ export class AnalyticFraudDomain {
     private readonly bandMonitorMax: number;
     private readonly bandReviewMax: number;
     private readonly bandElevateMax: number;
-    private readonly bandLabelMonitor: string;
-    private readonly bandLabelReview: string;
-    private readonly bandLabelElevate: string;
-    private readonly bandLabelCritical: string;
 
     constructor(
         private readonly analyticCache: AnalyticCache,
@@ -187,18 +189,6 @@ export class AnalyticFraudDomain {
         this.bandElevateMax = this.configService.get<number>(
             'analytic.fraud.bands.elevateMax'
         )!;
-        this.bandLabelMonitor = this.configService.get<string>(
-            'analytic.fraud.bandLabels.monitor'
-        )!;
-        this.bandLabelReview = this.configService.get<string>(
-            'analytic.fraud.bandLabels.review'
-        )!;
-        this.bandLabelElevate = this.configService.get<string>(
-            'analytic.fraud.bandLabels.elevate'
-        )!;
-        this.bandLabelCritical = this.configService.get<string>(
-            'analytic.fraud.bandLabels.critical'
-        )!;
     }
 
     private resolveWindow(
@@ -211,17 +201,17 @@ export class AnalyticFraudDomain {
         return defaultWindowInMs;
     }
 
-    private resolveBand(score: number): string {
+    private resolveBand(score: number): EnumAnalyticFraudBand {
         if (score <= this.bandMonitorMax) {
-            return this.bandLabelMonitor;
+            return EnumAnalyticFraudBand.monitor;
         }
         if (score <= this.bandReviewMax) {
-            return this.bandLabelReview;
+            return EnumAnalyticFraudBand.review;
         }
         if (score <= this.bandElevateMax) {
-            return this.bandLabelElevate;
+            return EnumAnalyticFraudBand.elevate;
         }
-        return this.bandLabelCritical;
+        return EnumAnalyticFraudBand.critical;
     }
 
     private async computeCredentialStuffing(
@@ -490,7 +480,7 @@ export class AnalyticFraudDomain {
         );
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'credential-stuffing',
+                EnumAnalyticFraudSignal.credentialStuffing,
                 String(window)
             );
         if (cached) {
@@ -505,7 +495,7 @@ export class AnalyticFraudDomain {
             },
         };
         await this.analyticCache.setFraudSummary(
-            'credential-stuffing',
+            EnumAnalyticFraudSignal.credentialStuffing,
             String(window),
             summary
         );
@@ -543,7 +533,7 @@ export class AnalyticFraudDomain {
         const window = this.analyticDateUtil.windowToken(startDate, endDate);
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'account-takeover',
+                EnumAnalyticFraudSignal.accountTakeover,
                 window
             );
         if (cached) {
@@ -555,7 +545,7 @@ export class AnalyticFraudDomain {
             window,
         };
         await this.analyticCache.setFraudSummary(
-            'account-takeover',
+            EnumAnalyticFraudSignal.accountTakeover,
             window,
             summary
         );
@@ -592,7 +582,7 @@ export class AnalyticFraudDomain {
         );
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'mass-registration',
+                EnumAnalyticFraudSignal.massRegistration,
                 String(window)
             );
         if (cached) {
@@ -604,7 +594,7 @@ export class AnalyticFraudDomain {
             window: String(window),
         };
         await this.analyticCache.setFraudSummary(
-            'mass-registration',
+            EnumAnalyticFraudSignal.massRegistration,
             String(window),
             summary
         );
@@ -644,7 +634,7 @@ export class AnalyticFraudDomain {
         );
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'password-reset-enumeration',
+                EnumAnalyticFraudSignal.passwordResetEnumeration,
                 String(window)
             );
         if (cached) {
@@ -656,7 +646,7 @@ export class AnalyticFraudDomain {
             window: String(window),
         };
         await this.analyticCache.setFraudSummary(
-            'password-reset-enumeration',
+            EnumAnalyticFraudSignal.passwordResetEnumeration,
             String(window),
             summary
         );
@@ -690,8 +680,8 @@ export class AnalyticFraudDomain {
     async sharedFingerprintSummary(): Promise<IAnalyticFraudSummary> {
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'shared-fingerprint',
-                '_'
+                EnumAnalyticFraudSignal.sharedFingerprint,
+                AnalyticCacheEmptyToken
             );
         if (cached) {
             return cached;
@@ -701,8 +691,8 @@ export class AnalyticFraudDomain {
         );
         const summary: IAnalyticFraudSummary = { count: rows.length };
         await this.analyticCache.setFraudSummary(
-            'shared-fingerprint',
-            '_',
+            EnumAnalyticFraudSignal.sharedFingerprint,
+            AnalyticCacheEmptyToken,
             summary
         );
         return summary;
@@ -735,7 +725,7 @@ export class AnalyticFraudDomain {
         const window = this.analyticDateUtil.windowToken(startDate, endDate);
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'session-after-admin',
+                EnumAnalyticFraudSignal.sessionAfterAdmin,
                 window
             );
         if (cached) {
@@ -747,7 +737,7 @@ export class AnalyticFraudDomain {
             window,
         };
         await this.analyticCache.setFraudSummary(
-            'session-after-admin',
+            EnumAnalyticFraudSignal.sessionAfterAdmin,
             window,
             summary
         );
@@ -784,7 +774,7 @@ export class AnalyticFraudDomain {
         );
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'forgot-password-token-abuse',
+                EnumAnalyticFraudSignal.forgotPasswordTokenAbuse,
                 String(window)
             );
         if (cached) {
@@ -796,7 +786,7 @@ export class AnalyticFraudDomain {
             window: String(window),
         };
         await this.analyticCache.setFraudSummary(
-            'forgot-password-token-abuse',
+            EnumAnalyticFraudSignal.forgotPasswordTokenAbuse,
             String(window),
             summary
         );
@@ -836,7 +826,7 @@ export class AnalyticFraudDomain {
         );
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'refresh-spike',
+                EnumAnalyticFraudSignal.refreshSpike,
                 String(window)
             );
         if (cached) {
@@ -848,7 +838,7 @@ export class AnalyticFraudDomain {
             window: String(window),
         };
         await this.analyticCache.setFraudSummary(
-            'refresh-spike',
+            EnumAnalyticFraudSignal.refreshSpike,
             String(window),
             summary
         );
@@ -888,7 +878,7 @@ export class AnalyticFraudDomain {
         );
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'backup-code-new-device',
+                EnumAnalyticFraudSignal.backupCodeNewDevice,
                 String(window)
             );
         if (cached) {
@@ -900,7 +890,7 @@ export class AnalyticFraudDomain {
             window: String(window),
         };
         await this.analyticCache.setFraudSummary(
-            'backup-code-new-device',
+            EnumAnalyticFraudSignal.backupCodeNewDevice,
             String(window),
             summary
         );
@@ -937,7 +927,7 @@ export class AnalyticFraudDomain {
         const window = this.resolveWindow(windowMs, this.apiKeyBurstWindowInMs);
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'api-key-burst',
+                EnumAnalyticFraudSignal.apiKeyBurst,
                 String(window)
             );
         if (cached) {
@@ -949,7 +939,7 @@ export class AnalyticFraudDomain {
             window: String(window),
         };
         await this.analyticCache.setFraudSummary(
-            'api-key-burst',
+            EnumAnalyticFraudSignal.apiKeyBurst,
             String(window),
             summary
         );
@@ -1003,7 +993,8 @@ export class AnalyticFraudDomain {
             forgotPasswordAbuse: this.weightForgotPasswordAbuse,
         };
 
-        const contributingSignalCodes: string[] = [];
+        const contributingSignalCodes: EnumAnalyticFraudContributingSignal[] =
+            [];
         let score = 0;
 
         if (
@@ -1014,7 +1005,9 @@ export class AnalyticFraudDomain {
             )
         ) {
             score += weights.nearLockout;
-            contributingSignalCodes.push('nearLockout');
+            contributingSignalCodes.push(
+                EnumAnalyticFraudContributingSignal.nearLockout
+            );
         }
 
         const shared = await this.deviceAnalyticDomain.getSharedFingerprints(
@@ -1022,7 +1015,9 @@ export class AnalyticFraudDomain {
         );
         if (shared.some(s => s.userIds.includes(userId))) {
             score += weights.sharedFingerprint;
-            contributingSignalCodes.push('sharedFingerprint');
+            contributingSignalCodes.push(
+                EnumAnalyticFraudContributingSignal.sharedFingerprint
+            );
         }
 
         const band = this.resolveBand(score);

@@ -15,7 +15,7 @@ import {
 type IPipeMixin = {
     extractFilesToValidate(value: IFileInput): IFile[];
     isEmptyValue(value: unknown): boolean;
-    signaturesOf(extension: EnumFileExtension): readonly string[] | undefined;
+    signaturesOf(extension: EnumFileExtension): readonly string[] | null;
     validate(file: IFile): Promise<void>;
 };
 
@@ -282,7 +282,7 @@ describe('FileExtensionPipe', () => {
             ]);
         });
 
-        it('returns undefined for an extension the contract does not map', async () => {
+        it('returns null for an extension the contract does not map', async () => {
             const pipe = (await createFileExtensionPipe(
                 [EnumFileExtensionTemplate.hbs],
                 fileService
@@ -290,7 +290,7 @@ describe('FileExtensionPipe', () => {
 
             expect(
                 pipe['signaturesOf'](EnumFileExtensionTemplate.hbs)
-            ).toBeUndefined();
+            ).toBeNull();
         });
     });
 

@@ -47,24 +47,25 @@ export const RoleCurrent = createParamDecorator<
         | NonNullable<
               IRoleWithPolicies[Extract<keyof IRoleWithPolicies, string>]
           > => {
-        const user = ClsServiceManager.getClsService().get<IUser | undefined>(
-            UserStoreKey
-        );
-        if (user === undefined || user === null) {
+        const user =
+            ClsServiceManager.getClsService().get<IUser | null>(UserStoreKey) ??
+            null;
+        if (user === null) {
             throw new RequestContextMissingException(UserStoreKey);
         }
 
-        const { role } = user;
-        if (role === undefined || role === null) {
+        const role = user.role ?? null;
+        if (role === null) {
             throw new RequestContextMissingException(`${UserStoreKey}.role`);
         }
 
-        if (field === undefined || field === null) {
+        const fieldKey = field ?? null;
+        if (fieldKey === null) {
             return role;
         }
 
-        const value = role[field];
-        if (value === undefined || value === null) {
+        const value = role[fieldKey] ?? null;
+        if (value === null) {
             throw new RequestContextMissingException(
                 `${UserStoreKey}.role.${field}`
             );

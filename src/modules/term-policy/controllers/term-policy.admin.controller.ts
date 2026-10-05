@@ -11,21 +11,17 @@ import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
-
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { TermPolicyContentPresignRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
 import type { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
@@ -52,14 +48,12 @@ import {
     Put,
     Query,
 } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-
 import type { TermPolicy } from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.termPolicy')
@@ -184,11 +178,13 @@ export class TermPolicyAdminController {
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.termPolicyContentHttpService.updateContentByAdmin(
             termPolicyId,
             body
         );
+
+        return {};
     }
 
     @Doc({ summary: 'add content to a term or policy by ID' })
@@ -209,11 +205,13 @@ export class TermPolicyAdminController {
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.termPolicyContentHttpService.addContentByAdmin(
             termPolicyId,
             body
         );
+
+        return {};
     }
 
     @Doc({ summary: 'remove content of a term or policy by ID' })
@@ -234,11 +232,13 @@ export class TermPolicyAdminController {
         termPolicyId: string,
         @Body({ schema: TermPolicyRemoveContentRequestSchema })
         body: TermPolicyRemoveContentRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.termPolicyContentHttpService.removeContentByAdmin(
             termPolicyId,
             body
         );
+
+        return {};
     }
 
     @Doc({ summary: 'get content of a term or policy by ID and language' })
@@ -285,10 +285,12 @@ export class TermPolicyAdminController {
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
         @AuthJwtPayload('userId') updatedBy: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.termPolicyHttpService.publishByAdmin(
             termPolicyId,
             updatedBy
         );
+
+        return {};
     }
 }

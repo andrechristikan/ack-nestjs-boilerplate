@@ -53,7 +53,7 @@ root of `test/<type>/`, `helper` in a `helpers/` folder; the type segment is pre
 | interface, data shape, payload | kind word last | `IUser`, `INotificationSendPushPayload` |
 | constant of any kind | PascalCase | `UserDefaultAvailableSearch`, `AuthJwtAccessGuardKey` |
 | injected field | the class name in camelCase | `authDomain: AuthDomain` |
-| metadata key; CLS store key | `<Module>[<Concern>]MetaKey`, value equal to its name; `<Module>[<Concern>]StoreKey`, value `<Module>[<Concern>]Store` | `PolicyRequiredMetaKey`; `UserStoreKey = 'UserStore'` |
+| metadata key; CLS store key; passport strategy key | `<Module>[<Concern>]MetaKey`, `StoreKey`, `GuardKey`; the value equals the name | `PolicyRequiredMetaKey = 'PolicyRequiredMetaKey'`; `UserStoreKey = 'UserStoreKey'` |
 | guard-mounting decorator; param decorator | `<Module>[<Concern>]Protected()`; `<Module>[<Concern>]Current(field?)` for what a guard stored, `<Module>[<Concern>]Payload(field?)` for the authenticated credential | `WorkspaceMemberProtected()`; `WorkspaceCurrent()`, `AuthJwtPayload('sessionId')` |
 | repository read; domain or HTTP service read | `find*`, `count*`, `exists*`, `group*`; `get*` | `findOneById`; `getListOffsetByAdmin` |
 | method serving one audience | `By<Audience>` suffix | `createByAdmin`, `getListCursorBySystem` |

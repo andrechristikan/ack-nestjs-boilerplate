@@ -17,7 +17,6 @@ import {
 import type { ResponsePaginationDto } from '@common/response/dtos/response.pagination.dto';
 import type { ResponsePaginationMetadataDto } from '@common/response/dtos/response.pagination-metadata.dto';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { IMessageProperties } from '@common/message/interfaces/message.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -78,7 +77,7 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
      * A page without a declared item schema is a route that promised no data, so it fails closed.
      */
     private async serialize(
-        schema: StandardSchemaV1 | undefined,
+        schema: StandardSchemaV1 | null,
         items: unknown[]
     ): Promise<T[]> {
         if (!schema) {
@@ -120,9 +119,10 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                         ResponseMessagePathMetaKey,
                         context.getHandler()
                     );
-                    const schema = this.reflector.get<
+                    const reflectedSchema = this.reflector.get<
                         StandardSchemaV1 | undefined
                     >(ResponseSchemaMetaKey, context.getHandler());
+                    const schema = reflectedSchema ?? null;
 
                     let data: T[] = [];
 
@@ -141,24 +141,25 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                         type,
                     } = responseData;
 
-                    let nextCursor: string | undefined;
-                    let previousCursor: string | undefined;
-
-                    let totalPage: number | undefined;
-                    let nextPage: number | undefined;
-                    let previousPage: number | undefined;
-                    let page: number | undefined;
-                    let hasPrevious: boolean = false;
-
-                    if (responseData.type === EnumPaginationType.cursor) {
-                        nextCursor = responseData.cursor;
-                    } else {
-                        totalPage = responseData.totalPage;
-                        nextPage = responseData.nextPage;
-                        previousPage = responseData.previousPage;
-                        page = responseData.page;
-                        hasPrevious = responseData.hasPrevious;
-                    }
+                    const pageMetadata =
+                        responseData.type === EnumPaginationType.cursor
+                            ? {
+                                  hasPrevious: false,
+                                  ...(responseData.cursor && {
+                                      nextCursor: responseData.cursor,
+                                  }),
+                              }
+                            : {
+                                  hasPrevious: responseData.hasPrevious,
+                                  totalPage: responseData.totalPage,
+                                  page: responseData.page,
+                                  ...(responseData.nextPage && {
+                                      nextPage: responseData.nextPage,
+                                  }),
+                                  ...(responseData.previousPage && {
+                                      previousPage: responseData.previousPage,
+                                  }),
+                              };
 
                     data = await this.serialize(schema, rData);
                     messagePath = rMetadata?.messagePath ?? messagePath;
@@ -167,8 +168,7 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                         rMetadata?.httpStatus ?? response.statusCode;
                     const statusCode =
                         rMetadata?.statusCode ?? response.statusCode;
-                    const messageProperties: IMessageProperties | undefined =
-                        rMetadata?.messageProperties;
+                    const messageProperties = rMetadata?.messageProperties;
 
                     if (rMetadata) {
                         delete rMetadata.httpStatus;
@@ -188,13 +188,7 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                         type,
                         count,
                         hasNext,
-                        hasPrevious,
-                        totalPage,
-                        nextCursor,
-                        previousCursor,
-                        nextPage,
-                        previousPage,
-                        page,
+                        ...pageMetadata,
                         perPage,
                         search: pagination.search,
                         filters: pagination.filters,

@@ -178,14 +178,14 @@ export class UserImportDomain {
     }
 
     async exportByAdmin(
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        status: Record<string, IPaginationIn> | null,
+        roleId: Record<string, IPaginationEqual> | null,
+        countryId: Record<string, IPaginationEqual> | null
     ): Promise<IUser[]> {
         const users = await this.userRepository.findExport(
-            status ?? null,
-            roleId ?? null,
-            countryId ?? null,
+            status,
+            roleId,
+            countryId,
             this.maxDataExport + 1
         );
 

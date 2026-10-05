@@ -29,19 +29,21 @@ export const ApiKeyPayload = createParamDecorator<
     (
         field: Extract<keyof ApiKey, string> | undefined
     ): ApiKey | NonNullable<ApiKey[Extract<keyof ApiKey, string>]> => {
-        const apiKey = ClsServiceManager.getClsService().get<
-            ApiKey | undefined
-        >(ApiKeyStoreKey);
-        if (apiKey === undefined || apiKey === null) {
+        const current =
+            ClsServiceManager.getClsService().get<ApiKey | null>(
+                ApiKeyStoreKey
+            ) ?? null;
+        if (current === null) {
             throw new RequestContextMissingException(ApiKeyStoreKey);
         }
 
-        if (field === undefined || field === null) {
-            return apiKey;
+        const fieldKey = field ?? null;
+        if (fieldKey === null) {
+            return current;
         }
 
-        const value = apiKey[field];
-        if (value === undefined || value === null) {
+        const value = current[fieldKey] ?? null;
+        if (value === null) {
             throw new RequestContextMissingException(
                 `${ApiKeyStoreKey}.${field}`
             );

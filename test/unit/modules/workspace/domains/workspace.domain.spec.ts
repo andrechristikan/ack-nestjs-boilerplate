@@ -1401,6 +1401,39 @@ describe('WorkspaceDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
+        it('passes the workspaceId of an onboarding activity that carries one', () => {
+            const activityEvent: IActivityLogStagedEvent = {
+                action: EnumActivityLogAction.userCreated,
+                metadata: {},
+                onError: false,
+            };
+            userOnboardingDomain.buildOnboardingActivities.mockReturnValue([
+                {
+                    action: EnumActivityLogAction.userCreated,
+                    userId: 'user-1',
+                    workspaceId: 'workspace-1',
+                    createdBy: 'user-1',
+                    metadata: {},
+                },
+            ]);
+            activityLogDomain.prepare.mockReturnValueOnce(activityEvent);
+
+            const events = domain['prepareOnboardingActivities'](
+                [personalInputFixture],
+                [user],
+                EnumUserCreateMode.signUp
+            );
+
+            expect(events).toEqual([activityEvent]);
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.userCreated,
+                userId: 'user-1',
+                createdBy: 'user-1',
+                workspaceId: 'workspace-1',
+                metadata: {},
+            });
+        });
+
         it('adds the admin payload event and every onboarding activity when an admin action is given', () => {
             const stagedEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.adminUserImport,
@@ -1446,9 +1479,11 @@ describe('WorkspaceDomain', () => {
                 action: EnumActivityLogAction.userCreated,
                 userId: 'user-1',
                 createdBy: 'user-1',
-                workspaceId: undefined,
                 metadata: {},
             });
+            expect(activityLogDomain.prepare).not.toHaveBeenCalledWith(
+                expect.objectContaining({ workspaceId: undefined })
+            );
             expect(
                 userOnboardingDomain.buildAdminPayloadMetadata
             ).toHaveBeenCalledWith(EnumActivityLogAction.adminUserImport, [

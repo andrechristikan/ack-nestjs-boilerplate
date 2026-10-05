@@ -470,7 +470,7 @@ describe('ResponsePaginationInterceptor', () => {
 
     describe('serialize', () => {
         it('throws ResponseSerializationException when no schema is declared', async () => {
-            const promise = interceptor['serialize'](undefined, [{ id: '1' }]);
+            const promise = interceptor['serialize'](null, [{ id: '1' }]);
 
             await expect(promise).rejects.toMatchObject({
                 module: 'response',

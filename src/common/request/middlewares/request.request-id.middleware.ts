@@ -1,5 +1,7 @@
 import {
+    RequestCorrelationIdHeaderName,
     RequestCorrelationIdStoreKey,
+    RequestIdHeaderName,
     RequestIdStoreKey,
 } from '@common/request/constants/request.constant';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
@@ -10,7 +12,7 @@ import type { NextFunction, Response } from 'express';
 import { v7 as uuid } from 'uuid';
 
 /**
- * Assigns a fresh `req.id` and reuses or generates `x-correlation-id`, syncing it back to headers.
+ * Assigns a fresh `req.id` and reuses or generates the correlation id header, syncing it back to headers.
  */
 @Injectable()
 export class RequestRequestIdMiddleware implements NestMiddleware {
@@ -18,17 +20,17 @@ export class RequestRequestIdMiddleware implements NestMiddleware {
 
     use(req: IRequestApp, _res: Response, next: NextFunction): void {
         req.id = uuid();
-        req.headers['x-request-id'] = req.id;
+        req.headers[RequestIdHeaderName] = req.id;
 
-        const correlationId = req.headers['x-correlation-id'];
+        const correlationId = req.headers[RequestCorrelationIdHeaderName];
         if (correlationId && typeof correlationId === 'string') {
             req.correlationId = correlationId;
-            req.headers['x-correlation-id'] = correlationId;
+            req.headers[RequestCorrelationIdHeaderName] = correlationId;
         } else {
             const newCorrelationId = uuid();
 
             req.correlationId = newCorrelationId;
-            req.headers['x-correlation-id'] = newCorrelationId;
+            req.headers[RequestCorrelationIdHeaderName] = newCorrelationId;
         }
 
         this.requestStoreService.set(RequestIdStoreKey, req.id);

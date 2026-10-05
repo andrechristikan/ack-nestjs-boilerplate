@@ -5,9 +5,28 @@ import {
     RequestOptionalEnvSesIdentityArnSchema,
     RequestOptionalEnvStringSchema,
     RequestOptionalEnvUrlNoTrailingSlashSchema,
+    readOptionalEnv,
 } from '@common/request/validations/request.optional-env.validation';
 
 describe('request.optional-env.validation', () => {
+    describe('readOptionalEnv', () => {
+        it('returns null for an absent value', () => {
+            expect(readOptionalEnv(undefined)).toBeNull();
+        });
+
+        it('returns null for an empty string', () => {
+            expect(readOptionalEnv('')).toBeNull();
+        });
+
+        it('returns a non-empty value as it is', () => {
+            expect(readOptionalEnv('eu-west-1')).toBe('eu-west-1');
+        });
+
+        it('keeps a whitespace-only value', () => {
+            expect(readOptionalEnv(' ')).toBe(' ');
+        });
+    });
+
     describe('RequestOptionalEnvSchema', () => {
         const schema = RequestOptionalEnvSchema(z.email());
 

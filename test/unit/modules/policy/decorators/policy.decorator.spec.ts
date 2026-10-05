@@ -106,7 +106,7 @@ describe('policy.decorator', () => {
                 messagePath: 'request.error.contextMissing',
                 rawError: expect.objectContaining({
                     message:
-                        'RequestContextMissingException: no value for "PolicyStore"',
+                        'RequestContextMissingException: no value for "PolicyStoreKey"',
                 }),
             });
         });
@@ -134,7 +134,7 @@ describe('policy.decorator', () => {
                 messagePath: 'request.error.contextMissing',
                 rawError: expect.objectContaining({
                     message:
-                        'RequestContextMissingException: no value for "PolicyStore"',
+                        'RequestContextMissingException: no value for "PolicyStoreKey"',
                 }),
             });
         });

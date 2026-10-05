@@ -12,7 +12,7 @@ export const PolicyRequiredMetaKey = 'PolicyRequiredMetaKey';
  * Request-store key holding the caller's role policies, set by the role guard and read by the policy guard.
  * @public
  */
-export const PolicyStoreKey = 'PolicyStore';
+export const PolicyStoreKey = 'PolicyStoreKey';
 
 /**
  * Policy guard error kit for `@PolicyProtected`.

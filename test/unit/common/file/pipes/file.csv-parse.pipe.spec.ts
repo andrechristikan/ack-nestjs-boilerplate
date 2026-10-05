@@ -112,10 +112,10 @@ describe('FileCsvParsePipe', () => {
     });
 
     describe('transform', () => {
-        it('returns undefined when the value is falsy', async () => {
+        it('returns null when the value is falsy', async () => {
             const result = await pipe.transform(undefined as unknown as IFile);
 
-            expect(result).toBeUndefined();
+            expect(result).toBeNull();
         });
 
         it('validates then parses the buffer through FileService.readCsv', async () => {

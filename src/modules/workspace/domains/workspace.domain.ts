@@ -177,7 +177,9 @@ export class WorkspaceDomain {
                     action: activity.action,
                     userId: activity.userId,
                     createdBy: activity.createdBy,
-                    workspaceId: activity.workspaceId ?? undefined,
+                    ...(activity.workspaceId !== null && {
+                        workspaceId: activity.workspaceId,
+                    }),
                     metadata: activity.metadata,
                 });
                 events.push(activityEvent);

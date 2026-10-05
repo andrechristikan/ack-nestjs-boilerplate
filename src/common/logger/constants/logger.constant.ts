@@ -1,3 +1,8 @@
+import {
+    RequestCorrelationIdHeaderName,
+    RequestIdHeaderName,
+} from '@common/request/constants/request.constant';
+
 /**
  * Default context tag for log entries with no explicit context.
  * @public
@@ -5,29 +10,12 @@
 export const LoggerAutoContext = 'LoggerAutoContext';
 
 /**
- * Routes excluded from request auto-logging and from Sentry events and traces (hello, health, metrics, favicon, docs, root). Supports wildcards.
- * @public
- */
-export const LoggerExcludedRoutes: string[] = [
-    '/api/public/hello',
-    '/api/public/hello/*',
-    '/api/system/health',
-    '/api/system/health/*',
-    '/metrics',
-    '/metrics/*',
-    '/favicon.ico',
-    '/docs',
-    '/docs/*',
-    '/',
-];
-
-/**
  * Request-ID headers checked in order for cross-service correlation.
  * @public
  */
 export const LoggerRequestIdHeaders = [
-    'x-correlation-id',
-    'x-request-id',
+    RequestCorrelationIdHeaderName,
+    RequestIdHeaderName,
 ] as const;
 
 /**

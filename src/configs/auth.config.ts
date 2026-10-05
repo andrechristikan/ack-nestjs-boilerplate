@@ -2,6 +2,7 @@ import { registerAs } from '@nestjs/config';
 import ms from 'ms';
 import type { Algorithm } from 'jsonwebtoken';
 import type { HashAlgorithm, OTPStrategy } from 'otplib';
+import { readOptionalEnv } from '@common/request/validations/request.optional-env.validation';
 
 export interface IConfigAuth {
     jwt: {
@@ -23,8 +24,6 @@ export interface IConfigAuth {
         };
         audience: string;
         issuer: string;
-        header: string;
-        prefix: string;
     };
     password: {
         attempt: boolean;
@@ -35,18 +34,13 @@ export interface IConfigAuth {
         periodInDays: number;
     };
     apple: {
-        header: string;
-        prefix: string;
         clientId: string | null;
         signInClientId: string | null;
     };
     google: {
-        header: string;
-        prefix: string;
         clientId: string | null;
     };
     xApiKey: {
-        header: string;
         keyPattern: string;
     };
     twoFactor: {
@@ -101,8 +95,6 @@ export default registerAs('auth', (): IConfigAuth => ({
 
         audience: process.env.AUTH_JWT_AUDIENCE!,
         issuer: process.env.AUTH_JWT_ISSUER!,
-        header: 'Authorization',
-        prefix: 'Bearer',
     },
 
     password: {
@@ -115,18 +107,15 @@ export default registerAs('auth', (): IConfigAuth => ({
     },
 
     apple: {
-        header: 'Authorization',
-        prefix: 'Bearer',
-        clientId: process.env.AUTH_SOCIAL_APPLE_CLIENT_ID || null,
-        signInClientId: process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID || null,
+        clientId: readOptionalEnv(process.env.AUTH_SOCIAL_APPLE_CLIENT_ID),
+        signInClientId: readOptionalEnv(
+            process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID
+        ),
     },
     google: {
-        header: 'Authorization',
-        prefix: 'Bearer',
-        clientId: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID || null,
+        clientId: readOptionalEnv(process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID),
     },
     xApiKey: {
-        header: 'x-api-key',
         keyPattern: 'ApiKey:{key}',
     },
     twoFactor: {

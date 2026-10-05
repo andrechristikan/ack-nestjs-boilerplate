@@ -305,7 +305,7 @@ describe('ProjectHttpService', () => {
             );
             expect(projectDomain.getListOffsetByAdmin).toHaveBeenCalledWith(
                 paginationOffset,
-                undefined
+                null
             );
         });
     });

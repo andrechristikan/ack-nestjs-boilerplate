@@ -56,7 +56,7 @@ another guard sets sits above it. Reordering is a defect even when boot passes.
   (`src/router/http/`) with the feature's `<Module>HttpModule` in `imports`, never the domain module.
 - A path or query value binds a zod schema (`@Param('userId', { schema: RequestMongoIdSchema })`; a token or slug
   takes `RequestRequiredStringSchema`). Params are camelCase and explicit, never a bare `:id`; the template and the
-  `@Param` key agree or the value is `undefined`. A new `x-*` header joins `cors.allowedHeader` (`config.md`).
+  `@Param` key agree or the value is `undefined`. A new `x-*` header is a `HeaderName` constant `request.config.ts` lists in the CORS headers (`config.md`).
 
 ## Route path shape
 

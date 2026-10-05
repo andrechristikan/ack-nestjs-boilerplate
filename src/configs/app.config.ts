@@ -1,6 +1,7 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { registerAs } from '@nestjs/config';
 import { author, repository, version } from '@generated/package/package';
+import { readOptionalEnv } from '@common/request/validations/request.optional-env.validation';
 
 export interface IConfigApp {
     name: string;
@@ -47,7 +48,7 @@ export default registerAs('app', (): IConfigApp => ({
          * `true`. Empty trusts no proxy, so `req.ip` is the direct socket peer and a client
          * cannot forge it through `X-Forwarded-For`.
          */
-        trustedProxy: process.env.HTTP_TRUSTED_PROXY || null,
+        trustedProxy: readOptionalEnv(process.env.HTTP_TRUSTED_PROXY),
     },
     urlVersion: {
         enable: process.env.URL_VERSIONING_ENABLE === 'true',

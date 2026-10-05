@@ -33,7 +33,7 @@ export interface IProjectRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string
+        workspaceId: string | null
     ): Promise<IResponsePaginationReturn<Project>>;
     create(
         workspaceId: string,

@@ -168,7 +168,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
         });
 
         it('merges an empty filter set when status is absent', async () => {
-            paginationQueryUtil.inEnum.mockReturnValue(undefined);
+            paginationQueryUtil.inEnum.mockReturnValue(null);
             const page: IResponsePaginationReturn<WorkspaceJoinRequest> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,

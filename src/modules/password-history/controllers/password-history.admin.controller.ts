@@ -7,7 +7,6 @@ import { ResponsePagination } from '@common/response/decorators/response.decorat
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import { PasswordHistoryResponseSchema } from '@modules/password-history/dtos/response/password-history.response.dto';
 import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryHttpService } from '@modules/password-history/services/password-history.http.service';
@@ -16,7 +15,6 @@ import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Param, Query } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,

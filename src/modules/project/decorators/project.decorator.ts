@@ -50,19 +50,21 @@ export const ProjectCurrent = createParamDecorator<
     (
         field: Extract<keyof Project, string> | undefined
     ): Project | NonNullable<Project[Extract<keyof Project, string>]> => {
-        const project = ClsServiceManager.getClsService().get<
-            Project | undefined
-        >(ProjectStoreKey);
-        if (project === undefined || project === null) {
+        const project =
+            ClsServiceManager.getClsService().get<Project | null>(
+                ProjectStoreKey
+            ) ?? null;
+        if (project === null) {
             throw new RequestContextMissingException(ProjectStoreKey);
         }
 
-        if (field === undefined || field === null) {
+        const fieldKey = field ?? null;
+        if (fieldKey === null) {
             return project;
         }
 
-        const value = project[field];
-        if (value === undefined || value === null) {
+        const value = project[fieldKey] ?? null;
+        if (value === null) {
             throw new RequestContextMissingException(
                 `${ProjectStoreKey}.${field}`
             );
@@ -112,19 +114,21 @@ export const ProjectMemberCurrent = createParamDecorator<
     ):
         | ProjectMember
         | NonNullable<ProjectMember[Extract<keyof ProjectMember, string>]> => {
-        const projectMember = ClsServiceManager.getClsService().get<
-            ProjectMember | undefined
-        >(ProjectMemberStoreKey);
-        if (projectMember === undefined || projectMember === null) {
+        const projectMember =
+            ClsServiceManager.getClsService().get<ProjectMember | null>(
+                ProjectMemberStoreKey
+            ) ?? null;
+        if (projectMember === null) {
             throw new RequestContextMissingException(ProjectMemberStoreKey);
         }
 
-        if (field === undefined || field === null) {
+        const fieldKey = field ?? null;
+        if (fieldKey === null) {
             return projectMember;
         }
 
-        const value = projectMember[field];
-        if (value === undefined || value === null) {
+        const value = projectMember[fieldKey] ?? null;
+        if (value === null) {
             throw new RequestContextMissingException(
                 `${ProjectMemberStoreKey}.${field}`
             );

@@ -61,7 +61,7 @@ export class PaginationService {
     }
 
     private encodeCursor(data: IPaginationCursorValue): string {
-        if (!data || data.cursor === undefined || data.cursor === null) {
+        if (!data || (data.cursor ?? null) === null) {
             throw new PaginationInvalidCursorDataException();
         }
 
@@ -104,7 +104,7 @@ export class PaginationService {
     }
 
     private resolveOrderBy(
-        orderBy?: IPaginationOrderBy[]
+        orderBy: IPaginationOrderBy[] | null
     ): IPaginationOrderBy[] {
         if (!orderBy || orderBy.length === 0) {
             return [...PaginationDefaultOrderBy];
@@ -114,7 +114,7 @@ export class PaginationService {
     }
 
     private resolveCursorOrderBy(
-        orderBy: IPaginationOrderBy[] | undefined,
+        orderBy: IPaginationOrderBy[] | null,
         cursorField: string
     ): IPaginationOrderBy[] {
         const resolved = this.resolveOrderBy(orderBy);
@@ -139,8 +139,8 @@ export class PaginationService {
         const totalPage = Math.ceil(count / limit);
         const hasNext = currentPage < totalPage;
         const hasPrevious = currentPage > 1;
-        const nextPage = hasNext ? currentPage + 1 : undefined;
-        const previousPage = hasPrevious ? currentPage - 1 : undefined;
+        const nextPage = hasNext ? currentPage + 1 : null;
+        const previousPage = hasPrevious ? currentPage - 1 : null;
 
         return {
             type: EnumPaginationType.offset,
@@ -161,7 +161,7 @@ export class PaginationService {
         args: IPaginationOffsetArgs<TArgsWhere>
     ): Promise<IPaginationOffsetReturn<TReturn>> {
         const { limit, skip, where, include, select } = args;
-        const orderBy = this.resolveOrderBy(args.orderBy);
+        const orderBy = this.resolveOrderBy(args.orderBy ?? null);
 
         const [count, items] = await Promise.all([
             repository.count({
@@ -193,10 +193,13 @@ export class PaginationService {
             cursorField = PaginationDefaultCursorField,
             includeCount,
         } = args;
-        const orderBy = this.resolveCursorOrderBy(args.orderBy, cursorField);
+        const orderBy = this.resolveCursorOrderBy(
+            args.orderBy ?? null,
+            cursorField
+        );
         const fingerprint = this.fingerprint(where, orderBy);
 
-        let decodedCursor: IPaginationCursorValue | undefined;
+        let decodedCursor: IPaginationCursorValue | null = null;
 
         if (cursor) {
             decodedCursor = this.decodeCursor(cursor);
@@ -227,12 +230,12 @@ export class PaginationService {
 
         const results = await Promise.all(queries);
         const items = results[0] as TReturn[];
-        const count = includeCount ? (results[1] as number) : undefined;
+        const count = includeCount ? (results[1] as number) : null;
 
         const hasNext = items.length > limit;
         const data = hasNext ? items.slice(0, limit) : items;
 
-        let nextCursor: string | undefined;
+        let nextCursor: string | null = null;
         if (hasNext) {
             const nextItem = data[data.length - 1] as Record<string, unknown>;
             nextCursor = this.encodeCursor({
@@ -243,11 +246,11 @@ export class PaginationService {
 
         return {
             type: EnumPaginationType.cursor,
-            cursor: nextCursor,
+            ...(nextCursor && { cursor: nextCursor }),
             perPage: limit,
             hasNext,
             data: data as TReturn[],
-            ...(includeCount && { count }),
+            ...(count !== null && { count }),
         };
     }
 }

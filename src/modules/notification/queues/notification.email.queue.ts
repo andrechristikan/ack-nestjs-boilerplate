@@ -1,5 +1,12 @@
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
-import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import {
+    NotificationPayloadEncryptionPurpose,
+    NotificationReferenceJobIdPattern,
+    NotificationTermPolicyJobIdPattern,
+    NotificationUserJobIdPattern,
+    NotificationWorkspaceUserJobIdPattern,
+} from '@modules/notification/constants/notification.constant';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationEmailBulkQueuePayload,
@@ -42,7 +49,8 @@ export class NotificationEmailQueue {
         @InjectQueue(EnumQueue.notificationEmail)
         private readonly emailQueue: Queue,
         private readonly configService: ConfigService,
-        private readonly helperEncryptionService: HelperEncryptionService
+        private readonly helperEncryptionService: HelperEncryptionService,
+        private readonly helperStringService: HelperStringService
     ) {
         this.dedupTtlInMs = this.configService.get<number>(
             'notification.dedupTtlInMs'
@@ -89,13 +97,18 @@ export class NotificationEmailQueue {
                 },
             };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationUserJobIdPattern,
+            { process: EnumNotificationProcess.welcomeByAdmin, userId: userId }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.welcomeByAdmin,
             payload,
             {
-                jobId: `${EnumNotificationProcess.welcomeByAdmin}-${userId}`,
+                jobId: deduplicationId,
                 deduplication: {
-                    id: `${EnumNotificationProcess.welcomeByAdmin}-${userId}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
                 priority: EnumQueuePriority.medium,
@@ -131,12 +144,20 @@ export class NotificationEmailQueue {
                 },
             };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationUserJobIdPattern,
+            {
+                process: EnumNotificationProcess.temporaryPasswordByAdmin,
+                userId,
+            }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.temporaryPasswordByAdmin,
             payload,
             {
                 deduplication: {
-                    id: `${EnumNotificationProcess.temporaryPasswordByAdmin}-${userId}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
                 priority: EnumQueuePriority.medium,
@@ -159,13 +180,18 @@ export class NotificationEmailQueue {
             },
         };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationUserJobIdPattern,
+            { process: EnumNotificationProcess.resetPassword, userId: userId }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.resetPassword,
             payload,
             {
                 priority: EnumQueuePriority.low,
                 deduplication: {
-                    id: `${EnumNotificationProcess.resetPassword}-${userId}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
             }
@@ -187,13 +213,18 @@ export class NotificationEmailQueue {
             },
         };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationUserJobIdPattern,
+            { process: EnumNotificationProcess.changePassword, userId: userId }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.changePassword,
             payload,
             {
                 priority: EnumQueuePriority.low,
                 deduplication: {
-                    id: `${EnumNotificationProcess.changePassword}-${userId}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
             }
@@ -230,12 +261,20 @@ export class NotificationEmailQueue {
                 },
             };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationUserJobIdPattern,
+            {
+                process: EnumNotificationProcess.verificationEmail,
+                userId,
+            }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.verificationEmail,
             payload,
             {
                 deduplication: {
-                    id: `${EnumNotificationProcess.verificationEmail}-${userId}`,
+                    id: deduplicationId,
                     ttl: this.verificationExpiredInMs,
                 },
                 priority: EnumQueuePriority.high,
@@ -258,10 +297,15 @@ export class NotificationEmailQueue {
             },
         };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationUserJobIdPattern,
+            { process: EnumNotificationProcess.welcome, userId: userId }
+        );
+
         await this.emailQueue.add(EnumNotificationProcess.welcome, payload, {
-            jobId: `${EnumNotificationProcess.welcome}-${userId}`,
+            jobId: deduplicationId,
             deduplication: {
-                id: `${EnumNotificationProcess.welcome}-${userId}`,
+                id: deduplicationId,
                 ttl: this.dedupTtlInMs,
             },
             priority: EnumQueuePriority.low,
@@ -283,13 +327,18 @@ export class NotificationEmailQueue {
             },
         };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationUserJobIdPattern,
+            { process: EnumNotificationProcess.welcomeSocial, userId: userId }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.welcomeSocial,
             payload,
             {
-                jobId: `${EnumNotificationProcess.welcomeSocial}-${userId}`,
+                jobId: deduplicationId,
                 deduplication: {
-                    id: `${EnumNotificationProcess.welcomeSocial}-${userId}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
                 priority: EnumQueuePriority.low,
@@ -319,13 +368,18 @@ export class NotificationEmailQueue {
                 },
             };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationUserJobIdPattern,
+            { process: EnumNotificationProcess.verifiedEmail, userId: userId }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.verifiedEmail,
             payload,
             {
-                jobId: `${EnumNotificationProcess.verifiedEmail}-${userId}`,
+                jobId: deduplicationId,
                 deduplication: {
-                    id: `${EnumNotificationProcess.verifiedEmail}-${userId}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
                 priority: EnumQueuePriority.low,
@@ -365,12 +419,17 @@ export class NotificationEmailQueue {
                 },
             };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationUserJobIdPattern,
+            { process: EnumNotificationProcess.forgotPassword, userId: userId }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.forgotPassword,
             payload,
             {
                 deduplication: {
-                    id: `${EnumNotificationProcess.forgotPassword}-${userId}`,
+                    id: deduplicationId,
                     ttl: this.forgotPasswordResendInMs,
                 },
                 priority: EnumQueuePriority.high,
@@ -406,13 +465,21 @@ export class NotificationEmailQueue {
                 },
             };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationUserJobIdPattern,
+            {
+                process: EnumNotificationProcess.verifiedMobileNumber,
+                userId,
+            }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.verifiedMobileNumber,
             payload,
             {
-                jobId: `${EnumNotificationProcess.verifiedMobileNumber}-${userId}`,
+                jobId: deduplicationId,
                 deduplication: {
-                    id: `${EnumNotificationProcess.verifiedMobileNumber}-${userId}`,
+                    id: deduplicationId,
                     ttl: this.verificationResendInMs,
                 },
                 priority: EnumQueuePriority.low,
@@ -435,12 +502,20 @@ export class NotificationEmailQueue {
             },
         };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationUserJobIdPattern,
+            {
+                process: EnumNotificationProcess.resetTwoFactorByAdmin,
+                userId,
+            }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.resetTwoFactorByAdmin,
             payload,
             {
                 deduplication: {
-                    id: `${EnumNotificationProcess.resetTwoFactorByAdmin}-${userId}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
                 priority: EnumQueuePriority.high,
@@ -478,12 +553,17 @@ export class NotificationEmailQueue {
                 },
             };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationUserJobIdPattern,
+            { process: EnumNotificationProcess.newDeviceLogin, userId: userId }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.newDeviceLogin,
             payload,
             {
                 deduplication: {
-                    id: `${EnumNotificationProcess.newDeviceLogin}-${userId}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
                 priority: EnumQueuePriority.high,
@@ -501,13 +581,22 @@ export class NotificationEmailQueue {
                 data: publishTermPolicy,
             };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationTermPolicyJobIdPattern,
+            {
+                process: EnumNotificationProcess.publishTermPolicy,
+                type: publishTermPolicy.type,
+                version: String(publishTermPolicy.version),
+            }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.publishTermPolicy,
             payload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
-                    id: `${EnumNotificationProcess.publishTermPolicy}-${publishTermPolicy.type}-${publishTermPolicy.version}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
             }
@@ -525,13 +614,21 @@ export class NotificationEmailQueue {
                 data,
             };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationReferenceJobIdPattern,
+            {
+                process: EnumNotificationProcess.workspaceInvite,
+                reference: data.reference,
+            }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.workspaceInvite,
             payload,
             {
                 priority: EnumQueuePriority.high,
                 deduplication: {
-                    id: `${EnumNotificationProcess.workspaceInvite}-${data.reference}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
             }
@@ -562,13 +659,21 @@ export class NotificationEmailQueue {
                 },
             };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationReferenceJobIdPattern,
+            {
+                process: EnumNotificationProcess.workspaceInviteUnregistered,
+                reference: invite.reference,
+            }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.workspaceInviteUnregistered,
             payload,
             {
                 priority: EnumQueuePriority.high,
                 deduplication: {
-                    id: `${EnumNotificationProcess.workspaceInviteUnregistered}-${invite.reference}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
             }
@@ -585,13 +690,22 @@ export class NotificationEmailQueue {
                 data,
             };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationWorkspaceUserJobIdPattern,
+            {
+                process: EnumNotificationProcess.workspaceJoinRequest,
+                workspaceId: data.workspaceId,
+                userId: sendPayload.userId,
+            }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.workspaceJoinRequest,
             payload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
-                    id: `${EnumNotificationProcess.workspaceJoinRequest}-${data.workspaceId}-${sendPayload.userId}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
             }
@@ -608,13 +722,22 @@ export class NotificationEmailQueue {
                 data,
             };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationWorkspaceUserJobIdPattern,
+            {
+                process: EnumNotificationProcess.workspaceJoinAccepted,
+                workspaceId: data.workspaceId,
+                userId: sendPayload.userId,
+            }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.workspaceJoinAccepted,
             payload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
-                    id: `${EnumNotificationProcess.workspaceJoinAccepted}-${data.workspaceId}-${sendPayload.userId}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
             }
@@ -631,13 +754,22 @@ export class NotificationEmailQueue {
                 data,
             };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationWorkspaceUserJobIdPattern,
+            {
+                process: EnumNotificationProcess.workspaceJoinRejected,
+                workspaceId: data.workspaceId,
+                userId: sendPayload.userId,
+            }
+        );
+
         await this.emailQueue.add(
             EnumNotificationProcess.workspaceJoinRejected,
             payload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
-                    id: `${EnumNotificationProcess.workspaceJoinRejected}-${data.workspaceId}-${sendPayload.userId}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
             }

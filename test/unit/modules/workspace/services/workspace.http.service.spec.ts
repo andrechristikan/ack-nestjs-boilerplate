@@ -275,7 +275,7 @@ describe('WorkspaceHttpService', () => {
 
         it('merges an empty filter set when isPublic is absent', async () => {
             const query: WorkspaceAdminListRequestDto = {};
-            paginationQueryUtil.equalBoolean.mockReturnValue(undefined);
+            paginationQueryUtil.equalBoolean.mockReturnValue(null);
             const page: IResponsePaginationReturn<Workspace> = {
                 type: EnumPaginationType.offset,
                 count: 0,

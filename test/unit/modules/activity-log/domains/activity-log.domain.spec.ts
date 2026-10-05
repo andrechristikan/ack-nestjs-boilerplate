@@ -647,7 +647,7 @@ describe('ActivityLogDomain', () => {
             try {
                 domain['assertTargetOnlyField'](
                     EnumActivityLogUser.target,
-                    undefined
+                    null
                 );
             } catch (error) {
                 thrown = error;
@@ -669,7 +669,7 @@ describe('ActivityLogDomain', () => {
             expect(() =>
                 domain['assertTargetOnlyField'](
                     EnumActivityLogUser.payload,
-                    undefined
+                    null
                 )
             ).not.toThrow();
         });
@@ -713,7 +713,7 @@ describe('ActivityLogDomain', () => {
             try {
                 domain['assertWorkspaceFields'](
                     EnumActivityLogWorkspace.target,
-                    undefined
+                    null
                 );
             } catch (error) {
                 thrown = error;
@@ -731,11 +731,11 @@ describe('ActivityLogDomain', () => {
             });
         });
 
-        it('accepts a none resolution with an undefined workspaceId', () => {
+        it('accepts a none resolution with an null workspaceId', () => {
             expect(() =>
                 domain['assertWorkspaceFields'](
                     EnumActivityLogWorkspace.none,
-                    undefined
+                    null
                 )
             ).not.toThrow();
         });
@@ -763,11 +763,11 @@ describe('ActivityLogDomain', () => {
             });
         });
 
-        it('accepts a payload resolution with an undefined workspaceId', () => {
+        it('accepts a payload resolution with an null workspaceId', () => {
             expect(() =>
                 domain['assertWorkspaceFields'](
                     EnumActivityLogWorkspace.payload,
-                    undefined
+                    null
                 )
             ).not.toThrow();
         });
@@ -810,11 +810,7 @@ describe('ActivityLogDomain', () => {
         it('throws for a target resolution with no staged userId', () => {
             let thrown: unknown;
             try {
-                domain['resolveUserId'](
-                    EnumActivityLogUser.target,
-                    undefined,
-                    null
-                );
+                domain['resolveUserId'](EnumActivityLogUser.target, null, null);
             } catch (error) {
                 thrown = error;
             }
@@ -834,7 +830,7 @@ describe('ActivityLogDomain', () => {
         it('returns the payload userId for a payload resolution', () => {
             const result = domain['resolveUserId'](
                 EnumActivityLogUser.payload,
-                undefined,
+                null,
                 'payload-user-1'
             );
 
@@ -846,7 +842,7 @@ describe('ActivityLogDomain', () => {
             try {
                 domain['resolveUserId'](
                     EnumActivityLogUser.payload,
-                    undefined,
+                    null,
                     null
                 );
             } catch (error) {
@@ -882,7 +878,7 @@ describe('ActivityLogDomain', () => {
             try {
                 domain['resolveCreatedBy'](
                     EnumActivityLogUser.target,
-                    undefined,
+                    null,
                     'user-1'
                 );
             } catch (error) {
@@ -904,7 +900,7 @@ describe('ActivityLogDomain', () => {
         it('returns the resolved userId for a payload resolution', () => {
             const result = domain['resolveCreatedBy'](
                 EnumActivityLogUser.payload,
-                undefined,
+                null,
                 'user-1'
             );
 
@@ -936,7 +932,7 @@ describe('ActivityLogDomain', () => {
             try {
                 domain['resolveWorkspaceId'](
                     EnumActivityLogWorkspace.target,
-                    undefined
+                    null
                 );
             } catch (error) {
                 thrown = error;
@@ -959,7 +955,7 @@ describe('ActivityLogDomain', () => {
 
             const result = domain['resolveWorkspaceId'](
                 EnumActivityLogWorkspace.payload,
-                undefined
+                null
             );
 
             expect(result).toBe('workspace-1');
@@ -975,7 +971,7 @@ describe('ActivityLogDomain', () => {
             try {
                 domain['resolveWorkspaceId'](
                     EnumActivityLogWorkspace.payload,
-                    undefined
+                    null
                 );
             } catch (error) {
                 thrown = error;

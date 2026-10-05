@@ -1,9 +1,5 @@
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
-import type {
-    IPaginationEqual,
-    IPaginationIn,
-} from '@common/pagination/interfaces/pagination.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -88,9 +84,9 @@ export class UserImportHttpService {
         });
 
         const data = await this.userImportDomain.exportByAdmin(
-            status?.where as Record<string, IPaginationIn> | undefined,
-            roleId?.where as Record<string, IPaginationEqual> | undefined,
-            countryId?.where as Record<string, IPaginationEqual> | undefined
+            status?.where ?? null,
+            roleId?.where ?? null,
+            countryId?.where ?? null
         );
 
         const users: UserExportResponseDto[] = data.map(user => ({

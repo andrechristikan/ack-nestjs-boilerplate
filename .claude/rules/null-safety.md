@@ -44,3 +44,10 @@ the ambiguity one layer deeper.
   canonical case. Anywhere else, handle the null.
 - No `as` between two types we own to silence a mismatch; the mismatch is the finding. An
   `as` that narrows a value a third party hands in untyped is legitimate.
+- No literal `undefined` in our own logic: no `return undefined`, `= undefined`, `?? undefined`, or
+  `T | undefined` on a signature we own; write `null`. It stays where it is a contract we do not own:
+  a Prisma `where`, `data`, `select`, or `cursor` arg (`undefined` skips, `null` matches null; prefer a
+  conditional spread), zod `.optional()`, and a third-party type, normalized with `?? null` where it
+  enters our types.
+- `??` defaults a value; `||` is boolean logic only. Where `''` or `0` must also fall back, write it
+  (`name === '' ? fallback : name`).

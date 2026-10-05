@@ -8,7 +8,10 @@ import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { RequestThrottleOptionsMetaKey } from '@common/request/constants/request.constant';
-import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
+import {
+    EnumRequestThrottleName,
+    EnumRequestThrottleRoute,
+} from '@common/request/enums/request.enum';
 import { RequestThrottleRouteGuard } from '@common/request/guards/request.throttle-route.guard';
 import type {
     IRequestApp,
@@ -130,7 +133,7 @@ describe('RequestThrottleRouteGuard', () => {
             );
             expect(requestThrottleService.evaluate).toHaveBeenCalledWith(
                 response,
-                'route',
+                EnumRequestThrottleName.route,
                 `${EnumRequestThrottleRoute.strict}:TestController.testHandler:127.0.0.1`,
                 policies[EnumRequestThrottleRoute.strict]
             );

@@ -5,7 +5,6 @@ import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { ResponsePagination } from '@common/response/decorators/response.decorator';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-
 import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';

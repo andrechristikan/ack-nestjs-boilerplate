@@ -28,8 +28,8 @@ export class UserLoginAnalyticDomain {
     ): Promise<IActivityLogAnalyticActionCount[]> {
         return this.activityLogAnalyticDomain.getGroupByActionInRange(
             UserLoginAnalyticActions,
-            startDate ?? undefined,
-            endDate ?? undefined
+            startDate,
+            endDate
         );
     }
 

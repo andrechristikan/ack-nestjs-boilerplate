@@ -38,6 +38,7 @@ describe('LoggerOptionService', () => {
         'logger.intoFile': false,
         'logger.filePath': '/logs',
         'logger.prettier': false,
+        'logger.excludedRoutes': ['/api/public/hello', '/metrics'],
     };
 
     beforeEach(() => {
@@ -195,13 +196,13 @@ describe('LoggerOptionService', () => {
     });
 
     describe('addDebugInfo', () => {
-        it('returns undefined in production', async () => {
+        it('returns null in production', async () => {
             const service = await createLoggerOptionService(
                 { ...baseConfig, 'app.env': EnumAppEnvironment.production },
                 loggerDoubles
             );
 
-            expect(service['addDebugInfo']({ pid: 1 })).toBeUndefined();
+            expect(service['addDebugInfo']({ pid: 1 })).toBeNull();
         });
 
         it('returns memory and uptime plus the extra params outside production', async () => {
@@ -229,7 +230,7 @@ describe('LoggerOptionService', () => {
             expect(service['createAutoLoggingConfig']()).toBe(false);
         });
 
-        it('returns an ignore predicate delegating to HelperStringService when enabled', async () => {
+        it('returns an ignore predicate matching the configured excluded routes when enabled', async () => {
             const service = await createLoggerOptionService(
                 { ...baseConfig, 'logger.auto': true },
                 loggerDoubles
@@ -244,7 +245,10 @@ describe('LoggerOptionService', () => {
             expect(config.ignore(request)).toBe(true);
             expect(
                 helperStringService.checkUrlMatchesPatterns
-            ).toHaveBeenCalledWith('/metrics', expect.any(Array));
+            ).toHaveBeenCalledWith('/metrics', [
+                '/api/public/hello',
+                '/metrics',
+            ]);
         });
     });
 

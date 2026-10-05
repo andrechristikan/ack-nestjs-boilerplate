@@ -193,7 +193,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.usersSignUpWith
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes undefined dates when the optional range is empty', async () => {
+        it('passes null dates when the optional range is empty', async () => {
             analyticDateDomain.optionalRange.mockReturnValue({
                 startDate: null,
                 endDate: null,
@@ -206,7 +206,7 @@ describe('AnalyticDashboardHttpService', () => {
 
             expect(
                 analyticDashboardDomain.usersSignUpWith
-            ).toHaveBeenCalledWith(undefined, undefined);
+            ).toHaveBeenCalledWith(null, null);
         });
     });
 
@@ -229,7 +229,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.usersSignUpFrom
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes undefined dates when the optional range is empty', async () => {
+        it('passes null dates when the optional range is empty', async () => {
             analyticDateDomain.optionalRange.mockReturnValue({
                 startDate: null,
                 endDate: null,
@@ -242,7 +242,7 @@ describe('AnalyticDashboardHttpService', () => {
 
             expect(
                 analyticDashboardDomain.usersSignUpFrom
-            ).toHaveBeenCalledWith(undefined, undefined);
+            ).toHaveBeenCalledWith(null, null);
         });
     });
 
@@ -270,7 +270,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.usersEmailVerification
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes undefined dates when the optional range is empty', async () => {
+        it('passes null dates when the optional range is empty', async () => {
             analyticDateDomain.optionalRange.mockReturnValue({
                 startDate: null,
                 endDate: null,
@@ -285,7 +285,7 @@ describe('AnalyticDashboardHttpService', () => {
 
             expect(
                 analyticDashboardDomain.usersEmailVerification
-            ).toHaveBeenCalledWith(undefined, undefined);
+            ).toHaveBeenCalledWith(null, null);
         });
     });
 
@@ -313,7 +313,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.usersMobileVerification
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes undefined dates when the optional range is empty', async () => {
+        it('passes null dates when the optional range is empty', async () => {
             analyticDateDomain.optionalRange.mockReturnValue({
                 startDate: null,
                 endDate: null,
@@ -328,7 +328,7 @@ describe('AnalyticDashboardHttpService', () => {
 
             expect(
                 analyticDashboardDomain.usersMobileVerification
-            ).toHaveBeenCalledWith(undefined, undefined);
+            ).toHaveBeenCalledWith(null, null);
         });
     });
 
@@ -548,7 +548,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.authLoginMethod
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes undefined dates when the optional range is empty', async () => {
+        it('passes null dates when the optional range is empty', async () => {
             analyticDateDomain.optionalRange.mockReturnValue({
                 startDate: null,
                 endDate: null,
@@ -561,7 +561,7 @@ describe('AnalyticDashboardHttpService', () => {
 
             expect(
                 analyticDashboardDomain.authLoginMethod
-            ).toHaveBeenCalledWith(undefined, undefined);
+            ).toHaveBeenCalledWith(null, null);
         });
     });
 
@@ -584,7 +584,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.authLoginSource
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes undefined dates when the optional range is empty', async () => {
+        it('passes null dates when the optional range is empty', async () => {
             analyticDateDomain.optionalRange.mockReturnValue({
                 startDate: null,
                 endDate: null,
@@ -597,7 +597,7 @@ describe('AnalyticDashboardHttpService', () => {
 
             expect(
                 analyticDashboardDomain.authLoginSource
-            ).toHaveBeenCalledWith(undefined, undefined);
+            ).toHaveBeenCalledWith(null, null);
         });
     });
 
@@ -710,7 +710,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.authSessionsGeo
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes undefined dates when the optional range is empty', async () => {
+        it('passes null dates when the optional range is empty', async () => {
             analyticDateDomain.optionalRange.mockReturnValue({
                 startDate: null,
                 endDate: null,
@@ -723,7 +723,7 @@ describe('AnalyticDashboardHttpService', () => {
 
             expect(
                 analyticDashboardDomain.authSessionsGeo
-            ).toHaveBeenCalledWith(undefined, undefined);
+            ).toHaveBeenCalledWith(null, null);
         });
     });
 
@@ -749,7 +749,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.authSessionsUserAgent
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes undefined dates when the optional range is empty', async () => {
+        it('passes null dates when the optional range is empty', async () => {
             analyticDateDomain.optionalRange.mockReturnValue({
                 startDate: null,
                 endDate: null,
@@ -762,7 +762,7 @@ describe('AnalyticDashboardHttpService', () => {
 
             expect(
                 analyticDashboardDomain.authSessionsUserAgent
-            ).toHaveBeenCalledWith(undefined, undefined);
+            ).toHaveBeenCalledWith(null, null);
         });
     });
 
@@ -1427,7 +1427,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.termPoliciesAcceptanceRate
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes undefined dates when the optional range is empty', async () => {
+        it('passes null dates when the optional range is empty', async () => {
             analyticDateDomain.optionalRange.mockReturnValue({
                 startDate: null,
                 endDate: null,
@@ -1440,7 +1440,7 @@ describe('AnalyticDashboardHttpService', () => {
 
             expect(
                 analyticDashboardDomain.termPoliciesAcceptanceRate
-            ).toHaveBeenCalledWith(undefined, undefined);
+            ).toHaveBeenCalledWith(null, null);
         });
     });
 
@@ -1465,7 +1465,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.termPoliciesTimeToAccept
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes undefined dates when the optional range is empty', async () => {
+        it('passes null dates when the optional range is empty', async () => {
             analyticDateDomain.optionalRange.mockReturnValue({
                 startDate: null,
                 endDate: null,
@@ -1479,7 +1479,7 @@ describe('AnalyticDashboardHttpService', () => {
 
             expect(
                 analyticDashboardDomain.termPoliciesTimeToAccept
-            ).toHaveBeenCalledWith(undefined, undefined);
+            ).toHaveBeenCalledWith(null, null);
         });
     });
 

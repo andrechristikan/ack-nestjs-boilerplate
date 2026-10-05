@@ -7,19 +7,16 @@ import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import type { Notification } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import { NotificationUserSettingRequestSchema } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationResponseSchema } from '@modules/notification/dtos/response/notification.response.dto';
@@ -98,8 +95,10 @@ export class NotificationSharedController {
         @AuthJwtPayload('userId') userId: string,
         @Param('notificationId', { schema: RequestMongoIdSchema })
         notificationId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.notificationHttpService.markAsRead(userId, notificationId);
+
+        return {};
     }
 
     @Doc({ summary: 'mark all notifications as read' })
@@ -130,7 +129,9 @@ export class NotificationSharedController {
         userId: string,
         @Body({ schema: NotificationUserSettingRequestSchema })
         body: NotificationUserSettingRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.notificationHttpService.updateUserSetting(userId, body);
+
+        return {};
     }
 }

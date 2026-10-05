@@ -9,28 +9,23 @@ import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import {
     EnumProjectMemberRole,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
-
 import type {
     Project,
     ProjectMember,
     Workspace,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
-
 import { ProjectCreateRequestSchema } from '@modules/project/dtos/request/project.create.request.dto';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectMemberAssignRequestSchema } from '@modules/project/dtos/request/project.member-assign.request.dto';
@@ -50,7 +45,6 @@ import {
     ProjectMemberProtected,
     ProjectProtected,
 } from '@modules/project/decorators/project.decorator';
-
 import { ProjectMemberHttpService } from '@modules/project/services/project.member.http.service';
 import { ProjectHttpService } from '@modules/project/services/project.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -61,7 +55,6 @@ import {
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
-
 import {
     Body,
     Controller,
@@ -75,7 +68,6 @@ import {
     Put,
     Query,
 } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.user.project')
@@ -244,11 +236,13 @@ export class ProjectUserController {
     async softDelete(
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.projectHttpService.softDeleteProject(
             project,
             workspaceMember.userId
         );
+
+        return {};
     }
 
     @Doc({ summary: 'list members of a project, subject to visibility' })
@@ -330,13 +324,15 @@ export class ProjectUserController {
         projectMemberId: string,
         @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
         body: ProjectMemberUpdateRoleRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.projectMemberHttpService.updateMemberRole(
             project,
             workspaceMember.userId,
             projectMemberId,
             body
         );
+
+        return {};
     }
 
     @Doc({
@@ -360,12 +356,14 @@ export class ProjectUserController {
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Param('projectMemberId', { schema: RequestMongoIdSchema })
         projectMemberId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.projectMemberHttpService.removeMember(
             project,
             workspaceMember.userId,
             projectMemberId
         );
+
+        return {};
     }
 
     @Doc({ summary: 'leave a project; any project role may leave' })
@@ -385,10 +383,12 @@ export class ProjectUserController {
     async memberLeave(
         @ProjectCurrent() project: Project,
         @ProjectMemberCurrent() projectMember: ProjectMember
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.projectMemberHttpService.leaveProject(
             project,
             projectMember
         );
+
+        return {};
     }
 }

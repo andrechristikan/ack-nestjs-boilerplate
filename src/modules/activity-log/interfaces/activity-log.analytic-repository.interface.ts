@@ -16,8 +16,8 @@ export interface IActivityLogAnalyticRepository {
     ): Promise<number>;
     groupByActionInRange(
         actions: EnumActivityLogAction[],
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IActivityLogAnalyticActionCount[]>;
     findManyByActionsInRange(
         actions: EnumActivityLogAction[],

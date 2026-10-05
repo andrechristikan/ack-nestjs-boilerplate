@@ -35,10 +35,11 @@ export function PolicyProtected(
  * @public
  */
 export const PolicyCurrent = createParamDecorator((): Policy[] => {
-    const policies = ClsServiceManager.getClsService().get<
-        Policy[] | undefined
-    >(PolicyStoreKey);
-    if (policies === undefined || policies === null) {
+    const policies =
+        ClsServiceManager.getClsService().get<Policy[] | null>(
+            PolicyStoreKey
+        ) ?? null;
+    if (policies === null) {
         throw new RequestContextMissingException(PolicyStoreKey);
     }
 

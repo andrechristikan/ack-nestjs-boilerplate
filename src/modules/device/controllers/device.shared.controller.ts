@@ -7,15 +7,15 @@ import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
-import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-
+import type {
+    IResponsePaginationReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import { DeviceRefreshRequestSchema } from '@modules/device/dtos/request/device.refresh.request.dto';
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
@@ -34,7 +34,6 @@ import {
     Post,
     Query,
 } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.shared.user.device')
@@ -78,8 +77,10 @@ export class DeviceSharedController {
         @AuthJwtPayload('deviceOwnershipId') deviceOwnershipId: string,
         @Body({ schema: DeviceRefreshRequestSchema })
         body: DeviceRefreshRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.deviceHttpService.refresh(userId, deviceOwnershipId, body);
+
+        return {};
     }
 
     @Doc({ summary: 'remove a user device' })
@@ -94,7 +95,9 @@ export class DeviceSharedController {
         @AuthJwtPayload('userId') userId: string,
         @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
         deviceOwnershipId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.deviceHttpService.remove(userId, deviceOwnershipId);
+
+        return {};
     }
 }

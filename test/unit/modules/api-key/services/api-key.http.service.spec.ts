@@ -158,8 +158,8 @@ describe('ApiKeyHttpService', () => {
 
         it('merges an empty filter set when isActive and type are both absent', async () => {
             const query: ApiKeyListRequestDto = {};
-            paginationQueryUtil.equalBoolean.mockReturnValue(undefined);
-            paginationQueryUtil.inEnum.mockReturnValue(undefined);
+            paginationQueryUtil.equalBoolean.mockReturnValue(null);
+            paginationQueryUtil.inEnum.mockReturnValue(null);
             const emptyPage: IPaginationOffsetReturn<IApiKey> = {
                 type: EnumPaginationType.offset,
                 count: 0,

@@ -159,7 +159,7 @@ describe('project.decorator', () => {
                 messagePath: 'request.error.contextMissing',
                 rawError: expect.objectContaining({
                     message:
-                        'RequestContextMissingException: no value for "ProjectStore"',
+                        'RequestContextMissingException: no value for "ProjectStoreKey"',
                 }),
             });
         });
@@ -193,7 +193,7 @@ describe('project.decorator', () => {
                 messagePath: 'request.error.contextMissing',
                 rawError: expect.objectContaining({
                     message:
-                        'RequestContextMissingException: no value for "ProjectStore.description"',
+                        'RequestContextMissingException: no value for "ProjectStoreKey.description"',
                 }),
             });
         });
@@ -355,7 +355,7 @@ describe('project.decorator', () => {
                 messagePath: 'request.error.contextMissing',
                 rawError: expect.objectContaining({
                     message:
-                        'RequestContextMissingException: no value for "ProjectMemberStore"',
+                        'RequestContextMissingException: no value for "ProjectMemberStoreKey"',
                 }),
             });
         });
@@ -396,7 +396,7 @@ describe('project.decorator', () => {
                 messagePath: 'request.error.contextMissing',
                 rawError: expect.objectContaining({
                     message:
-                        'RequestContextMissingException: no value for "ProjectMemberStore.joinedAt"',
+                        'RequestContextMissingException: no value for "ProjectMemberStoreKey.joinedAt"',
                 }),
             });
         });

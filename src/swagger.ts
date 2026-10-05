@@ -7,7 +7,10 @@ import { createSchema } from 'zod-openapi';
 import { z } from 'zod';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { MessageService } from '@common/message/services/message.service';
-import { ApiKeyDocSecurityName } from '@modules/api-key/constants/api-key.constant';
+import {
+    ApiKeyDocSecurityName,
+    ApiKeyHeaderName,
+} from '@modules/api-key/constants/api-key.constant';
 import {
     AuthJwtAccessDocSecurityName,
     AuthJwtRefreshDocSecurityName,
@@ -67,7 +70,7 @@ export default async function (app: NestApplication): Promise<void> {
                 AuthSocialAppleDocSecurityName
             )
             .addApiKey(
-                { type: 'apiKey', in: 'header', name: 'x-api-key' },
+                { type: 'apiKey', in: 'header', name: ApiKeyHeaderName },
                 ApiKeyDocSecurityName
             )
             .build();

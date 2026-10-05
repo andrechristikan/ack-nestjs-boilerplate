@@ -12,6 +12,7 @@ import {
     RequestThrottleHandledStoreKey,
     RequestThrottleOptionsMetaKey,
 } from '@common/request/constants/request.constant';
+import { EnumRequestThrottleName } from '@common/request/enums/request.enum';
 import type {
     IRequestApp,
     IRequestThrottleOptions,
@@ -25,7 +26,7 @@ import { RequestThrottleService } from '@common/request/services/request.throttl
  */
 @Injectable()
 export class RequestThrottleUserInterceptor implements NestInterceptor {
-    private readonly name = 'user';
+    private readonly name = EnumRequestThrottleName.user;
     private readonly policy: IRequestThrottlePolicy;
 
     constructor(

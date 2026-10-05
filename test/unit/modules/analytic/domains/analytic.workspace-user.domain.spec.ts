@@ -98,7 +98,7 @@ describe('AnalyticWorkspaceUserDomain', () => {
             );
             projectAnalyticDomain.getCountByWorkspace.mockResolvedValue(2);
 
-            const result = await domain.summary('workspace-1');
+            const result = await domain.summary('workspace-1', null, null);
 
             expect(result).toEqual({
                 memberCount: 3,

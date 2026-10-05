@@ -1,5 +1,6 @@
 import { registerAs } from '@nestjs/config';
 import ms from 'ms';
+import { readOptionalEnv } from '@common/request/validations/request.optional-env.validation';
 
 export interface IConfigAws {
     s3: {
@@ -44,12 +45,8 @@ export interface IConfigAws {
 }
 
 export default registerAs('aws', (): IConfigAws => {
-    const s3Endpoint = process.env.AWS_S3_ENDPOINT
-        ? process.env.AWS_S3_ENDPOINT
-        : null;
-    const sesEndpoint = process.env.AWS_SES_ENDPOINT
-        ? process.env.AWS_SES_ENDPOINT
-        : null;
+    const s3Endpoint = readOptionalEnv(process.env.AWS_S3_ENDPOINT);
+    const sesEndpoint = readOptionalEnv(process.env.AWS_SES_ENDPOINT);
 
     return {
         s3: {
@@ -59,7 +56,7 @@ export default registerAs('aws', (): IConfigAws => {
             corsMaxAgeShortInSeconds: ms('1h') / 1000,
             maxAttempts: 3,
             timeoutInMs: ms('30s'),
-            region: process.env.AWS_S3_REGION || null,
+            region: readOptionalEnv(process.env.AWS_S3_REGION),
             endpoint: s3Endpoint,
             baseUrlPattern: s3Endpoint
                 ? '{endpoint}/{bucket}'
@@ -67,13 +64,15 @@ export default registerAs('aws', (): IConfigAws => {
             objectUrlPattern: '{baseUrl}/{key}',
             cdnUrlPattern: '{cdnUrl}/{key}',
             iam: {
-                key: process.env.AWS_S3_IAM_CREDENTIAL_KEY || null,
-                secret: process.env.AWS_S3_IAM_CREDENTIAL_SECRET || null,
-                arn: process.env.AWS_S3_IAM_ARN || null,
+                key: readOptionalEnv(process.env.AWS_S3_IAM_CREDENTIAL_KEY),
+                secret: readOptionalEnv(
+                    process.env.AWS_S3_IAM_CREDENTIAL_SECRET
+                ),
+                arn: readOptionalEnv(process.env.AWS_S3_IAM_ARN),
             },
             config: {
                 public: {
-                    bucket: process.env.AWS_S3_PUBLIC_BUCKET || null,
+                    bucket: readOptionalEnv(process.env.AWS_S3_PUBLIC_BUCKET),
                     arn: process.env.AWS_S3_PUBLIC_BUCKET
                         ? `arn:aws:s3:::${process.env.AWS_S3_PUBLIC_BUCKET}`
                         : null,
@@ -82,7 +81,7 @@ export default registerAs('aws', (): IConfigAws => {
                         : null,
                 },
                 private: {
-                    bucket: process.env.AWS_S3_PRIVATE_BUCKET || null,
+                    bucket: readOptionalEnv(process.env.AWS_S3_PRIVATE_BUCKET),
                     arn: process.env.AWS_S3_PRIVATE_BUCKET
                         ? `arn:aws:s3:::${process.env.AWS_S3_PRIVATE_BUCKET}`
                         : null,
@@ -94,11 +93,13 @@ export default registerAs('aws', (): IConfigAws => {
         },
         ses: {
             iam: {
-                key: process.env.AWS_SES_IAM_CREDENTIAL_KEY || null,
-                secret: process.env.AWS_SES_IAM_CREDENTIAL_SECRET || null,
+                key: readOptionalEnv(process.env.AWS_SES_IAM_CREDENTIAL_KEY),
+                secret: readOptionalEnv(
+                    process.env.AWS_SES_IAM_CREDENTIAL_SECRET
+                ),
             },
-            identityArn: process.env.AWS_SES_IDENTITY_ARN || null,
-            region: process.env.AWS_SES_REGION || null,
+            identityArn: readOptionalEnv(process.env.AWS_SES_IDENTITY_ARN),
+            region: readOptionalEnv(process.env.AWS_SES_REGION),
             endpoint: sesEndpoint,
         },
     };

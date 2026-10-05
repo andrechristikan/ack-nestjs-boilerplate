@@ -38,8 +38,7 @@ export class FeatureFlagUtil {
             if (newValueType !== oldValueType) {
                 return false;
             } else if (
-                newVal === undefined ||
-                newVal === null ||
+                (newVal ?? null) === null ||
                 newVal === '' ||
                 (Array.isArray(newVal) && newVal.length === 0)
             ) {

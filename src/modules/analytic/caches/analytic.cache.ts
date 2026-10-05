@@ -1,5 +1,9 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import type {
+    EnumAnalyticAnomalySignal,
+    EnumAnalyticFraudSignal,
+} from '@modules/analytic/enums/analytic.enum';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Cache } from 'cache-manager';
@@ -102,7 +106,7 @@ export class AnalyticCache {
     }
 
     async getAnomalySummary<T>(
-        signal: string,
+        signal: EnumAnalyticAnomalySignal,
         window: string
     ): Promise<T | null> {
         const key = this.buildKey(this.anomalyKeyPattern, { signal, window });
@@ -111,7 +115,7 @@ export class AnalyticCache {
     }
 
     async setAnomalySummary<T>(
-        signal: string,
+        signal: EnumAnalyticAnomalySignal,
         window: string,
         value: T
     ): Promise<void> {
@@ -120,7 +124,7 @@ export class AnalyticCache {
     }
 
     async getFraudSummary<T>(
-        signal: string,
+        signal: EnumAnalyticFraudSignal,
         window: string
     ): Promise<T | null> {
         const key = this.buildKey(this.fraudKeyPattern, { signal, window });
@@ -129,7 +133,7 @@ export class AnalyticCache {
     }
 
     async setFraudSummary<T>(
-        signal: string,
+        signal: EnumAnalyticFraudSignal,
         window: string,
         value: T
     ): Promise<void> {

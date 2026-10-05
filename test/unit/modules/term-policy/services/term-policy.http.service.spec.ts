@@ -145,7 +145,7 @@ describe('TermPolicyHttpService', () => {
                 params: offsetParams,
                 storePatch: {},
             });
-            paginationQueryUtil.inEnum.mockReturnValue(undefined);
+            paginationQueryUtil.inEnum.mockReturnValue(null);
             termPolicyDomain.getListByAdmin.mockResolvedValue(offsetPage);
 
             await service.getListByAdmin(query);
@@ -202,7 +202,7 @@ describe('TermPolicyHttpService', () => {
                 params: cursorParams,
                 storePatch: {},
             });
-            paginationQueryUtil.inEnum.mockReturnValue(undefined);
+            paginationQueryUtil.inEnum.mockReturnValue(null);
             termPolicyDomain.getListPublished.mockResolvedValue(cursorPage);
 
             await service.getListPublished(query);

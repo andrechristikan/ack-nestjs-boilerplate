@@ -7,12 +7,21 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
+    RequestCorrelationIdHeaderName,
     RequestCorrelationIdStoreKey,
+    RequestCustomLangHeaderName,
+    RequestIdHeaderName,
     RequestIdStoreKey,
     RequestLanguageStoreKey,
     RequestVersionStoreKey,
 } from '@common/request/constants/request.constant';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
+import {
+    ResponseRepoVersionHeaderName,
+    ResponseTimestampHeaderName,
+    ResponseTimezoneHeaderName,
+    ResponseVersionHeaderName,
+} from '@common/response/constants/response.constant';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 
@@ -122,37 +131,37 @@ describe('ResponseMetadataService', () => {
 
             expect(response.setHeader).toHaveBeenNthCalledWith(
                 1,
-                'x-custom-lang',
+                RequestCustomLangHeaderName,
                 metadata.language
             );
             expect(response.setHeader).toHaveBeenNthCalledWith(
                 2,
-                'x-timestamp',
+                ResponseTimestampHeaderName,
                 metadata.timestamp
             );
             expect(response.setHeader).toHaveBeenNthCalledWith(
                 3,
-                'x-timezone',
+                ResponseTimezoneHeaderName,
                 metadata.timezone
             );
             expect(response.setHeader).toHaveBeenNthCalledWith(
                 4,
-                'x-version',
+                ResponseVersionHeaderName,
                 metadata.version
             );
             expect(response.setHeader).toHaveBeenNthCalledWith(
                 5,
-                'x-repo-version',
+                ResponseRepoVersionHeaderName,
                 metadata.repoVersion
             );
             expect(response.setHeader).toHaveBeenNthCalledWith(
                 6,
-                'x-request-id',
+                RequestIdHeaderName,
                 metadata.requestId
             );
             expect(response.setHeader).toHaveBeenNthCalledWith(
                 7,
-                'x-correlation-id',
+                RequestCorrelationIdHeaderName,
                 metadata.correlationId
             );
             expect(response.setHeader).toHaveBeenCalledTimes(7);

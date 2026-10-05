@@ -15,6 +15,10 @@ import {
     LoggerRedactedValue,
     LoggerRedactMaxArrayLength,
 } from '@common/logger/constants/logger.constant';
+import {
+    RequestCorrelationIdHeaderName,
+    RequestIdHeaderName,
+} from '@common/request/constants/request.constant';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 
 describe('LoggerUtil', () => {
@@ -69,7 +73,7 @@ describe('LoggerUtil', () => {
         it('returns the correlation id header when present', () => {
             const request = {
                 ...baseRequest,
-                headers: { 'x-correlation-id': 'corr-1' },
+                headers: { [RequestCorrelationIdHeaderName]: 'corr-1' },
             } as unknown as IRequestApp;
 
             expect(util.getRequestId(request)).toBe('corr-1');
@@ -78,7 +82,7 @@ describe('LoggerUtil', () => {
         it('falls back to the request id header when correlation id is absent', () => {
             const request = {
                 ...baseRequest,
-                headers: { 'x-request-id': 'req-2' },
+                headers: { [RequestIdHeaderName]: 'req-2' },
             } as unknown as IRequestApp;
 
             expect(util.getRequestId(request)).toBe('req-2');
@@ -177,7 +181,7 @@ describe('LoggerUtil', () => {
             });
         });
 
-        it('leaves the referer undefined when the header is absent', () => {
+        it('sets the referer to null when the header is absent', () => {
             const request = {
                 ...baseRequest,
                 headers: {},
@@ -185,7 +189,7 @@ describe('LoggerUtil', () => {
 
             const result = util.serializeRequest(request);
 
-            expect(result.referer).toBeUndefined();
+            expect(result.referer).toBeNull();
         });
     });
 
@@ -517,8 +521,8 @@ describe('LoggerUtil', () => {
             });
         });
 
-        it('returns an empty object when params is undefined', () => {
-            expect(util['serializeParams'](undefined)).toEqual({});
+        it('returns an empty object when params is null', () => {
+            expect(util['serializeParams'](null)).toEqual({});
         });
     });
 

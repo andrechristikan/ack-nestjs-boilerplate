@@ -180,8 +180,8 @@ describe('UserHttpService', () => {
                 params,
                 storePatch: { filters: {} },
             });
-            paginationQueryUtil.inEnum.mockReturnValue(undefined);
-            paginationQueryUtil.equalString.mockReturnValue(undefined);
+            paginationQueryUtil.inEnum.mockReturnValue(null);
+            paginationQueryUtil.equalString.mockReturnValue(null);
             userDomain.getListOffsetByAdmin.mockResolvedValue(response);
 
             await service.getListOffsetByAdmin(query);

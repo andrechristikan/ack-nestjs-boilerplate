@@ -22,19 +22,22 @@ export const AuthJwtPayload: <T = IAuthJwtAccessTokenPayload>(
     field?: Extract<keyof T, string>
 ) => ParameterDecorator = createParamDecorator<string | undefined, unknown>(
     (field: string | undefined, ctx: ExecutionContext): unknown => {
-        const { user } = ctx
-            .switchToHttp()
-            .getRequest<IRequestApp<Record<string, unknown>>>();
-        if (user === undefined || user === null) {
+        const user =
+            ctx
+                .switchToHttp()
+                .getRequest<IRequestApp<Record<string, unknown>>>().user ??
+            null;
+        if (user === null) {
             throw new RequestContextMissingException('request.user');
         }
 
-        if (field === undefined || field === null) {
+        const fieldKey = field ?? null;
+        if (fieldKey === null) {
             return user;
         }
 
-        const value = user[field];
-        if (value === undefined || value === null) {
+        const value = user[fieldKey] ?? null;
+        if (value === null) {
             throw new RequestContextMissingException(`request.user.${field}`);
         }
 
@@ -47,12 +50,12 @@ export const AuthJwtPayload: <T = IAuthJwtAccessTokenPayload>(
  * @public
  */
 export const AuthJwtToken = createParamDecorator(
-    (_: unknown, ctx: ExecutionContext): string | undefined => {
+    (_: unknown, ctx: ExecutionContext): string | null => {
         const { headers } = ctx.switchToHttp().getRequest<IRequestApp>();
         const { authorization } = headers;
         const authorizations: string[] = authorization?.split(' ') ?? [];
 
-        return authorizations.length >= 2 ? authorizations[1] : undefined;
+        return authorizations[1] ?? null;
     }
 );
 

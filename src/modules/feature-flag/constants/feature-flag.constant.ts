@@ -34,3 +34,9 @@ export const DocFeatureFlagErrorResponses = {
         messagePath: 'featureFlag.error.disabled',
     }),
 } as const;
+
+/**
+ * Request header carrying the anonymous caller id a feature flag rolls out by.
+ * @public
+ */
+export const FeatureFlagAnonymousIdHeaderName = 'x-anonymous-id';

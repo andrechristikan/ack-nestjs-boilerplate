@@ -1,6 +1,5 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AuthSocialGoogleGuard } from '@modules/auth/guards/social/auth.social.google.guard';
@@ -12,28 +11,15 @@ import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.executio
 
 describe('AuthSocialGoogleGuard', () => {
     const authDomain: MockProxy<AuthDomain> = mock<AuthDomain>();
-    const configGet = vi.fn<(key: string) => string | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
 
     let guard: AuthSocialGoogleGuard;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, string> = {
-                'auth.google.header': 'Authorization',
-                'auth.google.prefix': 'Bearer',
-            };
-            return values[key];
-        });
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthSocialGoogleGuard,
                 { provide: AuthDomain, useValue: authDomain },
-                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
 

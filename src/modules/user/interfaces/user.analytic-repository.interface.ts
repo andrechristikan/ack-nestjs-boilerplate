@@ -20,12 +20,12 @@ export interface IUserAnalyticRepository {
     countRegisteredUntil(endDate: Date): Promise<number>;
     countByStatus(status: EnumUserStatus): Promise<number>;
     groupBySignUpWith(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IUserAnalyticGroupCount<EnumUserSignUpWith>[]>;
     groupBySignUpFrom(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IUserAnalyticGroupCount<EnumUserSignUpFrom>[]>;
     groupByStatus(): Promise<IUserAnalyticGroupCount<EnumUserStatus>[]>;
     groupByCountry(): Promise<IAnalyticCountBucket[]>;

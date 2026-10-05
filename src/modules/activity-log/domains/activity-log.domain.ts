@@ -63,7 +63,7 @@ export class ActivityLogDomain {
 
     private assertTargetOnlyField(
         resolution: EnumActivityLogUser,
-        value: string | undefined
+        value: string | null
     ): void {
         if (resolution === EnumActivityLogUser.target) {
             if (!value) {
@@ -72,14 +72,14 @@ export class ActivityLogDomain {
             return;
         }
 
-        if (value !== undefined) {
+        if (value !== null) {
             throw new ActivityLogContractInvalidException();
         }
     }
 
     private assertWorkspaceFields(
         resolution: EnumActivityLogWorkspace,
-        workspaceId: string | undefined
+        workspaceId: string | null
     ): void {
         if (resolution === EnumActivityLogWorkspace.target) {
             if (!workspaceId) {
@@ -89,20 +89,20 @@ export class ActivityLogDomain {
         }
 
         if (resolution === EnumActivityLogWorkspace.none) {
-            if (workspaceId !== undefined) {
+            if (workspaceId !== null) {
                 throw new ActivityLogContractInvalidException();
             }
             return;
         }
 
-        if (workspaceId !== undefined) {
+        if (workspaceId !== null) {
             throw new ActivityLogContractInvalidException();
         }
     }
 
     private resolveUserId(
         resolution: EnumActivityLogUser,
-        stagedUserId: string | undefined,
+        stagedUserId: string | null,
         payloadUserId: string | null
     ): string {
         if (resolution === EnumActivityLogUser.target) {
@@ -121,7 +121,7 @@ export class ActivityLogDomain {
 
     private resolveCreatedBy(
         resolution: EnumActivityLogUser,
-        stagedCreatedBy: string | undefined,
+        stagedCreatedBy: string | null,
         userId: string
     ): string {
         if (resolution === EnumActivityLogUser.target) {
@@ -136,7 +136,7 @@ export class ActivityLogDomain {
 
     private resolveWorkspaceId(
         resolution: EnumActivityLogWorkspace,
-        stagedWorkspaceId: string | undefined
+        stagedWorkspaceId: string | null
     ): string | null {
         if (resolution === EnumActivityLogWorkspace.none) {
             return null;
@@ -167,16 +167,16 @@ export class ActivityLogDomain {
         const metadata = this.validateMetadata(event.action, event.metadata);
         const userId = this.resolveUserId(
             contract.user,
-            event.userId,
+            event.userId ?? null,
             payloadUserId
         );
         const workspaceId = this.resolveWorkspaceId(
             contract.workspace,
-            event.workspaceId
+            event.workspaceId ?? null
         );
         const createdBy = this.resolveCreatedBy(
             contract.user,
-            event.createdBy,
+            event.createdBy ?? null,
             userId
         );
 
@@ -205,21 +205,20 @@ export class ActivityLogDomain {
             input.metadata ?? {}
         );
 
-        this.assertTargetOnlyField(contract.user, input.userId);
-        this.assertTargetOnlyField(contract.user, input.createdBy);
-        this.assertWorkspaceFields(contract.workspace, input.workspaceId);
+        const userId = input.userId ?? null;
+        const createdBy = input.createdBy ?? null;
+        const workspaceId = input.workspaceId ?? null;
+        this.assertTargetOnlyField(contract.user, userId);
+        this.assertTargetOnlyField(contract.user, createdBy);
+        this.assertWorkspaceFields(contract.workspace, workspaceId);
 
         return {
             action: input.action,
             metadata,
             onError: input.onError === true,
-            ...(input.userId !== undefined ? { userId: input.userId } : {}),
-            ...(input.createdBy !== undefined
-                ? { createdBy: input.createdBy }
-                : {}),
-            ...(input.workspaceId !== undefined
-                ? { workspaceId: input.workspaceId }
-                : {}),
+            ...(userId !== null && { userId }),
+            ...(createdBy !== null && { createdBy }),
+            ...(workspaceId !== null && { workspaceId }),
         };
     }
 

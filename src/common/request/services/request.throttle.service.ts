@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerException } from '@nestjs/throttler';
 import type { Response } from 'express';
+import type { EnumRequestThrottleName } from '@common/request/enums/request.enum';
 import type { IRequestThrottlePolicy } from '@common/request/interfaces/request.interface';
 import { RequestThrottleStorageService } from '@common/request/services/request.throttle-storage.service';
 
@@ -24,7 +25,7 @@ export class RequestThrottleService {
 
     async evaluate(
         response: Response,
-        name: string,
+        name: EnumRequestThrottleName,
         tracker: string,
         policy: IRequestThrottlePolicy
     ): Promise<void> {

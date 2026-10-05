@@ -312,9 +312,9 @@ describe('PaginationQueryUtil', () => {
             });
         });
 
-        it('returns undefined for an empty value', () => {
-            expect(util.equalBoolean('active', undefined)).toBeUndefined();
-            expect(util.equalBoolean('active', '')).toBeUndefined();
+        it('returns null for an empty value', () => {
+            expect(util.equalBoolean('active', undefined)).toBeNull();
+            expect(util.equalBoolean('active', '')).toBeNull();
         });
     });
 
@@ -336,9 +336,9 @@ describe('PaginationQueryUtil', () => {
             expect(result?.where).toEqual({ title: { equals: 'widget' } });
         });
 
-        it('returns undefined for an empty or non-string value', () => {
-            expect(util.equalString('name', '')).toBeUndefined();
-            expect(util.equalString('name', undefined)).toBeUndefined();
+        it('returns null for an empty or non-string value', () => {
+            expect(util.equalString('name', '')).toBeNull();
+            expect(util.equalString('name', undefined)).toBeNull();
         });
     });
 
@@ -372,8 +372,8 @@ describe('PaginationQueryUtil', () => {
             });
         });
 
-        it('returns undefined for an empty value', () => {
-            expect(util.equalNumber('count', '')).toBeUndefined();
+        it('returns null for an empty value', () => {
+            expect(util.equalNumber('count', '')).toBeNull();
         });
     });
 
@@ -395,9 +395,9 @@ describe('PaginationQueryUtil', () => {
             expect(result?.where).toEqual({ title: { not: 'widget' } });
         });
 
-        it('returns undefined for an empty or non-string value', () => {
-            expect(util.notEqual('name', '')).toBeUndefined();
-            expect(util.notEqual('name', undefined)).toBeUndefined();
+        it('returns null for an empty or non-string value', () => {
+            expect(util.notEqual('name', '')).toBeNull();
+            expect(util.notEqual('name', undefined)).toBeNull();
         });
     });
 
@@ -456,18 +456,16 @@ describe('PaginationQueryUtil', () => {
             });
         });
 
-        it('returns undefined for an empty value', () => {
-            expect(
-                util.inEnum('status', undefined, defaultEnum)
-            ).toBeUndefined();
+        it('returns null for an empty value', () => {
+            expect(util.inEnum('status', undefined, defaultEnum)).toBeNull();
         });
 
-        it('returns undefined when the allow-list is empty', () => {
-            expect(util.inEnum('status', 'active', [])).toBeUndefined();
+        it('returns null when the allow-list is empty', () => {
+            expect(util.inEnum('status', 'active', [])).toBeNull();
         });
 
-        it('returns undefined when every entry is empty after filtering', () => {
-            expect(util.inEnum('status', ',,', defaultEnum)).toBeUndefined();
+        it('returns null when every entry is empty after filtering', () => {
+            expect(util.inEnum('status', ',,', defaultEnum)).toBeNull();
         });
     });
 
@@ -489,8 +487,8 @@ describe('PaginationQueryUtil', () => {
         const iso = '2026-01-01T00:00:00.000Z';
         const parsed = new Date(iso);
 
-        it('returns undefined for an empty value', () => {
-            expect(util.dateBetween('createdAt', undefined)).toBeUndefined();
+        it('returns null for an empty value', () => {
+            expect(util.dateBetween('createdAt', undefined)).toBeNull();
         });
 
         it('rejects a non-iso value', () => {
@@ -565,12 +563,12 @@ describe('PaginationQueryUtil', () => {
     });
 
     describe('equal', () => {
-        it('returns undefined when the value is not a string', () => {
-            expect(util['equal']('name', 5)).toBeUndefined();
+        it('returns null when the value is not a string', () => {
+            expect(util['equal']('name', 5)).toBeNull();
         });
 
-        it('returns undefined when the value is blank', () => {
-            expect(util['equal']('name', '   ')).toBeUndefined();
+        it('returns null when the value is blank', () => {
+            expect(util['equal']('name', '   ')).toBeNull();
         });
 
         it('builds a where clause and store filter keyed by the field name by default', () => {
@@ -618,7 +616,7 @@ describe('PaginationQueryUtil', () => {
 
     describe('extractOrderByToArray', () => {
         it('returns an empty array when orderBy is not sent', () => {
-            expect(util['extractOrderByToArray'](undefined)).toEqual([]);
+            expect(util['extractOrderByToArray'](null)).toEqual([]);
         });
 
         it('parses an array of field:direction entries', () => {
@@ -699,7 +697,7 @@ describe('PaginationQueryUtil', () => {
 
     describe('resolveOrderBy', () => {
         it('falls back to the default order when orderBy is not sent', () => {
-            expect(util['resolveOrderBy'](undefined, ['name'])).toEqual([
+            expect(util['resolveOrderBy'](null, ['name'])).toEqual([
                 ...PaginationDefaultOrderBy,
             ]);
         });
@@ -918,14 +916,12 @@ describe('PaginationQueryUtil', () => {
     });
 
     describe('validateAndSanitizeCursor', () => {
-        it('returns undefined for a non-string cursor', () => {
-            expect(
-                util['validateAndSanitizeCursor'](undefined)
-            ).toBeUndefined();
+        it('returns null for a non-string cursor', () => {
+            expect(util['validateAndSanitizeCursor'](undefined)).toBeNull();
         });
 
-        it('returns undefined for a blank cursor', () => {
-            expect(util['validateAndSanitizeCursor']('   ')).toBeUndefined();
+        it('returns null for a blank cursor', () => {
+            expect(util['validateAndSanitizeCursor']('   ')).toBeNull();
         });
 
         it('rejects a cursor over the maximum length', () => {
@@ -1044,22 +1040,20 @@ describe('PaginationQueryUtil', () => {
     describe('enumFilter', () => {
         const defaultEnum = ['active', 'inactive'];
 
-        it('returns undefined for an empty value', () => {
+        it('returns null for an empty value', () => {
             expect(
                 util['enumFilter']('status', undefined, defaultEnum, 'in')
-            ).toBeUndefined();
+            ).toBeNull();
         });
 
-        it('returns undefined when the allow-list is empty', () => {
-            expect(
-                util['enumFilter']('status', 'active', [], 'in')
-            ).toBeUndefined();
+        it('returns null when the allow-list is empty', () => {
+            expect(util['enumFilter']('status', 'active', [], 'in')).toBeNull();
         });
 
-        it('returns undefined when every entry is empty after filtering', () => {
+        it('returns null when every entry is empty after filtering', () => {
             expect(
                 util['enumFilter']('status', ',,', defaultEnum, 'in')
-            ).toBeUndefined();
+            ).toBeNull();
         });
 
         it('builds an in filter from a deduplicated comma-separated list', () => {

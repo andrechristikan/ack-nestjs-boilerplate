@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AuthJwtAccessStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.access.strategy';
 import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import {
     EnumUserLoginFrom,
@@ -24,7 +25,6 @@ describe('AuthJwtAccessStrategy', () => {
         vi.resetAllMocks();
         configGet.mockImplementation((key: string) => {
             const values: Record<string, string> = {
-                'auth.jwt.prefix': 'Bearer',
                 'auth.jwt.audience': 'aud',
                 'auth.jwt.issuer': 'iss',
                 'auth.jwt.accessToken.jwksUri':
@@ -43,6 +43,36 @@ describe('AuthJwtAccessStrategy', () => {
         }).compile();
 
         strategy = module.get(AuthJwtAccessStrategy);
+    });
+
+    describe('jwtFromRequest', () => {
+        it('extracts the token from an Authorization Bearer header', () => {
+            const request = {
+                headers: { authorization: 'Bearer jwt-token' },
+            } as unknown as IRequestApp;
+
+            const extract = Reflect.get(strategy, '_jwtFromRequest') as (
+                req: IRequestApp
+            ) => string | null;
+
+            const token = extract(request);
+
+            expect(token).toBe('jwt-token');
+        });
+
+        it('returns null when the Authorization header uses another scheme', () => {
+            const request = {
+                headers: { authorization: 'Basic jwt-token' },
+            } as unknown as IRequestApp;
+
+            const extract = Reflect.get(strategy, '_jwtFromRequest') as (
+                req: IRequestApp
+            ) => string | null;
+
+            const token = extract(request);
+
+            expect(token).toBeNull();
+        });
     });
 
     describe('validate', () => {

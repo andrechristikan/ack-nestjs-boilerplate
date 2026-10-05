@@ -74,7 +74,7 @@ describe('UserLoginAnalyticDomain', () => {
             );
         });
 
-        it('groups the login actions with undefined dates when null is passed', async () => {
+        it('groups the login actions with null dates when null is passed', async () => {
             const rows = [
                 {
                     action: EnumActivityLogAction.userLoginCredential,
@@ -89,11 +89,7 @@ describe('UserLoginAnalyticDomain', () => {
 
             expect(
                 activityLogAnalyticDomain.getGroupByActionInRange
-            ).toHaveBeenCalledWith(
-                UserLoginAnalyticActions,
-                undefined,
-                undefined
-            );
+            ).toHaveBeenCalledWith(UserLoginAnalyticActions, null, null);
         });
     });
 

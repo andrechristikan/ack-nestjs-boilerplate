@@ -341,7 +341,7 @@ export class UserPasswordDomain {
             }
         }
 
-        let twoFactorVerified: IAuthTwoFactorVerifyResult | undefined;
+        let twoFactorVerified: IAuthTwoFactorVerifyResult | null = null;
         if (user.twoFactor?.enabled) {
             twoFactorVerified =
                 await this.userLoginDomain.handleTwoFactorValidation(user, {
@@ -518,7 +518,7 @@ export class UserPasswordDomain {
             throw new UserPasswordMustNewException(passwordPeriodInDays);
         }
 
-        let twoFactorVerified: IAuthTwoFactorVerifyResult | undefined;
+        let twoFactorVerified: IAuthTwoFactorVerifyResult | null = null;
         if (resetPassword.user.twoFactor?.enabled) {
             twoFactorVerified =
                 await this.userLoginDomain.handleTwoFactorValidation(

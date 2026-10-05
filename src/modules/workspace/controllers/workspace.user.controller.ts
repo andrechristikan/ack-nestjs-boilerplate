@@ -13,31 +13,25 @@ import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
-
 import type {
     Workspace,
     WorkspaceInvite,
     WorkspaceJoinRequest,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-
 import { WorkspaceCreateRequestSchema } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import { WorkspaceInviteClaimRequestSchema } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
@@ -70,14 +64,12 @@ import type {
     IWorkspaceInviteList,
     IWorkspaceMember,
 } from '@modules/workspace/interfaces/workspace.interface';
-
 import {
     WorkspaceCurrent,
     WorkspaceMemberCurrent,
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
-
 import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
 import { WorkspaceInviteHttpService } from '@modules/workspace/services/workspace.invite.http.service';
 import { WorkspaceJoinRequestHttpService } from '@modules/workspace/services/workspace.join-request.http.service';
@@ -95,7 +87,6 @@ import {
     Put,
     Query,
 } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.user.workspace')
@@ -264,8 +255,10 @@ export class WorkspaceUserController {
         @AuthJwtPayload('userId') userId: string,
         @Body({ schema: WorkspaceSwitchRequestSchema })
         body: WorkspaceSwitchRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceHttpService.switchWorkspace(userId, body);
+
+        return {};
     }
 
     @Doc({ summary: 'transfer workspace ownership to another member' })
@@ -285,12 +278,14 @@ export class WorkspaceUserController {
         @WorkspaceMemberCurrent() member: WorkspaceMember,
         @Body({ schema: WorkspaceTransferOwnershipRequestSchema })
         body: WorkspaceTransferOwnershipRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceMemberHttpService.transferOwnership(
             workspace.id,
             member,
             body
         );
+
+        return {};
     }
 
     @Doc({ summary: 'leave the current workspace' })
@@ -308,11 +303,13 @@ export class WorkspaceUserController {
     async leave(
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() member: WorkspaceMember
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceMemberHttpService.leaveWorkspace(
             workspace.id,
             member
         );
+
+        return {};
     }
 
     @Doc({ summary: 'soft-delete the current workspace' })
@@ -329,11 +326,13 @@ export class WorkspaceUserController {
     async softDelete(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceHttpService.softDeleteWorkspace(
             workspace.id,
             userId
         );
+
+        return {};
     }
 
     @Doc({ summary: 'list members of the current workspace' })
@@ -378,13 +377,15 @@ export class WorkspaceUserController {
         workspaceMemberId: string,
         @Body({ schema: WorkspaceMemberUpdateRoleRequestSchema })
         body: WorkspaceMemberUpdateRoleRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceMemberHttpService.updateMemberRole(
             workspace.id,
             actorMember,
             workspaceMemberId,
             body
         );
+
+        return {};
     }
 
     @Doc({ summary: 'remove a member from the current workspace' })
@@ -403,12 +404,14 @@ export class WorkspaceUserController {
         @WorkspaceMemberCurrent() actorMember: WorkspaceMember,
         @Param('workspaceMemberId', { schema: RequestMongoIdSchema })
         workspaceMemberId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceMemberHttpService.removeMember(
             workspace.id,
             actorMember,
             workspaceMemberId
         );
+
+        return {};
     }
 
     @Doc({ summary: 'list invites for the current workspace' })
@@ -513,12 +516,14 @@ export class WorkspaceUserController {
         @AuthJwtPayload('userId') userId: string,
         @Param('workspaceInviteId', { schema: RequestMongoIdSchema })
         workspaceInviteId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceInviteHttpService.revokeInvite(
             workspace.id,
             userId,
             workspaceInviteId
         );
+
+        return {};
     }
 
     @Doc({
@@ -539,8 +544,10 @@ export class WorkspaceUserController {
         @AuthJwtPayload('email') email: string,
         @Body({ schema: WorkspaceInviteClaimRequestSchema })
         body: WorkspaceInviteClaimRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceInviteHttpService.claimInvite(userId, email, body);
+
+        return {};
     }
 
     @Doc({
@@ -612,12 +619,14 @@ export class WorkspaceUserController {
         @AuthJwtPayload('userId') userId: string,
         @Param('workspaceJoinRequestId', { schema: RequestMongoIdSchema })
         workspaceJoinRequestId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceJoinRequestHttpService.acceptJoinRequest(
             workspace,
             userId,
             workspaceJoinRequestId
         );
+
+        return {};
     }
 
     @Doc({ summary: 'reject a pending join request with a reason code' })
@@ -639,12 +648,14 @@ export class WorkspaceUserController {
         workspaceJoinRequestId: string,
         @Body({ schema: WorkspaceJoinRequestRejectRequestSchema })
         body: WorkspaceJoinRequestRejectRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceJoinRequestHttpService.rejectJoinRequest(
             workspace,
             userId,
             workspaceJoinRequestId,
             body
         );
+
+        return {};
     }
 }

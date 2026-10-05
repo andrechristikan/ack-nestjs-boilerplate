@@ -30,7 +30,7 @@ export class MessageService {
     }
 
     private resolveIssueKey(issue: StandardSchemaV1.Issue): string {
-        const code: unknown = 'code' in issue ? issue.code : undefined;
+        const code: unknown = 'code' in issue ? issue.code : null;
 
         if (typeof code !== 'string') {
             return MessageValidationIssueFallbackKey;

@@ -22,7 +22,7 @@ paths:
   `registerAs('<camelNamespace>', ...)`; `src/configs/index.ts` imports it as `<Namespace>Config` into the barrel
   `common.module.ts` loads into `ConfigModule.forRoot` with `validationSchema: AppEnvSchema` (`dto.md`). A new env
   var is the config file, its interface, `AppEnvSchema`, and `.env.example`. A required var reads as `process.env.X!`,
-  an optional one as `process.env.X || null` (a blank `.env` line stays `''`), a boolean as `process.env.X === 'true'`.
+  an optional one as `readOptionalEnv(process.env.X)` (blank is `null`), a boolean as `process.env.X === 'true'`.
 - `src/instrument.ts` runs before Nest and calls the config factories directly; everything else reads
   `ConfigService.get<T>('namespace.key')`, `T` named. A class reads each key once in its constructor into a
   `private readonly` field and no method calls `configService.get`; a module `useFactory`, a queue options
@@ -30,13 +30,13 @@ paths:
 - A TTL, retry or backoff count, size threshold, rollout percent, sample rate, cron pattern, rate limit, or max-attempts
   budget is a camelCase config key, never a literal or a bare `const` in a service, util, guard, or module wiring.
 - A duration key is named for its consumer's unit (`InMs`, `InSeconds`, `InDays`) and built from `ms('<string>')`,
-  divided inside the config file (`ms('7d') / 1000`); no raw number, no arithmetic at the call site. A duration
-  computed at request time has no key. A size key is `InBytes` from `bytes('<string>')`.
-- A URL is a `*Pattern` key with `{placeholder}` segments the reader fills (`code-style.md`), never concatenated:
-  one the app emits is a full URL whose host comes from its own key; a path the framework mounts is a fragment.
-- `request.throttle.default.limit` stays above `request.throttle.user.limit` (`src/configs/request.config.ts:108`);
-  otherwise the per-IP default fires first and the per-user limiter never runs. A custom `x-*` header name lives in
-  its owning config and is repeated once in `request.config.ts` `cors.allowedHeader` (`:65`).
+  divided inside the config file (`ms('7d') / 1000`); no raw number, no call-site arithmetic. A duration computed at
+  request time has no key. A size key is `InBytes` from `bytes('<string>')`.
+- A URL is a `*Pattern` key with `{placeholder}` segments: an emitted URL is full with its own host key, a path a fragment.
+- `request.throttle.default.limit` stays above `request.throttle.user.limit`, or the per-IP default fires first.
+- A header name, CLS store key, metadata key, or wire label is a constant or enum, never config; a header is
+  `<Module><Concern>HeaderName`, in `src/common/` when the kit reads it. `request.config.ts` builds the CORS header
+  lists from those constants, the one config importing from `@modules`.
 - A credential has no literal default; it comes from the environment (Vault through `pnpm vault:pull` when
   deployed), `.env.example` carries every key empty, and a config interface holds no `Buffer`. An encryption
   root (`dto.md`) is exposed as validated.

@@ -132,8 +132,10 @@ export class UserPublicController {
     async signUp(
         @Body({ schema: UserSignUpRequestSchema })
         body: UserSignUpRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userAuthHttpService.signUp(body);
+
+        return {};
     }
 
     @Doc({ summary: 'user email verification' })
@@ -144,8 +146,10 @@ export class UserPublicController {
     async verifyEmail(
         @Body({ schema: UserVerifyEmailRequestSchema })
         body: UserVerifyEmailRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userVerificationHttpService.verifyEmail(body);
+
+        return {};
     }
 
     @Doc({ summary: 'user resend email verification' })
@@ -157,8 +161,10 @@ export class UserPublicController {
     async sendEmailVerification(
         @Body({ schema: UserSendEmailVerificationRequestSchema })
         body: UserSendEmailVerificationRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userVerificationHttpService.sendVerificationEmail(body);
+
+        return {};
     }
 
     @Doc({ summary: 'user forgot password' })
@@ -171,8 +177,10 @@ export class UserPublicController {
     async forgotPassword(
         @Body({ schema: UserForgotPasswordRequestSchema })
         body: UserForgotPasswordRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userPasswordHttpService.forgotPassword(body);
+
+        return {};
     }
 
     @Doc({ summary: 'user reset password' })
@@ -184,8 +192,10 @@ export class UserPublicController {
     async reset(
         @Body({ schema: UserForgotPasswordResetRequestSchema })
         body: UserForgotPasswordResetRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userPasswordHttpService.resetPassword(body);
+
+        return {};
     }
 
     @Doc({ summary: 'user verify two factor during login' })

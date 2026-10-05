@@ -584,25 +584,25 @@ describe('AnalyticAnomalyDomain', () => {
             );
         });
 
-        it('passes undefined into the date util when dates are null', () => {
+        it('passes null into the date util when dates are null', () => {
             domain['windowToken'](null, null, null);
 
             expect(analyticDateUtil.windowToken).toHaveBeenCalledWith(
-                undefined,
-                undefined
+                null,
+                null
             );
         });
     });
 
     describe('computeImpossibleTravel', () => {
-        it('passes undefined into the session lookup when dates are null', async () => {
+        it('passes null into the session lookup when dates are null', async () => {
             sessionAnalyticDomain.getActiveWithGeoInRange.mockResolvedValue([]);
 
             await domain['computeImpossibleTravel'](null, null);
 
             expect(
                 sessionAnalyticDomain.getActiveWithGeoInRange
-            ).toHaveBeenCalledWith(undefined, undefined);
+            ).toHaveBeenCalledWith(null, null);
         });
 
         it('flags consecutive sessions that travel too far too fast', async () => {
