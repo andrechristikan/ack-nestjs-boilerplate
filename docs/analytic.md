@@ -267,7 +267,7 @@ Default TTLs in `analytic.config.ts`:
 | Fraud summary | 5m |
 | Fraud risk score | 10m |
 
-The same config file holds anomaly and fraud detection thresholds (windows, minimum counts, risk weights, band labels). Values are literals via `ms(...)`; they are not environment-driven.
+The same config file holds anomaly and fraud detection thresholds (windows, minimum counts, risk weights, band cutoffs); the band a risk score lands in is an `EnumAnalyticFraudBand` value. Values are literals via `ms(...)`; they are not environment-driven.
 
 Date range validation lives in `AnalyticDateDomain` (`requireRange`, `optionalRange`). A required range with a missing bound or `startDate >= endDate` raises `AnalyticInvalidDateRangeException`. An optional range accepts both bounds together or neither.
 

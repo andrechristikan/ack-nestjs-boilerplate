@@ -187,7 +187,7 @@ OpenAPI security scheme names are the module constants below. `ApiBearerAuth`, `
 | `AuthSocialAppleDocSecurityName` | `apple` | `src/swagger.ts` + `AuthSocialAppleProtected` |
 | `ApiKeyDocSecurityName` | `xApiKey` | `src/swagger.ts` + `ApiKeyProtected` / `ApiKeySystemProtected` |
 
-Scheme values are camelCase. The API key transport header is `x-api-key` (`addApiKey` `name`).
+Scheme values are camelCase. The API key transport header is `x-api-key`: `addApiKey` takes `ApiKeyHeaderName` as its `name`.
 
 Two kits carry a 404 beside their other entries:
 
@@ -362,8 +362,10 @@ async get(
 @Post('/sign-up')
 async signUp(
     @Body({ schema: UserSignUpRequestSchema }) body: UserSignUpRequestDto
-): Promise<void> {
+): Promise<IResponseReturn<void>> {
     await this.userAuthHttpService.signUp(body);
+
+    return {};
 }
 ```
 
@@ -421,8 +423,10 @@ async uploadPhotoProfile(
         ])
     )
     file: IFile
-): Promise<void> {
+): Promise<IResponseReturn<void>> {
     await this.userProfileHttpService.uploadPhotoProfile(userId, file);
+
+    return {};
 }
 ```
 

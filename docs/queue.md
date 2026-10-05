@@ -118,7 +118,8 @@ export class NotificationPushQueue {
     constructor(
         @InjectQueue(EnumQueue.notificationPush)
         private readonly notificationPushQueue: Queue,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly helperStringService: HelperStringService
     ) {
         this.dedupTtlInMs = this.configService.get<number>(
             'notification.dedupTtlInMs'
@@ -135,13 +136,21 @@ export class NotificationPushQueue {
                 data,
             };
 
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationUserJobIdPattern,
+            {
+                process: EnumNotificationPushProcess.newDeviceLogin,
+                userId: sendPayload.userId,
+            }
+        );
+
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.newDeviceLogin,
             payload,
             {
                 priority: EnumQueuePriority.high,
                 deduplication: {
-                    id: `${EnumNotificationPushProcess.newDeviceLogin}-${sendPayload.userId}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
             }
@@ -149,6 +158,8 @@ export class NotificationPushQueue {
     }
 }
 ```
+
+A deduplication id is a `{token}` pattern from `src/modules/notification/constants/notification.constant.ts` (`NotificationUserJobIdPattern` is `{process}-{userId}`; the others key by invite reference, workspace and user, term policy type and version, or user and term policy) filled by `HelperStringService.fillPattern`.
 
 A domain that needs the job injects the queue class and calls that method:
 

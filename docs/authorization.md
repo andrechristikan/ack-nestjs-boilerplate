@@ -388,8 +388,10 @@ async updateStatus(
   @Param('userId', { schema: RequestMongoIdSchema }) userId: string,
   @AuthJwtPayload('userId') updatedBy: string,
   @Body({ schema: UserUpdateStatusRequestSchema }) body: UserUpdateStatusRequestDto
-): Promise<void> {
+): Promise<IResponseReturn<void>> {
   await this.userHttpService.updateStatusByAdmin(userId, body, updatedBy);
+
+  return {};
 }
 
 @TermPolicyAcceptanceProtected()
@@ -413,8 +415,10 @@ async revoke(
   @Param('userId', { schema: RequestMongoIdSchema }) userId: string,
   @Param('sessionId', { schema: RequestMongoIdSchema }) sessionId: string,
   @AuthJwtPayload('userId') revokedBy: string
-): Promise<void> {
+): Promise<IResponseReturn<void>> {
   await this.sessionHttpService.revokeByAdmin(userId, sessionId, revokedBy);
+
+  return {};
 }
 ```
 

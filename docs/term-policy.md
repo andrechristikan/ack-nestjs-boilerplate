@@ -370,8 +370,10 @@ export class TermPolicySharedController {
   async accept(
     @UserCurrent() user: IUser,
     @Body({ schema: TermPolicyAcceptRequestSchema }) body: TermPolicyAcceptRequestDto
-  ): Promise<void> {
+  ): Promise<IResponseReturn<void>> {
     await this.termPolicyAcceptanceHttpService.userAccept(user, body);
+
+    return {};
   }
 }
 ```

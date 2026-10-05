@@ -401,7 +401,7 @@ When auto-logging is enabled, the following information is automatically capture
 - `route`: the matched route pattern (`baseUrl` plus the route path, such as `/api/v1/admin/user/:userId/device/list`); for a request that matched no route, the URL masked by `LoggerUtil.maskUrl`. The raw URL and path are not logged
 - User-Agent
 - Content-Type
-- Referer, masked by `LoggerUtil.maskUrl`
+- `referer`, masked by `LoggerUtil.maskUrl`, or `null` when the request carries no `Referer` header
 - Remote address and port
 - Client IP address
 - Authenticated user ID
@@ -419,22 +419,33 @@ When auto-logging is enabled, the following information is automatically capture
 
 ### Excluded Routes
 
-Routes excluded from auto-logging, and from Sentry events and traces (defined in `logger.constant.ts`):
+Routes excluded from auto-logging, and from Sentry events and traces, are the config key `logger.excludedRoutes` (`src/configs/logger.config.ts`). The list is built from `app.globalPrefix` and `doc.prefix`, so it follows both prefixes:
 
 ```typescript
-export const LoggerExcludedRoutes: string[] = [
-    '/api/public/hello',
-    '/api/public/hello/*',
-    '/api/system/health',
-    '/api/system/health/*',
-    '/metrics',
-    '/metrics/*',
-    '/favicon.ico',
-    '/docs',
-    '/docs/*',
-    '/',
-];
+export default registerAs('logger', (): IConfigLogger => {
+    const { globalPrefix } = appConfigFunction();
+    const { prefix: docPrefix } = docConfigFunction();
+
+    return {
+        // ...
+        excludedRoutes: [
+            `${globalPrefix}/public/hello`,
+            `${globalPrefix}/public/hello/*`,
+            `${globalPrefix}/system/health`,
+            `${globalPrefix}/system/health/*`,
+            '/metrics',
+            '/metrics/*',
+            '/favicon.ico',
+            docPrefix,
+            `${docPrefix}/*`,
+            '/',
+        ],
+        // ...
+    };
+});
 ```
+
+With the default prefixes (`/api`, `/docs`) the list resolves to `/api/public/hello`, `/api/system/health`, `/metrics`, `/favicon.ico`, `/docs`, their `/*` variants, and `/`. `LoggerOptionService` reads it for the pino-http `autoLogging.ignore` check, and `src/instrument.ts` reads it for `beforeSend` and `tracesSampler`.
 
 ### Pattern Matching Rules
 
@@ -445,24 +456,24 @@ export const LoggerExcludedRoutes: string[] = [
 
 ### Adding Custom Excluded Routes
 
-To exclude additional routes, modify the constant in `src/common/logger/constants/logger.constant.ts`:
+To exclude additional routes, add patterns to `excludedRoutes` in `src/configs/logger.config.ts`:
 
 ```typescript
-export const LoggerExcludedRoutes: string[] = [
-    '/api/public/hello',
-    '/api/public/hello/*',
-    '/api/system/health',
-    '/api/system/health/*',
+excludedRoutes: [
+    `${globalPrefix}/public/hello`,
+    `${globalPrefix}/public/hello/*`,
+    `${globalPrefix}/system/health`,
+    `${globalPrefix}/system/health/*`,
     '/metrics',
     '/metrics/*',
     '/favicon.ico',
-    '/docs',
-    '/docs/*',
+    docPrefix,
+    `${docPrefix}/*`,
     '/',
     // Add your custom routes
     '/internal/*',
-    '/admin/debug',
-];
+    `${globalPrefix}/admin/debug`,
+],
 ```
 
 ### Auto-logging Context
@@ -588,10 +599,12 @@ Request IDs are extracted from these headers in order of priority:
 
 ```typescript
 export const LoggerRequestIdHeaders = [
-    'x-correlation-id',  // First priority
-    'x-request-id',      // Second priority
-];
+    RequestCorrelationIdHeaderName, // 'x-correlation-id', first priority
+    RequestIdHeaderName,            // 'x-request-id', second priority
+] as const;
 ```
+
+Both names are the header constants in `src/common/request/constants/request.constant.ts`, the same ones `RequestRequestIdMiddleware` reads and writes.
 
 ### Fallback Behavior
 
@@ -655,7 +668,7 @@ Error-level logs are forwarded to Sentry Logs only; they are NOT duplicated as S
 `beforeSend` is the last filter every Issue passes through. It drops:
 
 - a non-fatal `QueueException`
-- an event whose `request.url` matches `LoggerExcludedRoutes`
+- an event whose `request.url` matches `logger.excludedRoutes`
 - an event whose response status code is below 500
 - an event at `info` or `debug` level
 

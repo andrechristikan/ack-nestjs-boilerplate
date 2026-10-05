@@ -66,6 +66,8 @@ ConfigModule.forRoot({
   - `RequestOptionalEnvUrlNoTrailingSlashSchema`: an absolute URL without a trailing slash (`AWS_S3_ENDPOINT`, `AWS_SES_ENDPOINT`)
   - `RequestOptionalEnvSchema(z.url())`: a URL (`SENTRY_DSN`)
 
+The config files under `src/configs/` read each optional key (and `HTTP_TRUSTED_PROXY`) through `readOptionalEnv(process.env.KEY)`, exported from the same file: an absent value and a blank line both read as `null`, so a config interface field is `string | null`.
+
 Each third-party integration is optional and validated as a group by a `superRefine` on `AppEnvSchema`:
 
 | Integration | Turned on by | Then required |

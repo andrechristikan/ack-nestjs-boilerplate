@@ -50,7 +50,7 @@ Both paths answer an error; `onError: true` is what writes the rows. All three c
 | `ActivityLogDomain.prepare` | Validates contract and metadata, returns an `IActivityLogStagedEvent`; stages nothing |
 | `ActivityLogDomain.stagePrepared` | Pushes prepared events onto the request-store stage list |
 | `ActivityLogInterceptor` | After the handler settles, calls `ActivityLogDomain.flushStaged` (all staged on success; `onError: true` only on error) |
-| `RequestStoreService` | Per-request carrier for staged events (`ActivityLogStageStoreKey`, value `'ActivityLogStageStore'`), request log, and workspace |
+| `RequestStoreService` | Per-request carrier for staged events (`ActivityLogStageStoreKey`, value `'ActivityLogStageStoreKey'`), request log, and workspace |
 | `ActivityLogDomain.flushStaged` | Builds rows and writes them via `ActivityLogRepository.createMany` |
 | `ActivityLogHttpService` | Transport layer for the four list routes; the page it returns is serialized against `ActivityLogResponseSchema` declared on the route |
 | `ActivityLogRepository` | Data access (Prisma), including `createMany`, which inserts every flushed row in one call with no transaction |

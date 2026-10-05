@@ -107,7 +107,7 @@ Fields:
 
 ## Selecting the Active Workspace
 
-1. `RequestWorkspaceMiddleware` copies the `x-workspace-id` header into the request store under the key from `workspace.storeKey` (`workspaceId`), or `null` when the header is absent. It performs no validation.
+1. `RequestWorkspaceMiddleware` copies the `x-workspace-id` header (`RequestWorkspaceIdHeaderName`) into the request store under `RequestWorkspaceIdStoreKey`, or `null` when the header is absent. It performs no validation.
 2. `WorkspaceGuard` reads that key, loads the active workspace, and stores the row under `WorkspaceStoreKey`. A missing header and an unknown id both throw `WorkspaceNotFoundException` (404, `51600`).
 3. `WorkspaceMemberGuard` then confirms the caller's membership and stores the `WorkspaceMember` row.
 
@@ -400,8 +400,6 @@ A flag is never an authorization boundary. See [Feature Flag][ref-doc-feature-fl
 
 ```typescript
 {
-  headerName: 'x-workspace-id',
-  storeKey: 'workspaceId',
   maxWorkspacesPerUser: 10,
   personalNamePattern: "{username}'s Workspace",
   slugPrefix: 'w-',

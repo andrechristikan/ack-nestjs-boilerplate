@@ -75,8 +75,6 @@ cp .env.example .env
 # Generate JWT keys and encryption secrets into .env
 pnpm generate:secret --direct-insert
 
-# Set AUTH_TWO_FACTOR_ISSUER in .env (required, empty in .env.example)
-
 # Generate the Prisma client and src/generated/package/package.ts
 pnpm generate
 

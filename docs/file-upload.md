@@ -296,8 +296,10 @@ async uploadPhotoProfile(
     ])
   )
   file: IFile
-): Promise<void> {
+): Promise<IResponseReturn<void>> {
   await this.userProfileHttpService.uploadPhotoProfile(userId, file);
+
+  return {};
 }
 ```
 
@@ -402,8 +404,10 @@ async import(
     })
   )
   data: UserImportRequestDto[]
-): Promise<void> {
+): Promise<IResponseReturn<void>> {
   await this.userImportHttpService.importByAdmin(data, createdBy);
+
+  return {};
 }
 ```
 
@@ -657,8 +661,10 @@ export class UserSharedController {
     @AuthJwtPayload('userId') userId: string,
     @Body({ schema: UserUpdateProfilePhotoRequestSchema })
     body: UserUpdateProfilePhotoRequestDto
-  ): Promise<void> {
+  ): Promise<IResponseReturn<void>> {
     await this.userProfileHttpService.updatePhotoProfile(userId, body);
+
+    return {};
   }
 }
 ```

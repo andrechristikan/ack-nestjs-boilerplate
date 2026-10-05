@@ -210,16 +210,12 @@ export default registerAs(
             
             // JWT issuer claim (identifies who issued the token)
             issuer: process.env.AUTH_JWT_ISSUER,
-            
-            // HTTP header name for token transmission
-            header: 'Authorization',
-            
-            // Token prefix (e.g., 'Bearer' in 'Bearer <token>')
-            prefix: 'Bearer',
         },
     })
 );
 ```
+
+The header and scheme a token travels in are constants in `src/modules/auth/constants/auth.constant.ts`: `AuthHeaderName` (`Authorization`) and `AuthBearerScheme` (`Bearer`). Both Passport strategies extract the token with `ExtractJwt.fromAuthHeaderWithScheme(AuthBearerScheme)`, and a login response reports `AuthBearerScheme` as its `tokenType`.
 
 Signature verification on incoming requests is done by the Passport strategies (`AuthJwtAccessStrategy`, `AuthJwtRefreshStrategy`) against the **JWKS endpoint**, not against the configured `publicKey`.
 
@@ -690,7 +686,7 @@ sequenceDiagram
 
     API->>API: ApiKeyProtected, then FeatureFlagProtected<br/>(disabled flag: 404 FeatureFlagDisabledException)
     API->>Guard: AuthSocialGoogleGuard / AuthSocialAppleGuard
-    Guard->>Guard: Split the Authorization header on the configured prefix
+    Guard->>Guard: Split the Authorization header on the Bearer scheme (AuthBearerScheme)
 
     alt Google Authentication
         Guard->>AuthDomain: validateOAuthGoogle(token)
@@ -760,9 +756,7 @@ export default registerAs(
     'auth',
     (): IConfigAuth => ({
         google: {
-            header: 'Authorization',
-            prefix: 'Bearer',
-            clientId: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID || null,
+            clientId: readOptionalEnv(process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID),
         }
     })
 );
@@ -825,10 +819,10 @@ export default registerAs(
     'auth',
     (): IConfigAuth => ({
         apple: {
-            header: 'Authorization',
-            prefix: 'Bearer',
-            clientId: process.env.AUTH_SOCIAL_APPLE_CLIENT_ID || null,
-            signInClientId: process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID || null,
+            clientId: readOptionalEnv(process.env.AUTH_SOCIAL_APPLE_CLIENT_ID),
+            signInClientId: readOptionalEnv(
+                process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID
+            ),
         }
     })
 );
@@ -966,7 +960,6 @@ export default registerAs(
     'auth',
     (): IConfigAuth => ({
         xApiKey: {
-            header: 'x-api-key',
             keyPattern: 'ApiKey:{key}',
         },
     })
@@ -974,7 +967,6 @@ export default registerAs(
 ```
 
 **Configuration Options:**
-- `header`: Header name for API key (`x-api-key`)
 - `keyPattern`: Redis cache key pattern for API key caching (`{key}` is replaced with the key)
 
 An admin write that changes or deletes a key runs the database write, stages its activity row, then deletes the key's cache entry. A failed cache delete answers 500 with the database change applied. Details: [Cache][ref-doc-cache].

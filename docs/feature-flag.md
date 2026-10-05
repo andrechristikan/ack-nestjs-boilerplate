@@ -111,8 +111,10 @@ async loginWithGoogle(
 @Post('/password/forgot')
 async forgotPassword(
   @Body({ schema: UserForgotPasswordRequestSchema }) body: UserForgotPasswordRequestDto
-): Promise<void> {
+): Promise<IResponseReturn<void>> {
   await this.userPasswordHttpService.forgotPassword(body);
+
+  return {};
 }
 ```
 
@@ -221,7 +223,7 @@ The flag key and the caller identifier are combined and hashed with SHA-256 (`He
 **Anonymous callers** are handled separately:
 
 - `rolloutPercent >= 100` passes without any identifier.
-- Below 100, the identifier comes from the `x-anonymous-id` request header. Its name (`headerName`), max length (`idMaxLength`, 100) and allowed charset (`idRegex`, `/^[a-zA-Z0-9-_]+$/`) live in `src/configs/feature-flag.config.ts`.
+- Below 100, the identifier comes from the `x-anonymous-id` request header, named by the constant `FeatureFlagAnonymousIdHeaderName` in `src/modules/feature-flag/constants/feature-flag.constant.ts`. Its max length (`idMaxLength`, 100) and allowed charset (`idRegex`, `/^[a-zA-Z0-9-_]+$/`) live in `src/configs/feature-flag.config.ts`.
 - The evaluation **fails closed** with 404 (`disabled`) when that header is absent, empty, over length, or does not match the pattern. An anonymous caller lands in the same bucket only while it sends the same `x-anonymous-id`.
 
 ## Caching
@@ -232,7 +234,6 @@ Feature flags are cached. Configuration in `src/configs/feature-flag.config.ts`:
   keyPattern: 'FeatureFlag:{key}',
   cacheTtlInMs: ms('1h'),
   anonymous: {
-    headerName: 'x-anonymous-id',
     idMaxLength: 100,
     idRegex: /^[a-zA-Z0-9-_]+$/
   }

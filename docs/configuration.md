@@ -179,10 +179,10 @@ jwt: {
   };
   audience: string;               // JWT audience claim
   issuer: string;                 // JWT issuer claim
-  header: string;                 // HTTP header for JWT (default: 'Authorization')
-  prefix: string;                 // Token prefix (default: 'Bearer')
 }
 ```
+
+The token header and scheme are constants, not config: `AuthHeaderName` (`Authorization`) and `AuthBearerScheme` (`Bearer`) in `src/modules/auth/constants/auth.constant.ts`. The Apple and Google guards read the same pair.
 
 **`password`** - Password policy configuration
 ```typescript
@@ -224,8 +224,6 @@ twoFactor: {
 **`apple`** - Apple OAuth configuration
 ```typescript
 apple: {
-  header: string;                 // HTTP header for Apple auth
-  prefix: string;                 // Token prefix for Apple auth
   clientId: string | null;        // Apple OAuth client ID
   signInClientId: string | null;  // Apple Sign In client ID
 }
@@ -234,8 +232,6 @@ apple: {
 **`google`** - Google OAuth configuration
 ```typescript
 google: {
-  header: string;                 // HTTP header for Google auth
-  prefix: string;                 // Token prefix for Google auth
   clientId: string | null;        // Google OAuth client ID
 }
 ```
@@ -243,10 +239,11 @@ google: {
 **`xApiKey`** - API Key authentication configuration
 ```typescript
 xApiKey: {
-  header: string;                 // HTTP header for API key
   keyPattern: string;             // Cache key pattern for API keys ('ApiKey:{key}')
 }
 ```
+
+The API key header is the constant `ApiKeyHeaderName` (`x-api-key`) in `src/modules/api-key/constants/api-key.constant.ts`.
 
 ### Database Configuration
 
@@ -376,6 +373,13 @@ filePath: string                // Directory path for log files
 auto: boolean                   // Enable automatic request/response logging
 ```
 
+**`excludedRoutes`** - Routes left out of request auto-logging and Sentry
+```typescript
+excludedRoutes: string[]        // Wildcard patterns built from app.globalPrefix and doc.prefix
+```
+
+The list covers `{globalPrefix}/public/hello`, `{globalPrefix}/system/health`, `/metrics`, `{docPrefix}` (each with its `/*` variant), `/favicon.ico`, and `/`. With the defaults (`/api`, `/docs`) that is `/api/public/hello`, `/api/system/health`, and `/docs`. `LoggerOptionService` skips matching requests in pino-http, and `src/instrument.ts` drops matching Sentry events and samples matching traces at `0`.
+
 **`prettier`** - Log formatting option
 ```typescript
 prettier: boolean               // Format logs for better readability
@@ -445,8 +449,9 @@ cors: {
 > - **Exact port matching** is supported (e.g., `api.example.com:3000`); port wildcards are not supported
 > - **Protocol-agnostic**: both HTTP and HTTPS are allowed for the same hostname
 > - **Credentials** are automatically allowed only for specific origins; wildcard (`*`) disables credentials
-> - `allowedHeader` is a fixed list in `request.config.ts`, not environment-driven: standard CORS/HTTP headers (including `user-agent`) plus the custom headers `x-custom-lang`, `x-timestamp`, `x-api-key`, `x-timezone`, `x-workspace-id`, `x-anonymous-id`, `x-request-id`, `x-correlation-id`, `x-version`, `x-repo-version`, and `X-Response-Time`
-> - `exposedHeader` is likewise fixed in `request.config.ts`: `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and the `-route` and `-user` suffixed variants of the three. A response header that is not in this list is invisible to a cross-origin browser client
+> - `allowedHeader` is a fixed list in `request.config.ts`, not environment-driven: standard CORS/HTTP headers (including `Authorization` and `user-agent`) plus the custom headers `x-custom-lang`, `x-timestamp`, `x-api-key`, `x-timezone`, `x-workspace-id`, `x-anonymous-id`, `x-request-id`, `x-correlation-id`, `x-version`, `x-repo-version`, and `X-Response-Time`
+> - `exposedHeader` is likewise fixed in `request.config.ts`: `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, the `-route` and `-user` suffixed variants of the three, and `x-custom-lang`, `x-timestamp`, `x-timezone`, `x-version`, `x-repo-version`, `x-request-id`, and `x-correlation-id`. A response header that is not in this list is invisible to a cross-origin browser client
+> - Every custom header in both lists comes from a header-name constant (`RequestCustomLangHeaderName`, `RequestCorrelationIdHeaderName`, `RequestIdHeaderName`, `RequestWorkspaceIdHeaderName`, the `Response*HeaderName` constants, `AuthHeaderName`, `ApiKeyHeaderName`, `FeatureFlagAnonymousIdHeaderName`), and the `X-RateLimit-*` names are built from `throttle.headerPrefix` and the `EnumRequestThrottleName` values
 
 **`helmet`** - Strict-Transport-Security parameters for the Helmet profile
 ```typescript
@@ -781,11 +786,12 @@ cacheTtlInMs: number            // Cache TTL in milliseconds for feature flag da
 **`anonymous`** - Anonymous evaluation identity configuration
 ```typescript
 anonymous: {
-  headerName: string;           // HTTP header carrying the anonymous id (default: 'x-anonymous-id')
   idMaxLength: number;          // Maximum anonymous id length (default: 100)
   idRegex: RegExp;              // Regular expression a valid anonymous id matches (/^[a-zA-Z0-9-_]+$/)
 }
 ```
+
+The anonymous id arrives in the `x-anonymous-id` header, named by the constant `FeatureFlagAnonymousIdHeaderName` in `src/modules/feature-flag/constants/feature-flag.constant.ts`.
 
 ### Response Configuration
 
@@ -940,15 +946,7 @@ maxSizeExportInBytes: number    // Largest file `ResponseFileInterceptor` sends 
 
 #### Configuration Keys:
 
-**`headerName`** - Workspace HTTP header
-```typescript
-headerName: string              // HTTP header carrying the active workspace id (default: 'x-workspace-id')
-```
-
-**`storeKey`** - Request store key
-```typescript
-storeKey: string                // Request store key for the resolved workspace id (default: 'workspaceId')
-```
+The workspace header and its request-store key are constants in `src/common/request/constants/request.constant.ts`: `RequestWorkspaceIdHeaderName` (`x-workspace-id`) and `RequestWorkspaceIdStoreKey`.
 
 **`maxWorkspacesPerUser`** - Workspace ownership cap
 ```typescript
@@ -1045,10 +1043,10 @@ cache: {
   fraudSummaryTtlInMs: number;    // Fraud summary TTL (default: 5m)
   riskScoreTtlInMs: number;       // Per-user risk score TTL (default: 10m)
   keyPatterns: {
-    dashboard: string;            // Analytic:dashboard:{metric}:{start}:{end}
-    anomaly: string;              // Analytic:anomaly:{signal}:{window}
-    fraud: string;                // Analytic:fraud:{signal}:{window}
-    riskScore: string;            // Analytic:fraud:risk:{userId}
+    dashboard: string;            // Analytic:Dashboard:{metric}:{start}:{end}
+    anomaly: string;              // Analytic:Anomaly:{signal}:{window}
+    fraud: string;                // Analytic:Fraud:{signal}:{window}
+    riskScore: string;            // Analytic:Fraud:Risk:{userId}
   };
   windowTokenPattern: string;          // '{start}:{end}'
   workspaceWindowTokenPattern: string; // '{workspaceId}:{start}:{end}'
@@ -1059,7 +1057,7 @@ cache: {
 
 **`anomaly`** - Impossible-travel, login-spike, failed-login, device-proliferation, and login-time thresholds used by `AnalyticAnomalyDomain`
 
-**`fraud`** - Credential-stuffing and related signal windows, risk weights, band cutoffs, and band labels used by `AnalyticFraudDomain`
+**`fraud`** - Credential-stuffing and related signal windows, risk weights, and band cutoffs used by `AnalyticFraudDomain`. The band a score falls in is an `EnumAnalyticFraudBand` value (`monitor`, `review`, `elevate`, `critical`)
 
 
 <!-- REFERENCES -->

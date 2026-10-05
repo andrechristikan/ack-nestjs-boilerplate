@@ -272,15 +272,17 @@ The `.meta({ description, example })` on each field is what the OpenAPI document
 
 ### A Route That Returns No Data
 
-`@Response(messagePath)` with no `schema` declares a route whose body carries `statusCode`, `message`, and `metadata` and nothing else. The handler returns `Promise<void>`. `ResponseInterceptor` builds the same envelope for a `void` result as for `{}`, so `IResponseReturn<void>` is the return type only where the HTTP service passes `metadata` overrides, as `markAllAsRead` does with `messageProperties`.
+`@Response(messagePath)` with no `schema` declares a route whose body carries `statusCode`, `message`, and `metadata` and nothing else. Every handler returns an envelope: a route with no data is typed `Promise<IResponseReturn<void>>` and ends with `return {};`. Where the HTTP service passes `metadata` overrides, as `markAllAsRead` does with `messageProperties`, the handler returns the HTTP service's `IResponseReturn<void>` as is.
 
 ```typescript
 @Response('role.delete')
 @Delete('/delete/:roleId')
 async delete(
   @Param('roleId', { schema: RequestMongoIdSchema }) roleId: string
-): Promise<void> {
+): Promise<IResponseReturn<void>> {
   await this.roleHttpService.deleteByAdmin(roleId);
+
+  return {};
 }
 ```
 
@@ -446,6 +448,8 @@ All responses automatically include these headers (set by interceptors):
 - `x-repo-version`: Repository version
 - `x-request-id`: Unique request identifier (read from the request store `RequestIdStoreKey`)
 - `x-correlation-id`: Request correlation identifier (read from the request store `RequestCorrelationIdStoreKey`)
+
+`ResponseMetadataService.setHeaders` writes all seven, on the success interceptors and on every exception filter. Each name is a constant: `RequestCustomLangHeaderName`, `RequestIdHeaderName`, and `RequestCorrelationIdHeaderName` in `src/common/request/constants/request.constant.ts`; `ResponseTimestampHeaderName`, `ResponseTimezoneHeaderName`, `ResponseVersionHeaderName`, and `ResponseRepoVersionHeaderName` in `src/common/response/constants/response.constant.ts`. All seven are in `request.cors.exposedHeader`, so a cross-origin browser client can read them.
 
 The same store-sourced `language`, `version`, `requestId`, and `correlationId` feed the response `metadata`. `request.id` / `request.correlationId` are kept only for pino logging.
 

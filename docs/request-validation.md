@@ -237,6 +237,7 @@ Shared schemas:
   - `RequestOptionalEnvEmailSchema` over a string checked by the custom `validateEmail` validator (`request.custom-email.validation.ts`)
   - `RequestOptionalEnvSesIdentityArnSchema` over `RequestSesIdentityArnSchema`
   - `RequestOptionalEnvUrlNoTrailingSlashSchema` over `RequestUrlNoTrailingSlashSchema`
+- `readOptionalEnv(value)` (`request.optional-env.validation.ts`): the reader the config files call on an optional key; an absent value and an empty string both read as `null`
 - `RequestMessageLanguageSchema`: a member of `EnumMessageLanguage`, carrying its own `.meta()` for the OpenAPI document
 
 ## File Validation Pipes

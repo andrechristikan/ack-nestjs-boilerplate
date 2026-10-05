@@ -192,8 +192,10 @@ async changePassword(
     @UserCurrent() user: IUser,
     @Body({ schema: UserChangePasswordRequestSchema })
     body: UserChangePasswordRequestDto
-): Promise<void> {
+): Promise<IResponseReturn<void>> {
     await this.userPasswordHttpService.changePassword(user, body);
+
+    return {};
 }
 ```
 
@@ -216,7 +218,7 @@ ThrottlerModule.forRootAsync({
   inject: [ConfigService, RequestThrottleStorageService],
   useFactory: (config, storage) => ({
     throttlers: [{
-      name: 'default',
+      name: EnumRequestThrottleName.default,
       ttl: config.get<number>('request.throttle.default.ttlInMs'),
       limit: config.get<number>('request.throttle.default.limit'),
       blockDuration: config.get<number>('request.throttle.default.blockDurationInMs'),
@@ -226,7 +228,7 @@ ThrottlerModule.forRootAsync({
 })
 ```
 
-**Redis keys** follow the configured patterns, with `{name}` one of `default` / `user` / `route` and `{tracker}` the value described above:
+**Redis keys** follow the configured patterns, with `{name}` one of the `EnumRequestThrottleName` values `default` / `user` / `route` and `{tracker}` the value described above:
 ```
 Request:Throttle:{name}:{tracker}         # sliding window log (sorted set)
 Request:Throttle:Block:{name}:{tracker}   # active block
@@ -261,7 +263,8 @@ Manages cross-origin resource sharing (CORS): origin matching with wildcard subd
 - Matches an origin by exact hostname, wildcard subdomain, or explicit port
 - Allows credentials unless the configured origins include the wildcard `*`
 - Takes the allowed methods and request headers from config
-- Emits `request.cors.exposedHeader` as `Access-Control-Expose-Headers`; it carries `Retry-After` and all nine `X-RateLimit-*` variants, so a browser client can read its rate-limit state cross-origin. See [Rate Limiting](#rate-limiting)
+- Emits `request.cors.exposedHeader` as `Access-Control-Expose-Headers`; it carries `Retry-After`, all nine `X-RateLimit-*` variants, and `x-custom-lang`, `x-timestamp`, `x-timezone`, `x-version`, `x-repo-version`, `x-request-id`, and `x-correlation-id`, so a browser client can read its rate-limit state and the response metadata headers cross-origin. See [Rate Limiting](#rate-limiting)
+- Builds both header lists from the header-name constants (`RequestCustomLangHeaderName`, `RequestIdHeaderName`, `ResponseTimestampHeaderName`, `ApiKeyHeaderName`, and the rest)
 - Answers OPTIONS preflight requests with `204` and `max-age` 86400 seconds
 - Accepts a single string, an array of origins, a boolean (`true` allows all, `false` denies all), or the wildcard `*`
 
@@ -398,7 +401,7 @@ Processes the `x-workspace-id` header for workspace scoping.
 x-workspace-id: 6650f0c5a1b2c3d4e5f60718
 ```
 
-**Storage:** the raw header value is written to the request store under the key configured by `workspace.storeKey` (`workspaceId`), or `null` when the header is absent or not a string. The middleware never validates the id; `WorkspaceGuard` resolves and validates it later.
+**Storage:** the raw header value (header name `RequestWorkspaceIdHeaderName`) is written to the request store under `RequestWorkspaceIdStoreKey`, or `null` when the header is absent or not a string. The middleware never validates the id; `WorkspaceGuard` resolves and validates it later.
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
@@ -458,12 +461,12 @@ Per-request ambient metadata is carried in the generic `RequestStoreService` (`s
 | `RequestCorrelationIdStoreKey` | `RequestRequestIdMiddleware` | `req.correlationId` (dual-write) |
 | `RequestActorStoreKey` | `RequestActorInterceptor` | `req.user.userId`, set only when the request is authenticated |
 | `RequestThrottleHandledStoreKey` | `RequestThrottleUserInterceptor` | `true` once the per-user limiter has run for this request; NestJS mounts the interceptor once per `@RequestThrottle` on the handler, and the flag keeps a second mount from counting a second hit |
+| `RequestWorkspaceIdStoreKey` | `RequestWorkspaceMiddleware` | the raw `x-workspace-id` header, or `null` |
 
 Feature modules own the rest of the keys, each declared in its own `constants/` file:
 
 | Key | Written by | Holds |
 |---|---|---|
-| the key configured by `workspace.storeKey` (`workspaceId`) | `RequestWorkspaceMiddleware` | the raw `x-workspace-id` header, or `null` |
 | `AuthPayloadStoreKey` | `AuthJwtAccessGuard`, `AuthJwtRefreshGuard` | the verified JWT payload |
 | `UserStoreKey` | `UserGuard` | the loaded `IUser` |
 | `ApiKeyStoreKey` | `ApiKeyXApiKeyGuard` | the authenticated `ApiKey` |
