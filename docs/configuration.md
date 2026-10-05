@@ -539,7 +539,7 @@ maxDataImport: number           // Maximum rows accepted in a user CSV import (d
 
 **`maxDataExport`** - User CSV export row cap
 ```typescript
-maxDataExport: number           // Maximum users `UserImportDomain.exportByAdmin` returns (default: 500); one row more raises FileExceedMaxDataExportException
+maxDataExport: number           // User CSV export row cap (default: 500), overriding `file.maxDataExport`; the user export route hands this key to `@ResponseFile`, and `UserImportDomain.exportByAdmin` bounds its query by it; one row more raises FileExceedMaxDataExportException
 ```
 
 **`default`** - Default role and country assigned to new users
@@ -920,6 +920,11 @@ push: {
 **`maxDataImport`** - CSV import row cap
 ```typescript
 maxDataImport: number           // Maximum rows accepted in a CSV import (default: 100); `FileCsvValidationPipe` reads it unless the route passes its own config key
+```
+
+**`maxDataExport`** - CSV export row cap
+```typescript
+maxDataExport: number           // Maximum data rows in a CSV export (default: 1000); `ResponseFileInterceptor` reads it unless the route passes its own config key through `@ResponseFile`; one row more raises FileExceedMaxDataExportException
 ```
 
 **`maxSizeExportInBytes`** - Export file size cap

@@ -1,4 +1,5 @@
 import { HttpStatus, RequestMethod } from '@nestjs/common';
+import type { NestInterceptor, Type } from '@nestjs/common';
 import {
     HTTP_CODE_METADATA,
     METHOD_METADATA,
@@ -13,7 +14,6 @@ import {
     ResponseSchemaMetaKey,
 } from '@common/response/constants/response.constant';
 import { ResponseCacheInterceptor } from '@common/response/interceptors/response.cache.interceptor';
-import { ResponseFileInterceptor } from '@common/response/interceptors/response.file.interceptor';
 import { ResponseInterceptor } from '@common/response/interceptors/response.interceptor';
 import { ResponsePaginationInterceptor } from '@common/response/interceptors/response.pagination.interceptor';
 import {
@@ -21,6 +21,8 @@ import {
     ResponseFile,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
+import { createResponseFileInterceptorFromClass } from '@test/unit/helpers/test.unit.response.helper';
+import { buildResponseFileInterceptorDoubles } from '@test/unit/helpers/test.unit.response.helper';
 import {
     buildDecoratorTarget,
     findDocResponseEntry,
@@ -302,7 +304,7 @@ describe('response.decorator', () => {
     });
 
     describe('ResponseFile', () => {
-        it('defaults to HTTP 200, the CSV mime type, and the file interceptor for a non-POST handler', () => {
+        it('defaults to HTTP 200, the CSV mime type, and the file interceptor on the default row cap key for a non-POST handler', async () => {
             const handler = vi.fn();
             Reflect.defineMetadata(METHOD_METADATA, RequestMethod.GET, handler);
             const { target, propertyKey, descriptor } =
@@ -310,8 +312,18 @@ describe('response.decorator', () => {
 
             ResponseFile()(target, propertyKey, descriptor);
 
-            expect(Reflect.getMetadata(INTERCEPTORS_METADATA, handler)).toEqual(
-                [ResponseFileInterceptor]
+            const interceptors = Reflect.getMetadata(
+                INTERCEPTORS_METADATA,
+                handler
+            ) as Type<NestInterceptor>[];
+            expect(interceptors).toHaveLength(1);
+            const doubles = buildResponseFileInterceptorDoubles();
+            await createResponseFileInterceptorFromClass(
+                interceptors[0],
+                doubles
+            );
+            expect(doubles.configService.get).toHaveBeenCalledWith(
+                'file.maxDataExport'
             );
             const responses = Reflect.getMetadata(
                 DECORATORS.API_RESPONSE,
@@ -329,6 +341,31 @@ describe('response.decorator', () => {
             expect(responses[String(HttpStatus.OK)].content).toEqual({
                 'text/csv': { schema: { type: 'string', format: 'binary' } },
             });
+        });
+
+        it('binds the file interceptor to the given row cap config key', async () => {
+            const handler = vi.fn();
+            const { target, propertyKey, descriptor } =
+                buildDecoratorTarget(handler);
+
+            ResponseFile({ maxDataExportConfigKey: 'user.maxDataExport' })(
+                target,
+                propertyKey,
+                descriptor
+            );
+
+            const interceptors = Reflect.getMetadata(
+                INTERCEPTORS_METADATA,
+                handler
+            ) as Type<NestInterceptor>[];
+            const doubles = buildResponseFileInterceptorDoubles();
+            await createResponseFileInterceptorFromClass(
+                interceptors[0],
+                doubles
+            );
+            expect(doubles.configService.get).toHaveBeenCalledWith(
+                'user.maxDataExport'
+            );
         });
 
         it('defaults to HTTP 201 for a POST handler carrying no explicit @HttpCode', () => {

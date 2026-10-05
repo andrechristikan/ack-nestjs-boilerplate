@@ -168,7 +168,7 @@ A hand-written schema object beside a zod schema is a mirror. Every field carrie
 |---|---|---|
 | `@Response(messagePath, { schema?, cache? })` | Success envelope; HTTP status and body `statusCode` from `@HttpCode` or Nest method defaults (`POST` → 201, else 200) | `DocSerializationErrorResponses.serialization` |
 | `@ResponsePagination(messagePath, { schema, cache? })` | 200 page envelope with `baseSchema: ResponsePaginationSchema`; item schema is the row | Shared pagination errors plus both offset and cursor kits, plus serialization / pagination-shape / pagination-type failures |
-| `@ResponseFile({ extension? })` | Success response under the extension's media type (`text/csv` or `application/pdf`, from `ResponseFileMediaTypes`) with a binary string schema; error responses stay `application/json` | Export size / data caps from `DocFileErrorResponses` |
+| `@ResponseFile({ extension?, maxDataExportConfigKey? })` | Success response under the extension's media type (`text/csv` or `application/pdf`, from `ResponseFileMediaTypes`) with a binary string schema; error responses stay `application/json` | Export row cap (`50104`) and size cap (`50105`) from `DocFileErrorResponses` |
 | `FileUpload*` | Multipart consumes + binary body | Upload errors from `DocFileErrorResponses` |
 
 `IResponseOptions` carries only `schema` and `cache`. It does not carry `httpStatus` or `statusCode`. Override either status at runtime via `metadata` on the handler return. `@ResponsePagination` does not emit list `ApiQuery`s; those come from the zod query schema.

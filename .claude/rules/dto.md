@@ -26,17 +26,17 @@ unchanged; a response schema is declared on the route. No third model between co
 - Request schemas are the one layer where `.optional()` is legal; a response field is `.optional()`
   when genuinely absent and `.nullable()` when present-or-null. A date-shaped request field is typed as a
   date on the schema. Field names are camelCase and renamed freely; a body field never duplicates a path param.
-- `AppEnvSchema` (`src/app/dtos/app.env.dto.ts:23`) validates `process.env` at boot; a new env var lands there, in its
-  config file, and in `.env.example`. An env boolean is `RequestBooleanStringSchema`; an encryption root is
-  `RequestEncryptionSecretSchema`; a third-party key (AWS, Firebase, Google and Apple sign-in, Sentry, `EMAIL_*`) is
-  `RequestOptionalEnvSchema(<schema>)`, so a blank line is unset and a set value still meets its format. The
-  `superRefine` (`:106`) requires an integration's keys once its trigger is set: an S3 or SES credential key or secret
+- `AppEnvSchema` (`src/app/dtos/app.env.dto.ts:20`) validates `process.env` at boot (`config.md`). A boolean is
+  `RequestBooleanStringSchema`, an encryption root `RequestEncryptionSecretSchema`, a third-party key (AWS, Firebase,
+  Google and Apple sign-in, Sentry, `EMAIL_*`) a `RequestOptionalEnv*Schema` from `request.optional-env.validation.ts`
+  (a blank line is unset, a set value meets its format); a new format is a named validation there, not a dto const. The
+  `superRefine` (`:103`) requires an integration's keys once its trigger is set: an S3 or SES credential key or secret
   (SES adds `EMAIL_NO_REPLY` and `EMAIL_SUPPORT`), any Firebase key; a new integration adds its group there.
 
 ## The pipe and the interceptor
 
 `RequestSchemaValidationPipe` (`src/common/request/pipes/request.schema-validation.pipe.ts:13`) is the single
-`APP_PIPE`. A body or path param with no schema attached raises `RequestSchemaMissingException` (`:31`), so each binds
+`APP_PIPE`. A body or path param with no schema attached raises `RequestSchemaMissingException` (`:35`), so each binds
 `{ schema }` (`@Body({ schema })`); a query with no schema passes unvalidated. The response schema is what reaches the
 wire: `z.object` strips undeclared keys, `@Response()` with no schema declares a route returning no data, and a
 payload the schema rejects raises `ResponseSerializationException`. A handler returns an envelope

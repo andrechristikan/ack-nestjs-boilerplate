@@ -464,7 +464,7 @@ Thrown during CSV validation with detailed error context. The exception carries 
 | Exceed Max Files | 50107 | 422 | `file.error.exceedMaxFiles` | The request carries more files than the route's global `limits.files` |
 | Field Unexpected | 50108 | 422 | `file.error.fieldUnexpected` | A file arrived on a field the route does not accept |
 | Multipart Invalid | 50109 | 422 | `file.error.multipartInvalid` | The multipart body is malformed, or a part / field limit was hit |
-| Exceed Max Export | 50104 | 422 | `file.error.exceedMaxDataExport` | An export query returns more rows than its cap (`user.maxDataExport` for the user export) |
+| Exceed Max Export | 50104 | 422 | `file.error.exceedMaxDataExport` | A CSV export carries more data rows than its cap: `file.maxDataExport` (1000), overridable per route through `@ResponseFile({ maxDataExportConfigKey })` the way `maxDataImportConfigKey` overrides the import cap. The user export passes `user.maxDataExport` (500) and also bounds its query by it |
 | Exceed Max Size Export | 50105 | 422 | `file.error.exceedMaxSizeExport` | The generated export file exceeds `file.maxSizeExportInBytes` (2 MB) |
 | Validation Failed | 50300 | 422 | `file.error.validationDto` | Schema validation failed, with per-row details |
 

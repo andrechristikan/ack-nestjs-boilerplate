@@ -59,7 +59,12 @@ ConfigModule.forRoot({
 - An encryption secret is `RequestEncryptionSecretSchema` (exactly 64 base64url characters)
 - A port is `z.coerce.number().int()`
 - An enum-valued variable is `z.enum` over the matching `Enum*`, so a typo is caught by name at boot
-- A third-party key is `RequestOptionalEnvSchema(...)`: an absent value and a blank `.env` line (`KEY=`) both parse as unset; any other value must satisfy the inner schema (a URL for `SENTRY_DSN` and the two AWS endpoints, an email for the email keys, an SES identity ARN for `AWS_SES_IDENTITY_ARN`)
+- A third-party key is `RequestOptionalEnvSchema(...)` or one of its named instances in `src/common/request/validations/request.optional-env.validation.ts`: an absent value and a blank `.env` line (`KEY=`) both parse as unset; any other value must satisfy the inner schema
+  - `RequestOptionalEnvStringSchema`: a non-empty string (social client IDs, AWS credentials, regions, buckets, CDNs, `FIREBASE_PROJECT_ID`, `FIREBASE_PRIVATE_KEY`)
+  - `RequestOptionalEnvEmailSchema`: an email checked by the custom `validateEmail` validator (`EMAIL_NO_REPLY`, `EMAIL_SUPPORT`, `FIREBASE_CLIENT_EMAIL`)
+  - `RequestOptionalEnvSesIdentityArnSchema`: an SES identity ARN (`AWS_SES_IDENTITY_ARN`)
+  - `RequestOptionalEnvUrlNoTrailingSlashSchema`: an absolute URL without a trailing slash (`AWS_S3_ENDPOINT`, `AWS_SES_ENDPOINT`)
+  - `RequestOptionalEnvSchema(z.url())`: a URL (`SENTRY_DSN`)
 
 Each third-party integration is optional and validated as a group by a `superRefine` on `AppEnvSchema`:
 

@@ -255,7 +255,7 @@ export class UserAdminController {
     }
 
     @Doc({ summary: 'export users via csv file' })
-    @ResponseFile()
+    @ResponseFile({ maxDataExportConfigKey: 'user.maxDataExport' })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.user,

@@ -253,11 +253,8 @@ Contributions are welcome. Start with [CONTRIBUTING.md][ref-doc-contributing].
 ## Contributors
 
 - [Gzerox][ref-contributor-gzerox]
-  - [Authentication][ref-doc-authentication]: refresh token rotation and JWT ID (`jti`) validation
-  - [Feature Flag][ref-doc-feature-flag]
   - [Workspace][ref-doc-workspace] (main contributor)
   - [Project][ref-doc-project] (main contributor)
-  - [Term Policy][ref-doc-term-policy]
 - [ak2g][ref-contributor-ak2g]
   - [Two-Factor Authentication][ref-doc-two-factor]
   - [Notification][ref-doc-notification]

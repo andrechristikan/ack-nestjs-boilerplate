@@ -179,7 +179,10 @@ The page fields (`type`, `cursor` emitted as `nextCursor`, `perPage`, `hasNext`,
 
 File download response decorator that handles CSV and PDF file downloads with proper headers and streaming.
 
-**Parameters:** optional `{ extension }`, an `EnumFileExtensionDocument` (default `csv`). It sets the media type the OpenAPI success response declares: `text/csv` or `application/pdf` from `ResponseFileMediaTypes`, with a binary string schema. Error responses on the same route stay `application/json`.
+**Parameters:** optional `{ extension, maxDataExportConfigKey }`.
+
+- `extension`: an `EnumFileExtensionDocument` (default `csv`). It sets the media type the OpenAPI success response declares: `text/csv` or `application/pdf` from `ResponseFileMediaTypes`, with a binary string schema. Error responses on the same route stay `application/json`.
+- `maxDataExportConfigKey`: the config key holding the CSV row cap for this route (default `file.maxDataExport`, 1000). The user export passes `user.maxDataExport` (500).
 
 **Requirements:**
 - Handler returns `IResponseFileReturn` (`IResponseCsvReturn` | `IResponsePdfReturn`)
@@ -188,15 +191,15 @@ File download response decorator that handles CSV and PDF file downloads with pr
 - PDF data is a Buffer
 - Optional `filename` - if not provided, the interceptor fills the `response.filenameExportPattern` config (`export-{timestamp}.{extension}`) through `HelperStringService.fillPattern`, with the request timestamp and the literal `csv`, so the generated fallback is always a `.csv` name. A PDF download carries an explicit `filename`
 
-**Interceptor:** `ResponseFileInterceptor` - validates data based on extension type (a missing payload, a CSV `data` that is missing, empty, or not a string, or a PDF `data` that is missing or not a Buffer raises `ResponseFileDataInvalidException`, 500, `51903`), converts to Buffer, rejects a buffer larger than `file.maxSizeExportInBytes` (2 MB) with `FileExceedMaxSizeExportException` (422, `50105`), sets content headers (Content-Type, Content-Disposition, Content-Length), returns StreamableFile
+**Interceptor:** `ResponseFileInterceptor` - validates data based on extension type (a missing payload, a CSV `data` that is missing, empty, or not a string, or a PDF `data` that is missing or not a Buffer raises `ResponseFileDataInvalidException`, 500, `51903`), rejects a CSV with more data rows than the config value at `maxDataExportConfigKey ?? 'file.maxDataExport'` with `FileExceedMaxDataExportException` (422, `50104`), converts to Buffer, rejects a buffer larger than `file.maxSizeExportInBytes` (2 MB) with `FileExceedMaxSizeExportException` (422, `50105`), sets content headers (Content-Type, Content-Disposition, Content-Length), returns StreamableFile. The row cap applies to CSV only; a PDF is not row-counted, and the byte cap covers both
 
 **CSV export:**
 
-`POST /admin/user/export` is the file-download route. `UserImportHttpService.exportByAdmin` maps rows to `UserExportResponseDto` and returns a CSV string. The interceptor fills the filename from `response.filenameExportPattern` (`export-{timestamp}.csv`) because this handler omits `filename`.
+`POST /admin/user/export` is the file-download route. `UserImportDomain.exportByAdmin` reads at most `user.maxDataExport` + 1 users and raises `FileExceedMaxDataExportException` when the extra row comes back; `UserImportHttpService.exportByAdmin` maps rows to `UserExportResponseDto` and returns a CSV string. The interceptor fills the filename from `response.filenameExportPattern` (`export-{timestamp}.csv`) because this handler omits `filename`.
 
 ```typescript
 @Doc({ summary: 'export users via csv file' })
-@ResponseFile()
+@ResponseFile({ maxDataExportConfigKey: 'user.maxDataExport' })
 @HttpCode(HttpStatus.OK)
 @Post('/export')
 async export(

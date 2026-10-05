@@ -1,5 +1,3 @@
-import { Test } from '@nestjs/testing';
-import type { TestingModule } from '@nestjs/testing';
 import { StreamableFile } from '@nestjs/common';
 import type { CallHandler, ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -13,9 +11,13 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { FileService } from '@common/file/services/file.service';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
-import { ResponseFileInterceptor } from '@common/response/interceptors/response.file.interceptor';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { EnumResponseStatusCodeError } from '@common/response/enums/response.status-code.enum';
+import { createResponseFileInterceptor } from '@test/unit/helpers/test.unit.response.helper';
+import type {
+    IResponseFileInterceptorDoubles,
+    IResponseFileInterceptorUnderTest,
+} from '@test/unit/helpers/test.unit.response.helper';
 import type {
     IResponseFileReturn,
     IResponseCsvReturn,
@@ -44,10 +46,19 @@ describe('ResponseFileInterceptor', () => {
     const configValues: Record<string, unknown> = {
         'response.filenameExportPattern': 'export-{timestamp}.{extension}',
         'file.maxSizeExportInBytes': 1000,
+        'file.maxDataExport': 2,
+        'user.maxDataExport': 1,
+    };
+    const doubles: IResponseFileInterceptorDoubles = {
+        fileService,
+        helperDateService,
+        helperStringService,
+        responseMetadataService,
+        configService,
     };
 
     const today = new Date('2026-01-01T00:00:00.000Z');
-    let interceptor: ResponseFileInterceptor;
+    let interceptor: IResponseFileInterceptorUnderTest;
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -65,25 +76,28 @@ describe('ResponseFileInterceptor', () => {
             (filename: string) => filename
         );
         fileService.extractMimeFromFilename.mockReturnValue('text/csv');
+        fileService.readCsv.mockReturnValue([]);
 
-        const module: TestingModule = await Test.createTestingModule({
-            providers: [
-                ResponseFileInterceptor,
-                { provide: FileService, useValue: fileService },
-                { provide: HelperDateService, useValue: helperDateService },
-                {
-                    provide: HelperStringService,
-                    useValue: helperStringService,
-                },
-                {
-                    provide: ResponseMetadataService,
-                    useValue: responseMetadataService,
-                },
-                { provide: ConfigService, useValue: configService },
-            ],
-        }).compile();
+        interceptor = await createResponseFileInterceptor(undefined, doubles);
+    });
 
-        interceptor = module.get(ResponseFileInterceptor);
+    describe('constructor', () => {
+        it('reads the row cap from the default config key with no options', () => {
+            expect(configGet).toHaveBeenCalledWith('file.maxDataExport');
+            expect(configGet).not.toHaveBeenCalledWith('user.maxDataExport');
+        });
+
+        it('reads the row cap from the given config key', async () => {
+            configGet.mockClear();
+
+            await createResponseFileInterceptor(
+                { maxDataExportConfigKey: 'user.maxDataExport' },
+                doubles
+            );
+
+            expect(configGet).toHaveBeenCalledWith('user.maxDataExport');
+            expect(configGet).not.toHaveBeenCalledWith('file.maxDataExport');
+        });
     });
 
     describe('intercept', () => {
@@ -190,6 +204,93 @@ describe('ResponseFileInterceptor', () => {
             expect(result.options.disposition).toContain(
                 `filename="export-${today.getTime()}.csv"`
             );
+        });
+
+        it('rejects with FileExceedMaxDataExportException when the csv rows exceed the default cap', async () => {
+            fileService.readCsv.mockReturnValue([{}, {}, {}]);
+            const responseData: IResponseCsvReturn = {
+                data: 'h\n1\n2\n3',
+                extension: EnumFileExtensionDocument.csv,
+            };
+            callHandler.handle.mockReturnValue(
+                of(Promise.resolve(responseData as unknown as Response))
+            );
+
+            const promise = firstValueFrom(
+                interceptor.intercept(context, callHandler)
+            );
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'file',
+                statusCode: EnumFileStatusCodeError.exceedMaxDataExport,
+                statusCodeKey:
+                    EnumFileStatusCodeError[
+                        EnumFileStatusCodeError.exceedMaxDataExport
+                    ],
+                messagePath: 'file.error.exceedMaxDataExport',
+            });
+            expect(fileService.readCsv).toHaveBeenCalledWith(responseData.data);
+            expect(responseMetadataService.setHeaders).not.toHaveBeenCalled();
+        });
+
+        it('streams a csv payload whose rows equal the cap', async () => {
+            fileService.readCsv.mockReturnValue([{}, {}]);
+            const responseData: IResponseCsvReturn = {
+                data: 'h\n1\n2',
+                extension: EnumFileExtensionDocument.csv,
+            };
+            callHandler.handle.mockReturnValue(
+                of(Promise.resolve(responseData as unknown as Response))
+            );
+
+            const result = await firstValueFrom(
+                interceptor.intercept(context, callHandler)
+            );
+
+            expect(result).toBeInstanceOf(StreamableFile);
+        });
+
+        it('caps the csv rows at the overridden config key', async () => {
+            const capped = await createResponseFileInterceptor(
+                { maxDataExportConfigKey: 'user.maxDataExport' },
+                doubles
+            );
+            fileService.readCsv.mockReturnValue([{}, {}]);
+            const responseData: IResponseCsvReturn = {
+                data: 'h\n1\n2',
+                extension: EnumFileExtensionDocument.csv,
+            };
+            callHandler.handle.mockReturnValue(
+                of(Promise.resolve(responseData as unknown as Response))
+            );
+
+            const promise = firstValueFrom(
+                capped.intercept(context, callHandler)
+            );
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'file',
+                statusCode: EnumFileStatusCodeError.exceedMaxDataExport,
+                statusCodeKey:
+                    EnumFileStatusCodeError[
+                        EnumFileStatusCodeError.exceedMaxDataExport
+                    ],
+                messagePath: 'file.error.exceedMaxDataExport',
+            });
+        });
+
+        it('does not count rows of a pdf payload', async () => {
+            const responseData: IResponsePdfReturn = {
+                data: Buffer.from('%PDF-1.4'),
+                extension: EnumFileExtensionDocument.pdf,
+            };
+            callHandler.handle.mockReturnValue(
+                of(Promise.resolve(responseData as unknown as Response))
+            );
+
+            await firstValueFrom(interceptor.intercept(context, callHandler));
+
+            expect(fileService.readCsv).not.toHaveBeenCalled();
         });
 
         it('rejects with FileExceedMaxSizeExportException when the buffer exceeds the configured limit', async () => {
@@ -445,6 +546,28 @@ describe('ResponseFileInterceptor', () => {
             expect(() =>
                 interceptor['validateDataResponse'](responseData)
             ).not.toThrow();
+        });
+    });
+
+    describe('countDataRows', () => {
+        it('returns the parsed row count for a csv payload', () => {
+            fileService.readCsv.mockReturnValue([{}, {}]);
+
+            const rows = interceptor['countDataRows']({
+                data: 'h\n1\n2',
+                extension: EnumFileExtensionDocument.csv,
+            });
+
+            expect(rows).toBe(2);
+        });
+
+        it('returns zero for a pdf payload', () => {
+            const rows = interceptor['countDataRows']({
+                data: Buffer.from('%PDF-1.4'),
+                extension: EnumFileExtensionDocument.pdf,
+            });
+
+            expect(rows).toBe(0);
         });
     });
 

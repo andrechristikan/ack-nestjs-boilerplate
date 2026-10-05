@@ -230,7 +230,13 @@ Shared schemas:
 - `RequestRequiredStringSchema`: non-empty string
 - `RequestBooleanStringSchema`: `z.stringbool` accepting exactly `'true'` or `'false'`, case-sensitive; used by the boolean environment variables
 - `RequestEncryptionSecretSchema`: exactly 64 base64url characters; used by `APP_ENCRYPTION_SECRET_KEY` and `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
-- `RequestOptionalEnvSchema(schema)` (`request.optional-env.validation.ts`): wraps an environment schema so a third-party key is optional; an absent value and an empty string both parse to `undefined`, and any other value satisfies `schema`
+- `RequestSesIdentityArnSchema` (`request.ses-identity-arn.validation.ts`): an AWS SES identity ARN, `arn:aws[-partition]:ses:<region>:<12-digit account>:identity/<domain or address>`
+- `RequestUrlNoTrailingSlashSchema` (`request.url-no-trailing-slash.validation.ts`): an absolute URL that does not end with `/`
+- `RequestOptionalEnvSchema(schema)` (`request.optional-env.validation.ts`): wraps an environment schema so a third-party key is optional; an absent value and an empty string both parse to `undefined`, and any other value satisfies `schema`. The same file exports four named instances:
+  - `RequestOptionalEnvStringSchema` over `RequestRequiredStringSchema`
+  - `RequestOptionalEnvEmailSchema` over a string checked by the custom `validateEmail` validator (`request.custom-email.validation.ts`)
+  - `RequestOptionalEnvSesIdentityArnSchema` over `RequestSesIdentityArnSchema`
+  - `RequestOptionalEnvUrlNoTrailingSlashSchema` over `RequestUrlNoTrailingSlashSchema`
 - `RequestMessageLanguageSchema`: a member of `EnumMessageLanguage`, carrying its own `.meta()` for the OpenAPI document
 
 ## File Validation Pipes
@@ -267,7 +273,7 @@ See [File Upload][ref-doc-file-upload].
 
 - An env boolean is `RequestBooleanStringSchema`, exactly `'true'` or `'false'`; every other spelling fails the boot
 - An encryption secret is `RequestEncryptionSecretSchema`, exactly 64 base64url characters
-- An optional third-party key (AWS, Firebase, Sentry, social sign-in) is `RequestOptionalEnvSchema(schema)`, so a blank `.env` line counts as unset; a `superRefine` on `AppEnvSchema` then requires the rest of a group once one of its credentials is set
+- An optional third-party key (AWS, Firebase, Sentry, social sign-in) is `RequestOptionalEnvSchema(schema)` or one of its named instances, so a blank `.env` line counts as unset; a `superRefine` on `AppEnvSchema` then requires the rest of a group once one of its credentials is set
 
 See [Environment][ref-doc-environment].
 

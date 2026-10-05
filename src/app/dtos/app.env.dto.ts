@@ -5,16 +5,13 @@ import { EnumRequestTimezone } from '@common/request/enums/request.enum';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 import { RequestBooleanStringSchema } from '@common/request/validations/request.boolean-string.validation';
 import { RequestEncryptionSecretSchema } from '@common/request/validations/request.encryption-secret.validation';
-import { RequestOptionalEnvSchema } from '@common/request/validations/request.optional-env.validation';
-
-const OptionalEnvString = RequestOptionalEnvSchema(z.string().min(1));
-const OptionalEnvEmail = RequestOptionalEnvSchema(z.email());
-const OptionalEnvSesIdentityArn = RequestOptionalEnvSchema(
-    z.string().regex(/^arn:aws[a-z-]*:ses:[a-z0-9-]+:\d{12}:identity\/.+$/)
-);
-const OptionalEnvEndpoint = RequestOptionalEnvSchema(
-    z.url().refine(url => !url.endsWith('/'))
-);
+import {
+    RequestOptionalEnvEmailSchema,
+    RequestOptionalEnvSchema,
+    RequestOptionalEnvSesIdentityArnSchema,
+    RequestOptionalEnvStringSchema,
+    RequestOptionalEnvUrlNoTrailingSlashSchema,
+} from '@common/request/validations/request.optional-env.validation';
 
 /**
  * Validated shape of all application environment variables.
@@ -28,8 +25,8 @@ export const AppEnvSchema = z
         APP_ENCRYPTION_SECRET_KEY: RequestEncryptionSecretSchema,
         APP_TIMEZONE: z.enum(EnumRequestTimezone),
 
-        EMAIL_NO_REPLY: OptionalEnvEmail,
-        EMAIL_SUPPORT: OptionalEnvEmail,
+        EMAIL_NO_REPLY: RequestOptionalEnvEmailSchema,
+        EMAIL_SUPPORT: RequestOptionalEnvEmailSchema,
 
         HOME_NAME: z.string().min(1),
         HOME_URL: z.string().min(1),
@@ -74,34 +71,34 @@ export const AppEnvSchema = z
         AUTH_TWO_FACTOR_ISSUER: z.string().min(1),
         AUTH_TWO_FACTOR_ENCRYPTION_KEY: RequestEncryptionSecretSchema,
 
-        AUTH_SOCIAL_GOOGLE_CLIENT_ID: OptionalEnvString,
-        AUTH_SOCIAL_APPLE_CLIENT_ID: OptionalEnvString,
-        AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID: OptionalEnvString,
+        AUTH_SOCIAL_GOOGLE_CLIENT_ID: RequestOptionalEnvStringSchema,
+        AUTH_SOCIAL_APPLE_CLIENT_ID: RequestOptionalEnvStringSchema,
+        AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID: RequestOptionalEnvStringSchema,
 
-        AWS_S3_IAM_CREDENTIAL_KEY: OptionalEnvString,
-        AWS_S3_IAM_CREDENTIAL_SECRET: OptionalEnvString,
-        AWS_S3_IAM_ARN: OptionalEnvString,
-        AWS_S3_REGION: OptionalEnvString,
-        AWS_S3_ENDPOINT: OptionalEnvEndpoint,
-        AWS_S3_PUBLIC_BUCKET: OptionalEnvString,
-        AWS_S3_PUBLIC_CDN: OptionalEnvString,
-        AWS_S3_PRIVATE_BUCKET: OptionalEnvString,
-        AWS_S3_PRIVATE_CDN: OptionalEnvString,
+        AWS_S3_IAM_CREDENTIAL_KEY: RequestOptionalEnvStringSchema,
+        AWS_S3_IAM_CREDENTIAL_SECRET: RequestOptionalEnvStringSchema,
+        AWS_S3_IAM_ARN: RequestOptionalEnvStringSchema,
+        AWS_S3_REGION: RequestOptionalEnvStringSchema,
+        AWS_S3_ENDPOINT: RequestOptionalEnvUrlNoTrailingSlashSchema,
+        AWS_S3_PUBLIC_BUCKET: RequestOptionalEnvStringSchema,
+        AWS_S3_PUBLIC_CDN: RequestOptionalEnvStringSchema,
+        AWS_S3_PRIVATE_BUCKET: RequestOptionalEnvStringSchema,
+        AWS_S3_PRIVATE_CDN: RequestOptionalEnvStringSchema,
 
-        AWS_SES_IAM_CREDENTIAL_KEY: OptionalEnvString,
-        AWS_SES_IAM_CREDENTIAL_SECRET: OptionalEnvString,
-        AWS_SES_IDENTITY_ARN: OptionalEnvSesIdentityArn,
-        AWS_SES_REGION: OptionalEnvString,
-        AWS_SES_ENDPOINT: OptionalEnvEndpoint,
+        AWS_SES_IAM_CREDENTIAL_KEY: RequestOptionalEnvStringSchema,
+        AWS_SES_IAM_CREDENTIAL_SECRET: RequestOptionalEnvStringSchema,
+        AWS_SES_IDENTITY_ARN: RequestOptionalEnvSesIdentityArnSchema,
+        AWS_SES_REGION: RequestOptionalEnvStringSchema,
+        AWS_SES_ENDPOINT: RequestOptionalEnvUrlNoTrailingSlashSchema,
 
         CACHE_REDIS_URL: z.string().min(1),
         QUEUE_REDIS_URL: z.string().min(1),
 
         SENTRY_DSN: RequestOptionalEnvSchema(z.url()),
 
-        FIREBASE_PROJECT_ID: OptionalEnvString,
-        FIREBASE_CLIENT_EMAIL: OptionalEnvEmail,
-        FIREBASE_PRIVATE_KEY: OptionalEnvString,
+        FIREBASE_PROJECT_ID: RequestOptionalEnvStringSchema,
+        FIREBASE_CLIENT_EMAIL: RequestOptionalEnvEmailSchema,
+        FIREBASE_PRIVATE_KEY: RequestOptionalEnvStringSchema,
     })
     .superRefine((env, ctx) => {
         const requireAll = (
