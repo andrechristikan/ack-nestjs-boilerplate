@@ -68,6 +68,7 @@ export class PolicyDomain {
     }
 
     async getManyByRole(roleId: string): Promise<Policy[]> {
+        // Sequential by design: gate before the work it guards
         await this.validateRoleExists(roleId);
 
         return this.policyRepository.findManyByRoleId(roleId);
@@ -77,6 +78,7 @@ export class PolicyDomain {
         roleId: string,
         data: PolicyRequestDto
     ): Promise<Policy> {
+        // Sequential by design: gate before the work it guards
         await this.validateRoleExists(roleId);
 
         const exist = await this.policyRepository.existsByRoleIdAndSubject(
@@ -104,6 +106,7 @@ export class PolicyDomain {
         id: string,
         data: PolicyUpdateRequestDto
     ): Promise<Policy> {
+        // Sequential by design: gate before the work it guards
         await this.validateRoleExists(roleId);
 
         const policyExists = await this.policyRepository.existsByRoleIdAndId(
@@ -127,6 +130,7 @@ export class PolicyDomain {
     }
 
     async deleteByAdmin(roleId: string, id: string): Promise<Policy> {
+        // Sequential by design: gate before the work it guards
         await this.validateRoleExists(roleId);
 
         const policyExists = await this.policyRepository.existsByRoleIdAndId(

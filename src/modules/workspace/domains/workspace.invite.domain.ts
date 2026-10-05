@@ -215,6 +215,7 @@ export class WorkspaceInviteDomain {
             return personalContext;
         }
 
+        // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
         const hashedToken = this.helperHashService.sha256Hash(inviteToken);
         const invite =
@@ -246,6 +247,7 @@ export class WorkspaceInviteDomain {
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
+        // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
 
         return this.workspaceInviteRepository.findWithPaginationCursor(
@@ -260,6 +262,7 @@ export class WorkspaceInviteDomain {
         actorId: string,
         create: IWorkspaceInviteCreate
     ): Promise<WorkspaceInvite> {
+        // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
 
         const hasProjectId = !!create.projectId;
@@ -353,6 +356,7 @@ export class WorkspaceInviteDomain {
         workspaceInviteId: string,
         expiryDuration?: EnumWorkspaceInviteExpiry
     ): Promise<WorkspaceInvite> {
+        // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
 
         const existing =
@@ -394,6 +398,7 @@ export class WorkspaceInviteDomain {
         actorId: string,
         workspaceInviteId: string
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
 
         const existing =
@@ -478,6 +483,7 @@ export class WorkspaceInviteDomain {
         userEmail: string,
         inviteToken: string
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
 
         const invite = await this.validateInviteToken(inviteToken);
@@ -550,6 +556,7 @@ export class WorkspaceInviteDomain {
     }
 
     async previewInvite(inviteToken: string): Promise<IWorkspaceInvitePreview> {
+        // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
 
         const invite = await this.validateInviteToken(inviteToken);

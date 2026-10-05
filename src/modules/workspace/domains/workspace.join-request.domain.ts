@@ -125,6 +125,7 @@ export class WorkspaceJoinRequestDomain {
         userId: string,
         create: IWorkspaceJoinRequestCreate
     ): Promise<WorkspaceJoinRequest> {
+        // Sequential by design: gate before the work it guards
         await this.assertJoinRequestAllowed();
 
         const workspace = await this.workspaceRepository.findActiveById(
@@ -180,6 +181,7 @@ export class WorkspaceJoinRequestDomain {
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
+        // Sequential by design: gate before the work it guards
         await this.assertJoinRequestAllowed();
 
         return this.workspaceJoinRequestRepository.findWithPaginationCursor(
@@ -194,6 +196,7 @@ export class WorkspaceJoinRequestDomain {
         reviewerId: string,
         workspaceJoinRequestId: string
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.assertJoinRequestAllowed();
 
         const joinRequest = await this.validatePendingJoinRequest(
@@ -256,6 +259,7 @@ export class WorkspaceJoinRequestDomain {
         workspaceJoinRequestId: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.assertJoinRequestAllowed();
 
         const joinRequest = await this.validatePendingJoinRequest(

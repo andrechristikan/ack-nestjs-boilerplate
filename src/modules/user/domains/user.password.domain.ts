@@ -414,6 +414,7 @@ export class UserPasswordDomain {
     }
 
     async forgotPassword(email: string): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.assertForgotPasswordAllowed();
 
         const user = await this.userRepository.findOneActiveByEmail(email);
@@ -492,6 +493,7 @@ export class UserPasswordDomain {
         code,
         method,
     }: IUserResetPassword): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.assertForgotPasswordAllowed();
 
         const hashedToken = this.helperHashService.sha256Hash(token);

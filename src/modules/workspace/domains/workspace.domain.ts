@@ -524,6 +524,7 @@ export class WorkspaceDomain {
     }
 
     async switchWorkspace(userId: string, workspaceId: string): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.validateWorkspaceGuard(workspaceId);
         await this.workspaceMemberDomain.validateWorkspaceMemberGuard(
             workspaceId,
@@ -605,6 +606,7 @@ export class WorkspaceDomain {
 
     /** Resolves a public workspace by slug. A workspace that exists but is not public reports the same `notFound` as one that does not exist, so a slug cannot be probed. */
     async previewWorkspace(slug: string): Promise<Workspace> {
+        // Sequential by design: gate before the work it guards
         await this.assertJoinRequestAllowed();
 
         const workspace =
