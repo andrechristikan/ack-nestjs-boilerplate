@@ -1,4 +1,5 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationEqual,
@@ -11,10 +12,16 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { EnumRoleScope, Prisma } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import { RolePredefinedKeys } from '@modules/role/constants/role.constant';
+import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
+import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { RolePredefinedException } from '@modules/role/exceptions/role.predefined.exception';
 import { RoleScopeMismatchException } from '@modules/role/exceptions/role.scope-mismatch.exception';
+import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import type {
     IRole,
+    IRoleCreate,
     IRoleUpdate,
     IRoleWithPolicies,
     IRoleWithPolicyCount,
@@ -29,7 +36,8 @@ export class RoleDomain {
         private readonly roleRepository: RoleRepository,
         private readonly roleUtil: RoleUtil,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     private prepareActivityLog(
@@ -162,6 +170,7 @@ export class RoleDomain {
                 timestamp
             ),
         ];
+        // TODO: validate role conditions (policy rules / scope constraints) before persisting
         const updated = await this.roleRepository.update(id, {
             name,
             description,
@@ -170,5 +179,76 @@ export class RoleDomain {
         this.activityLogDomain.stagePrepared(events);
 
         return updated;
+    }
+
+    async createByAdmin({
+        scope,
+        key,
+        name,
+        description,
+    }: RoleCreateRequestDto): Promise<IRoleWithPolicies> {
+        const exists = await this.roleRepository.existsByScopeAndKey(
+            scope,
+            key
+        );
+        if (exists) {
+            throw new RoleExistException();
+        }
+
+        const id = this.databaseUtil.createId();
+        const timestamp = this.helperDateService.create();
+        const events = [
+            this.prepareActivityLog(
+                EnumActivityLogAction.adminRoleCreate,
+                { id, scope, key, name },
+                timestamp
+            ),
+        ];
+        const data: IRoleCreate = {
+            id,
+            scope,
+            key,
+            name,
+            description: description ?? null,
+        };
+
+        // TODO: validate role conditions (policy rules / scope constraints) before persisting
+        const created = await this.roleRepository.create(data);
+
+        this.activityLogDomain.stagePrepared(events);
+
+        return created;
+    }
+
+    async deleteByAdmin(id: string): Promise<void> {
+        const [role, isUsed] = await Promise.all([
+            this.roleRepository.findOneById(id),
+            this.roleRepository.isUsedById(id),
+        ]);
+        if (!role) {
+            throw new RoleNotFoundException();
+        }
+
+        const isPredefined = RolePredefinedKeys[role.scope].includes(role.key);
+        if (isPredefined) {
+            throw new RolePredefinedException();
+        }
+
+        if (isUsed) {
+            throw new RoleUsedException();
+        }
+
+        const timestamp = this.helperDateService.create();
+        const events = [
+            this.prepareActivityLog(
+                EnumActivityLogAction.adminRoleDelete,
+                role,
+                timestamp
+            ),
+        ];
+
+        await this.roleRepository.delete(id);
+
+        this.activityLogDomain.stagePrepared(events);
     }
 }

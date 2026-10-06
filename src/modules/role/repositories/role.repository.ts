@@ -10,6 +10,7 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
     IRole,
+    IRoleCreate,
     IRoleUpdate,
     IRoleWithPolicies,
     IRoleWithPolicyCount,
@@ -17,10 +18,15 @@ import type {
 import {
     RolePoliciesInclude,
     RoleSelect,
+    RoleUsageCountSelect,
 } from '@modules/role/constants/role.constant';
 import type { IRoleRepository } from '@modules/role/interfaces/role.repository.interface';
 import { Injectable } from '@nestjs/common';
-import type { EnumRoleScope, Prisma } from '@generated/prisma-client/client';
+import type {
+    EnumRoleScope,
+    Prisma,
+    Role,
+} from '@generated/prisma-client/client';
 
 @Injectable()
 export class RoleRepository implements IRoleRepository {
@@ -143,11 +149,48 @@ export class RoleRepository implements IRoleRepository {
         });
     }
 
+    async existsByScopeAndKey(
+        scope: EnumRoleScope,
+        key: string
+    ): Promise<boolean> {
+        const role = await this.databaseService.client.role.findUnique({
+            where: { scope_key: { scope, key } },
+            select: { id: true },
+        });
+
+        return role !== null;
+    }
+
+    async create(data: IRoleCreate): Promise<IRoleWithPolicies> {
+        return this.databaseService.client.role.create({
+            data,
+            include: RolePoliciesInclude,
+        });
+    }
+
     async update(id: string, data: IRoleUpdate): Promise<IRoleWithPolicies> {
         return this.databaseService.client.role.update({
             where: { id },
             data,
             include: RolePoliciesInclude,
+        });
+    }
+
+    async isUsedById(id: string): Promise<boolean> {
+        const role = await this.databaseService.client.role.findUnique({
+            where: { id },
+            select: RoleUsageCountSelect,
+        });
+        if (!role) {
+            return false;
+        }
+
+        return Object.values(role._count).some(count => count > 0);
+    }
+
+    async delete(id: string): Promise<Role> {
+        return this.databaseService.client.role.delete({
+            where: { id },
         });
     }
 }

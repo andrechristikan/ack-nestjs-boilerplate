@@ -20,3 +20,7 @@ export interface IRoleUpdate {
     name: string;
     description?: string;
 }
+
+export interface IRoleCreate extends IRole {
+    description: string | null;
+}

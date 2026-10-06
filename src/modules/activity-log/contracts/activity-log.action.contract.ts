@@ -271,7 +271,17 @@ export const ActivityLogActionContract: Record<
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogApiKeyMetadataSchema,
     },
+    [EnumActivityLogAction.adminRoleCreate]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogRoleMetadataSchema,
+    },
     [EnumActivityLogAction.adminRoleUpdate]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogRoleMetadataSchema,
+    },
+    [EnumActivityLogAction.adminRoleDelete]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogRoleMetadataSchema,

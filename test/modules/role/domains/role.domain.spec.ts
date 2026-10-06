@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumActivityLogAction,
@@ -13,12 +14,20 @@ import {
 } from '@generated/prisma-client/client';
 import type { Policy, Role } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type {
+    IActivityLogMetadata,
+    IActivityLogStagedEvent,
+} from '@modules/activity-log/interfaces/activity-log.interface';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
+import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
+import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { RolePredefinedException } from '@modules/role/exceptions/role.predefined.exception';
 import { RoleScopeMismatchException } from '@modules/role/exceptions/role.scope-mismatch.exception';
+import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { RoleUtil } from '@modules/role/utils/role.util';
@@ -30,6 +39,7 @@ describe('RoleDomain', () => {
         mock<ActivityLogDomain>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
     const now = new Date('2026-01-01T00:00:00.000Z');
@@ -72,6 +82,7 @@ describe('RoleDomain', () => {
                 { provide: RoleUtil, useValue: roleUtil },
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: HelperDateService, useValue: helperDateService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
         service = moduleRef.get(RoleDomain);
@@ -338,6 +349,256 @@ describe('RoleDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 event,
             ]);
+        });
+    });
+    describe('createByAdmin', () => {
+        const body = {
+            scope: EnumRoleScope.platform,
+            key: 'platform.editor',
+            name: 'Platform Editor',
+            description: undefined,
+        };
+        const metadata: IActivityLogMetadata = { roleId: 'new-id' };
+        const event: IActivityLogStagedEvent = {
+            action: EnumActivityLogAction.adminRoleCreate,
+            metadata,
+            onError: false,
+        };
+        const created = {
+            ...role,
+            id: 'new-id',
+            key: 'platform.editor',
+            name: 'Platform Editor',
+            policies: [],
+        };
+
+        it('throws RoleExistException when the scope and key already exist', async () => {
+            roleRepository.existsByScopeAndKey.mockResolvedValue(true);
+
+            const call = service.createByAdmin(body);
+
+            await expect(call).rejects.toThrow(RoleExistException);
+            await expect(call).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.exist,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.exist],
+                messagePath: 'role.error.exist',
+            });
+            expect(roleRepository.create).not.toHaveBeenCalled();
+            expect(activityLogDomain.prepare).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('prepares the activity before the insert, creates with the given key and name, then stages', async () => {
+            const callOrder: string[] = [];
+            roleRepository.existsByScopeAndKey.mockResolvedValue(false);
+            databaseUtil.createId.mockReturnValue('new-id');
+            roleUtil.mapActivityLogMetadata.mockReturnValue(metadata);
+            activityLogDomain.prepare.mockImplementation(() => {
+                callOrder.push('prepare');
+                return event;
+            });
+            roleRepository.create.mockImplementation(async () => {
+                callOrder.push('create');
+                return created;
+            });
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                callOrder.push('stage');
+            });
+
+            await expect(service.createByAdmin(body)).resolves.toBe(created);
+            expect(roleRepository.existsByScopeAndKey).toHaveBeenCalledWith(
+                EnumRoleScope.platform,
+                'platform.editor'
+            );
+            expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                {
+                    id: 'new-id',
+                    scope: EnumRoleScope.platform,
+                    key: 'platform.editor',
+                    name: 'Platform Editor',
+                },
+                now
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminRoleCreate,
+                metadata,
+            });
+            expect(roleRepository.create).toHaveBeenCalledWith({
+                id: 'new-id',
+                scope: EnumRoleScope.platform,
+                key: 'platform.editor',
+                name: 'Platform Editor',
+                description: null,
+            });
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                event,
+            ]);
+            expect(callOrder).toEqual(['prepare', 'create', 'stage']);
+        });
+
+        it('passes the description through when given', async () => {
+            roleRepository.existsByScopeAndKey.mockResolvedValue(false);
+            databaseUtil.createId.mockReturnValue('new-id');
+            roleRepository.create.mockResolvedValue(created);
+
+            await service.createByAdmin({
+                ...body,
+                description: 'Edits content',
+            });
+
+            expect(roleRepository.create).toHaveBeenCalledWith(
+                expect.objectContaining({ description: 'Edits content' })
+            );
+        });
+    });
+
+    describe('deleteByAdmin', () => {
+        const custom = {
+            id: 'custom-id',
+            scope: EnumRoleScope.workspace,
+            key: 'editor',
+            name: 'editor',
+        } satisfies IRole;
+        const metadata: IActivityLogMetadata = { roleId: custom.id };
+        const event: IActivityLogStagedEvent = {
+            action: EnumActivityLogAction.adminRoleDelete,
+            metadata,
+            onError: false,
+        };
+
+        it('issues the role read and the usage read together', async () => {
+            let resolveRole: (value: IRole | null) => void = () => {};
+            roleRepository.findOneById.mockReturnValue(
+                new Promise(resolve => {
+                    resolveRole = resolve;
+                })
+            );
+            roleRepository.isUsedById.mockResolvedValue(false);
+
+            const call = service.deleteByAdmin(custom.id);
+
+            expect(roleRepository.findOneById).toHaveBeenCalledWith(custom.id);
+            expect(roleRepository.isUsedById).toHaveBeenCalledWith(custom.id);
+
+            resolveRole(custom);
+            await expect(call).resolves.toBeUndefined();
+        });
+
+        it('throws RoleNotFoundException when the id is unknown, even if the usage read answers true', async () => {
+            roleRepository.findOneById.mockResolvedValue(null);
+            roleRepository.isUsedById.mockResolvedValue(true);
+
+            const call = service.deleteByAdmin('missing');
+
+            await expect(call).rejects.toThrow(RoleNotFoundException);
+            await expect(call).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.notFound],
+                messagePath: 'role.error.notFound',
+            });
+            expect(roleRepository.delete).not.toHaveBeenCalled();
+            expect(activityLogDomain.prepare).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            [EnumRoleScope.platform, EnumRolePlatformKey.superAdmin],
+            [EnumRoleScope.workspace, EnumRoleWorkspaceKey.owner],
+            [EnumRoleScope.project, EnumRoleProjectKey.viewer],
+        ])(
+            'throws RolePredefinedException for the %s catalog role %s, even when it is in use',
+            async (scope, key) => {
+                roleRepository.findOneById.mockResolvedValue({
+                    ...custom,
+                    scope,
+                    key,
+                });
+                roleRepository.isUsedById.mockResolvedValue(true);
+
+                const call = service.deleteByAdmin(custom.id);
+
+                await expect(call).rejects.toThrow(RolePredefinedException);
+                await expect(call).rejects.toMatchObject({
+                    module: 'role',
+                    statusCode: EnumRoleStatusCodeError.predefined,
+                    statusCodeKey:
+                        EnumRoleStatusCodeError[
+                            EnumRoleStatusCodeError.predefined
+                        ],
+                    messagePath: 'role.error.predefined',
+                });
+                expect(roleRepository.delete).not.toHaveBeenCalled();
+            }
+        );
+
+        it('treats a key that is catalog only in another scope as a custom role', async () => {
+            roleRepository.findOneById.mockResolvedValue({
+                ...custom,
+                scope: EnumRoleScope.project,
+                key: EnumRoleWorkspaceKey.owner,
+            });
+            roleRepository.isUsedById.mockResolvedValue(false);
+
+            await expect(
+                service.deleteByAdmin(custom.id)
+            ).resolves.toBeUndefined();
+            expect(roleRepository.isUsedById).toHaveBeenCalledWith(custom.id);
+        });
+
+        it('throws RoleUsedException when the role is still referenced', async () => {
+            roleRepository.findOneById.mockResolvedValue(custom);
+            roleRepository.isUsedById.mockResolvedValue(true);
+
+            const call = service.deleteByAdmin(custom.id);
+
+            await expect(call).rejects.toThrow(RoleUsedException);
+            await expect(call).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.used,
+                statusCodeKey:
+                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.used],
+                messagePath: 'role.error.used',
+            });
+            expect(roleRepository.delete).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('prepares the activity before the delete, deletes, then stages', async () => {
+            const callOrder: string[] = [];
+            roleRepository.findOneById.mockResolvedValue(custom);
+            roleRepository.isUsedById.mockResolvedValue(false);
+            roleUtil.mapActivityLogMetadata.mockReturnValue(metadata);
+            activityLogDomain.prepare.mockImplementation(() => {
+                callOrder.push('prepare');
+                return event;
+            });
+            roleRepository.delete.mockImplementation(async () => {
+                callOrder.push('delete');
+                return { ...role, ...custom, description: null } satisfies Role;
+            });
+            activityLogDomain.stagePrepared.mockImplementation(() => {
+                callOrder.push('stage');
+            });
+
+            await expect(
+                service.deleteByAdmin(custom.id)
+            ).resolves.toBeUndefined();
+            expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
+                custom,
+                now
+            );
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
+                action: EnumActivityLogAction.adminRoleDelete,
+                metadata,
+            });
+            expect(roleRepository.delete).toHaveBeenCalledWith(custom.id);
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                event,
+            ]);
+            expect(callOrder).toEqual(['prepare', 'delete', 'stage']);
         });
     });
 });

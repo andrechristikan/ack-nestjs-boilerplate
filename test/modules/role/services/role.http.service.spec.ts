@@ -354,4 +354,55 @@ describe('RoleHttpService', () => {
             );
         });
     });
+    describe('createByAdmin', () => {
+        it('forwards the body to the domain and wraps the created role', async () => {
+            const body = {
+                scope: EnumRoleScope.workspace,
+                key: 'workspace.editor',
+                name: 'Workspace Editor',
+            };
+            const created = {
+                ...roleRow,
+                scope: EnumRoleScope.workspace,
+                key: 'workspace.editor',
+                name: 'Workspace Editor',
+                policies: [],
+            };
+            roleDomain.createByAdmin.mockResolvedValue(created);
+
+            await expect(service.createByAdmin(body)).resolves.toEqual({
+                data: created,
+            });
+            expect(roleDomain.createByAdmin).toHaveBeenCalledWith(body);
+        });
+
+        it('propagates a domain rejection unchanged', async () => {
+            const error = new Error('domain');
+            roleDomain.createByAdmin.mockRejectedValue(error);
+
+            await expect(
+                service.createByAdmin({
+                    scope: EnumRoleScope.workspace,
+                    key: 'workspace.editor',
+                    name: 'Workspace Editor',
+                })
+            ).rejects.toBe(error);
+        });
+    });
+
+    describe('deleteByAdmin', () => {
+        it('deletes through the domain and answers an empty envelope', async () => {
+            roleDomain.deleteByAdmin.mockResolvedValue(undefined);
+
+            await expect(service.deleteByAdmin('role-id')).resolves.toEqual({});
+            expect(roleDomain.deleteByAdmin).toHaveBeenCalledWith('role-id');
+        });
+
+        it('propagates a domain rejection unchanged', async () => {
+            const error = new Error('domain');
+            roleDomain.deleteByAdmin.mockRejectedValue(error);
+
+            await expect(service.deleteByAdmin('role-id')).rejects.toBe(error);
+        });
+    });
 });

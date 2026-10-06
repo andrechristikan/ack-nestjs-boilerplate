@@ -630,7 +630,7 @@ model WorkspaceInvite {
   workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   workspaceRole Role      @relation("WorkspaceInviteWorkspaceRole", fields: [workspaceRoleId], references: [id])
   project       Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectRole   Role?     @relation("WorkspaceInviteProjectRole", fields: [projectRoleId], references: [id])
+  projectRole   Role?     @relation("WorkspaceInviteProjectRole", fields: [projectRoleId], references: [id], onDelete: Restrict)
   invitedBy     User?     @relation("WorkspaceInviteInvitedBy", fields: [invitedByUserId], references: [id], onDelete: SetNull)
   acceptedBy    User?     @relation("WorkspaceInviteAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
 
@@ -769,6 +769,7 @@ enum EnumPolicyAction {
 
 enum EnumPolicySubject {
   all
+  analytic
   ApiKey
   Role
   User
@@ -780,7 +781,6 @@ enum EnumPolicySubject {
   Device
   Workspace
   Project
-  analytic
   WorkspaceMember
   WorkspaceInvite
   WorkspaceJoinRequest
@@ -874,7 +874,9 @@ enum EnumActivityLogAction {
   adminApiKeyUpdateDate
   adminApiKeyUpdateStatus
   adminApiKeyDelete
+  adminRoleCreate
   adminRoleUpdate
+  adminRoleDelete
   adminPolicyCreate
   adminPolicyUpdate
   adminPolicyDelete

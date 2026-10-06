@@ -13,6 +13,7 @@ import {
     RoleDefaultScope,
 } from '@modules/role/constants/role.list.constant';
 import type { RoleAdminListRequestDto } from '@modules/role/dtos/request/role.admin-list.request.dto';
+import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import type { RoleSharedListRequestDto } from '@modules/role/dtos/request/role.shared-list.request.dto';
 import type { RoleSystemListRequestDto } from '@modules/role/dtos/request/role.system-list.request.dto';
 import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
@@ -155,5 +156,19 @@ export class RoleHttpService {
         const updated = await this.roleDomain.updateByAdmin(id, body);
 
         return { data: updated };
+    }
+
+    async createByAdmin(
+        body: RoleCreateRequestDto
+    ): Promise<IResponseReturn<RoleDto>> {
+        const created = await this.roleDomain.createByAdmin(body);
+
+        return { data: created };
+    }
+
+    async deleteByAdmin(id: string): Promise<IResponseReturn<void>> {
+        await this.roleDomain.deleteByAdmin(id);
+
+        return {};
     }
 }

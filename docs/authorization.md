@@ -606,8 +606,24 @@ A role and its policies are two admin surfaces:
 
 - `GET /admin/role/list` and `GET /admin/role/get/:roleId` read roles, and the list filters by `scope` (comma-delimited). The admin, system, and shared lists return `RoleListResponseDto`: `id`, `name`, `description` (nullable), `scope`, `key`, the timestamps, and a numeric `policies` count in place of the policy rows.
 - `PUT /admin/role/update/:roleId` edits `name` and `description` only. The `key` and `scope` never change.
+- `POST /admin/role/create` creates a role and requires `Role` `read` and `create`. The body carries `scope` (`platform`, `workspace`, or `project`), `key`, `name`, and an optional `description` (up to 500 characters). `key` is trimmed, lowercased, 3 to 50 characters of `a-z`, `0-9`, and `.` in any position (for example `workspace.editor`). `name` is the display label, trimmed, 3 to 50 characters, the same rule the update body uses. A role that already holds that `(scope, key)` pair answers `RoleExistException` (409, `50502`). The new role holds no policies, and the response is the role (`RoleSchema`). Each create stages the `adminRoleCreate` activity log.
+- `DELETE /admin/role/delete/:roleId` hard-deletes a role and requires `Role` `read` and `delete`. The role's policies go with it. Each delete stages the `adminRoleDelete` activity log.
 - `GET /admin/role/:roleId/policy/list`, `POST .../policy/create`, `PUT .../policy/update/:policyId`, and `DELETE .../policy/delete/:policyId` manage the policies of one role. The API documentation is in Swagger under the configured `doc.prefix`.
 - `GET /shared/role/list` returns the catalog a client picks a role from, offset paginated. The query takes a required `scope` (`workspace` or `project`), `page`, `perPage`, `search`, and `orderBy` (`createdAt`, `name`). Each row carries the policy count, so workspace and project members see how many policies a role holds.
+
+**Delete rules.** A catalog role, one whose `key` is listed for its scope in `EnumRolePlatformKey`, `EnumRoleWorkspaceKey`, or `EnumRoleProjectKey`, is never deleted. A role still referenced by a user, a workspace member, a project member, or a workspace invite (as its workspace role or its project role) is not deleted either.
+
+```mermaid
+flowchart TD
+    Req[DELETE /admin/role/delete/:roleId] --> Find{Role exists?}
+    Find -->|No| NF[RoleNotFoundException<br/>404, 50500]
+    Find -->|Yes| Pre{Catalog key<br/>of its scope?}
+    Pre -->|Yes| PD[RolePredefinedException<br/>403, 50504]
+    Pre -->|No| Used{Referenced by a user,<br/>member, or invite?}
+    Used -->|Yes| U[RoleUsedException<br/>409, 50503]
+    Used -->|No| Del[Delete role and its policies]
+    Del --> Log[Stage adminRoleDelete]
+```
 
 **Example policy creation request** (`POST /admin/role/:roleId/policy/create`), one rule per call:
 
@@ -658,7 +674,7 @@ flowchart LR
 
 ### Important Notes
 
-- **Role keys are immutable**: the `(scope, key)` pair identifies a catalog role, and the role admin API neither creates nor deletes roles
+- **Role keys are immutable**: the `(scope, key)` pair identifies a role. The key is supplied at creation, independent of `name`, and an update changes `name` and `description` only
 - **A workspace `owner` reaches every project of its workspace** through the explicit `Project` and `ProjectMember` actions its workspace role holds, so no `ProjectMember` row is needed
 
 
