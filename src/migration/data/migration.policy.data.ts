@@ -45,7 +45,7 @@ const rule = (
  * Builds a workspace-scoped rule. The condition is judged against the real
  * record, so the key must exist on the subject's model: `Workspace` is the
  * workspace itself (`id`); every other subject carries `workspaceId`
- * (`analytic` has no model and is a subject-type check only).
+ * (`WorkspaceAnalytic` has no model and is a subject-type check only).
  */
 const workspaceRule = (
     subject: EnumPolicySubject,
@@ -85,8 +85,9 @@ const PolicyData: IMigrationPolicyData[] = [
             ...PlatformAdminSubjects.map(subject =>
                 rule(subject, Object.values(EnumPolicyAction))
             ),
-            rule(EnumPolicySubject.analytic, [EnumPolicyAction.read]),
+            rule(EnumPolicySubject.Analytic, [EnumPolicyAction.read]),
             rule(EnumPolicySubject.Workspace, [EnumPolicyAction.read]),
+            rule(EnumPolicySubject.WorkspaceMember, [EnumPolicyAction.read]),
             rule(EnumPolicySubject.Project, [EnumPolicyAction.read]),
         ],
     },
@@ -126,7 +127,9 @@ const PolicyData: IMigrationPolicyData[] = [
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete,
             ]),
-            workspaceRule(EnumPolicySubject.analytic, [EnumPolicyAction.read]),
+            workspaceRule(EnumPolicySubject.WorkspaceAnalytic, [
+                EnumPolicyAction.read,
+            ]),
         ],
     },
     {
@@ -161,7 +164,9 @@ const PolicyData: IMigrationPolicyData[] = [
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete,
             ]),
-            workspaceRule(EnumPolicySubject.analytic, [EnumPolicyAction.read]),
+            workspaceRule(EnumPolicySubject.WorkspaceAnalytic, [
+                EnumPolicyAction.read,
+            ]),
         ],
     },
     {

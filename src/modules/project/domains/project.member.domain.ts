@@ -90,11 +90,13 @@ export class ProjectMemberDomain {
 
     async getMembersList(
         project: Project,
-        pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
+        pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>,
+        where?: Prisma.ProjectMemberWhereInput
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
         return this.projectMemberRepository.findWithPaginationCursor(
             project.id,
-            pagination
+            pagination,
+            where
         );
     }
 

@@ -11,7 +11,8 @@ import type { FeatureFlag } from '@generated/prisma-client/client';
 
 export interface IFeatureFlagRepository {
     findWithPaginationOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
+        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>,
+        additionalWhere?: Prisma.FeatureFlagWhereInput
     ): Promise<IResponsePaginationReturn<FeatureFlag>>;
     findWithPaginationCursor(
         pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>

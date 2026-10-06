@@ -38,6 +38,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
     const policyAbilityDomain: MockProxy<PolicyAbilityDomain> =
         mock<PolicyAbilityDomain>();
     const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
+    const accessibleWhere = { workspaceId: 'workspace-id' };
     const now = new Date('2026-01-01T00:00:00.000Z');
     const workspace = {
         id: 'workspace-id',
@@ -94,6 +95,9 @@ describe('WorkspaceJoinRequestHttpService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         policyAbilityDomain.requireStored.mockReturnValue(ability);
+        policyAbilityDomain.requireAccessibleWhere.mockReturnValue(
+            accessibleWhere
+        );
         workspaceJoinRequestDomain.getJoinRequest.mockResolvedValue(
             joinRequest
         );
@@ -173,9 +177,22 @@ describe('WorkspaceJoinRequestHttpService', () => {
             );
             expect(
                 workspaceJoinRequestDomain.getJoinRequestsList
-            ).toHaveBeenCalledWith('workspace-id', cursorParams, {
-                status: { in: ['pending'] },
-            });
+            ).toHaveBeenCalledWith(
+                'workspace-id',
+                cursorParams,
+                { status: { in: ['pending'] } },
+                accessibleWhere
+            );
+            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
+                PolicyAbilityStoreKey
+            );
+            expect(
+                policyAbilityDomain.requireAccessibleWhere
+            ).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.WorkspaceJoinRequest
+            );
             expect(result).toEqual(cursorPage);
         });
 
@@ -201,7 +218,27 @@ describe('WorkspaceJoinRequestHttpService', () => {
             );
             expect(
                 workspaceJoinRequestDomain.getJoinRequestsList
-            ).toHaveBeenCalledWith('workspace-id', cursorParams, undefined);
+            ).toHaveBeenCalledWith(
+                'workspace-id',
+                cursorParams,
+                undefined,
+                accessibleWhere
+            );
+        });
+
+        it('propagates PolicyForbiddenException and skips the domain when the ability has no read rule', async () => {
+            policyAbilityDomain.requireAccessibleWhere.mockImplementation(
+                () => {
+                    throw new PolicyForbiddenException();
+                }
+            );
+
+            await expect(
+                service.getJoinRequestsList('workspace-id', {})
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(
+                workspaceJoinRequestDomain.getJoinRequestsList
+            ).not.toHaveBeenCalled();
         });
     });
 

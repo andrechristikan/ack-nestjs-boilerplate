@@ -300,14 +300,16 @@ export class WorkspaceInviteDomain {
     async getInvitesList(
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
-        status?: Record<string, IPaginationIn>
+        status?: Record<string, IPaginationIn>,
+        where?: Prisma.WorkspaceInviteWhereInput
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
         await this.assertInvitationAllowed();
 
         return this.workspaceInviteRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
-            status
+            status,
+            where
         );
     }
 

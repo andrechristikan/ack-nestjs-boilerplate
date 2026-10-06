@@ -5,7 +5,14 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import type { ApiKey } from '@generated/prisma-client/client';
 import {
     ApiKeyDefaultAvailableOrderBy,
@@ -27,6 +34,7 @@ import { Injectable } from '@nestjs/common';
 export class ApiKeyHttpService {
     constructor(
         private readonly apiKeyDomain: ApiKeyDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly apiKeyUtil: ApiKeyUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
@@ -35,6 +43,15 @@ export class ApiKeyHttpService {
     async getListByAdmin(
         query: ApiKeyListRequestDto
     ): Promise<IResponsePaginationReturn<IApiKeyList>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.ApiKeyWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.ApiKey
+            );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ApiKeyWhereInput>(query, {
                 availableSearch: ApiKeyDefaultAvailableSearch,
@@ -61,7 +78,8 @@ export class ApiKeyHttpService {
         const { data, ...others } = await this.apiKeyDomain.getListByAdmin(
             params,
             isActive?.where,
-            type?.where
+            type?.where,
+            accessibleWhere
         );
 
         return {

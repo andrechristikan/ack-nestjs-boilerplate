@@ -27,7 +27,7 @@ export const WorkspacePermissionSubjects: EnumPolicySubject[] = [
     EnumPolicySubject.WorkspaceInvite,
     EnumPolicySubject.WorkspaceJoinRequest,
     EnumPolicySubject.Project,
-    EnumPolicySubject.analytic,
+    EnumPolicySubject.WorkspaceAnalytic,
 ];
 
 /**

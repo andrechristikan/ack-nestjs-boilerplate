@@ -182,14 +182,16 @@ export class WorkspaceJoinRequestDomain {
     async getJoinRequestsList(
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
-        status?: Record<string, IPaginationIn>
+        status?: Record<string, IPaginationIn>,
+        where?: Prisma.WorkspaceJoinRequestWhereInput
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
         await this.assertJoinRequestAllowed();
 
         return this.workspaceJoinRequestRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
-            status
+            status,
+            where
         );
     }
 

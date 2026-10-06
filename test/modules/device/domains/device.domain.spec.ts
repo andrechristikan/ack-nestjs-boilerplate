@@ -2,10 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import type { Device, DeviceOwnership } from '@generated/prisma-client/client';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -14,7 +17,9 @@ import {
 } from '@generated/prisma-client';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type {
+    IDeviceIdentity,
     IDeviceOwnership,
+    IDeviceOwnershipWithDevice,
     IDeviceOwnershipWithSession,
 } from '@modules/device/interfaces/device.interface';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
@@ -109,6 +114,47 @@ describe('DeviceDomain', () => {
             ],
         }).compile();
         service = moduleRef.get(DeviceDomain);
+    });
+
+    it('forwards the revoke filter and the accessible where of the administrator offset list', async () => {
+        const pagination = { limit: 20, page: 1, skip: 0 };
+        const isRevoked = { isRevoked: { equals: true } };
+        const accessibleWhere = { userId: 'user-id' };
+        const page = {
+            type: EnumPaginationType.offset,
+            data: [],
+            count: 0,
+            perPage: 20,
+            hasNext: false,
+            hasPrevious: false,
+            page: 1,
+            totalPage: 0,
+        } satisfies IResponsePaginationReturn<never>;
+        deviceOwnershipRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
+            page
+        );
+
+        await expect(
+            service.getListOffsetByAdmin(
+                'user-id',
+                pagination,
+                isRevoked,
+                accessibleWhere
+            )
+        ).resolves.toBe(page);
+        expect(
+            deviceOwnershipRepository.findWithPaginationOffsetByAdmin
+        ).toHaveBeenCalledWith(
+            'user-id',
+            pagination,
+            isRevoked,
+            accessibleWhere
+        );
+
+        await service.getListOffsetByAdmin('user-id', pagination);
+        expect(
+            deviceOwnershipRepository.findWithPaginationOffsetByAdmin
+        ).toHaveBeenLastCalledWith('user-id', pagination, undefined, undefined);
     });
 
     it('delegates the active ownership list with the current session excluded', async () => {
@@ -253,6 +299,294 @@ describe('DeviceDomain', () => {
             userId: 'user-id',
             createdBy: 'admin-id',
             metadata: targetMetadata,
+        });
+    });
+
+    describe('notification token maintenance', () => {
+        it('lists the ownerships of a user that carry a notification token', async () => {
+            const tokens = [mock<IDeviceOwnershipWithDevice>()];
+            deviceOwnershipRepository.findTokensByUserId.mockResolvedValue(
+                tokens
+            );
+
+            await expect(
+                service.getOwnershipsWithNotificationToken('user-id')
+            ).resolves.toBe(tokens);
+            expect(
+                deviceOwnershipRepository.findTokensByUserId
+            ).toHaveBeenCalledWith('user-id');
+        });
+
+        it('clears the tokens of the devices matching the user tokens and returns the cleared count', async () => {
+            deviceOwnershipRepository.findDeviceIdsByUserAndTokens.mockResolvedValue(
+                ['device-1', 'device-2']
+            );
+            deviceRepository.clearTokens.mockResolvedValue({ count: 2 });
+
+            await expect(
+                service.cleanupNotificationTokens('user-id', ['t1', 't2'])
+            ).resolves.toBe(2);
+            expect(
+                deviceOwnershipRepository.findDeviceIdsByUserAndTokens
+            ).toHaveBeenCalledWith('user-id', ['t1', 't2']);
+            expect(deviceRepository.clearTokens).toHaveBeenCalledWith(
+                ['device-1', 'device-2'],
+                'user-id'
+            );
+        });
+
+        it('clears stale tokens older than the threshold and returns the cleared count', async () => {
+            deviceRepository.clearStaleTokens.mockResolvedValue({ count: 5 });
+
+            await expect(
+                service.cleanupStaleNotificationTokens(86_400_000)
+            ).resolves.toBe(5);
+            expect(deviceRepository.clearStaleTokens).toHaveBeenCalledWith(
+                86_400_000
+            );
+        });
+    });
+
+    describe('upsertForLoginInTx', () => {
+        it('upserts the device by fingerprint then its ownership and reports whether the ownership is new', async () => {
+            const tx = mock<IDatabaseTransactionClient>();
+            const identity = {
+                fingerprint: 'fingerprint',
+            } satisfies IDeviceIdentity;
+            const upserted = mock<Device>({ id: 'device-id' });
+            const deviceOwnership = mock<DeviceOwnership>();
+            deviceRepository.upsertByFingerprintInTx.mockResolvedValue(
+                upserted
+            );
+            deviceOwnershipRepository.upsertForLoginInTx.mockResolvedValue({
+                deviceOwnership,
+                isNewOwnership: true,
+            });
+
+            await expect(
+                service.upsertForLoginInTx(
+                    tx,
+                    'user-id',
+                    identity,
+                    EnumDeviceNotificationProvider.apns,
+                    now
+                )
+            ).resolves.toEqual({
+                device: upserted,
+                deviceOwnership,
+                isNewDevice: true,
+            });
+            expect(
+                deviceRepository.upsertByFingerprintInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                'user-id',
+                identity,
+                EnumDeviceNotificationProvider.apns,
+                now
+            );
+            expect(
+                deviceOwnershipRepository.upsertForLoginInTx
+            ).toHaveBeenCalledWith(tx, 'user-id', 'device-id', now);
+        });
+    });
+
+    describe('clearNotificationInTx', () => {
+        it('clears the notification of the live device behind the ownership', async () => {
+            const tx = mock<IDatabaseTransactionClient>();
+            deviceOwnershipRepository.findLiveDeviceIdInTx.mockResolvedValue(
+                'device-id'
+            );
+
+            await service.clearNotificationInTx(
+                tx,
+                'user-id',
+                'ownership-id',
+                'actor-id',
+                now
+            );
+
+            expect(
+                deviceOwnershipRepository.findLiveDeviceIdInTx
+            ).toHaveBeenCalledWith(tx, 'user-id', 'ownership-id');
+            expect(
+                deviceRepository.clearNotificationByIdsInTx
+            ).toHaveBeenCalledWith(tx, ['device-id'], 'actor-id', now);
+        });
+
+        it('throws DeviceNotFoundException when the ownership has no live device', async () => {
+            const tx = mock<IDatabaseTransactionClient>();
+            deviceOwnershipRepository.findLiveDeviceIdInTx.mockResolvedValue(
+                null
+            );
+
+            await expect(
+                service.clearNotificationInTx(
+                    tx,
+                    'user-id',
+                    'ownership-id',
+                    'actor-id',
+                    now
+                )
+            ).rejects.toBeInstanceOf(DeviceNotFoundException);
+            expect(
+                deviceRepository.clearNotificationByIdsInTx
+            ).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('revokeAllByUserInTx', () => {
+        it('clears the notification of every revoked device', async () => {
+            const tx = mock<IDatabaseTransactionClient>();
+            deviceOwnershipRepository.revokeAllByUserInTx.mockResolvedValue([
+                'device-1',
+                'device-2',
+            ]);
+
+            await service.revokeAllByUserInTx(tx, 'user-id', 'actor-id', now);
+
+            expect(
+                deviceOwnershipRepository.revokeAllByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-id', 'actor-id', now);
+            expect(
+                deviceRepository.clearNotificationByIdsInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                ['device-1', 'device-2'],
+                'actor-id',
+                now
+            );
+        });
+
+        it('skips the notification clear when no ownership was revoked', async () => {
+            const tx = mock<IDatabaseTransactionClient>();
+            deviceOwnershipRepository.revokeAllByUserInTx.mockResolvedValue([]);
+
+            await service.revokeAllByUserInTx(tx, 'user-id', 'actor-id', now);
+
+            expect(
+                deviceRepository.clearNotificationByIdsInTx
+            ).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('refresh failure mapping', () => {
+        it('rethrows an AppBaseException raised inside the transaction unchanged', async () => {
+            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            deviceOwnershipRepository.touchInTx.mockRejectedValue(
+                new DeviceNotFoundException()
+            );
+
+            await expect(
+                service.refresh('user-id', ownership.id, {})
+            ).rejects.toBeInstanceOf(DeviceNotFoundException);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('wraps an unknown failure in AppUnknownException', async () => {
+            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            deviceOwnershipRepository.touchInTx.mockRejectedValue(
+                new Error('db down')
+            );
+
+            await expect(
+                service.refresh('user-id', ownership.id, {})
+            ).rejects.toBeInstanceOf(AppUnknownException);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('remove failure mapping', () => {
+        it('throws DeviceNotFoundException when the ownership is not active', async () => {
+            deviceOwnershipRepository.existsActive.mockResolvedValue(false);
+
+            await expect(
+                service.remove('user-id', ownership.id)
+            ).rejects.toBeInstanceOf(DeviceNotFoundException);
+            expect(
+                sessionDomain.revokeByDeviceOwnershipInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('rethrows an AppBaseException raised inside the transaction unchanged', async () => {
+            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            sessionDomain.revokeByDeviceOwnershipInTx.mockRejectedValue(
+                new DeviceNotFoundException()
+            );
+
+            await expect(
+                service.remove('user-id', ownership.id)
+            ).rejects.toBeInstanceOf(DeviceNotFoundException);
+            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
+        });
+
+        it('wraps an unknown failure in AppUnknownException', async () => {
+            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            sessionDomain.revokeByDeviceOwnershipInTx.mockRejectedValue(
+                new Error('db down')
+            );
+
+            await expect(
+                service.remove('user-id', ownership.id)
+            ).rejects.toBeInstanceOf(AppUnknownException);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('removeByAdmin failure mapping and self removal', () => {
+        it('throws DeviceNotFoundException when the ownership is not active', async () => {
+            deviceOwnershipRepository.existsActive.mockResolvedValue(false);
+
+            await expect(
+                service.removeByAdmin('user-id', ownership.id, 'admin-id')
+            ).rejects.toBeInstanceOf(DeviceNotFoundException);
+            expect(
+                sessionDomain.revokeByDeviceOwnershipInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('rethrows an AppBaseException raised inside the transaction unchanged', async () => {
+            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            sessionDomain.revokeByDeviceOwnershipInTx.mockRejectedValue(
+                new DeviceNotFoundException()
+            );
+
+            await expect(
+                service.removeByAdmin('user-id', ownership.id, 'admin-id')
+            ).rejects.toBeInstanceOf(DeviceNotFoundException);
+            expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
+        });
+
+        it('wraps an unknown failure in AppUnknownException', async () => {
+            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            sessionDomain.revokeByDeviceOwnershipInTx.mockRejectedValue(
+                new Error('db down')
+            );
+
+            await expect(
+                service.removeByAdmin('user-id', ownership.id, 'admin-id')
+            ).rejects.toBeInstanceOf(AppUnknownException);
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
+        it('prepares only the actor event when the admin removes their own device', async () => {
+            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            sessionDomain.revokeByDeviceOwnershipInTx.mockResolvedValue([]);
+            deviceOwnershipRepository.removeOwnershipInTx.mockResolvedValue(
+                ownership
+            );
+
+            await service.removeByAdmin('user-id', ownership.id, 'user-id');
+
+            expect(activityLogDomain.prepare).toHaveBeenCalledOnce();
+            expect(activityLogDomain.prepare).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    action: EnumActivityLogAction.adminDeviceRemove,
+                })
+            );
+            expect(
+                deviceUtil.mapActivityLogTargetMetadata
+            ).not.toHaveBeenCalled();
         });
     });
 });

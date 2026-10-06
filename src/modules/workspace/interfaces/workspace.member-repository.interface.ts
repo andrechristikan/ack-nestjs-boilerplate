@@ -34,7 +34,8 @@ export interface IWorkspaceMemberRepository {
     findWithPaginationOffset(
         workspaceId: string,
         params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>
+        role?: Record<string, IPaginationIn>,
+        where?: Prisma.WorkspaceMemberWhereInput
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>>;
     findWithPaginationCursor(
         workspaceId: string,

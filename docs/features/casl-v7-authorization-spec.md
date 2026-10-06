@@ -89,25 +89,27 @@ A route takes only the slots it needs; the relative order never changes. Guard e
 
 One `Role` model covers every level. A role has a `scope` (`platform`, `workspace`, or `project`), an immutable `key`, and the policy rows it owns. The role a user, a workspace member, or a project member holds is a foreign key (`roleId`) to that model.
 
-No decorator gates a route by role. `PolicyAbilityGuard` builds one ability per request from every role available in the request context and stores it under `PolicyAbilityStoreKey`. `PolicyAbilityDomain.buildAbility` takes this input:
+No decorator gates a route by role. `PolicyAbilityGuard` builds one ability per request from every role available in the request context and stores it under `PolicyAbilityStoreKey`. The guard reads these request-store entries:
 
 ```typescript
 {
-  user: { id, roleId },
-  workspace?: { id, memberRoleId },
-  project?: { id, memberRoleId: string | null },
+  user: { id, roleId },                    // required
+  workspace?: { id },
+  workspaceMember?: { roleId },
+  project?: { id },
+  projectMember?: { roleId },
 }
 ```
 
-| Layer     | Loaded when                                                 | Policies loaded                                   |
-| --------- | ----------------------------------------------------------- | ------------------------------------------------- |
-| platform  | Always                                                      | The platform role of the authenticated user       |
-| workspace | A workspace and a workspace member are stored               | The workspace role of the acting workspace member |
-| project   | A project is stored and the caller has a project member row | The project role of the acting project member     |
+| Layer     | Loaded when                  | Policies loaded                                   |
+| --------- | ---------------------------- | ------------------------------------------------- |
+| platform  | Always                       | The platform role of the authenticated user       |
+| workspace | A workspace member is stored | The workspace role of the acting workspace member |
+| project   | A project member is stored   | The project role of the acting project member     |
 
-The domain builds one placeholder map from the whole request context and passes it to every loaded layer: `${userId}` always, `${workspaceId}` when a workspace is in context, `${projectId}` when a project is in context. The layer decides which roles are loaded; the request context decides which values exist. The domain loads each role's policies through the policy repository, resolves the placeholders, and passes the policies of each role to `PolicyAbilityFactory.resolveRules`, and the concatenated rules to `PolicyAbilityFactory.build`. The factory adds every allowing rule before every inverted rule, so a matching inverted rule is authoritative whichever role holds it. A layer whose context is absent contributes no rules.
+The guard collects the role ids of the layers that apply and loads their policy rows through `PolicyDomain.findManyByRoleIds`, which reads `PolicyCache`. The cache keeps the rows of one role under `Policy:Role:{roleId}` for five minutes, loads a missing role in one query, and a policy write evicts the key of its role. The guard builds one placeholder map from the whole request context and passes it with the rows to `PolicyAbilityFactory.build`: `${userId}` always, `${workspaceId}` when a workspace is stored, `${projectId}` when a project is stored. The layer decides which roles are loaded; the request context decides which values exist. The factory adds every allowing rule before every inverted rule, so a matching inverted rule is authoritative whichever role holds it.
 
-The ability lives in the request-scoped store (`ClsService`), so it never crosses requests. Policy rows are read from the database on every request, so a role or policy change applies from the next request. Role and membership context are fixed when the guard runs. A guard that finds a stored ability returns without loading or overwriting anything, so stacked policy decorators share the first ability built for the request.
+The ability lives in the request-scoped store (`ClsService`), so it never crosses requests. Role and membership context are fixed when the guard runs. A guard that finds a stored ability returns without loading or overwriting anything, so stacked policy decorators share the first ability built for the request.
 
 ```mermaid
 flowchart TD
@@ -145,8 +147,8 @@ Three wrappers fix the subject union at the call site. They all bind the same gu
 
 | Decorator                        | Subjects it accepts                                                                                                                                                                  | Used by                                  |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
-| `@PlatformPolicyProtected(...)`  | `EnumPolicyPlatformSubject`: `all`, `ApiKey`, `Role`, `User`, `Session`, `ActivityLog`, `PasswordHistory`, `TermPolicy`, `FeatureFlag`, `Device`, `Workspace`, `Project`, `analytic` | `/admin` routes                          |
-| `@WorkspacePolicyProtected(...)` | `EnumPolicyWorkspaceSubject`: `Workspace`, `WorkspaceMember`, `WorkspaceInvite`, `WorkspaceJoinRequest`, `Project`, `analytic`                                                       | `/user` workspace routes, project create |
+| `@PlatformPolicyProtected(...)`  | `EnumPolicyPlatformSubject`: `all`, `ApiKey`, `Role`, `User`, `Session`, `ActivityLog`, `PasswordHistory`, `TermPolicy`, `FeatureFlag`, `Device`, `Workspace`, `WorkspaceMember`, `Project`, `Analytic` | `/admin` routes                          |
+| `@WorkspacePolicyProtected(...)` | `EnumPolicyWorkspaceSubject`: `Workspace`, `WorkspaceMember`, `WorkspaceInvite`, `WorkspaceJoinRequest`, `Project`, `WorkspaceAnalytic`                                                       | `/user` workspace routes, project create |
 | `@ProjectPolicyProtected(...)`   | `EnumPolicyProjectSubject`: `Project`, `ProjectMember`                                                                                                                               | `/user` project routes                   |
 
 **Usage:**
@@ -180,7 +182,7 @@ async inviteCreate(
 
 The guard reads the stored `PolicyAbilityStoreKey` first and returns when it holds an ability. Otherwise it reads the user (required), the workspace and workspace member, and the project and project member from the request store, and builds the ability through `PolicyAbilityDomain`. A missing user throws `RequestContextMissingException` (500, `50304`). The guard resolves no route id, loads no target record, and authorizes nothing.
 
-The workspace layer is included only when both the workspace and the workspace member are stored. The project layer is included when the project is stored; its role is loaded only when the project member is stored.
+The workspace role is loaded when a workspace member is stored, and the project role when a project member is stored. The workspace and project ids reach the placeholder map whenever those rows are stored.
 
 #### `PolicyGuard`
 
@@ -244,16 +246,22 @@ A target lookup uses the route identifier within the business boundary (workspac
 
 `PolicyAbilityDomain.accessibleWhere(ability, action, subject)` converts the stored ability into a Prisma where-input with `accessibleBy(ability, action).ofType(subject)`, and returns `null` when the ability holds no rule for the action and subject. `requireAccessibleWhere` throws `PolicyForbiddenException` instead of returning `null`, so a query never runs without its predicate.
 
-| List                  | Predicate                                       | Behaviour                                                                                                                                                           |
-| --------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Admin workspace list  | `requireAccessibleWhere(read, Workspace)`       | Required                                                                                                                                                            |
-| Admin project list    | `requireAccessibleWhere(read, Project)`         | Required                                                                                                                                                            |
-| Workspace member list | `requireAccessibleWhere(read, WorkspaceMember)` | Required                                                                                                                                                            |
-| Member project list   | `accessibleWhere(read, Project)`                | Optional. A caller whose ability grants `Project` `read` sees every project of the workspace that read allows; any other caller sees the projects it is assigned to |
+| List                                                                                                                                  | Predicate                                        | Behaviour                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin `User`, `Session`, `Device`, `ApiKey`, `Role`, `PasswordHistory`, `TermPolicy`, `FeatureFlag` lists                             | `requireAccessibleWhere(read, <subject>)`        | Required                                                                                                                                                            |
+| Admin `ActivityLog` lists (both)                                                                                                      | `requireAccessibleWhere(read, ActivityLog)`      | Required                                                                                                                                                            |
+| Admin workspace list                                                                                                                  | `requireAccessibleWhere(read, Workspace)`        | Required                                                                                                                                                            |
+| Admin workspace member list                                                                                                           | `requireAccessibleWhere(read, WorkspaceMember)`  | Required                                                                                                                                                            |
+| Admin project list                                                                                                                    | `requireAccessibleWhere(read, Project)`          | Required                                                                                                                                                            |
+| Workspace member list                                                                                                                 | `requireAccessibleWhere(read, WorkspaceMember)`  | Required                                                                                                                                                            |
+| Workspace invite list                                                                                                                 | `requireAccessibleWhere(read, WorkspaceInvite)`  | Required                                                                                                                                                            |
+| Workspace join-request list                                                                                                           | `requireAccessibleWhere(read, WorkspaceJoinRequest)` | Required                                                                                                                                                        |
+| Project member list                                                                                                                   | `requireAccessibleWhere(read, ProjectMember)`    | Required                                                                                                                                                            |
+| Member project list                                                                                                                   | `accessibleWhere(read, Project)`                 | Optional. The list keeps the projects the caller is assigned to; a predicate, when the ability holds a `Project` `read` rule, narrows it further |
 
-The service passes the predicate to the domain as an optional generic `where`. The repository AND-composes it with its mandatory constraints (workspace, project, active rows) and with the caller's search, equality, and pagination filters, so a caller filter cannot replace or drop the policy predicate. The Prisma client carries `createCaslExtension()`, which turns a denied predicate into "matches nothing".
+The admin policy list and the analytics lists take no predicate. Shared, public, and system routes run outside the ability layer and take none either.
 
-Invite, join-request, and project-member lists apply their policy at the type level only and filter by the workspace or project boundary in the repository.
+The service passes the predicate to the domain as an optional generic `where`. The repository takes it as an optional predicate (`additionalWhere` in most repositories) and AND-composes it with its mandatory constraints (workspace, project, active rows) and with the caller's search, equality, and pagination filters, so a caller filter cannot replace or drop the policy predicate. The Prisma client carries `createCaslExtension()`, which turns a denied predicate into "matches nothing".
 
 ### Effective Permissions
 
@@ -266,7 +274,7 @@ Invite, join-request, and project-member lists apply their policy at the type le
 }
 ```
 
-`GET /user/workspace/permissions` and `GET /user/project/permissions/:projectId` run behind `@PolicyAbilityProtected()`, read the single request ability, and select their subject catalog. The workspace catalog is `Workspace`, `WorkspaceMember`, `WorkspaceInvite`, `WorkspaceJoinRequest`, `Project`, and `analytic`. The project catalog is `Project` and `ProjectMember`. The project route runs behind `@ProjectMemberProtected({ required: false })`, so a caller without a project member row still receives the permissions its workspace and platform roles grant on that project. Neither endpoint builds a second ability.
+`GET /user/workspace/permissions` and `GET /user/project/permissions/:projectId` run behind `@PolicyAbilityProtected()`, read the single request ability, and select their subject catalog. The workspace catalog is `Workspace`, `WorkspaceMember`, `WorkspaceInvite`, `WorkspaceJoinRequest`, `Project`, and `WorkspaceAnalytic`. The project catalog is `Project` and `ProjectMember`. The project route runs behind `@ProjectMemberProtected({ required: false })`, so a caller without a project member row still receives the permissions its workspace and platform roles grant on that project. Neither endpoint builds a second ability.
 
 ### CASL Integration
 
@@ -277,7 +285,7 @@ The project uses [CASL][casl] v7 with `@casl/prisma`. The ability is a typed Pri
 | Field        | Meaning                                                                                                            |
 | ------------ | ------------------------------------------------------------------------------------------------------------------ |
 | `roleId`     | Role owning the rule                                                                                               |
-| `subject`    | A value of `EnumPolicySubject`. It maps onto the Prisma model of the same name; `all` and `analytic` have no model |
+| `subject`    | A value of `EnumPolicySubject`. It maps onto the Prisma model of the same name; `all`, `Analytic`, and `WorkspaceAnalytic` have no model |
 | `action`     | One or more of `manage`, `read`, `create`, `update`, `delete`                                                      |
 | `conditions` | A flat JSON object interpreted by CASL Prisma, or `null` for the whole subject                                     |
 | `inverted`   | `true` makes the rule a CASL `cannot`                                                                              |
@@ -287,12 +295,10 @@ Stored rows are the source of truth. The factory does not mutate them and derive
 
 **PolicyAbilityFactory:**
 
-- `resolveRules(policies, placeholders)`: Resolves the placeholders of each stored rule into plain ability rules and omits a rule that cannot resolve
-- `build(rules)`: Creates the Prisma ability from ability rules, allowing rules first and inverted rules after
+- `build(policies, placeholders)`: Resolves the placeholders of each stored rule into plain ability rules and creates the Prisma ability from them, allowing rules first and inverted rules after
 
 **PolicyAbilityDomain:**
 
-- `buildAbility(input)`: Builds the placeholder map from the request context, loads the role policies of each available layer, resolves them with `resolveRules`, and builds the combined ability once
 - `requireStored(key)`: Reads a request-store value, throwing `RequestContextMissingException` when it is empty
 - `assertCan(ability, action, target)`: Throws `PolicyForbiddenException` when the ability denies the action on the subject name or tagged record
 - `accessibleWhere`, `requireAccessibleWhere`: The Prisma where-input of the records the ability reaches
@@ -300,8 +306,9 @@ Stored rows are the source of truth. The factory does not mutate them and derive
 
 **PolicyDomain:**
 
-- `createByAdmin`, `updateByAdmin`, `deleteByAdmin`: Write a role's policy rows and reject any write to the `superAdmin` role
+- `createByAdmin`, `updateByAdmin`, `deleteByAdmin`: Write a role's policy rows, evict the role's cache key, and reject any write to the `superAdmin` role
 - `findManyByRole(roleId)`: Lists the policy rows of one role
+- `findManyByRoleIds(...roleIds)`: Returns the policy rows of every role, read through `PolicyCache`
 
 **Placeholders.** A condition value that equals one of these tokens is replaced by a value from the request context before the ability is built:
 
@@ -313,16 +320,16 @@ Stored rows are the source of truth. The factory does not mutate them and derive
 
 The factory recognizes placeholder-shaped scalar strings generically and looks them up in the one map the domain built for the request. Non-placeholder scalars stay unchanged. A `${projectId}` in a workspace-role rule is safe because `ProjectGuard` stores only a project that belongs to the resolved workspace.
 
-**Fail-closed resolution.** A rule is omitted from the ability when its conditions are not a flat object of scalar JSON values (a nested object, array, function, symbol, or `undefined` value) or when a placeholder has no value in the request context. A missing context never widens a rule into an unconditional one, so a `ProjectMember` rule that carries `${projectId}` is inert on a route with no project.
+**Fail-closed resolution.** An allowing rule is omitted from the ability when its conditions are not a flat object of scalar JSON values (a nested object or array) or when a placeholder has no value in the request context. An inverted rule in that state becomes an unconditional deny on its subject and actions. A missing context never widens a rule into an unconditional one, so a `ProjectMember` rule that carries `${projectId}` is inert on a route with no project.
 
 **Scope conditions.** Seeded workspace-level and project-level rules tie themselves to the active boundary through a condition key set to a placeholder:
 
 | Subject                                                                             | Level     | Condition key | Placeholder      |
 | ----------------------------------------------------------------------------------- | --------- | ------------- | ---------------- |
 | `Workspace`                                                                         | workspace | `id`          | `${workspaceId}` |
-| `WorkspaceMember`, `WorkspaceInvite`, `WorkspaceJoinRequest`, `Project`, `analytic` | workspace | `workspaceId` | `${workspaceId}` |
+| `WorkspaceMember`, `WorkspaceInvite`, `WorkspaceJoinRequest`, `Project`, `WorkspaceAnalytic` | workspace | `workspaceId` | `${workspaceId}` |
 | `Project`                                                                           | project   | `id`          | `${projectId}`   |
-| `ProjectMember`                                                                     | project   | `projectId`   | `${projectId}`   |
+| `ProjectMember`                                                                     | workspace and project | `projectId`   | `${projectId}`   |
 
 A lone `create` on `Project` carries no condition, since no project exists yet.
 
@@ -335,15 +342,15 @@ A lone `create` on `Project` carries no condition, since no project exists yet.
 | Workspace update, delete, ownership transfer | `@WorkspacePolicyProtected` (`Workspace` `update` or `delete`)               | Record check on `Workspace`; domain invariants                                |
 | Workspace member list                        | `@WorkspacePolicyProtected` (`WorkspaceMember` `read`)                       | `requireAccessibleWhere`; workspace boundary                                  |
 | Workspace member role and remove             | `@WorkspacePolicyProtected` (`WorkspaceMember` `update` or `delete`)         | Record check on the target; peer, owner, and last-owner rules                 |
-| Invite and join-request lists                | `@WorkspacePolicyProtected` (`read`)                                         | Workspace boundary; status filters                                            |
+| Invite and join-request lists                | `@WorkspacePolicyProtected` (`read`)                                         | `requireAccessibleWhere`; workspace boundary; status filters                  |
 | Invite create, resend, revoke                | `@WorkspacePolicyProtected` (`WorkspaceInvite` `create`, `update`, `delete`) | Record check; pending-state invariants                                        |
 | Join request accept and reject               | `@WorkspacePolicyProtected` (`WorkspaceJoinRequest` `update`)                | Record check; pending-state invariants                                        |
-| Workspace analytics                          | `@WorkspacePolicyProtected` (`analytic` `read`)                              | Workspace boundary                                                            |
+| Workspace analytics, including the summary   | `@WorkspacePolicyProtected` (`WorkspaceAnalytic` `read`)                              | Workspace boundary; no predicate                                              |
 | Workspace leave                              | none                                                                         | Membership guards; last-owner invariant                                       |
 | Project list                                 | `@PolicyAbilityProtected()`                                                  | Optional `accessibleWhere`; assigned-project filter                           |
 | Project create                               | `@WorkspacePolicyProtected` (`Project` `create`)                             | Record check on the prospective project; creator becomes project `admin`      |
 | Project get, update, slug update, delete     | `@ProjectPolicyProtected` (`Project`)                                        | Record check on the project; `@ProjectMemberProtected({ required: false })`   |
-| Project member list                          | `@ProjectPolicyProtected` (`ProjectMember` `read`)                           | Project boundary                                                              |
+| Project member list                          | `@ProjectPolicyProtected` (`ProjectMember` `read`)                           | `requireAccessibleWhere`; project boundary                                    |
 | Project member assign                        | `@ProjectPolicyProtected` (`ProjectMember` `create`)                         | Record check on the prospective member; workspace-member and role-scope rules |
 | Project member role and remove               | `@ProjectPolicyProtected` (`ProjectMember` `update` or `delete`)             | Record check on the target; peer and last-admin rules                         |
 | Project leave                                | none                                                                         | Strict `@ProjectMemberProtected()`; last-admin invariant                      |
@@ -392,10 +399,10 @@ Seeded rules per role. Workspace and project rules on a scoped subject carry the
 | Role                  | Policies                                                                                                                                                                                                                                                                                                                     |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | platform `superAdmin` | `manage` on `all`                                                                                                                                                                                                                                                                                                            |
-| platform `admin`      | every action on `ActivityLog`, `ApiKey`, `Device`, `FeatureFlag`, `PasswordHistory`, `Role`, `Session`, `TermPolicy`, `User`; `read` on `analytic`, `Workspace`, and `Project`                                                                                                                                               |
+| platform `admin`      | every action on `ActivityLog`, `ApiKey`, `Device`, `FeatureFlag`, `PasswordHistory`, `Role`, `Session`, `TermPolicy`, `User`; `read` on `Analytic`, `Workspace`, `WorkspaceMember`, and `Project`                                                                                                                                            |
 | platform `user`       | none                                                                                                                                                                                                                                                                                                                         |
-| workspace `owner`     | `manage` on `Workspace`; `read`, `update`, and `delete` on `WorkspaceMember`; `manage` on `WorkspaceInvite`; `read` and `update` on `WorkspaceJoinRequest`; `create` on `Project`; `read`, `update`, and `delete` on `Project`; `create`, `read`, `update`, and `delete` on `ProjectMember`; `read` on `analytic`            |
-| workspace `admin`     | `read` and `update` on `Workspace`; `read`, `update`, and `delete` on `WorkspaceMember`; `manage` on `WorkspaceInvite`; `read` and `update` on `WorkspaceJoinRequest`; `create` on `Project`; `read`, `update`, and `delete` on `Project`; `create`, `read`, `update`, and `delete` on `ProjectMember`; `read` on `analytic` |
+| workspace `owner`     | `manage` on `Workspace`; `read`, `update`, and `delete` on `WorkspaceMember`; `manage` on `WorkspaceInvite`; `read` and `update` on `WorkspaceJoinRequest`; `create` on `Project`; `read`, `update`, and `delete` on `Project`; `create`, `read`, `update`, and `delete` on `ProjectMember`; `read` on `WorkspaceAnalytic`            |
+| workspace `admin`     | `read` and `update` on `Workspace`; `read`, `update`, and `delete` on `WorkspaceMember`; `manage` on `WorkspaceInvite`; `read` and `update` on `WorkspaceJoinRequest`; `create` on `Project`; `read`, `update`, and `delete` on `Project`; `create`, `read`, `update`, and `delete` on `ProjectMember`; `read` on `WorkspaceAnalytic` |
 | workspace `member`    | `read` on `Workspace`; `read` on `WorkspaceMember`                                                                                                                                                                                                                                                                           |
 | project `admin`       | `read`, `update`, and `delete` on `Project`; `create`, `read`, `update`, and `delete` on `ProjectMember`                                                                                                                                                                                                                     |
 | project `member`      | `read` on `Project`; `read` on `ProjectMember`                                                                                                                                                                                                                                                                               |
@@ -439,7 +446,7 @@ The policy layer has these boundaries. A change to one of them extends the polic
 - **Flat conditions.** A condition is a flat object of scalar values. Nested condition trees and relation-aware interpolation are not supported
 - **Three placeholders.** `${userId}`, `${workspaceId}`, and `${projectId}` are the full set. Member-instance placeholders such as `${workspaceMemberId}` and `${projectMemberId}` are not resolved
 - **No write-time rule validation.** Policy create and update, through the admin API and the policy seed, do not validate or enforce a rule's subject, role scope, condition keys, or placeholders. A rule whose placeholder the request context cannot resolve is omitted when the ability is built (fail-closed), so a misconfigured rule grants nothing and raises no error. Write-time validation is a future improvement
-- **Selected collection predicates.** `accessibleWhere` feeds the admin workspace and project lists, the workspace member list, and the member project list. Other lists filter by their workspace or project boundary
+- **Collection predicates.** Every list in the table under [Collection Queries](#collection-queries) takes its predicate from the stored ability. The admin policy list, the analytics lists, the shared self-service lists, and the public and system routes take none
 - **Point reads.** A point read that is not in the record-check table uses its route identifier and the context guards, with the type-level capability check from the decorator
 
 <!-- REFERENCES -->

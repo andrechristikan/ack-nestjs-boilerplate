@@ -468,8 +468,40 @@ describe('WorkspaceMemberHttpService', () => {
             );
             expect(
                 workspaceMemberDomain.getMembersListForAdmin
-            ).toHaveBeenCalledWith('workspace-id', offsetParams);
+            ).toHaveBeenCalledWith(
+                'workspace-id',
+                offsetParams,
+                accessibleMemberWhere
+            );
+            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
+                PolicyAbilityStoreKey
+            );
+            expect(
+                policyAbilityDomain.requireAccessibleWhere
+            ).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.WorkspaceMember
+            );
             expect(result).toEqual(offsetPage);
+        });
+
+        it('propagates PolicyForbiddenException and skips the domain when the ability has no read rule', async () => {
+            policyAbilityDomain.requireAccessibleWhere.mockImplementation(
+                () => {
+                    throw new PolicyForbiddenException();
+                }
+            );
+
+            await expect(
+                service.getMembersListForAdmin('workspace-id', {
+                    page: 1,
+                    perPage: 20,
+                })
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(
+                workspaceMemberDomain.getMembersListForAdmin
+            ).not.toHaveBeenCalled();
         });
     });
 });

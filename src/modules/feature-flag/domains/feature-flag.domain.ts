@@ -127,10 +127,12 @@ export class FeatureFlagDomain {
     }
 
     async getListByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
+        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>,
+        where?: Prisma.FeatureFlagWhereInput
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.featureFlagRepository.findWithPaginationOffsetByAdmin(
-            pagination
+            pagination,
+            where
         );
     }
 

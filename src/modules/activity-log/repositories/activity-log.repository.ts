@@ -52,7 +52,8 @@ export class ActivityLogRepository implements IActivityLogRepository {
         {
             where,
             ...params
-        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
+        additionalWhere?: Prisma.ActivityLogWhereInput
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const scopedWhere = this.buildUserScopedWhere(userId, where);
 
@@ -61,7 +62,12 @@ export class ActivityLogRepository implements IActivityLogRepository {
             Prisma.ActivityLogWhereInput
         >(this.databaseService.client.activityLog, {
             ...params,
-            where: scopedWhere,
+            where: {
+                AND: [
+                    scopedWhere,
+                    ...(additionalWhere ? [additionalWhere] : []),
+                ],
+            },
             include: {
                 user: {
                     select: UserRefSelect,
@@ -99,7 +105,8 @@ export class ActivityLogRepository implements IActivityLogRepository {
         {
             where,
             ...params
-        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
+        additionalWhere?: Prisma.ActivityLogWhereInput
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
@@ -112,7 +119,12 @@ export class ActivityLogRepository implements IActivityLogRepository {
             Prisma.ActivityLogWhereInput
         >(this.databaseService.client.activityLog, {
             ...params,
-            where: scopedWhere,
+            where: {
+                AND: [
+                    scopedWhere,
+                    ...(additionalWhere ? [additionalWhere] : []),
+                ],
+            },
             include: {
                 user: {
                     select: UserRefSelect,

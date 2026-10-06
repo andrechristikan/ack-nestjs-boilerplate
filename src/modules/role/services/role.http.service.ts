@@ -1,4 +1,11 @@
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -26,6 +33,7 @@ import { Injectable } from '@nestjs/common';
 export class RoleHttpService {
     constructor(
         private readonly roleDomain: RoleDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -33,6 +41,15 @@ export class RoleHttpService {
     async getListOffsetByAdmin(
         query: RoleAdminListRequestDto
     ): Promise<IResponsePaginationReturn<RoleListResponseDto>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.RoleWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.Role
+            );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.RoleWhereInput>(query, {
                 availableSearch: RoleDefaultAvailableSearch,
@@ -53,7 +70,8 @@ export class RoleHttpService {
 
         const { data, ...others } = await this.roleDomain.getListOffsetByAdmin(
             params,
-            scope?.where
+            scope?.where,
+            accessibleWhere
         );
         const roles: RoleListResponseDto[] = data.map(
             ({ _count, ...role }) => ({

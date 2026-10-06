@@ -1,4 +1,11 @@
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -20,6 +27,7 @@ import { Injectable } from '@nestjs/common';
 export class SessionHttpService {
     constructor(
         private readonly sessionDomain: SessionDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -28,6 +36,15 @@ export class SessionHttpService {
         userId: string,
         query: SessionAdminListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.SessionWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.Session
+            );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.SessionWhereInput>(query, {
                 availableOrderBy: SessionDefaultAvailableOrderBy,
@@ -48,7 +65,8 @@ export class SessionHttpService {
             await this.sessionDomain.getListOffsetByAdmin(
                 userId,
                 params,
-                isRevoked?.where
+                isRevoked?.where,
+                accessibleWhere
             );
         return {
             data,

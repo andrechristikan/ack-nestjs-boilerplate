@@ -41,6 +41,15 @@ export class ProjectMemberHttpService {
         project: Project,
         query: ProjectMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.ProjectMemberWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.ProjectMember
+            );
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ProjectMemberWhereInput>(
                 query,
@@ -51,7 +60,11 @@ export class ProjectMemberHttpService {
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =
-            await this.projectMemberDomain.getMembersList(project, params);
+            await this.projectMemberDomain.getMembersList(
+                project,
+                params,
+                accessibleWhere
+            );
 
         return {
             data,

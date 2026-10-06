@@ -167,6 +167,16 @@ export class WorkspaceMemberHttpService {
         workspaceId: string,
         query: WorkspaceAdminMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.WorkspaceMemberWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.WorkspaceMember
+            );
+
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.WorkspaceMemberWhereInput>(
                 query,
@@ -179,7 +189,8 @@ export class WorkspaceMemberHttpService {
         const { data, ...others } =
             await this.workspaceMemberDomain.getMembersListForAdmin(
                 workspaceId,
-                params
+                params,
+                accessibleWhere
             );
 
         return {

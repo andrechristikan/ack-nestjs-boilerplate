@@ -119,7 +119,8 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
-        status?: Record<string, IPaginationIn>
+        status?: Record<string, IPaginationIn>,
+        additionalWhere?: Prisma.WorkspaceInviteWhereInput
     ): Promise<IPaginationCursorReturn<IWorkspaceInviteList>> {
         return this.paginationService.cursor<
             IWorkspaceInviteList,
@@ -127,9 +128,14 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         >(this.databaseService.client.workspaceInvite, {
             ...others,
             where: {
-                ...where,
-                ...(status ?? {}),
-                workspaceId,
+                AND: [
+                    {
+                        ...where,
+                        ...(status ?? {}),
+                        workspaceId,
+                    },
+                    ...(additionalWhere ? [additionalWhere] : []),
+                ],
             },
             select: WorkspaceInviteUserListSelect,
         });

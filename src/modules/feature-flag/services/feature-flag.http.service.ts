@@ -5,7 +5,14 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import {
     FeatureFlagDefaultAvailableOrderBy,
@@ -22,6 +29,7 @@ import { Injectable } from '@nestjs/common';
 export class FeatureFlagHttpService {
     constructor(
         private readonly featureFlagDomain: FeatureFlagDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -29,6 +37,15 @@ export class FeatureFlagHttpService {
     async getListByAdmin(
         query: FeatureFlagAdminListRequestDto
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.FeatureFlagWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.FeatureFlag
+            );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.FeatureFlagWhereInput>(
                 query,
@@ -39,8 +56,10 @@ export class FeatureFlagHttpService {
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        const { data, ...others } =
-            await this.featureFlagDomain.getListByAdmin(params);
+        const { data, ...others } = await this.featureFlagDomain.getListByAdmin(
+            params,
+            accessibleWhere
+        );
 
         return {
             data,

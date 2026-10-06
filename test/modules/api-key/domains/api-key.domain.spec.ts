@@ -193,7 +193,30 @@ describe('ApiKeyDomain', () => {
             expect(apiKeyRepository.findWithPagination).toHaveBeenCalledWith(
                 pagination,
                 isActive,
-                type
+                type,
+                undefined
+            );
+        });
+
+        it('forwards the accessible where as the trailing repository argument of the administrator list', async () => {
+            const pagination = { limit: 20, page: 1, skip: 0 };
+            const accessibleWhere = { isActive: true };
+            const page = mock<IResponsePaginationReturn<never>>();
+            apiKeyRepository.findWithPagination.mockResolvedValue(page);
+
+            await expect(
+                service.getListByAdmin(
+                    pagination,
+                    undefined,
+                    undefined,
+                    accessibleWhere
+                )
+            ).resolves.toBe(page);
+            expect(apiKeyRepository.findWithPagination).toHaveBeenCalledWith(
+                pagination,
+                undefined,
+                undefined,
+                accessibleWhere
             );
         });
 

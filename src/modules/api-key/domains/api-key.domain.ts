@@ -90,12 +90,14 @@ export class ApiKeyDomain {
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
-        type?: Record<string, IPaginationIn>
+        type?: Record<string, IPaginationIn>,
+        where?: Prisma.ApiKeyWhereInput
     ): Promise<IResponsePaginationReturn<IApiKeyList>> {
         return this.apiKeyRepository.findWithPagination(
             pagination,
             isActive,
-            type
+            type,
+            where
         );
     }
 

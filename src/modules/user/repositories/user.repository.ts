@@ -89,18 +89,24 @@ export class UserRepository implements IUserRepository {
         }: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        countryId?: Record<string, IPaginationEqual>,
+        additionalWhere?: Prisma.UserWhereInput
     ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.paginationService.offset<IUserList, Prisma.UserWhereInput>(
             this.databaseService.client.user,
             {
                 ...params,
                 where: {
-                    ...where,
-                    ...status,
-                    ...countryId,
-                    ...roleId,
-                    deletedAt: null,
+                    AND: [
+                        {
+                            ...where,
+                            ...status,
+                            ...countryId,
+                            ...roleId,
+                            deletedAt: null,
+                        },
+                        ...(additionalWhere ? [additionalWhere] : []),
+                    ],
                 },
                 select: UserAdminListSelect,
             }

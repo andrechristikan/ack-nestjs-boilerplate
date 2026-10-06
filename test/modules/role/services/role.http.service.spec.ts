@@ -7,7 +7,12 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumRoleScope, Prisma } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    EnumRoleScope,
+    Prisma,
+} from '@generated/prisma-client/client';
 import {
     RoleCursorAvailableOrderBy,
     RoleDefaultAvailableOrderBy,
@@ -17,6 +22,10 @@ import {
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { RoleHttpService } from '@modules/role/services/role.http.service';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 
 describe('RoleHttpService', () => {
     const roleDomain: MockProxy<RoleDomain> = mock<RoleDomain>();
@@ -24,6 +33,10 @@ describe('RoleHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const policyAbilityDomain: MockProxy<PolicyAbilityDomain> =
+        mock<PolicyAbilityDomain>();
+    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
+    const accessibleWhere = { scope: EnumRoleScope.workspace };
     const now = new Date('2026-01-01T00:00:00.000Z');
     const roleRow = {
         id: 'role-id',
@@ -83,11 +96,16 @@ describe('RoleHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityDomain.requireStored.mockReturnValue(ability);
+        policyAbilityDomain.requireAccessibleWhere.mockReturnValue(
+            accessibleWhere
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RoleHttpService,
                 { provide: RoleDomain, useValue: roleDomain },
+                { provide: PolicyAbilityDomain, useValue: policyAbilityDomain },
                 { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
@@ -138,7 +156,18 @@ describe('RoleHttpService', () => {
             );
             expect(roleDomain.getListOffsetByAdmin).toHaveBeenCalledWith(
                 offsetParams,
-                { scope: { in: ['workspace', 'project'] } }
+                { scope: { in: ['workspace', 'project'] } },
+                accessibleWhere
+            );
+            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
+                PolicyAbilityStoreKey
+            );
+            expect(
+                policyAbilityDomain.requireAccessibleWhere
+            ).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.Role
             );
             expect(result.data).toEqual([listedRole]);
         });
@@ -190,8 +219,22 @@ describe('RoleHttpService', () => {
             );
             expect(roleDomain.getListOffsetByAdmin).toHaveBeenCalledWith(
                 offsetParams,
-                undefined
+                undefined,
+                accessibleWhere
             );
+        });
+
+        it('propagates PolicyForbiddenException and skips the domain when the ability has no read rule', async () => {
+            policyAbilityDomain.requireAccessibleWhere.mockImplementation(
+                () => {
+                    throw new PolicyForbiddenException();
+                }
+            );
+
+            await expect(service.getListOffsetByAdmin({})).rejects.toThrow(
+                PolicyForbiddenException
+            );
+            expect(roleDomain.getListOffsetByAdmin).not.toHaveBeenCalled();
         });
     });
 
@@ -324,6 +367,39 @@ describe('RoleHttpService', () => {
                 },
             ]);
             expect(result.data[0]).not.toHaveProperty('_count');
+        });
+    });
+
+    describe('getListOffsetByShared without a scope filter', () => {
+        it('merges an empty filter set and passes an undefined scope to the domain when the helper yields no filter', async () => {
+            paginationQueryUtil.offset.mockReturnValue({
+                params: offsetParams,
+                storePatch: offsetStorePatch,
+            } as never);
+            paginationQueryUtil.equalString.mockReturnValue(undefined);
+            roleDomain.getListOffsetByShared.mockResolvedValue({
+                type: EnumPaginationType.offset,
+                count: 0,
+                perPage: 20,
+                page: 1,
+                totalPage: 0,
+                hasNext: false,
+                hasPrevious: false,
+                data: [],
+            });
+
+            await service.getListOffsetByShared({
+                scope: EnumRoleScope.workspace,
+            });
+
+            expect(requestStoreService.merge).toHaveBeenCalledWith(
+                PaginationStoreKey,
+                { ...offsetStorePatch, filters: {} }
+            );
+            expect(roleDomain.getListOffsetByShared).toHaveBeenCalledWith(
+                offsetParams,
+                undefined
+            );
         });
     });
 

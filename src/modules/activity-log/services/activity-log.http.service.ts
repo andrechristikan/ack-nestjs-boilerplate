@@ -1,4 +1,11 @@
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -14,6 +21,7 @@ import { Injectable } from '@nestjs/common';
 export class ActivityLogHttpService {
     constructor(
         private readonly activityLogDomain: ActivityLogDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -22,6 +30,15 @@ export class ActivityLogHttpService {
         userId: string,
         query: ActivityLogAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.ActivityLogWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.ActivityLog
+            );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
                 query,
@@ -32,7 +49,11 @@ export class ActivityLogHttpService {
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =
-            await this.activityLogDomain.getListOffsetByUser(userId, params);
+            await this.activityLogDomain.getListOffsetByUser(
+                userId,
+                params,
+                accessibleWhere
+            );
 
         return {
             data,
@@ -67,6 +88,15 @@ export class ActivityLogHttpService {
         userId: string | null,
         query: ActivityLogAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.ActivityLogWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.ActivityLog
+            );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
                 query,
@@ -80,7 +110,8 @@ export class ActivityLogHttpService {
             await this.activityLogDomain.getListOffsetByWorkspace(
                 workspaceId,
                 userId,
-                params
+                params,
+                accessibleWhere
             );
 
         return {

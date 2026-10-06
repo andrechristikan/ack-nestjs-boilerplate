@@ -47,6 +47,7 @@ describe('WorkspaceInviteHttpService', () => {
     const policyAbilityDomain: MockProxy<PolicyAbilityDomain> =
         mock<PolicyAbilityDomain>();
     const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
+    const accessibleWhere = { workspaceId: 'workspace-id' };
     const now = new Date('2026-01-01T00:00:00.000Z');
     const expiredAt = new Date('2026-02-01T00:00:00.000Z');
     const workspace = {
@@ -159,6 +160,9 @@ describe('WorkspaceInviteHttpService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         policyAbilityDomain.requireStored.mockReturnValue(ability);
+        policyAbilityDomain.requireAccessibleWhere.mockReturnValue(
+            accessibleWhere
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -210,7 +214,18 @@ describe('WorkspaceInviteHttpService', () => {
             expect(workspaceInviteDomain.getInvitesList).toHaveBeenCalledWith(
                 'workspace-id',
                 cursorParams,
-                { status: { in: ['pending'] } }
+                { status: { in: ['pending'] } },
+                accessibleWhere
+            );
+            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
+                PolicyAbilityStoreKey
+            );
+            expect(
+                policyAbilityDomain.requireAccessibleWhere
+            ).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.WorkspaceInvite
             );
             expect(result).toEqual(cursorPage);
         });
@@ -236,8 +251,22 @@ describe('WorkspaceInviteHttpService', () => {
             expect(workspaceInviteDomain.getInvitesList).toHaveBeenCalledWith(
                 'workspace-id',
                 cursorParams,
-                undefined
+                undefined,
+                accessibleWhere
             );
+        });
+
+        it('propagates PolicyForbiddenException and skips the domain when the ability has no read rule', async () => {
+            policyAbilityDomain.requireAccessibleWhere.mockImplementation(
+                () => {
+                    throw new PolicyForbiddenException();
+                }
+            );
+
+            await expect(
+                service.getInvitesList('workspace-id', {})
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(workspaceInviteDomain.getInvitesList).not.toHaveBeenCalled();
         });
     });
 

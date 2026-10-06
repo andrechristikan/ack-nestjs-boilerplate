@@ -55,11 +55,13 @@ export class RoleDomain {
 
     async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
-        scope?: Record<string, IPaginationIn>
+        scope?: Record<string, IPaginationIn>,
+        where?: Prisma.RoleWhereInput
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.roleRepository.findWithPaginationOffsetByAdmin(
             pagination,
-            scope
+            scope,
+            where
         );
     }
 

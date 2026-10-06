@@ -28,7 +28,8 @@ export interface IProjectMemberRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
+        }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>,
+        additionalWhere?: Prisma.ProjectMemberWhereInput
     ): Promise<IResponsePaginationReturn<IProjectMember>>;
     create(
         projectId: string,

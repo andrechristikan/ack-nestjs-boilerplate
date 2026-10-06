@@ -16,7 +16,8 @@ export interface IActivityLogRepository {
         {
             where,
             ...params
-        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
+        additionalWhere?: Prisma.ActivityLogWhereInput
     ): Promise<IResponsePaginationReturn<IActivityLog>>;
     findUserScopedWithPaginationCursor(
         userId: string,
@@ -31,7 +32,8 @@ export interface IActivityLogRepository {
         {
             where,
             ...params
-        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
+        additionalWhere?: Prisma.ActivityLogWhereInput
     ): Promise<IResponsePaginationReturn<IActivityLog>>;
     findByWorkspaceWithPaginationCursor(
         workspaceId: string,

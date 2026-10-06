@@ -82,7 +82,8 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
+        }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>,
+        additionalWhere?: Prisma.ProjectMemberWhereInput
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
         return this.paginationService.cursor<
             IProjectMember,
@@ -90,8 +91,13 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
         >(this.databaseService.client.projectMember, {
             ...others,
             where: {
-                ...where,
-                projectId,
+                AND: [
+                    {
+                        ...where,
+                        projectId,
+                    },
+                    ...(additionalWhere ? [additionalWhere] : []),
+                ],
             },
             include: {
                 user: {

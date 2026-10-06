@@ -10,6 +10,8 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     EnumActivityLogAction,
+    EnumPolicyAction,
+    EnumPolicySubject,
     EnumRoleScope,
     EnumUserGender,
     EnumUserSignUpFrom,
@@ -30,6 +32,10 @@ import type {
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserHttpService } from '@modules/user/services/user.http.service';
@@ -44,6 +50,10 @@ describe('UserHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const policyAbilityDomain: MockProxy<PolicyAbilityDomain> =
+        mock<PolicyAbilityDomain>();
+    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
+    const accessibleWhere = { deletedAt: null };
     const now = new Date('2026-01-01T00:00:00.000Z');
     const role = {
         id: 'role-id',
@@ -217,6 +227,10 @@ describe('UserHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityDomain.requireStored.mockReturnValue(ability);
+        policyAbilityDomain.requireAccessibleWhere.mockReturnValue(
+            accessibleWhere
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -227,6 +241,7 @@ describe('UserHttpService', () => {
                     useValue: userOnboardingDomain,
                 },
                 { provide: WorkspaceDomain, useValue: workspaceDomain },
+                { provide: PolicyAbilityDomain, useValue: policyAbilityDomain },
                 {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
@@ -287,7 +302,18 @@ describe('UserHttpService', () => {
                 offsetParams,
                 statusWhere,
                 roleIdWhere,
-                countryIdWhere
+                countryIdWhere,
+                accessibleWhere
+            );
+            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
+                PolicyAbilityStoreKey
+            );
+            expect(
+                policyAbilityDomain.requireAccessibleWhere
+            ).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.User
             );
             expect(result).toEqual(offsetPage);
         });
@@ -315,8 +341,22 @@ describe('UserHttpService', () => {
                 offsetParams,
                 undefined,
                 undefined,
-                undefined
+                undefined,
+                accessibleWhere
             );
+        });
+
+        it('propagates PolicyForbiddenException and skips the domain when the ability has no read rule', async () => {
+            policyAbilityDomain.requireAccessibleWhere.mockImplementation(
+                () => {
+                    throw new PolicyForbiddenException();
+                }
+            );
+
+            await expect(service.getListOffsetByAdmin({})).rejects.toThrow(
+                PolicyForbiddenException
+            );
+            expect(userDomain.getListOffsetByAdmin).not.toHaveBeenCalled();
         });
     });
 

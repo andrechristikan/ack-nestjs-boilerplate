@@ -64,6 +64,15 @@ export class WorkspaceInviteHttpService {
         workspaceId: string,
         query: WorkspaceInviteListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.WorkspaceInviteWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.WorkspaceInvite
+            );
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.WorkspaceInviteWhereInput>(
                 query,
@@ -89,7 +98,8 @@ export class WorkspaceInviteHttpService {
             await this.workspaceInviteDomain.getInvitesList(
                 workspaceId,
                 params,
-                status?.where
+                status?.where,
+                accessibleWhere
             );
 
         return {

@@ -54,6 +54,15 @@ export class WorkspaceJoinRequestHttpService {
         workspaceId: string,
         query: WorkspaceJoinRequestListRequestDto
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.WorkspaceJoinRequestWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.WorkspaceJoinRequest
+            );
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.WorkspaceJoinRequestWhereInput>(
                 query,
@@ -79,7 +88,8 @@ export class WorkspaceJoinRequestHttpService {
             await this.workspaceJoinRequestDomain.getJoinRequestsList(
                 workspaceId,
                 params,
-                status?.where
+                status?.where,
+                accessibleWhere
             );
 
         return {

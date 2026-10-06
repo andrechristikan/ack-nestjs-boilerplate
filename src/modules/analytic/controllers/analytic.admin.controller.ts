@@ -167,7 +167,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -191,7 +191,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -215,7 +215,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -239,7 +239,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -263,7 +263,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -287,7 +287,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -311,7 +311,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -335,7 +335,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -355,7 +355,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -375,7 +375,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -395,7 +395,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -419,7 +419,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -443,7 +443,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -467,7 +467,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -491,7 +491,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -515,7 +515,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -539,7 +539,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -563,7 +563,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -587,7 +587,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -607,7 +607,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -631,7 +631,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -655,7 +655,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -679,7 +679,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -706,7 +706,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -730,7 +730,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -750,7 +750,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -774,7 +774,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -800,7 +800,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -824,7 +824,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -844,7 +844,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -868,7 +868,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -892,7 +892,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -916,7 +916,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -936,7 +936,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -960,7 +960,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -978,7 +978,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -996,7 +996,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1020,7 +1020,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1040,7 +1040,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1058,7 +1058,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1076,7 +1076,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1100,7 +1100,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1120,7 +1120,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1138,7 +1138,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1162,7 +1162,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1186,7 +1186,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1210,7 +1210,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1230,7 +1230,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1254,7 +1254,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1278,7 +1278,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1299,7 +1299,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1322,7 +1322,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1346,7 +1346,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1367,7 +1367,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1390,7 +1390,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1411,7 +1411,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1435,7 +1435,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1456,7 +1456,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1479,7 +1479,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1500,7 +1500,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1525,7 +1525,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1548,7 +1548,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1568,7 +1568,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1589,7 +1589,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1615,7 +1615,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1636,7 +1636,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1661,7 +1661,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1684,7 +1684,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1707,7 +1707,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1728,7 +1728,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1753,7 +1753,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1774,7 +1774,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1795,7 +1795,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1816,7 +1816,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1837,7 +1837,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1858,7 +1858,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1882,7 +1882,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1903,7 +1903,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1926,7 +1926,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1947,7 +1947,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1967,7 +1967,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -1988,7 +1988,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -2008,7 +2008,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -2029,7 +2029,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()
@@ -2053,7 +2053,7 @@ export class AnalyticAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.Analytic,
         action: [EnumPolicyAction.read],
     })
     @UserProtected()

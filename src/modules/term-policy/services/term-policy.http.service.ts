@@ -5,7 +5,14 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import {
     TermPolicyDefaultAvailableOrderBy,
@@ -22,6 +29,7 @@ import { Injectable } from '@nestjs/common';
 export class TermPolicyHttpService {
     constructor(
         private readonly termPolicyDomain: TermPolicyDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -29,6 +37,15 @@ export class TermPolicyHttpService {
     async getListByAdmin(
         query: TermPolicyAdminListRequestDto
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.TermPolicyWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.TermPolicy
+            );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.TermPolicyWhereInput>(
                 query,
@@ -58,7 +75,8 @@ export class TermPolicyHttpService {
         const { data, ...others } = await this.termPolicyDomain.getListByAdmin(
             params,
             type?.where,
-            status?.where
+            status?.where,
+            accessibleWhere
         );
         return {
             data,

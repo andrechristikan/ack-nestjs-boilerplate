@@ -94,9 +94,10 @@ export class TermPolicyDomain {
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
-        status?: Record<string, IPaginationIn>
+        status?: Record<string, IPaginationIn>,
+        where?: Prisma.TermPolicyWhereInput
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        return this.termPolicyRepository.find(pagination, type, status);
+        return this.termPolicyRepository.find(pagination, type, status, where);
     }
 
     async getListPublished(

@@ -188,7 +188,8 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>
+        isRevoked?: Record<string, IPaginationEqual>,
+        additionalWhere?: Prisma.DeviceOwnershipWhereInput
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
         const today = this.helperDateService.create();
 
@@ -198,9 +199,14 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         >(this.databaseService.client.deviceOwnership, {
             ...others,
             where: {
-                ...where,
-                ...isRevoked,
-                userId,
+                AND: [
+                    {
+                        ...where,
+                        ...isRevoked,
+                        userId,
+                    },
+                    ...(additionalWhere ? [additionalWhere] : []),
+                ],
             },
             include: {
                 device: true,

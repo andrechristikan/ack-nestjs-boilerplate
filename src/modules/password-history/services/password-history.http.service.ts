@@ -1,4 +1,11 @@
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -17,6 +24,7 @@ import { Injectable } from '@nestjs/common';
 export class PasswordHistoryHttpService {
     constructor(
         private readonly passwordHistoryDomain: PasswordHistoryDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -25,6 +33,15 @@ export class PasswordHistoryHttpService {
         userId: string,
         query: PasswordHistoryAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.PasswordHistoryWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.PasswordHistory
+            );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.PasswordHistoryWhereInput>(
                 query,
@@ -37,7 +54,8 @@ export class PasswordHistoryHttpService {
         const { data, ...others } =
             await this.passwordHistoryDomain.getListOffsetByAdmin(
                 userId,
-                params
+                params,
+                accessibleWhere
             );
 
         return {

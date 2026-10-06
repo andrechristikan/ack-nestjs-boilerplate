@@ -769,7 +769,7 @@ enum EnumPolicyAction {
 
 enum EnumPolicySubject {
   all
-  analytic
+  Analytic
   ApiKey
   Role
   User
@@ -784,6 +784,7 @@ enum EnumPolicySubject {
   WorkspaceMember
   WorkspaceInvite
   WorkspaceJoinRequest
+  WorkspaceAnalytic
   ProjectMember
 }
 

@@ -110,10 +110,30 @@ describe('RoleDomain', () => {
             ).resolves.toBe(result);
             expect(
                 roleRepository.findWithPaginationOffsetByAdmin
-            ).toHaveBeenCalledWith(pagination, filter);
+            ).toHaveBeenCalledWith(pagination, filter, undefined);
             expect(
                 roleRepository.findWithPaginationCursorBySystem
             ).toHaveBeenCalledWith(pagination, filter);
+        });
+
+        it('forwards the accessible where as the trailing repository argument of the admin offset list', async () => {
+            const pagination = { limit: 20 } as never;
+            const accessibleWhere = { scope: EnumRoleScope.workspace };
+            const result = { data: [], pagination: {} } as never;
+            roleRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
+                result
+            );
+
+            await expect(
+                service.getListOffsetByAdmin(
+                    pagination,
+                    undefined,
+                    accessibleWhere
+                )
+            ).resolves.toBe(result);
+            expect(
+                roleRepository.findWithPaginationOffsetByAdmin
+            ).toHaveBeenCalledWith(pagination, undefined, accessibleWhere);
         });
     });
 

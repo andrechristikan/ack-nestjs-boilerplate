@@ -304,6 +304,41 @@ describe('UserDomain', () => {
         ).resolves.toBe(unverified);
     });
 
+    it('forwards the accessible where as the trailing repository argument of the administrator list', async () => {
+        const page = mock<IResponsePaginationReturn<never>>();
+        const pagination = { limit: 20, page: 1, skip: 0 };
+        const accessibleWhere = { id: userRow.id };
+        userRepository.findWithPaginationOffset.mockResolvedValue(page);
+
+        await expect(
+            service.getListOffsetByAdmin(
+                pagination,
+                undefined,
+                undefined,
+                undefined,
+                accessibleWhere
+            )
+        ).resolves.toBe(page);
+        expect(userRepository.findWithPaginationOffset).toHaveBeenCalledWith(
+            pagination,
+            undefined,
+            undefined,
+            undefined,
+            accessibleWhere
+        );
+
+        await service.getListOffsetByAdmin(pagination);
+        expect(
+            userRepository.findWithPaginationOffset
+        ).toHaveBeenLastCalledWith(
+            pagination,
+            undefined,
+            undefined,
+            undefined,
+            undefined
+        );
+    });
+
     it('forwards read and simple write operations to the repository', async () => {
         const page = mock<IResponsePaginationReturn<never>>();
         const pagination = { limit: 20, page: 1, skip: 0 };

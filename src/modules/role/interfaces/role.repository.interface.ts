@@ -25,7 +25,8 @@ export interface IRoleRepository {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
-        scope?: Record<string, IPaginationIn>
+        scope?: Record<string, IPaginationIn>,
+        additionalWhere?: Prisma.RoleWhereInput
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>>;
     findWithPaginationCursorBySystem(
         {

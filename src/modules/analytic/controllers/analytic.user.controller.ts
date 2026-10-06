@@ -51,6 +51,10 @@ export class AnalyticUserController {
         schema: AnalyticWorkspaceSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
+    @WorkspacePolicyProtected({
+        subject: EnumPolicySubject.WorkspaceAnalytic,
+        action: [EnumPolicyAction.read],
+    })
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
@@ -77,7 +81,7 @@ export class AnalyticUserController {
     })
     @TermPolicyAcceptanceProtected()
     @WorkspacePolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.WorkspaceAnalytic,
         action: [EnumPolicyAction.read],
     })
     @WorkspaceMemberProtected()
@@ -108,7 +112,7 @@ export class AnalyticUserController {
     })
     @TermPolicyAcceptanceProtected()
     @WorkspacePolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.WorkspaceAnalytic,
         action: [EnumPolicyAction.read],
     })
     @WorkspaceMemberProtected()
@@ -137,7 +141,7 @@ export class AnalyticUserController {
     })
     @TermPolicyAcceptanceProtected()
     @WorkspacePolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.WorkspaceAnalytic,
         action: [EnumPolicyAction.read],
     })
     @WorkspaceMemberProtected()
@@ -160,7 +164,7 @@ export class AnalyticUserController {
     })
     @TermPolicyAcceptanceProtected()
     @WorkspacePolicyProtected({
-        subject: EnumPolicySubject.analytic,
+        subject: EnumPolicySubject.WorkspaceAnalytic,
         action: [EnumPolicyAction.read],
     })
     @WorkspaceMemberProtected()

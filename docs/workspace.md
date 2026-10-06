@@ -146,19 +146,15 @@ Requires `x-workspace-id` to resolve to an existing, non-deleted workspace, thro
 
 ### Workspace policy decorators
 
-Located at `src/modules/workspace/decorators`. Each composes `WorkspacePolicyAbilityGuard` with one enforcement guard and sits above `@WorkspaceMemberProtected()`. `WorkspacePolicyAbilityGuard` builds the ability from the platform role and the acting member's workspace role, with the workspace rules after the platform rules, and stores it under `PolicyAbilityStoreKey`. An ability a guard already stored is reused and never overwritten.
+Located at `src/modules/workspace/decorators`. `@WorkspacePolicyProtected({ subject, action })` sits above `@WorkspaceMemberProtected()` and applies `PolicyAbilityGuard` and `PolicyGuard`. `PolicyAbilityGuard` builds the ability from the platform role and the acting member's workspace role, with the workspace rules after the platform rules, and stores it under `PolicyAbilityStoreKey`. An ability a guard already stored is reused and never overwritten. `PolicyGuard` checks each required `(subject, action)` pair against that ability by subject type, with no record.
 
-| Decorator | Enforcement guard | Judges |
-|---|---|---|
-| `@WorkspacePolicyProtected(...actions)` | `WorkspacePolicyGuard` | The workspace record, tagged as `Workspace`. A route carrying `:workspaceId` (admin) resolves that workspace itself, soft-deleted ones included; a user route judges the workspace `WorkspaceGuard` stored |
-| `@WorkspaceMemberPolicyProtected(...actions)` | `WorkspaceMemberPolicyGuard` | The target member: `:workspaceMemberId`, or the acting member when the route carries no param. The target loads through the policy predicate, so a record the ability does not reach answers `WorkspaceMemberNotFoundException`, then the record is judged and stored for `@WorkspaceMemberTargetCurrent()` |
-| `@WorkspaceSubjectPolicyProtected({ subject, action })` | `PolicyGuard` | A subject-type check with no record: invite create, resend and revoke, join-request accept and reject, member list, analytics, project create |
+The decorator accepts the workspace-level subjects `Workspace`, `WorkspaceMember`, `WorkspaceInvite`, `WorkspaceJoinRequest`, `Project`, and `WorkspaceAnalytic`. Record-level judgment happens in the HTTP services: they call `assertCan` with the resolved `Workspace`, the target `WorkspaceMember`, the `WorkspaceInvite`, or the `WorkspaceJoinRequest`, so the conditions of a rule are evaluated against the real record. The member, invite, and join-request lists take their predicate from `requireAccessibleWhere`, which the repository AND-composes with the workspace boundary and the caller's filters.
 
-The `Workspace` and `WorkspaceMember` decorators take actions only, so the subject is fixed.
+`@PolicyAbilityProtected()` applies `PolicyAbilityGuard` alone, for routes that read the ability without enforcing a policy (`GET /user/workspace/permissions`).
 
 ### `WorkspaceCurrent()` / `WorkspaceMemberCurrent()`
 
-**Parameter decorators** that read back the `Workspace` and the `WorkspaceMember` with its role that the guards stored. `@WorkspaceMemberTargetCurrent()` reads the target member `WorkspaceMemberPolicyGuard` authorized, which is the addressed member rather than the caller.
+**Parameter decorators** that read back the `Workspace` and the `WorkspaceMember` with its role that the guards stored. `@WorkspaceMemberCurrent()` reads the caller's membership; a route that acts on another member takes `:workspaceMemberId` from the path.
 
 - Each takes an optional field name typed against its model: `@WorkspaceCurrent()` returns the whole row, `@WorkspaceCurrent('id')` returns that field
 - Both return a non-null value, so a route that reads one without the matching guard, or names a field holding `null`, answers `RequestContextMissingException` (500, `50304`)
@@ -167,7 +163,7 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 
 ### The `/admin` scope takes none of this
 
-Admin routes reach the same resources through `@PlatformPolicyProtected()` and take the workspace id from the **path**. They never read `x-workspace-id` and never carry a workspace guard. A route that judges a workspace record writes `@WorkspacePolicyProtected()` above `@PlatformPolicyProtected()`, so the platform ability is stored first and the workspace decorator reuses it.
+Admin routes reach the same resources through `@PlatformPolicyProtected()` and take the workspace id from the **path**. They never read `x-workspace-id` and never carry a workspace guard.
 
 ## Personal Workspace
 
@@ -225,13 +221,13 @@ Mounted under `/user`. Every route carries `@FeatureFlagProtected('workspace')`.
 | `GET` | `/user/workspace/member/list` | yes | `workspaceMember:[read]` |
 | `PATCH` | `/user/workspace/member/:workspaceMemberId/role/update` | yes | `workspaceMember:[update]` |
 | `DELETE` | `/user/workspace/member/:workspaceMemberId/remove` | yes | `workspaceMember:[delete]` |
-| `GET` | `/user/workspace/invite/list` | yes | any member |
+| `GET` | `/user/workspace/invite/list` | yes | `workspaceInvite:[read]` |
 | `POST` | `/user/workspace/invite/create` | yes | `workspaceInvite:[create]` |
 | `POST` | `/user/workspace/invite/:workspaceInviteId/resend` | yes | `workspaceInvite:[update]` |
 | `DELETE` | `/user/workspace/invite/:workspaceInviteId/revoke` | yes | `workspaceInvite:[delete]` |
 | `POST` | `/user/workspace/invite/claim` | no | authenticated |
 | `POST` | `/user/workspace/join-request/create` | no | authenticated |
-| `GET` | `/user/workspace/join-request/list` | yes | any member |
+| `GET` | `/user/workspace/join-request/list` | yes | `workspaceJoinRequest:[read]` |
 | `POST` | `/user/workspace/join-request/:workspaceJoinRequestId/accept` | yes | `workspaceJoinRequest:[update]` |
 | `POST` | `/user/workspace/join-request/:workspaceJoinRequestId/reject` | yes | `workspaceJoinRequest:[update]` |
 
@@ -239,7 +235,7 @@ Mounted under `/user`. Every route carries `@FeatureFlagProtected('workspace')`.
 
 "Any member" means the route carries `@WorkspaceMemberProtected()` and no policy decorator. Every other gate is a CASL policy the caller's workspace role must grant. `workspaceInvite:[manage]` held by the seeded `owner` and `admin` covers create, resend, and revoke. The seeded `owner` holds every gate, and the seeded `admin` holds every one except `workspace:[delete]` and the `owner` check of the ownership transfer.
 
-Current-workspace analytic metrics for the active `x-workspace-id` live under `/user/analytic/workspace/*` (summary for any member; invite funnel, join outcomes, member roles, and activity for a role that holds `analytic:[read]`). See [Analytic](analytic.md).
+Current-workspace analytic metrics for the active `x-workspace-id` live under `/user/analytic/workspace/*` (summary, invite funnel, join outcomes, member roles, and activity for a role that holds `analytic:[read]`). See [Analytic](analytic.md).
 
 ### Public Scope
 
@@ -254,7 +250,7 @@ Neither preview answers `forbidden` for a resource that exists but is not eligib
 
 ### Admin Scope
 
-Mounted under `/admin`. Gated by `@PlatformPolicyProtected({ subject: Workspace, action: [read] })` against the caller's platform role; the get and members routes add `@WorkspacePolicyProtected(read)`. **Not feature-flagged**, does not read `x-workspace-id`, read-only.
+Mounted under `/admin`. Gated by `@PlatformPolicyProtected({ subject: Workspace, action: [read] })` against the caller's platform role; the members route requires `WorkspaceMember` `read`. **Not feature-flagged**, does not read `x-workspace-id`, read-only.
 
 | Method | Path | Description |
 |---|---|---|
@@ -266,9 +262,9 @@ Mounted under `/admin`. Gated by `@PlatformPolicyProtected({ subject: Workspace,
 
 | Role | Policies |
 |---|---|
-| `member` | `workspace:[read]`, `workspaceMember:[read]`. Lists members, invites, and join requests, and leaves |
-| `admin` | `workspace:[read, update]`, `workspaceMember:[read, update, delete]`, `workspaceInvite:[manage]`, `workspaceJoinRequest:[update]`, `project:[create, delete]`, `analytic:[read]` |
-| `owner` | `workspace:[manage]`, `workspaceMember:[read, update, delete]`, `workspaceInvite:[manage]`, `workspaceJoinRequest:[update]`, `project:[create, read, update, delete]`, `projectMember:[create, update, delete]`, `analytic:[read]` |
+| `member` | `workspace:[read]`, `workspaceMember:[read]`. Lists members and leaves |
+| `admin` | `workspace:[read, update]`, `workspaceMember:[read, update, delete]`, `workspaceInvite:[manage]`, `workspaceJoinRequest:[read, update]`, `project:[create, read, update, delete]`, `projectMember:[create, read, update, delete]`, `workspaceAnalytic:[read]` |
+| `owner` | `workspace:[manage]`, `workspaceMember:[read, update, delete]`, `workspaceInvite:[manage]`, `workspaceJoinRequest:[read, update]`, `project:[create, read, update, delete]`, `projectMember:[create, read, update, delete]`, `workspaceAnalytic:[read]` |
 
 Ownership transfer needs `workspace:[update]` and the `owner` role (`WorkspaceMemberPeerForbiddenException` otherwise), and workspace deletion needs `workspace:[delete]`, which only `owner` holds. The `owner` role is not assignable through a member role update or an invite (`WorkspaceOwnerRoleNotAssignableException`, 400, `51620`); ownership moves through the transfer route.
 
@@ -342,7 +338,7 @@ A user who has no account yet redeems the invite through sign-up instead, by pas
 
 ## Join Requests
 
-A user asks to join a workspace they can see; a member whose role holds `workspaceJoinRequest:[update]` decides. Any member may list the requests.
+A user asks to join a workspace they can see; a member whose role holds `workspaceJoinRequest:[update]` decides. A role that holds `workspaceJoinRequest:[read]` lists the requests.
 
 - Only a workspace with `isPublic: true` accepts requests. A private one throws `WorkspaceNotPublicException` (400, `51613`).
 - Already being a member throws `WorkspaceJoinRequestAlreadyMemberException` (400, `51614`); a second pending request throws `WorkspaceJoinRequestDuplicateException` (400, `51615`).

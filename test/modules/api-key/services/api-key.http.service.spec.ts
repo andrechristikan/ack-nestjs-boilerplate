@@ -7,7 +7,11 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumApiKeyType } from '@generated/prisma-client/client';
+import {
+    EnumApiKeyType,
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 import type { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import type { ApiKeyListRequestDto } from '@modules/api-key/dtos/request/api-key.list.request.dto';
@@ -21,6 +25,10 @@ import type {
 import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 import { ApiKeyHttpService } from '@modules/api-key/services/api-key.http.service';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 
 describe('ApiKeyHttpService', () => {
     const apiKeyDomain: MockProxy<ApiKeyDomain> = mock<ApiKeyDomain>();
@@ -29,6 +37,10 @@ describe('ApiKeyHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
+    const policyAbilityDomain: MockProxy<PolicyAbilityDomain> =
+        mock<PolicyAbilityDomain>();
+    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
+    const accessibleWhere = { isActive: true };
     const now = new Date('2026-01-01T00:00:00.000Z');
     const apiKey = {
         id: 'api-key-id',
@@ -89,12 +101,17 @@ describe('ApiKeyHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityDomain.requireStored.mockReturnValue(ability);
+        policyAbilityDomain.requireAccessibleWhere.mockReturnValue(
+            accessibleWhere
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ApiKeyHttpService,
                 { provide: ApiKeyDomain, useValue: apiKeyDomain },
                 { provide: ApiKeyUtil, useValue: apiKeyUtil },
+                { provide: PolicyAbilityDomain, useValue: policyAbilityDomain },
                 {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
@@ -146,7 +163,18 @@ describe('ApiKeyHttpService', () => {
             expect(apiKeyDomain.getListByAdmin).toHaveBeenCalledWith(
                 offsetParams,
                 isActiveWhere,
-                typeWhere
+                typeWhere,
+                accessibleWhere
+            );
+            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
+                PolicyAbilityStoreKey
+            );
+            expect(
+                policyAbilityDomain.requireAccessibleWhere
+            ).toHaveBeenCalledWith(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.ApiKey
             );
             expect(result).toEqual(offsetPage);
         });
@@ -173,8 +201,22 @@ describe('ApiKeyHttpService', () => {
             expect(apiKeyDomain.getListByAdmin).toHaveBeenCalledWith(
                 offsetParams,
                 undefined,
-                undefined
+                undefined,
+                accessibleWhere
             );
+        });
+
+        it('propagates PolicyForbiddenException and skips the domain when the ability has no read rule', async () => {
+            policyAbilityDomain.requireAccessibleWhere.mockImplementation(
+                () => {
+                    throw new PolicyForbiddenException();
+                }
+            );
+
+            await expect(service.getListByAdmin({})).rejects.toThrow(
+                PolicyForbiddenException
+            );
+            expect(apiKeyDomain.getListByAdmin).not.toHaveBeenCalled();
         });
     });
 

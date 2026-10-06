@@ -124,7 +124,41 @@ describe('SessionDomain', () => {
         ).resolves.toBe(page);
         expect(
             sessionRepository.findWithPaginationOffsetByAdmin
-        ).toHaveBeenCalledWith('user-id', pagination, isRevoked);
+        ).toHaveBeenCalledWith('user-id', pagination, isRevoked, undefined);
+    });
+
+    it('forwards the accessible where as the trailing repository argument of the administrator offset list', async () => {
+        const pagination = { limit: 20, page: 1, skip: 0 };
+        const accessibleWhere = { userId: 'user-id' };
+        const page = {
+            type: EnumPaginationType.offset,
+            data: [session],
+            count: 1,
+            perPage: 20,
+            hasNext: false,
+            hasPrevious: false,
+            page: 1,
+            totalPage: 1,
+        } satisfies IResponsePaginationReturn<ISession>;
+        sessionRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
+            page
+        );
+
+        await service.getListOffsetByAdmin(
+            'user-id',
+            pagination,
+            undefined,
+            accessibleWhere
+        );
+
+        expect(
+            sessionRepository.findWithPaginationOffsetByAdmin
+        ).toHaveBeenCalledWith(
+            'user-id',
+            pagination,
+            undefined,
+            accessibleWhere
+        );
     });
 
     it('returns an active owned session', async () => {

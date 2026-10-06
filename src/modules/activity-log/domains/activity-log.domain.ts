@@ -274,11 +274,13 @@ export class ActivityLogDomain {
 
     async getListOffsetByUser(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
+        where?: Prisma.ActivityLogWhereInput
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogRepository.findUserScopedWithPaginationOffset(
             userId,
-            pagination
+            pagination,
+            where
         );
     }
 
@@ -295,12 +297,14 @@ export class ActivityLogDomain {
     async getListOffsetByWorkspace(
         workspaceId: string,
         userId: string | null,
-        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
+        where?: Prisma.ActivityLogWhereInput
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogRepository.findByWorkspaceWithPaginationOffset(
             workspaceId,
             userId,
-            pagination
+            pagination,
+            where
         );
     }
 

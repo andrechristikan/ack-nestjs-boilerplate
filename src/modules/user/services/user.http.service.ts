@@ -12,7 +12,15 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
 import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/user.check-username.request.dto';
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
@@ -35,6 +43,7 @@ export class UserHttpService {
         private readonly userDomain: UserDomain,
         private readonly userOnboardingDomain: UserOnboardingDomain,
         private readonly workspaceDomain: WorkspaceDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -42,6 +51,15 @@ export class UserHttpService {
     async getListOffsetByAdmin(
         query: UserListRequestDto
     ): Promise<IResponsePaginationReturn<IUserList>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.UserWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.User
+            );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query, {
                 availableSearch: UserDefaultAvailableSearch,
@@ -74,7 +92,8 @@ export class UserHttpService {
             params,
             status?.where,
             roleId?.where,
-            countryId?.where
+            countryId?.where,
+            accessibleWhere
         );
     }
 
