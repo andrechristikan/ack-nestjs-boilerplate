@@ -7,6 +7,8 @@ description: >-
   logged in the sweep. Use for a failing suite, a coverage gap, or orphan specs. Not for
   new behaviour (ack-plan).
 disable-model-invocation: true
+model: sonnet
+effort: high
 context: fork
 argument-hint: "<module or path filter, or the failing suite> [unit|integration|e2e]"
 ---
@@ -21,10 +23,8 @@ test-first. On the coverage path the code wins: a spec asserts what `src/` does.
 `superpowers:*` skill is not installed, stop and say
 `claude plugin install superpowers@claude-plugins-official`.
 
-Pass `run_in_background: false` on every Agent call where the tool offers the parameter; where
-it does not, a subagent already runs synchronously. Parallel dispatches are several calls in one
-message. Either way, end the turn only after every dispatched agent has returned and its
-result is read and acted on (`../ack-build/references/dispatch.md`, Foreground dispatch).
+Pass `run_in_background: false` on every Agent call; parallel dispatches are several calls
+in one message (`../ack-build/references/dispatch.md`, Foreground dispatch).
 
 ## 1. Scope
 
@@ -32,9 +32,9 @@ Run the suite for the named scope and kind and read the failure; the scope is a 
 path filter. Clear the cache before believing a coverage gap.
 
 ```bash
-pnpm test <scope>               # unit
-pnpm test:integration <scope>   # integration, Docker daemon running
-pnpm test:e2e <scope>           # e2e, Docker daemon running
+pnpm test <scope>                           # unit
+pnpm test:integration <scope>               # integration, Docker daemon running
+pnpm test:e2e <scope>                       # e2e, Docker daemon running
 pnpm exec vitest --clearCache
 ```
 
@@ -53,7 +53,7 @@ anyone writes:
 | spec wrong | the code moved and the spec was left behind, or the spec asserts a wish | `tester` |
 | no-flow bug | confirmed defect; contract, guard stack, status code, and call order stay | `coder`, test-first |
 | flow or decision | route, DTO, status code, guard, who may do what, or when; or two readings | hand back the question, or a sweep row |
-| cause unknown | a red spec whose cause is not in hand: neither a stale spec nor a pinned defect | hand back the symptom, Next `/ack-debug` |
+| cause unknown | a red spec whose cause is not in hand: neither a stale spec nor a pinned defect | hand back the symptom, Next `/ack-plan` |
 
 A pinned no-flow bug (files, cause at `file:line`, the change) goes straight to `coder`.
 A flow change is `/ack-plan`.
@@ -144,5 +144,5 @@ with the reason, open); one line per thing noticed outside the scope.
 
 ## Next
 
-`/ack-plan` for a flow change the owner approved. `/ack-debug` for a failing spec whose
-cause is not pinned.
+`/ack-plan` for a flow change the owner approved, or a failing spec whose cause is not
+pinned.

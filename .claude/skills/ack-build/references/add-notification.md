@@ -105,8 +105,11 @@ Envelopes stay as they are: `INotificationQueuePayload<T>` (`:182-186`),
 ```bash
 pnpm typecheck
 pnpm test notification
-pnpm start:dev        # three workers register at boot; stop it once the routes mount
+timeout 90 pnpm start:dev > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log   # three workers register at boot
 ```
+
+Check in the boot log for the `App Name:` block and the `NotificationProcessorModule dependencies initialized`
+line, BullMQ logging no line per worker; exit 124 is the expected end of the boot.
 
 Specs: each queue class method asserts job name, payload with every encrypted field, and
 options; each domain asserts the row, the fan-out, and the no-op branches; processors are

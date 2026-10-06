@@ -11,7 +11,7 @@ paths:
 ## Access
 
 - Inject `DatabaseService` (`src/common/database/services/database.service.ts`), never `PrismaClient`. It exposes
-  `client`, the audited extended Prisma client, and `withTransaction` (`:155`). Only a repository issues a model
+  `client`, the audited extended Prisma client, and `withTransaction` (`:156`). Only a repository issues a model
   query on `client`; the exceptions are seeds (`seeding.md`) and the health indicators.
 - `client` is built once by `DatabaseClientFactory.create()` with the extension from
   `DatabaseExtensionUtil.build()` (`src/common/database/utils/database.extension.util.ts`). Its return type

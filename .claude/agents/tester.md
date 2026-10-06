@@ -8,7 +8,7 @@ description: >-
   edit under src/.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
-effort: medium
+effort: high
 skills: caveman:caveman
 ---
 
@@ -41,9 +41,9 @@ disk, never from `HEAD` or a ref. To list what changed, use `git status --short`
    under. `relocate only`: move green specs to follow their subjects, retarget names and
    members, add no assertion.
 3. Run the narrowest filter, then the module: `pnpm test <path filter>` for unit,
-   `pnpm test:integration <filter>` or `pnpm test:e2e <filter>` for the others (a running
-   Docker daemon; the containers are thrown away). For the unit bar, run
-   `pnpm test:cov <filter>` and read the per-file rows, not the exit code
+   `pnpm test:integration <filter>` or `pnpm test:e2e <filter>`
+   for the others (a running Docker daemon; the containers are thrown away). For the unit
+   bar, run `pnpm test:cov <filter>` and read the per-file rows, not the exit code
    (`.claude/skills/ack-spec/references/sweep-log.md`, Coverage reading). Clear the cache
    before believing a gap: `pnpm exec vitest --clearCache`.
 4. A defect in `src/`: keep the spec green against current behaviour and report it with

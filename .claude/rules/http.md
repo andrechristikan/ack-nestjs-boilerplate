@@ -42,7 +42,7 @@ another guard sets sits above it. Reordering is a defect even when boot passes.
   roles (`project.decorator.ts:84`); `@ProjectMemberCurrent()` is valid only on the role-less form.
 - Admin scope carries no `Workspace*` or `Project*` guard (they resolve `x-workspace-id` from CLS; an admin reads
   across workspaces): it scopes through `@RoleProtected` plus `@PolicyProtected` and a validated `:workspaceId` /
-  `:projectId` param. `@RoleProtected` never lists `superAdmin`; `role.domain.ts:181` and `policy.domain.ts:50` pass it.
+  `:projectId` param. `@RoleProtected` never lists `superAdmin`; `role.domain.ts:184` and `policy.domain.ts:50` pass it.
 - Every workspace-scoped and project-scoped route in `user`, `shared`, and `public` carries
   `@FeatureFlagProtected('workspace')`, bare key; a metadata sub-key is asserted in the domain.
 

@@ -49,8 +49,8 @@ is issued. A missing or undecryptable secret raises `AuthTwoFactorSecretUnavaila
 Password change or reset, logout, device removal, account self-deletion, the lockout at the maximum password
 attempts, two-factor disable or admin reset, a status change to `blocked` or `inactive`, and an admin revoke of
 one or all sessions each revoke the session rows in the database, then purge the session cache after the
-commit; the JWT guards read the cache. A named subset: `SessionCache.deleteLogins` (`session.cache.ts:103`); every
-session of a user: `SessionDomain.purgeLoginsByUser` (`session.domain.ts:248`). Order: commit, purge, stage activity
+commit; the JWT guards read the cache. A named subset: `SessionCache.deleteLogins` (`session.cache.ts:119`); every
+session of a user: `SessionDomain.purgeLoginsByUser` (`session.domain.ts:250`). Order: commit, purge, stage activity
 rows; a purge failure after the commit is logged and swallowed. `isRevoked: false` is in the `where` of every revoke
 and of refresh rotation; the refresh cache write is conditional on the entry existing.
 

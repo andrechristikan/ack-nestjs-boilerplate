@@ -4,8 +4,8 @@ description: >-
   Judges a named scope read-only at the depth the dispatch sets: one task against its
   brief, a plan, docs, or the harness against their sources, rules by path plus a boot, or
   end to end through guards, services, repository, and processors. Runs typecheck, lint,
-  deadcode, spell, never the full suite; reports only what affects correctness or the
-  stated requirement; fixes nothing. Use before calling a change done. Not for locating
+  deadcode, spell, never pnpm test at any scope; reports only what affects correctness or
+  the stated requirement; fixes nothing. Use before calling a change done. Not for locating
   (explorer), tests (tester), or fixing (coder).
 tools: Read, Grep, Glob, Bash
 model: opus
@@ -52,9 +52,9 @@ At `task`, `rules and boot`, and `end to end` only, capture the exit code and ra
 independent work in the scope is a finding (`.claude/rules/code-style.md`, Concurrency and errors).
 
 Boot: containers up (`docker ps`), port 3000 free (`lsof -nP -iTCP:3000 -sTCP:LISTEN`), then
-`pnpm start:dev` in the background. The proof is the `App Name:` block `src/main.ts` logs after
-listen; a red `typecheck:watch` line is not the boot failing. Kill the watchers, then the 3000
-listener with `-9`. Infrastructure down or 3000 held: NOT RUN.
+`timeout 90 pnpm start:dev > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log`; exit 124 is
+the expected end. The proof is that `App Name:` block from `src/main.ts`; a red `typecheck:watch` line is not
+the boot failing. A 3000 listener left after it gets `kill -9`. Infrastructure down or 3000 held: NOT RUN.
 
 ## Findings
 

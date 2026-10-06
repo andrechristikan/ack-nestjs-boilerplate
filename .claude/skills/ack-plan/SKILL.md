@@ -5,11 +5,13 @@ description: >-
   with the project checklist, locates code through explorer, designs through superpowers
   brainstorming, writes the plan through superpowers writing-plans, has reviewer check the
   plan, and ends with the plan path the owner approved for /ack-build. Use when the owner
-  wants application behaviour added or changed, a seed written, or a flow changed. Not for
-  building (ack-build), a symptom without a cause (ack-debug), judging only (ack-review),
-  specs over code that exists (ack-spec), docs (ack-doc), or the harness (ack-harness).
+  wants application behaviour added or changed, a seed written, or a flow changed, or when
+  something misbehaves and the cause is not in hand: a failing request, a wrong value, a
+  failing spec whose subject is wrong, a job that does not run. Not for building
+  (ack-build), judging only (ack-review), specs over code that exists (ack-spec), docs
+  (ack-doc), or the harness (ack-harness).
 disable-model-invocation: true
-argument-hint: "<the request in one paragraph: the behaviour wanted, or a pinned cause that changes a flow>"
+argument-hint: "<the request in one paragraph: the behaviour wanted, a pinned cause that changes a flow, or a symptom: input, observed, expected, where it surfaces>"
 ---
 
 !`git status --short`
@@ -27,7 +29,8 @@ not installed, stop and say `claude plugin install superpowers@claude-plugins-of
 - A pin: the request names the files, the cause at `file:line`, and the change, and leaves
   no product question open. It needs no plan: state the pin back and end with Next
   `/ack-build pin: files <paths>; cause <file:line>; change <one sentence>`.
-- A symptom without a cause: end with Next `/ack-debug`.
+- A symptom without a cause: follow `references/debug.md`; it ends with Next `/ack-build pin`
+  or `/ack-spec`, or returns here at step 2 with the pin and the symptom as the request.
 - Everything else continues to step 2.
 
 ## 2. Interrogate
@@ -81,9 +84,9 @@ two lines follow it directly, before `## Global Constraints`:
 
 Each task carries:
 
-- `Complexity: simple | complex`
 - `Files:` every path the task writes
-- `Rules to read:` from the path list in `../ack-build/references/dispatch.md`
+- `Rules to read:` the four unscoped rules plus each scoped rule whose `paths:` frontmatter
+  matches a file the task writes (`../ack-build/references/dispatch.md`, Rules by path)
 - `Procedure: .claude/skills/ack-build/references/add-<topic>.md` when the task adds a
   module, status code, queue, seed, or notification (`add-module.md`, `add-status-code.md`,
   `add-queue.md`, `add-seed.md`, `add-notification.md`)
@@ -120,9 +123,11 @@ produced, not a claim that it ran.
 - The spec path, or `none`.
 - The plan path with its header.
 - The plan review's findings and each one's state (fixed, rejected with the reason, open).
+- For a symptom: the debug hand-back lines from `references/debug.md`.
 - One line per thing noticed outside the scope.
 
 ## Next
 
-`/ack-build <plan path>`. `/ack-debug` for a symptom that turned up without a cause.
-`/ack-harness` when a rule has to change before the build.
+`/ack-build <plan path>`. `/ack-build pin: files <paths>; cause <file:line>; change <one
+sentence>` for a pin that alters no flow. `/ack-spec` when the cause is a spec that asserts a
+wish over correct code. `/ack-harness` when a rule has to change before the build.

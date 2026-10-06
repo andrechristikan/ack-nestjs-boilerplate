@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# PreToolUse Write|Edit: deny secrets, generated trees, and skill output under docs/.
+# PreToolUse Write|Edit|MultiEdit|NotebookEdit: deny secrets, generated trees, and skill output under docs/.
 set -euo pipefail
 
-path=$(jq -r '.tool_input.file_path // empty')
+path=$(jq -r '.tool_input.file_path // .tool_input.notebook_path // empty')
 [ -n "$path" ] || exit 0
 
 root="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"

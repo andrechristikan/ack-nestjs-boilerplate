@@ -17,13 +17,12 @@ on demand; its files land in `.superpowers/plans/`. The VS Code and Cursor exten
 Type the name; nothing chains automatically. Each skill ends with a Next line. Do not start a skill the owner did not name.
 
 - `/ack-plan`: settles a `src/` change in the session: interrogation, explorer, brainstorming,
-  writing-plans, owner approval; ends with a plan path.
+  writing-plans, owner approval; ends with a plan path. A symptom without a cause first goes through
+  debugger and ends with a pin for `/ack-build`, with `/ack-spec` when the cause is a spec, or continues into the plan.
 - `/ack-build`: builds an approved plan or a pin through coder and reviewer, test-first where
   `src/` behaviour changes, seeds and the run surface included; review after every task.
 - `/ack-review`: judges a named scope at a chosen depth through reviewer, four checks, verdict
   PASS or FAIL; findings come back as pins.
-- `/ack-debug`: pins a symptom with the owner, finds its cause through debugger, and ends
-  with a pin for `/ack-build` or a request for `/ack-plan`.
 - `/ack-spec`: create or repair unit, integration, or e2e tests for code that exists.
 - `/ack-doc`: `docs/*.md`, `README.md`, `SECURITY.md`, `CONTRIBUTING.md`,
   `CODE_OF_CONDUCT.md`, and `.github/**` except `copilot-instructions.md`.
@@ -66,10 +65,6 @@ Skills dispatch the agents in `.claude/agents/`:
 No agent can ask a question: one missing something stops and hands the question back, and the session
 asks the owner and dispatches again. Anything outside its dispatch is one line in its hand-back.
 
-graphify (`uv tool install graphifyy`, then `graphify claude install`) writes a knowledge
-graph to `graphify-out/`; `explorer` may run `graphify query "<question>"` to map an
-end-to-end flow. Nothing requires it.
-
 ### Gotchas
 
 - `tsc` aborts on a `tsconfig.json` error and reports zero source errors because it checked nothing, and
@@ -83,11 +78,13 @@ end-to-end flow. Nothing requires it.
 - A scoped `pnpm test:cov <path>` exits 1 with every spec passing because the 100% threshold
   is global. Read the `Tests` line and the per-file rows, not the exit code.
 - `pnpm test` runs unit only, needs no Docker, and applies no threshold (`coverage.enabled` is
-  `false`). `pnpm test:integration` and `pnpm test:e2e` need a running Docker daemon; the
-  first run pulls the images and can take minutes before a spec starts.
+  `false`). `pnpm test:integration` and `pnpm test:e2e` need a running Docker daemon.
+- A Bash call's `timeout` is 10 minutes at most, and `BASH_DEFAULT_TIMEOUT_MS` (`.claude/settings.json` `env`) makes
+  10 minutes the default. A call still running at its timeout is moved to the background by Claude Code and reports
+  when it ends, so a test run is never wrapped in GNU `timeout`. The first `pnpm test:integration` or `pnpm test:e2e`
+  on a machine pulls the Testcontainers images and can take that long.
 - `npx <pkg>@<version>` runs the local binary when the package is installed.
-- Claude worktrees live under `.claude/worktrees/` (gitignored). A recursive grep from the
-  repository root reads them; exclude that directory.
+- Claude worktrees live under `.claude/worktrees/` (gitignored); a recursive grep from the root reads them, so exclude it.
 
 ### Etiquette
 
@@ -96,9 +93,8 @@ end-to-end flow. Nothing requires it.
   case; scope is the module name.
 - Commits and staging go through `ask`: propose the subject and wait. A finished task is not
   a commit request. Stage only what the owner names. Branch before committing on `main`.
-- The working tree on disk is the source, unstaged and untracked files included; list
-  changes with `git status --short`, `git diff HEAD --name-only`,
-  `git ls-files --others --exclude-standard`.
+- The working tree on disk is the source, unstaged and untracked files included; list changes with
+  `git status --short`, `git diff HEAD --name-only`, `git ls-files --others --exclude-standard`.
 - Diff with no second ref: `git diff <base>` includes uncommitted and staged work; `<base>..HEAD` omits
   it. Reviews and diffs keep git read-only (no fetch, no pull); only `/ack-pr` fetches and moves refs.
 - A commit touching neither `src/` nor `test/` passes `--no-verify`: the `pre-commit` gate runs over the
@@ -106,9 +102,13 @@ end-to-end flow. Nothing requires it.
   check the subject against `.commitlintrc` first. A commit touching either tree goes through the hooks,
   and a red gate is fixed, not skipped.
 - `lint-staged` restages what prettier touches, so a granular commit series is not possible.
-- Working artifacts are gitignored: `.superpowers/` for specs and plans, `generated/docs/`
-  for agent reports and PR text, `graphify-out/` for the graph. Do not cite them from
-  `docs/`, `.claude/`, or a PR description.
+- Working artifacts are gitignored. `.superpowers/` holds every superpowers skill output (spec, plan, sdd brief
+  and ledger); `generated/docs/` holds agent reports, the sweep log, and PR, comment, and version text; neither holds
+  the other's files. Cite neither from `docs/`, a rule, or a PR description; harness files name them only as locations.
+- Run every command in the foreground, bounded (`timeout 90` on a boot, which never ends on its own; GNU coreutils,
+  `brew install coreutils` on stock macOS). `run_in_background` is denied (`guard-bash.sh`). Start no process the
+  call leaves behind (`&`, `nohup`); a call Claude Code moves to the background at its timeout is the one exception
+  and is waited for. Wait for each Agent hand-back, never poll (`Monitor`, `Workflow` denied); no wakeup, no cron job.
 - Reply in English by default; match the language of the owner's turn. Artifacts stay English.
 - When something is wrong, say so with a recommendation. State the assumption you act on;
   ask when two readings would produce different work.

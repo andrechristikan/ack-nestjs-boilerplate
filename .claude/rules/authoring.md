@@ -45,8 +45,8 @@ Binds `docs/*.md`, the root people files, and `.github/` markdown. In `.github/`
 only; a workflow or `dependabot.yml` a change moves or a plan task lists is `coder`'s run surface (`rules/layering.md`).
 
 - Indicative mood; an obligation is a fact: `all three paths produce the same idempotency key`, not `keys must match`.
-- No `.claude/`, no rule cited by path, no working artifact (`.superpowers/`, `generated/`, `graphify-out/`,
-  `.claude/worktrees/`), no local-only git ref, no absolute filesystem path, no branch-compare framing
+- No `.claude/`, no rule cited by path, no working artifact (`.superpowers/`, `generated/`, `.claude/worktrees/`),
+  no local-only git ref, no absolute filesystem path, no branch-compare framing
   (`main`, `development`, `origin/*`, "against base"). A version identity the release is about may appear.
 - No em-dash; use a period, comma, semicolon, colon, or parentheses. No filler, no rhetorical question, no
   synonym stacking. Bullets first; keep the existing section structure on a small correction.

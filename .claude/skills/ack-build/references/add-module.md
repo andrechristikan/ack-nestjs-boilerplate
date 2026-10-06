@@ -81,11 +81,11 @@ Swagger comes from the decorators; no separate doc file. A `docs/<module>.md` pa
 
 ```bash
 pnpm typecheck
-pnpm start:dev        # wiring defects only surface at boot; stop it once routes mount
+timeout 90 pnpm start:dev > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log   # wiring defects surface only at boot
 pnpm test <module>
 ```
 
-Check in the boot log that every route mounts under its prefix and that
-`UnknownDependenciesException` does not appear. Specs: `test/unit/modules/<module>/…` mirrors
+Check in the boot log for the `App Name:` block and no `UnknownDependenciesException` line;
+exit 124 is the expected end of the boot. Specs: `test/unit/modules/<module>/…` mirrors
 `src/`; controllers, repositories, modules, and processors are excluded from coverage
-(`.claude/rules/testing.md`).
+(`coverage.exclude` in `vitest.config.ts`).

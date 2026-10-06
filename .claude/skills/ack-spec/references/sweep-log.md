@@ -24,7 +24,8 @@ A finding is one open row under the matching heading:
 
 Rules:
 
-- Append only. Do not rewrite, reorder, or delete a row, including a SOLVED one.
+- Append only. Do not delete, reorder, or reword a row, a SOLVED one included. The only edits
+  are the SOLVED mark (`[ ]` to `[x]` plus ` SOLVED`) and a moved `file:line` (table below).
 - One row per defect; a defect spanning files names each `file:line` in the same row.
 - The fact describes what the code does, not what it should do; the decision is the owner's.
 

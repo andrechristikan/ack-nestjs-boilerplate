@@ -20,10 +20,8 @@ One dispatch to `writer`, the agent that owns reader-facing prose, then a reader
 what it added. You do not edit those trees yourself. Final state only:
 `.claude/rules/authoring.md`.
 
-Pass `run_in_background: false` on every Agent call where the tool offers the parameter; where
-it does not, a subagent already runs synchronously. Parallel dispatches are several calls in one
-message. Either way, end the turn only after every dispatched agent has returned and its
-result is read and acted on (`../ack-build/references/dispatch.md`, Foreground dispatch).
+Pass `run_in_background: false` on every Agent call; parallel dispatches are several calls
+in one message (`../ack-build/references/dispatch.md`, Foreground dispatch).
 
 ## 1. Scope
 

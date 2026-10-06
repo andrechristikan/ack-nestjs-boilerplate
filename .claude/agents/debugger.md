@@ -30,13 +30,18 @@ cannot ask questions; when something is missing, stop and hand the question back
   `pnpm test:integration <path filter>` under `test/integration/`, or
   `pnpm test:e2e <path filter>` under `test/e2e/`. The last two start throwaway
   containers and need a running Docker daemon.
-- A route: boot the app, then `curl` the route with the symptom's input.
+- A route: one bounded call that boots, waits for `App Name:`, curls, and returns. `set -m`
+  gives the server its own process group; the `EXIT` trap kills that group when the call ends,
+  at the `timeout` too, so nothing outlives the call:
+  `timeout 90 bash -c 'rm -f /tmp/ack-boot.log; set -m; pnpm start:dev > /tmp/ack-boot.log 2>&1 & trap "kill -- -$! 2>/dev/null" EXIT; until grep -q "App Name:" /tmp/ack-boot.log; do sleep 1; done; curl -s -i <method, headers, body from the symptom> http://localhost:3000/<route>'`
 - A log line: find the line the symptom names in the boot or request output.
 
 Quote the decisive line. Boot: containers up (`docker ps`), port 3000 free
-(`lsof -nP -iTCP:3000 -sTCP:LISTEN`), then `pnpm start:dev` in the background. The proof is
-the `App Name:` block `src/main.ts` logs after listen. Kill the watchers, then the 3000
-listener with `-9`. Infrastructure down or 3000 held: NOT RUN.
+(`lsof -nP -iTCP:3000 -sTCP:LISTEN`). A boot-only proof is
+`timeout 90 pnpm start:dev > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log`;
+exit 124 is its expected end; on the route call, exit 124 means `App Name:` never appeared.
+The proof is that `App Name:` block from `src/main.ts`. A 3000 listener left after either
+call gets `kill -9`. Infrastructure down or 3000 held: NOT RUN.
 
 The local `.env` carries live third-party credentials: trigger no email, push, or S3 write.
 A symptom that does not reproduce is a hand-back listing every command tried.

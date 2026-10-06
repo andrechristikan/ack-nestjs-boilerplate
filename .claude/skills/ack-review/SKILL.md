@@ -1,12 +1,12 @@
 ---
 name: ack-review
 description: >-
-  Judges a named scope of the checkout read-only through reviewer at a chosen depth, runs
-  typecheck, lint, deadcode, and spell, filters the findings, and returns PASS or FAIL with
-  each confirmed finding shaped as a pin. Use when the owner wants work on the checkout
+  Judges a named scope of the checkout read-only through reviewer at a chosen depth (reviewer
+  runs typecheck, lint, deadcode, and spell), filters the findings, and returns PASS or FAIL
+  with each confirmed finding shaped as a pin. Use when the owner wants work on the checkout
   judged, a module or a diff checked before a commit, or a plan, docs, or the harness
   checked against their sources. Not for fixing (ack-build), planning (ack-plan), a symptom
-  without a cause (ack-debug), or writing specs (ack-spec).
+  without a cause (ack-plan), or writing specs (ack-spec).
 disable-model-invocation: true
 argument-hint: "<scope: module paths, files, a plan path, docs files, or .claude> [task|plan|docs|harness|rules and boot|end to end]"
 ---
@@ -30,7 +30,7 @@ It changes nothing: git stays read-only, and no DB or seed command runs. If a
 | Scope | Depth |
 |---|---|
 | `src/` and `test/` paths | `rules and boot` |
-| a `.superpowers/*-plan.md` path | `plan` |
+| a `.superpowers/*-plan.md` or `.superpowers/plans/*.md` path | `plan` |
 | markdown under `docs/`, the root people files, or `.github/`; diagram files under `docs/assets/` | `docs` |
 | `.claude/**`, `AGENTS.md`, or `.github/copilot-instructions.md` | `harness` |
 
@@ -40,12 +40,6 @@ It changes nothing: git stays read-only, and no DB or seed command runs. If a
 
 ## 2. Review, through `reviewer`
 
-Invoke `superpowers:requesting-code-review` for the dispatch shape only: what a reviewer is
-given (the requirement, the scope), findings ranked by severity, and only what affects
-correctness reported. Its commit range `BASE_SHA..HEAD_SHA`, its own `general-purpose`
-reviewer, and its fix step are not taken: the working tree is the source, `reviewer` is
-the only reviewer dispatched, and nothing is fixed here.
-
 Dispatch `reviewer` with the template at `../ack-build/references/dispatch.md`, Reviewer,
 at the chosen depth, with the scope, the requirement, and the rule files whose `paths:`
 match the scope.
@@ -54,21 +48,12 @@ Boot runs only at `rules and boot`, or at `end to end` when the owner asked for 
 
 ## 3. Checks
 
-At `task`, `rules and boot`, and `end to end`, run and read each:
-
-```bash
-pnpm typecheck
-pnpm lint
-pnpm deadcode
-pnpm spell
-```
-
-At the same depths, every sequential `await` of independent work in the scope is a finding
-(`.claude/rules/code-style.md`, Concurrency and errors).
-
-How to read `deadcode` and `spell`: `.claude/CLAUDE.md` Gotchas. At `plan`, `docs`, and
-`harness`, run no command beyond what `reviewer` ran. Never run `pnpm test` or
-`pnpm test:cov`; those belong to `/ack-spec`.
+At `task`, `rules and boot`, and `end to end`, `reviewer` runs `pnpm typecheck`, `pnpm lint`,
+`pnpm deadcode`, and `pnpm spell` and quotes each exit code and decisive line; read that
+output (`deadcode` and `spell`: `.claude/CLAUDE.md` Gotchas). At the same depths, every
+sequential `await` of independent work in the scope is a finding (`.claude/rules/code-style.md`,
+Concurrency and errors). Run no command here. `/ack-review` runs no tests; `pnpm test <path>` belongs
+to the skill that changes code (`/ack-build`, `/ack-spec`) and `pnpm test:cov` to `/ack-spec` alone.
 
 ## 4. Filter
 
@@ -81,9 +66,10 @@ Every finding passes `superpowers:receiving-code-review` here:
 
 ## 5. Verdict
 
-`PASS` when every check is green and no finding was confirmed; otherwise `FAIL`. Invoke
-`superpowers:verification-before-completion` before stating it: the verdict rests on
-quoted output, not on the word "verified".
+`PASS` when every check `reviewer` quotes is green and no finding was confirmed; otherwise
+`FAIL`. A check the depth requires and the report does not quote is not green. Invoke
+`superpowers:verification-before-completion` before stating it: the verdict rests on the
+output `reviewer` quoted, not on the word "verified".
 
 ## Boundaries
 
@@ -96,7 +82,7 @@ quoted output, not on the word "verified".
 - The verdict.
 - Each confirmed finding as a pin.
 - Each rejected finding with the reason.
-- Each command with its exit code and the line that matters.
+- Each check `reviewer` ran with its exit code and the line that matters.
 - The boot result, or NOT RUN and why.
 - The rule files `reviewer` read.
 - One line per thing noticed outside the scope.
@@ -105,6 +91,6 @@ quoted output, not on the word "verified".
 
 - `/ack-build pin: files <paths>; cause <file:line>; change <one sentence>` per confirmed
   finding that is a fix with no flow change.
-- `/ack-plan` when a finding changes a flow or a decision.
-- `/ack-debug` when a finding is a symptom whose cause is not in hand.
+- `/ack-plan` when a finding changes a flow or a decision, or is a symptom whose cause is
+  not in hand.
 - `/ack-spec` for a coverage gap.

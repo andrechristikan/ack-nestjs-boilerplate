@@ -13,7 +13,7 @@ never re-implements them, and S3 goes through `AwsS3Service`, never a hand-built
 
 - An uploaded file is validated by pipes on `@UploadedFile(...)`, never by an `if` in a controller or
   service: `FileRequiredPipe()`, then `FileExtensionPipe([...])`, then for a CSV the import pair below
-  (`src/modules/user/controllers/user.admin.controller.ts:244`). A controller does not read
+  (`src/modules/user/controllers/user.admin.controller.ts:241`). A controller does not read
   `file.buffer`. An upload route carries `@RequestTimeout('1m')` (placement: `http.md`).
 - The extension allow-list is `EnumFileExtension` (`src/common/file/enums/file.enum.ts`).
   `FileExtensionPipe` reads the extension from `originalname`, then sniffs the buffer through
@@ -73,8 +73,8 @@ response and nowhere else. Expiry stays short.
 
 `AwsS3Service` and `AwsSESService` are optional adapters (`config.md`). A domain that needs S3 throws
 `AwsS3NotConfiguredException`, either up front when `isInitialized()` is `false`
-(`src/modules/term-policy/domains/term-policy.domain.ts:126`) or on a `null` adapter result
-(`src/modules/user/domains/user.profile.domain.ts:134`); a presign, upload, or publish never succeeds without S3.
+(`src/modules/term-policy/domains/term-policy.domain.ts:127`) or on a `null` adapter result
+(`src/modules/user/domains/user.profile.domain.ts:135`); a presign, upload, or publish never succeeds without S3.
 `AwsSESService` passes `aws.ses.identityArn` as `SourceArn` on `send` and `sendBulk` when set. `AWS_S3_ENDPOINT`
 and `AWS_SES_ENDPOINT` (`src/app/dtos/app.env.dto.ts:82`, `:92`) point the clients elsewhere, S3 path-style; object
 URLs come from `aws.s3.baseUrlPattern` (`src/configs/aws.config.ts:61`).

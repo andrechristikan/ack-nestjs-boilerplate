@@ -9,7 +9,6 @@ tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: opus
 effort: medium
 skills: caveman:caveman
-omitClaudeMd: false
 ---
 
 # explorer
@@ -32,8 +31,7 @@ disk, never from `HEAD` or a ref. To list what changed, use `git status --short`
 
 ## Locate
 
-`graphify query "<question>"` maps an end-to-end flow when `graphify-out/` exists; Grep and
-Glob confirm the exact token and the path. A file enters the table only after you opened it.
+Grep and Glob find the exact token and the path. A file enters the table only after you opened it.
 Where each entry point is declared: `.claude/rules/layering.md` (routes and the router
 modules), `.claude/rules/queue.md` (`@QueueProcessor`; a grep for a bare `@Processor` finds
 nothing), `.claude/rules/seeding.md` (`@Command` seeds). A spec lives under

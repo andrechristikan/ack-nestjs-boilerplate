@@ -46,9 +46,10 @@ a rate limiter). Framework files live in `src/queues/`; nothing else goes there.
 1. Job name: a member of the module's process enum, `Enum<Module>Process` in
    `<module>/enums/<module>.enum.ts` (`src/modules/workspace/enums/workspace.enum.ts:5-7`;
    `src/modules/notification/enums/notification.enum.ts:5-25`).
-2. Payload: `I<Module><Action>QueuePayload` in `<module>/interfaces/<module>.interface.ts`,
-   camelCase fields, `Queue` last, `Bulk` before it
-   (`src/modules/notification/interfaces/notification.interface.ts:216-224`).
+2. Payload in `<module>/interfaces/<module>.interface.ts`, camelCase fields: the envelope
+   `I<Module>[<Channel>][Bulk]QueuePayload<T>` carries the data `I<Module><Action>Payload`,
+   `I<Module><Action>EncryptedPayload` once a field is encrypted
+   (`src/modules/notification/interfaces/notification.interface.ts:216-219`, `:119-134`).
 3. Queue-class method: takes domain values, builds the typed payload, calls `add(jobName,
    payload, { priority: EnumQueuePriority.<x>, jobId?, deduplication? })`, the id filled from
    a `<Module>*JobIdPattern` constant through `HelperStringService.fillPattern`
@@ -74,9 +75,12 @@ queue before the rename deploys and say so in the hand-back.
 
 ```bash
 pnpm typecheck
-pnpm start:dev        # the worker registers at boot; stop it once the routes mount
+timeout 90 pnpm start:dev > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log   # the worker registers at boot
 pnpm test <module>
 ```
+
+Check in the boot log for the `App Name:` block and the `<Module>ProcessorModule dependencies initialized`
+line, BullMQ logging no line per worker; exit 124 is the expected end of the boot.
 
 Specs: the queue class asserts job name, payload with every encrypted field, and options;
 a processor service asserts the hand-off; the processor file is excluded from coverage

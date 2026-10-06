@@ -53,11 +53,11 @@ disk, never from `HEAD` or a ref. To list what changed, use `git status --short`
    write the ones the task's Files list names as listed. Leave unmoved logic as it is.
 5. `pnpm typecheck`, then `pnpm test <module>`, or the task's own acceptance commands
    (`pnpm test:integration`, `pnpm test:e2e`, the parity counts) when the plan names them;
-   those two suites connect to throwaway containers. Boot with `pnpm start:dev` when the task
-   names the boot or an `imports:`, `providers:`, or injected constructor class changed: a
-   cycle or a type-only DI import surfaces only there. The boot connects to the MongoDB and
-   Redis `.env` names, and `.env` carries live third-party credentials: trigger no email,
-   push, or S3 write. Stop the boot you started.
+   those two suites connect to throwaway containers. Boot when the task names the boot or an
+   `imports:`, `providers:`, or injected constructor class changed (a cycle or a type-only DI
+   import surfaces only there): `timeout 90 pnpm start:dev > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log`.
+   The proof is the `App Name:` block; a 3000 listener left after it gets `kill -9`. The boot uses
+   the `.env` MongoDB, Redis, and live third-party credentials: trigger no email, push, or S3 write.
 
 ## Hand back
 

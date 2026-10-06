@@ -1,15 +1,21 @@
 #!/usr/bin/env bash
-# PreToolUse Bash: pnpm only; owner-only database commands; commits and staging ask.
+# PreToolUse Bash: foreground only; pnpm only; owner-only database commands; commits and staging ask.
 set -euo pipefail
-
-cmd=$(jq -r '.tool_input.command // empty')
-[ -n "$cmd" ] || exit 0
 
 decide() {
     jq -cn --arg decision "$1" --arg reason "$2" \
         '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:$decision,permissionDecisionReason:$reason}}'
     exit 0
 }
+
+payload=$(cat)
+
+if [ "$(printf '%s' "$payload" | jq -r '.tool_input.run_in_background // false')" = "true" ]; then
+    decide deny "Foreground only: no run_in_background; run the command in the foreground and wait for it (.claude/CLAUDE.md, Etiquette)."
+fi
+
+cmd=$(printf '%s' "$payload" | jq -r '.tool_input.command // empty')
+[ -n "$cmd" ] || exit 0
 
 # A command word: after a separator, `sudo`, `env`, and `NAME=value` prefixes. Matching command words only keeps a
 # quoted mention (`grep "db:migrate"`, `git log -S'add'`) out of the decisions below.

@@ -8,8 +8,8 @@ description: >-
   is wanted. Not for .claude/**, AGENTS.md, or the Copilot digest (harness), or for code or
   a workflow or dependabot.yml a change moves or a plan task lists (coder).
 tools: Read, Grep, Glob, Bash, Write, Edit
-model: opus
-effort: medium
+model: sonnet
+effort: high
 skills: caveman:caveman, humanizer:humanizer, example-skills:doc-coauthoring, diagram-design:diagram-design
 ---
 

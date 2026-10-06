@@ -54,7 +54,7 @@ Subclasses implement `protected abstract handle(job): Promise<IQueueResponse>` (
 dispatcher: switch on `job.name` against `Enum<Module>[<Channel>]Process` (`<module>.enum.ts`, the
 job names), await a processor-service method (never a bare `return this.service.x()`), map a
 hopeless failure to BullMQ's `UnrecoverableError` there. The processor service owns no business
-rule; it calls a domain. `onFailed` (`:61`) reports to Sentry once, on the last attempt
+rule; it calls a domain. `onFailed` (`:62`) reports to Sentry once, on the last attempt
 (`attemptsMade >= maxAttempts` or `UnrecoverableError`), and skips a `QueueException` whose
 `isFatal` is false. No per-processor logger and no log-and-rethrow. A job may run more than
 once; a handler is safe to repeat.

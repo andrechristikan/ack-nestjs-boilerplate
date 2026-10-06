@@ -86,7 +86,7 @@ jq . .claude/settings.json >/dev/null
 for f in .claude/hooks/*.sh; do bash -n "$f" && test -x "$f"; done
 echo '{}' | bash .claude/hooks/roster.sh
 grep -rnE 'N[E]VER|A[L]WAYS|M[U]ST|H[A]RD' .claude AGENTS.md .github/copilot-instructions.md --exclude-dir=worktrees   # all-caps emphasis: empty
-wc -l .claude/CLAUDE.md AGENTS.md .github/copilot-instructions.md .claude/rules/*.md .claude/agents/*.md .claude/skills/*/SKILL.md
+wc -l .claude/CLAUDE.md AGENTS.md .github/copilot-instructions.md .claude/rules/*.md .claude/agents/*.md .claude/skills/*/SKILL.md .claude/skills/*/references/*.md
 ```
 
 Every `.md` with frontmatter opens with `---` on line 1; a rule's `paths:` is a YAML list;
@@ -113,4 +113,4 @@ scope.
 ## Next
 
 `/ack-build pin: ...` for a recorded `src/` finding that is a confirmed no-flow bug;
-`/ack-debug` for one whose cause is not in hand; `/ack-plan` for one that changes a flow.
+`/ack-plan` for one whose cause is not in hand or that changes a flow.

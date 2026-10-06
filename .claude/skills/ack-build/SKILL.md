@@ -6,9 +6,11 @@ description: >-
   test files a plan task lists written as listed, seeds and the run surface included; then
   verifies and proposes the commit subject. Use with a plan path from /ack-plan or a pin
   (files, cause at file:line, change). Not for an open question or a new shape (ack-plan),
-  a symptom without a cause (ack-debug), judging only (ack-review), specs over code that
+  a symptom without a cause (ack-plan), judging only (ack-review), specs over code that
   exists (ack-spec), docs (ack-doc), or the harness (ack-harness).
 disable-model-invocation: true
+model: opus
+effort: medium
 context: fork
 argument-hint: "<.superpowers/<date>-<slug>-plan.md | pin: files <paths>; cause <file:line>; change <one sentence>>"
 ---
@@ -27,14 +29,8 @@ stands after that. If a `superpowers:*` skill is not installed, stop and say
 
 ## Dispatch in the foreground
 
-- Pass `run_in_background: false` on every Agent call where the tool offers the parameter;
-  where it does not, a subagent already runs synchronously. Parallel work, such as a review
-  split into parts, is several calls in one message; they run concurrently, and the next
-  step starts once all have returned (`references/dispatch.md`, Foreground dispatch).
-- Either way, end the turn only after every dispatched agent has returned and its result is
-  read, acted on, and, on a plan run, in the progress ledger (Ledger lines). A re-run
-  resumes from the ledger. The waiting guidance in `superpowers:subagent-driven-development`
-  covers background children; this fork has none.
+Pass `run_in_background: false` on every Agent call; parallel work is several calls in one
+message (`references/dispatch.md`, Foreground dispatch).
 
 ## Input
 
@@ -43,7 +39,7 @@ stands after that. If a `superpowers:*` skill is not installed, stop and say
 - A pin: files, the cause at `file:line`, and the change. Missing any of the three, stop
   and hand back.
 - Nothing open is decided here. An open product question, a shape with two readings, or a
-  cause not in hand is a hand-back naming `/ack-plan` or `/ack-debug`.
+  cause not in hand is a hand-back naming `/ack-plan`.
 - The progress ledger is `.superpowers/sdd/<plan-basename>/progress.md`, in the per-plan
   workspace `superpowers:subagent-driven-development` keeps (its `scripts/sdd-workspace`
   prints the path). Read it before the first dispatch and resume where its lines end. A
@@ -51,18 +47,16 @@ stands after that. If a `superpowers:*` skill is not installed, stop and say
 
 ## Build, through `coder`
 
-Follow `superpowers:subagent-driven-development` with the project's agents: one fresh
-`coder` per plan task, in order, one at a time, its brief under `.superpowers/sdd/`.
-Dispatch template: `references/dispatch.md`, Coder. Pass `model: opus` on the Agent call
-when the plan marks the task `Complexity: complex`; otherwise the agent's own model
-applies. A pin is one dispatch carrying the pin instead of a plan path.
+Follow `superpowers:subagent-driven-development` with the project's agents: one fresh `coder`
+per plan task, in order, one at a time, its brief under `.superpowers/sdd/`. Dispatch template:
+`references/dispatch.md`, Coder. `coder` runs on the model in its own frontmatter; its
+Agent call carries no `model`. A pin is one dispatch carrying the pin instead of a plan path.
 
 - When the task changes `src/` behaviour, `coder` writes the failing unit spec under
   `test/unit/`, watches it fail, and implements. Specs, test helpers, setup or
   global-setup files, and test config the task's Files list names are written as listed.
-- `coder` then runs `pnpm typecheck` and `pnpm test <module>`, or the task's own
-  acceptance commands when the plan names them, and repairs the run surface the change
-  made stale.
+- `coder` then runs `pnpm typecheck` and `pnpm test <module>`, or the task's own acceptance
+  commands when the plan names them, and repairs the run surface the change made stale.
 - A schema delta is `coder`'s edit and the owner's push: `coder` runs `pnpm db:generate`;
   relay the model, the field, the index, the data consequence, and `pnpm db:migrate`.
 - A `NEEDS_CONTEXT` or `BLOCKED` report stops the build (Ledger lines); do not fix it here.
@@ -109,13 +103,11 @@ the owner's answer when that line is `Final review: stopped`.
 
 ## Verify
 
-Invoke `superpowers:verification-before-completion`, then run and read each:
+Invoke `superpowers:verification-before-completion`. The evidence for `pnpm typecheck`,
+`pnpm lint`, `pnpm deadcode`, and `pnpm spell` is the output the final `reviewer` quoted;
+read it. Then run and read:
 
 ```bash
-pnpm typecheck
-pnpm lint
-pnpm deadcode
-pnpm spell
 pnpm test <module>
 ```
 
@@ -139,7 +131,8 @@ runs in the session from `/ack-pr create`, not here.
   `blocked` or `stopped` line with the question the owner answers.
 - The final review at the plan's depth; every run-surface file checked and whether it
   changed; every status code allocated; the schema delta and the owner's push command.
-- The output of the five checks and of every task acceptance command run.
+- The four checks as the final `reviewer` quoted them; the output of `pnpm test <module>` and
+  of every task acceptance command run.
 - The proposed commit subject.
 - One line per thing noticed outside the scope.
 
