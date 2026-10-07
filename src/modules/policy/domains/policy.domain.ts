@@ -6,6 +6,7 @@ import { PolicyCache } from '@modules/policy/caches/policy.cache';
 import type { IPolicyRule } from '@modules/policy/interfaces/policy.interface';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import type { IRole } from '@modules/role/interfaces/role.interface';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
@@ -25,11 +26,18 @@ export class PolicyDomain {
         private readonly activityLogDomain: ActivityLogDomain
     ) {}
 
-    private async validateRoleWritable(roleId: string): Promise<void> {
+    /** Returns the role a policy route is scoped to, for the caller to authorize against. */
+    async getRoleById(roleId: string): Promise<IRole> {
         const role = await this.roleDomain.getById(roleId);
         if (!role) {
             throw new RoleNotFoundException();
         }
+
+        return role;
+    }
+
+    private async validateRoleWritable(roleId: string): Promise<void> {
+        const role = await this.getRoleById(roleId);
 
         if (
             role.scope === EnumRoleScope.platform &&

@@ -9,6 +9,7 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
+import type { DeviceOwnership } from '@generated/prisma-client/client';
 import type {
     IDeviceOwnership,
     IDeviceOwnershipLoginUpsert,
@@ -298,6 +299,19 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
             },
             include: {
                 device: true,
+            },
+        });
+    }
+
+    async findOneActive(
+        userId: string,
+        deviceOwnershipId: string
+    ): Promise<DeviceOwnership | null> {
+        return this.databaseService.client.deviceOwnership.findFirst({
+            where: {
+                id: deviceOwnershipId,
+                userId,
+                isRevoked: false,
             },
         });
     }

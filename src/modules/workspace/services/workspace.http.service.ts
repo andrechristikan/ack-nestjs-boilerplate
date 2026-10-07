@@ -220,8 +220,17 @@ export class WorkspaceHttpService {
     async getForAdmin(
         workspaceId: string
     ): Promise<IResponseReturn<Workspace>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
         const workspace =
             await this.workspaceDomain.getByIdForAdmin(workspaceId);
+        this.policyAbilityDomain.assertCan(
+            ability,
+            EnumPolicyAction.read,
+            subject(EnumPolicySubject.Workspace, workspace)
+        );
+
         return { data: workspace };
     }
 

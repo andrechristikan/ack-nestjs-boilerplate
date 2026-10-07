@@ -57,7 +57,7 @@ export class ActivityLogAdminController {
         @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        return this.activityLogHttpService.getListOffsetByUser(userId, query);
+        return this.activityLogHttpService.getListOffset({ userId }, query);
     }
 
     @Doc({ summary: 'get all activity logs of a workspace' })
@@ -88,9 +88,8 @@ export class ActivityLogAdminController {
         @Query('userId', { schema: RequestUuidSchema.optional() })
         userId?: string
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        return this.activityLogHttpService.getListOffsetByWorkspace(
-            workspaceId,
-            userId ?? null,
+        return this.activityLogHttpService.getListOffset(
+            { workspaceId, ...(userId ? { userId } : {}) },
             query
         );
     }

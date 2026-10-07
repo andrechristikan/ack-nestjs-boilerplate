@@ -1,3 +1,12 @@
+import { subject } from '@casl/ability';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import { UserDomain } from '@modules/user/domains/user.domain';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import type { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
@@ -20,6 +29,8 @@ import { Injectable } from '@nestjs/common';
 export class UserTwoFactorHttpService {
     constructor(
         private readonly userTwoFactorDomain: UserTwoFactorDomain,
+        private readonly userDomain: UserDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly userUtil: UserUtil
     ) {}
 
@@ -115,6 +126,15 @@ export class UserTwoFactorHttpService {
         userId: string,
         updatedBy: string
     ): Promise<void> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const user = await this.userDomain.getOne(userId);
+        this.policyAbilityDomain.assertCan(
+            ability,
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.User, user)
+        );
         await this.userTwoFactorDomain.resetTwoFactorByAdmin(userId, updatedBy);
     }
 }

@@ -1,3 +1,4 @@
+import { subject } from '@casl/ability';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -140,6 +141,18 @@ export class DeviceHttpService {
         deviceOwnershipId: string,
         removedBy: string
     ): Promise<IResponseReturn<void>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const stored = await this.deviceDomain.getOneActive(
+            userId,
+            deviceOwnershipId
+        );
+        this.policyAbilityDomain.assertCan(
+            ability,
+            EnumPolicyAction.delete,
+            subject(EnumPolicySubject.Device, stored)
+        );
         await this.deviceDomain.removeByAdmin(
             userId,
             deviceOwnershipId,

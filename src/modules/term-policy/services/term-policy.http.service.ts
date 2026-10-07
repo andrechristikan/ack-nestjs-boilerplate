@@ -1,3 +1,4 @@
+import { subject } from '@casl/ability';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -126,6 +127,15 @@ export class TermPolicyHttpService {
     async deleteByAdmin(
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicy>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const stored = await this.termPolicyDomain.getOne(termPolicyId);
+        this.policyAbilityDomain.assertCan(
+            ability,
+            EnumPolicyAction.delete,
+            subject(EnumPolicySubject.TermPolicy, stored)
+        );
         const deleted = await this.termPolicyDomain.deleteByAdmin(termPolicyId);
 
         return { data: deleted };
@@ -135,6 +145,15 @@ export class TermPolicyHttpService {
         termPolicyId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const stored = await this.termPolicyDomain.getOne(termPolicyId);
+        this.policyAbilityDomain.assertCan(
+            ability,
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.TermPolicy, stored)
+        );
         await this.termPolicyDomain.publishByAdmin(termPolicyId, updatedBy);
 
         return {};

@@ -1,3 +1,12 @@
+import { subject } from '@casl/ability';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import { UserDomain } from '@modules/user/domains/user.domain';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
@@ -8,12 +17,25 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class UserPasswordHttpService {
-    constructor(private readonly userPasswordDomain: UserPasswordDomain) {}
+    constructor(
+        private readonly userPasswordDomain: UserPasswordDomain,
+        private readonly userDomain: UserDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain
+    ) {}
 
     async updatePasswordByAdmin(
         userId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const user = await this.userDomain.getOne(userId);
+        this.policyAbilityDomain.assertCan(
+            ability,
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.User, user)
+        );
         await this.userPasswordDomain.updatePasswordByAdmin(userId, updatedBy);
 
         return {};

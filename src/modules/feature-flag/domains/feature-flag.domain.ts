@@ -142,6 +142,16 @@ export class FeatureFlagDomain {
         return this.featureFlagRepository.findWithPaginationCursor(pagination);
     }
 
+    /** Returns the stored flag; callers judge it, this method does not. */
+    async getOne(id: string): Promise<FeatureFlag> {
+        const featureFlag = await this.featureFlagRepository.findOneById(id);
+        if (!featureFlag) {
+            throw new FeatureFlagNotFoundException();
+        }
+
+        return featureFlag;
+    }
+
     async updateStatusByAdmin(
         id: string,
         data: IFeatureFlagUpdateStatus

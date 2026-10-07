@@ -1,14 +1,25 @@
+import { subject } from '@casl/ability';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
 import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class PolicyHttpService {
-    constructor(private readonly policyDomain: PolicyDomain) {}
+    constructor(
+        private readonly policyDomain: PolicyDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain
+    ) {}
 
     async listByRole(
         roleId: string
@@ -34,6 +45,15 @@ export class PolicyHttpService {
         id: string,
         body: PolicyUpdateRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const role = await this.policyDomain.getRoleById(roleId);
+        this.policyAbilityDomain.assertCan(
+            ability,
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.Role, role)
+        );
         const updated = await this.policyDomain.updateByAdmin(roleId, id, body);
 
         return { data: updated };
@@ -43,6 +63,15 @@ export class PolicyHttpService {
         roleId: string,
         id: string
     ): Promise<IResponseReturn<void>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const role = await this.policyDomain.getRoleById(roleId);
+        this.policyAbilityDomain.assertCan(
+            ability,
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.Role, role)
+        );
         await this.policyDomain.deleteByAdmin(roleId, id);
 
         return {};

@@ -1,3 +1,4 @@
+import { subject } from '@casl/ability';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -21,12 +22,14 @@ import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/s
 import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionDomain } from '@modules/session/domains/session.domain';
+import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class SessionHttpService {
     constructor(
         private readonly sessionDomain: SessionDomain,
+        private readonly userDomain: UserDomain,
         private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
@@ -105,6 +108,18 @@ export class SessionHttpService {
         sessionId: string,
         revokedBy: string
     ): Promise<IResponseReturn<void>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const stored = await this.sessionDomain.validateActive(
+            userId,
+            sessionId
+        );
+        this.policyAbilityDomain.assertCan(
+            ability,
+            EnumPolicyAction.delete,
+            subject(EnumPolicySubject.Session, stored)
+        );
         await this.sessionDomain.revokeByAdmin(userId, sessionId, revokedBy);
 
         return {};
@@ -114,6 +129,15 @@ export class SessionHttpService {
         userId: string,
         revokedBy: string
     ): Promise<IResponseReturn<void>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const user = await this.userDomain.getOne(userId);
+        this.policyAbilityDomain.assertCan(
+            ability,
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.User, user)
+        );
         await this.sessionDomain.revokeAllByAdmin(userId, revokedBy);
 
         return {};

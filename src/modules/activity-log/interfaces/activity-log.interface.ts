@@ -46,6 +46,10 @@ export type IActivityLogStageInput<A extends EnumActivityLogAction> = {
     workspaceId?: string | null;
 };
 
+export type IActivityLogScope =
+    | { userId: string; workspaceId?: string }
+    | { workspaceId: string; userId?: string };
+
 export interface IActivityLogCreate {
     userId: string;
     createdBy: string;

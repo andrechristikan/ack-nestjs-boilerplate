@@ -151,6 +151,16 @@ export class ApiKeyDomain {
         return { apiKey: created, secret };
     }
 
+    /** Returns the stored key; callers judge it, this method does not. */
+    async getOne(id: string): Promise<ApiKey> {
+        const apiKey = await this.apiKeyRepository.findOneById(id);
+        if (!apiKey) {
+            throw new ApiKeyNotFoundException();
+        }
+
+        return apiKey;
+    }
+
     async updateStatusByAdmin(id: string, isActive: boolean): Promise<ApiKey> {
         const today = this.helperDateService.create();
         const apiKey = await this.apiKeyRepository.findOneById(id);

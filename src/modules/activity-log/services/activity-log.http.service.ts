@@ -13,7 +13,10 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 import type { ActivityLogAdminListRequestDto } from '@modules/activity-log/dtos/request/activity-log.admin-list.request.dto';
 import type { ActivityLogSharedListRequestDto } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
-import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
+import type {
+    IActivityLog,
+    IActivityLogScope,
+} from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { Injectable } from '@nestjs/common';
 
@@ -26,8 +29,8 @@ export class ActivityLogHttpService {
         private readonly requestStoreService: RequestStoreService
     ) {}
 
-    async getListOffsetByUser(
-        userId: string,
+    async getListOffset(
+        scope: IActivityLogScope,
         query: ActivityLogAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
@@ -48,71 +51,11 @@ export class ActivityLogHttpService {
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        const { data, ...others } =
-            await this.activityLogDomain.getListOffsetByUser(
-                userId,
-                params,
-                accessibleWhere
-            );
-
-        return {
-            data,
-            ...others,
-        };
-    }
-
-    async getListCursorByUser(
-        userId: string,
-        query: ActivityLogSharedListRequestDto
-    ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.ActivityLogWhereInput>(
-                query,
-                {
-                    availableOrderBy: ActivityLogDefaultAvailableOrderBy,
-                }
-            );
-        this.requestStoreService.merge(PaginationStoreKey, storePatch);
-
-        const { data, ...others } =
-            await this.activityLogDomain.getListCursorByUser(userId, params);
-
-        return {
-            data,
-            ...others,
-        };
-    }
-
-    async getListOffsetByWorkspace(
-        workspaceId: string,
-        userId: string | null,
-        query: ActivityLogAdminListRequestDto
-    ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
+        const { data, ...others } = await this.activityLogDomain.getListOffset(
+            scope,
+            params,
+            accessibleWhere
         );
-        const accessibleWhere =
-            this.policyAbilityDomain.requireAccessibleWhere<Prisma.ActivityLogWhereInput>(
-                ability,
-                EnumPolicyAction.read,
-                EnumPolicySubject.ActivityLog
-            );
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query,
-                {
-                    availableOrderBy: ActivityLogDefaultAvailableOrderBy,
-                }
-            );
-        this.requestStoreService.merge(PaginationStoreKey, storePatch);
-
-        const { data, ...others } =
-            await this.activityLogDomain.getListOffsetByWorkspace(
-                workspaceId,
-                userId,
-                params,
-                accessibleWhere
-            );
 
         return {
             data,
@@ -120,9 +63,8 @@ export class ActivityLogHttpService {
         };
     }
 
-    async getListCursorByWorkspace(
-        workspaceId: string,
-        userId: string | null,
+    async getListCursor(
+        scope: IActivityLogScope,
         query: ActivityLogSharedListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const { params, storePatch } =
@@ -134,12 +76,10 @@ export class ActivityLogHttpService {
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        const { data, ...others } =
-            await this.activityLogDomain.getListCursorByWorkspace(
-                workspaceId,
-                userId,
-                params
-            );
+        const { data, ...others } = await this.activityLogDomain.getListCursor(
+            scope,
+            params
+        );
 
         return {
             data,
