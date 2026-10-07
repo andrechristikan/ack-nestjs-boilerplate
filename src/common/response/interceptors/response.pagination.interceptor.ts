@@ -168,7 +168,8 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                         rMetadata?.httpStatus ?? response.statusCode;
                     const statusCode =
                         rMetadata?.statusCode ?? response.statusCode;
-                    const messageProperties = rMetadata?.messageProperties;
+                    const messageProperties =
+                        rMetadata?.messageProperties ?? null;
 
                     if (rMetadata) {
                         delete rMetadata.httpStatus;
@@ -205,7 +206,9 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                         messagePath,
                         {
                             customLanguage: metadata.language,
-                            properties: messageProperties,
+                            ...(messageProperties !== null && {
+                                properties: messageProperties,
+                            }),
                         }
                     );
 

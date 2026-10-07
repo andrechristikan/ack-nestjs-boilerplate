@@ -140,10 +140,10 @@ export class RequestCorsMiddleware implements NestMiddleware {
     }
 
     private parsePattern(pattern: string): { hostname: string; port: string } {
-        const [hostname, port] = pattern.split(':');
+        const parts = pattern.split(':');
         return {
-            hostname,
-            port: port ?? '',
+            hostname: parts[0]!,
+            port: parts[1] ?? '',
         };
     }
 

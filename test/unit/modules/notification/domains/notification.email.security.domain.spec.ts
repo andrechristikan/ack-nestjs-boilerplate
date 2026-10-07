@@ -29,6 +29,8 @@ describe('NotificationEmailSecurityDomain', () => {
         notificationId: 'notification-id',
         email: 'nadia@example.com',
         username: 'nadia',
+        cc: [],
+        bcc: [],
     };
     const sendWithCcBcc = {
         ...send,

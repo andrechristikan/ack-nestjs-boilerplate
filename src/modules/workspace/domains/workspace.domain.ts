@@ -138,7 +138,7 @@ export class WorkspaceDomain {
                     userId: input.userId,
                     workspaceId: input.workspaceContext.workspaceId,
                     name: input.workspaceContext.name,
-                    slug: input.workspaceContext.slugCandidates[slugAttempt],
+                    slug: input.workspaceContext.slugCandidates[slugAttempt]!,
                 },
             ];
         });
@@ -169,7 +169,7 @@ export class WorkspaceDomain {
                 this.userOnboardingDomain.buildOnboardingActivities(
                     mode,
                     input,
-                    users[index]
+                    users[index]!
                 );
 
             for (const activity of onboardingActivities) {
@@ -245,7 +245,13 @@ export class WorkspaceDomain {
         slug: string,
         workspaceId: string
     ): Promise<Workspace> {
-        return this.createInTx(tx, ownerId, { name }, slug, workspaceId);
+        return this.createInTx(
+            tx,
+            ownerId,
+            { name, description: null, isPublic: null },
+            slug,
+            workspaceId
+        );
     }
 
     async createOwnedForUsersInTx(
@@ -327,7 +333,7 @@ export class WorkspaceDomain {
                                     input.userId,
                                     input.createdBy
                                 );
-                            rows.push({ ...users[index], twoFactor });
+                            rows.push({ ...users[index]!, twoFactor });
                         }
 
                         const ownedUsers = this.buildOwnedUsers(
@@ -592,7 +598,7 @@ export class WorkspaceDomain {
     ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.workspaceRepository.findWithPaginationOffsetByAdmin(
             pagination,
-            isPublic
+            isPublic ?? null
         );
     }
 

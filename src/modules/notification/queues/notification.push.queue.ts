@@ -7,7 +7,7 @@ import {
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
-    INotificationPushCleanupTokenQueuePayload,
+    INotificationPushCleanupTokenPayload,
     INotificationPushQueuePayload,
     INotificationSendPushPayload,
     INotificationTemporaryPasswordPushPayload,
@@ -89,6 +89,7 @@ export class NotificationPushQueue {
     ): Promise<void> {
         const payload: INotificationPushQueuePayload = {
             send: sendPayload,
+            data: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -117,6 +118,7 @@ export class NotificationPushQueue {
     ): Promise<void> {
         const payload: INotificationPushQueuePayload = {
             send: sendPayload,
+            data: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -321,8 +323,9 @@ export class NotificationPushQueue {
         failureTokens: string[]
     ): Promise<void> {
         if (failureTokens.length > 0) {
-            const payload: INotificationPushCleanupTokenQueuePayload = {
-                data: { failureTokens, userId },
+            const payload: INotificationPushCleanupTokenPayload = {
+                failureTokens,
+                userId,
             };
 
             const deduplicationId = this.helperStringService.fillPattern(

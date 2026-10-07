@@ -202,7 +202,12 @@ describe('ApiKeyHttpService', () => {
             const result = await service.createByAdmin(body);
 
             expect(result).toEqual({ data: created });
-            expect(apiKeyDomain.createByAdmin).toHaveBeenCalledWith(body);
+            expect(apiKeyDomain.createByAdmin).toHaveBeenCalledWith({
+                name: 'Acme Api Key',
+                type: EnumApiKeyType.default,
+                startAt: null,
+                endAt: null,
+            });
             expect(apiKeyUtil.mapCreate).toHaveBeenCalledWith(
                 apiKey,
                 'plain-secret'

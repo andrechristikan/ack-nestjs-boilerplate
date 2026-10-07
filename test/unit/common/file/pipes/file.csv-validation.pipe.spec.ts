@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { z } from 'zod';
+import { chunk } from 'lodash-es';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { FileCsvValidationPipe } from '@common/file/pipes/file.csv-validation.pipe';
 import { FileImportException } from '@common/file/exceptions/file.import.exception';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
@@ -19,11 +21,16 @@ describe('FileCsvValidationPipe', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as unknown as ConfigService['get'],
     });
+    const helperArrayService: MockProxy<HelperArrayService> =
+        mock<HelperArrayService>();
     const metadata = {} as ArgumentMetadata;
 
     beforeEach(() => {
         vi.resetAllMocks();
         configGet.mockReturnValue(5);
+        helperArrayService.chunk.mockImplementation((rows, size) =>
+            chunk(rows, size)
+        );
     });
 
     describe('constructor', () => {
@@ -34,6 +41,10 @@ describe('FileCsvValidationPipe', () => {
                 providers: [
                     PipeClass,
                     { provide: ConfigService, useValue: configService },
+                    {
+                        provide: HelperArrayService,
+                        useValue: helperArrayService,
+                    },
                 ],
             }).compile();
             module.get(PipeClass);
@@ -45,7 +56,8 @@ describe('FileCsvValidationPipe', () => {
             await createFileCsvValidationPipe(
                 RowSchema,
                 { maxDataImportConfigKey: 'user.maxDataImport' },
-                configService
+                configService,
+                helperArrayService
             );
 
             expect(configGet).toHaveBeenCalledWith('user.maxDataImport');
@@ -57,7 +69,8 @@ describe('FileCsvValidationPipe', () => {
             const pipe = await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService
+                configService,
+                helperArrayService
             );
 
             const result = await pipe.transform(
@@ -72,7 +85,8 @@ describe('FileCsvValidationPipe', () => {
             const pipe = await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService
+                configService,
+                helperArrayService
             );
 
             const promise = pipe.transform([], metadata);
@@ -93,7 +107,8 @@ describe('FileCsvValidationPipe', () => {
             const pipe = await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService
+                configService,
+                helperArrayService
             );
 
             const promise = pipe.transform(
@@ -116,7 +131,8 @@ describe('FileCsvValidationPipe', () => {
             const pipe = await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService
+                configService,
+                helperArrayService
             );
 
             const result = await pipe.transform(
@@ -131,7 +147,8 @@ describe('FileCsvValidationPipe', () => {
             const pipe = await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService
+                configService,
+                helperArrayService
             );
             let caught: FileImportException | undefined;
 
@@ -154,8 +171,8 @@ describe('FileCsvValidationPipe', () => {
                 messagePath: 'file.error.validationDto',
             });
             expect(caught?.errors).toHaveLength(2);
-            expect(caught?.errors[0].row).toBe(1);
-            expect(caught?.errors[1].row).toBe(2);
+            expect(caught?.errors[0]!.row).toBe(1);
+            expect(caught?.errors[1]!.row).toBe(2);
         });
     });
 
@@ -164,7 +181,8 @@ describe('FileCsvValidationPipe', () => {
             const pipe = (await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService
+                configService,
+                helperArrayService
             )) as unknown as {
                 parse(value: unknown[]): Promise<unknown>;
             };
@@ -188,7 +206,8 @@ describe('FileCsvValidationPipe', () => {
             const pipe = (await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService
+                configService,
+                helperArrayService
             )) as unknown as {
                 validateRows(data: unknown[]): Promise<IRow[]>;
             };
@@ -205,7 +224,8 @@ describe('FileCsvValidationPipe', () => {
             const pipe = (await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService
+                configService,
+                helperArrayService
             )) as unknown as {
                 validateRows(data: unknown[]): Promise<IRow[]>;
             };
@@ -231,6 +251,38 @@ describe('FileCsvValidationPipe', () => {
                 messagePath: 'file.error.validationDto',
             });
             expect(caught?.errors).toHaveLength(2);
+        });
+
+        it('keeps absolute row indexes and input order for errors across chunks', async () => {
+            configGet.mockReturnValue(2);
+            const pipe = (await createFileCsvValidationPipe(
+                RowSchema,
+                {},
+                configService,
+                helperArrayService
+            )) as unknown as {
+                validateRows(data: unknown[]): Promise<IRow[]>;
+            };
+
+            await expect(
+                pipe['validateRows']([
+                    { name: 'a' },
+                    { name: 1 },
+                    { name: 'c' },
+                    { name: 2 },
+                    { name: 3 },
+                ])
+            ).rejects.toMatchObject({
+                errors: [
+                    expect.objectContaining({ row: 1 }),
+                    expect.objectContaining({ row: 3 }),
+                    expect.objectContaining({ row: 4 }),
+                ],
+            });
+            expect(helperArrayService.chunk).toHaveBeenCalledWith(
+                expect.any(Array),
+                2
+            );
         });
     });
 });

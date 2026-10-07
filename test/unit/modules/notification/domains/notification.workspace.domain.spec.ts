@@ -244,6 +244,8 @@ describe('NotificationWorkspaceDomain', () => {
                     email: user.email,
                     username: user.username,
                     notificationId: 'notification-id',
+                    cc: [],
+                    bcc: [],
                 },
                 data
             );

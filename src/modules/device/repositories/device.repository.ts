@@ -36,9 +36,9 @@ export class DeviceRepository implements IDeviceRepository {
                 fingerprint,
             },
             update: {
-                name,
+                ...(name !== null && { name }),
                 platform: devicePlatform,
-                notificationToken,
+                ...(notificationToken !== null && { notificationToken }),
                 lastActiveAt: now,
                 notificationProvider,
                 updatedBy: userId,
@@ -84,10 +84,10 @@ export class DeviceRepository implements IDeviceRepository {
         await tx.device.update({
             where: { id: deviceId },
             data: {
-                name,
-                platform,
+                ...(name !== null && { name }),
+                ...(platform !== null && { platform }),
                 notificationProvider,
-                notificationToken,
+                ...(notificationToken !== null && { notificationToken }),
                 lastActiveAt: now,
             },
         });

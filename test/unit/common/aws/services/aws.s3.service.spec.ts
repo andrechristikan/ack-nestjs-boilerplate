@@ -1164,54 +1164,39 @@ describe('AwsS3Service', () => {
             );
         });
 
-        it('presigns when the head check reports the key missing', async () => {
+        it('signs without probing the object', async () => {
             const service = await createInitializedAwsS3Service(
                 configValues,
                 {},
                 s3Doubles
             );
-            send.mockRejectedValueOnce(notFoundError);
 
-            await expect(
-                service.presignGetItem('users/avatar.jpg', {
-                    access: EnumAwsS3Accessibility.public,
-                })
-            ).resolves.toMatchObject({
-                key: 'users/avatar.jpg',
-                presignUrl: 'https://presigned.example.com',
-                expiredInSeconds: 1800,
+            await service.presignGetItem('user/file.png', {
+                access: EnumAwsS3Accessibility.public,
             });
+
+            expect(send).not.toHaveBeenCalled();
+            expect(getSignedUrl).toHaveBeenCalledTimes(1);
         });
 
-        it('presigns when the head check succeeds', async () => {
+        it('returns the presign with the default expiry', async () => {
             const service = await createInitializedAwsS3Service(
                 configValues,
                 {},
                 s3Doubles
             );
-            send.mockResolvedValueOnce({});
 
             await expect(
                 service.presignGetItem('users/avatar.jpg', {
                     access: EnumAwsS3Accessibility.public,
                 })
-            ).resolves.toMatchObject({ key: 'users/avatar.jpg' });
-        });
-
-        it('rethrows an unrelated head-check error', async () => {
-            const service = await createInitializedAwsS3Service(
-                configValues,
-                {},
-                s3Doubles
-            );
-            const error = new Error('network down');
-            send.mockRejectedValueOnce(error);
-
-            await expect(
-                service.presignGetItem('users/avatar.jpg', {
-                    access: EnumAwsS3Accessibility.public,
-                })
-            ).rejects.toBe(error);
+            ).resolves.toEqual({
+                expiredInSeconds: 1800,
+                presignUrl: 'https://presigned.example.com',
+                key: 'users/avatar.jpg',
+                mime: 'image/jpeg',
+                extension: 'jpg',
+            });
         });
 
         it('uses the given expiry over the default', async () => {
@@ -1220,8 +1205,6 @@ describe('AwsS3Service', () => {
                 {},
                 s3Doubles
             );
-            send.mockRejectedValueOnce(notFoundError);
-
             const result = await service.presignGetItem('users/avatar.jpg', {
                 access: EnumAwsS3Accessibility.public,
                 expiredInSeconds: 60,
@@ -1620,7 +1603,7 @@ describe('AwsS3Service', () => {
 
             await expectAwsS3KeyInvalid(
                 service.copyItems(
-                    [{ ...sources[0], key: '/users/one.jpg' }],
+                    [{ ...sources[0]!, key: '/users/one.jpg' }],
                     'archive',
                     { access: EnumAwsS3Accessibility.public }
                 )

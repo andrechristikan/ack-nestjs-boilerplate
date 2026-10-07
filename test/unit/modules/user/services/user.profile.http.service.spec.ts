@@ -132,6 +132,24 @@ describe('UserProfileHttpService', () => {
                 }
             );
         });
+
+        it('passes a null name when the dto omits it', async () => {
+            const dto: UserUpdateProfileRequestDto = {
+                countryId: 'country-sable',
+                gender: EnumUserGender.male,
+            };
+
+            await service.updateProfile('user-sable', dto);
+
+            expect(userProfileDomain.updateProfile).toHaveBeenCalledWith(
+                'user-sable',
+                {
+                    countryId: dto.countryId,
+                    gender: dto.gender,
+                    name: null,
+                }
+            );
+        });
     });
 
     describe('generatePhotoProfilePresign', () => {

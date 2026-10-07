@@ -18,7 +18,7 @@ describe('PaginationInvalidCursorFormatException', () => {
                     ],
                 httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
                 messagePath: 'pagination.error.invalidCursorFormat',
-                messageProperties: undefined,
+                messageProperties: null,
             });
         });
 

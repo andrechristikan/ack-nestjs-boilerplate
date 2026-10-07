@@ -114,9 +114,7 @@ describe('AuthSocialDomain', () => {
 
         it('throws when the payload has no email', async () => {
             verifyIdTokenMock.mockResolvedValue({
-                getPayload: vi
-                    .fn()
-                    .mockReturnValue({ email: undefined } as TokenPayload),
+                getPayload: vi.fn().mockReturnValue({} as TokenPayload),
             });
 
             const rejection = domain.verifyGoogle('id-token');

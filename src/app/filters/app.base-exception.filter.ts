@@ -51,7 +51,9 @@ export class AppBaseExceptionFilter implements ExceptionFilter {
             exception.messagePath,
             {
                 customLanguage: metadata.language,
-                properties: exception.messageProperties,
+                ...(exception.messageProperties !== null && {
+                    properties: exception.messageProperties,
+                }),
             }
         );
 

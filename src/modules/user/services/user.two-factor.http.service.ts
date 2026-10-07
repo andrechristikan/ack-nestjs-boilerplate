@@ -33,7 +33,11 @@ export class UserTwoFactorHttpService {
     > {
         const tokens = await this.userTwoFactorDomain.loginVerifyTwoFactor(
             challengeToken,
-            { code, backupCode, method }
+            {
+                code: code ?? null,
+                backupCode: backupCode ?? null,
+                method,
+            }
         );
 
         return { data: tokens };
@@ -92,8 +96,8 @@ export class UserTwoFactorHttpService {
         { code, backupCode, method }: UserTwoFactorDisableRequestDto
     ): Promise<IResponseReturn<void>> {
         await this.userTwoFactorDomain.disableTwoFactor(user, {
-            code,
-            backupCode,
+            code: code ?? null,
+            backupCode: backupCode ?? null,
             method,
         });
 

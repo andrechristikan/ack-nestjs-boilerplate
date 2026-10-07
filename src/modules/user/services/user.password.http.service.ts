@@ -32,9 +32,9 @@ export class UserPasswordHttpService {
         await this.userPasswordDomain.changePassword(user, {
             newPassword,
             oldPassword,
-            backupCode,
-            code,
-            method,
+            backupCode: backupCode ?? null,
+            code: code ?? null,
+            method: method ?? null,
         });
 
         return {};
@@ -58,9 +58,9 @@ export class UserPasswordHttpService {
         await this.userPasswordDomain.resetPassword({
             newPassword,
             token,
-            backupCode,
-            code,
-            method,
+            backupCode: backupCode ?? null,
+            code: code ?? null,
+            method: method ?? null,
         });
 
         return {};

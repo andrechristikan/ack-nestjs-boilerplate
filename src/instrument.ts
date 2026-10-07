@@ -54,7 +54,7 @@ function isExcludedUrl(url: string | undefined, patterns: string[]): boolean {
     try {
         pathname = new URL(url).pathname;
     } catch {
-        pathname = url.split('?')[0].split('#')[0];
+        pathname = url.split('?')[0]!.split('#')[0]!;
     }
 
     const normalizedPath = pathname.toLowerCase();
@@ -95,13 +95,13 @@ function maskUrl(url: string): string {
         const parsed = new URL(url);
         return `${parsed.origin}${maskPath(parsed.pathname)}`;
     } catch {
-        return maskPath(url.split('?')[0].split('#')[0]);
+        return maskPath(url.split('?')[0]!.split('#')[0]!);
     }
 }
 
-function maskName(name: string | undefined): string | undefined {
-    const separator = name?.indexOf(' ') ?? -1;
-    if (!name || separator === -1) {
+function maskName(name: string): string {
+    const separator = name.indexOf(' ');
+    if (separator === -1) {
         return name;
     }
 
@@ -129,7 +129,7 @@ function isSensitiveHeaderAttribute(key: string): boolean {
         return false;
     }
 
-    const header = key.slice(prefix.length).split('.')[0];
+    const header = key.slice(prefix.length).split('.')[0]!;
     return isSensitiveKey(header.replaceAll('_', '-'));
 }
 
@@ -257,11 +257,15 @@ function scrubRequest(request: RequestEventData | undefined): void {
 
 function scrubEvent<T extends Event>(event: T): T {
     scrubRequest(event.request);
-    event.transaction = maskName(event.transaction);
+    if (event.transaction) {
+        event.transaction = maskName(event.transaction);
+    }
     scrubData(event.contexts?.trace?.data);
 
     for (const span of event.spans ?? []) {
-        span.description = maskName(span.description);
+        if (span.description) {
+            span.description = maskName(span.description);
+        }
         scrubData(span.data);
     }
 

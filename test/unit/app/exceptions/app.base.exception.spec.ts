@@ -13,11 +13,11 @@ describe('AppBaseException', () => {
             expect(exception.messagePath).toBe('request.error.validation');
         });
 
-        it('leaves every optional member undefined when no options are given', () => {
+        it('sets messageProperties and metadata to null and leaves rawError and data undefined when no options are given', () => {
             const exception = new RequestValidationException([]);
 
-            expect(exception.messageProperties).toBeUndefined();
-            expect(exception.metadata).toBeUndefined();
+            expect(exception.messageProperties).toBeNull();
+            expect(exception.metadata).toBeNull();
             expect(exception.rawError).toBeUndefined();
             expect(exception.data).toBeUndefined();
         });
@@ -28,8 +28,8 @@ describe('AppBaseException', () => {
             const exception = new AppUnknownException(rawError);
 
             expect(exception.rawError).toBe(rawError);
-            expect(exception.messageProperties).toBeUndefined();
-            expect(exception.metadata).toBeUndefined();
+            expect(exception.messageProperties).toBeNull();
+            expect(exception.metadata).toBeNull();
             expect(exception.data).toBeUndefined();
         });
 
@@ -54,7 +54,7 @@ describe('AppBaseException', () => {
 
             expect(exception.metadata).toBe(metadata);
             expect(exception.data).toBe(data);
-            expect(exception.messageProperties).toBeUndefined();
+            expect(exception.messageProperties).toBeNull();
             expect(exception.rawError).toBeUndefined();
         });
     });

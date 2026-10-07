@@ -35,6 +35,7 @@ import type {
     IAnalyticBackupCodeNewDevice,
     IAnalyticCredentialStuffing,
     IAnalyticForgotPasswordAbuse,
+    IAnalyticFraudCredentialStuffingSummary,
     IAnalyticFraudRiskScore,
     IAnalyticFraudSummary,
     IAnalyticMassRegistration,
@@ -44,6 +45,7 @@ import type {
     IAnalyticSharedFingerprint,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
+import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -56,10 +58,10 @@ export class AnalyticFraudHttpService {
     ) {}
 
     async credentialStuffingSummary(
-        windowMs?: number
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
+        query: AnalyticWindowRequestDto
+    ): Promise<IResponseReturn<IAnalyticFraudCredentialStuffingSummary>> {
         const data = await this.analyticFraudDomain.credentialStuffingSummary(
-            windowMs ?? null
+            query.windowMs ?? null
         );
 
         return { data };
@@ -85,13 +87,10 @@ export class AnalyticFraudHttpService {
     }
 
     async accountTakeoverSummary(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticFraudDomain.accountTakeoverSummary(
             range.startDate,
             range.endDate
@@ -123,10 +122,10 @@ export class AnalyticFraudHttpService {
     }
 
     async massRegistrationSummary(
-        windowMs?: number
+        query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         const data = await this.analyticFraudDomain.massRegistrationSummary(
-            windowMs ?? null
+            query.windowMs ?? null
         );
 
         return { data };
@@ -148,11 +147,11 @@ export class AnalyticFraudHttpService {
     }
 
     async passwordResetEnumerationSummary(
-        windowMs?: number
+        query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         const data =
             await this.analyticFraudDomain.passwordResetEnumerationSummary(
-                windowMs ?? null
+                query.windowMs ?? null
             );
 
         return { data };
@@ -200,13 +199,10 @@ export class AnalyticFraudHttpService {
     }
 
     async sessionAfterAdminSummary(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticFraudDomain.sessionAfterAdminSummary(
             range.startDate,
             range.endDate
@@ -238,11 +234,11 @@ export class AnalyticFraudHttpService {
     }
 
     async forgotPasswordTokenAbuseSummary(
-        windowMs?: number
+        query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         const data =
             await this.analyticFraudDomain.forgotPasswordTokenAbuseSummary(
-                windowMs ?? null
+                query.windowMs ?? null
             );
 
         return { data };
@@ -268,10 +264,10 @@ export class AnalyticFraudHttpService {
     }
 
     async refreshSpikeSummary(
-        windowMs?: number
+        query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         const data = await this.analyticFraudDomain.refreshSpikeSummary(
-            windowMs ?? null
+            query.windowMs ?? null
         );
 
         return { data };
@@ -296,10 +292,10 @@ export class AnalyticFraudHttpService {
     }
 
     async backupCodeNewDeviceSummary(
-        windowMs?: number
+        query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         const data = await this.analyticFraudDomain.backupCodeNewDeviceSummary(
-            windowMs ?? null
+            query.windowMs ?? null
         );
 
         return { data };
@@ -325,10 +321,10 @@ export class AnalyticFraudHttpService {
     }
 
     async apiKeyBurstSummary(
-        windowMs?: number
+        query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         const data = await this.analyticFraudDomain.apiKeyBurstSummary(
-            windowMs ?? null
+            query.windowMs ?? null
         );
 
         return { data };

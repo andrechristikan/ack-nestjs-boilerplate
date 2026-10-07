@@ -114,7 +114,7 @@ export class WorkspaceInviteDomain {
     }
 
     private createInviteTokenData(
-        expiryDurationInDays?: number
+        expiryDurationInDays: number | null
     ): IWorkspaceInviteTokenData {
         const token = this.helperStringService.random(this.inviteTokenLength);
         const hashedToken = this.helperHashService.sha256Hash(token);
@@ -207,12 +207,12 @@ export class WorkspaceInviteDomain {
         username: string
     ): Promise<IUserSignUpWorkspaceContext> {
         if (!inviteToken) {
-            const [personalContext] =
+            const personalContexts =
                 this.userOnboardingDomain.buildPersonalWorkspaceContexts([
                     username,
                 ]);
 
-            return personalContext;
+            return personalContexts[0]!;
         }
 
         // Sequential by design: gate before the work it guards
@@ -253,7 +253,7 @@ export class WorkspaceInviteDomain {
         return this.workspaceInviteRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
-            status
+            status ?? null
         );
     }
 
@@ -354,7 +354,7 @@ export class WorkspaceInviteDomain {
         workspace: Workspace,
         actorId: string,
         workspaceInviteId: string,
-        expiryDuration?: EnumWorkspaceInviteExpiry
+        expiryDuration: EnumWorkspaceInviteExpiry | null
     ): Promise<WorkspaceInvite> {
         // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();

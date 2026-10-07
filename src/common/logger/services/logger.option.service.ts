@@ -64,7 +64,7 @@ export class LoggerOptionService {
         ).flat();
     }
 
-    private buildTransports(): Options['transport'] {
+    private buildTransports(): NonNullable<Options['transport']> | null {
         const transport: {
             targets: {
                 target: string;
@@ -104,8 +104,8 @@ export class LoggerOptionService {
         }
 
         return transport.targets.length > 0
-            ? (transport as unknown as Options['transport'])
-            : undefined;
+            ? (transport as unknown as NonNullable<Options['transport']>)
+            : null;
     }
 
     private createLogFormatter(): (
@@ -269,12 +269,12 @@ export class LoggerOptionService {
                 timestamp: false,
                 wrapSerializers: false,
                 base: null,
-                transport: transports,
+                ...(transports !== null && { transport: transports }),
                 level: this.enable ? this.level : 'silent',
                 redact: redactionConfig,
                 serializers,
                 autoLogging: autoLoggingConfig,
-            } as unknown as Params['pinoHttp'],
+            } as unknown as NonNullable<Params['pinoHttp']>,
         };
     }
 }

@@ -44,7 +44,7 @@ export class SessionDomain {
         return this.sessionRepository.findWithPaginationOffsetByAdmin(
             userId,
             pagination,
-            isRevoked
+            isRevoked ?? null
         );
     }
 

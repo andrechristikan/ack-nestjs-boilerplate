@@ -120,7 +120,7 @@ describe('RequestThrottleUserInterceptor', () => {
             const httpArgumentsHost: MockProxy<HttpArgumentsHost> =
                 mock<HttpArgumentsHost>();
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
-            request.user = undefined;
+            Reflect.set(request, 'user', undefined);
             const callHandler: MockProxy<CallHandler> = mock<CallHandler>();
             callHandler.handle.mockReturnValue(of('handled'));
             requestStoreService.get.mockReturnValue(false);

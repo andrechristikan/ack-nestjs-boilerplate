@@ -22,7 +22,7 @@ export class UserUtil {
 
         const availableLanguages = this.configService.get<string[]>(
             'message.availableLanguage'
-        );
+        )!;
         this.profanity = new Profanity({
             languages: availableLanguages,
             wholeWord: false,

@@ -1,39 +1,36 @@
 import { AnalyticAnomalySummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-summary.response.dto';
 
 describe('AnalyticAnomalySummaryResponseSchema', () => {
-    const row = {
-        count: 4,
-        window: '3600000',
-        meta: {
-            minDistanceKm: 500,
-            maxDeltaInMs: 3600000,
-            minUniqueAccounts: 5,
-            nearLockoutMinAttempt: 3,
-            bucketCount: 2,
-            avg: 1.5,
-            stdDev: 0.25,
-            zScoreThreshold: 3,
-        },
-    };
+    const summary = { count: 1, window: 'window-token' };
 
-    it('parses a row into exactly the declared fields', () => {
-        const result = AnalyticAnomalySummaryResponseSchema.parse(row);
+    it('parses a summary into exactly the declared fields', () => {
+        const result = AnalyticAnomalySummaryResponseSchema.parse(summary);
 
-        expect(result).toEqual(row);
-    });
-
-    it('parses a count-only row when optional fields are omitted', () => {
-        const result = AnalyticAnomalySummaryResponseSchema.parse({ count: 0 });
-
-        expect(result).toEqual({ count: 0 });
+        expect(result).toEqual(summary);
     });
 
     it('strips an undeclared key', () => {
         const result = AnalyticAnomalySummaryResponseSchema.parse({
-            ...row,
+            ...summary,
+            meta: { avg: 1 },
             sessions: [{ id: 'session-1' }],
         });
 
-        expect(result).toEqual(row);
+        expect(result).toEqual(summary);
+    });
+
+    it('rejects a cached summary without the window key', () => {
+        expect(() =>
+            AnalyticAnomalySummaryResponseSchema.parse({ count: 1 })
+        ).toThrow();
+    });
+
+    it('accepts a null window', () => {
+        expect(
+            AnalyticAnomalySummaryResponseSchema.parse({
+                ...summary,
+                window: null,
+            })
+        ).toEqual({ ...summary, window: null });
     });
 });

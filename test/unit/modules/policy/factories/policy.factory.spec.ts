@@ -7,7 +7,6 @@ import {
 import type { Policy } from '@generated/prisma-client/client';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
-import type { IPolicyAbilitySubject } from '@modules/policy/interfaces/policy.interface';
 
 describe('PolicyAbilityFactory', () => {
     let factory: PolicyAbilityFactory;
@@ -50,32 +49,6 @@ describe('PolicyAbilityFactory', () => {
             expect(
                 ability.can(EnumPolicyAction.manage, EnumPolicySubject.user)
             ).toBe(false);
-        });
-
-        it('detects the subject type of an object instance through its constructor', () => {
-            const ability = factory.createByUser([
-                { ...policy, subject: EnumPolicySubject.user },
-            ]);
-            const userInstance = {
-                constructor: EnumPolicySubject.user,
-            } as unknown as IPolicyAbilitySubject;
-
-            expect(ability.can(EnumPolicyAction.manage, userInstance)).toBe(
-                true
-            );
-        });
-
-        it('denies an object instance whose constructor matches no granted subject', () => {
-            const ability = factory.createByUser([
-                { ...policy, subject: EnumPolicySubject.user },
-            ]);
-            const roleInstance = {
-                constructor: EnumPolicySubject.role,
-            } as unknown as IPolicyAbilitySubject;
-
-            expect(ability.can(EnumPolicyAction.manage, roleInstance)).toBe(
-                false
-            );
         });
     });
 

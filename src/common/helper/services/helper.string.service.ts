@@ -27,8 +27,8 @@ export class HelperStringService {
 
     private matchesGlob(path: string, pattern: string): boolean {
         const segments = pattern.split('*');
-        const head = segments[0];
-        const tail = segments[segments.length - 1];
+        const head = segments[0]!;
+        const tail = segments[segments.length - 1]!;
         if (
             path.length < head.length + tail.length ||
             !path.startsWith(head) ||
@@ -71,7 +71,7 @@ export class HelperStringService {
                     throw new HelperPatternTokenMissingException(token);
                 }
 
-                return values[token];
+                return values[token]!;
             }
         );
     }
@@ -120,7 +120,7 @@ export class HelperStringService {
             const urlObj = new URL(url);
             pathname = urlObj.pathname;
         } catch {
-            pathname = url.split('?')[0].split('#')[0];
+            pathname = url.split('?')[0]!.split('#')[0]!;
         }
 
         const normalizedPath = pathname.toLowerCase();

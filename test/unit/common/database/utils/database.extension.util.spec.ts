@@ -598,19 +598,19 @@ describe('DatabaseExtensionUtil', () => {
                 { createdBy: 'actor-1' },
             ]);
             expect(
-                (container.connectOrCreate as IDatabaseData[])[0].create
+                (container.connectOrCreate as IDatabaseData[])[0]!.create
             ).toMatchObject({ createdBy: 'actor-1' });
             expect(
-                (container.upsert as IDatabaseData[])[0].create
+                (container.upsert as IDatabaseData[])[0]!.create
             ).toMatchObject({ createdBy: 'actor-1' });
             expect(
-                (container.upsert as IDatabaseData[])[0].update
+                (container.upsert as IDatabaseData[])[0]!.update
             ).toMatchObject({ updatedBy: 'actor-1' });
             expect(
-                (container.update as IDatabaseData[])[0].data as IDatabaseData
+                (container.update as IDatabaseData[])[0]!.data as IDatabaseData
             ).toMatchObject({ updatedBy: 'actor-1' });
             expect(
-                (container.updateMany as IDatabaseData[])[0]
+                (container.updateMany as IDatabaseData[])[0]!
                     .data as IDatabaseData
             ).toMatchObject({ updatedBy: 'actor-1' });
         });

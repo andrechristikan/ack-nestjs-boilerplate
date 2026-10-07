@@ -78,7 +78,9 @@ describe('AnalyticFraudHttpService', () => {
                 meta: { minUniqueAccounts: 5 },
             });
 
-            const result = await service.credentialStuffingSummary(windowMs);
+            const result = await service.credentialStuffingSummary({
+                windowMs,
+            });
 
             expect(result).toEqual({
                 data: {
@@ -95,9 +97,11 @@ describe('AnalyticFraudHttpService', () => {
         it('passes null when windowMs is omitted', async () => {
             analyticFraudDomain.credentialStuffingSummary.mockResolvedValue({
                 count: 0,
+                window: null,
+                meta: { minUniqueAccounts: 5 },
             });
 
-            await service.credentialStuffingSummary();
+            await service.credentialStuffingSummary({});
 
             expect(
                 analyticFraudDomain.credentialStuffingSummary
@@ -152,7 +156,6 @@ describe('AnalyticFraudHttpService', () => {
             analyticFraudDomain.accountTakeoverSummary.mockResolvedValue({
                 count: 6,
                 window: '24h',
-                meta: { minUniqueAccounts: 5 },
             });
 
             const result = await service.accountTakeoverSummary(
@@ -164,7 +167,6 @@ describe('AnalyticFraudHttpService', () => {
                 data: {
                     count: 6,
                     window: '24h',
-                    meta: { minUniqueAccounts: 5 },
                 },
             });
             expect(
@@ -179,9 +181,10 @@ describe('AnalyticFraudHttpService', () => {
             });
             analyticFraudDomain.accountTakeoverSummary.mockResolvedValue({
                 count: 0,
+                window: null,
             });
 
-            await service.accountTakeoverSummary();
+            await service.accountTakeoverSummary(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -227,16 +230,14 @@ describe('AnalyticFraudHttpService', () => {
             analyticFraudDomain.massRegistrationSummary.mockResolvedValue({
                 count: 6,
                 window: '24h',
-                meta: { minUniqueAccounts: 5 },
             });
 
-            const result = await service.massRegistrationSummary(windowMs);
+            const result = await service.massRegistrationSummary({ windowMs });
 
             expect(result).toEqual({
                 data: {
                     count: 6,
                     window: '24h',
-                    meta: { minUniqueAccounts: 5 },
                 },
             });
             expect(
@@ -247,9 +248,10 @@ describe('AnalyticFraudHttpService', () => {
         it('passes null when windowMs is omitted', async () => {
             analyticFraudDomain.massRegistrationSummary.mockResolvedValue({
                 count: 0,
+                window: null,
             });
 
-            await service.massRegistrationSummary();
+            await service.massRegistrationSummary({});
 
             expect(
                 analyticFraudDomain.massRegistrationSummary
@@ -292,17 +294,17 @@ describe('AnalyticFraudHttpService', () => {
     describe('passwordResetEnumerationSummary', () => {
         it('wraps the domain result in the response envelope', async () => {
             analyticFraudDomain.passwordResetEnumerationSummary.mockResolvedValue(
-                { count: 6, window: '24h', meta: { minUniqueAccounts: 5 } }
+                { count: 6, window: '24h' }
             );
 
-            const result =
-                await service.passwordResetEnumerationSummary(windowMs);
+            const result = await service.passwordResetEnumerationSummary({
+                windowMs,
+            });
 
             expect(result).toEqual({
                 data: {
                     count: 6,
                     window: '24h',
-                    meta: { minUniqueAccounts: 5 },
                 },
             });
             expect(
@@ -312,10 +314,10 @@ describe('AnalyticFraudHttpService', () => {
 
         it('passes null when windowMs is omitted', async () => {
             analyticFraudDomain.passwordResetEnumerationSummary.mockResolvedValue(
-                { count: 0 }
+                { count: 0, window: null }
             );
 
-            await service.passwordResetEnumerationSummary();
+            await service.passwordResetEnumerationSummary({});
 
             expect(
                 analyticFraudDomain.passwordResetEnumerationSummary
@@ -367,7 +369,6 @@ describe('AnalyticFraudHttpService', () => {
             analyticFraudDomain.sharedFingerprintSummary.mockResolvedValue({
                 count: 6,
                 window: '24h',
-                meta: { minUniqueAccounts: 5 },
             });
 
             const result = await service.sharedFingerprintSummary();
@@ -376,7 +377,6 @@ describe('AnalyticFraudHttpService', () => {
                 data: {
                     count: 6,
                     window: '24h',
-                    meta: { minUniqueAccounts: 5 },
                 },
             });
             expect(
@@ -420,7 +420,6 @@ describe('AnalyticFraudHttpService', () => {
             analyticFraudDomain.sessionAfterAdminSummary.mockResolvedValue({
                 count: 6,
                 window: '24h',
-                meta: { minUniqueAccounts: 5 },
             });
 
             const result = await service.sessionAfterAdminSummary(
@@ -432,7 +431,6 @@ describe('AnalyticFraudHttpService', () => {
                 data: {
                     count: 6,
                     window: '24h',
-                    meta: { minUniqueAccounts: 5 },
                 },
             });
             expect(
@@ -447,9 +445,10 @@ describe('AnalyticFraudHttpService', () => {
             });
             analyticFraudDomain.sessionAfterAdminSummary.mockResolvedValue({
                 count: 0,
+                window: null,
             });
 
-            await service.sessionAfterAdminSummary();
+            await service.sessionAfterAdminSummary(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -493,17 +492,17 @@ describe('AnalyticFraudHttpService', () => {
     describe('forgotPasswordTokenAbuseSummary', () => {
         it('wraps the domain result in the response envelope', async () => {
             analyticFraudDomain.forgotPasswordTokenAbuseSummary.mockResolvedValue(
-                { count: 6, window: '24h', meta: { minUniqueAccounts: 5 } }
+                { count: 6, window: '24h' }
             );
 
-            const result =
-                await service.forgotPasswordTokenAbuseSummary(windowMs);
+            const result = await service.forgotPasswordTokenAbuseSummary({
+                windowMs,
+            });
 
             expect(result).toEqual({
                 data: {
                     count: 6,
                     window: '24h',
-                    meta: { minUniqueAccounts: 5 },
                 },
             });
             expect(
@@ -513,10 +512,10 @@ describe('AnalyticFraudHttpService', () => {
 
         it('passes null when windowMs is omitted', async () => {
             analyticFraudDomain.forgotPasswordTokenAbuseSummary.mockResolvedValue(
-                { count: 0 }
+                { count: 0, window: null }
             );
 
-            await service.forgotPasswordTokenAbuseSummary();
+            await service.forgotPasswordTokenAbuseSummary({});
 
             expect(
                 analyticFraudDomain.forgotPasswordTokenAbuseSummary
@@ -568,16 +567,14 @@ describe('AnalyticFraudHttpService', () => {
             analyticFraudDomain.refreshSpikeSummary.mockResolvedValue({
                 count: 6,
                 window: '24h',
-                meta: { minUniqueAccounts: 5 },
             });
 
-            const result = await service.refreshSpikeSummary(windowMs);
+            const result = await service.refreshSpikeSummary({ windowMs });
 
             expect(result).toEqual({
                 data: {
                     count: 6,
                     window: '24h',
-                    meta: { minUniqueAccounts: 5 },
                 },
             });
             expect(
@@ -588,9 +585,10 @@ describe('AnalyticFraudHttpService', () => {
         it('passes null when windowMs is omitted', async () => {
             analyticFraudDomain.refreshSpikeSummary.mockResolvedValue({
                 count: 0,
+                window: null,
             });
 
-            await service.refreshSpikeSummary();
+            await service.refreshSpikeSummary({});
 
             expect(
                 analyticFraudDomain.refreshSpikeSummary
@@ -637,16 +635,16 @@ describe('AnalyticFraudHttpService', () => {
             analyticFraudDomain.backupCodeNewDeviceSummary.mockResolvedValue({
                 count: 6,
                 window: '24h',
-                meta: { minUniqueAccounts: 5 },
             });
 
-            const result = await service.backupCodeNewDeviceSummary(windowMs);
+            const result = await service.backupCodeNewDeviceSummary({
+                windowMs,
+            });
 
             expect(result).toEqual({
                 data: {
                     count: 6,
                     window: '24h',
-                    meta: { minUniqueAccounts: 5 },
                 },
             });
             expect(
@@ -657,9 +655,10 @@ describe('AnalyticFraudHttpService', () => {
         it('passes null when windowMs is omitted', async () => {
             analyticFraudDomain.backupCodeNewDeviceSummary.mockResolvedValue({
                 count: 0,
+                window: null,
             });
 
-            await service.backupCodeNewDeviceSummary();
+            await service.backupCodeNewDeviceSummary({});
 
             expect(
                 analyticFraudDomain.backupCodeNewDeviceSummary
@@ -704,16 +703,14 @@ describe('AnalyticFraudHttpService', () => {
             analyticFraudDomain.apiKeyBurstSummary.mockResolvedValue({
                 count: 6,
                 window: '24h',
-                meta: { minUniqueAccounts: 5 },
             });
 
-            const result = await service.apiKeyBurstSummary(windowMs);
+            const result = await service.apiKeyBurstSummary({ windowMs });
 
             expect(result).toEqual({
                 data: {
                     count: 6,
                     window: '24h',
-                    meta: { minUniqueAccounts: 5 },
                 },
             });
             expect(analyticFraudDomain.apiKeyBurstSummary).toHaveBeenCalledWith(
@@ -724,9 +721,10 @@ describe('AnalyticFraudHttpService', () => {
         it('passes null when windowMs is omitted', async () => {
             analyticFraudDomain.apiKeyBurstSummary.mockResolvedValue({
                 count: 0,
+                window: null,
             });
 
-            await service.apiKeyBurstSummary();
+            await service.apiKeyBurstSummary({});
 
             expect(analyticFraudDomain.apiKeyBurstSummary).toHaveBeenCalledWith(
                 null

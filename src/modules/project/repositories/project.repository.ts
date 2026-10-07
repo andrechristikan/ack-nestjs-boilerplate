@@ -11,8 +11,10 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { Prisma } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
-import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
-import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
+import type {
+    IProjectCreate,
+    IProjectUpdate,
+} from '@modules/project/interfaces/project.interface';
 import type { IProjectRepository } from '@modules/project/interfaces/project.repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -107,7 +109,7 @@ export class ProjectRepository implements IProjectRepository {
 
     async create(
         workspaceId: string,
-        { name, description }: ProjectCreateRequestDto,
+        { name, description }: IProjectCreate,
         slugCandidates: string[]
     ): Promise<Project> {
         for (const slug of slugCandidates) {
@@ -137,13 +139,13 @@ export class ProjectRepository implements IProjectRepository {
 
     async updateDetails(
         projectId: string,
-        { name, description }: ProjectUpdateRequestDto
+        { name, description }: IProjectUpdate
     ): Promise<Project> {
         return this.databaseService.client.project.update({
             where: { id: projectId },
             data: {
-                name,
-                description,
+                ...(name !== null && { name }),
+                ...(description !== null && { description }),
             },
         });
     }

@@ -10,6 +10,11 @@ import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-c
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import type {
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -23,7 +28,7 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
+import type { Prisma, TermPolicy } from '@generated/prisma-client/client';
 import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
@@ -96,6 +101,9 @@ describe('TermPolicyDomain', () => {
         action: EnumActivityLogAction.adminTermPolicyCreate,
         metadata: {},
         onError: false,
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
     };
 
     let domain: TermPolicyDomain;
@@ -196,6 +204,31 @@ describe('TermPolicyDomain', () => {
                 { status: { in: ['draft'] } }
             );
         });
+
+        it('passes null filters when none is given', async () => {
+            const pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput> =
+                { skip: 0, limit: 20, orderBy: [] };
+            const page: IResponsePaginationReturn<TermPolicy> = {
+                type: EnumPaginationType.offset,
+                count: 0,
+                perPage: 20,
+                page: 1,
+                totalPage: 0,
+                hasNext: false,
+                hasPrevious: false,
+                data: [],
+            };
+            termPolicyRepository.find.mockResolvedValue(page);
+
+            const result = await domain.getListByAdmin(pagination);
+
+            expect(result).toBe(page);
+            expect(termPolicyRepository.find).toHaveBeenCalledWith(
+                pagination,
+                null,
+                null
+            );
+        });
     });
 
     describe('getListPublished', () => {
@@ -217,6 +250,26 @@ describe('TermPolicyDomain', () => {
             expect(termPolicyRepository.findPublished).toHaveBeenCalledWith(
                 params,
                 { type: { in: ['privacy'] } }
+            );
+        });
+
+        it('passes a null type filter when none is given', async () => {
+            const pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput> =
+                { limit: 20, orderBy: [] };
+            const page: IResponsePaginationReturn<TermPolicy> = {
+                type: EnumPaginationType.cursor,
+                perPage: 20,
+                hasNext: false,
+                data: [],
+            };
+            termPolicyRepository.findPublished.mockResolvedValue(page);
+
+            const result = await domain.getListPublished(pagination);
+
+            expect(result).toBe(page);
+            expect(termPolicyRepository.findPublished).toHaveBeenCalledWith(
+                pagination,
+                null
             );
         });
     });

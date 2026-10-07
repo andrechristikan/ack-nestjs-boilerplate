@@ -78,16 +78,25 @@ describe('AnalyticAnomalyHttpService', () => {
             analyticAnomalyDomain.impossibleTravelSummary.mockResolvedValue({
                 count: 4,
                 window: '1h',
-                meta: { minDistanceKm: 100 },
+                meta: { minDistanceKm: 100, maxDeltaInMs: 600000 },
             });
 
-            const result = await service.impossibleTravelSummary(
+            const result = await service.impossibleTravelSummary({
+                startDate,
+                endDate,
+            });
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
 
             expect(result).toEqual({
-                data: { count: 4, window: '1h', meta: { minDistanceKm: 100 } },
+                data: {
+                    count: 4,
+                    window: '1h',
+                    meta: { minDistanceKm: 100, maxDeltaInMs: 600000 },
+                },
             });
             expect(
                 analyticAnomalyDomain.impossibleTravelSummary
@@ -101,9 +110,16 @@ describe('AnalyticAnomalyHttpService', () => {
             });
             analyticAnomalyDomain.impossibleTravelSummary.mockResolvedValue({
                 count: 0,
+                window: null,
+                meta: { minDistanceKm: 100, maxDeltaInMs: 600000 },
             });
 
-            await service.impossibleTravelSummary();
+            await service.impossibleTravelSummary({});
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
 
             expect(
                 analyticAnomalyDomain.impossibleTravelSummary
@@ -176,13 +192,17 @@ describe('AnalyticAnomalyHttpService', () => {
             analyticAnomalyDomain.loginSpikeIpSummary.mockResolvedValue({
                 count: 4,
                 window: '1h',
-                meta: { minDistanceKm: 100 },
+                meta: { minUniqueAccounts: 5 },
             });
 
-            const result = await service.loginSpikeIpSummary(windowMs);
+            const result = await service.loginSpikeIpSummary({ windowMs });
 
             expect(result).toEqual({
-                data: { count: 4, window: '1h', meta: { minDistanceKm: 100 } },
+                data: {
+                    count: 4,
+                    window: '1h',
+                    meta: { minUniqueAccounts: 5 },
+                },
             });
             expect(
                 analyticAnomalyDomain.loginSpikeIpSummary
@@ -192,9 +212,11 @@ describe('AnalyticAnomalyHttpService', () => {
         it('passes null when windowMs is omitted', async () => {
             analyticAnomalyDomain.loginSpikeIpSummary.mockResolvedValue({
                 count: 0,
+                window: null,
+                meta: { minUniqueAccounts: 5 },
             });
 
-            await service.loginSpikeIpSummary();
+            await service.loginSpikeIpSummary({});
 
             expect(
                 analyticAnomalyDomain.loginSpikeIpSummary
@@ -256,13 +278,17 @@ describe('AnalyticAnomalyHttpService', () => {
             analyticAnomalyDomain.failedLoginSpikeSummary.mockResolvedValue({
                 count: 4,
                 window: '1h',
-                meta: { minDistanceKm: 100 },
+                meta: { nearLockoutMinAttempt: 4, bucketCount: 2 },
             });
 
             const result = await service.failedLoginSpikeSummary();
 
             expect(result).toEqual({
-                data: { count: 4, window: '1h', meta: { minDistanceKm: 100 } },
+                data: {
+                    count: 4,
+                    window: '1h',
+                    meta: { nearLockoutMinAttempt: 4, bucketCount: 2 },
+                },
             });
             expect(
                 analyticAnomalyDomain.failedLoginSpikeSummary
@@ -303,13 +329,17 @@ describe('AnalyticAnomalyHttpService', () => {
             analyticAnomalyDomain.deviceProliferationSummary.mockResolvedValue({
                 count: 4,
                 window: '1h',
-                meta: { minDistanceKm: 100 },
+                meta: { avg: 2, stdDev: 0.5, zScoreThreshold: 3 },
             });
 
             const result = await service.deviceProliferationSummary();
 
             expect(result).toEqual({
-                data: { count: 4, window: '1h', meta: { minDistanceKm: 100 } },
+                data: {
+                    count: 4,
+                    window: '1h',
+                    meta: { avg: 2, stdDev: 0.5, zScoreThreshold: 3 },
+                },
             });
             expect(
                 analyticAnomalyDomain.deviceProliferationSummary
@@ -354,13 +384,20 @@ describe('AnalyticAnomalyHttpService', () => {
             analyticAnomalyDomain.loginTimeSummary.mockResolvedValue({
                 count: 4,
                 window: '1h',
-                meta: { minDistanceKm: 100 },
             });
 
-            const result = await service.loginTimeSummary(startDate, endDate);
+            const result = await service.loginTimeSummary({
+                startDate,
+                endDate,
+            });
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                startDate,
+                endDate
+            );
 
             expect(result).toEqual({
-                data: { count: 4, window: '1h', meta: { minDistanceKm: 100 } },
+                data: { count: 4, window: '1h' },
             });
             expect(analyticAnomalyDomain.loginTimeSummary).toHaveBeenCalledWith(
                 startDate,
@@ -375,9 +412,15 @@ describe('AnalyticAnomalyHttpService', () => {
             });
             analyticAnomalyDomain.loginTimeSummary.mockResolvedValue({
                 count: 0,
+                window: null,
             });
 
-            await service.loginTimeSummary();
+            await service.loginTimeSummary({});
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
 
             expect(analyticAnomalyDomain.loginTimeSummary).toHaveBeenCalledWith(
                 null,

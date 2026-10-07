@@ -26,7 +26,7 @@ export interface IWorkspaceJoinRequestRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
-        status?: Record<string, IPaginationIn>
+        status: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<WorkspaceJoinRequest>>;
     createPending({
         workspaceId,

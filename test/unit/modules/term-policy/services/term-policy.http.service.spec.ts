@@ -221,7 +221,7 @@ describe('TermPolicyHttpService', () => {
     describe('createByAdmin', () => {
         it('wraps the created term policy in the response envelope', async () => {
             const body: TermPolicyCreateRequestDto = {
-                type: TermPolicyDefaultType[0],
+                type: TermPolicyDefaultType[0]!,
                 version: 1,
                 contents: [],
             };

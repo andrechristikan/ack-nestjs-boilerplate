@@ -461,7 +461,9 @@ export class AwsS3Service implements OnModuleInit {
                 Bucket: config.bucket,
                 Prefix: path,
                 MaxKeys: AwsS3MaxFetchItems,
-                ContinuationToken: continuationToken ?? undefined,
+                ...(continuationToken !== null && {
+                    ContinuationToken: continuationToken,
+                }),
             });
 
             const listItems: ListObjectsV2Output = await this.s3Client.send<
@@ -530,6 +532,7 @@ export class AwsS3Service implements OnModuleInit {
         >(command);
         const { extension, mime } = this.getFileInfoFromKey(key);
         const { completedUrl, cdnUrl } = this.buildUrls(config, key);
+        const body = item.Body ?? null;
 
         return {
             bucket: config.bucket,
@@ -537,7 +540,7 @@ export class AwsS3Service implements OnModuleInit {
             completedUrl,
             cdnUrl,
             extension,
-            data: item.Body,
+            ...(body !== null && { data: body }),
             size: item.ContentLength ?? 0,
             mime,
             access: accessibility,
@@ -708,7 +711,9 @@ export class AwsS3Service implements OnModuleInit {
                 Bucket: config.bucket,
                 Prefix: path,
                 MaxKeys: AwsS3MaxFetchItems,
-                ContinuationToken: continuationToken ?? undefined,
+                ...(continuationToken !== null && {
+                    ContinuationToken: continuationToken,
+                }),
             });
 
             const listItems: ListObjectsV2Output = await this.s3Client.send<
@@ -948,22 +953,6 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         const config = this.getConfig(options.access);
-
-        const headCommand = new HeadObjectCommand({
-            Bucket: config.bucket,
-            Key: key,
-        });
-
-        try {
-            await this.s3Client.send<
-                HeadObjectCommandInput,
-                HeadObjectCommandOutput
-            >(headCommand);
-        } catch (error: unknown) {
-            if (!(error instanceof NotFound)) {
-                throw error;
-            }
-        }
 
         const { extension, mime } = this.getFileInfoFromKey(key);
         const command: GetObjectCommand = new GetObjectCommand({

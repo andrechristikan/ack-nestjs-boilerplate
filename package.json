@@ -21,6 +21,7 @@
         "generate:secret": "node scripts/generate-secret.ts all",
         "generate:secret:jwt": "node scripts/generate-secret.ts jwt",
         "generate:secret:encryption": "node scripts/generate-secret.ts encryption",
+        "generate:secret:mongo": "node scripts/generate-secret.ts mongo",
         "generate:package": "node scripts/generate-package.ts",
         "generate": "pnpm db:generate && pnpm generate:package",
         "format": "prettier --write '{src,test}/**/*.{ts,json,yml,yaml}' && prettier --write '*.{ts,json,yml,yaml,mjs}'",

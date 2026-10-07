@@ -102,7 +102,28 @@ const thisCallRestrictions = [
     message: 'Assign the this-call to a const before using its value.',
 }));
 
-const codeStyleSyntaxRestrictions = [
+const undefinedSyntaxRestrictions = [
+    {
+        selector: 'ReturnStatement > Identifier.argument[name="undefined"]',
+        message: 'Return null, not undefined (null-safety.md).',
+    },
+    {
+        selector:
+            'LogicalExpression[operator="??"] > Identifier.right[name="undefined"]',
+        message: 'Use a conditional spread, not ?? undefined (null-safety.md).',
+    },
+    {
+        selector:
+            'ConditionalExpression > Identifier[name="undefined"]:matches(.consequent, .alternate)',
+        message: 'A ternary branch is null, not undefined (null-safety.md).',
+    },
+    {
+        selector: 'ArrowFunctionExpression > Identifier.body[name="undefined"]',
+        message: 'Return null, not undefined (null-safety.md).',
+    },
+];
+
+const baseSyntaxRestrictions = [
     ...thisCallRestrictions,
     {
         selector:
@@ -115,6 +136,11 @@ const codeStyleSyntaxRestrictions = [
         message:
             'An awaited promise is guarded by try/catch, not .then()/.catch().',
     },
+];
+
+const codeStyleSyntaxRestrictions = [
+    ...baseSyntaxRestrictions,
+    ...undefinedSyntaxRestrictions,
 ];
 
 const newDateRestriction = {
@@ -244,6 +270,7 @@ const codeQualityRules = {
     ],
     'prefer-const': 'error',
     'no-var': 'error',
+    'no-await-in-loop': 'error',
     'no-console': 'warn',
     eqeqeq: ['error', 'always', { null: 'ignore' }],
     'no-multiple-empty-lines': ['error', { max: 1, maxEOF: 1 }],
@@ -310,6 +337,7 @@ export default [
             'src/metadata.ts',
             'src/generated/**',
             'generated/*',
+            '.superpowers/*',
             'logs/*',
             'keys/*',
             '.warmup/*',
@@ -345,6 +373,20 @@ export default [
         },
     },
     {
+        name: 'code-style/zod-preprocess-undefined-allowed',
+        files: [
+            'src/common/request/validations/request.optional-env.validation.ts',
+        ],
+        rules: {
+            'no-restricted-syntax': [
+                'error',
+                ...baseSyntaxRestrictions,
+                newDateRestriction,
+                orderDirectionRestriction,
+            ],
+        },
+    },
+    {
         name: 'ts/database-inferred-client',
         files: [
             'src/common/database/utils/database.extension.util.ts',
@@ -376,6 +418,22 @@ export default [
             '@typescript-eslint/explicit-function-return-type': 'off',
             '@typescript-eslint/explicit-module-boundary-types': 'off',
         },
+    },
+    {
+        name: 'code-style/await-in-loop-allowed',
+        files: [
+            'src/migration/seeds/**/*.ts',
+            'src/modules/notification/repositories/notification.repository.ts',
+            'src/modules/term-policy/domains/term-policy.acceptance.domain.ts',
+            'src/modules/workspace/domains/workspace.domain.ts',
+            'src/modules/project/repositories/project.repository.ts',
+            'src/common/aws/services/aws.s3.service.ts',
+            'src/modules/analytic/domains/analytic.fraud.domain.ts',
+            'src/modules/notification/domains/notification.email.term-policy.domain.ts',
+            'src/modules/notification/domains/notification.term-policy.domain.ts',
+            'src/common/file/pipes/file.csv-validation.pipe.ts',
+        ],
+        rules: { 'no-await-in-loop': 'off' },
     },
     {
         name: 'code-style/new-date-allowed',

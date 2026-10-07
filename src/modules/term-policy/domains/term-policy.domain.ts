@@ -94,14 +94,21 @@ export class TermPolicyDomain {
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        return this.termPolicyRepository.find(pagination, type, status);
+        return this.termPolicyRepository.find(
+            pagination,
+            type ?? null,
+            status ?? null
+        );
     }
 
     async getListPublished(
         pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        return this.termPolicyRepository.findPublished(pagination, type);
+        return this.termPolicyRepository.findPublished(
+            pagination,
+            type ?? null
+        );
     }
 
     async createByAdmin({

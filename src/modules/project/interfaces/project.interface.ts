@@ -7,10 +7,10 @@ export interface IProjectMember extends ProjectMember {
 
 export interface IProjectCreate {
     name: string;
-    description?: string;
+    description: string | null;
 }
 
 export interface IProjectUpdate {
-    name?: string;
-    description?: string;
+    name: string | null;
+    description: string | null;
 }

@@ -111,21 +111,21 @@ describe('HealthDomain', () => {
             expect(result).toBe(healthCheckResult);
             expect(checks).toHaveLength(3);
 
-            await checks[0]();
+            await checks[0]!();
             expect(awsS3BucketIndicator.isHealthy).toHaveBeenNthCalledWith(
                 1,
                 's3PublicBucket',
                 EnumAwsS3Accessibility.public
             );
 
-            await checks[1]();
+            await checks[1]!();
             expect(awsS3BucketIndicator.isHealthy).toHaveBeenNthCalledWith(
                 2,
                 's3PrivateBucket',
                 EnumAwsS3Accessibility.private
             );
 
-            await checks[2]();
+            await checks[2]!();
             expect(awsSESIndicator.isHealthy).toHaveBeenCalledWith('ses');
         });
     });
@@ -155,15 +155,15 @@ describe('HealthDomain', () => {
             expect(result).toBe(healthCheckResult);
             expect(checks).toHaveLength(3);
 
-            await checks[0]();
+            await checks[0]!();
             expect(databaseIndicator.isHealthy).toHaveBeenCalledWith(
                 'database'
             );
 
-            await checks[1]();
+            await checks[1]!();
             expect(redisIndicator.isHealthy).toHaveBeenCalledWith('redis');
 
-            await checks[2]();
+            await checks[2]!();
             expect(queueIndicator.isHealthy).toHaveBeenCalledWith('queue');
         });
     });
@@ -202,26 +202,26 @@ describe('HealthDomain', () => {
             expect(result).toBe(healthCheckResult);
             expect(checks).toHaveLength(6);
 
-            await checks[0]();
+            await checks[0]!();
             expect(sentryIndicator.isHealthy).toHaveBeenCalledWith('sentry');
 
-            await checks[1]();
+            await checks[1]!();
             expect(firebaseIndicator.isHealthy).toHaveBeenCalledWith(
                 'firebase'
             );
 
-            await checks[2]();
+            await checks[2]!();
             expect(googleIndicator.isHealthy).toHaveBeenCalledWith('google');
 
-            await checks[3]();
+            await checks[3]!();
             expect(appleIndicator.isHealthy).toHaveBeenCalledWith('apple');
 
-            await checks[4]();
+            await checks[4]!();
             expect(jwksIndicator.isHealthyAccessToken).toHaveBeenCalledWith(
                 'jwksAccessToken'
             );
 
-            await checks[5]();
+            await checks[5]!();
             expect(jwksIndicator.isHealthyRefreshToken).toHaveBeenCalledWith(
                 'jwksRefreshToken'
             );
@@ -253,17 +253,17 @@ describe('HealthDomain', () => {
             expect(result).toBe(healthCheckResult);
             expect(checks).toHaveLength(3);
 
-            await checks[0]();
+            await checks[0]!();
             expect(
                 healthInstanceIndicator.isHealthyMemoryRss
             ).toHaveBeenCalledWith('memoryRss');
 
-            await checks[1]();
+            await checks[1]!();
             expect(
                 healthInstanceIndicator.isHealthyMemoryHeap
             ).toHaveBeenCalledWith('memoryHeap');
 
-            await checks[2]();
+            await checks[2]!();
             expect(
                 healthInstanceIndicator.isHealthyStorage
             ).toHaveBeenCalledWith('storage');

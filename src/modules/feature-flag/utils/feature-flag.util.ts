@@ -30,8 +30,8 @@ export class FeatureFlagUtil {
         }
 
         for (const key of newKeys) {
-            const newVal = newMetadata[key];
-            const oldVal = oldMetadata[key];
+            const newVal = newMetadata[key]!;
+            const oldVal = oldMetadata[key]!;
 
             const newValueType = this.metadataValueType(newVal);
             const oldValueType = this.metadataValueType(oldVal);

@@ -8,12 +8,18 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
 } from '@generated/prisma-client/client';
-import type { Device, DeviceOwnership } from '@generated/prisma-client/client';
+import type {
+    Device,
+    DeviceOwnership,
+    Prisma,
+} from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
@@ -147,6 +153,34 @@ describe('DeviceDomain', () => {
                 isRevoked: { equals: true },
             });
         });
+
+        it('passes a null revoked filter when none is given', async () => {
+            const pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput> =
+                { skip: 0, limit: 20, orderBy: [] };
+            const page: IResponsePaginationReturn<IDeviceOwnership> = {
+                type: EnumPaginationType.offset,
+                count: 0,
+                perPage: 20,
+                page: 1,
+                totalPage: 0,
+                hasNext: false,
+                hasPrevious: false,
+                data: [],
+            };
+            deviceOwnershipRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
+                page
+            );
+
+            const result = await domain.getListOffsetByAdmin(
+                'user-1',
+                pagination
+            );
+
+            expect(result).toBe(page);
+            expect(
+                deviceOwnershipRepository.findWithPaginationOffsetByAdmin
+            ).toHaveBeenCalledWith('user-1', pagination, null);
+        });
     });
 
     describe('getListCursor', () => {
@@ -231,6 +265,9 @@ describe('DeviceDomain', () => {
         it('creates or updates the device then its ownership and reports device newness', async () => {
             const identity: IDeviceIdentity = {
                 fingerprint: 'abc123def456ghi789jkl012mno345pq',
+                name: null,
+                platform: null,
+                notificationToken: null,
             };
             deviceRepository.upsertByFingerprintInTx.mockResolvedValue(device);
             deviceOwnershipRepository.upsertForLoginInTx.mockResolvedValue({
@@ -285,7 +322,7 @@ describe('DeviceDomain', () => {
             ).toHaveBeenCalledWith(tx, ['device-1'], 'admin-1', now);
         });
 
-        it('throws when the ownership carries no live device', async () => {
+        it('skips the clear when the ownership carries no live device', async () => {
             deviceOwnershipRepository.findLiveDeviceIdInTx.mockResolvedValue(
                 null
             );
@@ -298,16 +335,8 @@ describe('DeviceDomain', () => {
                     'admin-1',
                     now
                 )
-            ).rejects.toMatchObject({
-                constructor: DeviceNotFoundException,
-                module: 'device',
-                statusCode: EnumDeviceStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumDeviceStatusCodeError[
-                        EnumDeviceStatusCodeError.notFound
-                    ],
-                messagePath: 'device.error.notFound',
-            });
+            ).resolves.toBeUndefined();
+
             expect(
                 deviceRepository.clearNotificationByIdsInTx
             ).not.toHaveBeenCalled();
@@ -348,7 +377,11 @@ describe('DeviceDomain', () => {
     });
 
     describe('refresh', () => {
-        const data: IDeviceRefresh = { platform: EnumDevicePlatform.android };
+        const data: IDeviceRefresh = {
+            name: null,
+            platform: EnumDevicePlatform.android,
+            notificationToken: null,
+        };
 
         it('throws when the ownership does not exist or is inactive', async () => {
             deviceOwnershipRepository.existsActive.mockResolvedValue(false);
@@ -379,6 +412,9 @@ describe('DeviceDomain', () => {
                 action: EnumActivityLogAction.userDeviceRefresh,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(event);
             databaseService.withTransaction.mockImplementation(
@@ -417,12 +453,19 @@ describe('DeviceDomain', () => {
                 action: EnumActivityLogAction.userDeviceRefresh,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             });
             databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
-            await domain.refresh('user-1', 'device-ownership-1', {});
+            await domain.refresh('user-1', 'device-ownership-1', {
+                name: null,
+                platform: null,
+                notificationToken: null,
+            });
 
             expect(deviceUtil.resolveNotificationProvider).toHaveBeenCalledWith(
                 null
@@ -437,6 +480,9 @@ describe('DeviceDomain', () => {
                 action: EnumActivityLogAction.userDeviceRefresh,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             });
             const notFound = new DeviceNotFoundException();
             databaseService.withTransaction.mockRejectedValue(notFound);
@@ -454,6 +500,9 @@ describe('DeviceDomain', () => {
                 action: EnumActivityLogAction.userDeviceRefresh,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             });
             const cause = new Error('database exploded');
             databaseService.withTransaction.mockRejectedValue(cause);
@@ -499,6 +548,9 @@ describe('DeviceDomain', () => {
                 action: EnumActivityLogAction.userRemoveDevice,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             sessionDomain.revokeByDeviceOwnershipInTx.mockResolvedValue(
                 revokedSessions
@@ -619,6 +671,9 @@ describe('DeviceDomain', () => {
                 action: EnumActivityLogAction.adminDeviceRemove,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             sessionDomain.revokeByDeviceOwnershipInTx.mockResolvedValue(
                 revokedSessions
@@ -673,6 +728,9 @@ describe('DeviceDomain', () => {
                 action: EnumActivityLogAction.adminDeviceRemove,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             const targetEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.userRemoveDeviceByAdmin,
@@ -680,6 +738,7 @@ describe('DeviceDomain', () => {
                 onError: false,
                 userId: 'user-1',
                 createdBy: 'admin-1',
+                workspaceId: null,
             };
             sessionDomain.revokeByDeviceOwnershipInTx.mockResolvedValue(
                 revokedSessions

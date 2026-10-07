@@ -18,7 +18,7 @@ export function validateEmail(value: string): IHelperEmailValidation {
         };
     }
 
-    const [localPart, domain] = value.split('@');
+    const [localPart, domain] = value.split('@') as [string, string];
 
     if (domain.length > 253) {
         return {
@@ -66,7 +66,7 @@ export function validateEmail(value: string): IHelperEmailValidation {
         }
     }
 
-    const tld = domainLabels[domainLabels.length - 1];
+    const tld = domainLabels[domainLabels.length - 1]!;
     const validTLD = /^[a-zA-Z]{2,}$/;
     if (!validTLD.test(tld)) {
         return {

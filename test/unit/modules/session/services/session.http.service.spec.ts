@@ -50,7 +50,7 @@ describe('SessionHttpService', () => {
     describe('getListOffsetByAdmin', () => {
         it('merges no revoked filter into the store when the query carries none', async () => {
             const query: SessionAdminListRequestDto = {};
-            const params = { limit: 20, skip: 0 };
+            const params = { limit: 20, skip: 0, orderBy: [] };
             const storePatch = {
                 page: 1,
                 perPage: 20,
@@ -105,7 +105,7 @@ describe('SessionHttpService', () => {
 
         it('merges the revoked filter into the store when the query carries one', async () => {
             const query: SessionAdminListRequestDto = { isRevoked: true };
-            const params = { limit: 20, skip: 0 };
+            const params = { limit: 20, skip: 0, orderBy: [] };
             const storePatch = { page: 1, perPage: 20 };
             paginationQueryUtil.offset.mockReturnValue({ params, storePatch });
             const isRevokedResult: IPaginationQueryFilterResult<{
@@ -143,7 +143,7 @@ describe('SessionHttpService', () => {
     describe('getListCursor', () => {
         it('delegates to the domain with the cursor pagination params', async () => {
             const query: SessionSharedListRequestDto = {};
-            const params = { limit: 20 };
+            const params = { limit: 20, orderBy: [] };
             const storePatch = { perPage: 20 };
             paginationQueryUtil.cursor.mockReturnValue({ params, storePatch });
             const paginationResult: IResponsePaginationReturn<ISessionList> = {

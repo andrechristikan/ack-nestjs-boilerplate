@@ -131,9 +131,9 @@ describe('UserImportHttpService', () => {
             ];
             const input: IUserCreateWithWorkspaceInput = {
                 userId: 'user-fable',
-                email: rows[0].email,
-                name: rows[0].name ?? null,
-                username: rows[0].username,
+                email: rows[0]!.email,
+                name: rows[0]!.name ?? null,
+                username: rows[0]!.username,
                 countryId: 'country-fable',
                 roleId: 'role-fable',
                 signUpFrom: EnumUserSignUpFrom.admin,
@@ -181,9 +181,9 @@ describe('UserImportHttpService', () => {
             expect(userImportDomain.prepareImportByAdmin).toHaveBeenCalledWith(
                 [
                     {
-                        email: rows[0].email,
-                        name: rows[0].name,
-                        username: rows[0].username,
+                        email: rows[0]!.email,
+                        name: rows[0]!.name,
+                        username: rows[0]!.username,
                     },
                 ],
                 'admin-fable'
@@ -198,6 +198,37 @@ describe('UserImportHttpService', () => {
                 users,
                 passwordHasheds,
                 ['random-password'],
+                'admin-fable'
+            );
+        });
+
+        it('passes a null name to the domain when a row omits it', async () => {
+            const rows: UserImportRequestDto[] = [
+                {
+                    email: 'fable@example.com' as Lowercase<string>,
+                    username: 'fable2sterling',
+                },
+            ];
+            userImportDomain.prepareImportByAdmin.mockResolvedValue({
+                inputs: [],
+                passwordHasheds: [],
+                passwordStrings: [],
+            });
+            userOnboardingDomain.getCreateBulkTimeoutInMs.mockReturnValue(
+                30000
+            );
+            workspaceDomain.commitOnboarding.mockResolvedValue([]);
+
+            await service.importByAdmin(rows, 'admin-fable');
+
+            expect(userImportDomain.prepareImportByAdmin).toHaveBeenCalledWith(
+                [
+                    {
+                        email: rows[0]!.email,
+                        name: null,
+                        username: rows[0]!.username,
+                    },
+                ],
                 'admin-fable'
             );
         });

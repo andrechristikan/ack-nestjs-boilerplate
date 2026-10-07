@@ -163,6 +163,25 @@ describe('ProjectHttpService', () => {
         });
     });
 
+    describe('createProject without optional fields', () => {
+        it('passes null for an omitted description', async () => {
+            const body: ProjectCreateRequestDto = { name: 'Website Revamp' };
+            projectDomain.createProject.mockResolvedValue(project);
+
+            await service.createProject(
+                '507f1f77bcf86cd799439012',
+                '507f1f77bcf86cd799439015',
+                body
+            );
+
+            expect(projectDomain.createProject).toHaveBeenCalledWith(
+                '507f1f77bcf86cd799439012',
+                '507f1f77bcf86cd799439015',
+                { name: 'Website Revamp', description: null }
+            );
+        });
+    });
+
     describe('getProject', () => {
         it('wraps the current project in the response envelope', () => {
             projectDomain.getProject.mockReturnValue(project);
@@ -190,7 +209,27 @@ describe('ProjectHttpService', () => {
             expect(projectDomain.updateProject).toHaveBeenCalledWith(
                 project,
                 '507f1f77bcf86cd799439015',
-                { name: 'New Name', description: undefined }
+                { name: 'New Name', description: null }
+            );
+        });
+
+        it('passes null for the name when the body omits it', async () => {
+            const body: ProjectUpdateRequestDto = {
+                description: 'New description',
+            };
+            const updated = { ...project, description: 'New description' };
+            projectDomain.updateProject.mockResolvedValue(updated);
+
+            await service.updateProject(
+                project,
+                '507f1f77bcf86cd799439015',
+                body
+            );
+
+            expect(projectDomain.updateProject).toHaveBeenCalledWith(
+                project,
+                '507f1f77bcf86cd799439015',
+                { name: null, description: 'New description' }
             );
         });
     });

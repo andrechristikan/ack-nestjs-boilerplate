@@ -7,6 +7,7 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { ActivityLogAdminListRequestDto } from '@modules/activity-log/dtos/request/activity-log.admin-list.request.dto';
+import type { ActivityLogAdminWorkspaceListRequestDto } from '@modules/activity-log/dtos/request/activity-log.admin-workspace-list.request.dto';
 import type { ActivityLogSharedListRequestDto } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
 import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
@@ -23,6 +24,11 @@ describe('ActivityLogHttpService', () => {
     const params = { skip: 0, limit: 20, orderBy: [] };
     const storePatch = { availableOrderBy: ActivityLogDefaultAvailableOrderBy };
     const offsetQuery: ActivityLogAdminListRequestDto = {};
+    const workspaceQuery: ActivityLogAdminWorkspaceListRequestDto = {
+        userId: 'user-1',
+    };
+    const workspaceQueryWithoutUser: ActivityLogAdminWorkspaceListRequestDto =
+        {};
     const cursorQuery: ActivityLogSharedListRequestDto = {};
     const offsetPage = {
         type: EnumPaginationType.offset as const,
@@ -125,14 +131,29 @@ describe('ActivityLogHttpService', () => {
 
             const result = await service.getListOffsetByWorkspace(
                 'workspace-1',
-                'user-1',
-                offsetQuery
+                workspaceQuery
             );
 
             expect(result).toEqual(offsetPage);
             expect(
                 activityLogDomain.getListOffsetByWorkspace
             ).toHaveBeenCalledWith('workspace-1', 'user-1', params);
+        });
+
+        it('passes null when the user filter is omitted', async () => {
+            paginationQueryUtil.offset.mockReturnValue({ params, storePatch });
+            activityLogDomain.getListOffsetByWorkspace.mockResolvedValue(
+                offsetPage
+            );
+
+            await service.getListOffsetByWorkspace(
+                'workspace-1',
+                workspaceQueryWithoutUser
+            );
+
+            expect(
+                activityLogDomain.getListOffsetByWorkspace
+            ).toHaveBeenCalledWith('workspace-1', null, params);
         });
     });
 

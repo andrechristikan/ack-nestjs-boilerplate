@@ -45,6 +45,8 @@ export class NotificationAccountDomain {
             email: user.email,
             username: user.username,
             notificationId,
+            cc: [],
+            bcc: [],
         };
 
         const results = await Promise.allSettled([
@@ -79,6 +81,8 @@ export class NotificationAccountDomain {
             email: user.email,
             username: user.username,
             notificationId: welcomeNotificationId,
+            cc: [],
+            bcc: [],
         };
 
         const verificationEmailNotificationId = this.databaseUtil.createId();
@@ -87,6 +91,8 @@ export class NotificationAccountDomain {
             email: user.email,
             username: user.username,
             notificationId: verificationEmailNotificationId,
+            cc: [],
+            bcc: [],
         };
 
         const results = await Promise.allSettled([
@@ -135,6 +141,8 @@ export class NotificationAccountDomain {
             email: user.email,
             username: user.username,
             notificationId,
+            cc: [],
+            bcc: [],
         };
 
         const results = await Promise.allSettled([
@@ -171,6 +179,8 @@ export class NotificationAccountDomain {
             email: user.email,
             username: user.username,
             notificationId,
+            cc: [],
+            bcc: [],
         };
 
         const results = await Promise.allSettled([
@@ -208,6 +218,8 @@ export class NotificationAccountDomain {
             email: user.email,
             username: user.username,
             notificationId,
+            cc: [],
+            bcc: [],
         };
 
         const results = await Promise.allSettled([
@@ -251,6 +263,8 @@ export class NotificationAccountDomain {
             email: user.email,
             username: user.username,
             notificationId,
+            cc: [],
+            bcc: [],
         };
 
         const censoredMobileNumber = this.helperStringService.censor(

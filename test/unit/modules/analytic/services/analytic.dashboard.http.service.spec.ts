@@ -85,7 +85,7 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.usersRegistrations();
+            await service.usersRegistrations(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -127,7 +127,7 @@ describe('AnalyticDashboardHttpService', () => {
                 rate: 0.4,
             });
 
-            await service.usersChurn();
+            await service.usersChurn(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -165,7 +165,7 @@ describe('AnalyticDashboardHttpService', () => {
                 current: 5,
             });
 
-            await service.usersBlocked();
+            await service.usersBlocked(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -184,7 +184,15 @@ describe('AnalyticDashboardHttpService', () => {
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
-            const result = await service.usersSignUpWith(startDate, endDate);
+            const result = await service.usersSignUpWith({
+                startDate,
+                endDate,
+            });
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                startDate,
+                endDate
+            );
 
             expect(result).toEqual({
                 data: { buckets: [{ key: 'key-1', count: 7 }] },
@@ -202,7 +210,12 @@ describe('AnalyticDashboardHttpService', () => {
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
-            await service.usersSignUpWith();
+            await service.usersSignUpWith({});
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
 
             expect(
                 analyticDashboardDomain.usersSignUpWith
@@ -220,7 +233,15 @@ describe('AnalyticDashboardHttpService', () => {
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
-            const result = await service.usersSignUpFrom(startDate, endDate);
+            const result = await service.usersSignUpFrom({
+                startDate,
+                endDate,
+            });
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                startDate,
+                endDate
+            );
 
             expect(result).toEqual({
                 data: { buckets: [{ key: 'key-1', count: 7 }] },
@@ -238,7 +259,12 @@ describe('AnalyticDashboardHttpService', () => {
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
-            await service.usersSignUpFrom();
+            await service.usersSignUpFrom({});
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
 
             expect(
                 analyticDashboardDomain.usersSignUpFrom
@@ -258,7 +284,12 @@ describe('AnalyticDashboardHttpService', () => {
                 rate: 0.4,
             });
 
-            const result = await service.usersEmailVerification(
+            const result = await service.usersEmailVerification({
+                startDate,
+                endDate,
+            });
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
@@ -281,7 +312,12 @@ describe('AnalyticDashboardHttpService', () => {
                 rate: 0.4,
             });
 
-            await service.usersEmailVerification();
+            await service.usersEmailVerification({});
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
 
             expect(
                 analyticDashboardDomain.usersEmailVerification
@@ -301,7 +337,12 @@ describe('AnalyticDashboardHttpService', () => {
                 rate: 0.4,
             });
 
-            const result = await service.usersMobileVerification(
+            const result = await service.usersMobileVerification({
+                startDate,
+                endDate,
+            });
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
@@ -324,7 +365,12 @@ describe('AnalyticDashboardHttpService', () => {
                 rate: 0.4,
             });
 
-            await service.usersMobileVerification();
+            await service.usersMobileVerification({});
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
 
             expect(
                 analyticDashboardDomain.usersMobileVerification
@@ -409,7 +455,7 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.usersSelfDelete();
+            await service.usersSelfDelete(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -444,7 +490,7 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.usersClaimUsername();
+            await service.usersClaimUsername(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -485,7 +531,7 @@ describe('AnalyticDashboardHttpService', () => {
                 deleted: 3,
             });
 
-            await service.usersMobileChurn();
+            await service.usersMobileChurn(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -520,7 +566,7 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.authLoginFrequency();
+            await service.authLoginFrequency(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -539,7 +585,15 @@ describe('AnalyticDashboardHttpService', () => {
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
-            const result = await service.authLoginMethod(startDate, endDate);
+            const result = await service.authLoginMethod({
+                startDate,
+                endDate,
+            });
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                startDate,
+                endDate
+            );
 
             expect(result).toEqual({
                 data: { buckets: [{ key: 'key-1', count: 7 }] },
@@ -557,7 +611,12 @@ describe('AnalyticDashboardHttpService', () => {
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
-            await service.authLoginMethod();
+            await service.authLoginMethod({});
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
 
             expect(
                 analyticDashboardDomain.authLoginMethod
@@ -575,7 +634,15 @@ describe('AnalyticDashboardHttpService', () => {
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
-            const result = await service.authLoginSource(startDate, endDate);
+            const result = await service.authLoginSource({
+                startDate,
+                endDate,
+            });
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                startDate,
+                endDate
+            );
 
             expect(result).toEqual({
                 data: { buckets: [{ key: 'key-1', count: 7 }] },
@@ -593,7 +660,12 @@ describe('AnalyticDashboardHttpService', () => {
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
-            await service.authLoginSource();
+            await service.authLoginSource({});
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
 
             expect(
                 analyticDashboardDomain.authLoginSource
@@ -630,7 +702,7 @@ describe('AnalyticDashboardHttpService', () => {
                 maxAttempt: 3,
             });
 
-            await service.authLockout();
+            await service.authLockout(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -665,7 +737,7 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.authSessionRevoke();
+            await service.authSessionRevoke(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -701,7 +773,15 @@ describe('AnalyticDashboardHttpService', () => {
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
-            const result = await service.authSessionsGeo(startDate, endDate);
+            const result = await service.authSessionsGeo({
+                startDate,
+                endDate,
+            });
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                startDate,
+                endDate
+            );
 
             expect(result).toEqual({
                 data: { buckets: [{ key: 'key-1', count: 7 }] },
@@ -719,7 +799,12 @@ describe('AnalyticDashboardHttpService', () => {
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
-            await service.authSessionsGeo();
+            await service.authSessionsGeo({});
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
 
             expect(
                 analyticDashboardDomain.authSessionsGeo
@@ -737,7 +822,12 @@ describe('AnalyticDashboardHttpService', () => {
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
-            const result = await service.authSessionsUserAgent(
+            const result = await service.authSessionsUserAgent({
+                startDate,
+                endDate,
+            });
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
@@ -758,7 +848,12 @@ describe('AnalyticDashboardHttpService', () => {
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
-            await service.authSessionsUserAgent();
+            await service.authSessionsUserAgent({});
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
 
             expect(
                 analyticDashboardDomain.authSessionsUserAgent
@@ -795,7 +890,7 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.authRefreshTokenVolume();
+            await service.authRefreshTokenVolume(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -831,7 +926,7 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.authLogoutRate();
+            await service.authLogoutRate(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -876,7 +971,7 @@ describe('AnalyticDashboardHttpService', () => {
                 mobile: { used: 4, unused: 1, total: 5, rate: 0.8 },
             });
 
-            await service.authVerificationFunnel();
+            await service.authVerificationFunnel(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -931,7 +1026,7 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.authPasswordChange();
+            await service.authPasswordChange(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -971,7 +1066,7 @@ describe('AnalyticDashboardHttpService', () => {
                 { created: 5, used: 2, rate: 0.4 }
             );
 
-            await service.authForgotPasswordConversion();
+            await service.authForgotPasswordConversion(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -1009,7 +1104,7 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.authAdminForcePassword();
+            await service.authAdminForcePassword(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -1066,7 +1161,7 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.authTwoFactorAdminReset();
+            await service.authTwoFactorAdminReset(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -1104,7 +1199,7 @@ describe('AnalyticDashboardHttpService', () => {
                 { count: 12 }
             );
 
-            await service.authTwoFactorVerifySuccess();
+            await service.authTwoFactorVerifySuccess(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -1142,7 +1237,7 @@ describe('AnalyticDashboardHttpService', () => {
                 { count: 12 }
             );
 
-            await service.authBackupCodeRegeneration();
+            await service.authBackupCodeRegeneration(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -1198,7 +1293,7 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.devicesRegistration();
+            await service.devicesRegistration(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -1269,7 +1364,7 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.devicesInfoRefresh();
+            await service.devicesInfoRefresh(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -1363,7 +1458,7 @@ describe('AnalyticDashboardHttpService', () => {
                 deleted: 4,
             });
 
-            await service.apiKeysLifecycle();
+            await service.apiKeysLifecycle(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -1415,7 +1510,12 @@ describe('AnalyticDashboardHttpService', () => {
                 { acceptances: 4, users: 8, published: 2, rate: 0.5 }
             );
 
-            const result = await service.termPoliciesAcceptanceRate(
+            const result = await service.termPoliciesAcceptanceRate({
+                startDate,
+                endDate,
+            });
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
@@ -1436,7 +1536,12 @@ describe('AnalyticDashboardHttpService', () => {
                 { acceptances: 4, users: 8, published: 2, rate: 0.5 }
             );
 
-            await service.termPoliciesAcceptanceRate();
+            await service.termPoliciesAcceptanceRate({});
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
 
             expect(
                 analyticDashboardDomain.termPoliciesAcceptanceRate
@@ -1455,7 +1560,12 @@ describe('AnalyticDashboardHttpService', () => {
                 averageMs: 1500,
             });
 
-            const result = await service.termPoliciesTimeToAccept(
+            const result = await service.termPoliciesTimeToAccept({
+                startDate,
+                endDate,
+            });
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
@@ -1475,7 +1585,12 @@ describe('AnalyticDashboardHttpService', () => {
                 averageMs: 1500,
             });
 
-            await service.termPoliciesTimeToAccept();
+            await service.termPoliciesTimeToAccept({});
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
 
             expect(
                 analyticDashboardDomain.termPoliciesTimeToAccept
@@ -1509,7 +1624,7 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.workspacesCreation();
+            await service.workspacesCreation(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -1566,7 +1681,7 @@ describe('AnalyticDashboardHttpService', () => {
                 []
             );
 
-            await service.workspacesInviteFunnel();
+            await service.workspacesInviteFunnel(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -1606,7 +1721,7 @@ describe('AnalyticDashboardHttpService', () => {
                 []
             );
 
-            await service.workspacesJoinOutcomes();
+            await service.workspacesJoinOutcomes(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -1710,7 +1825,7 @@ describe('AnalyticDashboardHttpService', () => {
                 perWorkspace: [{ workspaceId: 'workspace-1', count: 2 }],
             });
 
-            await service.projectsCreation();
+            await service.projectsCreation(null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,

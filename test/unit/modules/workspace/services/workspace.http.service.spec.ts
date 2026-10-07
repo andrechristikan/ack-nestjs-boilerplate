@@ -133,6 +133,20 @@ describe('WorkspaceHttpService', () => {
         });
     });
 
+    describe('createWorkspace without optional fields', () => {
+        it('passes null for an omitted description and visibility', async () => {
+            const body: WorkspaceCreateRequestDto = { name: 'Acme' };
+            workspaceDomain.createWorkspace.mockResolvedValue(workspace);
+
+            await service.createWorkspace('user-1', body);
+
+            expect(workspaceDomain.createWorkspace).toHaveBeenCalledWith(
+                'user-1',
+                { name: 'Acme', description: null, isPublic: null }
+            );
+        });
+    });
+
     describe('getCurrentWorkspace', () => {
         it('wraps the current workspace in the response envelope', () => {
             workspaceDomain.getCurrentWorkspace.mockReturnValue(workspace);
@@ -161,7 +175,22 @@ describe('WorkspaceHttpService', () => {
             expect(workspaceDomain.updateWorkspace).toHaveBeenCalledWith(
                 'workspace-1',
                 'user-1',
-                { name: 'Acme 2', description: undefined }
+                { name: 'Acme 2', description: null }
+            );
+        });
+
+        it('passes null for the name when the body omits it', async () => {
+            const body: WorkspaceUpdateRequestDto = {
+                description: 'New description',
+            };
+            workspaceDomain.updateWorkspace.mockResolvedValue(workspace);
+
+            await service.updateWorkspace('workspace-1', 'user-1', body);
+
+            expect(workspaceDomain.updateWorkspace).toHaveBeenCalledWith(
+                'workspace-1',
+                'user-1',
+                { name: null, description: 'New description' }
             );
         });
     });

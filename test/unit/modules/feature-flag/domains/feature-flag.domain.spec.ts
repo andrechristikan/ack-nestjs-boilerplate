@@ -485,6 +485,7 @@ describe('FeatureFlagDomain', () => {
         const statusUpdate: IFeatureFlagUpdateStatus = {
             isEnable: false,
             rolloutPercent: 0,
+            targetUserIds: null,
         };
 
         it('throws FeatureFlagNotFoundException when the flag does not exist', async () => {

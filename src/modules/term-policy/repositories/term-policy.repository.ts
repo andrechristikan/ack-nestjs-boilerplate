@@ -39,8 +39,8 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
-        type?: Record<string, IPaginationIn>,
-        status?: Record<string, IPaginationIn>
+        type: Record<string, IPaginationIn> | null,
+        status: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
         return this.paginationService.offset<
             TermPolicy,
@@ -60,7 +60,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
-        type?: Record<string, IPaginationIn>
+        type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
         return this.paginationService.cursor<
             TermPolicy,

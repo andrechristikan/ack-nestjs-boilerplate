@@ -351,9 +351,14 @@ describe('HelperEncryptionService', () => {
                 context
             );
             const [saltPart, ivPart, ciphertextPart, authTagPart] =
-                payload.split(HelperEncryptionPayloadSeparator);
+                payload.split(HelperEncryptionPayloadSeparator) as [
+                    string,
+                    string,
+                    string,
+                    string,
+                ];
             const tamperedAuthTag = Buffer.from(authTagPart, 'base64url');
-            tamperedAuthTag[0] ^= 0xff;
+            tamperedAuthTag[0]! ^= 0xff;
             const tampered = [
                 saltPart,
                 ivPart,

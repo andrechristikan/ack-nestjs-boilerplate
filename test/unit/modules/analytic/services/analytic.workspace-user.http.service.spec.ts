@@ -46,12 +46,15 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 activityCount: 9,
             });
 
-            const result = await service.summary(
-                'workspace-1',
+            const result = await service.summary('workspace-1', {
+                startDate,
+                endDate,
+            });
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
-
             expect(result).toEqual({
                 data: { memberCount: 3, projectCount: 2, activityCount: 9 },
             });
@@ -73,7 +76,7 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 activityCount: 0,
             });
 
-            await service.summary('workspace-1');
+            await service.summary('workspace-1', {});
 
             expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
                 null,
@@ -118,7 +121,7 @@ describe('AnalyticWorkspaceUserHttpService', () => {
             });
             analyticWorkspaceUserDomain.inviteFunnel.mockResolvedValue([]);
 
-            await service.inviteFunnel('workspace-1');
+            await service.inviteFunnel('workspace-1', null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -158,7 +161,7 @@ describe('AnalyticWorkspaceUserHttpService', () => {
             });
             analyticWorkspaceUserDomain.joinOutcomes.mockResolvedValue([]);
 
-            await service.joinOutcomes('workspace-1');
+            await service.joinOutcomes('workspace-1', null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,
@@ -217,7 +220,7 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 count: 0,
             });
 
-            await service.activity('workspace-1');
+            await service.activity('workspace-1', null, null);
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
                 null,

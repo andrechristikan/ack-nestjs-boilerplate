@@ -293,23 +293,27 @@ describe('AuthTwoFactorDomain', () => {
             const result = await domain.verifyTwoFactor(twoFactor, {
                 method: EnumAuthTwoFactorMethod.code,
                 code: '   ',
+                backupCode: null,
             });
 
             expect(result).toEqual({
                 isValid: false,
                 method: EnumAuthTwoFactorMethod.code,
+                newBackupCodes: null,
             });
         });
 
         it('answers invalid when the backup-code method carries a blank code', async () => {
             const result = await domain.verifyTwoFactor(twoFactor, {
                 method: EnumAuthTwoFactorMethod.backupCodes,
-                backupCode: undefined,
+                code: null,
+                backupCode: null,
             });
 
             expect(result).toEqual({
                 isValid: false,
                 method: EnumAuthTwoFactorMethod.backupCodes,
+                newBackupCodes: null,
             });
         });
 
@@ -327,11 +331,13 @@ describe('AuthTwoFactorDomain', () => {
             const result = await domain.verifyTwoFactor(twoFactor, {
                 method: EnumAuthTwoFactorMethod.code,
                 code: ' 123456 ',
+                backupCode: null,
             });
 
             expect(result).toEqual({
                 isValid: true,
                 method: EnumAuthTwoFactorMethod.code,
+                newBackupCodes: null,
             });
             expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
                 'encrypted-secret',
@@ -346,6 +352,7 @@ describe('AuthTwoFactorDomain', () => {
                 { ...twoFactor, backupCodes: [] },
                 {
                     method: EnumAuthTwoFactorMethod.backupCodes,
+                    code: null,
                     backupCode: 'BACKUP1',
                 }
             );
@@ -353,6 +360,7 @@ describe('AuthTwoFactorDomain', () => {
             expect(result).toEqual({
                 isValid: false,
                 method: EnumAuthTwoFactorMethod.backupCodes,
+                newBackupCodes: null,
             });
         });
 
@@ -364,6 +372,7 @@ describe('AuthTwoFactorDomain', () => {
                 { ...twoFactor, backupCodes: ['hash-1', 'hash-2'] },
                 {
                     method: EnumAuthTwoFactorMethod.backupCodes,
+                    code: null,
                     backupCode: 'BACKUP1',
                 }
             );
@@ -371,6 +380,7 @@ describe('AuthTwoFactorDomain', () => {
             expect(result).toEqual({
                 isValid: false,
                 method: EnumAuthTwoFactorMethod.backupCodes,
+                newBackupCodes: null,
             });
         });
 
@@ -384,6 +394,7 @@ describe('AuthTwoFactorDomain', () => {
                 { ...twoFactor, backupCodes: ['hash-1', 'hash-2', 'hash-3'] },
                 {
                     method: EnumAuthTwoFactorMethod.backupCodes,
+                    code: null,
                     backupCode: ' BACKUP1 ',
                 }
             );

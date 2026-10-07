@@ -11,6 +11,7 @@ import type {
     IPaginationOffsetReturn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumApiKeyType,
@@ -61,6 +62,9 @@ describe('ApiKeyDomain', () => {
         action: EnumActivityLogAction.adminApiKeyCreate,
         metadata: { apiKeyId: apiKey.id },
         onError: false,
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
     };
 
     let domain: ApiKeyDomain;
@@ -114,8 +118,39 @@ describe('ApiKeyDomain', () => {
             expect(result).toBe(page);
             expect(apiKeyRepository.findWithPagination).toHaveBeenCalledWith(
                 pagination,
-                undefined,
-                undefined
+                null,
+                null
+            );
+        });
+
+        it('forwards the active and type filters to the repository', async () => {
+            const pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput> =
+                { skip: 0, limit: 20, orderBy: [] };
+            const page: IResponsePaginationReturn<IApiKey> = {
+                type: EnumPaginationType.offset,
+                count: 0,
+                perPage: 20,
+                page: 1,
+                totalPage: 0,
+                hasNext: false,
+                hasPrevious: false,
+                data: [],
+            };
+            const isActive = { isActive: { equals: true } };
+            const type = { type: { in: [EnumApiKeyType.default] } };
+            apiKeyRepository.findWithPagination.mockResolvedValue(page);
+
+            const result = await domain.getListByAdmin(
+                pagination,
+                isActive,
+                type
+            );
+
+            expect(result).toBe(page);
+            expect(apiKeyRepository.findWithPagination).toHaveBeenCalledWith(
+                pagination,
+                isActive,
+                type
             );
         });
     });
@@ -124,6 +159,8 @@ describe('ApiKeyDomain', () => {
         const create: IApiKeyCreate = {
             name: 'Acme Api Key',
             type: EnumApiKeyType.default,
+            startAt: null,
+            endAt: null,
         };
 
         beforeEach(() => {
@@ -145,6 +182,8 @@ describe('ApiKeyDomain', () => {
                 {
                     name: 'Acme Api Key',
                     type: EnumApiKeyType.default,
+                    startAt: null,
+                    endAt: null,
                 },
                 'local_abc123',
                 'hashed-secret'

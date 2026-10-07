@@ -61,6 +61,9 @@ describe('WorkspaceMemberDomain', () => {
         action: EnumActivityLogAction.workspaceMemberLeft,
         metadata: {},
         onError: false,
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
     };
 
     beforeEach(async () => {
@@ -318,11 +321,17 @@ describe('WorkspaceMemberDomain', () => {
                 action: EnumActivityLogAction.workspaceOwnershipTransferred,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             const transferredByOwnerEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare
                 .mockReturnValueOnce(transferredEvent)
@@ -389,6 +398,9 @@ describe('WorkspaceMemberDomain', () => {
                 action: EnumActivityLogAction.workspaceMemberLeft,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
 
@@ -448,6 +460,30 @@ describe('WorkspaceMemberDomain', () => {
             ).toHaveBeenCalledWith('workspace-1', pagination, {
                 role: { in: [EnumWorkspaceMemberRole.admin] },
             });
+        });
+
+        it('passes a null role filter when none is given', async () => {
+            const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput> =
+                { limit: 20, orderBy: [] };
+            const page: IResponsePaginationReturn<IWorkspaceMember> = {
+                type: EnumPaginationType.cursor,
+                perPage: 20,
+                hasNext: false,
+                data: [],
+            };
+            workspaceMemberRepository.findWithPaginationCursor.mockResolvedValue(
+                page
+            );
+
+            const result = await domain.getMembersList(
+                'workspace-1',
+                pagination
+            );
+
+            expect(result).toBe(page);
+            expect(
+                workspaceMemberRepository.findWithPaginationCursor
+            ).toHaveBeenCalledWith('workspace-1', pagination, null);
         });
     });
 
@@ -563,11 +599,17 @@ describe('WorkspaceMemberDomain', () => {
                 action: EnumActivityLogAction.workspaceMemberRoleUpdated,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             const byAdminEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare
                 .mockReturnValueOnce(actorEvent)
@@ -690,11 +732,17 @@ describe('WorkspaceMemberDomain', () => {
                 action: EnumActivityLogAction.workspaceMemberRemoved,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             const removedByAdminEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare
                 .mockReturnValueOnce(removedEvent)
@@ -807,7 +855,7 @@ describe('WorkspaceMemberDomain', () => {
             expect(result).toBe(page);
             expect(
                 workspaceMemberRepository.findWithPaginationOffset
-            ).toHaveBeenCalledWith('workspace-1', pagination);
+            ).toHaveBeenCalledWith('workspace-1', pagination, null);
         });
     });
 

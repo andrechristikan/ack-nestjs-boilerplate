@@ -89,8 +89,8 @@ export class NotificationEmailWorkspaceDomain {
                 reference,
                 expiredAt: expiredAtFormatted,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return { message: 'Workspace invite email processed', result };
@@ -165,8 +165,8 @@ export class NotificationEmailWorkspaceDomain {
                 requesterName,
                 joinRequestReviewLink,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return {
@@ -188,8 +188,8 @@ export class NotificationEmailWorkspaceDomain {
                 username,
                 workspaceName,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return {
@@ -219,8 +219,8 @@ export class NotificationEmailWorkspaceDomain {
                 workspaceName,
                 rejectReasonLabel,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return {

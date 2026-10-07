@@ -28,7 +28,7 @@ export class AuthSocialGoogleGuard implements CanActivate {
         }
 
         request.user = await this.authDomain.validateOAuthGoogle(
-            requestHeaders[1]
+            requestHeaders[1]!
         );
 
         return true;

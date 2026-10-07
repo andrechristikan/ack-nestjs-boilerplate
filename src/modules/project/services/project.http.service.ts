@@ -61,7 +61,7 @@ export class ProjectHttpService {
         const project = await this.projectDomain.createProject(
             workspaceId,
             actorId,
-            { name, description }
+            { name, description: description ?? null }
         );
 
         return { data: project };
@@ -81,7 +81,7 @@ export class ProjectHttpService {
         const updated = await this.projectDomain.updateProject(
             project,
             actorId,
-            { name, description }
+            { name: name ?? null, description: description ?? null }
         );
 
         return { data: updated };

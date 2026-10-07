@@ -41,6 +41,7 @@ describe('NotificationEmailTermPolicyDomain', () => {
                 'home.name': 'Home',
                 'home.url': 'https://home.example.com',
                 'email.batchSize': 1,
+                'email.batchDelayInMs': 1000,
             };
 
             return values[key];
@@ -85,8 +86,8 @@ describe('NotificationEmailTermPolicyDomain', () => {
                 templateName: EnumNotificationProcess.publishTermPolicy,
                 recipients: [
                     {
-                        recipient: users[0].email,
-                        templateData: { username: users[0].username },
+                        recipient: users[0]!.email,
+                        templateData: { username: users[0]!.username },
                     },
                 ],
                 sender: 'noreply@example.com',
@@ -102,8 +103,8 @@ describe('NotificationEmailTermPolicyDomain', () => {
                 templateName: EnumNotificationProcess.publishTermPolicy,
                 recipients: [
                     {
-                        recipient: users[1].email,
-                        templateData: { username: users[1].username },
+                        recipient: users[1]!.email,
+                        templateData: { username: users[1]!.username },
                     },
                 ],
                 sender: 'noreply@example.com',

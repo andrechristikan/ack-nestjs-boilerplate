@@ -28,6 +28,7 @@ import type {
     IAnalyticBackupCodeNewDevice,
     IAnalyticCredentialStuffing,
     IAnalyticForgotPasswordAbuse,
+    IAnalyticFraudCredentialStuffingSummary,
     IAnalyticFraudRiskScore,
     IAnalyticFraudSummary,
     IAnalyticMassRegistration,
@@ -39,6 +40,7 @@ import type {
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
+import type { IUserAnalyticRef } from '@modules/user/interfaces/user.interface';
 import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
 import { UserForgotPasswordAnalyticDomain } from '@modules/user/domains/user.forgot-password.analytic.domain';
 import { UserLoginAnalyticDomain } from '@modules/user/domains/user.login.analytic.domain';
@@ -201,10 +203,7 @@ export class AnalyticFraudDomain {
         windowMs: number | null,
         defaultWindowInMs: number
     ): number {
-        if (windowMs) {
-            return windowMs;
-        }
-        return defaultWindowInMs;
+        return windowMs ?? defaultWindowInMs;
     }
 
     private resolveBand(score: number): EnumAnalyticFraudBand {
@@ -286,7 +285,7 @@ export class AnalyticFraudDomain {
             // Sequential by design: bounded chunks, concurrent within a chunk
             const devicesPerChange = await Promise.all(devicePromises);
             batch.forEach((change, index) => {
-                const forUser = devicesPerChange[index].filter(
+                const forUser = devicesPerChange[index]!.filter(
                     d => d.userId === change.userId
                 );
                 if (forUser.length > 0) {
@@ -340,7 +339,7 @@ export class AnalyticFraudDomain {
             );
         const map = new Map<string, number>();
         for (const r of rows) {
-            const domain = r.to.includes('@') ? r.to.split('@')[1] : r.to;
+            const domain = r.to.includes('@') ? r.to.split('@')[1]! : r.to;
             map.set(domain, (map.get(domain) ?? 0) + 1);
         }
         return [...map.entries()]
@@ -383,7 +382,7 @@ export class AnalyticFraudDomain {
             // Sequential by design: bounded chunks, concurrent within a chunk
             const loginsPerRevoke = await Promise.all(loginPromises);
             batch.forEach((revoke, index) => {
-                const hit = loginsPerRevoke[index].find(
+                const hit = loginsPerRevoke[index]!.find(
                     l => l.userId === revoke.userId
                 );
                 if (hit) {
@@ -475,7 +474,7 @@ export class AnalyticFraudDomain {
             const devicesPerRegeneration = await Promise.all(devicePromises);
             batch.forEach((regeneration, index) => {
                 if (
-                    devicesPerRegeneration[index].some(
+                    devicesPerRegeneration[index]!.some(
                         d => d.userId === regeneration.userId
                     )
                 ) {
@@ -515,15 +514,95 @@ export class AnalyticFraudDomain {
             .map(([userId, count]) => ({ userId, count }));
     }
 
+    private async scoreCached(
+        userId: string,
+        shared: IAnalyticSharedFingerprint[] | null
+    ): Promise<IAnalyticFraudRiskScore> {
+        const cached =
+            await this.analyticCache.getRiskScore<IAnalyticFraudRiskScore>(
+                userId
+            );
+        if (cached) {
+            return cached;
+        }
+
+        // Sequential by design: gate before the work it guards
+        const user = await this.userAnalyticDomain.getOneById(userId);
+        if (!user) {
+            throw new UserNotFoundException();
+        }
+
+        if (shared !== null) {
+            return this.scoreUser(user, shared);
+        }
+
+        const fingerprints =
+            await this.deviceAnalyticDomain.getSharedFingerprints(
+                this.sharedFingerprintMinUsersPerFingerprint
+            );
+        return this.scoreUser(user, fingerprints);
+    }
+
+    private async scoreUser(
+        user: IUserAnalyticRef,
+        shared: IAnalyticSharedFingerprint[]
+    ): Promise<IAnalyticFraudRiskScore> {
+        const weights = {
+            sessionAfterAdmin: this.weightSessionAfterAdmin,
+            impossibleTravel: this.weightImpossibleTravel,
+            newDeviceAfterPasswordChange:
+                this.weightNewDeviceAfterPasswordChange,
+            credentialStuffingIp: this.weightCredentialStuffingIp,
+            sharedFingerprint: this.weightSharedFingerprint,
+            nearLockout: this.weightNearLockout,
+            massRegistrationIp: this.weightMassRegistrationIp,
+            forgotPasswordAbuse: this.weightForgotPasswordAbuse,
+        };
+
+        const contributingSignalCodes: EnumAnalyticFraudContributingSignal[] =
+            [];
+        let score = 0;
+
+        if (
+            (user.passwordAttempt ?? 0) >=
+            Math.max(
+                1,
+                this.passwordMaxAttempt - this.failedLoginSpikeNearLockoutOffset
+            )
+        ) {
+            score += weights.nearLockout;
+            contributingSignalCodes.push(
+                EnumAnalyticFraudContributingSignal.nearLockout
+            );
+        }
+
+        if (shared.some(s => s.userIds.includes(user.id))) {
+            score += weights.sharedFingerprint;
+            contributingSignalCodes.push(
+                EnumAnalyticFraudContributingSignal.sharedFingerprint
+            );
+        }
+
+        const band = this.resolveBand(score);
+        const result: IAnalyticFraudRiskScore = {
+            userId: user.id,
+            score,
+            band,
+            contributingSignalCodes,
+        };
+        await this.analyticCache.setRiskScore(user.id, result);
+        return result;
+    }
+
     async credentialStuffingSummary(
         windowMs: number | null
-    ): Promise<IAnalyticFraudSummary> {
+    ): Promise<IAnalyticFraudCredentialStuffingSummary> {
         const window = this.resolveWindow(
             windowMs,
             this.credentialStuffingWindowInMs
         );
         const cached =
-            await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
+            await this.analyticCache.getFraudSummary<IAnalyticFraudCredentialStuffingSummary>(
                 EnumAnalyticFraudSignal.credentialStuffing,
                 String(window)
             );
@@ -531,7 +610,7 @@ export class AnalyticFraudDomain {
             return cached;
         }
         const rows = await this.computeCredentialStuffing(window);
-        const summary: IAnalyticFraudSummary = {
+        const summary: IAnalyticFraudCredentialStuffingSummary = {
             count: rows.length,
             window: String(window),
             meta: {
@@ -733,7 +812,10 @@ export class AnalyticFraudDomain {
         const rows = await this.deviceAnalyticDomain.getSharedFingerprints(
             this.sharedFingerprintMinUsersPerFingerprint
         );
-        const summary: IAnalyticFraudSummary = { count: rows.length };
+        const summary: IAnalyticFraudSummary = {
+            count: rows.length,
+            window: null,
+        };
         await this.analyticCache.setFraudSummary(
             EnumAnalyticFraudSignal.sharedFingerprint,
             AnalyticCacheEmptyToken,
@@ -1012,77 +1094,33 @@ export class AnalyticFraudDomain {
     }
 
     async riskScore(userId: string): Promise<IAnalyticFraudRiskScore> {
-        const cached =
-            await this.analyticCache.getRiskScore<IAnalyticFraudRiskScore>(
-                userId
-            );
-        if (cached) {
-            return cached;
-        }
-
-        const userPromise = this.userAnalyticDomain.getOneById(userId);
-        const sharedPromise = this.deviceAnalyticDomain.getSharedFingerprints(
-            this.sharedFingerprintMinUsersPerFingerprint
-        );
-        const [user, shared] = await Promise.all([userPromise, sharedPromise]);
-        if (!user) {
-            throw new UserNotFoundException();
-        }
-
-        const weights = {
-            sessionAfterAdmin: this.weightSessionAfterAdmin,
-            impossibleTravel: this.weightImpossibleTravel,
-            newDeviceAfterPasswordChange:
-                this.weightNewDeviceAfterPasswordChange,
-            credentialStuffingIp: this.weightCredentialStuffingIp,
-            sharedFingerprint: this.weightSharedFingerprint,
-            nearLockout: this.weightNearLockout,
-            massRegistrationIp: this.weightMassRegistrationIp,
-            forgotPasswordAbuse: this.weightForgotPasswordAbuse,
-        };
-
-        const contributingSignalCodes: EnumAnalyticFraudContributingSignal[] =
-            [];
-        let score = 0;
-
-        if (
-            (user.passwordAttempt ?? 0) >=
-            Math.max(
-                1,
-                this.passwordMaxAttempt - this.failedLoginSpikeNearLockoutOffset
-            )
-        ) {
-            score += weights.nearLockout;
-            contributingSignalCodes.push(
-                EnumAnalyticFraudContributingSignal.nearLockout
-            );
-        }
-
-        if (shared.some(s => s.userIds.includes(userId))) {
-            score += weights.sharedFingerprint;
-            contributingSignalCodes.push(
-                EnumAnalyticFraudContributingSignal.sharedFingerprint
-            );
-        }
-
-        const band = this.resolveBand(score);
-        const result: IAnalyticFraudRiskScore = {
-            userId,
-            score,
-            band,
-            contributingSignalCodes,
-        };
-        await this.analyticCache.setRiskScore(userId, result);
-        return result;
+        return this.scoreCached(userId, null);
     }
 
     async riskScores(
         minScore: number | null,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
-        const near = await this.userAnalyticDomain.getNearLockout(1);
-        const scorePromises = near.slice(0, 100).map(u => this.riskScore(u.id));
-        const all = await Promise.all(scorePromises);
+        const nearPromise = this.userAnalyticDomain.getNearLockout(1);
+        const sharedPromise = this.deviceAnalyticDomain.getSharedFingerprints(
+            this.sharedFingerprintMinUsersPerFingerprint
+        );
+        const [near, shared] = await Promise.all([nearPromise, sharedPromise]);
+
+        const all: IAnalyticFraudRiskScore[] = [];
+        const batches = this.helperArrayService.chunk(
+            near.slice(0, 100),
+            this.concurrency
+        );
+        for (const batch of batches) {
+            const batchPromises = batch.map(u =>
+                this.scoreCached(u.id, shared)
+            );
+            // Sequential by design: bounded chunks, concurrent within a chunk
+            const batchScores = await Promise.all(batchPromises);
+            all.push(...batchScores);
+        }
+
         const scored = all.filter(
             s => minScore === null || s.score >= minScore
         );

@@ -88,7 +88,7 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.resetPassword,
-                { send },
+                { send, data: null },
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
@@ -106,7 +106,7 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.resetTwoFactorByAdmin,
-                { send },
+                { send, data: null },
                 {
                     priority: EnumQueuePriority.high,
                     deduplication: {
@@ -258,10 +258,8 @@ describe('NotificationPushQueue', () => {
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.cleanupTokens,
                 {
-                    data: {
-                        failureTokens: ['token-1', 'token-2'],
-                        userId: 'user-id',
-                    },
+                    failureTokens: ['token-1', 'token-2'],
+                    userId: 'user-id',
                 },
                 {
                     priority: EnumQueuePriority.low,

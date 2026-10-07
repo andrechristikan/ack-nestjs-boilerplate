@@ -12,6 +12,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumRoleType,
@@ -70,6 +71,9 @@ describe('RoleDomain', () => {
         action: EnumActivityLogAction.adminRoleCreate,
         metadata: { roleId: role.id },
         onError: false,
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
     };
 
     let domain: RoleDomain;
@@ -120,7 +124,33 @@ describe('RoleDomain', () => {
             expect(result).toBe(page);
             expect(
                 roleRepository.findWithPaginationOffsetByAdmin
-            ).toHaveBeenCalledWith(pagination, undefined);
+            ).toHaveBeenCalledWith(pagination, null);
+        });
+
+        it('forwards the type filter to the repository', async () => {
+            const pagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput> =
+                { skip: 0, limit: 20, orderBy: [] };
+            const page: IResponsePaginationReturn<IRoleWithPolicyCount> = {
+                type: EnumPaginationType.offset,
+                count: 0,
+                perPage: 20,
+                page: 1,
+                totalPage: 0,
+                hasNext: false,
+                hasPrevious: false,
+                data: [],
+            };
+            const type = { type: { in: ['admin'] } };
+            roleRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
+                page
+            );
+
+            const result = await domain.getListOffsetByAdmin(pagination, type);
+
+            expect(result).toBe(page);
+            expect(
+                roleRepository.findWithPaginationOffsetByAdmin
+            ).toHaveBeenCalledWith(pagination, type);
         });
     });
 
@@ -146,7 +176,29 @@ describe('RoleDomain', () => {
             expect(result).toBe(page);
             expect(
                 roleRepository.findWithPaginationCursorBySystem
-            ).toHaveBeenCalledWith(pagination, undefined);
+            ).toHaveBeenCalledWith(pagination, null);
+        });
+
+        it('forwards the type filter to the repository', async () => {
+            const pagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput> =
+                { limit: 20, orderBy: [] };
+            const page: IResponsePaginationReturn<IRoleWithPolicyCount> = {
+                type: EnumPaginationType.cursor,
+                perPage: 20,
+                hasNext: false,
+                data: [],
+            };
+            const type = { type: { in: ['admin'] } };
+            roleRepository.findWithPaginationCursorBySystem.mockResolvedValue(
+                page
+            );
+
+            const result = await domain.getListCursorBySystem(pagination, type);
+
+            expect(result).toBe(page);
+            expect(
+                roleRepository.findWithPaginationCursorBySystem
+            ).toHaveBeenCalledWith(pagination, type);
         });
     });
 
@@ -212,6 +264,7 @@ describe('RoleDomain', () => {
     describe('createByAdmin', () => {
         const create: IRoleCreate = {
             name: 'manager',
+            description: null,
             type: EnumRoleType.admin,
         };
 
@@ -244,7 +297,10 @@ describe('RoleDomain', () => {
     });
 
     describe('updateByAdmin', () => {
-        const update: IRoleUpdate = { type: EnumRoleType.user };
+        const update: IRoleUpdate = {
+            description: null,
+            type: EnumRoleType.user,
+        };
 
         it('throws RoleNotFoundException when the role does not exist', async () => {
             roleRepository.findOneById.mockResolvedValue(null);

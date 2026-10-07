@@ -21,7 +21,7 @@ export interface ISessionRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>
+        isRevoked: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<ISessionList>>;
     findActiveWithPaginationCursor(
         userId: string,

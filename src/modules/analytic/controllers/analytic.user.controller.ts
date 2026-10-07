@@ -62,8 +62,7 @@ export class AnalyticUserController {
     ): Promise<IResponseReturn<IAnalyticWorkspaceSummary>> {
         return this.analyticWorkspaceUserHttpService.summary(
             workspace.id,
-            query.startDate,
-            query.endDate
+            query
         );
     }
 

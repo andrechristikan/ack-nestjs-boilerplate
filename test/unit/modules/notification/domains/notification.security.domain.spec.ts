@@ -250,6 +250,8 @@ describe('NotificationSecurityDomain', () => {
                     email: user.email,
                     username: user.username,
                     notificationId: 'notification-id',
+                    cc: [],
+                    bcc: [],
                 },
                 data
             );
@@ -310,6 +312,8 @@ describe('NotificationSecurityDomain', () => {
                 email: user.email,
                 username: user.username,
                 notificationId: 'notification-id',
+                cc: [],
+                bcc: [],
             });
             expect(result).toMatchObject({
                 message: 'Change password notification processed',
@@ -363,6 +367,8 @@ describe('NotificationSecurityDomain', () => {
                     email: user.email,
                     username: user.username,
                     notificationId: 'notification-id',
+                    cc: [],
+                    bcc: [],
                 },
                 data
             );
@@ -623,6 +629,8 @@ describe('NotificationSecurityDomain', () => {
                     email: user.email,
                     username: user.username,
                     notificationId: 'notification-id',
+                    cc: [],
+                    bcc: [],
                 },
                 data
             );

@@ -3,8 +3,8 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { MigrationRoleData } from '@migration/data/migration.role.data';
 import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
+import type { IMigrationRoleData } from '@migration/interfaces/migration.interface';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
@@ -25,7 +25,7 @@ export class MigrationRoleSeed
     private readonly logger = new Logger(MigrationRoleSeed.name);
 
     private readonly env: EnumAppEnvironment;
-    private readonly roles: Prisma.RoleCreateInput[] = [];
+    private readonly roles: IMigrationRoleData[] = [];
     private readonly seedTransactionTimeoutInMs: number;
 
     constructor(

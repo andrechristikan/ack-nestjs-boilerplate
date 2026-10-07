@@ -3,14 +3,17 @@ import type {
     EnumAnalyticFraudContributingSignal,
 } from '@modules/analytic/enums/analytic.enum';
 
-export interface IAnalyticFraudSummaryMeta {
-    minUniqueAccounts?: number;
-}
-
 export interface IAnalyticFraudSummary {
     count: number;
-    window?: string;
-    meta?: IAnalyticFraudSummaryMeta;
+    window: string | null;
+}
+
+export interface IAnalyticFraudCredentialStuffingSummaryMeta {
+    minUniqueAccounts: number;
+}
+
+export interface IAnalyticFraudCredentialStuffingSummary extends IAnalyticFraudSummary {
+    meta: IAnalyticFraudCredentialStuffingSummaryMeta;
 }
 
 export interface IAnalyticFraudRiskScore {

@@ -118,7 +118,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
-        status?: Record<string, IPaginationIn>
+        status: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<IWorkspaceInviteList>> {
         return this.paginationService.cursor<
             IWorkspaceInviteList,

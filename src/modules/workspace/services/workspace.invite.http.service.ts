@@ -86,7 +86,13 @@ export class WorkspaceInviteHttpService {
         const invite = await this.workspaceInviteDomain.createInvite(
             workspace,
             actorId,
-            { email, workspaceRole, projectId, projectRole, expiryDuration }
+            {
+                email,
+                workspaceRole,
+                projectId: projectId ?? null,
+                projectRole: projectRole ?? null,
+                expiryDuration: expiryDuration ?? null,
+            }
         );
 
         return { data: invite };
@@ -102,7 +108,7 @@ export class WorkspaceInviteHttpService {
             workspace,
             actorId,
             workspaceInviteId,
-            expiryDuration
+            expiryDuration ?? null
         );
 
         return { data: invite };

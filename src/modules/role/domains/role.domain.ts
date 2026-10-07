@@ -61,7 +61,7 @@ export class RoleDomain {
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.roleRepository.findWithPaginationOffsetByAdmin(
             pagination,
-            type
+            type ?? null
         );
     }
 
@@ -71,7 +71,7 @@ export class RoleDomain {
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.roleRepository.findWithPaginationCursorBySystem(
             pagination,
-            type
+            type ?? null
         );
     }
 

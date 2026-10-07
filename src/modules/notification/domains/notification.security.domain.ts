@@ -54,6 +54,8 @@ export class NotificationSecurityDomain {
             email: user.email,
             username: user.username,
             notificationId,
+            cc: [],
+            bcc: [],
         };
 
         const passwordExpiredAt = this.helperDateService.createFromIso(
@@ -124,6 +126,8 @@ export class NotificationSecurityDomain {
             email: user.email,
             username: user.username,
             notificationId,
+            cc: [],
+            bcc: [],
         };
 
         const results = await Promise.allSettled([
@@ -161,6 +165,8 @@ export class NotificationSecurityDomain {
             email: user.email,
             username: user.username,
             notificationId,
+            cc: [],
+            bcc: [],
         };
 
         const results = await Promise.allSettled([
@@ -197,6 +203,8 @@ export class NotificationSecurityDomain {
             email: user.email,
             username: user.username,
             notificationId,
+            cc: [],
+            bcc: [],
         };
 
         const promises = [
@@ -254,6 +262,8 @@ export class NotificationSecurityDomain {
             email: user.email,
             username: user.username,
             notificationId,
+            cc: [],
+            bcc: [],
         };
 
         const promises = [
@@ -316,6 +326,8 @@ export class NotificationSecurityDomain {
             email: user.email,
             username: user.username,
             notificationId,
+            cc: [],
+            bcc: [],
         };
         const device = this.requestContextService.resolveDevice(
             data.requestLog.userAgent

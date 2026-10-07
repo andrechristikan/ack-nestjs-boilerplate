@@ -187,7 +187,7 @@ export class WorkspaceJoinRequestDomain {
         return this.workspaceJoinRequestRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
-            status
+            status ?? null
         );
     }
 

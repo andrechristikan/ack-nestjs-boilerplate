@@ -326,6 +326,9 @@ describe('PolicyDomain', () => {
                 action: EnumActivityLogAction.adminPolicyCreate,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(preparedEvent);
 
@@ -393,6 +396,9 @@ describe('PolicyDomain', () => {
                 action: EnumActivityLogAction.adminPolicyUpdate,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(preparedEvent);
 
@@ -460,6 +466,9 @@ describe('PolicyDomain', () => {
                 action: EnumActivityLogAction.adminPolicyDelete,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(preparedEvent);
 

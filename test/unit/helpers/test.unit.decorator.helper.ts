@@ -34,7 +34,7 @@ export function getParamDecoratorFactory(
     >;
     const [paramMetadata] = Object.values(metadata);
 
-    return paramMetadata.factory;
+    return paramMetadata!.factory;
 }
 
 export function getDocResponseEntries(subject: object): IDocResponseEntry[] {

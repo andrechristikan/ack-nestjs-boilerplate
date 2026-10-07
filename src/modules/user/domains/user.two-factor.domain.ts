@@ -208,6 +208,7 @@ export class UserTwoFactorDomain {
             backupCodeVerified =
                 await this.userLoginDomain.handleTwoFactorValidation(user, {
                     method: EnumAuthTwoFactorMethod.backupCodes,
+                    code: null,
                     backupCode,
                 });
             backupCodes = user.twoFactor.backupCodes;
@@ -361,6 +362,7 @@ export class UserTwoFactorDomain {
         await this.userLoginDomain.handleTwoFactorValidation(user, {
             method: EnumAuthTwoFactorMethod.code,
             code,
+            backupCode: null,
         });
 
         try {
@@ -440,15 +442,15 @@ export class UserTwoFactorDomain {
                 }),
                 this.authCache.clearLockTwoFactorAttempt(user),
             ]);
-            const purgePromise = this.sessionDomain.purgeLoginsByUser(userId);
-            const notifyPromise =
-                this.notificationQueue.sendResetTwoFactorByAdmin(
-                    user.id,
-                    updatedBy
-                );
-            await Promise.all([purgePromise, notifyPromise]);
+            // Sequential by design: side effects whose order is part of the contract
+            await this.sessionDomain.purgeLoginsByUser(userId);
 
             this.activityLogDomain.stagePrepared(events);
+
+            await this.notificationQueue.sendResetTwoFactorByAdmin(
+                user.id,
+                updatedBy
+            );
 
             return;
         } catch (err: unknown) {

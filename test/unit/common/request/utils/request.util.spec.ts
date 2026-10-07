@@ -29,7 +29,6 @@ interface IUAParserResult {
 }
 
 const emptyResult: IUAParserResult = {
-    ua: undefined,
     browser: {},
     cpu: {},
     device: {},
@@ -98,7 +97,6 @@ describe('RequestUtil', () => {
                     name: 'Chrome',
                     version: '120.0',
                     major: '120',
-                    type: undefined,
                 },
                 cpu: { architecture: 'amd64' },
                 device: {
@@ -135,7 +133,7 @@ describe('RequestUtil', () => {
                 emptyResult
             );
 
-            const parsed = util.parseUserAgent(undefined);
+            const parsed = util.parseUserAgent(null);
 
             expect(parsed).toEqual({
                 ua: null,
@@ -150,7 +148,7 @@ describe('RequestUtil', () => {
         it('keeps a group when only one of its fields resolves', () => {
             const result: IUAParserResult = {
                 ...emptyResult,
-                device: { type: undefined, vendor: 'Apple', model: undefined },
+                device: { vendor: 'Apple' },
             };
             (UAParser as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
                 result

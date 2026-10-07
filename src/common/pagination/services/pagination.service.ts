@@ -104,9 +104,9 @@ export class PaginationService {
     }
 
     private resolveOrderBy(
-        orderBy: IPaginationOrderBy[] | null
+        orderBy: IPaginationOrderBy[]
     ): IPaginationOrderBy[] {
-        if (!orderBy || orderBy.length === 0) {
+        if (orderBy.length === 0) {
             return [...PaginationDefaultOrderBy];
         }
 
@@ -114,7 +114,7 @@ export class PaginationService {
     }
 
     private resolveCursorOrderBy(
-        orderBy: IPaginationOrderBy[] | null,
+        orderBy: IPaginationOrderBy[],
         cursorField: string
     ): IPaginationOrderBy[] {
         const resolved = this.resolveOrderBy(orderBy);
@@ -123,8 +123,8 @@ export class PaginationService {
             return resolved;
         }
 
-        const lastTerm = resolved[resolved.length - 1];
-        const direction = Object.values(lastTerm)[0];
+        const lastTerm = resolved[resolved.length - 1]!;
+        const direction = Object.values(lastTerm)[0]!;
 
         return [...resolved, { [cursorField]: direction }];
     }
@@ -161,7 +161,7 @@ export class PaginationService {
         args: IPaginationOffsetArgs<TArgsWhere>
     ): Promise<IPaginationOffsetReturn<TReturn>> {
         const { limit, skip, where, include, select } = args;
-        const orderBy = this.resolveOrderBy(args.orderBy ?? null);
+        const orderBy = this.resolveOrderBy(args.orderBy);
 
         const [count, items] = await Promise.all([
             repository.count({
@@ -193,10 +193,7 @@ export class PaginationService {
             cursorField = PaginationDefaultCursorField,
             includeCount,
         } = args;
-        const orderBy = this.resolveCursorOrderBy(
-            args.orderBy ?? null,
-            cursorField
-        );
+        const orderBy = this.resolveCursorOrderBy(args.orderBy, cursorField);
         const fingerprint = this.fingerprint(where, orderBy);
 
         let decodedCursor: IPaginationCursorValue | null = null;
@@ -214,9 +211,9 @@ export class PaginationService {
             repository.findMany({
                 where,
                 take,
-                cursor: decodedCursor
-                    ? { [cursorField]: decodedCursor.cursor }
-                    : undefined,
+                ...(decodedCursor && {
+                    cursor: { [cursorField]: decodedCursor.cursor },
+                }),
                 skip: cursor ? 1 : 0,
                 orderBy,
                 include,

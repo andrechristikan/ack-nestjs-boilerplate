@@ -138,7 +138,12 @@ describe('UserAuthDomain', () => {
             refreshToken: 'refresh-token',
         },
     };
-    const device = { fingerprint: 'device-halcyon' };
+    const device = {
+        fingerprint: 'device-halcyon',
+        name: null,
+        platform: null,
+        notificationToken: null,
+    };
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -363,6 +368,7 @@ describe('UserAuthDomain', () => {
             from: EnumUserSignUpFrom.mobile,
             username: 'halcyonVane',
             name: 'Halcyon Vane',
+            inviteToken: null,
             countryId: 'country-halcyon',
             cookies: true,
             marketing: false,
@@ -383,6 +389,11 @@ describe('UserAuthDomain', () => {
                     workspaceContext
                 )
             ).resolves.toBeNull();
+
+            expect(roleDomain.getByName).not.toHaveBeenCalled();
+            expect(userRepository.existsByUsername).not.toHaveBeenCalled();
+            expect(userUtil.checkUsernamePattern).not.toHaveBeenCalled();
+            expect(userUtil.checkBadWord).not.toHaveBeenCalled();
         });
 
         it('returns null when sign-up is disabled by the feature flag', async () => {
@@ -505,12 +516,10 @@ describe('UserAuthDomain', () => {
             userUtil.checkBadWord.mockResolvedValue(false);
             userRepository.existsByUsername.mockResolvedValue(false);
             databaseUtil.createId.mockReturnValue('user-id-halcyon');
-            const { name: _name, ...socialInputWithoutName } = socialInput;
-
             const result = await domain.prepareSocialCreate(
                 'halcyon@example.com',
                 EnumUserLoginWith.socialGoogle,
-                { ...socialInputWithoutName, marketing: true },
+                { ...socialInput, name: null, marketing: true },
                 workspaceContext
             );
 
@@ -645,6 +654,8 @@ describe('UserAuthDomain', () => {
     describe('loginWithSocial', () => {
         const socialInput = {
             username: 'halcyonVane',
+            name: null,
+            inviteToken: null,
             countryId: 'country-halcyon',
             from: EnumUserLoginFrom.website,
             device,
@@ -755,6 +766,7 @@ describe('UserAuthDomain', () => {
             username: 'halcyonVane',
             password: 'plain-password',
             name: 'Halcyon Vane',
+            inviteToken: null,
             from: EnumUserSignUpFrom.website,
             cookies: true,
             marketing: true,
@@ -823,11 +835,10 @@ describe('UserAuthDomain', () => {
         });
 
         it('defaults name to null and skips cookies and marketing when neither is accepted', async () => {
-            const { name: _name, ...signUpInputWithoutName } = signUpInput;
-
             const result = await domain.prepareSignUp(
                 {
-                    ...signUpInputWithoutName,
+                    ...signUpInput,
+                    name: null,
                     cookies: false,
                     marketing: false,
                 },
@@ -960,6 +971,16 @@ describe('UserAuthDomain', () => {
                     link: emailVerification.link,
                     expiredInMinutes: emailVerification.expiredInMinutes,
                 }
+            );
+        });
+    });
+
+    describe('notifyWelcomeSocial', () => {
+        it('enqueues the social welcome for the user', async () => {
+            await domain.notifyWelcomeSocial('user-bramble');
+
+            expect(notificationQueue.sendWelcomeSocial).toHaveBeenCalledWith(
+                'user-bramble'
             );
         });
     });

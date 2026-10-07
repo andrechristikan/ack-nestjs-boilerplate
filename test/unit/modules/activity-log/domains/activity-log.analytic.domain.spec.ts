@@ -136,6 +136,7 @@ describe('ActivityLogAnalyticDomain', () => {
                     ipAddress: null,
                     createdAt: startDate,
                     workspaceId: null,
+                    userAgent: null,
                 },
             ];
             activityLogAnalyticRepository.findManyByActionsInRange.mockResolvedValue(

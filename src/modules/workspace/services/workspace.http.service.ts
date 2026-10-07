@@ -56,8 +56,8 @@ export class WorkspaceHttpService {
     ): Promise<IResponseReturn<Workspace>> {
         const workspace = await this.workspaceDomain.createWorkspace(userId, {
             name,
-            description,
-            isPublic,
+            description: description ?? null,
+            isPublic: isPublic ?? null,
         });
 
         return { data: workspace };
@@ -77,7 +77,7 @@ export class WorkspaceHttpService {
         const workspace = await this.workspaceDomain.updateWorkspace(
             workspaceId,
             actorId,
-            { name, description }
+            { name: name ?? null, description: description ?? null }
         );
 
         return { data: workspace };

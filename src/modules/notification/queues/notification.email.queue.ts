@@ -75,6 +75,8 @@ export class NotificationEmailQueue {
             username,
             userId,
             notificationId,
+            cc,
+            bcc,
         }: INotificationEmailSendPayload,
         {
             passwordCreatedAt,
@@ -89,6 +91,8 @@ export class NotificationEmailQueue {
                     email,
                     username,
                     notificationId,
+                    cc,
+                    bcc,
                 },
                 data: {
                     passwordCreatedAt,
@@ -122,6 +126,8 @@ export class NotificationEmailQueue {
             username,
             userId,
             notificationId,
+            cc,
+            bcc,
         }: INotificationEmailSendPayload,
         {
             encryptedPassword,
@@ -136,6 +142,8 @@ export class NotificationEmailQueue {
                     email,
                     username,
                     notificationId,
+                    cc,
+                    bcc,
                 },
                 data: {
                     encryptedPassword,
@@ -170,6 +178,8 @@ export class NotificationEmailQueue {
         username,
         userId,
         notificationId,
+        cc,
+        bcc,
     }: INotificationEmailSendPayload): Promise<void> {
         const payload: INotificationEmailQueuePayload = {
             send: {
@@ -177,7 +187,10 @@ export class NotificationEmailQueue {
                 email,
                 username,
                 notificationId,
+                cc,
+                bcc,
             },
+            data: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -203,6 +216,8 @@ export class NotificationEmailQueue {
         username,
         userId,
         notificationId,
+        cc,
+        bcc,
     }: INotificationEmailSendPayload): Promise<void> {
         const payload: INotificationEmailQueuePayload = {
             send: {
@@ -210,7 +225,10 @@ export class NotificationEmailQueue {
                 email,
                 username,
                 notificationId,
+                cc,
+                bcc,
             },
+            data: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -237,6 +255,8 @@ export class NotificationEmailQueue {
             username,
             userId,
             notificationId,
+            cc,
+            bcc,
         }: INotificationEmailSendPayload,
         {
             expiredAt,
@@ -252,6 +272,8 @@ export class NotificationEmailQueue {
                     email,
                     username,
                     notificationId,
+                    cc,
+                    bcc,
                 },
                 data: {
                     expiredAt,
@@ -287,6 +309,8 @@ export class NotificationEmailQueue {
         username,
         userId,
         notificationId,
+        cc,
+        bcc,
     }: INotificationEmailSendPayload): Promise<void> {
         const payload: INotificationEmailQueuePayload = {
             send: {
@@ -294,7 +318,10 @@ export class NotificationEmailQueue {
                 email,
                 username,
                 notificationId,
+                cc,
+                bcc,
             },
+            data: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -317,6 +344,8 @@ export class NotificationEmailQueue {
         username,
         userId,
         notificationId,
+        cc,
+        bcc,
     }: INotificationEmailSendPayload): Promise<void> {
         const payload: INotificationEmailQueuePayload = {
             send: {
@@ -324,7 +353,10 @@ export class NotificationEmailQueue {
                 email,
                 username,
                 notificationId,
+                cc,
+                bcc,
             },
+            data: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -352,6 +384,8 @@ export class NotificationEmailQueue {
             username,
             userId,
             notificationId,
+            cc,
+            bcc,
         }: INotificationEmailSendPayload,
         { reference }: INotificationVerifiedEmailPayload
     ): Promise<void> {
@@ -362,6 +396,8 @@ export class NotificationEmailQueue {
                     email,
                     username,
                     notificationId,
+                    cc,
+                    bcc,
                 },
                 data: {
                     reference,
@@ -393,6 +429,8 @@ export class NotificationEmailQueue {
             username,
             userId,
             notificationId,
+            cc,
+            bcc,
         }: INotificationEmailSendPayload,
         {
             expiredAt,
@@ -409,6 +447,8 @@ export class NotificationEmailQueue {
                     email,
                     username,
                     notificationId,
+                    cc,
+                    bcc,
                 },
                 data: {
                     expiredAt,
@@ -443,6 +483,8 @@ export class NotificationEmailQueue {
             username,
             userId,
             notificationId,
+            cc,
+            bcc,
         }: INotificationEmailSendPayload,
         {
             mobileNumber,
@@ -457,6 +499,8 @@ export class NotificationEmailQueue {
                     email,
                     username,
                     notificationId,
+                    cc,
+                    bcc,
                 },
                 data: {
                     mobileNumber,
@@ -492,6 +536,8 @@ export class NotificationEmailQueue {
         username,
         userId,
         notificationId,
+        cc,
+        bcc,
     }: INotificationEmailSendPayload): Promise<void> {
         const payload: INotificationEmailQueuePayload = {
             send: {
@@ -499,7 +545,10 @@ export class NotificationEmailQueue {
                 email,
                 username,
                 notificationId,
+                cc,
+                bcc,
             },
+            data: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -529,6 +578,8 @@ export class NotificationEmailQueue {
             username,
             userId,
             notificationId,
+            cc,
+            bcc,
         }: INotificationEmailSendPayload,
         {
             loginFrom,
@@ -544,6 +595,8 @@ export class NotificationEmailQueue {
                     email,
                     username,
                     notificationId,
+                    cc,
+                    bcc,
                 },
                 data: {
                     loginFrom,
@@ -652,7 +705,7 @@ export class NotificationEmailQueue {
             );
         const payload: INotificationEmailUnregisteredQueuePayload<INotificationWorkspaceInviteUnregisteredEncryptedPayload> =
             {
-                send: { email },
+                send: { email, cc: [], bcc: [] },
                 data: {
                     ...invite,
                     encryptedInviteAcceptLink,

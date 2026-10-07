@@ -1,0 +1,266 @@
+# Run from the repository root: docker compose --env-file .env -f ci/docker-compose.production.yml up -d
+# The DOCKER_* variables are read from that file; without --env-file their defaults apply.
+# Mongo and Redis authentication turn on only when DOCKER_MONGO_ROOT_PASSWORD and DOCKER_REDIS_PASSWORD are set;
+# with them empty both start plain.
+name: ack-nestjs-boilerplate-production
+
+services:
+    apis:
+        build:
+            context: ..
+            dockerfile: ci/dockerfile.production
+        volumes:
+            - type: bind
+              source: ../.env
+              target: /app/.env
+              read_only: true
+              bind:
+                  create_host_path: false
+        ports:
+            - '3000:3000'
+        restart: unless-stopped
+        networks:
+            - app-network
+        depends_on:
+            mongo:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            jwks-server:
+                condition: service_healthy
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'wget',
+                    '--no-verbose',
+                    '--tries=1',
+                    '--spider',
+                    'http://127.0.0.1:3000/api/public/hello',
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 30s
+
+    jwks-server:
+        image: nginx:1.30.5-alpine
+        restart: unless-stopped
+        volumes:
+            - type: bind
+              source: ../keys/access-jwks.json
+              target: /usr/share/nginx/html/.well-known/access-jwks.json
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ../keys/refresh-jwks.json
+              target: /usr/share/nginx/html/.well-known/refresh-jwks.json
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ./jwks-server/jwks.conf
+              target: /etc/nginx/conf.d/default.conf
+              read_only: true
+              bind:
+                  create_host_path: false
+        networks:
+            - app-network
+        deploy:
+            resources:
+                limits:
+                    cpus: '0.3'
+                    memory: 128M
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'wget',
+                    '-q',
+                    '--spider',
+                    'http://localhost:80/.well-known/access-jwks.json',
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
+
+    mongo:
+        image: mongo:8.3.11
+        environment:
+            HOME: /tmp
+            MONGO_INITDB_ROOT_USERNAME: ${DOCKER_MONGO_ROOT_USERNAME:-root}
+            MONGO_INITDB_ROOT_PASSWORD: ${DOCKER_MONGO_ROOT_PASSWORD:-}
+            RS_HOST: mongo:27017
+        volumes:
+            - type: volume
+              source: mongo_data
+              target: /data/db
+            - type: bind
+              source: ../keys/mongo-keyfile
+              target: /etc/mongo/keyfile
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ./mongo/entrypoint.sh
+              target: /entrypoint.sh
+              read_only: true
+              bind:
+                  create_host_path: false
+        entrypoint: ['/bin/bash', '/entrypoint.sh']
+        restart: unless-stopped
+        networks:
+            - app-network
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'if [ -n "$$MONGO_INITDB_ROOT_PASSWORD" ]; then mongosh --quiet -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "quit(db.hello().isWritablePrimary ? 0 : 1)"; else mongosh --quiet --eval "quit(db.hello().isWritablePrimary ? 0 : 1)"; fi',
+                ]
+            interval: 10s
+            timeout: 10s
+            retries: 10
+            start_period: 40s
+
+    redis:
+        image: redis:8.8.3-alpine
+        environment:
+            REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:-}
+        user: redis
+        command:
+            [
+                'sh',
+                '-c',
+                'if [ -n "$$REDIS_PASSWORD" ]; then exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"; fi; exec redis-server --appendonly yes',
+            ]
+        volumes:
+            - type: volume
+              source: redis_data
+              target: /data
+        restart: unless-stopped
+        networks:
+            - app-network
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'if [ -n "$$REDIS_PASSWORD" ]; then export REDISCLI_AUTH="$$REDIS_PASSWORD"; fi; redis-cli ping | grep -q PONG',
+                ]
+            interval: 10s
+            timeout: 10s
+            retries: 5
+
+    redis-bullboard:
+        image: venatum/bull-board:3.4.15
+        environment:
+            REDIS_HOST: redis
+            REDIS_PORT: '6379'
+            REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:-}
+            BULL_PREFIX: Queue
+            REDIS_DB: '1'
+            USER_LOGIN: ${DOCKER_BULLBOARD_USER:-admin}
+            USER_PASSWORD: ${DOCKER_BULLBOARD_PASSWORD:-admin123}
+        ports:
+            - '127.0.0.1:3010:3000'
+        restart: unless-stopped
+        networks:
+            - app-network
+        depends_on:
+            redis:
+                condition: service_healthy
+        deploy:
+            resources:
+                limits:
+                    cpus: '0.3'
+                    memory: 128M
+
+    vault:
+        image: hashicorp/vault:2.1.1
+        profiles: ['vault']
+        cap_add:
+            - IPC_LOCK
+        entrypoint: ['/bin/sh', '/vault/entrypoint.sh']
+        restart: unless-stopped
+        volumes:
+            - type: bind
+              source: ./vault/entrypoint.sh
+              target: /vault/entrypoint.sh
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ./vault/config.hcl
+              target: /vault/config.hcl
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: volume
+              source: vault_data
+              target: /vault/file
+            - type: bind
+              source: ../generated/vault
+              target: /vault/init
+              bind:
+                  create_host_path: true
+        networks:
+            vault-network:
+                aliases:
+                    - vault
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    "wget -q -O- 'http://127.0.0.1:8200/v1/sys/health?standbycode=200' >/dev/null 2>&1 || exit 1",
+                ]
+            interval: 5s
+            timeout: 3s
+            retries: 15
+            start_period: 5s
+
+    vault-bootstrap:
+        image: hashicorp/vault:2.1.1
+        profiles: ['vault']
+        entrypoint: ['/bin/sh', '/bootstrap.sh']
+        environment:
+            VAULT_ADDR: http://vault:8200
+            KV_MOUNT: ack-nestjs-boilerplate
+        volumes:
+            - type: bind
+              source: ./vault/bootstrap.sh
+              target: /bootstrap.sh
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ./vault/policies
+              target: /policies
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ../.env.example
+              target: /seed/.env.example
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ../generated/vault
+              target: /vault/init
+              bind:
+                  create_host_path: true
+        networks:
+            - vault-network
+        depends_on:
+            vault:
+                condition: service_healthy
+
+networks:
+    app-network:
+    vault-network:
+
+volumes:
+    mongo_data:
+    redis_data:
+    vault_data:

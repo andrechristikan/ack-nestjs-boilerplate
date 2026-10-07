@@ -170,6 +170,7 @@ export class AuthTwoFactorDomain {
             return {
                 isValid: false,
                 method: method!,
+                newBackupCodes: null,
             };
         }
 
@@ -180,6 +181,7 @@ export class AuthTwoFactorDomain {
             return {
                 isValid,
                 method: method!,
+                newBackupCodes: null,
             };
         }
 
@@ -187,6 +189,7 @@ export class AuthTwoFactorDomain {
             return {
                 isValid: false,
                 method: method!,
+                newBackupCodes: null,
             };
         }
 
@@ -198,6 +201,7 @@ export class AuthTwoFactorDomain {
             return {
                 isValid: false,
                 method: method!,
+                newBackupCodes: null,
             };
         }
 

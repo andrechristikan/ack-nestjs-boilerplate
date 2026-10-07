@@ -35,7 +35,7 @@ export class WorkspaceJoinRequestHttpService {
         const joinRequest =
             await this.workspaceJoinRequestDomain.createJoinRequest(userId, {
                 workspaceId,
-                message,
+                message: message ?? null,
             });
 
         return { data: joinRequest };

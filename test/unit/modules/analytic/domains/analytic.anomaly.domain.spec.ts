@@ -319,7 +319,7 @@ describe('AnalyticAnomalyDomain', () => {
 
     describe('failedLoginSpikeSummary', () => {
         it('returns the cached summary on a cache hit', async () => {
-            const cached = { count: 1 };
+            const cached = { count: 1, window: null };
             analyticCache.getAnomalySummary.mockResolvedValue(cached);
 
             const result = await domain.failedLoginSpikeSummary();
@@ -346,6 +346,7 @@ describe('AnalyticAnomalyDomain', () => {
 
             expect(result).toEqual({
                 count: 1,
+                window: null,
                 meta: { nearLockoutMinAttempt: 4, bucketCount: 1 },
             });
             expect(userAnalyticDomain.getNearLockout).toHaveBeenCalledWith(4);
@@ -394,7 +395,7 @@ describe('AnalyticAnomalyDomain', () => {
 
     describe('deviceProliferationSummary', () => {
         it('returns the cached summary on a cache hit', async () => {
-            const cached = { count: 2 };
+            const cached = { count: 2, window: null };
             analyticCache.getAnomalySummary.mockResolvedValue(cached);
 
             const result = await domain.deviceProliferationSummary();
@@ -417,6 +418,7 @@ describe('AnalyticAnomalyDomain', () => {
 
             expect(result).toEqual({
                 count: 1,
+                window: null,
                 meta: { avg: 2, stdDev: 0.5, zScoreThreshold: 3 },
             });
         });
@@ -465,7 +467,7 @@ describe('AnalyticAnomalyDomain', () => {
                 stdDev: 0.5,
                 rows,
             });
-            const sorted = [rows[1], rows[0]];
+            const sorted = [rows[1]!, rows[0]!];
             analyticSortUtil.sortRows.mockReturnValue(sorted);
 
             await domain.deviceProliferationList({
@@ -740,6 +742,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: startDate,
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'e2',
@@ -748,6 +751,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: startDate,
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'e3',
@@ -756,6 +760,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: null,
                     createdAt: startDate,
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'e4',
@@ -764,6 +769,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: null,
                     createdAt: startDate,
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'e5',
@@ -772,6 +778,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: null,
                     createdAt: startDate,
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'e6',
@@ -780,6 +787,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: '10.0.0.2',
                     createdAt: startDate,
                     workspaceId: null,
+                    userAgent: null,
                 },
             ]);
 
@@ -819,6 +827,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: new Date('2026-01-01T08:00:00.000Z'),
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'e1',
@@ -827,6 +836,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: new Date('2026-01-01T08:00:00.000Z'),
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'e2',
@@ -835,6 +845,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: new Date('2026-01-01T08:00:00.000Z'),
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'e3',
@@ -843,6 +854,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: new Date('2026-01-01T08:00:00.000Z'),
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'e4',
@@ -851,6 +863,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: new Date('2026-01-01T08:00:00.000Z'),
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'e5',
@@ -859,6 +872,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: new Date('2026-01-01T03:00:00.000Z'),
                     workspaceId: null,
+                    userAgent: null,
                 },
             ]);
 
@@ -885,6 +899,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: new Date('2026-01-01T08:00:00.000Z'),
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'keep-1',
@@ -893,6 +908,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: new Date('2026-01-01T08:00:00.000Z'),
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'keep-2',
@@ -901,6 +917,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: new Date('2026-01-01T08:00:00.000Z'),
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'keep-3',
@@ -909,6 +926,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: new Date('2026-01-01T08:00:00.000Z'),
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'keep-4',
@@ -917,6 +935,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: new Date('2026-01-01T08:00:00.000Z'),
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'short',
@@ -925,6 +944,7 @@ describe('AnalyticAnomalyDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: startDate,
                     workspaceId: null,
+                    userAgent: null,
                 },
             ]);
 

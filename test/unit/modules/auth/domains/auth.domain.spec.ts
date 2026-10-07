@@ -12,6 +12,7 @@ import type {
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/auth.social-apple-not-configured.exception';
 import { AuthSocialGoogleNotConfiguredException } from '@modules/auth/exceptions/auth.social-google-not-configured.exception';
+import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import type { ISessionCache } from '@modules/session/interfaces/session.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
@@ -47,7 +48,7 @@ describe('AuthDomain', () => {
         sessionId: accessPayload.sessionId,
         deviceOwnershipId: accessPayload.deviceOwnershipId,
         userId: accessPayload.userId,
-        jti: accessPayload.jti,
+        jti: 'jti-value',
         sub: accessPayload.userId,
     };
 
@@ -65,7 +66,7 @@ describe('AuthDomain', () => {
 
     describe('validateJwtAccessStrategy', () => {
         it('throws AuthJwtAccessTokenInvalidException when sub is missing', async () => {
-            const invalidPayload = { ...accessPayload, sub: undefined };
+            const { sub: _sub, ...invalidPayload } = accessPayload;
 
             await expect(
                 domain.validateJwtAccessStrategy(invalidPayload)
@@ -116,7 +117,7 @@ describe('AuthDomain', () => {
         });
 
         it('throws AuthJwtAccessTokenInvalidException when jti is missing', async () => {
-            const invalidPayload = { ...accessPayload, jti: undefined };
+            const { jti: _jti, ...invalidPayload } = accessPayload;
 
             await expect(
                 domain.validateJwtAccessStrategy(invalidPayload)
@@ -209,6 +210,32 @@ describe('AuthDomain', () => {
     });
 
     describe('validateJwtAccessGuard', () => {
+        it('rethrows a typed exception from the strategy unchanged', () => {
+            const err = new SessionRevokedException();
+
+            let thrown: unknown;
+            try {
+                domain.validateJwtAccessGuard(
+                    err,
+                    accessPayload,
+                    new Error('info')
+                );
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toBe(err);
+            expect(thrown).toMatchObject({
+                module: 'session',
+                statusCode: EnumSessionStatusCodeError.revoked,
+                statusCodeKey:
+                    EnumSessionStatusCodeError[
+                        EnumSessionStatusCodeError.revoked
+                    ],
+                messagePath: 'session.error.revoked',
+            });
+        });
+
         it('throws AuthJwtAccessTokenInvalidException with the passport error when present', () => {
             const err = new Error('passport error');
 
@@ -274,7 +301,7 @@ describe('AuthDomain', () => {
 
     describe('validateJwtRefreshStrategy', () => {
         it('throws AuthJwtRefreshTokenInvalidException when sub is missing', async () => {
-            const invalidPayload = { ...refreshPayload, sub: undefined };
+            const { sub: _sub, ...invalidPayload } = refreshPayload;
 
             await expect(
                 domain.validateJwtRefreshStrategy(invalidPayload)
@@ -325,7 +352,7 @@ describe('AuthDomain', () => {
         });
 
         it('throws AuthJwtRefreshTokenInvalidException when jti is missing', async () => {
-            const invalidPayload = { ...refreshPayload, jti: undefined };
+            const { jti: _jti, ...invalidPayload } = refreshPayload;
 
             await expect(
                 domain.validateJwtRefreshStrategy(invalidPayload)
@@ -414,6 +441,32 @@ describe('AuthDomain', () => {
     });
 
     describe('validateJwtRefreshGuard', () => {
+        it('rethrows a typed exception from the strategy unchanged', () => {
+            const err = new SessionRevokedException();
+
+            let thrown: unknown;
+            try {
+                domain.validateJwtRefreshGuard(
+                    err,
+                    refreshPayload,
+                    new Error('info')
+                );
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toBe(err);
+            expect(thrown).toMatchObject({
+                module: 'session',
+                statusCode: EnumSessionStatusCodeError.revoked,
+                statusCodeKey:
+                    EnumSessionStatusCodeError[
+                        EnumSessionStatusCodeError.revoked
+                    ],
+                messagePath: 'session.error.revoked',
+            });
+        });
+
         it('throws AuthJwtRefreshTokenInvalidException with the passport error when present', () => {
             const err = new Error('passport error');
 

@@ -39,6 +39,10 @@ import type { AnalyticLoginTimeAnomalyListRequestDto } from '@modules/analytic/d
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import type {
     IAnalyticAccountTakeover,
+    IAnalyticAnomalyDeviceProliferationSummary,
+    IAnalyticAnomalyFailedLoginSpikeSummary,
+    IAnalyticAnomalyImpossibleTravelSummary,
+    IAnalyticAnomalyLoginSpikeIpSummary,
     IAnalyticAnomalySummary,
     IAnalyticApiKeyActiveExpired,
     IAnalyticApiKeyBurst,
@@ -50,6 +54,7 @@ import type {
     IAnalyticDeviceProliferation,
     IAnalyticForgotPasswordAbuse,
     IAnalyticForgotPasswordConversion,
+    IAnalyticFraudCredentialStuffingSummary,
     IAnalyticFraudRiskScore,
     IAnalyticFraudSummary,
     IAnalyticImpossibleTravel,
@@ -125,6 +130,11 @@ import {
     EnumRoleType,
 } from '@generated/prisma-client/client';
 import { AnalyticFraudSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-summary.response.dto';
+import { AnalyticFraudCredentialStuffingSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-credential-stuffing-summary.response.dto';
+import { AnalyticAnomalyImpossibleTravelSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-impossible-travel-summary.response.dto';
+import { AnalyticAnomalyLoginSpikeIpSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-login-spike-ip-summary.response.dto';
+import { AnalyticAnomalyFailedLoginSpikeSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-failed-login-spike-summary.response.dto';
+import { AnalyticAnomalyDeviceProliferationSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-device-proliferation-summary.response.dto';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
@@ -252,10 +262,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticDashboardHttpService.usersSignUpWith(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersSignUpWith(query);
     }
 
     @Doc({ summary: 'admin get user sign up source distribution' })
@@ -277,10 +284,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticDashboardHttpService.usersSignUpFrom(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersSignUpFrom(query);
     }
 
     @Doc({ summary: 'admin get user email verification rate' })
@@ -302,10 +306,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricRate>> {
-        return this.analyticDashboardHttpService.usersEmailVerification(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersEmailVerification(query);
     }
 
     @Doc({ summary: 'admin get user mobile verification rate' })
@@ -327,10 +328,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricRate>> {
-        return this.analyticDashboardHttpService.usersMobileVerification(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersMobileVerification(query);
     }
 
     @Doc({ summary: 'admin get user status distribution' })
@@ -515,10 +513,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticDashboardHttpService.authLoginMethod(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authLoginMethod(query);
     }
 
     @Doc({ summary: 'admin get login source distribution' })
@@ -540,10 +535,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticDashboardHttpService.authLoginSource(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authLoginSource(query);
     }
 
     @Doc({ summary: 'admin get account lockout metrics by date range' })
@@ -636,10 +628,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticDashboardHttpService.authSessionsGeo(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authSessionsGeo(query);
     }
 
     @Doc({ summary: 'admin get session user agent distribution' })
@@ -661,10 +650,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticDashboardHttpService.authSessionsUserAgent(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authSessionsUserAgent(query);
     }
 
     @Doc({ summary: 'admin get refresh token volume by date range' })
@@ -1192,8 +1178,7 @@ export class AnalyticAdminController {
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticTermPolicyAcceptanceRate>> {
         return this.analyticDashboardHttpService.termPoliciesAcceptanceRate(
-            query.startDate,
-            query.endDate
+            query
         );
     }
 
@@ -1217,8 +1202,7 @@ export class AnalyticAdminController {
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticTermPolicyTimeToAccept>> {
         return this.analyticDashboardHttpService.termPoliciesTimeToAccept(
-            query.startDate,
-            query.endDate
+            query
         );
     }
 
@@ -1413,7 +1397,7 @@ export class AnalyticAdminController {
 
     @Doc({ summary: 'admin get credential stuffing fraud summary' })
     @Response('analytic.fraudCredentialStuffing', {
-        schema: AnalyticFraudSummaryResponseSchema,
+        schema: AnalyticFraudCredentialStuffingSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -1429,10 +1413,8 @@ export class AnalyticAdminController {
     async credentialStuffing(
         @Query({ schema: AnalyticWindowRequestSchema })
         query: AnalyticWindowRequestDto
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticFraudHttpService.credentialStuffingSummary(
-            query.windowMs
-        );
+    ): Promise<IResponseReturn<IAnalyticFraudCredentialStuffingSummary>> {
+        return this.analyticFraudHttpService.credentialStuffingSummary(query);
     }
 
     @Doc({ summary: 'admin get all credential stuffing fraud detections' })
@@ -1523,9 +1505,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticWindowRequestSchema })
         query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticFraudHttpService.massRegistrationSummary(
-            query.windowMs
-        );
+        return this.analyticFraudHttpService.massRegistrationSummary(query);
     }
 
     @Doc({ summary: 'admin get all mass registration fraud detections' })
@@ -1570,7 +1550,7 @@ export class AnalyticAdminController {
         query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         return this.analyticFraudHttpService.passwordResetEnumerationSummary(
-            query.windowMs
+            query
         );
     }
 
@@ -1712,7 +1692,7 @@ export class AnalyticAdminController {
         query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         return this.analyticFraudHttpService.forgotPasswordTokenAbuseSummary(
-            query.windowMs
+            query
         );
     }
 
@@ -1761,9 +1741,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticWindowRequestSchema })
         query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticFraudHttpService.refreshSpikeSummary(
-            query.windowMs
-        );
+        return this.analyticFraudHttpService.refreshSpikeSummary(query);
     }
 
     @Doc({ summary: 'admin get all refresh token spike fraud detections' })
@@ -1807,9 +1785,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticWindowRequestSchema })
         query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticFraudHttpService.backupCodeNewDeviceSummary(
-            query.windowMs
-        );
+        return this.analyticFraudHttpService.backupCodeNewDeviceSummary(query);
     }
 
     @Doc({
@@ -1855,7 +1831,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticWindowRequestSchema })
         query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticFraudHttpService.apiKeyBurstSummary(query.windowMs);
+        return this.analyticFraudHttpService.apiKeyBurstSummary(query);
     }
 
     @Doc({ summary: 'admin get all api key burst fraud detections' })
@@ -1926,7 +1902,7 @@ export class AnalyticAdminController {
 
     @Doc({ summary: 'admin get impossible travel anomaly summary' })
     @Response('analytic.anomalyImpossibleTravel', {
-        schema: AnalyticAnomalySummaryResponseSchema,
+        schema: AnalyticAnomalyImpossibleTravelSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -1942,11 +1918,8 @@ export class AnalyticAdminController {
     async impossibleTravel(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
-        return this.analyticAnomalyHttpService.impossibleTravelSummary(
-            query.startDate,
-            query.endDate
-        );
+    ): Promise<IResponseReturn<IAnalyticAnomalyImpossibleTravelSummary>> {
+        return this.analyticAnomalyHttpService.impossibleTravelSummary(query);
     }
 
     @Doc({ summary: 'admin get all impossible travel anomaly detections' })
@@ -1973,7 +1946,7 @@ export class AnalyticAdminController {
 
     @Doc({ summary: 'admin get login spike by ip anomaly summary' })
     @Response('analytic.anomalyLoginSpikeIp', {
-        schema: AnalyticAnomalySummaryResponseSchema,
+        schema: AnalyticAnomalyLoginSpikeIpSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -1989,10 +1962,8 @@ export class AnalyticAdminController {
     async loginSpikeIp(
         @Query({ schema: AnalyticWindowRequestSchema })
         query: AnalyticWindowRequestDto
-    ): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
-        return this.analyticAnomalyHttpService.loginSpikeIpSummary(
-            query.windowMs
-        );
+    ): Promise<IResponseReturn<IAnalyticAnomalyLoginSpikeIpSummary>> {
+        return this.analyticAnomalyHttpService.loginSpikeIpSummary(query);
     }
 
     @Doc({ summary: 'admin get all login spike by ip anomaly detections' })
@@ -2019,7 +1990,7 @@ export class AnalyticAdminController {
 
     @Doc({ summary: 'admin get failed login spike anomaly summary' })
     @Response('analytic.anomalyFailedLoginSpike', {
-        schema: AnalyticAnomalySummaryResponseSchema,
+        schema: AnalyticAnomalyFailedLoginSpikeSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -2033,7 +2004,7 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/anomaly/failed-login-spike')
     async failedLoginSpike(): Promise<
-        IResponseReturn<IAnalyticAnomalySummary>
+        IResponseReturn<IAnalyticAnomalyFailedLoginSpikeSummary>
     > {
         return this.analyticAnomalyHttpService.failedLoginSpikeSummary();
     }
@@ -2062,7 +2033,7 @@ export class AnalyticAdminController {
 
     @Doc({ summary: 'admin get device proliferation anomaly summary' })
     @Response('analytic.anomalyDeviceProliferation', {
-        schema: AnalyticAnomalySummaryResponseSchema,
+        schema: AnalyticAnomalyDeviceProliferationSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -2076,7 +2047,7 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/anomaly/device-proliferation')
     async deviceProliferation(): Promise<
-        IResponseReturn<IAnalyticAnomalySummary>
+        IResponseReturn<IAnalyticAnomalyDeviceProliferationSummary>
     > {
         return this.analyticAnomalyHttpService.deviceProliferationSummary();
     }
@@ -2122,10 +2093,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
-        return this.analyticAnomalyHttpService.loginTimeSummary(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticAnomalyHttpService.loginTimeSummary(query);
     }
 
     @Doc({ summary: 'admin get all login time anomaly detections' })

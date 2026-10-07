@@ -60,7 +60,7 @@ export class FileService {
 
     extractFilenameFromPath(filePath: string): string {
         const parts = filePath.split('/');
-        return parts[parts.length - 1];
+        return parts[parts.length - 1]!;
     }
 
     sanitizeFilename(filename: string): string {

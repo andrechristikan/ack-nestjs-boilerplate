@@ -31,6 +31,10 @@ export type {
 
 export type {
     IAnalyticAnomalySummary,
+    IAnalyticAnomalyImpossibleTravelSummary,
+    IAnalyticAnomalyLoginSpikeIpSummary,
+    IAnalyticAnomalyFailedLoginSpikeSummary,
+    IAnalyticAnomalyDeviceProliferationSummary,
     IAnalyticImpossibleTravel,
     IAnalyticLoginSpikeIp,
     IAnalyticNearLockout,
@@ -40,6 +44,7 @@ export type {
 
 export type {
     IAnalyticFraudSummary,
+    IAnalyticFraudCredentialStuffingSummary,
     IAnalyticFraudRiskScore,
     IAnalyticCredentialStuffing,
     IAnalyticAccountTakeover,

@@ -43,7 +43,7 @@ export class NotificationProcessorService {
         return this.notificationAccountDomain.processWelcomeByAdmin(
             userId,
             proceedBy,
-            data!
+            data
         );
     }
 
@@ -54,7 +54,7 @@ export class NotificationProcessorService {
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationAccountDomain.processWelcome(userId, data!);
+        return this.notificationAccountDomain.processWelcome(userId, data);
     }
 
     async processWelcomeSocial({
@@ -76,7 +76,7 @@ export class NotificationProcessorService {
     >): Promise<IQueueResponse> {
         return this.notificationAccountDomain.processVerifiedEmail(
             userId,
-            data!
+            data
         );
     }
 
@@ -89,7 +89,7 @@ export class NotificationProcessorService {
     >): Promise<IQueueResponse> {
         return this.notificationAccountDomain.processVerificationEmail(
             userId,
-            data!
+            data
         );
     }
 
@@ -102,7 +102,7 @@ export class NotificationProcessorService {
     >): Promise<IQueueResponse> {
         return this.notificationAccountDomain.processVerifiedMobileNumber(
             userId,
-            data!
+            data
         );
     }
 
@@ -116,7 +116,7 @@ export class NotificationProcessorService {
         return this.notificationSecurityDomain.processTemporaryPasswordByAdmin(
             userId,
             proceedBy,
-            data!
+            data
         );
     }
 
@@ -139,7 +139,7 @@ export class NotificationProcessorService {
     >): Promise<IQueueResponse> {
         return this.notificationSecurityDomain.processForgotPassword(
             userId,
-            data!
+            data
         );
     }
 
@@ -175,7 +175,7 @@ export class NotificationProcessorService {
     >): Promise<IQueueResponse> {
         return this.notificationSecurityDomain.processNewDeviceLogin(
             userId,
-            data!
+            data
         );
     }
 
@@ -188,7 +188,7 @@ export class NotificationProcessorService {
     >): Promise<IQueueResponse> {
         return this.notificationTermPolicyDomain.processPublishTermPolicy(
             proceedBy,
-            data!
+            data
         );
     }
 
@@ -201,7 +201,7 @@ export class NotificationProcessorService {
     >): Promise<IQueueResponse> {
         return this.notificationTermPolicyDomain.processUserAcceptTermPolicy(
             userId,
-            data!
+            data
         );
     }
 
@@ -215,7 +215,7 @@ export class NotificationProcessorService {
         return this.notificationWorkspaceDomain.processWorkspaceInvite(
             userId,
             proceedBy,
-            data!
+            data
         );
     }
 
@@ -229,7 +229,7 @@ export class NotificationProcessorService {
         return this.notificationWorkspaceDomain.processWorkspaceJoinRequest(
             userId,
             proceedBy,
-            data!
+            data
         );
     }
 
@@ -243,7 +243,7 @@ export class NotificationProcessorService {
         return this.notificationWorkspaceDomain.processWorkspaceJoinAccepted(
             userId,
             proceedBy,
-            data!
+            data
         );
     }
 
@@ -257,7 +257,7 @@ export class NotificationProcessorService {
         return this.notificationWorkspaceDomain.processWorkspaceJoinRejected(
             userId,
             proceedBy,
-            data!
+            data
         );
     }
 }

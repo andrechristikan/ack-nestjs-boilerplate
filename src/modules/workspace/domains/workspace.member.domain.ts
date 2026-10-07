@@ -197,7 +197,7 @@ export class WorkspaceMemberDomain {
         return this.workspaceMemberRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
-            role
+            role ?? null
         );
     }
 
@@ -301,7 +301,8 @@ export class WorkspaceMemberDomain {
             this.workspaceRepository.findByIdByAdmin(workspaceId),
             this.workspaceMemberRepository.findWithPaginationOffset(
                 workspaceId,
-                pagination
+                pagination,
+                null
             ),
         ]);
         if (!workspace) {

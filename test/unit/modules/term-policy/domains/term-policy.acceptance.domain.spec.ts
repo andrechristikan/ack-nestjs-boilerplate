@@ -313,6 +313,9 @@ describe('TermPolicyAcceptanceDomain', () => {
                 action: EnumActivityLogAction.userAcceptTermPolicy,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(preparedEvent);
             databaseService.withTransaction.mockImplementation(async fn =>

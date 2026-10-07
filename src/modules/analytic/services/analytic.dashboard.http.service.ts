@@ -33,6 +33,7 @@ import type {
     IAnalyticWorkspaceCount,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
+import type { AnalyticOptionalDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -45,13 +46,10 @@ export class AnalyticDashboardHttpService {
     ) {}
 
     async usersRegistrations(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.usersRegistrations(
             range.startDate,
             range.endDate
@@ -61,13 +59,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async usersChurn(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricRate>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.usersChurn(
             range.startDate,
             range.endDate
@@ -77,13 +72,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async usersBlocked(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticBlockedUsers>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.usersBlocked(
             range.startDate,
             range.endDate
@@ -93,12 +85,11 @@ export class AnalyticDashboardHttpService {
     }
 
     async usersSignUpWith(
-        startDate?: Date,
-        endDate?: Date
+        query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         const range = this.analyticDateDomain.optionalRange(
-            startDate ?? null,
-            endDate ?? null
+            query.startDate ?? null,
+            query.endDate ?? null
         );
         const data = await this.analyticDashboardDomain.usersSignUpWith(
             range.startDate,
@@ -109,12 +100,11 @@ export class AnalyticDashboardHttpService {
     }
 
     async usersSignUpFrom(
-        startDate?: Date,
-        endDate?: Date
+        query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         const range = this.analyticDateDomain.optionalRange(
-            startDate ?? null,
-            endDate ?? null
+            query.startDate ?? null,
+            query.endDate ?? null
         );
         const data = await this.analyticDashboardDomain.usersSignUpFrom(
             range.startDate,
@@ -125,12 +115,11 @@ export class AnalyticDashboardHttpService {
     }
 
     async usersEmailVerification(
-        startDate?: Date,
-        endDate?: Date
+        query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricRate>> {
         const range = this.analyticDateDomain.optionalRange(
-            startDate ?? null,
-            endDate ?? null
+            query.startDate ?? null,
+            query.endDate ?? null
         );
         const data = await this.analyticDashboardDomain.usersEmailVerification(
             range.startDate,
@@ -141,12 +130,11 @@ export class AnalyticDashboardHttpService {
     }
 
     async usersMobileVerification(
-        startDate?: Date,
-        endDate?: Date
+        query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricRate>> {
         const range = this.analyticDateDomain.optionalRange(
-            startDate ?? null,
-            endDate ?? null
+            query.startDate ?? null,
+            query.endDate ?? null
         );
         const data = await this.analyticDashboardDomain.usersMobileVerification(
             range.startDate,
@@ -183,13 +171,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async usersSelfDelete(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.usersSelfDelete(
             range.startDate,
             range.endDate
@@ -199,13 +184,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async usersClaimUsername(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.usersClaimUsername(
             range.startDate,
             range.endDate
@@ -215,13 +197,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async usersMobileChurn(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMobileChurn>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.usersMobileChurn(
             range.startDate,
             range.endDate
@@ -231,13 +210,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async authLoginFrequency(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.authLoginFrequency(
             range.startDate,
             range.endDate
@@ -247,12 +223,11 @@ export class AnalyticDashboardHttpService {
     }
 
     async authLoginMethod(
-        startDate?: Date,
-        endDate?: Date
+        query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         const range = this.analyticDateDomain.optionalRange(
-            startDate ?? null,
-            endDate ?? null
+            query.startDate ?? null,
+            query.endDate ?? null
         );
         const data = await this.analyticDashboardDomain.authLoginMethod(
             range.startDate,
@@ -263,12 +238,11 @@ export class AnalyticDashboardHttpService {
     }
 
     async authLoginSource(
-        startDate?: Date,
-        endDate?: Date
+        query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         const range = this.analyticDateDomain.optionalRange(
-            startDate ?? null,
-            endDate ?? null
+            query.startDate ?? null,
+            query.endDate ?? null
         );
         const data = await this.analyticDashboardDomain.authLoginSource(
             range.startDate,
@@ -279,13 +253,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async authLockout(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticLockoutMetrics>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.authLockout(
             range.startDate,
             range.endDate
@@ -295,13 +266,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async authSessionRevoke(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.authSessionRevoke(
             range.startDate,
             range.endDate
@@ -320,12 +288,11 @@ export class AnalyticDashboardHttpService {
     }
 
     async authSessionsGeo(
-        startDate?: Date,
-        endDate?: Date
+        query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         const range = this.analyticDateDomain.optionalRange(
-            startDate ?? null,
-            endDate ?? null
+            query.startDate ?? null,
+            query.endDate ?? null
         );
         const data = await this.analyticDashboardDomain.authSessionsGeo(
             range.startDate,
@@ -336,12 +303,11 @@ export class AnalyticDashboardHttpService {
     }
 
     async authSessionsUserAgent(
-        startDate?: Date,
-        endDate?: Date
+        query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         const range = this.analyticDateDomain.optionalRange(
-            startDate ?? null,
-            endDate ?? null
+            query.startDate ?? null,
+            query.endDate ?? null
         );
         const data = await this.analyticDashboardDomain.authSessionsUserAgent(
             range.startDate,
@@ -352,13 +318,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async authRefreshTokenVolume(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.authRefreshTokenVolume(
             range.startDate,
             range.endDate
@@ -368,13 +331,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async authLogoutRate(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.authLogoutRate(
             range.startDate,
             range.endDate
@@ -384,13 +344,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async authVerificationFunnel(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticVerificationFunnels>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.authVerificationFunnel(
             range.startDate,
             range.endDate
@@ -408,13 +365,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async authPasswordChange(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.authPasswordChange(
             range.startDate,
             range.endDate
@@ -424,13 +378,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async authForgotPasswordConversion(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticForgotPasswordConversion>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data =
             await this.analyticDashboardDomain.authForgotPasswordConversion(
                 range.startDate,
@@ -441,13 +392,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async authAdminForcePassword(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.authAdminForcePassword(
             range.startDate,
             range.endDate
@@ -465,13 +413,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async authTwoFactorAdminReset(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.authTwoFactorAdminReset(
             range.startDate,
             range.endDate
@@ -481,13 +426,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async authTwoFactorVerifySuccess(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data =
             await this.analyticDashboardDomain.authTwoFactorVerifySuccess(
                 range.startDate,
@@ -498,13 +440,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async authBackupCodeRegeneration(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data =
             await this.analyticDashboardDomain.authBackupCodeRegeneration(
                 range.startDate,
@@ -523,13 +462,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async devicesRegistration(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.devicesRegistration(
             range.startDate,
             range.endDate
@@ -551,13 +487,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async devicesInfoRefresh(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.devicesInfoRefresh(
             range.startDate,
             range.endDate
@@ -587,13 +520,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async apiKeysLifecycle(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticApiKeyLifecycle>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.apiKeysLifecycle(
             range.startDate,
             range.endDate
@@ -617,12 +547,11 @@ export class AnalyticDashboardHttpService {
     }
 
     async termPoliciesAcceptanceRate(
-        startDate?: Date,
-        endDate?: Date
+        query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticTermPolicyAcceptanceRate>> {
         const range = this.analyticDateDomain.optionalRange(
-            startDate ?? null,
-            endDate ?? null
+            query.startDate ?? null,
+            query.endDate ?? null
         );
         const data =
             await this.analyticDashboardDomain.termPoliciesAcceptanceRate(
@@ -634,12 +563,11 @@ export class AnalyticDashboardHttpService {
     }
 
     async termPoliciesTimeToAccept(
-        startDate?: Date,
-        endDate?: Date
+        query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticTermPolicyTimeToAccept>> {
         const range = this.analyticDateDomain.optionalRange(
-            startDate ?? null,
-            endDate ?? null
+            query.startDate ?? null,
+            query.endDate ?? null
         );
         const data =
             await this.analyticDashboardDomain.termPoliciesTimeToAccept(
@@ -651,13 +579,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async workspacesCreation(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.workspacesCreation(
             range.startDate,
             range.endDate
@@ -675,13 +600,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async workspacesInviteFunnel(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const statuses =
             await this.analyticDashboardDomain.workspacesInviteFunnel(
                 range.startDate,
@@ -692,13 +614,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async workspacesJoinOutcomes(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const statuses =
             await this.analyticDashboardDomain.workspacesJoinOutcomes(
                 range.startDate,
@@ -743,13 +662,10 @@ export class AnalyticDashboardHttpService {
     }
 
     async projectsCreation(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IResponseReturn<IAnalyticProjectCreation>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticDashboardDomain.projectsCreation(
             range.startDate,
             range.endDate

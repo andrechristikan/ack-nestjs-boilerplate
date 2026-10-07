@@ -12,6 +12,10 @@ import {
 } from '@modules/analytic/constants/analytic.list.constant';
 import { EnumAnalyticAnomalySignal } from '@modules/analytic/enums/analytic.enum';
 import type {
+    IAnalyticAnomalyDeviceProliferationSummary,
+    IAnalyticAnomalyFailedLoginSpikeSummary,
+    IAnalyticAnomalyImpossibleTravelSummary,
+    IAnalyticAnomalyLoginSpikeIpSummary,
     IAnalyticAnomalySummary,
     IAnalyticDeviceProliferation,
     IAnalyticImpossibleTravel,
@@ -88,7 +92,7 @@ export class AnalyticAnomalyDomain {
         end: Date | null,
         windowMs: number | null
     ): string {
-        if (windowMs) {
+        if (windowMs !== null) {
             return String(windowMs);
         }
         return this.analyticDateUtil.windowToken(start, end);
@@ -113,8 +117,8 @@ export class AnalyticAnomalyDomain {
         const flagged: IAnalyticImpossibleTravel[] = [];
         for (const [userId, list] of byUser) {
             for (let i = 1; i < list.length; i++) {
-                const prev = list[i - 1];
-                const curr = list[i];
+                const prev = list[i - 1]!;
+                const curr = list[i]!;
                 if (!prev.geoLocation || !curr.geoLocation) {
                     continue;
                 }
@@ -207,10 +211,10 @@ export class AnalyticAnomalyDomain {
             }
             const hist = new Array(24).fill(0) as number[];
             for (const h of hours) {
-                hist[h]++;
+                hist[h]!++;
             }
-            const lastHour = hours[hours.length - 1];
-            const freq = (hist[lastHour] / hours.length) * 100;
+            const lastHour = hours[hours.length - 1]!;
+            const freq = (hist[lastHour]! / hours.length) * 100;
             if (freq < this.loginTimeAnomalyHistoricalFrequencyPercent) {
                 anomalous.push({
                     userId,
@@ -225,10 +229,10 @@ export class AnalyticAnomalyDomain {
     async impossibleTravelSummary(
         startDate: Date | null,
         endDate: Date | null
-    ): Promise<IAnalyticAnomalySummary> {
+    ): Promise<IAnalyticAnomalyImpossibleTravelSummary> {
         const window = this.windowToken(startDate, endDate, null);
         const cached =
-            await this.analyticCache.getAnomalySummary<IAnalyticAnomalySummary>(
+            await this.analyticCache.getAnomalySummary<IAnalyticAnomalyImpossibleTravelSummary>(
                 EnumAnalyticAnomalySignal.impossibleTravel,
                 window
             );
@@ -237,7 +241,7 @@ export class AnalyticAnomalyDomain {
         }
 
         const rows = await this.computeImpossibleTravel(startDate, endDate);
-        const summary: IAnalyticAnomalySummary = {
+        const summary: IAnalyticAnomalyImpossibleTravelSummary = {
             count: rows.length,
             window,
             meta: {
@@ -275,10 +279,10 @@ export class AnalyticAnomalyDomain {
 
     async loginSpikeIpSummary(
         windowMs: number | null
-    ): Promise<IAnalyticAnomalySummary> {
+    ): Promise<IAnalyticAnomalyLoginSpikeIpSummary> {
         const window = windowMs ?? this.loginSpikeIpWindowInMs;
         const cached =
-            await this.analyticCache.getAnomalySummary<IAnalyticAnomalySummary>(
+            await this.analyticCache.getAnomalySummary<IAnalyticAnomalyLoginSpikeIpSummary>(
                 EnumAnalyticAnomalySignal.loginSpikeIp,
                 String(window)
             );
@@ -287,7 +291,7 @@ export class AnalyticAnomalyDomain {
         }
 
         const rows = await this.computeLoginSpikeIp(window);
-        const summary: IAnalyticAnomalySummary = {
+        const summary: IAnalyticAnomalyLoginSpikeIpSummary = {
             count: rows.length,
             window: String(window),
             meta: {
@@ -322,9 +326,9 @@ export class AnalyticAnomalyDomain {
         });
     }
 
-    async failedLoginSpikeSummary(): Promise<IAnalyticAnomalySummary> {
+    async failedLoginSpikeSummary(): Promise<IAnalyticAnomalyFailedLoginSpikeSummary> {
         const cached =
-            await this.analyticCache.getAnomalySummary<IAnalyticAnomalySummary>(
+            await this.analyticCache.getAnomalySummary<IAnalyticAnomalyFailedLoginSpikeSummary>(
                 EnumAnalyticAnomalySignal.failedLoginSpike,
                 AnalyticCacheEmptyToken
             );
@@ -340,8 +344,9 @@ export class AnalyticAnomalyDomain {
             this.userAnalyticDomain.getGroupPasswordAttemptBuckets(),
             this.userAnalyticDomain.getNearLockout(minAttempt),
         ]);
-        const summary: IAnalyticAnomalySummary = {
+        const summary: IAnalyticAnomalyFailedLoginSpikeSummary = {
             count: near.length,
+            window: null,
             meta: {
                 nearLockoutMinAttempt: minAttempt,
                 bucketCount: buckets.length,
@@ -367,9 +372,9 @@ export class AnalyticAnomalyDomain {
         );
     }
 
-    async deviceProliferationSummary(): Promise<IAnalyticAnomalySummary> {
+    async deviceProliferationSummary(): Promise<IAnalyticAnomalyDeviceProliferationSummary> {
         const cached =
-            await this.analyticCache.getAnomalySummary<IAnalyticAnomalySummary>(
+            await this.analyticCache.getAnomalySummary<IAnalyticAnomalyDeviceProliferationSummary>(
                 EnumAnalyticAnomalySignal.deviceProliferation,
                 AnalyticCacheEmptyToken
             );
@@ -380,8 +385,9 @@ export class AnalyticAnomalyDomain {
         const result = await this.deviceAnalyticDomain.getProliferationOutliers(
             this.deviceProliferationZScoreThreshold
         );
-        const summary: IAnalyticAnomalySummary = {
+        const summary: IAnalyticAnomalyDeviceProliferationSummary = {
             count: result.count,
+            window: null,
             meta: {
                 avg: result.avg,
                 stdDev: result.stdDev,

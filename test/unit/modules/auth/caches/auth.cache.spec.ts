@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Cache } from 'cache-manager';
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumRoleType,
@@ -17,7 +18,7 @@ import {
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { AuthCache } from '@modules/auth/caches/auth.cache';
 import type { IAuthTwoFactorChallengeCache } from '@modules/auth/interfaces/auth.interface';
-import type { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
+import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
 describe('AuthCache', () => {
@@ -28,6 +29,8 @@ describe('AuthCache', () => {
     });
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
+    const helperDateService: MockProxy<HelperDateService> =
+        mock<HelperDateService>();
 
     let cache: AuthCache;
 
@@ -99,7 +102,12 @@ describe('AuthCache', () => {
         twoFactor,
     };
 
-    const device: DeviceRequestDto = { fingerprint: 'device-fingerprint-1' };
+    const device: IDeviceIdentity = {
+        fingerprint: 'device-fingerprint-1',
+        name: null,
+        platform: null,
+        notificationToken: null,
+    };
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -125,6 +133,7 @@ describe('AuthCache', () => {
                     provide: HelperStringService,
                     useValue: helperStringService,
                 },
+                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
 
@@ -243,38 +252,40 @@ describe('AuthCache', () => {
     });
 
     describe('getLockTwoFactorAttempt', () => {
-        it('returns the remaining lock duration when locked', async () => {
-            cacheManager.get.mockResolvedValue(true);
-            cacheManager.ttl.mockResolvedValue(30000);
-            const user = userWithTwoFactor;
+        const now = new Date('2026-01-01T00:00:00.000Z');
 
-            const result = await cache.getLockTwoFactorAttempt(user);
+        beforeEach(() => {
+            helperDateService.create.mockReturnValue(now);
+            helperDateService.getTimestamp.mockReturnValue(now.getTime());
+        });
+
+        it('returns the remaining lock duration from the absolute expiry', async () => {
+            cacheManager.ttl.mockResolvedValue(now.getTime() + 30000);
+
+            const result =
+                await cache.getLockTwoFactorAttempt(userWithTwoFactor);
 
             expect(result).toBe(30000);
-            expect(cacheManager.get).toHaveBeenCalledWith(
-                'TwoFactorLock:user-1'
-            );
             expect(cacheManager.ttl).toHaveBeenCalledWith(
                 'TwoFactorLock:user-1'
             );
+            expect(cacheManager.get).not.toHaveBeenCalled();
         });
 
-        it('returns 0 when not locked', async () => {
-            cacheManager.get.mockResolvedValue(false);
+        it('returns 0 when no lock entry exists', async () => {
             cacheManager.ttl.mockResolvedValue(undefined);
-            const user = userWithTwoFactor;
 
-            const result = await cache.getLockTwoFactorAttempt(user);
+            const result =
+                await cache.getLockTwoFactorAttempt(userWithTwoFactor);
 
             expect(result).toBe(0);
         });
 
-        it('returns 0 when locked but the ttl read answers undefined', async () => {
-            cacheManager.get.mockResolvedValue(true);
-            cacheManager.ttl.mockResolvedValue(undefined);
-            const user = userWithTwoFactor;
+        it('returns 0 when the expiry is already past', async () => {
+            cacheManager.ttl.mockResolvedValue(now.getTime() - 1);
 
-            const result = await cache.getLockTwoFactorAttempt(user);
+            const result =
+                await cache.getLockTwoFactorAttempt(userWithTwoFactor);
 
             expect(result).toBe(0);
         });

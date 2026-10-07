@@ -352,7 +352,11 @@ describe('WorkspaceDomain', () => {
     describe('createInTx', () => {
         it('creates the workspace row and its owner membership', async () => {
             const tx = {} as IDatabaseTransactionClient;
-            const create: IWorkspaceCreate = { name: 'Acme' };
+            const create: IWorkspaceCreate = {
+                name: 'Acme',
+                description: null,
+                isPublic: null,
+            };
             workspaceRepository.createInTx.mockResolvedValue(workspace);
 
             const result = await domain.createInTx(
@@ -393,7 +397,7 @@ describe('WorkspaceDomain', () => {
             expect(workspaceRepository.createInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
-                { name: 'Acme' },
+                { name: 'Acme', description: null, isPublic: null },
                 'acme-team',
                 'workspace-1'
             );
@@ -433,7 +437,7 @@ describe('WorkspaceDomain', () => {
                 1,
                 tx,
                 'user-1',
-                { name: 'User One' },
+                { name: 'User One', description: null, isPublic: null },
                 'user-one',
                 'workspace-1'
             );
@@ -441,7 +445,7 @@ describe('WorkspaceDomain', () => {
                 2,
                 tx,
                 'user-2',
-                { name: 'User Two' },
+                { name: 'User Two', description: null, isPublic: null },
                 'user-two',
                 'workspace-2'
             );
@@ -595,7 +599,7 @@ describe('WorkspaceDomain', () => {
             expect(workspaceRepository.createInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
-                { name: 'User One' },
+                { name: 'User One', description: null, isPublic: null },
                 'user-one-a',
                 'workspace-1'
             );
@@ -712,6 +716,9 @@ describe('WorkspaceDomain', () => {
                 action: EnumActivityLogAction.adminUserImport,
                 metadata: { userCount: 7 },
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
 
@@ -738,7 +745,11 @@ describe('WorkspaceDomain', () => {
     });
 
     describe('createWorkspace', () => {
-        const create: IWorkspaceCreate = { name: 'Acme' };
+        const create: IWorkspaceCreate = {
+            name: 'Acme',
+            description: null,
+            isPublic: null,
+        };
 
         it('throws WorkspaceCapReachedException when the owner already meets the cap', async () => {
             workspaceMemberRepository.countOwnedActiveByUser.mockResolvedValue(
@@ -776,6 +787,9 @@ describe('WorkspaceDomain', () => {
                 action: EnumActivityLogAction.workspaceCreated,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
 
@@ -820,6 +834,9 @@ describe('WorkspaceDomain', () => {
                 action: EnumActivityLogAction.workspaceCreated,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
 
@@ -879,12 +896,18 @@ describe('WorkspaceDomain', () => {
 
     describe('updateWorkspace', () => {
         it('updates the workspace details and stages the updated activity', async () => {
-            const update: IWorkspaceUpdate = { name: 'Acme 2' };
+            const update: IWorkspaceUpdate = {
+                name: 'Acme 2',
+                description: null,
+            };
             workspaceRepository.updateDetails.mockResolvedValue(workspace);
             const stagedEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.workspaceUpdated,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
 
@@ -917,6 +940,9 @@ describe('WorkspaceDomain', () => {
                 action: EnumActivityLogAction.workspaceVisibilityUpdated,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
             const callOrder: string[] = [];
@@ -998,6 +1024,9 @@ describe('WorkspaceDomain', () => {
                 action: EnumActivityLogAction.workspaceUpdated,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
 
@@ -1050,6 +1079,9 @@ describe('WorkspaceDomain', () => {
                 action: EnumActivityLogAction.workspaceSwitched,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
 
@@ -1084,6 +1116,9 @@ describe('WorkspaceDomain', () => {
                 action: EnumActivityLogAction.workspaceDeleted,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
 
@@ -1141,6 +1176,31 @@ describe('WorkspaceDomain', () => {
             expect(
                 workspaceRepository.findWithPaginationOffsetByAdmin
             ).toHaveBeenCalledWith(pagination, { isPublic: { equals: true } });
+        });
+
+        it('passes a null isPublic filter when none is given', async () => {
+            const pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput> =
+                { skip: 0, limit: 20, orderBy: [] };
+            const page: IResponsePaginationReturn<Workspace> = {
+                type: EnumPaginationType.offset,
+                count: 0,
+                perPage: 20,
+                page: 1,
+                totalPage: 0,
+                hasNext: false,
+                hasPrevious: false,
+                data: [],
+            };
+            workspaceRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
+                page
+            );
+
+            const result = await domain.getListOffsetByAdmin(pagination);
+
+            expect(result).toBe(page);
+            expect(
+                workspaceRepository.findWithPaginationOffsetByAdmin
+            ).toHaveBeenCalledWith(pagination, null);
         });
     });
 
@@ -1406,6 +1466,9 @@ describe('WorkspaceDomain', () => {
                 action: EnumActivityLogAction.userCreated,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             userOnboardingDomain.buildOnboardingActivities.mockReturnValue([
                 {
@@ -1439,11 +1502,17 @@ describe('WorkspaceDomain', () => {
                 action: EnumActivityLogAction.adminUserImport,
                 metadata: { userCount: 7 },
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             const activityEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.userCreated,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             userOnboardingDomain.buildAdminPayloadMetadata.mockReturnValue({
                 userCount: 7,

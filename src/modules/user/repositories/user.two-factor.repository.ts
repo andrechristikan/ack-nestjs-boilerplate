@@ -32,7 +32,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
             },
             data: {
                 lastUsedAt,
-                ...(isBackupCode && {
+                ...(newBackupCodes !== null && {
                     backupCodes: newBackupCodes,
                 }),
             },

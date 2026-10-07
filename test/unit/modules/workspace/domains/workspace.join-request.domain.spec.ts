@@ -273,6 +273,9 @@ describe('WorkspaceJoinRequestDomain', () => {
                 action: EnumActivityLogAction.workspaceJoinRequested,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
             activityLogDomain.stagePrepared.mockImplementation(() => {
@@ -351,7 +354,33 @@ describe('WorkspaceJoinRequestDomain', () => {
             ).toHaveBeenCalledWith('workspace', 'joinRequestAllowed');
             expect(
                 workspaceJoinRequestRepository.findWithPaginationCursor
-            ).toHaveBeenCalledWith('workspace-1', pagination, undefined);
+            ).toHaveBeenCalledWith('workspace-1', pagination, null);
+        });
+
+        it('forwards the status filter to the repository', async () => {
+            const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput> =
+                { limit: 20, orderBy: [] };
+            const page: IResponsePaginationReturn<WorkspaceJoinRequest> = {
+                type: EnumPaginationType.cursor,
+                perPage: 20,
+                hasNext: false,
+                data: [],
+            };
+            const status = { status: { in: ['pending'] } };
+            workspaceJoinRequestRepository.findWithPaginationCursor.mockResolvedValue(
+                page
+            );
+
+            const result = await domain.getJoinRequestsList(
+                'workspace-1',
+                pagination,
+                status
+            );
+
+            expect(result).toBe(page);
+            expect(
+                workspaceJoinRequestRepository.findWithPaginationCursor
+            ).toHaveBeenCalledWith('workspace-1', pagination, status);
         });
     });
 
@@ -424,6 +453,9 @@ describe('WorkspaceJoinRequestDomain', () => {
                 action: EnumActivityLogAction.workspaceJoinAccepted,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
             const callOrder: string[] = [];
@@ -489,11 +521,17 @@ describe('WorkspaceJoinRequestDomain', () => {
                 action: EnumActivityLogAction.workspaceJoinAccepted,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             const acceptedByAdminEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.workspaceJoinAcceptedByAdmin,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare
                 .mockReturnValueOnce(acceptedEvent)
@@ -588,6 +626,9 @@ describe('WorkspaceJoinRequestDomain', () => {
                 action: EnumActivityLogAction.workspaceJoinRejected,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
             const callOrder: string[] = [];
@@ -650,11 +691,17 @@ describe('WorkspaceJoinRequestDomain', () => {
                 action: EnumActivityLogAction.workspaceJoinRejected,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             const rejectedByAdminEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.workspaceJoinRejectedByAdmin,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare
                 .mockReturnValueOnce(rejectedEvent)

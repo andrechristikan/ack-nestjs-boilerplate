@@ -77,9 +77,10 @@ describe('auth.jwt.decorator', () => {
         };
 
         it('throws RequestContextMissingException when the request user is undefined', () => {
-            const request: MockProxy<IRequestApp<IAuthJwtAccessTokenPayload>> =
-                mock<IRequestApp<IAuthJwtAccessTokenPayload>>();
-            request.user = undefined;
+            const request: Pick<
+                IRequestApp<IAuthJwtAccessTokenPayload>,
+                'user'
+            > = {};
             httpArgumentsHost.getRequest.mockReturnValue(request);
             const target = {} as Type<unknown>;
             AuthJwtPayload()(target, 'payload', 0);

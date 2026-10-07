@@ -278,7 +278,10 @@ describe('ProjectDomain', () => {
             const project = baseProject;
             helperStringService.generateSlug.mockReturnValue('p-abc123');
             projectRepository.create.mockResolvedValue(project);
-            const create: IProjectCreate = { name: 'Website Revamp' };
+            const create: IProjectCreate = {
+                name: 'Website Revamp',
+                description: null,
+            };
 
             const result = await domain.createProject(
                 '507f1f77bcf86cd799439012',
@@ -322,7 +325,10 @@ describe('ProjectDomain', () => {
             const project = baseProject;
             const updated = { ...baseProject, name: 'New Name' };
             projectRepository.updateDetails.mockResolvedValue(updated);
-            const update: IProjectUpdate = { name: 'New Name' };
+            const update: IProjectUpdate = {
+                name: 'New Name',
+                description: null,
+            };
 
             const result = await domain.updateProject(
                 project,

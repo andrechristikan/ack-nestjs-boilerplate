@@ -11,7 +11,6 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { UserAdminListSelect } from '@modules/user/constants/user.constant';
 import type {
@@ -20,6 +19,7 @@ import type {
     IUserCreateWithWorkspaceInput,
     IUserList,
     IUserProfile,
+    IUserUpdateProfile,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserRepository } from '@modules/user/interfaces/user.repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -80,9 +80,9 @@ export class UserRepository implements IUserRepository {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        status: Record<string, IPaginationIn> | null,
+        roleId: Record<string, IPaginationEqual> | null,
+        countryId: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.paginationService.offset<IUserList, Prisma.UserWhereInput>(
             this.databaseService.client.user,
@@ -291,12 +291,13 @@ export class UserRepository implements IUserRepository {
 
     async updateProfile(
         userId: string,
-        { countryId, ...data }: UserUpdateProfileRequestDto
+        { countryId, gender, name }: IUserUpdateProfile
     ): Promise<User> {
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
-                ...data,
+                ...(name !== null && { name }),
+                gender,
                 countryId,
             },
         });

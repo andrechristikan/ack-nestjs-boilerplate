@@ -90,17 +90,18 @@ export class UserHttpService {
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
         const { input, passwordString } =
             await this.userDomain.prepareCreateByAdmin(
-                { countryId, email, name, roleId, username },
+                { countryId, email, name: name ?? null, roleId, username },
                 createdBy
             );
         const createTimeoutInMs =
             this.userOnboardingDomain.getCreateTimeoutInMs();
-        const [created] = await this.workspaceDomain.commitOnboarding(
+        const createdUsers = await this.workspaceDomain.commitOnboarding(
             [input],
             EnumUserCreateMode.admin,
             createTimeoutInMs,
             EnumActivityLogAction.adminUserCreate
         );
+        const created = createdUsers[0]!;
         if (input.password) {
             await this.userDomain.notifyWelcomeByAdmin(
                 created.id,

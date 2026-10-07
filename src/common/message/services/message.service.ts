@@ -62,8 +62,9 @@ export class MessageService {
         const key = this.resolveIssueKey(issue);
         const property = this.resolveIssueProperty(issue);
         const lastProperty = property.slice(property.lastIndexOf('.') + 1);
+        const customLanguage = options?.customLanguage ?? null;
         const properties: IMessageSetOptions = {
-            customLanguage: options?.customLanguage,
+            ...(customLanguage !== null && { customLanguage }),
             properties: { property: lastProperty },
         };
 
@@ -96,9 +97,11 @@ export class MessageService {
             language = this.defaultLanguage;
         }
 
+        const args = options?.properties ?? null;
+
         return this.i18n.translate(path, {
             lang: language,
-            args: options?.properties,
+            ...(args !== null && { args }),
         }) as string;
     }
 

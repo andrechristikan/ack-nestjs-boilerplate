@@ -33,7 +33,7 @@ export interface IWorkspaceMemberRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>
+        role: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>>;
     findWithPaginationCursor(
         workspaceId: string,
@@ -41,7 +41,7 @@ export interface IWorkspaceMemberRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>
+        role: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<IWorkspaceMember>>;
     createOwnerInTx(
         tx: IDatabaseTransactionClient,

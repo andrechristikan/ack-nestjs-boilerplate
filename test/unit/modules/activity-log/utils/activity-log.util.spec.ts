@@ -50,13 +50,14 @@ describe('ActivityLogUtil', () => {
             messageService.setMessage.mockReturnValue('User logged out');
 
             const result = util.getDescription(
-                EnumActivityLogAction.userLogout
+                EnumActivityLogAction.userLogout,
+                null
             );
 
             expect(result).toBe('User logged out');
             expect(messageService.setMessage).toHaveBeenCalledWith(
                 `activityLog.${EnumActivityLogAction.userLogout}`,
-                { properties: undefined }
+                {}
             );
         });
     });
@@ -138,7 +139,8 @@ describe('ActivityLogUtil', () => {
                 'user-1',
                 null,
                 EnumActivityLogAction.userLogout,
-                requestLog
+                requestLog,
+                null
             );
 
             expect(result).toEqual({
@@ -148,7 +150,6 @@ describe('ActivityLogUtil', () => {
                 ipAddress: null,
                 userAgent: null,
                 geoLocation: null,
-                metadata: undefined,
                 createdBy: 'user-1',
             });
         });
@@ -187,7 +188,6 @@ describe('ActivityLogUtil', () => {
                     ipAddress: '127.0.0.1',
                     userAgent: null,
                     geoLocation: null,
-                    metadata: undefined,
                     createdBy: 'user-1',
                 },
             });

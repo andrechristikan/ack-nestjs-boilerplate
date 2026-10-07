@@ -74,7 +74,7 @@ describe('response.decorator', () => {
             Response('response.created.path')(target, propertyKey, descriptor);
 
             const entries = getDocResponseEntries(handler);
-            expect(entries[0].httpStatus).toBe(HttpStatus.CREATED);
+            expect(entries[0]!.httpStatus).toBe(HttpStatus.CREATED);
         });
 
         it('honors an explicit @HttpCode over the POST default', () => {
@@ -95,7 +95,7 @@ describe('response.decorator', () => {
             Response('response.accepted.path')(target, propertyKey, descriptor);
 
             const entries = getDocResponseEntries(handler);
-            expect(entries[0].httpStatus).toBe(HttpStatus.ACCEPTED);
+            expect(entries[0]!.httpStatus).toBe(HttpStatus.ACCEPTED);
         });
 
         it('keeps the HTTP 200 default when the descriptor value is not a function', () => {
@@ -110,7 +110,7 @@ describe('response.decorator', () => {
             );
 
             const entries = getDocResponseEntries(handler);
-            expect(entries[0].httpStatus).toBe(HttpStatus.OK);
+            expect(entries[0]!.httpStatus).toBe(HttpStatus.OK);
         });
 
         it('documents and sets the schema metadata when a schema is provided', () => {
@@ -129,7 +129,7 @@ describe('response.decorator', () => {
                 schema
             );
             const entries = getDocResponseEntries(handler);
-            expect(entries[0].schema).toBe(schema);
+            expect(entries[0]!.schema).toBe(schema);
         });
 
         it('does not attach the cache interceptor when no cache option is given', () => {
@@ -319,7 +319,7 @@ describe('response.decorator', () => {
             expect(interceptors).toHaveLength(1);
             const doubles = buildResponseFileInterceptorDoubles();
             await createResponseFileInterceptorFromClass(
-                interceptors[0],
+                interceptors[0]!,
                 doubles
             );
             expect(doubles.configService.get).toHaveBeenCalledWith(
@@ -335,10 +335,10 @@ describe('response.decorator', () => {
                     content: Record<string, { schema: unknown }>;
                 }
             >;
-            expect(responses[String(HttpStatus.OK)].description).toBe(
+            expect(responses[String(HttpStatus.OK)]!.description).toBe(
                 HttpStatus.OK.toString()
             );
-            expect(responses[String(HttpStatus.OK)].content).toEqual({
+            expect(responses[String(HttpStatus.OK)]!.content).toEqual({
                 'text/csv': { schema: { type: 'string', format: 'binary' } },
             });
         });
@@ -360,7 +360,7 @@ describe('response.decorator', () => {
             ) as Type<NestInterceptor>[];
             const doubles = buildResponseFileInterceptorDoubles();
             await createResponseFileInterceptorFromClass(
-                interceptors[0],
+                interceptors[0]!,
                 doubles
             );
             expect(doubles.configService.get).toHaveBeenCalledWith(
@@ -384,7 +384,7 @@ describe('response.decorator', () => {
                 DECORATORS.API_RESPONSE,
                 handler
             ) as Record<string, { description: string }>;
-            expect(responses[String(HttpStatus.CREATED)].description).toBe(
+            expect(responses[String(HttpStatus.CREATED)]!.description).toBe(
                 HttpStatus.CREATED.toString()
             );
         });
@@ -410,7 +410,7 @@ describe('response.decorator', () => {
                 DECORATORS.API_RESPONSE,
                 handler
             ) as Record<string, { description: string }>;
-            expect(responses[String(HttpStatus.ACCEPTED)].description).toBe(
+            expect(responses[String(HttpStatus.ACCEPTED)]!.description).toBe(
                 HttpStatus.ACCEPTED.toString()
             );
         });
@@ -426,7 +426,7 @@ describe('response.decorator', () => {
                 DECORATORS.API_RESPONSE,
                 handler
             ) as Record<string, { description: string }>;
-            expect(responses[String(HttpStatus.OK)].description).toBe(
+            expect(responses[String(HttpStatus.OK)]!.description).toBe(
                 HttpStatus.OK.toString()
             );
         });
@@ -449,7 +449,7 @@ describe('response.decorator', () => {
                 string,
                 { content: Record<string, { schema: unknown }> }
             >;
-            expect(responses[String(HttpStatus.OK)].content).toEqual({
+            expect(responses[String(HttpStatus.OK)]!.content).toEqual({
                 'application/pdf': {
                     schema: { type: 'string', format: 'binary' },
                 },

@@ -167,6 +167,8 @@ describe('NotificationAccountDomain', () => {
                     email: user.email,
                     username: user.username,
                     notificationId: 'notification-id',
+                    cc: [],
+                    bcc: [],
                 },
                 data
             );
@@ -233,6 +235,8 @@ describe('NotificationAccountDomain', () => {
                 email: user.email,
                 username: user.username,
                 notificationId: 'welcome-id',
+                cc: [],
+                bcc: [],
             });
             expect(
                 notificationEmailQueue.sendVerificationEmail
@@ -242,6 +246,8 @@ describe('NotificationAccountDomain', () => {
                     email: user.email,
                     username: user.username,
                     notificationId: 'verification-id',
+                    cc: [],
+                    bcc: [],
                 },
                 data
             );
@@ -289,6 +295,8 @@ describe('NotificationAccountDomain', () => {
                 email: user.email,
                 username: user.username,
                 notificationId: 'notification-id',
+                cc: [],
+                bcc: [],
             });
             expect(result).toMatchObject({
                 message: 'Welcome social notification processed',
@@ -337,6 +345,8 @@ describe('NotificationAccountDomain', () => {
                     email: user.email,
                     username: user.username,
                     notificationId: 'notification-id',
+                    cc: [],
+                    bcc: [],
                 },
                 data
             );
@@ -399,6 +409,8 @@ describe('NotificationAccountDomain', () => {
                     email: user.email,
                     username: user.username,
                     notificationId: 'notification-id',
+                    cc: [],
+                    bcc: [],
                 },
                 data
             );
@@ -468,6 +480,8 @@ describe('NotificationAccountDomain', () => {
                     email: user.email,
                     username: user.username,
                     notificationId: 'notification-id',
+                    cc: [],
+                    bcc: [],
                 },
                 data
             );

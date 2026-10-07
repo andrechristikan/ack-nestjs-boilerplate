@@ -1,12 +1,8 @@
 import { AbilityBuilder, createMongoAbility } from '@casl/ability';
-import type { ExtractSubjectType } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
 import { EnumPolicyAction } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
-import type {
-    IPolicyAbilityRule,
-    IPolicyAbilitySubject,
-} from '@modules/policy/interfaces/policy.interface';
+import type { IPolicyAbilityRule } from '@modules/policy/interfaces/policy.interface';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 
 /**
@@ -23,12 +19,7 @@ export class PolicyAbilityFactory {
             can(policy.action, policy.subject);
         }
 
-        return build({
-            // Read https://casl.js.org/v6/en/guide/subject-type-detection#use-classes-as-subject-types for details
-            detectSubjectType: (item: {
-                constructor: ExtractSubjectType<IPolicyAbilitySubject>;
-            }) => item.constructor,
-        });
+        return build();
     }
 
     /**

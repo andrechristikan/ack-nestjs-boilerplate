@@ -448,7 +448,33 @@ describe('WorkspaceInviteDomain', () => {
             ).toHaveBeenCalledWith('workspace', 'invitationAllowed');
             expect(
                 workspaceInviteRepository.findWithPaginationCursor
-            ).toHaveBeenCalledWith('workspace-1', pagination, undefined);
+            ).toHaveBeenCalledWith('workspace-1', pagination, null);
+        });
+
+        it('forwards the status filter to the repository', async () => {
+            const pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput> =
+                { limit: 20, orderBy: [] };
+            const page: IResponsePaginationReturn<never> = {
+                type: EnumPaginationType.cursor,
+                perPage: 20,
+                hasNext: false,
+                data: [],
+            };
+            const status = { status: { in: ['pending'] } };
+            workspaceInviteRepository.findWithPaginationCursor.mockResolvedValue(
+                page
+            );
+
+            const result = await domain.getInvitesList(
+                'workspace-1',
+                pagination,
+                status
+            );
+
+            expect(result).toBe(page);
+            expect(
+                workspaceInviteRepository.findWithPaginationCursor
+            ).toHaveBeenCalledWith('workspace-1', pagination, status);
         });
     });
 
@@ -456,6 +482,9 @@ describe('WorkspaceInviteDomain', () => {
         const create: IWorkspaceInviteCreate = {
             email: 'invitee@example.com' as Lowercase<string>,
             workspaceRole: EnumWorkspaceMemberRole.member,
+            projectId: null,
+            projectRole: null,
+            expiryDuration: null,
         };
 
         beforeEach(() => {
@@ -561,6 +590,9 @@ describe('WorkspaceInviteDomain', () => {
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
             const callOrder: string[] = [];
@@ -594,6 +626,11 @@ describe('WorkspaceInviteDomain', () => {
             ]);
             expect(callOrder).toEqual(['createPending', 'stagePrepared']);
             expect(
+                workspaceInviteRepository.createPending
+            ).toHaveBeenCalledWith(
+                expect.objectContaining({ projectId: null, projectRole: null })
+            );
+            expect(
                 notificationEmailQueue.sendWorkspaceInviteUnregistered
             ).toHaveBeenCalledTimes(1);
             expect(
@@ -608,11 +645,17 @@ describe('WorkspaceInviteDomain', () => {
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             const createdByAdminEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.workspaceInviteCreatedByAdmin,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare
                 .mockReturnValueOnce(createdEvent)
@@ -665,6 +708,9 @@ describe('WorkspaceInviteDomain', () => {
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
             const callOrder: string[] = [];
@@ -704,6 +750,9 @@ describe('WorkspaceInviteDomain', () => {
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
 
@@ -777,7 +826,7 @@ describe('WorkspaceInviteDomain', () => {
             });
 
             await expect(
-                domain.resendInvite(workspace, 'user-1', 'invite-1')
+                domain.resendInvite(workspace, 'user-1', 'invite-1', null)
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 module: 'workspace',
@@ -802,7 +851,8 @@ describe('WorkspaceInviteDomain', () => {
             const result = await domain.resendInvite(
                 workspace,
                 'user-1',
-                'invite-1'
+                'invite-1',
+                null
             );
 
             expect(result).toBe(rotated);
@@ -869,6 +919,9 @@ describe('WorkspaceInviteDomain', () => {
                 action: EnumActivityLogAction.workspaceInviteRevoked,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
             const callOrder: string[] = [];
@@ -910,11 +963,17 @@ describe('WorkspaceInviteDomain', () => {
                 action: EnumActivityLogAction.workspaceInviteRevoked,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             const revokedByAdminEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.workspaceInviteRevokedByAdmin,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare
                 .mockReturnValueOnce(revokedEvent)
@@ -948,6 +1007,9 @@ describe('WorkspaceInviteDomain', () => {
                 action: EnumActivityLogAction.workspaceInviteRevoked,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
 
@@ -1120,6 +1182,9 @@ describe('WorkspaceInviteDomain', () => {
                 action: EnumActivityLogAction.workspaceInviteAccepted,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
 
@@ -1154,11 +1219,17 @@ describe('WorkspaceInviteDomain', () => {
                 action: EnumActivityLogAction.workspaceInviteAccepted,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             const acceptedByInviteeEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare
                 .mockReturnValueOnce(acceptedEvent)
@@ -1262,7 +1333,7 @@ describe('WorkspaceInviteDomain', () => {
         });
 
         it('builds token data with the default expiry when none is given', () => {
-            const result = domain['createInviteTokenData']();
+            const result = domain['createInviteTokenData'](null);
 
             expect(result).toEqual({
                 token: 'token-value',

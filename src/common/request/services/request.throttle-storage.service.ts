@@ -180,7 +180,7 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
             }
 
             const [totalHits, remainingInMs, isBlockedNum, blockTtlInMs] =
-                parsed;
+                parsed as [number, number, number, number];
 
             const timeToExpire = this.toSeconds(remainingInMs);
             const timeToBlockExpire = this.toSeconds(blockTtlInMs);

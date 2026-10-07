@@ -74,6 +74,28 @@ describe('LoggerOptionService', () => {
             expect(pinoHttp.genReqId({} as IRequestApp)).toBe('req-id');
         });
 
+        it('omits the transport key when no transport is enabled', async () => {
+            const service = await createLoggerOptionService(
+                baseConfig,
+                loggerDoubles
+            );
+
+            const options = await service.createOptions();
+
+            expect(options.pinoHttp).not.toHaveProperty('transport');
+        });
+
+        it('carries the transport key when a transport is enabled', async () => {
+            const service = await createLoggerOptionService(
+                { ...baseConfig, 'logger.prettier': true },
+                loggerDoubles
+            );
+
+            const options = await service.createOptions();
+
+            expect(options.pinoHttp).toHaveProperty('transport');
+        });
+
         it('sets the pino level to silent when logging is disabled', async () => {
             const service = await createLoggerOptionService(
                 { ...baseConfig, 'logger.enable': false },
@@ -90,13 +112,13 @@ describe('LoggerOptionService', () => {
     });
 
     describe('buildTransports', () => {
-        it('returns undefined when neither transport is enabled', async () => {
+        it('returns null when neither transport is enabled', async () => {
             const service = await createLoggerOptionService(
                 baseConfig,
                 loggerDoubles
             );
 
-            expect(service['buildTransports']()).toBeUndefined();
+            expect(service['buildTransports']()).toBeNull();
         });
 
         it('adds a pino-pretty target when prettier is enabled', async () => {
@@ -131,8 +153,8 @@ describe('LoggerOptionService', () => {
             };
 
             expect(transport.targets).toHaveLength(1);
-            expect(transport.targets[0].target).toBe('pino-roll');
-            expect(transport.targets[0].options.file).toBe('./logs/api.log');
+            expect(transport.targets[0]!.target).toBe('pino-roll');
+            expect(transport.targets[0]!.options.file).toBe('./logs/api.log');
         });
 
         it('adds both targets when prettier and file logging are enabled', async () => {

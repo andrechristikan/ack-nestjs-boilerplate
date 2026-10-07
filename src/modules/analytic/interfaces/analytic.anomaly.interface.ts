@@ -1,18 +1,42 @@
-export interface IAnalyticAnomalySummaryMeta {
-    minDistanceKm?: number;
-    maxDeltaInMs?: number;
-    minUniqueAccounts?: number;
-    nearLockoutMinAttempt?: number;
-    bucketCount?: number;
-    avg?: number;
-    stdDev?: number;
-    zScoreThreshold?: number;
-}
-
 export interface IAnalyticAnomalySummary {
     count: number;
-    window?: string;
-    meta?: IAnalyticAnomalySummaryMeta;
+    window: string | null;
+}
+
+export interface IAnalyticAnomalyImpossibleTravelSummaryMeta {
+    minDistanceKm: number;
+    maxDeltaInMs: number;
+}
+
+export interface IAnalyticAnomalyImpossibleTravelSummary extends IAnalyticAnomalySummary {
+    meta: IAnalyticAnomalyImpossibleTravelSummaryMeta;
+}
+
+export interface IAnalyticAnomalyLoginSpikeIpSummaryMeta {
+    minUniqueAccounts: number;
+}
+
+export interface IAnalyticAnomalyLoginSpikeIpSummary extends IAnalyticAnomalySummary {
+    meta: IAnalyticAnomalyLoginSpikeIpSummaryMeta;
+}
+
+export interface IAnalyticAnomalyFailedLoginSpikeSummaryMeta {
+    nearLockoutMinAttempt: number;
+    bucketCount: number;
+}
+
+export interface IAnalyticAnomalyFailedLoginSpikeSummary extends IAnalyticAnomalySummary {
+    meta: IAnalyticAnomalyFailedLoginSpikeSummaryMeta;
+}
+
+export interface IAnalyticAnomalyDeviceProliferationSummaryMeta {
+    avg: number;
+    stdDev: number;
+    zScoreThreshold: number;
+}
+
+export interface IAnalyticAnomalyDeviceProliferationSummary extends IAnalyticAnomalySummary {
+    meta: IAnalyticAnomalyDeviceProliferationSummaryMeta;
 }
 
 export interface IAnalyticImpossibleTravel {

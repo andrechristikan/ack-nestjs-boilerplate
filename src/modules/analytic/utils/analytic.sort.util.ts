@@ -25,29 +25,26 @@ export class AnalyticSortUtil {
 
     sortRows<T extends object>(
         rows: T[],
-        orderBy: IPaginationOrderBy[] | undefined,
+        orderBy: IPaginationOrderBy[],
         sortableKeys: (keyof T)[]
     ): T[] {
         const allowedFields: string[] = sortableKeys.map(key => String(key));
-        const terms = (orderBy ?? []).filter(term => {
-            const field = Object.keys(term)[0];
-
-            return allowedFields.includes(field);
-        });
+        const terms = orderBy
+            .flatMap(term => Object.entries(term).slice(0, 1))
+            .filter(([field]) => allowedFields.includes(field));
 
         if (terms.length === 0) {
             return rows;
         }
 
         return [...rows].sort((left, right) => {
-            for (const term of terms) {
-                const field = Object.keys(term)[0];
+            for (const [field, direction] of terms) {
                 const leftValue: unknown = Reflect.get(left, field);
                 const rightValue: unknown = Reflect.get(right, field);
                 const compared = this.compareValues(leftValue, rightValue);
 
                 if (compared !== 0) {
-                    return term[field] === EnumPaginationOrderDirectionType.desc
+                    return direction === EnumPaginationOrderDirectionType.desc
                         ? -compared
                         : compared;
                 }

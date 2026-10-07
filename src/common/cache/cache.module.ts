@@ -38,7 +38,7 @@ export class CacheMainModule {
                             stores: [redisClient],
                             ttl: configService.get<number>(
                                 'redis.cache.ttlInMs'
-                            ),
+                            )!,
                         };
                     },
                 }),

@@ -185,9 +185,9 @@ describe('WorkspaceInviteHttpService', () => {
                 {
                     email: 'invitee@example.com',
                     workspaceRole: EnumWorkspaceMemberRole.member,
-                    projectId: undefined,
-                    projectRole: undefined,
-                    expiryDuration: undefined,
+                    projectId: null,
+                    projectRole: null,
+                    expiryDuration: null,
                 }
             );
         });
@@ -210,7 +210,7 @@ describe('WorkspaceInviteHttpService', () => {
                 workspace,
                 'user-1',
                 'invite-1',
-                undefined
+                null
             );
         });
     });

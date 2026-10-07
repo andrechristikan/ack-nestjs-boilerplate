@@ -53,7 +53,7 @@ export interface IPaginationQueryReturn<
     TArgsWhere = IPaginationQueryDefaultWhere,
 > {
     where?: TArgsWhere;
-    orderBy?: IPaginationOrderBy[];
+    orderBy: IPaginationOrderBy[];
     limit: number;
 }
 
@@ -156,26 +156,6 @@ export interface IPaginationRepository {
 export interface IPaginationCursorValue {
     cursor: string;
     fingerprint: string;
-}
-
-/**
- * Wire shape shared by offset list query DTOs after zod parse.
- */
-export interface IPaginationOffsetQueryDto {
-    page?: number;
-    perPage?: number;
-    search?: string;
-    orderBy?: string | string[];
-}
-
-/**
- * Wire shape shared by cursor list query DTOs after zod parse.
- */
-export interface IPaginationCursorQueryDto {
-    cursor?: string;
-    perPage?: number;
-    search?: string;
-    orderBy?: string | string[];
 }
 
 /**

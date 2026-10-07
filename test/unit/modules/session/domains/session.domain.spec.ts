@@ -83,6 +83,9 @@ describe('SessionDomain', () => {
         action: EnumActivityLogAction.userRevokeSession,
         metadata: {},
         onError: false,
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
     };
 
     beforeEach(async () => {
@@ -103,7 +106,7 @@ describe('SessionDomain', () => {
     describe('getListOffsetByAdmin', () => {
         it('delegates to the repository with the pagination params and revoked filter', async () => {
             const pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput> =
-                { skip: 0, limit: 20 };
+                { skip: 0, limit: 20, orderBy: [] };
             const isRevoked = { isRevoked: { equals: true } };
             const paginationResult: IResponsePaginationReturn<ISessionList> = {
                 type: EnumPaginationType.offset,
@@ -130,12 +133,40 @@ describe('SessionDomain', () => {
                 sessionRepository.findWithPaginationOffsetByAdmin
             ).toHaveBeenCalledWith('user-1', pagination, isRevoked);
         });
+
+        it('passes a null revoked filter when none is given', async () => {
+            const pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput> =
+                { skip: 0, limit: 20, orderBy: [] };
+            const page: IResponsePaginationReturn<ISessionList> = {
+                type: EnumPaginationType.offset,
+                count: 0,
+                perPage: 20,
+                page: 1,
+                totalPage: 0,
+                hasNext: false,
+                hasPrevious: false,
+                data: [],
+            };
+            sessionRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
+                page
+            );
+
+            const result = await domain.getListOffsetByAdmin(
+                'user-1',
+                pagination
+            );
+
+            expect(result).toBe(page);
+            expect(
+                sessionRepository.findWithPaginationOffsetByAdmin
+            ).toHaveBeenCalledWith('user-1', pagination, null);
+        });
     });
 
     describe('getListCursor', () => {
         it('delegates to the repository with the cursor pagination params', async () => {
             const pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput> =
-                { limit: 20 };
+                { limit: 20, orderBy: [] };
             const paginationResult: IResponsePaginationReturn<ISessionList> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,

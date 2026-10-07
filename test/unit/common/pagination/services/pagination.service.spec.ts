@@ -129,6 +129,7 @@ describe('PaginationService', () => {
             );
 
             const result = await service.offset(repository, {
+                orderBy: [],
                 where: { name: 'a' },
                 limit: 20,
                 skip: 0,
@@ -183,6 +184,7 @@ describe('PaginationService', () => {
             );
 
             const result = await service.cursor(repository, {
+                orderBy: [],
                 limit: 20,
             });
 
@@ -214,6 +216,7 @@ describe('PaginationService', () => {
             (repository.count as ReturnType<typeof vi.fn>).mockResolvedValue(3);
 
             const result = await service.cursor(repository, {
+                orderBy: [],
                 limit: 2,
                 includeCount: true,
             });
@@ -238,6 +241,7 @@ describe('PaginationService', () => {
             });
 
             const result = await service.cursor(repository, {
+                orderBy: [],
                 limit: 20,
                 cursor: token,
             });
@@ -258,6 +262,7 @@ describe('PaginationService', () => {
             });
 
             const promise = service.cursor(repository, {
+                orderBy: [],
                 limit: 20,
                 cursor: token,
             });
@@ -281,6 +286,7 @@ describe('PaginationService', () => {
             );
 
             await service.cursor(repository, {
+                orderBy: [],
                 limit: 20,
                 cursorField: 'slug',
             });
@@ -300,7 +306,10 @@ describe('PaginationService', () => {
                 [{ id: null }, { id: '2' }]
             );
 
-            const promise = service.cursor(repository, { limit: 1 });
+            const promise = service.cursor(repository, {
+                limit: 1,
+                orderBy: [],
+            });
 
             await expect(promise).rejects.toMatchObject({
                 module: 'pagination',
@@ -318,7 +327,10 @@ describe('PaginationService', () => {
                 [{ id: 10n }, { id: '2' }]
             );
 
-            const promise = service.cursor(repository, { limit: 1 });
+            const promise = service.cursor(repository, {
+                limit: 1,
+                orderBy: [],
+            });
 
             await expect(promise).rejects.toMatchObject({
                 module: 'pagination',
@@ -503,12 +515,6 @@ describe('PaginationService', () => {
     });
 
     describe('resolveOrderBy', () => {
-        it('falls back to the default order when none is sent', () => {
-            expect(service['resolveOrderBy'](null)).toEqual([
-                ...PaginationDefaultOrderBy,
-            ]);
-        });
-
         it('falls back to the default order when an empty list is sent', () => {
             expect(service['resolveOrderBy']([])).toEqual([
                 ...PaginationDefaultOrderBy,

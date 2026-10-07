@@ -11,8 +11,10 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
-import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
-import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
+import type {
+    IWorkspaceCreate,
+    IWorkspaceUpdate,
+} from '@modules/workspace/interfaces/workspace.interface';
 import type { IWorkspaceRepository } from '@modules/workspace/interfaces/workspace.repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -92,7 +94,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
-        isPublic?: Record<string, IPaginationEqual>
+        isPublic: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.paginationService.offset<
             Workspace,
@@ -109,7 +111,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     async createInTx(
         tx: IDatabaseTransactionClient,
         ownerId: string,
-        { name, description, isPublic }: WorkspaceCreateRequestDto,
+        { name, description, isPublic }: IWorkspaceCreate,
         slug: string,
         workspaceId: string
     ): Promise<Workspace> {
@@ -128,13 +130,13 @@ export class WorkspaceRepository implements IWorkspaceRepository {
 
     async updateDetails(
         workspaceId: string,
-        { name, description }: WorkspaceUpdateRequestDto
+        { name, description }: IWorkspaceUpdate
     ): Promise<Workspace> {
         return this.databaseService.client.workspace.update({
             where: { id: workspaceId },
             data: {
-                name,
-                description,
+                ...(name !== null && { name }),
+                ...(description !== null && { description }),
             },
         });
     }

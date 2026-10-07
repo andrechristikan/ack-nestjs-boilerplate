@@ -64,6 +64,9 @@ describe('UserVerificationDomain', () => {
         action: EnumActivityLogAction.userSendVerificationEmail,
         metadata: {},
         onError: false,
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
     };
 
     const configValues: Record<string, string | number> = {

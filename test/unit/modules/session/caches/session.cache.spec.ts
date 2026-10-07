@@ -250,6 +250,24 @@ describe('SessionCache', () => {
             expect(client.unlink).toHaveBeenCalledWith(['key-1', 'key-2']);
         });
 
+        it('unlinks matching keys on every master node', async () => {
+            store.createKeyPrefix.mockReturnValue('prefix-match');
+            const first: MockProxy<IStubRedisClient> = mock<IStubRedisClient>();
+            const second: MockProxy<IStubRedisClient> =
+                mock<IStubRedisClient>();
+            first.scanIterator.mockReturnValue(iterateBatches([['key-1']]));
+            second.scanIterator.mockReturnValue(iterateBatches([['key-2']]));
+            store.getMasterNodes.mockResolvedValue([
+                first as unknown as RedisMasterNode,
+                second as unknown as RedisMasterNode,
+            ]);
+
+            await cache.deleteLoginsByUser('user-1');
+
+            expect(first.unlink).toHaveBeenCalledWith(['key-1']);
+            expect(second.unlink).toHaveBeenCalledWith(['key-2']);
+        });
+
         it('scans no keys when the user has no cached logins', async () => {
             store.createKeyPrefix.mockReturnValue('prefix-match');
             const client: MockProxy<IStubRedisClient> =

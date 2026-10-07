@@ -1,7 +1,7 @@
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
-    INotificationPushCleanupTokenQueuePayload,
+    INotificationPushCleanupTokenPayload,
     INotificationPushQueuePayload,
     INotificationTemporaryPasswordPushPayload,
     INotificationWorkspaceInvitePushPayload,
@@ -40,7 +40,7 @@ export class NotificationPushProcessorService implements OnModuleInit {
     >): Promise<IQueueResponse> {
         return this.notificationPushSecurityDomain.processNewDeviceLogin(
             send,
-            data!
+            data
         );
     }
 
@@ -65,7 +65,7 @@ export class NotificationPushProcessorService implements OnModuleInit {
     >): Promise<IQueueResponse> {
         return this.notificationPushSecurityDomain.processTemporaryPasswordByAdmin(
             send,
-            data!
+            data
         );
     }
 
@@ -98,7 +98,7 @@ export class NotificationPushProcessorService implements OnModuleInit {
     >): Promise<IQueueResponse> {
         return this.notificationPushWorkspaceDomain.processWorkspaceInvite(
             send,
-            data!
+            data
         );
     }
 
@@ -111,7 +111,7 @@ export class NotificationPushProcessorService implements OnModuleInit {
     >): Promise<IQueueResponse> {
         return this.notificationPushWorkspaceDomain.processWorkspaceJoinRequest(
             send,
-            data!
+            data
         );
     }
 
@@ -124,7 +124,7 @@ export class NotificationPushProcessorService implements OnModuleInit {
     >): Promise<IQueueResponse> {
         return this.notificationPushWorkspaceDomain.processWorkspaceJoinAccepted(
             send,
-            data!
+            data
         );
     }
 
@@ -137,16 +137,14 @@ export class NotificationPushProcessorService implements OnModuleInit {
     >): Promise<IQueueResponse> {
         return this.notificationPushWorkspaceDomain.processWorkspaceJoinRejected(
             send,
-            data!
+            data
         );
     }
 
     async processCleanupTokens({
-        data: {
-            data: { userId, failureTokens },
-        },
+        data: { userId, failureTokens },
     }: Job<
-        INotificationPushCleanupTokenQueuePayload,
+        INotificationPushCleanupTokenPayload,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {

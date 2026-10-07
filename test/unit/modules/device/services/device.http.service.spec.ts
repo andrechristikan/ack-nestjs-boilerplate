@@ -261,7 +261,27 @@ describe('DeviceHttpService', () => {
             expect(deviceDomain.refresh).toHaveBeenCalledWith(
                 'user-1',
                 'device-ownership-1',
-                body
+                { name: 'iPhone 13', platform: null, notificationToken: null }
+            );
+        });
+
+        it('passes null for the name when the body omits it', async () => {
+            const body: DeviceRefreshRequestDto = {
+                platform: EnumDevicePlatform.ios,
+                notificationToken: 'token-1',
+            };
+            deviceDomain.refresh.mockResolvedValue(undefined);
+
+            await service.refresh('user-1', 'device-ownership-1', body);
+
+            expect(deviceDomain.refresh).toHaveBeenCalledWith(
+                'user-1',
+                'device-ownership-1',
+                {
+                    name: null,
+                    platform: EnumDevicePlatform.ios,
+                    notificationToken: 'token-1',
+                }
             );
         });
     });

@@ -15,6 +15,7 @@ import { ConfigService } from '@nestjs/config';
 import * as firebaseAdmin from 'firebase-admin';
 import type { App as FirebaseApp } from 'firebase-admin/app';
 import { Messaging, getMessaging } from 'firebase-admin/messaging';
+import type { Notification } from 'firebase-admin/messaging';
 
 @Injectable()
 export class FirebaseService implements OnModuleInit {
@@ -54,6 +55,23 @@ export class FirebaseService implements OnModuleInit {
 
     private isInvalidTokenError(error: { code?: string } | null): boolean {
         return FirebaseInvalidTokenCodes.includes(error?.code ?? '');
+    }
+
+    private buildMessageContent(payload: IFirebasePushPayload): {
+        notification: Notification;
+        data?: Record<string, string>;
+    } {
+        const imageUrl = payload.imageUrl ?? null;
+        const data = payload.data ?? null;
+
+        return {
+            notification: {
+                title: payload.title,
+                body: payload.body,
+                ...(imageUrl !== null && { imageUrl }),
+            },
+            ...(data !== null && { data }),
+        };
     }
 
     async onModuleInit(): Promise<void> {
@@ -104,14 +122,10 @@ export class FirebaseService implements OnModuleInit {
         }
 
         try {
+            const content = this.buildMessageContent(payload);
             await this.messaging!.send({
                 token,
-                notification: {
-                    title: payload.title,
-                    body: payload.body,
-                    imageUrl: payload.imageUrl,
-                },
-                data: payload.data,
+                ...content,
             });
 
             return true;
@@ -163,15 +177,11 @@ export class FirebaseService implements OnModuleInit {
 
         const chunkedTokens = this.helperArrayService.chunk(tokens, chunkSize);
 
+        const content = this.buildMessageContent(payload);
         const promises = chunkedTokens.map(chunk =>
             this.messaging!.sendEachForMulticast({
                 tokens: chunk,
-                notification: {
-                    title: payload.title,
-                    body: payload.body,
-                    imageUrl: payload.imageUrl,
-                },
-                data: payload.data,
+                ...content,
             })
         );
 
@@ -182,8 +192,8 @@ export class FirebaseService implements OnModuleInit {
         const failureTokens: string[] = [];
 
         for (let chunkIndex = 0; chunkIndex < responses.length; chunkIndex++) {
-            const response = responses[chunkIndex];
-            const chunk = chunkedTokens[chunkIndex];
+            const response = responses[chunkIndex]!;
+            const chunk = chunkedTokens[chunkIndex]!;
 
             if (response.status === 'fulfilled') {
                 successCount += response.value.successCount;
@@ -198,7 +208,7 @@ export class FirebaseService implements OnModuleInit {
                             resp.error as { code?: string }
                         );
                         if (isInvalidToken) {
-                            failureTokens.push(chunk[tokenIndex]);
+                            failureTokens.push(chunk[tokenIndex]!);
                         }
                     }
                 }

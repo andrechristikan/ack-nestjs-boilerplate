@@ -174,13 +174,13 @@ export interface INotificationWorkspaceJoinRejectedPayload {
     rejectReasonCode: EnumWorkspaceJoinRejectReason;
 }
 
-export interface INotificationBulkQueuePayload<T = unknown> {
+export interface INotificationBulkQueuePayload<T = null> {
     proceedBy: string;
-    data?: T;
+    data: T;
 }
 
 export interface INotificationQueuePayload<
-    T = unknown,
+    T = null,
 > extends INotificationBulkQueuePayload<T> {
     userId: string;
 }
@@ -192,16 +192,14 @@ export interface INotificationSendPushPayload {
     username: string;
 }
 
-export interface INotificationPushQueuePayload<T = unknown> {
+export interface INotificationPushQueuePayload<T = null> {
     send: INotificationSendPushPayload;
-    data?: T;
+    data: T;
 }
 
-export interface INotificationPushCleanupTokenQueuePayload {
-    data: {
-        userId: string;
-        failureTokens: string[];
-    };
+export interface INotificationPushCleanupTokenPayload {
+    userId: string;
+    failureTokens: string[];
 }
 
 export interface INotificationEmailSendPayload {
@@ -209,27 +207,27 @@ export interface INotificationEmailSendPayload {
     notificationId: string;
     email: string;
     username: string;
-    cc?: string[];
-    bcc?: string[];
+    cc: string[];
+    bcc: string[];
 }
 
-export interface INotificationEmailQueuePayload<T = unknown> {
+export interface INotificationEmailQueuePayload<T = null> {
     send: INotificationEmailSendPayload;
-    data?: T;
+    data: T;
 }
 
-export interface INotificationEmailBulkQueuePayload<T = unknown> {
+export interface INotificationEmailBulkQueuePayload<T = null> {
     send: INotificationEmailSendPayload[];
-    data?: T;
+    data: T;
 }
 
 export interface INotificationEmailSendUnregisteredPayload {
     email: string;
-    cc?: string[];
-    bcc?: string[];
+    cc: string[];
+    bcc: string[];
 }
 
-export interface INotificationEmailUnregisteredQueuePayload<T = unknown> {
+export interface INotificationEmailUnregisteredQueuePayload<T = null> {
     send: INotificationEmailSendUnregisteredPayload;
-    data?: T;
+    data: T;
 }

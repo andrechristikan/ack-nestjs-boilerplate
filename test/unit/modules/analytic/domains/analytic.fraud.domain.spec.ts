@@ -1,3 +1,5 @@
+import { chunk } from 'lodash-es';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumPaginationOrderDirectionType,
@@ -51,6 +53,8 @@ describe('AnalyticFraudDomain', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
         get: configGet as ConfigService['get'],
     });
+    const helperArrayService: MockProxy<HelperArrayService> =
+        mock<HelperArrayService>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const activityLogAnalyticDomain: MockProxy<ActivityLogAnalyticDomain> =
@@ -86,6 +90,7 @@ describe('AnalyticFraudDomain', () => {
     };
 
     const configValues: Record<string, number | string> = {
+        'analytic.fraud.concurrency': 10,
         'analytic.fraud.credentialStuffing.windowInMs': 86400000,
         'analytic.fraud.credentialStuffing.minUniqueAccounts': 2,
         'analytic.fraud.accountTakeover.newDeviceAfterPasswordChangeInMs': 3600000,
@@ -122,6 +127,9 @@ describe('AnalyticFraudDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
+        helperArrayService.chunk.mockImplementation((rows, size) =>
+            chunk(rows, size)
+        );
         configGet.mockImplementation((key: string) => configValues[key]);
         analyticCache.getFraudSummary.mockResolvedValue(null);
         analyticCache.getRiskScore.mockResolvedValue(null);
@@ -140,6 +148,7 @@ describe('AnalyticFraudDomain', () => {
                 { provide: AnalyticSortUtil, useValue: analyticSortUtil },
                 { provide: PaginationService, useValue: paginationService },
                 { provide: ConfigService, useValue: configService },
+                { provide: HelperArrayService, useValue: helperArrayService },
                 { provide: HelperDateService, useValue: helperDateService },
                 {
                     provide: ActivityLogAnalyticDomain,
@@ -256,6 +265,14 @@ describe('AnalyticFraudDomain', () => {
     });
 
     describe('accountTakeoverList', () => {
+        it('chunks the profile changes by analytic.fraud.concurrency', async () => {
+            userPasswordAnalyticDomain.getProfileChanges.mockResolvedValue([]);
+
+            await domain.accountTakeoverList(startDate, endDate, pagination);
+
+            expect(helperArrayService.chunk).toHaveBeenCalledWith([], 10);
+        });
+
         it('pages computed rows', async () => {
             userPasswordAnalyticDomain.getProfileChanges.mockResolvedValue([]);
 
@@ -419,7 +436,7 @@ describe('AnalyticFraudDomain', () => {
 
     describe('sharedFingerprintSummary', () => {
         it('returns the cached summary on a cache hit', async () => {
-            const cached = { count: 1 };
+            const cached = { count: 1, window: null };
             analyticCache.getFraudSummary.mockResolvedValue(cached);
 
             expect(await domain.sharedFingerprintSummary()).toEqual(cached);
@@ -430,7 +447,7 @@ describe('AnalyticFraudDomain', () => {
 
             const result = await domain.sharedFingerprintSummary();
 
-            expect(result).toEqual({ count: 0 });
+            expect(result).toEqual({ count: 0, window: null });
         });
     });
 
@@ -531,6 +548,16 @@ describe('AnalyticFraudDomain', () => {
     });
 
     describe('sessionAfterAdminList', () => {
+        it('chunks the revokes by analytic.fraud.concurrency', async () => {
+            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
+                []
+            );
+
+            await domain.sessionAfterAdminList(startDate, endDate, pagination);
+
+            expect(helperArrayService.chunk).toHaveBeenCalledWith([], 10);
+        });
+
         it('pages computed rows', async () => {
             activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
                 []
@@ -724,6 +751,16 @@ describe('AnalyticFraudDomain', () => {
     });
 
     describe('backupCodeNewDeviceList', () => {
+        it('chunks the regenerations by analytic.fraud.concurrency', async () => {
+            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
+                []
+            );
+
+            await domain.backupCodeNewDeviceList(null, pagination);
+
+            expect(helperArrayService.chunk).toHaveBeenCalledWith([], 10);
+        });
+
         it('pages computed rows', async () => {
             activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
                 []
@@ -849,6 +886,9 @@ describe('AnalyticFraudDomain', () => {
                 httpStatus: HttpStatus.NOT_FOUND,
                 messagePath: 'user.error.notFound',
             });
+            expect(
+                deviceAnalyticDomain.getSharedFingerprints
+            ).not.toHaveBeenCalled();
         });
 
         it('scores near-lockout and a shared fingerprint', async () => {
@@ -905,6 +945,73 @@ describe('AnalyticFraudDomain', () => {
     });
 
     describe('riskScores', () => {
+        it('reads shared fingerprints once and scores each listed user against them', async () => {
+            userAnalyticDomain.getNearLockout.mockResolvedValue([
+                {
+                    id: 'user-1',
+                    email: 'a@example.com',
+                    passwordAttempt: 4,
+                    lastLoginAt: null,
+                    createdAt: now,
+                },
+                {
+                    id: 'user-2',
+                    email: 'b@example.com',
+                    passwordAttempt: 4,
+                    lastLoginAt: null,
+                    createdAt: now,
+                },
+            ]);
+            userAnalyticDomain.getOneById.mockImplementation(async id => ({
+                id,
+                email: `${id}@example.com`,
+                passwordAttempt: 4,
+            }));
+            deviceAnalyticDomain.getSharedFingerprints.mockResolvedValue([
+                {
+                    fingerprint: 'fp-1',
+                    userCount: 2,
+                    userIds: ['user-1', 'user-9'],
+                },
+            ]);
+
+            await domain.riskScores(null, pagination);
+
+            expect(
+                deviceAnalyticDomain.getSharedFingerprints
+            ).toHaveBeenCalledTimes(1);
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [
+                    {
+                        userId: 'user-1',
+                        score: 20,
+                        band: 'review',
+                        contributingSignalCodes: [
+                            'nearLockout',
+                            'sharedFingerprint',
+                        ],
+                    },
+                    {
+                        userId: 'user-2',
+                        score: 10,
+                        band: 'monitor',
+                        contributingSignalCodes: ['nearLockout'],
+                    },
+                ],
+                [],
+                AnalyticFraudRiskScoreAvailableOrderBy
+            );
+        });
+
+        it('scores the near-lockout users in chunks of analytic.fraud.concurrency', async () => {
+            userAnalyticDomain.getNearLockout.mockResolvedValue([]);
+            deviceAnalyticDomain.getSharedFingerprints.mockResolvedValue([]);
+
+            await domain.riskScores(null, pagination);
+
+            expect(helperArrayService.chunk).toHaveBeenCalledWith([], 10);
+        });
+
         it('includes every score when minScore is null and sorts descending', async () => {
             userAnalyticDomain.getNearLockout.mockResolvedValue([
                 {
@@ -1084,6 +1191,7 @@ describe('AnalyticFraudDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: startDate,
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'e2',
@@ -1092,6 +1200,7 @@ describe('AnalyticFraudDomain', () => {
                     ipAddress: '10.0.0.1',
                     createdAt: startDate,
                     workspaceId: null,
+                    userAgent: null,
                 },
                 {
                     id: 'e3',
@@ -1100,6 +1209,7 @@ describe('AnalyticFraudDomain', () => {
                     ipAddress: null,
                     createdAt: startDate,
                     workspaceId: null,
+                    userAgent: null,
                 },
             ]);
 
@@ -1237,6 +1347,7 @@ describe('AnalyticFraudDomain', () => {
                         ipAddress: null,
                         createdAt: startDate,
                         workspaceId: null,
+                        userAgent: null,
                     },
                     {
                         id: 'rev-2',
@@ -1245,6 +1356,7 @@ describe('AnalyticFraudDomain', () => {
                         ipAddress: null,
                         createdAt: startDate,
                         workspaceId: null,
+                        userAgent: null,
                     },
                 ]
             );
@@ -1257,6 +1369,7 @@ describe('AnalyticFraudDomain', () => {
                         ipAddress: null,
                         createdAt: windowEnd,
                         workspaceId: null,
+                        userAgent: null,
                     },
                 ])
                 .mockResolvedValueOnce([]);
@@ -1302,6 +1415,7 @@ describe('AnalyticFraudDomain', () => {
                         ipAddress: null,
                         createdAt: startDate,
                         workspaceId: null,
+                        userAgent: null,
                     },
                     {
                         id: 'r2',
@@ -1310,6 +1424,7 @@ describe('AnalyticFraudDomain', () => {
                         ipAddress: null,
                         createdAt: startDate,
                         workspaceId: null,
+                        userAgent: null,
                     },
                     {
                         id: 'r3',
@@ -1318,6 +1433,7 @@ describe('AnalyticFraudDomain', () => {
                         ipAddress: null,
                         createdAt: startDate,
                         workspaceId: null,
+                        userAgent: null,
                     },
                 ]
             );
@@ -1339,6 +1455,7 @@ describe('AnalyticFraudDomain', () => {
                         ipAddress: null,
                         createdAt: startDate,
                         workspaceId: null,
+                        userAgent: null,
                     },
                     {
                         id: 'regenerate-2',
@@ -1347,6 +1464,7 @@ describe('AnalyticFraudDomain', () => {
                         ipAddress: null,
                         createdAt: startDate,
                         workspaceId: null,
+                        userAgent: null,
                     },
                 ]
             );
@@ -1387,6 +1505,7 @@ describe('AnalyticFraudDomain', () => {
                         ipAddress: null,
                         createdAt: startDate,
                         workspaceId: null,
+                        userAgent: null,
                     },
                     {
                         id: 'k2',
@@ -1395,6 +1514,7 @@ describe('AnalyticFraudDomain', () => {
                         ipAddress: null,
                         createdAt: startDate,
                         workspaceId: null,
+                        userAgent: null,
                     },
                     {
                         id: 'k3',
@@ -1403,6 +1523,7 @@ describe('AnalyticFraudDomain', () => {
                         ipAddress: null,
                         createdAt: startDate,
                         workspaceId: null,
+                        userAgent: null,
                     },
                 ]
             );

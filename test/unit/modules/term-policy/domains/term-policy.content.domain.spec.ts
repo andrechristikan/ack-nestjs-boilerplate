@@ -48,6 +48,9 @@ describe('TermPolicyContentDomain', () => {
         action: EnumActivityLogAction.adminTermPolicyUpdateContent,
         metadata: {},
         onError: false,
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
     };
 
     const existingContent: ITermPolicyContent = {

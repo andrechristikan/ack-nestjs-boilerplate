@@ -34,7 +34,7 @@ export interface IWorkspaceInviteRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
-        status?: Record<string, IPaginationIn>
+        status: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<IWorkspaceInviteList>>;
     createPending({
         workspaceInviteId,

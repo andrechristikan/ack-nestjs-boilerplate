@@ -131,6 +131,7 @@ describe('UserLoginAnalyticDomain', () => {
                     ipAddress: '127.0.0.1',
                     createdAt: startDate,
                     workspaceId: null,
+                    userAgent: null,
                 },
             ];
             activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
@@ -160,6 +161,7 @@ describe('UserLoginAnalyticDomain', () => {
                     ipAddress: '127.0.0.1',
                     createdAt: startDate,
                     workspaceId: null,
+                    userAgent: null,
                 },
             ];
             activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(

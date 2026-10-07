@@ -14,6 +14,8 @@ import {
     EnumPaginationFilterDateBetweenType,
     EnumPaginationOrderDirectionType,
 } from '@common/pagination/enums/pagination.enum';
+import type { PaginationCursorListQueryDto } from '@common/pagination/dtos/pagination.cursor-list-query.dto';
+import type { PaginationOffsetListQueryDto } from '@common/pagination/dtos/pagination.offset-list-query.dto';
 import { PaginationCursorTooLongException } from '@common/pagination/exceptions/pagination.cursor-too-long.exception';
 import { PaginationFilterInvalidValueEnumException } from '@common/pagination/exceptions/pagination.filter-invalid-value-enum.exception';
 import { PaginationFilterInvalidValueException } from '@common/pagination/exceptions/pagination.filter-invalid-value.exception';
@@ -29,13 +31,11 @@ import { PaginationPageExceedsMaximumException } from '@common/pagination/except
 import { PaginationPerPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.per-page-cannot-be-less-than-one.exception';
 import { PaginationPerPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.per-page-exceeds-maximum.exception';
 import type {
-    IPaginationCursorQueryDto,
     IPaginationDate,
     IPaginationEqual,
     IPaginationIn,
     IPaginationNin,
     IPaginationNotEqual,
-    IPaginationOffsetQueryDto,
     IPaginationOrderBy,
     IPaginationQuery,
     IPaginationQueryCursorOptions,
@@ -182,7 +182,7 @@ export class PaginationQueryUtil {
                 const trimmed = entry.toString().split(':');
 
                 return {
-                    [trimmed[0]]: trimmed[1]?.toLowerCase(),
+                    [trimmed[0]!]: trimmed[1]?.toLowerCase() ?? '',
                 };
             });
         }
@@ -190,7 +190,7 @@ export class PaginationQueryUtil {
         const trimmed = orderBy.toString().split(':');
         return [
             {
-                [trimmed[0]]: trimmed[1]?.toLowerCase(),
+                [trimmed[0]!]: trimmed[1]?.toLowerCase() ?? '',
             },
         ];
     }
@@ -201,7 +201,7 @@ export class PaginationQueryUtil {
         const parsedOrderBy: IPaginationOrderBy[] = [];
 
         for (const entry of orderByExtractFromRequest) {
-            const field = Object.keys(entry)[0];
+            const field = Object.keys(entry)[0]!;
             const direction = entry[field];
 
             parsedOrderBy.push({
@@ -354,7 +354,7 @@ export class PaginationQueryUtil {
     }
 
     offset<TArgsWhere = unknown>(
-        dto: IPaginationOffsetQueryDto,
+        dto: PaginationOffsetListQueryDto,
         options: IPaginationQueryOffsetOptions = {}
     ): {
         params: IPaginationQueryOffsetParams<TArgsWhere>;
@@ -404,7 +404,7 @@ export class PaginationQueryUtil {
     }
 
     cursor<TArgsWhere = unknown>(
-        dto: IPaginationCursorQueryDto,
+        dto: PaginationCursorListQueryDto,
         options: IPaginationQueryCursorOptions = {}
     ): {
         params: IPaginationQueryCursorParams<TArgsWhere>;
@@ -579,8 +579,9 @@ export class PaginationQueryUtil {
             throw new PaginationFilterInvalidValueException(field);
         }
 
+        const dayOf = options?.dayOf ?? null;
         const finalValue = this.helperDateService.createFromIso(value, {
-            dayOf: options?.dayOf,
+            ...(dayOf !== null && { dayOf }),
         });
         const customField = options?.customField ?? field;
         const operation = options?.type

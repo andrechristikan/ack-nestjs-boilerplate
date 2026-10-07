@@ -80,7 +80,7 @@ export class FileUploadErrorInterceptor implements NestInterceptor {
     ]);
 
     private extractBaseMessage(message: string): string {
-        return message.split(' - ')[0];
+        return message.split(' - ')[0]!;
     }
 
     private mapError(err: unknown): unknown {

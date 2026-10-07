@@ -25,11 +25,11 @@ export class ResponseCacheInterceptor extends CacheBaseInterceptor {
         )!;
     }
 
-    protected trackBy(context: ExecutionContext): string | undefined {
+    protected trackBy(context: ExecutionContext): string | null {
         const key = super.trackBy(context);
 
         if (!key || typeof key !== 'string') {
-            return undefined;
+            return null;
         }
 
         return this.keyPattern.replace('{key}', () => key);

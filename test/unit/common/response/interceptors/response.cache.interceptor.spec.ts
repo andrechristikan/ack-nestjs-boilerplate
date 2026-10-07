@@ -42,24 +42,24 @@ describe('ResponseCacheInterceptor', () => {
     });
 
     describe('trackBy', () => {
-        it('returns undefined when the base interceptor tracks no key', () => {
+        it('returns null when the base interceptor tracks no key', () => {
             vi.spyOn(CacheBaseInterceptor.prototype, 'trackBy').mockReturnValue(
                 undefined
             );
 
             const result = interceptor['trackBy'](context);
 
-            expect(result).toBeUndefined();
+            expect(result).toBeNull();
         });
 
-        it('returns undefined when the base interceptor tracks a non-string key', () => {
+        it('returns null when the base interceptor tracks a non-string key', () => {
             vi.spyOn(CacheBaseInterceptor.prototype, 'trackBy').mockReturnValue(
                 123 as unknown as string
             );
 
             const result = interceptor['trackBy'](context);
 
-            expect(result).toBeUndefined();
+            expect(result).toBeNull();
         });
 
         it('namespaces a string key with the configured key pattern', () => {

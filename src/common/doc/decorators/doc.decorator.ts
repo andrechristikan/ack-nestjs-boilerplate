@@ -99,7 +99,7 @@ export function DocResponseError(
                       statusEntries[0]?.baseSchema ?? ResponseSchema,
                       { io: 'output' }
                   ).schema as SchemaObject)
-                : schemas[0];
+                : schemas[0]!;
         const description = described.has(httpStatus)
             ? ''
             : httpStatus.toString();
@@ -121,13 +121,13 @@ export function DocResponseError(
                           },
                       ])
                   )
-                : undefined;
+                : null;
 
         ApiResponse({
             description,
             status: httpStatus,
             schema,
-            ...(examples ? { examples } : {}),
+            ...(examples !== null && { examples }),
         })(target, propertyKey, descriptor);
     };
 }
@@ -150,12 +150,17 @@ export function DocErrors(
  * @public
  */
 export function Doc(options?: IDocOptions): MethodDecorator {
+    const summary = options?.summary ?? null;
+    const deprecated = options?.deprecated ?? null;
+    const description = options?.description ?? null;
+    const operationId = options?.operation ?? null;
+
     return applyDecorators(
         ApiOperation({
-            summary: options?.summary,
-            deprecated: options?.deprecated,
-            description: options?.description,
-            operationId: options?.operation,
+            ...(summary !== null && { summary }),
+            ...(deprecated !== null && { deprecated }),
+            ...(description !== null && { description }),
+            ...(operationId !== null && { operationId }),
         }),
         ApiHeaders([
             {

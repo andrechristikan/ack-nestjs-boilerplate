@@ -12,8 +12,8 @@ export abstract class AppBaseException extends Error {
     abstract readonly statusCodeKey: string;
     abstract readonly httpStatus: HttpStatus;
 
-    readonly messageProperties?: IMessageProperties;
-    readonly metadata?: Record<string, unknown>;
+    readonly messageProperties: IMessageProperties | null;
+    readonly metadata: Record<string, unknown> | null;
     readonly rawError?: unknown;
     readonly data?: unknown;
 
@@ -23,8 +23,8 @@ export abstract class AppBaseException extends Error {
     ) {
         super(messagePath);
 
-        this.messageProperties = options?.messageProperties;
-        this.metadata = options?.metadata;
+        this.messageProperties = options?.messageProperties ?? null;
+        this.metadata = options?.metadata ?? null;
         this.rawError = options?.rawError;
         this.data = options?.data;
     }

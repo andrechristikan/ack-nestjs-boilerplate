@@ -117,9 +117,29 @@ describe('UserPasswordHttpService', () => {
                 {
                     newPassword: dto.newPassword,
                     oldPassword: dto.oldPassword,
-                    backupCode: undefined,
+                    backupCode: null,
                     code: dto.code,
                     method: dto.method,
+                }
+            );
+        });
+
+        it('passes null for every omitted verification field', async () => {
+            const dto: UserChangePasswordRequestDto = {
+                newPassword: 'newPassword123!',
+                oldPassword: 'oldPassword123!',
+            };
+
+            await service.changePassword(user, dto);
+
+            expect(userPasswordDomain.changePassword).toHaveBeenCalledWith(
+                user,
+                {
+                    newPassword: dto.newPassword,
+                    oldPassword: dto.oldPassword,
+                    backupCode: null,
+                    code: null,
+                    method: null,
                 }
             );
         });
@@ -154,8 +174,25 @@ describe('UserPasswordHttpService', () => {
                 newPassword: dto.newPassword,
                 token: dto.token,
                 backupCode: dto.backupCode,
-                code: undefined,
+                code: null,
                 method: dto.method,
+            });
+        });
+
+        it('passes null for every omitted verification field', async () => {
+            const dto: UserForgotPasswordResetRequestDto = {
+                newPassword: 'newPassword123!',
+                token: 'raw-token',
+            };
+
+            await service.resetPassword(dto);
+
+            expect(userPasswordDomain.resetPassword).toHaveBeenCalledWith({
+                newPassword: dto.newPassword,
+                token: dto.token,
+                backupCode: null,
+                code: null,
+                method: null,
             });
         });
     });

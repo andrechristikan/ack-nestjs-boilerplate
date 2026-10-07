@@ -149,8 +149,16 @@ describe('UserImportDomain', () => {
 
     describe('prepareImportByAdmin', () => {
         const rows = [
-            { username: 'thistleRowe', email: 'thistle@example.com' },
-            { username: 'marigoldFinch', email: 'marigold@example.com' },
+            {
+                username: 'thistleRowe',
+                email: 'thistle@example.com',
+                name: null,
+            },
+            {
+                username: 'marigoldFinch',
+                email: 'marigold@example.com',
+                name: null,
+            },
         ];
 
         beforeEach(() => {
@@ -224,7 +232,7 @@ describe('UserImportDomain', () => {
                 'admin-thistle'
             );
 
-            expect(result.inputs[0].isVerified).toBe(true);
+            expect(result.inputs[0]!.isVerified).toBe(true);
         });
 
         it('throws UserImportEmailExistException when an email already exists', async () => {
@@ -297,8 +305,16 @@ describe('UserImportDomain', () => {
 
         it('throws UserImportUsernameExistException when two rows repeat the same username', async () => {
             const duplicateRows = [
-                { username: 'thistleRowe', email: 'thistle@example.com' },
-                { username: 'thistleRowe', email: 'other@example.com' },
+                {
+                    username: 'thistleRowe',
+                    email: 'thistle@example.com',
+                    name: null,
+                },
+                {
+                    username: 'thistleRowe',
+                    email: 'other@example.com',
+                    name: null,
+                },
             ];
 
             const call = domain.prepareImportByAdmin(

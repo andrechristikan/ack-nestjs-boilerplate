@@ -28,7 +28,7 @@ export class AuthSocialAppleGuard implements CanActivate {
         }
 
         request.user = await this.authDomain.validateOAuthApple(
-            requestHeaders[1]
+            requestHeaders[1]!
         );
 
         return true;

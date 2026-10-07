@@ -199,12 +199,15 @@ export function ResponseFile(
         }
 
         const extension = options?.extension ?? EnumFileExtensionDocument.csv;
+        const maxDataExportConfigKey = options?.maxDataExportConfigKey ?? null;
         const mediaType = ResponseFileMediaTypes[extension];
 
         applyDecorators(
             UseInterceptors(
                 ResponseFileInterceptor({
-                    maxDataExportConfigKey: options?.maxDataExportConfigKey,
+                    ...(maxDataExportConfigKey !== null && {
+                        maxDataExportConfigKey,
+                    }),
                 })
             ),
             ApiResponse({

@@ -271,7 +271,10 @@ export class UserPasswordDomain {
                         ],
                     };
                 });
-            const purgePromise = this.sessionDomain.purgeLoginsByUser(userId);
+            // Sequential by design: side effects whose order is part of the contract
+            await this.sessionDomain.purgeLoginsByUser(userId);
+
+            this.activityLogDomain.stagePrepared(events);
 
             const passwordCreatedAt = this.helperDateService.formatToIso(
                 password.passwordCreated
@@ -279,19 +282,15 @@ export class UserPasswordDomain {
             const passwordExpiredAt = this.helperDateService.formatToIso(
                 password.passwordExpired
             );
-            const notifyPromise =
-                this.notificationQueue.sendTemporaryPasswordByAdmin(
-                    updated.id,
-                    {
-                        password: passwordString,
-                        passwordCreatedAt,
-                        passwordExpiredAt,
-                    },
-                    updatedBy
-                );
-            await Promise.all([purgePromise, notifyPromise]);
-
-            this.activityLogDomain.stagePrepared(events);
+            await this.notificationQueue.sendTemporaryPasswordByAdmin(
+                updated.id,
+                {
+                    password: passwordString,
+                    passwordCreatedAt,
+                    passwordExpiredAt,
+                },
+                updatedBy
+            );
 
             return;
         } catch (err: unknown) {
@@ -335,7 +334,6 @@ export class UserPasswordDomain {
             );
             const passwordHistoriesPromise =
                 this.passwordHistoryDomain.getActiveByUser(user.id);
-            // Sequential by design: gate before the work it guards
             const [, passwordHistories] = await Promise.all([
                 resetAttemptPromise,
                 passwordHistoriesPromise,
@@ -344,6 +342,7 @@ export class UserPasswordDomain {
                 passwordHistories,
                 newPassword
             );
+            // Sequential by design: gate before the work it guards
             if (passwordCheck) {
                 const passwordPeriodInDays =
                     this.authPasswordUtil.getPasswordPeriodInDays();
@@ -409,13 +408,12 @@ export class UserPasswordDomain {
                     );
                 }
             });
-            const purgePromise = this.sessionDomain.purgeLoginsByUser(user.id);
-            const notifyPromise = this.notificationQueue.sendChangePassword(
-                user.id
-            );
-            await Promise.all([purgePromise, notifyPromise]);
+            // Sequential by design: side effects whose order is part of the contract
+            await this.sessionDomain.purgeLoginsByUser(user.id);
 
             this.activityLogDomain.stagePrepared(events);
+
+            await this.notificationQueue.sendChangePassword(user.id);
 
             return;
         } catch (err: unknown) {
@@ -603,15 +601,14 @@ export class UserPasswordDomain {
                     );
                 }
             });
-            const purgePromise = this.sessionDomain.purgeLoginsByUser(
-                resetPassword.userId
-            );
-            const notifyPromise = this.notificationQueue.sendResetPassword(
-                resetPassword.userId
-            );
-            await Promise.all([purgePromise, notifyPromise]);
+            // Sequential by design: side effects whose order is part of the contract
+            await this.sessionDomain.purgeLoginsByUser(resetPassword.userId);
 
             this.activityLogDomain.stagePrepared(events);
+
+            await this.notificationQueue.sendResetPassword(
+                resetPassword.userId
+            );
 
             return;
         } catch (err: unknown) {

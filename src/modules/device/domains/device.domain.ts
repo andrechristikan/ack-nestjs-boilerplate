@@ -28,10 +28,12 @@ import { DeviceOwnershipRepository } from '@modules/device/repositories/device.o
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { SessionDomain } from '@modules/session/domains/session.domain';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
 export class DeviceDomain {
+    private readonly logger = new Logger(DeviceDomain.name);
+
     constructor(
         private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
         private readonly deviceRepository: DeviceRepository,
@@ -50,7 +52,7 @@ export class DeviceDomain {
         return this.deviceOwnershipRepository.findWithPaginationOffsetByAdmin(
             userId,
             pagination,
-            isRevoked
+            isRevoked ?? null
         );
     }
 
@@ -141,7 +143,12 @@ export class DeviceDomain {
                 deviceOwnershipId
             );
         if (deviceId === null) {
-            throw new DeviceNotFoundException();
+            this.logger.warn(
+                { userId, deviceOwnershipId },
+                'No live device to clear the notification token for'
+            );
+
+            return;
         }
 
         await this.deviceRepository.clearNotificationByIdsInTx(
@@ -192,7 +199,7 @@ export class DeviceDomain {
             throw new DeviceNotFoundException();
         }
         const notificationProvider =
-            this.deviceUtil.resolveNotificationProvider(data.platform ?? null);
+            this.deviceUtil.resolveNotificationProvider(data.platform);
         const now = this.helperDateService.create();
         const events = [
             this.activityLogDomain.prepare({

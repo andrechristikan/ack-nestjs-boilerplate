@@ -62,6 +62,9 @@ describe('UserMobileNumberDomain', () => {
         action: EnumActivityLogAction.userAddMobileNumber,
         metadata: {},
         onError: false,
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
     };
 
     beforeEach(async () => {
@@ -332,6 +335,10 @@ describe('UserMobileNumberDomain', () => {
                     ],
                 messagePath: 'user.error.mobileNumberNotFound',
             });
+            expect(
+                userMobileNumberRepository.existsMobileNumber
+            ).not.toHaveBeenCalled();
+            expect(countryDomain.getOne).not.toHaveBeenCalled();
         });
 
         it('throws UserMobileNumberExistException when another row already has the number', async () => {

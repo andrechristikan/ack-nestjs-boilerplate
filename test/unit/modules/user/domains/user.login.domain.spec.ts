@@ -94,6 +94,9 @@ describe('UserLoginDomain', () => {
         action: EnumActivityLogAction.userLoginCredential,
         metadata: {},
         onError: false,
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
     };
     const requestLog: IRequestLog = {
         userAgent: {
@@ -109,7 +112,9 @@ describe('UserLoginDomain', () => {
     };
     const device: IDeviceIdentity = {
         fingerprint: 'device-wisteria',
+        name: null,
         platform: EnumDevicePlatform.android,
+        notificationToken: null,
     };
     const tokens: IAuthToken = {
         tokenType: 'Bearer',
@@ -268,12 +273,14 @@ describe('UserLoginDomain', () => {
     });
 
     describe('createTokenAndSession', () => {
+        const loginAt = new Date('2026-01-01T00:05:00.000Z');
+
         beforeEach(() => {
-            authJwtDomain.createTokens.mockReturnValue({
-                tokens,
+            authJwtDomain.createLoginIdentifiers.mockReturnValue({
                 sessionId: 'session-wisteria',
                 jti: 'jti-wisteria',
             });
+            authJwtDomain.createTokens.mockReturnValue(tokens);
             Object.defineProperty(
                 authJwtDomain,
                 'jwtRefreshTokenExpirationTimeInSeconds',
@@ -286,6 +293,17 @@ describe('UserLoginDomain', () => {
                 EnumActivityLogAction.userLoginCredential
             );
             const callOrder: string[] = [];
+            databaseService.withTransaction.mockImplementation(async fn => {
+                const result = await fn(tx);
+                callOrder.push('committed');
+
+                return result as never;
+            });
+            authJwtDomain.createTokens.mockImplementation(() => {
+                callOrder.push('createTokens');
+
+                return tokens;
+            });
             sessionCache.setLogin.mockImplementation(async () => {
                 callOrder.push('setLogin');
             });
@@ -338,10 +356,33 @@ describe('UserLoginDomain', () => {
                 device,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                now
+                loginAt
             );
 
             expect(result).toBe(tokens);
+            expect(authJwtDomain.createTokens).toHaveBeenCalledWith(
+                user,
+                {
+                    sessionId: 'session-wisteria',
+                    jti: 'jti-wisteria',
+                    deviceOwnershipId: 'device-ownership-wisteria',
+                    loginAt,
+                },
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential
+            );
+            expect(helperDateService.forward).toHaveBeenCalledWith(
+                loginAt,
+                expect.anything()
+            );
+            expect(userRepository.updateLoginInTx).toHaveBeenCalledWith(
+                tx,
+                user.id,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                requestLog.ipAddress,
+                now
+            );
             expect(requestStoreService.get).toHaveBeenCalledWith(
                 RequestLogStoreKey
             );
@@ -354,14 +395,14 @@ describe('UserLoginDomain', () => {
                 'session-wisteria',
                 'device-ownership-wisteria',
                 'jti-wisteria',
-                now,
+                loginAt,
                 requestLog
             );
             expect(sessionCache.setLogin).toHaveBeenCalledWith(
                 user.id,
                 'session-wisteria',
                 'jti-wisteria',
-                now
+                loginAt
             );
             expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
             expect(notificationQueue.sendNewDeviceLogin).toHaveBeenCalledWith(
@@ -377,6 +418,8 @@ describe('UserLoginDomain', () => {
                 event,
             ]);
             expect(callOrder).toEqual([
+                'committed',
+                'createTokens',
                 'setLogin',
                 'sendNewDeviceLogin',
                 'stagePrepared',
@@ -541,6 +584,9 @@ describe('UserLoginDomain', () => {
             const user = baseUser;
             const deviceWithoutPlatform: IDeviceIdentity = {
                 fingerprint: 'device-wisteria',
+                name: null,
+                platform: null,
+                notificationToken: null,
             };
             await domain.createTokenAndSession(
                 user,
@@ -556,6 +602,89 @@ describe('UserLoginDomain', () => {
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 event,
             ]);
+        });
+
+        it('signs and persists the existing ownership id for a repeat device', async () => {
+            deviceUtil.resolveNotificationProvider.mockReturnValue(null);
+            deviceDomain.upsertForLoginInTx.mockResolvedValue({
+                device: {
+                    id: 'device-wisteria',
+                    fingerprint: device.fingerprint,
+                    name: null,
+                    platform: EnumDevicePlatform.android,
+                    lastActiveAt: now,
+                    notificationToken: null,
+                    notificationProvider: null,
+                    createdAt: now,
+                    createdBy: null,
+                    updatedAt: now,
+                    updatedBy: null,
+                },
+                deviceOwnership: {
+                    id: 'device-ownership-existing',
+                    deviceId: 'device-wisteria',
+                    userId: 'user-wisteria',
+                    revokedAt: null,
+                    isRevoked: false,
+                    revokedById: null,
+                    lastActiveAt: now,
+                    biometricEnabled: false,
+                    biometricToken: null,
+                    biometricType: null,
+                    biometricEnabledAt: null,
+                    createdAt: now,
+                    createdBy: null,
+                    updatedAt: now,
+                    updatedBy: null,
+                },
+                isNewDevice: false,
+            });
+            sessionDomain.revokeByDeviceOwnershipInTx.mockResolvedValue([]);
+
+            const user = baseUser;
+            await domain.createTokenAndSession(
+                user,
+                device,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                loginAt
+            );
+
+            expect(authJwtDomain.createTokens).toHaveBeenCalledWith(
+                user,
+                expect.objectContaining({
+                    deviceOwnershipId: 'device-ownership-existing',
+                }),
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential
+            );
+            expect(sessionDomain.createInTx).toHaveBeenCalledWith(
+                tx,
+                user.id,
+                'session-wisteria',
+                'device-ownership-existing',
+                'jti-wisteria',
+                loginAt,
+                requestLog
+            );
+        });
+
+        it('signs nothing and writes no cache key when the transaction fails', async () => {
+            databaseService.withTransaction.mockRejectedValue(
+                new Error('tx failed')
+            );
+
+            const call = domain.createTokenAndSession(
+                baseUser,
+                device,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                loginAt
+            );
+
+            await expect(call).rejects.toThrow('tx failed');
+            expect(authJwtDomain.createTokens).not.toHaveBeenCalled();
+            expect(sessionCache.setLogin).not.toHaveBeenCalled();
         });
     });
 
@@ -610,11 +739,11 @@ describe('UserLoginDomain', () => {
                 ...baseUser,
                 twoFactor: { ...baseTwoFactor, enabled: false },
             };
-            authJwtDomain.createTokens.mockReturnValue({
-                tokens,
+            authJwtDomain.createLoginIdentifiers.mockReturnValue({
                 sessionId: 'session-wisteria',
                 jti: 'jti-wisteria',
             });
+            authJwtDomain.createTokens.mockReturnValue(tokens);
             Object.defineProperty(
                 authJwtDomain,
                 'jwtRefreshTokenExpirationTimeInSeconds',
@@ -696,6 +825,9 @@ describe('UserLoginDomain', () => {
                 action: EnumActivityLogAction.userSetupTwoFactor,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
             const callOrder: string[] = [];
@@ -746,6 +878,40 @@ describe('UserLoginDomain', () => {
             expect(callOrder).toEqual(['setupTwoFactor', 'stagePrepared']);
         });
 
+        it('writes no secret and stages nothing when the challenge fails during setup', async () => {
+            const user = {
+                ...baseUser,
+                twoFactor: {
+                    ...baseTwoFactor,
+                    enabled: true,
+                    requiredSetup: true,
+                },
+            };
+            authCache.createChallenge.mockRejectedValue(
+                new Error('redis down')
+            );
+            authTwoFactorDomain.setupTwoFactor.mockResolvedValue({
+                encryptedSecret: 'enc',
+                otpauthUrl: 'otpauth://x',
+                secret: 'secret',
+            });
+
+            const call = domain.handleLogin(
+                user,
+                device,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                now
+            );
+
+            await expect(call).rejects.toThrow('redis down');
+            expect(authTwoFactorDomain.setupTwoFactor).toHaveBeenCalled();
+            expect(
+                userTwoFactorRepository.setupTwoFactor
+            ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
         it('creates a challenge for an already set-up two-factor user', async () => {
             const user = {
                 ...baseUser,
@@ -789,6 +955,7 @@ describe('UserLoginDomain', () => {
             const verified: IAuthTwoFactorVerifyResult = {
                 isValid: true,
                 method: EnumAuthTwoFactorMethod.code,
+                newBackupCodes: null,
             };
             authTwoFactorDomain.verifyTwoFactor.mockResolvedValue(verified);
 
@@ -796,6 +963,7 @@ describe('UserLoginDomain', () => {
                 domain.handleTwoFactorValidation(user, {
                     method: EnumAuthTwoFactorMethod.code,
                     code: '123456',
+                    backupCode: null,
                 })
             ).resolves.toBe(verified);
             expect(
@@ -805,11 +973,12 @@ describe('UserLoginDomain', () => {
 
         it('throws AuthTwoFactorAttemptTemporaryLockException while locked', async () => {
             const user = baseUser;
-            authCache.getLockTwoFactorAttempt.mockResolvedValue(30000);
+            authCache.getLockTwoFactorAttempt.mockResolvedValue(29001);
 
             const call = domain.handleTwoFactorValidation(user, {
                 method: EnumAuthTwoFactorMethod.code,
                 code: '123456',
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -829,7 +998,11 @@ describe('UserLoginDomain', () => {
             const user = baseUser;
             authCache.getLockTwoFactorAttempt.mockResolvedValue(0);
 
-            const call = domain.handleTwoFactorValidation(user, {});
+            const call = domain.handleTwoFactorValidation(user, {
+                method: null,
+                code: null,
+                backupCode: null,
+            });
 
             await expect(call).rejects.toMatchObject({
                 module: 'auth',
@@ -848,6 +1021,7 @@ describe('UserLoginDomain', () => {
             authTwoFactorDomain.verifyTwoFactor.mockResolvedValue({
                 isValid: false,
                 method: EnumAuthTwoFactorMethod.code,
+                newBackupCodes: null,
             });
             userTwoFactorRepository.increaseTwoFactorAttempt.mockResolvedValue({
                 ...baseTwoFactor,
@@ -858,6 +1032,7 @@ describe('UserLoginDomain', () => {
             const call = domain.handleTwoFactorValidation(user, {
                 method: EnumAuthTwoFactorMethod.code,
                 code: '000000',
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -878,6 +1053,7 @@ describe('UserLoginDomain', () => {
             authTwoFactorDomain.verifyTwoFactor.mockResolvedValue({
                 isValid: false,
                 method: EnumAuthTwoFactorMethod.code,
+                newBackupCodes: null,
             });
             userTwoFactorRepository.increaseTwoFactorAttempt.mockResolvedValue({
                 ...baseTwoFactor,
@@ -888,6 +1064,7 @@ describe('UserLoginDomain', () => {
             const call = domain.handleTwoFactorValidation(user, {
                 method: EnumAuthTwoFactorMethod.code,
                 code: '000000',
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -954,6 +1131,7 @@ describe('UserLoginDomain', () => {
             const verified: IAuthTwoFactorVerifyResult = {
                 isValid: true,
                 method: EnumAuthTwoFactorMethod.code,
+                newBackupCodes: null,
             };
             userTwoFactorRepository.verifyTwoFactorInTx.mockResolvedValue(true);
 
@@ -974,6 +1152,7 @@ describe('UserLoginDomain', () => {
             const verified: IAuthTwoFactorVerifyResult = {
                 isValid: true,
                 method: EnumAuthTwoFactorMethod.code,
+                newBackupCodes: null,
             };
             userTwoFactorRepository.verifyTwoFactorInTx.mockResolvedValue(
                 false
@@ -1001,6 +1180,7 @@ describe('UserLoginDomain', () => {
             const verified: IAuthTwoFactorVerifyResult = {
                 isValid: true,
                 method: EnumAuthTwoFactorMethod.code,
+                newBackupCodes: null,
             };
             userTwoFactorRepository.verifyTwoFactorInTx.mockResolvedValue(true);
 
@@ -1018,6 +1198,7 @@ describe('UserLoginDomain', () => {
             const verified: IAuthTwoFactorVerifyResult = {
                 isValid: true,
                 method: EnumAuthTwoFactorMethod.code,
+                newBackupCodes: null,
             };
             userTwoFactorRepository.verifyTwoFactor.mockResolvedValue(true);
 
@@ -1037,6 +1218,7 @@ describe('UserLoginDomain', () => {
             const verified: IAuthTwoFactorVerifyResult = {
                 isValid: true,
                 method: EnumAuthTwoFactorMethod.code,
+                newBackupCodes: null,
             };
             userTwoFactorRepository.verifyTwoFactor.mockResolvedValue(false);
 
@@ -1058,6 +1240,7 @@ describe('UserLoginDomain', () => {
             const verified: IAuthTwoFactorVerifyResult = {
                 isValid: true,
                 method: EnumAuthTwoFactorMethod.code,
+                newBackupCodes: null,
             };
             userTwoFactorRepository.verifyTwoFactor.mockResolvedValue(true);
 
@@ -1288,7 +1471,7 @@ describe('UserLoginDomain', () => {
         });
 
         it('throws AuthTwoFactorAttemptTemporaryLockException while locked', async () => {
-            authCache.getLockTwoFactorAttempt.mockResolvedValue(15000);
+            authCache.getLockTwoFactorAttempt.mockResolvedValue(14001);
 
             const call = domain['assertTwoFactorUnlocked'](baseUser);
 

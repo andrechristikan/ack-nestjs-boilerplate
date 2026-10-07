@@ -72,7 +72,7 @@ describe('doc.decorator', () => {
                 ApiResponseMetaKey,
                 descriptor.value
             ) as Record<number, IApiResponseEntry>;
-            const entry = responses[HttpStatus.NOT_FOUND];
+            const entry = responses[HttpStatus.NOT_FOUND]!;
             expect(entry.description).toBe(HttpStatus.NOT_FOUND.toString());
             expect(entry.examples).toBeUndefined();
             expect(entry.schema?.properties?.metadata?.example).toBeDefined();
@@ -93,7 +93,7 @@ describe('doc.decorator', () => {
                 descriptor.value
             ) as Record<number, IApiResponseEntry>;
             expect(
-                responses[HttpStatus.OK].schema?.properties?.data
+                responses[HttpStatus.OK]!.schema?.properties?.data
             ).toBeDefined();
         });
 
@@ -115,7 +115,7 @@ describe('doc.decorator', () => {
                 descriptor.value
             ) as Record<number, IApiResponseEntry>;
             expect(
-                responses[HttpStatus.BAD_REQUEST].schema?.properties?.metadata
+                responses[HttpStatus.BAD_REQUEST]!.schema?.properties?.metadata
             ).toBeUndefined();
         });
 
@@ -174,7 +174,7 @@ describe('doc.decorator', () => {
                 ApiResponseMetaKey,
                 descriptor.value
             ) as Record<number, IApiResponseEntry>;
-            expect(responses[HttpStatus.BAD_REQUEST].description).toBe('');
+            expect(responses[HttpStatus.BAD_REQUEST]!.description).toBe('');
         });
 
         it('documents a shared envelope schema with one named example per messagePath', () => {
@@ -190,7 +190,7 @@ describe('doc.decorator', () => {
                 ApiResponseMetaKey,
                 descriptor.value
             ) as Record<number, IApiResponseEntry>;
-            const entry = responses[HttpStatus.UNPROCESSABLE_ENTITY];
+            const entry = responses[HttpStatus.UNPROCESSABLE_ENTITY]!;
             expect(entry.examples).toBeDefined();
             expect(Object.keys(entry.examples ?? {})).toEqual([
                 'user.error.a',

@@ -36,8 +36,8 @@ export interface IWorkspaceInviteTokenData {
 
 export interface IWorkspaceCreate {
     name: string;
-    description?: string;
-    isPublic?: boolean;
+    description: string | null;
+    isPublic: boolean | null;
 }
 
 export interface IWorkspaceOwnedUser {
@@ -48,16 +48,16 @@ export interface IWorkspaceOwnedUser {
 }
 
 export interface IWorkspaceUpdate {
-    name?: string;
-    description?: string;
+    name: string | null;
+    description: string | null;
 }
 
 export interface IWorkspaceInviteCreate {
     email: Lowercase<string>;
     workspaceRole: EnumWorkspaceMemberRole;
-    projectId?: string;
-    projectRole?: EnumProjectMemberRole;
-    expiryDuration?: EnumWorkspaceInviteExpiry;
+    projectId: string | null;
+    projectRole: EnumProjectMemberRole | null;
+    expiryDuration: EnumWorkspaceInviteExpiry | null;
 }
 
 export interface IWorkspaceInviteCreateData {
@@ -65,8 +65,8 @@ export interface IWorkspaceInviteCreateData {
     workspaceId: string;
     email: string;
     workspaceRole: EnumWorkspaceMemberRole;
-    projectId?: string;
-    projectRole?: EnumProjectMemberRole;
+    projectId: string | null;
+    projectRole: EnumProjectMemberRole | null;
     hashedToken: string;
     reference: string;
     expiredAt: Date;
@@ -88,11 +88,11 @@ export interface IWorkspaceInvitePreviewSummary {
 
 export interface IWorkspaceJoinRequestCreate {
     workspaceId: string;
-    message?: string;
+    message: string | null;
 }
 
 export interface IWorkspaceJoinRequestCreateData {
     workspaceId: string;
     userId: string;
-    message?: string;
+    message: string | null;
 }

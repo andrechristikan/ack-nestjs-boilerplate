@@ -93,11 +93,15 @@ export class ResponseInterceptor<T> implements NestInterceptor {
                             responseMetadata?.messagePath ?? messagePath;
                     }
 
+                    const messageProperties =
+                        responseMetadata?.messageProperties ?? null;
                     const message: string = this.messageService.setMessage(
                         messagePath,
                         {
                             customLanguage: metadata.language,
-                            properties: responseMetadata?.messageProperties,
+                            ...(messageProperties !== null && {
+                                properties: messageProperties,
+                            }),
                         }
                     );
 

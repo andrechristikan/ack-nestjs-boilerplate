@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -523,8 +524,22 @@ describe('PaginationQueryUtil', () => {
                 where: { createdAt: { equal: parsed } },
                 storeFilter: { createdAt: parsed },
             });
+            expect(helperDateService.createFromIso).toHaveBeenCalledWith(
+                iso,
+                {}
+            );
+        });
+
+        it('forwards the day-of option to the date parser', () => {
+            helperDateService.checkIso.mockReturnValue(true);
+            helperDateService.createFromIso.mockReturnValue(parsed);
+
+            util.dateBetween('createdAt', iso, {
+                dayOf: EnumHelperDateDayOf.end,
+            });
+
             expect(helperDateService.createFromIso).toHaveBeenCalledWith(iso, {
-                dayOf: undefined,
+                dayOf: EnumHelperDateDayOf.end,
             });
         });
 
@@ -622,12 +637,18 @@ describe('PaginationQueryUtil', () => {
         it('parses an array of field:direction entries', () => {
             expect(
                 util['extractOrderByToArray'](['name:ASC', 'createdAt'])
-            ).toEqual([{ name: 'asc' }, { createdAt: undefined }]);
+            ).toEqual([{ name: 'asc' }, { createdAt: '' }]);
         });
 
         it('parses a single field:direction string', () => {
             expect(util['extractOrderByToArray']('name:DESC')).toEqual([
                 { name: 'desc' },
+            ]);
+        });
+
+        it('parses a single field string without a direction to an empty direction', () => {
+            expect(util['extractOrderByToArray']('name')).toEqual([
+                { name: '' },
             ]);
         });
     });

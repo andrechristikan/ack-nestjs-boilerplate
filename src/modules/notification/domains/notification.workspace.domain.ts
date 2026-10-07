@@ -51,6 +51,8 @@ export class NotificationWorkspaceDomain {
             email: user.email,
             username: user.username,
             notificationId,
+            cc: [],
+            bcc: [],
         };
 
         const promises = [
@@ -123,6 +125,8 @@ export class NotificationWorkspaceDomain {
             email: user.email,
             username: user.username,
             notificationId,
+            cc: [],
+            bcc: [],
         };
 
         const promises = [
@@ -199,6 +203,8 @@ export class NotificationWorkspaceDomain {
             email: user.email,
             username: user.username,
             notificationId,
+            cc: [],
+            bcc: [],
         };
 
         const promises = [
@@ -270,6 +276,8 @@ export class NotificationWorkspaceDomain {
             email: user.email,
             username: user.username,
             notificationId,
+            cc: [],
+            bcc: [],
         };
 
         const promises = [

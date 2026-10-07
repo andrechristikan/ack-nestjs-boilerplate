@@ -99,8 +99,8 @@ export class ApiKeyDomain {
     ): Promise<IResponsePaginationReturn<IApiKey>> {
         return this.apiKeyRepository.findWithPagination(
             pagination,
-            isActive,
-            type
+            isActive ?? null,
+            type ?? null
         );
     }
 
@@ -125,7 +125,10 @@ export class ApiKeyDomain {
                 false
             ),
         ];
-        let dateWindow: { startAt: Date; endAt: Date } | null = null;
+        let dateWindow: { startAt: Date | null; endAt: Date | null } = {
+            startAt: null,
+            endAt: null,
+        };
         if (startAt && endAt) {
             const startAtDay = this.helperDateService.create(startAt, {
                 dayOf: EnumHelperDateDayOf.start,

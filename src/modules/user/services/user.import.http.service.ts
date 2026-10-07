@@ -39,7 +39,7 @@ export class UserImportHttpService {
             await this.userImportDomain.prepareImportByAdmin(
                 data.map(({ email, name, username }) => ({
                     email,
-                    name,
+                    name: name ?? null,
                     username,
                 })),
                 createdBy

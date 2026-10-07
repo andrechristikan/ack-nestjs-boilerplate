@@ -167,7 +167,7 @@ export class UserOnboardingDomain {
     ): IActivityLogMetadata {
         switch (action) {
             case EnumActivityLogAction.adminUserCreate: {
-                const [user] = users;
+                const user = users[0]!;
 
                 return {
                     targetUserId: user.id,

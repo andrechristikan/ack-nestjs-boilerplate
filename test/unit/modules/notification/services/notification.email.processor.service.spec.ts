@@ -44,6 +44,8 @@ describe('NotificationEmailProcessorService', () => {
         notificationId: 'notification-id',
         email: 'nadia@example.com',
         username: 'nadia',
+        cc: [],
+        bcc: [],
     };
     const response: IQueueResponse = { message: 'processed' };
 
@@ -82,7 +84,7 @@ describe('NotificationEmailProcessorService', () => {
                 INotificationEmailQueuePayload,
                 IQueueResponse,
                 EnumNotificationProcess
-            >({ send });
+            >({ send, data: null });
 
             const result = await service.processWelcome(job);
 
@@ -102,7 +104,7 @@ describe('NotificationEmailProcessorService', () => {
                 INotificationEmailQueuePayload,
                 IQueueResponse,
                 EnumNotificationProcess
-            >({ send });
+            >({ send, data: null });
 
             const result = await service.processWelcomeSocial(job);
 
@@ -172,7 +174,7 @@ describe('NotificationEmailProcessorService', () => {
                 INotificationEmailQueuePayload,
                 IQueueResponse,
                 EnumNotificationProcess
-            >({ send });
+            >({ send, data: null });
 
             const result = await service.processChangePassword(job);
 
@@ -192,7 +194,7 @@ describe('NotificationEmailProcessorService', () => {
                 INotificationEmailQueuePayload,
                 IQueueResponse,
                 EnumNotificationProcess
-            >({ send });
+            >({ send, data: null });
 
             const result = await service.processResetPassword(job);
 
@@ -311,7 +313,7 @@ describe('NotificationEmailProcessorService', () => {
                 INotificationEmailQueuePayload,
                 IQueueResponse,
                 EnumNotificationProcess
-            >({ send });
+            >({ send, data: null });
 
             const result = await service.processResetTwoFactorByAdmin(job);
 
@@ -415,7 +417,11 @@ describe('NotificationEmailProcessorService', () => {
 
     describe('processWorkspaceInviteUnregistered', () => {
         it('forwards send and data to the workspace domain', async () => {
-            const unregisteredSend = { email: 'invitee@example.com' };
+            const unregisteredSend = {
+                email: 'invitee@example.com',
+                cc: [],
+                bcc: [],
+            };
             const data: INotificationWorkspaceInviteUnregisteredEncryptedPayload =
                 {
                     workspaceId: 'workspace-id',

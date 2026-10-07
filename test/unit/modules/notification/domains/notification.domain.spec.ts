@@ -81,6 +81,7 @@ describe('NotificationDomain', () => {
             const pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput> =
                 {
                     limit: 20,
+                    orderBy: [],
                 };
             const paginationResult = {
                 type: EnumPaginationType.cursor as const,
@@ -249,6 +250,9 @@ describe('NotificationDomain', () => {
                 action: EnumActivityLogAction.userUpdateNotificationSetting,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
             const tx = {} as IDatabaseTransactionClient;

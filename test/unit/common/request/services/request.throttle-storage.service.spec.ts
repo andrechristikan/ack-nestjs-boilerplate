@@ -31,7 +31,7 @@ describe('RequestThrottleStorageService', () => {
                 'request.throttle.sequenceKeyPattern':
                     'ThrottleSeq:{name}:{tracker}',
             };
-            return values[key];
+            return values[key]!;
         });
         helperStringService.fillPattern.mockImplementation(
             (pattern, tokens) => `${pattern}::${tokens.name}::${tokens.tracker}`

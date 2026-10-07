@@ -30,7 +30,7 @@ export class RoleRepository implements IRoleRepository {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
-        type?: Record<string, IPaginationIn>
+        type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.paginationService.offset<
             IRoleWithPolicyCount,
@@ -50,7 +50,7 @@ export class RoleRepository implements IRoleRepository {
             where,
             ...params
         }: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
-        type?: Record<string, IPaginationIn>
+        type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.paginationService.cursor<
             IRoleWithPolicyCount,
@@ -131,10 +131,16 @@ export class RoleRepository implements IRoleRepository {
         });
     }
 
-    async update(id: string, data: IRoleUpdate): Promise<IRoleWithPolicies> {
+    async update(
+        id: string,
+        { description, type }: IRoleUpdate
+    ): Promise<IRoleWithPolicies> {
         return this.databaseService.client.role.update({
             where: { id },
-            data,
+            data: {
+                ...(description !== null && { description }),
+                type,
+            },
             include: { policies: true },
         });
     }

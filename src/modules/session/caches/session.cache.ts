@@ -102,11 +102,15 @@ export class SessionCache {
         const sessionKey = this.buildKey(userId, sessionId);
         const key = store.createKeyPrefix(sessionKey, store.namespace);
         const now = this.helperDateService.create();
-        const value = await this.keyv.serializeData<ISessionCache>({
+        const valuePromise = this.keyv.serializeData<ISessionCache>({
             value: { ...session, jti },
             expires: now.getTime() + expiredInMs,
         });
-        const client = await store.getClient();
+        const clientPromise = store.getClient();
+        const [value, client] = await Promise.all([
+            valuePromise,
+            clientPromise,
+        ]);
         const reply = await client.set(key, value as string, {
             expiration: { type: 'PX', value: expiredInMs },
             condition: 'XX',

@@ -1,30 +1,36 @@
 import { AnalyticFraudSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-summary.response.dto';
 
 describe('AnalyticFraudSummaryResponseSchema', () => {
-    const row = {
-        count: 6,
-        window: '86400000',
-        meta: { minUniqueAccounts: 5 },
-    };
+    const summary = { count: 1, window: 'window-token' };
 
-    it('parses a row into exactly the declared fields', () => {
-        const result = AnalyticFraudSummaryResponseSchema.parse(row);
+    it('parses a summary into exactly the declared fields', () => {
+        const result = AnalyticFraudSummaryResponseSchema.parse(summary);
 
-        expect(result).toEqual(row);
-    });
-
-    it('parses a count-only row when optional fields are omitted', () => {
-        const result = AnalyticFraudSummaryResponseSchema.parse({ count: 0 });
-
-        expect(result).toEqual({ count: 0 });
+        expect(result).toEqual(summary);
     });
 
     it('strips an undeclared key', () => {
         const result = AnalyticFraudSummaryResponseSchema.parse({
-            ...row,
+            ...summary,
+            meta: { minUniqueAccounts: 5 },
             ipAddresses: ['10.0.0.1'],
         });
 
-        expect(result).toEqual(row);
+        expect(result).toEqual(summary);
+    });
+
+    it('rejects a cached summary without the window key', () => {
+        expect(() =>
+            AnalyticFraudSummaryResponseSchema.parse({ count: 1 })
+        ).toThrow();
+    });
+
+    it('accepts a null window', () => {
+        expect(
+            AnalyticFraudSummaryResponseSchema.parse({
+                ...summary,
+                window: null,
+            })
+        ).toEqual({ ...summary, window: null });
     });
 });

@@ -64,6 +64,9 @@ describe('UserTwoFactorDomain', () => {
         action: EnumActivityLogAction.userVerifyTwoFactor,
         metadata: {},
         onError: false,
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
     };
 
     const baseTwoFactor: TwoFactor = {
@@ -137,6 +140,7 @@ describe('UserTwoFactorDomain', () => {
     const verifiedResult: IAuthTwoFactorVerifyResult = {
         isValid: true,
         method: EnumAuthTwoFactorMethod.code,
+        newBackupCodes: null,
     };
     const tokens: IAuthToken = {
         tokenType: 'Bearer',
@@ -147,7 +151,12 @@ describe('UserTwoFactorDomain', () => {
     };
     const challenge: IAuthTwoFactorChallengeCache = {
         userId: 'user-quartz',
-        device: { fingerprint: 'device-quartz' },
+        device: {
+            fingerprint: 'device-quartz',
+            name: null,
+            platform: null,
+            notificationToken: null,
+        },
         loginFrom: EnumUserLoginFrom.website,
         loginWith: EnumUserLoginWith.credential,
     };
@@ -198,6 +207,8 @@ describe('UserTwoFactorDomain', () => {
             await expect(
                 domain.loginVerifyTwoFactor('challenge-token', {
                     code: '123456',
+                    method: null,
+                    backupCode: null,
                 })
             ).resolves.toBe(tokens);
             expect(
@@ -216,6 +227,8 @@ describe('UserTwoFactorDomain', () => {
 
             const call = domain.loginVerifyTwoFactor('challenge-token', {
                 code: '123456',
+                method: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -235,6 +248,8 @@ describe('UserTwoFactorDomain', () => {
 
             const call = domain.loginVerifyTwoFactor('challenge-token', {
                 code: '123456',
+                method: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -255,6 +270,8 @@ describe('UserTwoFactorDomain', () => {
 
             const call = domain.loginVerifyTwoFactor('challenge-token', {
                 code: '123456',
+                method: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -277,6 +294,8 @@ describe('UserTwoFactorDomain', () => {
 
             const call = domain.loginVerifyTwoFactor('challenge-token', {
                 code: '123456',
+                method: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -299,6 +318,8 @@ describe('UserTwoFactorDomain', () => {
 
             const call = domain.loginVerifyTwoFactor('challenge-token', {
                 code: '123456',
+                method: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -321,6 +342,8 @@ describe('UserTwoFactorDomain', () => {
 
             const call = domain.loginVerifyTwoFactor('challenge-token', {
                 code: '123456',
+                method: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -347,6 +370,8 @@ describe('UserTwoFactorDomain', () => {
 
             const call = domain.loginVerifyTwoFactor('challenge-token', {
                 code: '123456',
+                method: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -372,6 +397,8 @@ describe('UserTwoFactorDomain', () => {
 
             const call = domain.loginVerifyTwoFactor('challenge-token', {
                 code: '123456',
+                method: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -737,6 +764,7 @@ describe('UserTwoFactorDomain', () => {
                 userLoginDomain.handleTwoFactorValidation
             ).toHaveBeenCalledWith(user, {
                 method: EnumAuthTwoFactorMethod.backupCodes,
+                code: null,
                 backupCode: 'BACKUP1',
             });
             expect(
@@ -970,7 +998,11 @@ describe('UserTwoFactorDomain', () => {
                 verifiedResult
             );
 
-            await domain.disableTwoFactor(user, { code: '123456' });
+            await domain.disableTwoFactor(user, {
+                code: '123456',
+                method: null,
+                backupCode: null,
+            });
 
             expect(
                 userTwoFactorRepository.disableTwoFactorInTx
@@ -995,7 +1027,11 @@ describe('UserTwoFactorDomain', () => {
                 twoFactor: { ...baseTwoFactor, enabled: false },
             };
 
-            const call = domain.disableTwoFactor(user, { code: '123456' });
+            const call = domain.disableTwoFactor(user, {
+                code: '123456',
+                method: null,
+                backupCode: null,
+            });
 
             await expect(call).rejects.toMatchObject({
                 module: 'auth',
@@ -1016,7 +1052,11 @@ describe('UserTwoFactorDomain', () => {
             const error = new UserNotFoundException();
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
-            const call = domain.disableTwoFactor(user, { code: '123456' });
+            const call = domain.disableTwoFactor(user, {
+                code: '123456',
+                method: null,
+                backupCode: null,
+            });
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -1036,7 +1076,11 @@ describe('UserTwoFactorDomain', () => {
             const error = new Error('boom');
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
-            const call = domain.disableTwoFactor(user, { code: '123456' });
+            const call = domain.disableTwoFactor(user, {
+                code: '123456',
+                method: null,
+                backupCode: null,
+            });
 
             await expect(call).rejects.toMatchObject({
                 module: 'app',
@@ -1078,6 +1122,7 @@ describe('UserTwoFactorDomain', () => {
             ).toHaveBeenCalledWith(user, {
                 method: EnumAuthTwoFactorMethod.code,
                 code: '123456',
+                backupCode: null,
             });
             expect(
                 userTwoFactorRepository.regenerateTwoFactorBackupCodes
@@ -1180,11 +1225,17 @@ describe('UserTwoFactorDomain', () => {
                 action: EnumActivityLogAction.adminUserResetTwoFactor,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             const targetEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.userResetTwoFactorByAdmin,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare
                 .mockReturnValueOnce(actorEvent)

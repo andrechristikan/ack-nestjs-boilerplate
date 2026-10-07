@@ -100,7 +100,7 @@ export class LoggerUtil {
         if (headers) {
             const forwarded = headers['x-forwarded-for'] as string;
             if (forwarded) {
-                const firstIP = forwarded.split(',')[0].trim();
+                const firstIP = forwarded.split(',')[0]!.trim();
                 if (firstIP) {
                     return firstIP;
                 }
@@ -180,7 +180,7 @@ export class LoggerUtil {
 
             return `${parsed.origin}${maskedPath}`;
         } catch {
-            return this.maskPath(url.split('?')[0].split('#')[0]);
+            return this.maskPath(url.split('?')[0]!.split('#')[0]!);
         }
     }
 

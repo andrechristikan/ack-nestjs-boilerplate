@@ -115,7 +115,7 @@ export class NotificationProcessor extends QueueProcessorBase {
             case EnumNotificationProcess.resetPassword:
                 return await this.notificationProcessorService.processResetPassword(
                     job as Job<
-                        INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
+                        INotificationQueuePayload,
                         IQueueResponse,
                         EnumNotificationProcess
                     >
@@ -123,7 +123,7 @@ export class NotificationProcessor extends QueueProcessorBase {
             case EnumNotificationProcess.resetTwoFactorByAdmin:
                 return await this.notificationProcessorService.processResetTwoFactorByAdmin(
                     job as Job<
-                        INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
+                        INotificationQueuePayload,
                         IQueueResponse,
                         EnumNotificationProcess
                     >
@@ -131,7 +131,7 @@ export class NotificationProcessor extends QueueProcessorBase {
             case EnumNotificationProcess.welcomeSocial:
                 return await this.notificationProcessorService.processWelcomeSocial(
                     job as Job<
-                        INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
+                        INotificationQueuePayload,
                         IQueueResponse,
                         EnumNotificationProcess
                     >

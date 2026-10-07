@@ -293,16 +293,26 @@ describe('AuthJwtDomain', () => {
         });
     });
 
-    describe('createTokens', () => {
-        it('creates the access and refresh token pair for a fresh login', () => {
-            const loginDate = new Date('2026-01-01T00:00:00.000Z');
-            helperDateService.create.mockReturnValue(loginDate);
-            databaseUtil.createId
-                .mockReturnValueOnce('session-1')
-                .mockReturnValueOnce('device-ownership-1');
+    describe('createLoginIdentifiers', () => {
+        it('mints a session id and a jti', () => {
+            databaseUtil.createId.mockReturnValue('session-1');
             authUtil.generateJti.mockReturnValue('jti-value');
+
+            const result = domain.createLoginIdentifiers();
+
+            expect(result).toEqual({
+                sessionId: 'session-1',
+                jti: 'jti-value',
+            });
+            expect(databaseUtil.createId).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('createTokens', () => {
+        it('signs the pair with the persisted ownership id and the caller login time', () => {
+            const loginAt = new Date('2026-01-01T00:00:00.000Z');
             const accessPayload: IAuthJwtAccessTokenPayload = {
-                loginAt: loginDate,
+                loginAt,
                 loginFrom: EnumUserLoginFrom.website,
                 loginWith: EnumUserLoginWith.credential,
                 email: user.email,
@@ -313,7 +323,7 @@ describe('AuthJwtDomain', () => {
                 roleId: user.roleId,
             };
             const refreshPayload: IAuthJwtRefreshTokenPayload = {
-                loginAt: loginDate,
+                loginAt,
                 loginFrom: EnumUserLoginFrom.website,
                 loginWith: EnumUserLoginWith.credential,
                 userId: user.id,
@@ -328,32 +338,52 @@ describe('AuthJwtDomain', () => {
 
             const result = domain.createTokens(
                 user,
+                {
+                    sessionId: 'session-1',
+                    jti: 'jti-value',
+                    deviceOwnershipId: 'device-ownership-1',
+                    loginAt,
+                },
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential
             );
 
             expect(result).toEqual({
-                tokens: {
-                    tokenType: 'Bearer',
-                    roleType: EnumRoleType.user,
-                    expiresIn: 900,
-                    accessToken: 'signed-access-token',
-                    refreshToken: 'signed-refresh-token',
-                },
-                jti: 'jti-value',
-                sessionId: 'session-1',
+                tokenType: 'Bearer',
+                roleType: EnumRoleType.user,
+                expiresIn: 900,
+                accessToken: 'signed-access-token',
+                refreshToken: 'signed-refresh-token',
             });
             expect(authUtil.createPayloadAccessToken).toHaveBeenCalledWith(
                 user,
                 'session-1',
                 'device-ownership-1',
-                loginDate,
+                loginAt,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential
             );
             expect(authUtil.createPayloadRefreshToken).toHaveBeenCalledWith(
                 accessPayload
             );
+            expect(jwtService.sign).toHaveBeenNthCalledWith(
+                1,
+                accessPayload,
+                expect.objectContaining({
+                    jwtid: 'jti-value',
+                    subject: user.id,
+                })
+            );
+            expect(jwtService.sign).toHaveBeenNthCalledWith(
+                2,
+                refreshPayload,
+                expect.objectContaining({
+                    jwtid: 'jti-value',
+                    subject: user.id,
+                })
+            );
+            expect(databaseUtil.createId).not.toHaveBeenCalled();
+            expect(helperDateService.create).not.toHaveBeenCalled();
         });
     });
 
@@ -424,6 +454,14 @@ describe('AuthJwtDomain', () => {
             expect(helperDateService.createFromTimestamp).toHaveBeenCalledWith(
                 oldExpSeconds * 1000
             );
+            expect(authUtil.createPayloadAccessToken).toHaveBeenCalledWith(
+                user,
+                decodedRefresh.sessionId,
+                decodedRefresh.deviceOwnershipId,
+                loginAt,
+                decodedRefresh.loginFrom,
+                decodedRefresh.loginWith
+            );
             expect(jwtService.sign).toHaveBeenNthCalledWith(
                 2,
                 newRefreshPayload,
@@ -440,7 +478,6 @@ describe('AuthJwtDomain', () => {
                 userId: user.id,
                 sessionId: 'session-1',
                 deviceOwnershipId: 'device-ownership-1',
-                exp: undefined,
             };
             jwtService.decode.mockReturnValue(decodedRefresh);
             authUtil.generateJti.mockReturnValue('new-jti');

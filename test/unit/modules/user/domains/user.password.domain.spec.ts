@@ -84,6 +84,9 @@ describe('UserPasswordDomain', () => {
         action: EnumActivityLogAction.userChangePassword,
         metadata: {},
         onError: false,
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
     };
 
     const configValues: Record<string, string | number> = {
@@ -369,11 +372,17 @@ describe('UserPasswordDomain', () => {
                 action: EnumActivityLogAction.adminUserUpdatePassword,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             const targetEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.userUpdatePasswordByAdmin,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare
                 .mockReturnValueOnce(actorEvent)
@@ -550,6 +559,7 @@ describe('UserPasswordDomain', () => {
         const verifiedResult: IAuthTwoFactorVerifyResult = {
             isValid: true,
             method: EnumAuthTwoFactorMethod.code,
+            newBackupCodes: null,
         };
         const history: PasswordHistory = {
             id: 'history-hollow',
@@ -584,10 +594,18 @@ describe('UserPasswordDomain', () => {
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
             });
+            notificationQueue.sendChangePassword.mockImplementation(
+                async () => {
+                    callOrder.push('sendChangePassword');
+                }
+            );
 
             await domain.changePassword(user, {
                 newPassword: 'new-password',
                 oldPassword: 'old-password',
+                method: null,
+                code: null,
+                backupCode: null,
             });
 
             expect(userDomain.resetPasswordAttempt).toHaveBeenCalledWith(
@@ -627,6 +645,7 @@ describe('UserPasswordDomain', () => {
                 'revokeActiveByUserInTx',
                 'purgeLoginsByUser',
                 'stagePrepared',
+                'sendChangePassword',
             ]);
         });
 
@@ -647,11 +666,17 @@ describe('UserPasswordDomain', () => {
                 action: EnumActivityLogAction.userChangePassword,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             const verifyTwoFactorEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.userVerifyTwoFactor,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare
                 .mockReturnValueOnce(changePasswordEvent)
@@ -662,6 +687,7 @@ describe('UserPasswordDomain', () => {
                 oldPassword: 'old-password',
                 code: '123456',
                 method: EnumAuthTwoFactorMethod.code,
+                backupCode: null,
             });
 
             expect(
@@ -689,6 +715,9 @@ describe('UserPasswordDomain', () => {
             await domain.changePassword(user, {
                 newPassword: 'new-password',
                 oldPassword: 'old-password',
+                method: null,
+                code: null,
+                backupCode: null,
             });
 
             expect(
@@ -712,6 +741,9 @@ describe('UserPasswordDomain', () => {
             const call = domain.changePassword(user, {
                 newPassword: 'new-password',
                 oldPassword: 'old-password',
+                method: null,
+                code: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -733,6 +765,9 @@ describe('UserPasswordDomain', () => {
             const call = domain.changePassword(user, {
                 newPassword: 'new-password',
                 oldPassword: 'wrong-password',
+                method: null,
+                code: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -760,6 +795,9 @@ describe('UserPasswordDomain', () => {
             const call = domain.changePassword(user, {
                 newPassword: 'new-password',
                 oldPassword: 'old-password',
+                method: null,
+                code: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -790,6 +828,9 @@ describe('UserPasswordDomain', () => {
             const call = domain.changePassword(user, {
                 newPassword: 'new-password',
                 oldPassword: 'old-password',
+                method: null,
+                code: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -818,6 +859,9 @@ describe('UserPasswordDomain', () => {
             const call = domain.changePassword(user, {
                 newPassword: 'new-password',
                 oldPassword: 'old-password',
+                method: null,
+                code: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -860,6 +904,9 @@ describe('UserPasswordDomain', () => {
                 action: EnumActivityLogAction.userForgotPassword,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
             const callOrder: string[] = [];
@@ -1046,6 +1093,7 @@ describe('UserPasswordDomain', () => {
         const verifiedResult: IAuthTwoFactorVerifyResult = {
             isValid: true,
             method: EnumAuthTwoFactorMethod.code,
+            newBackupCodes: null,
         };
 
         it('resets the password, commits, purges, and stages the event in order when two-factor is disabled', async () => {
@@ -1060,6 +1108,9 @@ describe('UserPasswordDomain', () => {
                 action: EnumActivityLogAction.userResetPassword,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare.mockReturnValue(stagedEvent);
             const callOrder: string[] = [];
@@ -1073,10 +1124,16 @@ describe('UserPasswordDomain', () => {
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
             });
+            notificationQueue.sendResetPassword.mockImplementation(async () => {
+                callOrder.push('sendResetPassword');
+            });
 
             await domain.resetPassword({
                 newPassword: 'new-password',
                 token: 'raw-token',
+                method: null,
+                code: null,
+                backupCode: null,
             });
 
             expect(userDomain.updatePasswordInTx).toHaveBeenCalledWith(
@@ -1108,6 +1165,7 @@ describe('UserPasswordDomain', () => {
                 'markUsedInTx',
                 'purgeLoginsByUser',
                 'stagePrepared',
+                'sendResetPassword',
             ]);
         });
 
@@ -1132,11 +1190,17 @@ describe('UserPasswordDomain', () => {
                 action: EnumActivityLogAction.userResetPassword,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             const verifyTwoFactorEvent: IActivityLogStagedEvent = {
                 action: EnumActivityLogAction.userVerifyTwoFactor,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             activityLogDomain.prepare
                 .mockReturnValueOnce(resetPasswordEvent)
@@ -1147,6 +1211,7 @@ describe('UserPasswordDomain', () => {
                 token: 'raw-token',
                 code: '123456',
                 method: EnumAuthTwoFactorMethod.code,
+                backupCode: null,
             });
 
             expect(
@@ -1176,6 +1241,9 @@ describe('UserPasswordDomain', () => {
             const call = domain.resetPassword({
                 newPassword: 'new-password',
                 token: 'raw-token',
+                method: null,
+                code: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -1208,6 +1276,9 @@ describe('UserPasswordDomain', () => {
             const call = domain.resetPassword({
                 newPassword: 'new-password',
                 token: 'raw-token',
+                method: null,
+                code: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -1236,6 +1307,9 @@ describe('UserPasswordDomain', () => {
             const call = domain.resetPassword({
                 newPassword: 'new-password',
                 token: 'raw-token',
+                method: null,
+                code: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({
@@ -1262,6 +1336,9 @@ describe('UserPasswordDomain', () => {
             const call = domain.resetPassword({
                 newPassword: 'new-password',
                 token: 'raw-token',
+                method: null,
+                code: null,
+                backupCode: null,
             });
 
             await expect(call).rejects.toMatchObject({

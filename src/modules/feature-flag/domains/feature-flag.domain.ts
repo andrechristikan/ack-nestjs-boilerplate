@@ -72,7 +72,7 @@ export class FeatureFlagDomain {
             throw new FeatureFlagPredefinedKeyLengthExceededException();
         }
 
-        const key = keys[0];
+        const key = keys[0]!;
         const featureFlag = await this.featureFlagCache.getByKeyAndCache(key);
         if (!featureFlag) {
             throw new FeatureFlagPredefinedKeyNotFoundException();
@@ -147,7 +147,7 @@ export class FeatureFlagDomain {
         }
 
         const updated = await this.featureFlagRepository.updateStatus(id, data);
-        // Sequential by design: the cache entry is deleted only after the write commits, so a concurrent read cannot re-cache the old row.
+        // Sequential by design: side effects whose order is part of the contract
         await this.featureFlagCache.deleteCacheByKey(featureFlag.key);
 
         return updated;
@@ -175,7 +175,7 @@ export class FeatureFlagDomain {
             id,
             data
         );
-        // Sequential by design: the cache entry is deleted only after the write commits, so a concurrent read cannot re-cache the old row.
+        // Sequential by design: side effects whose order is part of the contract
         await this.featureFlagCache.deleteCacheByKey(featureFlag.key);
 
         return updated;

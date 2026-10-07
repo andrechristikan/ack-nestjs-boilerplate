@@ -1,3 +1,4 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
 import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/auth.social-apple-not-configured.exception';
@@ -50,6 +51,10 @@ export class AuthDomain {
         user: IAuthJwtAccessTokenPayload,
         info: Error
     ): IAuthJwtAccessTokenPayload {
+        if (err instanceof AppBaseException) {
+            throw err;
+        }
+
         if (err || !user) {
             throw new AuthJwtAccessTokenInvalidException(err ? err : info);
         }
@@ -84,6 +89,10 @@ export class AuthDomain {
         user: IAuthJwtRefreshTokenPayload,
         info: Error
     ): IAuthJwtRefreshTokenPayload {
+        if (err instanceof AppBaseException) {
+            throw err;
+        }
+
         if (err || !user) {
             throw new AuthJwtRefreshTokenInvalidException(err ? err : info);
         }

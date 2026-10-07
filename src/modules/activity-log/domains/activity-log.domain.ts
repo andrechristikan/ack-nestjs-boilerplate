@@ -167,16 +167,16 @@ export class ActivityLogDomain {
         const metadata = this.validateMetadata(event.action, event.metadata);
         const userId = this.resolveUserId(
             contract.user,
-            event.userId ?? null,
+            event.userId,
             payloadUserId
         );
         const workspaceId = this.resolveWorkspaceId(
             contract.workspace,
-            event.workspaceId ?? null
+            event.workspaceId
         );
         const createdBy = this.resolveCreatedBy(
             contract.user,
-            event.createdBy ?? null,
+            event.createdBy,
             userId
         );
 
@@ -216,9 +216,9 @@ export class ActivityLogDomain {
             action: input.action,
             metadata,
             onError: input.onError === true,
-            ...(userId !== null && { userId }),
-            ...(createdBy !== null && { createdBy }),
-            ...(workspaceId !== null && { workspaceId }),
+            userId,
+            createdBy,
+            workspaceId,
         };
     }
 

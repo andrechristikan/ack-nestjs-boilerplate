@@ -18,22 +18,6 @@ describe('AnalyticSortUtil', () => {
     });
 
     describe('sortRows', () => {
-        it('returns the very same array instance when orderBy is undefined', () => {
-            const rows = [
-                { userId: 'user-2', score: 10 },
-                { userId: 'user-1', score: 40 },
-            ];
-            const sortableKeys: ('userId' | 'score')[] = ['userId', 'score'];
-
-            const result = util.sortRows(rows, undefined, sortableKeys);
-
-            expect(result).toBe(rows);
-            expect(result).toEqual([
-                { userId: 'user-2', score: 10 },
-                { userId: 'user-1', score: 40 },
-            ]);
-        });
-
         it('returns the very same array instance when orderBy is empty', () => {
             const rows = [
                 { userId: 'user-2', score: 10 },
@@ -44,6 +28,10 @@ describe('AnalyticSortUtil', () => {
             const result = util.sortRows(rows, [], sortableKeys);
 
             expect(result).toBe(rows);
+            expect(result).toEqual([
+                { userId: 'user-2', score: 10 },
+                { userId: 'user-1', score: 40 },
+            ]);
         });
 
         it('returns the very same array instance when no orderBy key is sortable', () => {

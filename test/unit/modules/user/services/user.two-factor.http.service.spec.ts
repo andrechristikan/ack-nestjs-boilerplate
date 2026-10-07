@@ -138,7 +138,33 @@ describe('UserTwoFactorHttpService', () => {
                 userTwoFactorDomain.loginVerifyTwoFactor
             ).toHaveBeenCalledWith('challenge-token', {
                 code: dto.code,
-                backupCode: undefined,
+                backupCode: null,
+                method: dto.method,
+            });
+        });
+
+        it('passes a null code when the dto carries a backup code', async () => {
+            const dto: UserLoginVerifyTwoFactorRequestDto = {
+                challengeToken: 'challenge-token',
+                method: EnumAuthTwoFactorMethod.backupCodes,
+                backupCode: 'BACKUP1',
+            };
+            const tokens: IAuthToken = {
+                tokenType: 'Bearer',
+                roleType: EnumRoleType.user,
+                expiresIn: 3600,
+                accessToken: 'access-token',
+                refreshToken: 'refresh-token',
+            };
+            userTwoFactorDomain.loginVerifyTwoFactor.mockResolvedValue(tokens);
+
+            await service.loginVerifyTwoFactor(dto);
+
+            expect(
+                userTwoFactorDomain.loginVerifyTwoFactor
+            ).toHaveBeenCalledWith('challenge-token', {
+                code: null,
+                backupCode: 'BACKUP1',
                 method: dto.method,
             });
         });
@@ -252,7 +278,25 @@ describe('UserTwoFactorHttpService', () => {
                 user,
                 {
                     code: dto.code,
-                    backupCode: undefined,
+                    backupCode: null,
+                    method: dto.method,
+                }
+            );
+        });
+
+        it('passes a null code when the dto carries a backup code', async () => {
+            const dto: UserTwoFactorDisableRequestDto = {
+                method: EnumAuthTwoFactorMethod.backupCodes,
+                backupCode: 'BACKUP1',
+            };
+
+            await service.disableTwoFactor(user, dto);
+
+            expect(userTwoFactorDomain.disableTwoFactor).toHaveBeenCalledWith(
+                user,
+                {
+                    code: null,
+                    backupCode: 'BACKUP1',
                     method: dto.method,
                 }
             );

@@ -60,8 +60,8 @@ describe('MessageService', () => {
             );
         });
 
-        it('returns undefined when the language is not available', () => {
-            expect(service.filterLanguage('fr')).toBeUndefined();
+        it('returns the default language when the language is not available', () => {
+            expect(service.filterLanguage('fr')).toBe(EnumMessageLanguage.en);
         });
     });
 
@@ -74,7 +74,6 @@ describe('MessageService', () => {
             expect(result).toBe('translated');
             expect(translate).toHaveBeenCalledWith('user.error.notFound', {
                 lang: EnumMessageLanguage.en,
-                args: undefined,
             });
         });
 
@@ -112,6 +111,22 @@ describe('MessageService', () => {
             expect(result[1]).toMatchObject({
                 key: 'tooBig',
                 property: 'b',
+            });
+        });
+
+        it('translates each issue with the given custom language and the property name', () => {
+            translate.mockImplementation((path: string) => path);
+            const issues: TestIssue[] = [
+                { message: 'm1', path: ['a', 'b'], code: 'too_small' },
+            ];
+
+            service.setValidationMessage(issues, {
+                customLanguage: EnumMessageLanguage.en,
+            });
+
+            expect(translate).toHaveBeenCalledWith('request.error.tooSmall', {
+                lang: EnumMessageLanguage.en,
+                args: { property: 'b' },
             });
         });
     });

@@ -155,6 +155,9 @@ describe('UserDomain', () => {
         action: EnumActivityLogAction.userUpdateStatus,
         metadata: {},
         onError: false,
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
     };
 
     beforeEach(async () => {
@@ -381,6 +384,29 @@ describe('UserDomain', () => {
             expect(
                 userRepository.findWithPaginationOffset
             ).toHaveBeenCalledWith(params, status, roleId, countryId);
+        });
+
+        it('passes null filters when none is given', async () => {
+            const pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput> =
+                { skip: 0, limit: 20, orderBy: [] };
+            const page: IResponsePaginationReturn<IUserList> = {
+                type: EnumPaginationType.offset,
+                count: 0,
+                perPage: 20,
+                page: 1,
+                totalPage: 0,
+                hasNext: false,
+                hasPrevious: false,
+                data: [],
+            };
+            userRepository.findWithPaginationOffset.mockResolvedValue(page);
+
+            const result = await domain.getListOffsetByAdmin(pagination);
+
+            expect(result).toBe(page);
+            expect(
+                userRepository.findWithPaginationOffset
+            ).toHaveBeenCalledWith(pagination, null, null, null);
         });
     });
 
@@ -671,11 +697,9 @@ describe('UserDomain', () => {
             expect(result.passwordString).toBe('random-password');
         });
 
-        it('defaults name to null when it is not provided', async () => {
-            const { name: _name, ...inputWithoutName } = input;
-
+        it('keeps a null name null', async () => {
             const result = await domain.prepareCreateByAdmin(
-                inputWithoutName,
+                { ...input, name: null },
                 'admin-cobalt'
             );
 

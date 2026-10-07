@@ -73,10 +73,10 @@ export class UserLoginDomain {
     ) {}
 
     private async assertTwoFactorUnlocked(user: IUser): Promise<void> {
-        const retryAfterMs = await this.authCache.getLockTwoFactorAttempt(user);
-        if (retryAfterMs > 0) {
+        const remainingMs = await this.authCache.getLockTwoFactorAttempt(user);
+        if (remainingMs > 0) {
             throw new AuthTwoFactorAttemptTemporaryLockException(
-                retryAfterMs / 1000
+                Math.ceil(remainingMs / 1000)
             );
         }
     }
@@ -126,11 +126,7 @@ export class UserLoginDomain {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
-        const { tokens, sessionId, jti } = this.authJwtDomain.createTokens(
-            user,
-            loginFrom,
-            loginWith
-        );
+        const { sessionId, jti } = this.authJwtDomain.createLoginIdentifiers();
         const expiredAt = this.helperDateService.forward(
             loginAt,
             Duration.fromObject({
@@ -150,7 +146,7 @@ export class UserLoginDomain {
         ];
         const now = this.helperDateService.create();
         // Sequential by design: write must not run if an earlier step throws
-        const { isNewDevice, sessionShouldBeInactive } =
+        const { isNewDevice, sessionShouldBeInactive, deviceOwnershipId } =
             await this.databaseService.withTransaction(async tx => {
                 const notificationProvider =
                     this.deviceUtil.resolveNotificationProvider(
@@ -195,9 +191,16 @@ export class UserLoginDomain {
                 return {
                     isNewDevice: upserted.isNewDevice,
                     sessionShouldBeInactive: revoked,
+                    deviceOwnershipId: upserted.deviceOwnership.id,
                 };
             });
 
+        const tokens = this.authJwtDomain.createTokens(
+            user,
+            { sessionId, jti, deviceOwnershipId, loginAt },
+            loginFrom,
+            loginWith
+        );
         const promises = [
             this.sessionCache.setLogin(user.id, sessionId, jti, expiredAt),
         ];
@@ -279,19 +282,21 @@ export class UserLoginDomain {
             };
         }
 
-        const { challengeToken, expiresInMs } =
-            await this.authCache.createChallenge({
-                userId: user.id,
-                device,
-                loginFrom,
-                loginWith,
-            });
+        const challengePromise = this.authCache.createChallenge({
+            userId: user.id,
+            device,
+            loginFrom,
+            loginWith,
+        });
         if (user.twoFactor?.requiredSetup) {
-            const { encryptedSecret, otpauthUrl, secret } =
-                await this.authTwoFactorDomain.setupTwoFactor(
-                    user.id,
-                    user.email
-                );
+            const setupPromise = this.authTwoFactorDomain.setupTwoFactor(
+                user.id,
+                user.email
+            );
+            const [
+                { challengeToken, expiresInMs },
+                { encryptedSecret, otpauthUrl, secret },
+            ] = await Promise.all([challengePromise, setupPromise]);
             const events = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userSetupTwoFactor,
@@ -320,6 +325,8 @@ export class UserLoginDomain {
                 },
             };
         }
+
+        const { challengeToken, expiresInMs } = await challengePromise;
 
         return {
             isTwoFactorEnable: true,

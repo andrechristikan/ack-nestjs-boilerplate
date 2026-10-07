@@ -98,6 +98,7 @@ describe('ActivityLogDomain', () => {
                 onError: false,
                 userId: 'user-1',
                 createdBy: 'creator-1',
+                workspaceId: null,
             });
         });
 
@@ -112,7 +113,7 @@ describe('ActivityLogDomain', () => {
             expect(result.onError).toBe(true);
         });
 
-        it('omits userId, createdBy, and workspaceId for a payload-user, no-workspace action', () => {
+        it('stages null userId, createdBy, and workspaceId for a payload-user, no-workspace action', () => {
             const result = domain.prepare({
                 action: EnumActivityLogAction.userUpdateProfile,
             });
@@ -121,6 +122,9 @@ describe('ActivityLogDomain', () => {
                 action: EnumActivityLogAction.userUpdateProfile,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             });
         });
 
@@ -257,6 +261,9 @@ describe('ActivityLogDomain', () => {
                     action: EnumActivityLogAction.userLoginCredential,
                     metadata: {},
                     onError: false,
+                    userId: null,
+                    createdBy: null,
+                    workspaceId: null,
                 },
             ];
 
@@ -273,6 +280,9 @@ describe('ActivityLogDomain', () => {
                 action: EnumActivityLogAction.userLogout,
                 metadata: {},
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
             };
             requestStoreService.get.mockReturnValue([alreadyStaged]);
             const events: IActivityLogStagedEvent[] = [
@@ -280,6 +290,9 @@ describe('ActivityLogDomain', () => {
                     action: EnumActivityLogAction.userLoginCredential,
                     metadata: {},
                     onError: false,
+                    userId: null,
+                    createdBy: null,
+                    workspaceId: null,
                 },
             ];
 
@@ -315,6 +328,9 @@ describe('ActivityLogDomain', () => {
                     action: EnumActivityLogAction.userLoginCredential,
                     metadata: {},
                     onError: false,
+                    userId: null,
+                    createdBy: null,
+                    workspaceId: null,
                 },
             ];
             requestStoreService.get.mockReturnValue(staged);
@@ -336,6 +352,7 @@ describe('ActivityLogDomain', () => {
                     onError: false,
                     userId: 'user-1',
                     createdBy: 'creator-1',
+                    workspaceId: null,
                 },
             ];
             requestStoreService.get.mockImplementation(
@@ -369,6 +386,7 @@ describe('ActivityLogDomain', () => {
                     onError: false,
                     userId: 'user-1',
                     createdBy: 'creator-1',
+                    workspaceId: null,
                 },
             ];
             requestStoreService.get.mockImplementation(
@@ -411,11 +429,17 @@ describe('ActivityLogDomain', () => {
                     action: EnumActivityLogAction.userUpdateProfile,
                     metadata: {},
                     onError: true,
+                    userId: null,
+                    createdBy: null,
+                    workspaceId: null,
                 },
                 {
                     action: EnumActivityLogAction.userLogout,
                     metadata: {},
                     onError: false,
+                    userId: null,
+                    createdBy: null,
+                    workspaceId: null,
                 },
             ];
             requestStoreService.get.mockImplementation(
@@ -998,6 +1022,7 @@ describe('ActivityLogDomain', () => {
                 onError: false,
                 userId: 'user-1',
                 createdBy: 'creator-1',
+                workspaceId: null,
             };
             activityLogUtil.getDescription.mockReturnValue(
                 'User login with credential'

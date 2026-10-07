@@ -12,6 +12,7 @@ import type {
 import { FileCsvValidationPipe } from '@common/file/pipes/file.csv-validation.pipe';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import { FileService } from '@common/file/services/file.service';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 
 export async function createFileExtensionPipe(
     allowedExtensions: EnumFileExtension[],
@@ -31,7 +32,8 @@ export async function createFileCsvValidationPipe<
 >(
     schema: TSchema,
     options: IFileCsvValidationOptions,
-    configService: MockProxy<ConfigService>
+    configService: MockProxy<ConfigService>,
+    helperArrayService: MockProxy<HelperArrayService>
 ): Promise<
     PipeTransform<
         unknown[],
@@ -49,6 +51,7 @@ export async function createFileCsvValidationPipe<
         providers: [
             PipeClass,
             { provide: ConfigService, useValue: configService },
+            { provide: HelperArrayService, useValue: helperArrayService },
         ],
     }).compile();
 

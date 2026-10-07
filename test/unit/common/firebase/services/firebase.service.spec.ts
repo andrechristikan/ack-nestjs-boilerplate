@@ -210,6 +210,27 @@ describe('FirebaseService', () => {
             expect(result).toBe(true);
         });
 
+        it('sends the notification with no imageUrl and no data when the payload has none', async () => {
+            const messaging: MockProxy<Messaging> = mock<Messaging>();
+            messaging.send.mockResolvedValue('message-id');
+            const initialized = await createInitializedFirebaseService(
+                fullCredentials,
+                firebaseDoubles,
+                messaging
+            );
+
+            const result = await initialized.sendPush('token-1', {
+                title: payload.title,
+                body: payload.body,
+            });
+
+            expect(messaging.send).toHaveBeenCalledWith({
+                token: 'token-1',
+                notification: { title: payload.title, body: payload.body },
+            });
+            expect(result).toBe(true);
+        });
+
         it('returns false and warns on an invalid-token FCM error', async () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             messaging.send.mockRejectedValue({

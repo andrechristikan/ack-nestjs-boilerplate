@@ -116,6 +116,26 @@ describe('WorkspaceJoinRequestHttpService', () => {
         });
     });
 
+    describe('createJoinRequest without a message', () => {
+        it('passes null for an omitted message', async () => {
+            const body: WorkspaceJoinRequestCreateRequestDto = {
+                workspaceId: 'workspace-1',
+            };
+            workspaceJoinRequestDomain.createJoinRequest.mockResolvedValue(
+                joinRequest
+            );
+
+            await service.createJoinRequest('user-2', body);
+
+            expect(
+                workspaceJoinRequestDomain.createJoinRequest
+            ).toHaveBeenCalledWith('user-2', {
+                workspaceId: 'workspace-1',
+                message: null,
+            });
+        });
+    });
+
     describe('getJoinRequestsList', () => {
         it('parses the cursor query, merges the status filter, and returns the page', async () => {
             const query: WorkspaceJoinRequestListRequestDto = {

@@ -32,6 +32,8 @@ describe('NotificationEmailWorkspaceDomain', () => {
         notificationId: 'notification-id',
         email: 'nadia@example.com',
         username: 'nadia',
+        cc: [],
+        bcc: [],
     };
     const sendWithCcBcc = {
         ...send,
@@ -162,7 +164,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
             });
 
             const result = await domain.processWorkspaceInviteUnregistered(
-                { email: 'invitee@example.com' },
+                { email: 'invitee@example.com', cc: [], bcc: [] },
                 encrypted
             );
 
@@ -202,7 +204,7 @@ describe('NotificationEmailWorkspaceDomain', () => {
 
             await expect(
                 domain.processWorkspaceInviteUnregistered(
-                    { email: 'invitee@example.com' },
+                    { email: 'invitee@example.com', cc: [], bcc: [] },
                     encrypted
                 )
             ).rejects.toBe(error);

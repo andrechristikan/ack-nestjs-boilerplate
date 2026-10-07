@@ -1,6 +1,5 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
 import { ThrottlerException } from '@nestjs/throttler';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -12,10 +11,6 @@ import { RequestThrottleStorageService } from '@common/request/services/request.
 import { RequestThrottleService } from '@common/request/services/request.throttle.service';
 
 describe('RequestThrottleService', () => {
-    const configGet = vi.fn<(key: string) => string>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
     const storageService: MockProxy<RequestThrottleStorageService> =
         mock<RequestThrottleStorageService>();
 
@@ -31,17 +26,9 @@ describe('RequestThrottleService', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, string> = {
-                'request.throttle.headerPrefix': 'X-RateLimit',
-            };
-            return values[key];
-        });
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RequestThrottleService,
-                { provide: ConfigService, useValue: configService },
                 {
                     provide: RequestThrottleStorageService,
                     useValue: storageService,

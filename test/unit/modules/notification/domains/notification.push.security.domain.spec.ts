@@ -186,6 +186,40 @@ describe('NotificationPushSecurityDomain', () => {
                 result: pushResult,
             });
         });
+
+        it('still marks the notification sent when the cleanup enqueue fails', async () => {
+            firebaseService.isInitialized.mockReturnValue(true);
+            notificationRepository.updateProcessAt.mockResolvedValue({
+                title: 'notification.title.newDeviceLogin',
+                body: 'notification.body.newDeviceLogin',
+            });
+            requestContextService.resolveDevice.mockReturnValue(
+                'Chrome on macOS'
+            );
+            requestContextService.resolveCity.mockReturnValue('San Francisco');
+            helperDateService.createFromIso.mockImplementation(
+                (iso: string) => new Date(iso)
+            );
+            helperDateService.formatToRFC2822.mockImplementation((date: Date) =>
+                date.toISOString()
+            );
+            messageService.setMessage
+                .mockReturnValueOnce('New login')
+                .mockReturnValueOnce('New login from Chrome on macOS');
+            firebaseService.sendMulticast.mockResolvedValue(pushResult);
+            notificationPushQueue.sendCleanupTokens.mockRejectedValue(
+                new Error('queue down')
+            );
+
+            await domain.processNewDeviceLogin(send, data);
+
+            expect(notificationRepository.updateSentAt).toHaveBeenCalledWith(
+                send.userId,
+                send.notificationId,
+                EnumNotificationChannel.push,
+                pushResult.failureTokens
+            );
+        });
     });
 
     describe('processResetTwoFactorByAdmin', () => {

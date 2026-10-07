@@ -15,8 +15,8 @@ export interface IApiKeyGenerateCredential {
 export interface IApiKeyCreate {
     name: string;
     type: EnumApiKeyType;
-    startAt?: Date;
-    endAt?: Date;
+    startAt: Date | null;
+    endAt: Date | null;
 }
 
 export interface IApiKeyWithSecret {

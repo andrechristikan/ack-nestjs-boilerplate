@@ -16,13 +16,13 @@ export class RedisCacheModule {
             useFactory: (configService: ConfigService) => {
                 return createKeyv(
                     {
-                        url: configService.get<string>('redis.cache.url'),
+                        url: configService.get<string>('redis.cache.url')!,
                     },
                     {
                         connectionTimeout: 30000,
                         namespace: configService.get<string>(
                             'redis.cache.namespace'
-                        ),
+                        )!,
                         useUnlink: true,
                         keyPrefixSeparator: ':',
                         throwOnErrors: true,

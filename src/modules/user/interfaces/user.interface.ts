@@ -190,7 +190,7 @@ export interface IUserCheckUsername extends IUserCheckEmail {
 export interface IUserCreateByAdmin {
     username: string;
     email: string;
-    name?: string;
+    name: string | null;
     roleId: string;
     countryId: string;
 }
@@ -203,7 +203,7 @@ export interface IUserCreateByAdminPrepared {
 export interface IUserImport {
     username: string;
     email: string;
-    name?: string;
+    name: string | null;
 }
 
 export interface IUserImportPrepared {
@@ -213,7 +213,7 @@ export interface IUserImportPrepared {
 }
 
 export interface IUserUpdateProfile {
-    name?: string;
+    name: string | null;
     countryId: string;
     gender: EnumUserGender;
 }
@@ -243,25 +243,25 @@ export interface IUserLoginCredential {
 
 export interface IUserLoginSocial {
     username: string;
-    name?: string;
+    name: string | null;
     countryId: string;
     from: EnumUserLoginFrom;
     device: IDeviceIdentity;
     cookies: boolean;
     marketing: boolean;
-    inviteToken?: string;
+    inviteToken: string | null;
 }
 
 export interface IUserSignUp {
     username: string;
     email: string;
-    name?: string;
+    name: string | null;
     countryId: string;
     password: string;
     from: EnumUserSignUpFrom;
     cookies: boolean;
     marketing: boolean;
-    inviteToken?: string;
+    inviteToken: string | null;
 }
 
 export interface IUserChangePassword extends IAuthTwoFactorVerify {
@@ -287,22 +287,44 @@ export interface IUserTwoFactorSetup {
     otpauthUrl: string;
 }
 
-export interface IUserLoginTwoFactorChallenge {
-    isRequiredSetup: boolean;
+interface IUserLoginTwoFactorChallengeBase {
     challengeToken: string;
     challengeExpiresInMs: number;
     backupCodesRemaining: number;
-    otpauthUrl?: string;
-    secret?: string;
 }
 
-export interface IUserLoginOutcome {
-    isTwoFactorEnable: boolean;
+export interface IUserLoginTwoFactorSetupChallenge extends IUserLoginTwoFactorChallengeBase {
+    isRequiredSetup: true;
+    otpauthUrl: string;
+    secret: string;
+}
+
+export interface IUserLoginTwoFactorVerifyChallenge extends IUserLoginTwoFactorChallengeBase {
+    isRequiredSetup: false;
+}
+
+export type IUserLoginTwoFactorChallenge =
+    IUserLoginTwoFactorSetupChallenge | IUserLoginTwoFactorVerifyChallenge;
+
+interface IUserLoginOutcomeBase {
     lastWorkspaceId: string | null;
     lastWorkspaceChangedAt: Date | null;
-    tokens?: IAuthToken;
-    twoFactor?: IUserLoginTwoFactorChallenge;
 }
+
+export interface IUserLoginTokenOutcome extends IUserLoginOutcomeBase {
+    isTwoFactorEnable: false;
+    tokens: IAuthToken;
+    twoFactor?: never;
+}
+
+export interface IUserLoginTwoFactorOutcome extends IUserLoginOutcomeBase {
+    isTwoFactorEnable: true;
+    twoFactor: IUserLoginTwoFactorChallenge;
+    tokens?: never;
+}
+
+export type IUserLoginOutcome =
+    IUserLoginTokenOutcome | IUserLoginTwoFactorOutcome;
 
 export interface IUserAnalyticGroupCount<T extends string = string> {
     key: T;

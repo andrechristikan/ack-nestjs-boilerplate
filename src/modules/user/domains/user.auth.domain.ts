@@ -191,7 +191,7 @@ export class UserAuthDomain {
         return {
             userId,
             email,
-            name: name ?? null,
+            name,
             username,
             countryId,
             roleId: role.id,
@@ -320,7 +320,7 @@ export class UserAuthDomain {
             input: {
                 userId,
                 email,
-                name: name ?? null,
+                name,
                 username,
                 countryId,
                 roleId: role.id,
@@ -370,6 +370,10 @@ export class UserAuthDomain {
             link: emailVerification.link,
             expiredInMinutes: emailVerification.expiredInMinutes,
         });
+    }
+
+    async notifyWelcomeSocial(userId: string): Promise<void> {
+        await this.notificationQueue.sendWelcomeSocial(userId);
     }
 
     async logout(

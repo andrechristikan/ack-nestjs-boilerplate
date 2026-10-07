@@ -44,7 +44,7 @@ export interface IDeviceOwnershipRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>
+        isRevoked: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>>;
     findActiveWithPaginationCursor(
         userId: string,

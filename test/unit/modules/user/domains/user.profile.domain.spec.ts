@@ -55,6 +55,9 @@ describe('UserProfileDomain', () => {
         action: EnumActivityLogAction.userUpdateProfile,
         metadata: {},
         onError: false,
+        userId: null,
+        createdBy: null,
+        workspaceId: null,
     };
 
     const role: IRoleWithPolicies = {
@@ -209,6 +212,7 @@ describe('UserProfileDomain', () => {
 
             const call = domain.updateProfile(profile.id, {
                 countryId: 'missing',
+                name: null,
                 gender: EnumUserGender.male,
             });
 
@@ -230,6 +234,7 @@ describe('UserProfileDomain', () => {
 
             const call = domain.updateProfile(profile.id, {
                 countryId: country.id,
+                name: null,
                 gender: EnumUserGender.male,
             });
 
@@ -250,6 +255,7 @@ describe('UserProfileDomain', () => {
 
             const call = domain.updateProfile(profile.id, {
                 countryId: country.id,
+                name: null,
                 gender: EnumUserGender.male,
             });
 

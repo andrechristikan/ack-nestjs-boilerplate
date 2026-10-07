@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
+    EnumDevicePlatform,
     EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -150,7 +151,41 @@ describe('UserAuthHttpService', () => {
                 email: dto.email,
                 password: dto.password,
                 from: dto.from,
-                device: dto.device,
+                device: {
+                    fingerprint: dto.device.fingerprint,
+                    name: null,
+                    platform: null,
+                    notificationToken: null,
+                },
+            });
+        });
+
+        it('forwards the optional device fields when present', async () => {
+            const dto: UserLoginRequestDto = {
+                email: 'bramble@example.com' as Lowercase<string>,
+                password: 'plain-password',
+                from: EnumUserLoginFrom.website,
+                device: {
+                    fingerprint: 'device-bramble',
+                    name: 'Bramble phone',
+                    platform: EnumDevicePlatform.ios,
+                    notificationToken: 'token-bramble',
+                },
+            };
+            userAuthDomain.loginCredential.mockResolvedValue(outcome);
+
+            await service.loginCredential(dto);
+
+            expect(userAuthDomain.loginCredential).toHaveBeenCalledWith({
+                email: dto.email,
+                password: dto.password,
+                from: dto.from,
+                device: {
+                    fingerprint: 'device-bramble',
+                    name: 'Bramble phone',
+                    platform: EnumDevicePlatform.ios,
+                    notificationToken: 'token-bramble',
+                },
             });
         });
     });
@@ -165,36 +200,37 @@ describe('UserAuthHttpService', () => {
             from: EnumUserLoginFrom.website,
             device,
         };
+        const prepared: IUserCreateWithWorkspaceInput = {
+            userId: 'user-bramble',
+            email: 'bramble@example.com',
+            name: dto.name ?? null,
+            username: dto.username,
+            countryId: dto.countryId,
+            roleId: 'role-bramble',
+            signUpFrom: EnumUserSignUpFrom.website,
+            signUpWith: EnumUserSignUpWith.socialGoogle,
+            isVerified: true,
+            termPolicy: {
+                termsOfService: true,
+                privacy: true,
+                marketing: true,
+                cookies: true,
+            },
+            acceptedTermPolicyTypes: [],
+            password: null,
+            passwordHistoryType: null,
+            verification: null,
+            workspaceContext,
+            createdBy: 'user-bramble',
+        };
 
         it('commits onboarding and logs in when the user is new', async () => {
             workspaceInviteDomain.resolveForSignUp.mockResolvedValue(
                 workspaceContext
             );
-            const prepared: IUserCreateWithWorkspaceInput = {
-                userId: 'user-bramble',
-                email: 'bramble@example.com',
-                name: dto.name ?? null,
-                username: dto.username,
-                countryId: dto.countryId,
-                roleId: 'role-bramble',
-                signUpFrom: EnumUserSignUpFrom.website,
-                signUpWith: EnumUserSignUpWith.socialGoogle,
-                isVerified: true,
-                termPolicy: {
-                    termsOfService: true,
-                    privacy: true,
-                    marketing: true,
-                    cookies: true,
-                },
-                acceptedTermPolicyTypes: [],
-                password: null,
-                passwordHistoryType: null,
-                verification: null,
-                workspaceContext,
-                createdBy: 'user-bramble',
-            };
             userAuthDomain.prepareSocialCreate.mockResolvedValue(prepared);
             userOnboardingDomain.getCreateTimeoutInMs.mockReturnValue(10000);
+            workspaceDomain.commitOnboarding.mockResolvedValue([baseUser]);
             userAuthDomain.loginWithSocial.mockResolvedValue(outcome);
 
             const result = await service.loginWithSocial(
@@ -209,6 +245,81 @@ describe('UserAuthHttpService', () => {
                 EnumUserCreateMode.social,
                 10000
             );
+            expect(userAuthDomain.loginWithSocial).toHaveBeenCalledWith(
+                'bramble@example.com',
+                EnumUserLoginWith.socialGoogle,
+                {
+                    from: dto.from,
+                    device: {
+                        fingerprint: dto.device.fingerprint,
+                        name: null,
+                        platform: null,
+                        notificationToken: null,
+                    },
+                    username: dto.username,
+                    inviteToken: null,
+                    name: dto.name,
+                    countryId: dto.countryId,
+                    cookies: dto.cookies,
+                    marketing: dto.marketing,
+                }
+            );
+            expect(userAuthDomain.notifyWelcomeSocial).toHaveBeenCalledWith(
+                'user-bramble'
+            );
+        });
+
+        it('enqueues the social welcome once when a new user gets a two-factor challenge', async () => {
+            const challengeOutcome: IUserLoginOutcome = {
+                isTwoFactorEnable: true,
+                lastWorkspaceId: null,
+                lastWorkspaceChangedAt: null,
+                twoFactor: {
+                    isRequiredSetup: false,
+                    challengeToken: 'challenge-token',
+                    challengeExpiresInMs: 300000,
+                    backupCodesRemaining: 5,
+                },
+            };
+            workspaceInviteDomain.resolveForSignUp.mockResolvedValue(
+                workspaceContext
+            );
+            userAuthDomain.prepareSocialCreate.mockResolvedValue(prepared);
+            userOnboardingDomain.getCreateTimeoutInMs.mockReturnValue(10000);
+            workspaceDomain.commitOnboarding.mockResolvedValue([baseUser]);
+            userAuthDomain.loginWithSocial.mockResolvedValue(challengeOutcome);
+
+            const result = await service.loginWithSocial(
+                'bramble@example.com',
+                EnumUserLoginWith.socialGoogle,
+                dto
+            );
+
+            expect(result).toEqual({ data: challengeOutcome });
+            expect(userAuthDomain.notifyWelcomeSocial).toHaveBeenCalledTimes(1);
+            expect(userAuthDomain.notifyWelcomeSocial).toHaveBeenCalledWith(
+                'user-bramble'
+            );
+        });
+
+        it('rejects without enqueuing the welcome when the login of a new user fails', async () => {
+            const failure = new Error('login failed');
+            workspaceInviteDomain.resolveForSignUp.mockResolvedValue(
+                workspaceContext
+            );
+            userAuthDomain.prepareSocialCreate.mockResolvedValue(prepared);
+            userOnboardingDomain.getCreateTimeoutInMs.mockReturnValue(10000);
+            workspaceDomain.commitOnboarding.mockResolvedValue([baseUser]);
+            userAuthDomain.loginWithSocial.mockRejectedValue(failure);
+
+            await expect(
+                service.loginWithSocial(
+                    'bramble@example.com',
+                    EnumUserLoginWith.socialGoogle,
+                    dto
+                )
+            ).rejects.toBe(failure);
+            expect(userAuthDomain.notifyWelcomeSocial).not.toHaveBeenCalled();
         });
 
         it('logs in directly without committing onboarding when the user already exists', async () => {
@@ -225,6 +336,49 @@ describe('UserAuthHttpService', () => {
             );
 
             expect(workspaceDomain.commitOnboarding).not.toHaveBeenCalled();
+            expect(userAuthDomain.notifyWelcomeSocial).not.toHaveBeenCalled();
+        });
+
+        it('passes a null name to the login when the dto omits it', async () => {
+            const dtoWithoutName: UserCreateSocialRequestDto = {
+                username: dto.username,
+                countryId: dto.countryId,
+                marketing: dto.marketing,
+                cookies: dto.cookies,
+                from: dto.from,
+                device,
+            };
+            workspaceInviteDomain.resolveForSignUp.mockResolvedValue(
+                workspaceContext
+            );
+            userAuthDomain.prepareSocialCreate.mockResolvedValue(null);
+            userAuthDomain.loginWithSocial.mockResolvedValue(outcome);
+
+            await service.loginWithSocial(
+                'bramble@example.com',
+                EnumUserLoginWith.socialGoogle,
+                dtoWithoutName
+            );
+
+            expect(userAuthDomain.loginWithSocial).toHaveBeenCalledWith(
+                'bramble@example.com',
+                EnumUserLoginWith.socialGoogle,
+                {
+                    from: dto.from,
+                    device: {
+                        fingerprint: dto.device.fingerprint,
+                        name: null,
+                        platform: null,
+                        notificationToken: null,
+                    },
+                    username: dto.username,
+                    inviteToken: null,
+                    name: null,
+                    countryId: dto.countryId,
+                    cookies: dto.cookies,
+                    marketing: dto.marketing,
+                }
+            );
         });
     });
 
@@ -301,6 +455,13 @@ describe('UserAuthHttpService', () => {
 
             await service.signUp(dto);
 
+            expect(userAuthDomain.prepareSignUp).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    inviteToken: null,
+                    name: dto.name ?? null,
+                }),
+                workspaceContext
+            );
             expect(workspaceDomain.commitOnboarding).toHaveBeenCalledWith(
                 [input],
                 EnumUserCreateMode.signUp,

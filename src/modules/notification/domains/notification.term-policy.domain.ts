@@ -78,6 +78,8 @@ export class NotificationTermPolicyDomain {
                         email: user.email,
                         username: user.username,
                         notificationId,
+                        cc: [],
+                        bcc: [],
                     };
                 }
             );

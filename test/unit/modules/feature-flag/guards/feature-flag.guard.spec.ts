@@ -95,7 +95,7 @@ describe('FeatureFlagGuard', () => {
             reflector.get.mockReturnValue('changePassword');
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = {};
-            request.user = undefined;
+            delete request.user;
             const executionContext = buildHttpExecutionContext(request);
             featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
 
@@ -114,7 +114,7 @@ describe('FeatureFlagGuard', () => {
             request.headers = {
                 [FeatureFlagAnonymousIdHeaderName]: 'anon-user-1',
             };
-            request.user = undefined;
+            delete request.user;
             const executionContext = buildHttpExecutionContext(request);
             featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
 
@@ -133,7 +133,7 @@ describe('FeatureFlagGuard', () => {
             request.headers = {
                 [FeatureFlagAnonymousIdHeaderName]: ['anon-user-1'],
             };
-            request.user = undefined;
+            delete request.user;
             const executionContext = buildHttpExecutionContext(request);
             featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
 
@@ -150,7 +150,7 @@ describe('FeatureFlagGuard', () => {
             reflector.get.mockReturnValue('changePassword');
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.headers = { [FeatureFlagAnonymousIdHeaderName]: '' };
-            request.user = undefined;
+            delete request.user;
             const executionContext = buildHttpExecutionContext(request);
             featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
 
@@ -169,7 +169,7 @@ describe('FeatureFlagGuard', () => {
             request.headers = {
                 [FeatureFlagAnonymousIdHeaderName]: 'a'.repeat(21),
             };
-            request.user = undefined;
+            delete request.user;
             const executionContext = buildHttpExecutionContext(request);
             featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
 
@@ -188,7 +188,7 @@ describe('FeatureFlagGuard', () => {
             request.headers = {
                 [FeatureFlagAnonymousIdHeaderName]: 'invalid id!',
             };
-            request.user = undefined;
+            delete request.user;
             const executionContext = buildHttpExecutionContext(request);
             featureFlagDomain.validateFeatureFlag.mockResolvedValue(undefined);
 

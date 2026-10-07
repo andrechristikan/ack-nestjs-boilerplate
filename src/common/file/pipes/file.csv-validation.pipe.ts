@@ -6,6 +6,7 @@ import type { IMessageValidationImportErrorParam } from '@common/message/interfa
 import { FileImportException } from '@common/file/exceptions/file.import.exception';
 import { FileRequiredExtractFirstException } from '@common/file/exceptions/file.required-extract-first.exception';
 import { FileExceedMaxDataImportException } from '@common/file/exceptions/file.exceed-max-data-import.exception';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import type { IFileCsvValidationOptions } from '@common/file/interfaces/file.interface';
 
 /**
@@ -19,17 +20,25 @@ export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
     @Injectable()
     class MixinFileCsvValidationPipe implements PipeTransform {
         private readonly maxDataImport: number;
+        private readonly validationConcurrency: number;
 
-        constructor(private readonly configService: ConfigService) {
+        constructor(
+            private readonly configService: ConfigService,
+            private readonly helperArrayService: HelperArrayService
+        ) {
             // Takes the config KEY, not the value: a pipe factory runs at
             // decoration time, before config is resolved.
             this.maxDataImport = this.configService.get<number>(
                 options?.maxDataImportConfigKey ?? 'file.maxDataImport'
             )!;
+            this.validationConcurrency = this.configService.get<number>(
+                'file.importValidationConcurrency'
+            )!;
         }
 
         /**
-         * Validates each row against `schema`; throws `FileImportException` with row indexes on any failure.
+         * Validates rows in bounded chunks, concurrent within a chunk, keeping input order;
+         * throws `FileImportException` with row indexes on any failure.
          */
         private async validateRows(
             data: unknown[]
@@ -37,19 +46,32 @@ export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
             const rows: StandardSchemaV1.InferOutput<TSchema>[] = [];
             const errors: IMessageValidationImportErrorParam[] = [];
 
-            for (let i = 0; i < data.length; i++) {
-                const result = await schema['~standard'].validate(data[i]);
+            const batches = this.helperArrayService.chunk(
+                data,
+                this.validationConcurrency
+            );
 
-                if (result.issues) {
-                    errors.push({
-                        row: i,
-                        errors: result.issues,
-                    });
+            let offset = 0;
+            // Sequential by design: bounded chunks, concurrent within a chunk
+            for (const batch of batches) {
+                const resultPromises = batch.map(row =>
+                    schema['~standard'].validate(row)
+                );
+                const results = await Promise.all(resultPromises);
 
-                    continue;
-                }
+                results.forEach((result, index) => {
+                    if (result.issues) {
+                        errors.push({
+                            row: offset + index,
+                            errors: result.issues,
+                        });
 
-                rows.push(result.value);
+                        return;
+                    }
+
+                    rows.push(result.value);
+                });
+                offset += batch.length;
             }
 
             if (errors.length > 0) {

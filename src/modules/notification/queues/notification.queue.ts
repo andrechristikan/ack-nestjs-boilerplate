@@ -153,6 +153,7 @@ export class NotificationQueue {
         const payload: INotificationQueuePayload = {
             userId,
             proceedBy: userId,
+            data: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -219,6 +220,7 @@ export class NotificationQueue {
         const payload: INotificationQueuePayload = {
             userId,
             proceedBy: userId,
+            data: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -357,6 +359,7 @@ export class NotificationQueue {
         const payload: INotificationQueuePayload = {
             userId,
             proceedBy: userId,
+            data: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -384,6 +387,7 @@ export class NotificationQueue {
         const payload: INotificationQueuePayload = {
             userId,
             proceedBy: createdBy,
+            data: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(

@@ -14,7 +14,7 @@ import { NotificationPushWorkspaceDomain } from '@modules/notification/domains/n
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
-    INotificationPushCleanupTokenQueuePayload,
+    INotificationPushCleanupTokenPayload,
     INotificationPushQueuePayload,
     INotificationSendPushPayload,
     INotificationWorkspaceInvitePushPayload,
@@ -134,7 +134,7 @@ describe('NotificationPushProcessorService', () => {
                 INotificationPushQueuePayload,
                 IQueueResponse,
                 EnumNotificationPushProcess
-            >({ send });
+            >({ send, data: null });
 
             const result = await service.processResetTwoFactorByAdmin(job);
 
@@ -181,7 +181,7 @@ describe('NotificationPushProcessorService', () => {
                 INotificationPushQueuePayload,
                 IQueueResponse,
                 EnumNotificationPushProcess
-            >({ send });
+            >({ send, data: null });
 
             const result = await service.processResetPassword(job);
 
@@ -201,7 +201,7 @@ describe('NotificationPushProcessorService', () => {
                 INotificationPushQueuePayload,
                 IQueueResponse,
                 EnumNotificationPushProcess
-            >({ send });
+            >({ send, data: null });
 
             const result = await service.processForgotPassword(job);
 
@@ -326,14 +326,15 @@ describe('NotificationPushProcessorService', () => {
 
     describe('processCleanupTokens', () => {
         it('forwards userId and failureTokens to the maintenance domain', async () => {
-            const payload: INotificationPushCleanupTokenQueuePayload = {
-                data: { userId: 'user-id', failureTokens: ['token-1'] },
+            const payload: INotificationPushCleanupTokenPayload = {
+                userId: 'user-id',
+                failureTokens: ['token-1'],
             };
             notificationPushMaintenanceDomain.processCleanupTokens.mockResolvedValue(
                 response
             );
             const job = buildQueueJob<
-                INotificationPushCleanupTokenQueuePayload,
+                INotificationPushCleanupTokenPayload,
                 IQueueResponse,
                 EnumNotificationPushProcess
             >(payload);

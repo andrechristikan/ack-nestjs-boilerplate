@@ -72,7 +72,12 @@ export class ApiKeyHttpService {
     async createByAdmin(
         body: ApiKeyCreateRequestDto
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        const { apiKey, secret } = await this.apiKeyDomain.createByAdmin(body);
+        const { apiKey, secret } = await this.apiKeyDomain.createByAdmin({
+            name: body.name,
+            type: body.type,
+            startAt: body.startAt ?? null,
+            endAt: body.endAt ?? null,
+        });
         const created = this.apiKeyUtil.mapCreate(apiKey, secret);
 
         return { data: created };

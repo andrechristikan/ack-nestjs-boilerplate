@@ -103,6 +103,9 @@ describe('ProjectMemberDomain', () => {
                 input: IActivityLogStageInput<A>
             ): IActivityLogStagedEvent => ({
                 onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
                 ...input,
                 metadata: input.metadata ?? {},
             })

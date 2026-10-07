@@ -38,6 +38,8 @@ describe('NotificationEmailQueue', () => {
         notificationId: 'notification-id',
         email: 'nadia@example.com',
         username: 'nadia',
+        cc: [],
+        bcc: [],
     };
 
     beforeEach(async () => {
@@ -126,7 +128,29 @@ describe('NotificationEmailQueue', () => {
 
             expect(emailQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.resetPassword,
-                { send },
+                { send, data: null },
+                {
+                    priority: EnumQueuePriority.low,
+                    deduplication: {
+                        id: 'resetPassword-user-id',
+                        ttl: 60_000,
+                    },
+                }
+            );
+        });
+
+        it('carries the cc and bcc recipients into the enqueued send payload', async () => {
+            const sendWithRecipients: INotificationEmailSendPayload = {
+                ...send,
+                cc: ['cc@example.com'],
+                bcc: ['bcc-1@example.com', 'bcc-2@example.com'],
+            };
+
+            await queue.sendResetPassword(sendWithRecipients);
+
+            expect(emailQueue.add).toHaveBeenCalledWith(
+                EnumNotificationProcess.resetPassword,
+                { send: sendWithRecipients, data: null },
                 {
                     priority: EnumQueuePriority.low,
                     deduplication: {
@@ -144,7 +168,7 @@ describe('NotificationEmailQueue', () => {
 
             expect(emailQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.changePassword,
-                { send },
+                { send, data: null },
                 {
                     priority: EnumQueuePriority.low,
                     deduplication: {
@@ -187,7 +211,7 @@ describe('NotificationEmailQueue', () => {
 
             expect(emailQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.welcome,
-                { send },
+                { send, data: null },
                 {
                     jobId: 'welcome-user-id',
                     deduplication: {
@@ -206,7 +230,7 @@ describe('NotificationEmailQueue', () => {
 
             expect(emailQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.welcomeSocial,
-                { send },
+                { send, data: null },
                 {
                     jobId: 'welcomeSocial-user-id',
                     deduplication: {
@@ -297,7 +321,7 @@ describe('NotificationEmailQueue', () => {
 
             expect(emailQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.resetTwoFactorByAdmin,
-                { send },
+                { send, data: null },
                 {
                     deduplication: {
                         id: 'resetTwoFactorByAdmin-user-id',
@@ -425,6 +449,8 @@ describe('NotificationEmailQueue', () => {
             );
             const expectedSend: INotificationEmailSendUnregisteredPayload = {
                 email: 'invitee@example.com',
+                cc: [],
+                bcc: [],
             };
             expect(emailQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.workspaceInviteUnregistered,

@@ -23,23 +23,25 @@ export class QueueModule {
                     inject: [ConfigService],
                     useFactory: (configService: ConfigService) => ({
                         connection: {
-                            url: configService.get<string>('redis.queue.url'),
+                            url: configService.get<string>('redis.queue.url')!,
                             connectionName: `${configService.get<string>(
                                 'app.name'
                             )}-${configService.get<EnumAppEnvironment>('app.env')}:queue`,
                         },
                         prefix: configService.get<string>(
                             'redis.queue.namespace'
-                        ),
+                        )!,
                         defaultJobOptions: {
                             backoff: {
                                 type: 'exponential',
                                 delay: configService.get<number>(
                                     'queue.job.notificationBackoffDelayInMs'
-                                ),
+                                )!,
                             },
                             attempts:
-                                configService.get<number>('queue.job.attempts'),
+                                configService.get<number>(
+                                    'queue.job.attempts'
+                                )!,
                             removeOnComplete: {
                                 age: configService.get<number>(
                                     'queue.job.removeOnCompleteAgeInSeconds'
@@ -58,23 +60,25 @@ export class QueueModule {
                     inject: [ConfigService],
                     useFactory: (configService: ConfigService) => ({
                         connection: {
-                            url: configService.get<string>('redis.queue.url'),
+                            url: configService.get<string>('redis.queue.url')!,
                             connectionName: `${configService.get<string>(
                                 'app.name'
                             )}-${configService.get<EnumAppEnvironment>('app.env')}:processor`,
                         },
                         prefix: configService.get<string>(
                             'redis.queue.namespace'
-                        ),
+                        )!,
                         defaultJobOptions: {
                             backoff: {
                                 type: 'exponential',
                                 delay: configService.get<number>(
                                     'queue.job.notificationBackoffDelayInMs'
-                                ),
+                                )!,
                             },
                             attempts:
-                                configService.get<number>('queue.job.attempts'),
+                                configService.get<number>(
+                                    'queue.job.attempts'
+                                )!,
                             removeOnComplete: {
                                 age: configService.get<number>(
                                     'queue.job.removeOnCompleteAgeInSeconds'

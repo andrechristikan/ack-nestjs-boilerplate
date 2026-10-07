@@ -97,7 +97,7 @@ describe('ActivityLogInterceptor', () => {
             const httpArgumentsHost: MockProxy<HttpArgumentsHost> =
                 mock<HttpArgumentsHost>();
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
-            request.user = undefined;
+            Reflect.set(request, 'user', undefined);
             executionContext.getType.mockReturnValue('http');
             executionContext.switchToHttp.mockReturnValue(httpArgumentsHost);
             httpArgumentsHost.getRequest.mockReturnValue(request);

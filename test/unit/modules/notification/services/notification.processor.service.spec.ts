@@ -136,6 +136,7 @@ describe('NotificationProcessorService', () => {
             >({
                 userId: 'user-id',
                 proceedBy: 'user-id',
+                data: null,
             });
 
             const result = await service.processWelcomeSocial(job);
@@ -272,6 +273,7 @@ describe('NotificationProcessorService', () => {
             >({
                 userId: 'user-id',
                 proceedBy: 'user-id',
+                data: null,
             });
 
             const result = await service.processChangePassword(job);
@@ -326,6 +328,7 @@ describe('NotificationProcessorService', () => {
             >({
                 userId: 'user-id',
                 proceedBy: 'user-id',
+                data: null,
             });
 
             const result = await service.processResetPassword(job);
@@ -349,6 +352,7 @@ describe('NotificationProcessorService', () => {
             >({
                 userId: 'user-id',
                 proceedBy: 'admin-id',
+                data: null,
             });
 
             const result = await service.processResetTwoFactorByAdmin(job);

@@ -152,7 +152,7 @@ describe('NotificationQueue', () => {
 
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.welcomeSocial,
-                { userId: 'user-id', proceedBy: 'user-id' },
+                { userId: 'user-id', proceedBy: 'user-id', data: null },
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
@@ -212,7 +212,7 @@ describe('NotificationQueue', () => {
 
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.changePassword,
-                { userId: 'user-id', proceedBy: 'user-id' },
+                { userId: 'user-id', proceedBy: 'user-id', data: null },
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
@@ -332,7 +332,7 @@ describe('NotificationQueue', () => {
 
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.resetPassword,
-                { userId: 'user-id', proceedBy: 'user-id' },
+                { userId: 'user-id', proceedBy: 'user-id', data: null },
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
@@ -350,7 +350,7 @@ describe('NotificationQueue', () => {
 
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.resetTwoFactorByAdmin,
-                { userId: 'user-id', proceedBy: 'admin-id' },
+                { userId: 'user-id', proceedBy: 'admin-id', data: null },
                 {
                     priority: EnumQueuePriority.high,
                     deduplication: {

@@ -1,3 +1,4 @@
+import { ZodError } from 'zod';
 import { FeatureFlagUpdateMetadataRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 
 describe('FeatureFlagUpdateMetadataRequestSchema', () => {
@@ -33,12 +34,20 @@ describe('FeatureFlagUpdateMetadataRequestSchema', () => {
         ).toThrow();
     });
 
-    it('parses an empty string value; the schema does not enforce non-empty', () => {
-        const result = FeatureFlagUpdateMetadataRequestSchema.parse({
-            metadata: { label: '' },
-        });
+    it('rejects an empty string value', () => {
+        expect(() =>
+            FeatureFlagUpdateMetadataRequestSchema.parse({
+                metadata: { label: '' },
+            })
+        ).toThrow(ZodError);
+    });
 
-        expect(result).toEqual({ metadata: { label: '' } });
+    it('rejects an empty array value', () => {
+        expect(() =>
+            FeatureFlagUpdateMetadataRequestSchema.parse({
+                metadata: { tags: [] },
+            })
+        ).toThrow(ZodError);
     });
 
     it('rejects an undeclared top-level key', () => {

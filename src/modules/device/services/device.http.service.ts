@@ -104,7 +104,11 @@ export class DeviceHttpService {
         deviceOwnershipId: string,
         body: DeviceRefreshRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.deviceDomain.refresh(userId, deviceOwnershipId, body);
+        await this.deviceDomain.refresh(userId, deviceOwnershipId, {
+            name: body.name ?? null,
+            platform: body.platform ?? null,
+            notificationToken: body.notificationToken ?? null,
+        });
 
         return {};
     }

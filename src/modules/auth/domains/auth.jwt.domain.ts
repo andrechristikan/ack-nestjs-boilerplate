@@ -5,11 +5,12 @@ import { JwtService } from '@nestjs/jwt';
 import type { JwtSignOptions } from '@nestjs/jwt';
 import { createPrivateKey, createPublicKey } from 'node:crypto';
 import type {
-    IAuthAccessTokenGenerate,
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
+    IAuthLoginIdentifiers,
     IAuthRefreshTokenGenerate,
     IAuthToken,
+    IAuthTokenSignInput,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthBearerScheme } from '@modules/auth/constants/auth.constant';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
@@ -214,22 +215,27 @@ export class AuthJwtDomain {
         return this.jwtService.decode<T>(token);
     }
 
+    /** Mints a new session id and a new jti. */
+    createLoginIdentifiers(): IAuthLoginIdentifiers {
+        const sessionId = this.databaseUtil.createId();
+        const jti = this.authUtil.generateJti();
+
+        return { sessionId, jti };
+    }
+
+    /** Signs the access and refresh token pair for the user. */
     createTokens(
         user: IUser,
+        { sessionId, jti, deviceOwnershipId, loginAt }: IAuthTokenSignInput,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith
-    ): IAuthAccessTokenGenerate {
-        const loginDate = this.helperDateService.create();
-
-        const sessionId = this.databaseUtil.createId();
-        const deviceOwnershipId = this.databaseUtil.createId();
-        const jti = this.authUtil.generateJti();
+    ): IAuthToken {
         const payloadAccessToken: IAuthJwtAccessTokenPayload =
             this.authUtil.createPayloadAccessToken(
                 user,
                 sessionId,
                 deviceOwnershipId,
-                loginDate,
+                loginAt,
                 loginFrom,
                 loginWith
             );
@@ -247,18 +253,12 @@ export class AuthJwtDomain {
             payloadRefreshToken
         );
 
-        const tokens: IAuthToken = {
+        return {
             tokenType: AuthBearerScheme,
             roleType: user.role.type,
             expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
             accessToken,
             refreshToken,
-        };
-
-        return {
-            tokens,
-            jti,
-            sessionId,
         };
     }
 

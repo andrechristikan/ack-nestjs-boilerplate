@@ -124,6 +124,17 @@ describe('AppBaseExceptionFilter', () => {
             );
         });
 
+        it('translates the messagePath with the metadata language alone when the exception has no messageProperties', async () => {
+            const exception = new RequestValidationException([]);
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'request.error.validation',
+                { customLanguage: EnumMessageLanguage.en }
+            );
+        });
+
         it('spreads exception metadata under the response metadata and keeps data', async () => {
             const exception = new ResponseSerializationException({
                 metadata: {

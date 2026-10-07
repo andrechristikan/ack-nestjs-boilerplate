@@ -150,9 +150,9 @@ export class UserDomain {
     ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.userRepository.findWithPaginationOffset(
             pagination,
-            status,
-            roleId,
-            countryId
+            status ?? null,
+            roleId ?? null,
+            countryId ?? null
         );
     }
 
@@ -318,10 +318,11 @@ export class UserDomain {
                 temporary: true,
             }
         );
-        const [workspaceContext] =
+        const workspaceContexts =
             this.userOnboardingDomain.buildPersonalWorkspaceContexts([
                 username,
             ]);
+        const workspaceContext = workspaceContexts[0]!;
         const isVerified = checkRole.type !== EnumRoleType.user;
         let verification: IUserOnboardingVerification | null;
         if (isVerified) {
@@ -334,7 +335,7 @@ export class UserDomain {
             input: {
                 userId,
                 email,
-                name: name ?? null,
+                name,
                 username,
                 countryId,
                 roleId: checkRole.id,

@@ -246,7 +246,11 @@ describe('RoleHttpService', () => {
             const result = await service.createByAdmin(body);
 
             expect(result).toEqual({ data: roleWithPolicies });
-            expect(roleDomain.createByAdmin).toHaveBeenCalledWith(body);
+            expect(roleDomain.createByAdmin).toHaveBeenCalledWith({
+                name: 'manager',
+                description: null,
+                type: EnumRoleType.admin,
+            });
         });
     });
 
@@ -263,7 +267,7 @@ describe('RoleHttpService', () => {
             expect(result).toEqual({ data: roleWithPolicies });
             expect(roleDomain.updateByAdmin).toHaveBeenCalledWith(
                 roleWithPolicies.id,
-                body
+                { description: null, type: EnumRoleType.user }
             );
         });
     });
