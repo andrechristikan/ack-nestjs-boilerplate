@@ -11,9 +11,12 @@ import { Injectable } from '@nestjs/common';
 export class PolicyRepository implements IPolicyRepository {
     constructor(private readonly databaseService: DatabaseService) {}
 
-    async findManyByRoleId(roleId: string): Promise<Policy[]> {
+    async findManyByRoleId(
+        roleId: string,
+        where?: Prisma.RoleWhereInput
+    ): Promise<Policy[]> {
         return this.databaseService.client.policy.findMany({
-            where: { roleId },
+            where: { AND: [{ roleId }, where ? { role: where } : {}] },
         });
     }
 

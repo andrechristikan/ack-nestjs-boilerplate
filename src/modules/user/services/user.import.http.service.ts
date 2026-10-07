@@ -8,7 +8,15 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponseFileReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
@@ -26,6 +34,7 @@ export class UserImportHttpService {
         private readonly userOnboardingDomain: UserOnboardingDomain,
         private readonly workspaceDomain: WorkspaceDomain,
         private readonly fileService: FileService,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -62,6 +71,15 @@ export class UserImportHttpService {
     async exportByAdmin(
         query: UserExportRequestDto
     ): Promise<IResponseFileReturn> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.UserWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.User
+            );
         const status = this.paginationQueryUtil.inEnum(
             Prisma.UserScalarFieldEnum.status,
             query.status,
@@ -86,7 +104,8 @@ export class UserImportHttpService {
         const data = await this.userImportDomain.exportByAdmin(
             status?.where as Record<string, IPaginationIn> | undefined,
             roleId?.where as Record<string, IPaginationEqual> | undefined,
-            countryId?.where as Record<string, IPaginationEqual> | undefined
+            countryId?.where as Record<string, IPaginationEqual> | undefined,
+            accessibleWhere
         );
 
         const users: UserExportResponseDto[] = data.map(user => ({

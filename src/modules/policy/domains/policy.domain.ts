@@ -5,8 +5,6 @@ import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy
 import { PolicyCache } from '@modules/policy/caches/policy.cache';
 import type { IPolicyRule } from '@modules/policy/interfaces/policy.interface';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
-import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
-import type { IRole } from '@modules/role/interfaces/role.interface';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
@@ -15,7 +13,7 @@ import {
     EnumActivityLogAction,
     EnumRoleScope,
 } from '@generated/prisma-client/client';
-import type { Policy } from '@generated/prisma-client/client';
+import type { Policy, Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class PolicyDomain {
@@ -26,18 +24,8 @@ export class PolicyDomain {
         private readonly activityLogDomain: ActivityLogDomain
     ) {}
 
-    /** Returns the role a policy route is scoped to, for the caller to authorize against. */
-    async getRoleById(roleId: string): Promise<IRole> {
-        const role = await this.roleDomain.getById(roleId);
-        if (!role) {
-            throw new RoleNotFoundException();
-        }
-
-        return role;
-    }
-
     private async validateRoleWritable(roleId: string): Promise<void> {
-        const role = await this.getRoleById(roleId);
+        const role = await this.roleDomain.getOne(roleId);
 
         if (
             role.scope === EnumRoleScope.platform &&
@@ -47,8 +35,11 @@ export class PolicyDomain {
         }
     }
 
-    async findManyByRole(roleId: string): Promise<Policy[]> {
-        return this.policyRepository.findManyByRoleId(roleId);
+    async findManyByRole(
+        roleId: string,
+        where?: Prisma.RoleWhereInput
+    ): Promise<Policy[]> {
+        return this.policyRepository.findManyByRoleId(roleId, where);
     }
 
     /** Returns the policy rows of every role, read through the policy cache. */

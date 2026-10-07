@@ -7,21 +7,46 @@ import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy
 import {
     EnumPolicyAction,
     EnumPolicySubject,
+    type Prisma,
 } from '@generated/prisma-client/client';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { RoleDomain } from '@modules/role/domains/role.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class PolicyHttpService {
     constructor(
         private readonly policyDomain: PolicyDomain,
+        private readonly roleDomain: RoleDomain,
         private readonly policyAbilityDomain: PolicyAbilityDomain
     ) {}
 
-    async listByRole(
+    async listByAdmin(
+        roleId: string
+    ): Promise<IResponseReturn<PolicyListResponseDto>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const accessibleWhere =
+            this.policyAbilityDomain.requireAccessibleWhere<Prisma.RoleWhereInput>(
+                ability,
+                EnumPolicyAction.read,
+                EnumPolicySubject.Role
+            );
+        const policies = await this.policyDomain.findManyByRole(
+            roleId,
+            accessibleWhere
+        );
+
+        return {
+            data: { policies },
+        };
+    }
+
+    async listBySystem(
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
         const policies = await this.policyDomain.findManyByRole(roleId);
@@ -35,6 +60,15 @@ export class PolicyHttpService {
         roleId: string,
         body: PolicyCreateRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
+        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+        const role = await this.roleDomain.getOne(roleId);
+        this.policyAbilityDomain.assertCan(
+            ability,
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.Role, role)
+        );
         const created = await this.policyDomain.createByAdmin(roleId, body);
 
         return { data: created };
@@ -48,7 +82,7 @@ export class PolicyHttpService {
         const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
             PolicyAbilityStoreKey
         );
-        const role = await this.policyDomain.getRoleById(roleId);
+        const role = await this.roleDomain.getOne(roleId);
         this.policyAbilityDomain.assertCan(
             ability,
             EnumPolicyAction.update,
@@ -66,7 +100,7 @@ export class PolicyHttpService {
         const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
             PolicyAbilityStoreKey
         );
-        const role = await this.policyDomain.getRoleById(roleId);
+        const role = await this.roleDomain.getOne(roleId);
         this.policyAbilityDomain.assertCan(
             ability,
             EnumPolicyAction.update,

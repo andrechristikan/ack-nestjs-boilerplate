@@ -53,7 +53,8 @@ export interface IUserRepository {
         status: Record<string, IPaginationIn> | null,
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null,
-        take: number
+        take: number,
+        where?: Prisma.UserWhereInput
     ): Promise<IUserExport[]>;
     existsByEmail(email: string): Promise<boolean>;
     existsByUsername(username: string): Promise<boolean>;

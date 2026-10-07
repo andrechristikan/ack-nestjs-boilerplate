@@ -239,8 +239,37 @@ The type-level check asks by subject name, so a rule's `conditions` are not eval
 | Project member assign                                   | `create` | A prospective `ProjectMember` with `projectId`, `userId`, and `roleId`            |
 | Project member role update                              | `update` | The target `ProjectMember`, loaded by `:projectMemberId` inside the project       |
 | Project member remove                                   | `delete` | The target `ProjectMember`                                                        |
+| Admin user get                                          | `read`   | The `User`, loaded by `UserDomain.getOne`                                         |
+| Admin user status update, password update, two-factor reset | `update` | The `User`, loaded by `UserDomain.getOne`                                     |
+| Admin API key update, date update, status update, reset | `update` | The `ApiKey`, loaded by `ApiKeyDomain.getOne`                                     |
+| Admin API key delete                                    | `delete` | The `ApiKey`, loaded by `ApiKeyDomain.getOne`                                     |
+| Admin role get                                          | `read`   | The `Role`, loaded by `RoleDomain.getOne`                                         |
+| Admin role update                                       | `update` | The `Role`, loaded by `RoleDomain.getOne`                                         |
+| Admin role delete                                       | `delete` | The `Role`, loaded by `RoleDomain.getOne`                                         |
+| Admin policy create, update, delete                     | `update` | The target `Role` of the route, loaded by `RoleDomain.getOne(roleId)`             |
+| Admin workspace get                                     | `read`   | The `Workspace`, loaded once by `WorkspaceDomain.getByIdForAdmin`                 |
+| Admin feature flag status update, metadata update       | `update` | The `FeatureFlag`, loaded by `FeatureFlagDomain.getOne`                           |
+| Admin term policy delete                                | `delete` | The `TermPolicy`, loaded by `TermPolicyDomain.getOne`                             |
+| Admin term policy publish; content update, add, remove  | `update` | The `TermPolicy`, loaded by `TermPolicyDomain.getOne`                             |
+| Admin term policy content get                           | `read`   | The `TermPolicy`, loaded by `TermPolicyDomain.getOne`                             |
+| Admin session revoke                                    | `delete` | The `Session`, loaded by `SessionDomain.validateActive(userId, sessionId)`        |
+| Admin session revoke-all of a user                      | `update` | The `User`, loaded by `UserDomain.getOne(userId)`                                 |
+| Admin device remove                                     | `delete` | The `Device` ownership record, loaded by `DeviceDomain.getOneActive(userId, ownershipId)` |
 
-A target lookup uses the route identifier within the business boundary (workspace or project), so a record outside it answers the module's not-found exception. The target is never substituted for the caller's membership row, and the caller's membership is never substituted for a route target. The invite and join-request getters (`getInvite`, `getJoinRequest`) and the member getters return the record without judging it; the check stays in the HTTP service. Invite and join-request records are loaded again by the domain method that mutates them.
+A target lookup uses the route identifier within the business boundary (workspace or project), so a record outside it answers the module's not-found exception. The target is never substituted for the caller's membership row, and the caller's membership is never substituted for a route target. `PolicyHttpService` injects `RoleDomain` and loads the role itself for the policy write check. The `superAdmin` rejection of a policy write stays in `PolicyDomain`; it runs after the service check. The invite and join-request getters (`getInvite`, `getJoinRequest`) and the member getters return the record without judging it; the check stays in the HTTP service. The service loads the record for the check and the domain method that mutates it loads the record again. Domains stay self-contained so jobs and other non-HTTP callers reach them with no service in front, and the domain re-validates state on its own copy.
+
+The record getters the checks use:
+
+- `WorkspaceDomain.getByIdForAdmin(workspaceId)`: Returns the workspace for the admin get, which is the single load of that route
+- `FeatureFlagDomain.getOne(id)`: Returns the feature flag
+- `TermPolicyDomain.getOne(termPolicyId)`: Returns the term policy
+- `SessionDomain.validateActive(userId, sessionId)`: Returns the active session of the user
+- `DeviceDomain.getOneActive(userId, ownershipId)`: Returns the active device ownership of the user
+- `UserDomain.getOne(userId)`: Returns the user
+- `ApiKeyDomain.getOne(id)`: Returns the API key
+- `RoleDomain.getOne(id)`: Returns the role
+
+The admin analytic fraud risk-score route (`:userId`) and the admin list routes under a `:userId` or `:workspaceId` parent (session, device, password history, activity log, workspace members) carry the type-level check and the list predicate. They run no parent-record `assertCan`. The admin activity-log service injects neither `UserDomain` nor `WorkspaceDomain`, so an unknown `userId` or `workspaceId` answers an empty list, not a not-found. The admin user create and import routes carry the type-level check (`User` `read` and `create`) and run no prospective `assertCan`.
 
 ### Collection Queries
 
@@ -249,7 +278,9 @@ A target lookup uses the route identifier within the business boundary (workspac
 | List                                                                                                                                  | Predicate                                        | Behaviour                                                                                                                                                           |
 | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Admin `User`, `Session`, `Device`, `ApiKey`, `Role`, `PasswordHistory`, `TermPolicy`, `FeatureFlag` lists                             | `requireAccessibleWhere(read, <subject>)`        | Required                                                                                                                                                            |
-| Admin `ActivityLog` lists (both)                                                                                                      | `requireAccessibleWhere(read, ActivityLog)`      | Required                                                                                                                                                            |
+| Admin `ActivityLog` lists (both)                                                                                                      | `requireAccessibleWhere(read, ActivityLog)`      | Required. The only check on these lists; no parent record is judged                                                                                                  |
+| Admin policy list                                                                                                                     | `requireAccessibleWhere(read, Role)`             | Required. The predicate applies to the policy's role through the `role` relation, so a role outside the ability yields an empty list                                |
+| Admin user export                                                                                                                     | `requireAccessibleWhere(read, User)`             | Required. The repository ANDs it outside the filter spread, so a filter cannot replace it                                                                           |
 | Admin workspace list                                                                                                                  | `requireAccessibleWhere(read, Workspace)`        | Required                                                                                                                                                            |
 | Admin workspace member list                                                                                                           | `requireAccessibleWhere(read, WorkspaceMember)`  | Required                                                                                                                                                            |
 | Admin project list                                                                                                                    | `requireAccessibleWhere(read, Project)`          | Required                                                                                                                                                            |
@@ -259,9 +290,11 @@ A target lookup uses the route identifier within the business boundary (workspac
 | Project member list                                                                                                                   | `requireAccessibleWhere(read, ProjectMember)`    | Required                                                                                                                                                            |
 | Member project list                                                                                                                   | `accessibleWhere(read, Project)`                 | Optional. The list keeps the projects the caller is assigned to; a predicate, when the ability holds a `Project` `read` rule, narrows it further |
 
-The admin policy list and the analytics lists take no predicate. Shared, public, and system routes run outside the ability layer and take none either.
+The analytics lists take no predicate. Shared, public, and system routes run outside the ability layer and take none either; the system policy list (`ApiKeySystemProtected`) is unfiltered.
 
-The service passes the predicate to the domain as an optional generic `where`. The repository takes it as an optional predicate (`additionalWhere` in most repositories) and AND-composes it with its mandatory constraints (workspace, project, active rows) and with the caller's search, equality, and pagination filters, so a caller filter cannot replace or drop the policy predicate. The Prisma client carries `createCaslExtension()`, which turns a denied predicate into "matches nothing".
+A predicate on a parent subject does not reach its child lists. A role scoped to certain users or workspaces writes the condition on the child subject (`ActivityLog`, `Session`, `Device`, `PasswordHistory`, `WorkspaceMember`); a condition only on `User` or `Workspace` leaves those child lists unfiltered.
+
+The service passes the predicate to the domain as an optional generic `where`. The repository takes it as an optional predicate (`additionalWhere` in most repositories) and AND-composes it with its mandatory constraints (workspace, project, active rows) and with the caller's search, equality, and pagination filters, so a caller filter cannot replace or drop the policy predicate. The user export query ANDs it as `AND: [{ ...filters, deletedAt: null }, where ?? {}]`. The Prisma client carries `createCaslExtension()`, which turns a denied predicate into "matches nothing".
 
 ### Effective Permissions
 
@@ -307,7 +340,7 @@ Stored rows are the source of truth. The factory does not mutate them and derive
 **PolicyDomain:**
 
 - `createByAdmin`, `updateByAdmin`, `deleteByAdmin`: Write a role's policy rows, evict the role's cache key, and reject any write to the `superAdmin` role
-- `findManyByRole(roleId)`: Lists the policy rows of one role
+- `findManyByRole(roleId, where?)`: Lists the policy rows of one role; `where` filters through the `role` relation
 - `findManyByRoleIds(...roleIds)`: Returns the policy rows of every role, read through `PolicyCache`
 
 **Placeholders.** A condition value that equals one of these tokens is replaced by a value from the request context before the ability is built:
@@ -338,6 +371,19 @@ A lone `create` on `Project` carries no condition, since no project exists yet.
 | Operation                                    | Policy decorator                                                             | Additional enforcement                                                        |
 | -------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | Platform administration                      | `@PlatformPolicyProtected`                                                   | Platform layer only; admin lists add `requireAccessibleWhere`                 |
+| Admin user get, status, password, two-factor reset | `@PlatformPolicyProtected` (`User` `read`, plus `update` for writes)  | Record check on the `User`                                                    |
+| Admin user create, import                    | `@PlatformPolicyProtected` (`User` `read` and `create`)                      | Type-level check only; no prospective record check                            |
+| Admin API key update, date, status, reset, delete | `@PlatformPolicyProtected` (`ApiKey` `read`, plus `update` or `delete`) | Record check on the `ApiKey`                                                  |
+| Admin role get, update, delete               | `@PlatformPolicyProtected` (`Role` `read`, plus `update` or `delete`)       | Record check on the `Role`                                                    |
+| Admin policy list                            | `@PlatformPolicyProtected` (`Role` `read`)                                   | `requireAccessibleWhere` through the `role` relation                          |
+| Admin policy create, update, delete          | `@PlatformPolicyProtected` (`Role` `read` and `update`)                      | Record check on the target `Role` for `update`; `superAdmin` write rejection in `PolicyDomain` |
+| Admin workspace get                          | `@PlatformPolicyProtected` (`Workspace` `read`)                              | Record check on the `Workspace`                                               |
+| Admin feature flag status and metadata update | `@PlatformPolicyProtected` (`FeatureFlag` `read`, plus `update`)           | Record check on the `FeatureFlag`                                             |
+| Admin term policy delete, publish, content update, add, remove, get | `@PlatformPolicyProtected` (`TermPolicy` `read`, plus `delete` or `update`) | Record check on the `TermPolicy`: `delete`, `update`, or `read` |
+| Admin session revoke                         | `@PlatformPolicyProtected` (`User` `read`; `Session` `read` and `delete`)    | Record check on the `Session`                                                 |
+| Admin session revoke-all of a user           | `@PlatformPolicyProtected` (`User` `read`; `Session` `read` and `delete`)    | Record check on the `User` for `update`                                       |
+| Admin device remove                          | `@PlatformPolicyProtected` (`User` `read`; `Device` `read` and `delete`)   | Record check on the `Device` ownership record                                 |
+| Admin analytic fraud risk score by user, admin session, device, password history, activity log, and workspace member lists under a parent id | `@PlatformPolicyProtected` | Type-level check and list predicate; no parent-record check |
 | Workspace get                                | `@WorkspacePolicyProtected` (`Workspace` `read`)                             | Workspace and membership guards                                               |
 | Workspace update, delete, ownership transfer | `@WorkspacePolicyProtected` (`Workspace` `update` or `delete`)               | Record check on `Workspace`; domain invariants                                |
 | Workspace member list                        | `@WorkspacePolicyProtected` (`WorkspaceMember` `read`)                       | `requireAccessibleWhere`; workspace boundary                                  |
@@ -428,7 +474,7 @@ A role and its policies are two admin surfaces:
 }
 ```
 
-**Write rules.** The `superAdmin` role rejects every policy write (`PolicyImmutableException`, 403, `51104`). A write to a role that does not exist answers `RoleNotFoundException`, and an update or delete of a policy the role does not hold answers `PolicyNotFoundException`. The rule body is stored as sent; see [Current Boundaries](#current-boundaries).
+**Write rules.** The `superAdmin` role rejects every policy write (`PolicyImmutableException`, 403, `51104`). A write to a role outside the caller's `Role` `update` reach answers `PolicyForbiddenException`. A write to a role that does not exist answers `RoleNotFoundException`, and an update or delete of a policy the role does not hold answers `PolicyNotFoundException`. The rule body is stored as sent; see [Current Boundaries](#current-boundaries).
 
 ### Important Notes
 
@@ -446,7 +492,7 @@ The policy layer has these boundaries. A change to one of them extends the polic
 - **Flat conditions.** A condition is a flat object of scalar values. Nested condition trees and relation-aware interpolation are not supported
 - **Three placeholders.** `${userId}`, `${workspaceId}`, and `${projectId}` are the full set. Member-instance placeholders such as `${workspaceMemberId}` and `${projectMemberId}` are not resolved
 - **No write-time rule validation.** Policy create and update, through the admin API and the policy seed, do not validate or enforce a rule's subject, role scope, condition keys, or placeholders. A rule whose placeholder the request context cannot resolve is omitted when the ability is built (fail-closed), so a misconfigured rule grants nothing and raises no error. Write-time validation is a future improvement
-- **Collection predicates.** Every list in the table under [Collection Queries](#collection-queries) takes its predicate from the stored ability. The admin policy list, the analytics lists, the shared self-service lists, and the public and system routes take none
+- **Collection predicates.** Every list in the table under [Collection Queries](#collection-queries) takes its predicate from the stored ability. The analytics lists, the shared self-service lists, and the public and system routes take none
 - **Point reads.** A point read that is not in the record-check table uses its route identifier and the context guards, with the type-level capability check from the decorator
 
 <!-- REFERENCES -->

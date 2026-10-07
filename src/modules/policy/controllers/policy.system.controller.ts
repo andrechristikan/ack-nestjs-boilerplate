@@ -25,6 +25,6 @@ export class PolicySystemController {
         @Param('roleId', { schema: RequestUuidSchema })
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
-        return this.policyHttpService.listByRole(roleId);
+        return this.policyHttpService.listBySystem(roleId);
     }
 }

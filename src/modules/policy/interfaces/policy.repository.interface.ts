@@ -1,10 +1,13 @@
-import type { Policy } from '@generated/prisma-client/client';
+import type { Policy, Prisma } from '@generated/prisma-client/client';
 import type { IPolicyRuleWithRole } from '@modules/policy/interfaces/policy.interface';
 import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 
 export interface IPolicyRepository {
-    findManyByRoleId(roleId: string): Promise<Policy[]>;
+    findManyByRoleId(
+        roleId: string,
+        where?: Prisma.RoleWhereInput
+    ): Promise<Policy[]>;
     findManyByRoleIds(roleIds: string[]): Promise<IPolicyRuleWithRole[]>;
     findOneByRoleIdAndId(roleId: string, id: string): Promise<Policy | null>;
     existsByRoleIdAndId(roleId: string, id: string): Promise<boolean>;

@@ -5,6 +5,7 @@ import type {
     IPaginationEqual,
     IPaginationIn,
 } from '@common/pagination/interfaces/pagination.interface';
+import type { Prisma } from '@generated/prisma-client/client';
 import {
     EnumRoleScope,
     EnumUserSignUpFrom,
@@ -184,13 +185,15 @@ export class UserImportDomain {
     async exportByAdmin(
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        countryId?: Record<string, IPaginationEqual>,
+        where?: Prisma.UserWhereInput
     ): Promise<IUserExport[]> {
         const users = await this.userRepository.findExport(
             status ?? null,
             roleId ?? null,
             countryId ?? null,
-            this.maxDataExport + 1
+            this.maxDataExport + 1,
+            where
         );
 
         if (users.length > this.maxDataExport) {

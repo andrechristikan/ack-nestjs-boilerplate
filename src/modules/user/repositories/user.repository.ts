@@ -222,14 +222,20 @@ export class UserRepository implements IUserRepository {
         status: Record<string, IPaginationIn> | null,
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null,
-        take: number
+        take: number,
+        where?: Prisma.UserWhereInput
     ): Promise<IUserExport[]> {
         return this.databaseService.client.user.findMany({
             where: {
-                ...status,
-                ...countryId,
-                ...roleId,
-                deletedAt: null,
+                AND: [
+                    {
+                        ...status,
+                        ...countryId,
+                        ...roleId,
+                        deletedAt: null,
+                    },
+                    where ?? {},
+                ],
             },
             include: {
                 role: { select: { name: true } },
