@@ -1,6 +1,7 @@
 # Language Message Documentation
 
-i18n lives in `src/common/message`. Message files live in `src/languages/`.
+- i18n lives in `src/common/message`.
+- Message files live in `src/languages/`.
 
 ## Overview
 
@@ -8,14 +9,15 @@ i18n through [nestjs-i18n][ref-nestjs-i18n].
 
 - Message files live in `src/languages/{language}` as JSON
 - English (`en`) is the only language shipped
-- `MessageModule` is imported globally through `CommonModule` in `src/common/common.module.ts`, so `MessageService` is injectable without a local import
+- `MessageModule` is imported globally through `CommonModule` in `src/common/common.module.ts`
+- `MessageService` is therefore injectable without a local import
 
 ## Related Documents
 
-- [Response Documentation][ref-doc-response] - Message paths on success envelopes
-- [Handling Error Documentation][ref-doc-handling-error] - Exception filters that resolve message paths
-- [Request Validation Documentation][ref-doc-request-validation] - Validation message translation
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - `x-custom-lang` middleware
+- [Response Documentation][ref-doc-response]: Message paths on success envelopes
+- [Handling Error Documentation][ref-doc-handling-error]: Exception filters that resolve message paths
+- [Request Validation Documentation][ref-doc-request-validation]: Validation message translation
+- [Security and Middleware Documentation][ref-doc-security-and-middleware]: `x-custom-lang` middleware
 
 ## Table of Contents
 
@@ -56,7 +58,11 @@ export default registerAs(
 );
 ```
 
-`MessageModule.forRoot()` registers nestjs-i18n with `I18nJsonLoader` over `src/languages/`, a `HeaderResolver` on `x-custom-lang`, and `fallbackLanguage` set to `message.language`, so a key missing from the requested language resolves from the default one.
+`MessageModule.forRoot()` registers nestjs-i18n with:
+
+- `I18nJsonLoader` over `src/languages/`
+- a `HeaderResolver` on `x-custom-lang`
+- `fallbackLanguage` set to `message.language`, so a key missing from the requested language resolves from the default one
 
 Language options are defined in the enum:
 
@@ -68,7 +74,10 @@ export enum EnumMessageLanguage {
 
 ## Message Files
 
-Message files use JSON format with nested structure. Key paths follow the pattern: `filename.field.nested`. Files are located in `src/languages/en/`:
+Message files use JSON format with nested structure.
+
+- Key paths follow the pattern `filename.field.nested`.
+- Files are located in `src/languages/en/`:
 
 | File | Description |
 |------|-------------|
@@ -138,11 +147,14 @@ const rejectReasonLabel = this.messageService.setMessage(
 
 ### Filter Language
 
-Use `filterLanguage` to validate if a language is supported before using it:
+Use `filterLanguage` to resolve a requested language to a supported one. It returns the language when it is in `message.availableLanguage` and the default `message.language` otherwise:
 
 ```typescript
-const validLang = this.messageService.filterLanguage('id');
-// Returns 'id' if supported, undefined if not
+const supported = this.messageService.filterLanguage('en');
+// Returns 'en'
+
+const fallback = this.messageService.filterLanguage('fr');
+// Returns the default language (message.language), because 'fr' is not supported
 ```
 
 ### Bulk Import Validation Messages
@@ -200,13 +212,21 @@ Request-specific language can be set via the `x-custom-lang` header:
 curl -H "x-custom-lang: id" http://localhost:3000/api/v1/shared/user/profile/get
 ```
 
-`RequestCustomLanguageMiddleware` validates the header against the supported languages and writes the resolved value to the request store under `RequestLanguageStoreKey` (falling back to config `message.language`). Response interceptors and exception filters read it from there to localize messages and set `x-custom-lang`. See [Security and Middleware Documentation][ref-doc-security-and-middleware].
+`RequestCustomLanguageMiddleware`:
+
+- validates the header against the supported languages
+- writes the resolved value to the request store under `RequestLanguageStoreKey` (falling back to config `message.language`)
+
+Response interceptors and exception filters read it from there to localize messages and set `x-custom-lang`. See [Security and Middleware Documentation][ref-doc-security-and-middleware].
 
 ## Integration
 
 ### Exception Filters
 
-Exception filters automatically translate message paths. Application errors are dedicated `AppBaseException` subclasses; the filter resolves each exception's `messagePath` against the message system.
+Exception filters automatically translate message paths.
+
+- Application errors are dedicated `AppBaseException` subclasses.
+- The filter resolves each exception's `messagePath` against the message system.
 
 ```typescript
 throw new UserEmailExistException();
@@ -235,7 +255,11 @@ async create(
 }
 ```
 
-With variables, the HTTP service returns `messageProperties` on the `metadata` field of `IResponseReturn`, and `ResponseInterceptor` feeds them to `MessageService.setMessage` as translation arguments. The controller carries only the `@Response` message path:
+With variables:
+
+- The HTTP service returns `messageProperties` on the `metadata` field of `IResponseReturn`.
+- `ResponseInterceptor` feeds them to `MessageService.setMessage` as translation arguments.
+- The controller carries only the `@Response` message path.
 
 ```typescript
 // controller
@@ -309,7 +333,8 @@ const UserSchema = z.strictObject({
 }
 ```
 
-An issue with an empty path renders `Unknown`, and an issue carrying no string `code` falls back to the key `custom`.
+- An issue with an empty path renders `Unknown`.
+- An issue carrying no string `code` falls back to the key `custom`.
 
 **Standard validation response:**
 

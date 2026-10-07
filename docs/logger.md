@@ -4,16 +4,32 @@ Logger lives in `src/common/logger`.
 
 ## Overview
 
-Pino logs, with file rotation, redaction of sensitive fields, request/response serializers, URL masking, request IDs, and Sentry. Dev pretty-print; health routes excluded; memory and uptime fields outside production.
+Pino logs cover:
 
-`LoggerModule.forRoot()` registers `nestjs-pino` with two providers: `LoggerOptionService` assembles the pino options, and `LoggerUtil` (`src/common/logger/utils/logger.util.ts`) holds the serializers, the redaction walk, the URL masking, and the severity mapping every record passes through.
+- file rotation
+- redaction of sensitive fields
+- request/response serializers
+- URL masking
+- request IDs
+- Sentry
+
+Environment behavior:
+
+- Dev environments pretty-print.
+- Health routes are excluded.
+- Memory and uptime fields appear outside production.
+
+`LoggerModule.forRoot()` registers `nestjs-pino` with two providers:
+
+- `LoggerOptionService` assembles the pino options.
+- `LoggerUtil` (`src/common/logger/utils/logger.util.ts`) holds the serializers, the redaction walk, the URL masking, and the severity mapping every record passes through.
 
 ## Related Documents
 
-- [Configuration Documentation][ref-doc-configuration] - Logger config keys
-- [Environment Documentation][ref-doc-environment] - Logger env vars
-- [Handling Error Documentation][ref-doc-handling-error] - Filters that report to Sentry
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Request ID and logger middleware 
+- [Configuration Documentation][ref-doc-configuration]: Logger config keys
+- [Environment Documentation][ref-doc-environment]: Logger env vars
+- [Handling Error Documentation][ref-doc-handling-error]: Filters that report to Sentry
+- [Security and Middleware Documentation][ref-doc-security-and-middleware]: Request ID and logger middleware 
 
 ## Table of Contents
 
@@ -54,7 +70,8 @@ Pino logs, with file rotation, redaction of sensitive fields, request/response s
   - [Header Priority](#header-priority)
   - [Fallback Behavior](#fallback-behavior)
   - [Usage Example](#usage-example)
-  - [Cross-Service Tracking](#cross-service-tracking)
+  - [Request ID Header](#request-id-header)
+  - [Correlation ID Handling](#correlation-id-handling)
 - [Sentry Integration](#sentry-integration)
   - [Sentry Configuration](#sentry-configuration)
   - [Configuration Details](#configuration-details)
@@ -147,12 +164,12 @@ export class UserDomain {
 `EnumLoggerLevel` declares Pino's own level set. These six values are what `LOGGER_LEVEL` accepts:
 
 **Level Hierarchy (from highest to lowest priority):**
-1. `fatal` - Unrecoverable failures that end the process or the job
-2. `error` - Critical errors that need immediate attention
-3. `warn` - Warning conditions that should be reviewed
-4. `info` - General informational messages
-5. `debug` - Debug-level messages for development
-6. `trace` - Fine-grained tracing, the most verbose level
+1. `fatal`: Unrecoverable failures that end the process or the job
+2. `error`: Critical errors that need immediate attention
+3. `warn`: Warning conditions that call for review
+4. `info`: General informational messages
+5. `debug`: Debug-level messages for development
+6. `trace`: Fine-grained tracing, the most verbose level
 
 The `Logger` from `@nestjs/common` is backed by `nestjs-pino`, so its method names do not all match the level they emit:
 
@@ -165,9 +182,12 @@ this.logger.debug('Debug message');      // debug level
 this.logger.verbose('Verbose message');  // trace level (method is verbose, not trace)
 ```
 
-`log()` and `verbose()` are the two that differ. `verbose` and `silly` are Winston names; neither is a valid `LOGGER_LEVEL` value, and `LOGGER_LEVEL=verbose` is rejected by environment validation at startup.
+- `log()` and `verbose()` are the two that differ.
+- `verbose` and `silly` are Winston names.
+- Neither is a valid `LOGGER_LEVEL` value.
+- `LOGGER_LEVEL=verbose` is rejected by environment validation at startup.
 
-**Note:** Setting `LOGGER_LEVEL=warn` will log only `fatal`, `error`, and `warn` messages, filtering out `info`, `debug`, and `trace`.
+**Note:** Setting `LOGGER_LEVEL=warn` logs only `fatal`, `error`, and `warn` messages, filtering out `info`, `debug`, and `trace`.
 
 ### Log Severity
 
@@ -207,7 +227,7 @@ export const LoggerSensitivePaths = [
 ];
 ```
 
-The logger will scan these paths in request/response objects and redact any fields matching the sensitive field list.
+The logger scans these paths in request/response objects and redacts any fields matching the sensitive field list.
 
 ### Sensitive Fields
 
@@ -264,9 +284,12 @@ export const LoggerSensitiveFields: string[] = [
 
 **Redaction Rules:**
 - Three mechanisms redact, and they match differently:
-  - `LoggerUtil.redactValue` (request `query` and `headers`, response `headers`, and a record's `additionalData`) walks every key at every depth and compares it lowercased against the lowercased list, so it is **case-insensitive**: `Password`, `PASSWORD`, and `password` all match.
+  - `LoggerUtil.redactValue` covers request `query` and `headers`, response `headers`, and a record's `additionalData`.
+    - It walks every key at every depth and compares it lowercased against the lowercased list.
+    - It is therefore **case-insensitive**: `Password`, `PASSWORD`, and `password` all match.
   - Request `params` keep their names, and every value is replaced with `[REDACTED]`, whatever the name.
-  - Pino's `redact.paths` (built as `LoggerSensitivePaths` combined with `LoggerSensitiveFields`) matches each path segment literally, so it is **case-sensitive**: only the exact spelling listed in `LoggerSensitiveFields` matches.
+  - Pino's `redact.paths` (built as `LoggerSensitivePaths` combined with `LoggerSensitiveFields`) matches each path segment literally.
+    - It is therefore **case-sensitive**: only the exact spelling listed in `LoggerSensitiveFields` matches.
 - Fields with hyphens are wrapped in brackets in the pino paths (e.g., `req.headers["x-api-key"]`)
 - All matching fields are replaced with `LoggerRedactedValue` (`[REDACTED]`)
 
@@ -330,16 +353,21 @@ Binary data (Buffers) are replaced with a placeholder:
 
 #### Object Depth Limitation
 
-`LoggerUtil.redactValue` walks objects up to `LoggerRedactMaxDepth` (**5 levels**). A value nested deeper is replaced whole with `[REDACTED]`, so nothing past the cap is written unredacted. The cap also bounds:
+`LoggerUtil.redactValue` walks objects up to `LoggerRedactMaxDepth` (**5 levels**).
+
+A value nested deeper is replaced whole with `[REDACTED]`, so nothing past the cap is written unredacted.
+
+The cap also bounds:
 - Performance cost on deeply nested objects
 - Circular references
 - Log size
 
-String leaves are passed through `LoggerUtil.sanitizeMessage`, which strips ANSI codes and collapses whitespace.
+`LoggerUtil.sanitizeMessage` processes string leaves: it strips ANSI codes and collapses whitespace.
 
 ## File Logging
 
-Enable file logging by setting `LOGGER_INTO_FILE=true`. Logs are written to `./logs/api.log` with automatic rotation using `pino-roll`.
+- Enable file logging by setting `LOGGER_INTO_FILE=true`.
+- `pino-roll` writes logs to `./logs/api.log` with automatic rotation.
 
 ### Configuration
 
@@ -383,7 +411,8 @@ LOGGER_AUTO=true
 
 ## Auto Logging
 
-Enable automatic HTTP request/response logging with `LOGGER_AUTO=true`. This feature automatically logs all incoming HTTP requests and their responses without manual instrumentation.
+- Enable automatic HTTP request/response logging with `LOGGER_AUTO=true`.
+- The feature logs all incoming HTTP requests and their responses without manual instrumentation.
 
 ### Configuration
 
@@ -398,7 +427,10 @@ When auto-logging is enabled, the following information is automatically capture
 **Request** (`LoggerUtil.serializeRequest`):
 - Request ID
 - HTTP method
-- `route`: the matched route pattern (`baseUrl` plus the route path, such as `/api/v1/admin/user/:userId/device/list`); for a request that matched no route, the URL masked by `LoggerUtil.maskUrl`. The raw URL and path are not logged
+- `route`:
+    - the matched route pattern (`baseUrl` plus the route path, such as `/api/v1/admin/user/:userId/device/list`)
+    - for a request that matched no route, the URL masked by `LoggerUtil.maskUrl`
+    - the raw URL and path are not logged
 - User-Agent
 - Content-Type
 - `referer`, masked by `LoggerUtil.maskUrl`, or `null` when the request carries no `Referer` header
@@ -406,10 +438,18 @@ When auto-logging is enabled, the following information is automatically capture
 - Client IP address
 - Authenticated user ID
 - Query parameters (redacted)
-- Route params (names only; every value is `[REDACTED]`)
+- Route params
+    - the parameter names are logged
+    - every value is `[REDACTED]`
 - Request headers (redacted)
 
-**URL masking.** `LoggerUtil.maskUrl` keeps the origin, drops the query string and fragment, and replaces every path segment that is not a route parameter name, a version segment (`v1`), or a static lowercase kebab-case word (`LoggerUrlStaticSegmentRegex`) with `[REDACTED]`. An ID or token in the path never reaches a log line.
+**URL masking.** `LoggerUtil.maskUrl`:
+
+- keeps the origin
+- drops the query string and fragment
+- replaces every path segment with `[REDACTED]` unless it is a route parameter name, a version segment (`v1`), or a static lowercase kebab-case word (`LoggerUrlStaticSegmentRegex`)
+
+An ID or token in the path never reaches a log line.
 
 **Response:**
 - HTTP status code
@@ -445,13 +485,16 @@ export default registerAs('logger', (): IConfigLogger => {
 });
 ```
 
-With the default prefixes (`/api`, `/docs`) the list resolves to `/api/public/hello`, `/api/system/health`, `/metrics`, `/favicon.ico`, `/docs`, their `/*` variants, and `/`. `LoggerOptionService` reads it for the pino-http `autoLogging.ignore` check, and `src/instrument.ts` reads it for `beforeSend` and `tracesSampler`.
+With the default prefixes (`/api`, `/docs`) the list resolves to `/api/public/hello`, `/api/system/health`, `/metrics`, `/favicon.ico`, `/docs`, their `/*` variants, and `/`.
+
+- `LoggerOptionService` reads it for the pino-http `autoLogging.ignore` check.
+- `src/instrument.ts` reads it for `beforeSend` and `tracesSampler`.
 
 ### Pattern Matching Rules
 
-- **Exact match**: `/api/system/health` - matches only this exact path
-- **Wildcard suffix**: `/api/system/health/*` - matches `/api/system/health/database`, `/api/system/health/aws`, etc.
-- **Root path**: `/` - matches only the root endpoint
+- **Exact match**: `/api/system/health` matches only this exact path
+- **Wildcard suffix**: `/api/system/health/*` matches `/api/system/health/database`, `/api/system/health/aws`, etc.
+- **Root path**: `/` matches only the root endpoint
 - All patterns are **case-insensitive**
 
 ### Adding Custom Excluded Routes
@@ -576,7 +619,7 @@ In non-production environments (`app.env !== 'production'`), additional debug in
 
 | Field | Description | Unit |
 |-------|-------------|------|
-| `memory.rss` | Resident Set Size - total memory allocated | MB |
+| `memory.rss` | Resident Set Size: total memory allocated | MB |
 | `memory.heapUsed` | Heap memory currently in use | MB |
 | `uptime` | Process uptime since startup | seconds |
 | `pid` | Process ID | number |
@@ -591,7 +634,7 @@ In non-production environments (`app.env !== 'production'`), additional debug in
 
 ## Request ID Tracking
 
-The logger extracts and tracks request IDs across services for distributed tracing and correlation.
+Every log entry of a request carries a request ID. The logger reads it from the inbound `x-correlation-id` or `x-request-id` header, and a request with neither gets a generated UUID v7.
 
 ### Header Priority
 
@@ -610,7 +653,10 @@ Both names are the header constants in `src/common/request/constants/request.con
 
 If no request ID header is found, `genReqId` falls back to `request.id`, the UUID v7 assigned by `RequestRequestIdMiddleware`.
 
-> The logger's `genReqId` reads `request.id` (and the correlation headers) directly from the raw request, unchanged. `request.id` and `request.correlationId` are also mirrored into the request store (`RequestIdStoreKey` / `RequestCorrelationIdStoreKey`) for ambient access elsewhere; the logger does not read the store. See [Security and Middleware Documentation][ref-doc-security-and-middleware].
+> - The logger's `genReqId` reads `request.id` (and the correlation headers) directly from the raw request, unchanged.
+> - `request.id` and `request.correlationId` are also mirrored into the request store (`RequestIdStoreKey` / `RequestCorrelationIdStoreKey`) for ambient access elsewhere. The logger does not read the store.
+>
+> See [Security and Middleware Documentation][ref-doc-security-and-middleware].
 
 ### Usage Example
 
@@ -632,29 +678,48 @@ curl -H "x-correlation-id: req-abc-123" http://localhost:3000/api/v1/shared/user
 }
 ```
 
-### Cross-Service Tracking
+### Request ID Header
 
-When making requests to other services, propagate the request ID:
+What the code does with the `x-request-id` header:
 
-Outbound calls copy `x-correlation-id` from the inbound request so the next service logs the same id.
+- The logger reads an inbound `x-request-id` when no `x-correlation-id` is present, and logs it as `req.id`.
+- `RequestRequestIdMiddleware` assigns every request a new UUID v7 as `request.id` and writes it to the `x-request-id` header, replacing an inbound value.
+- The response carries that new UUID v7, so a client-sent `x-request-id` appears in the log and not in the response.
+
+### Correlation ID Handling
+
+What the code does with the `x-correlation-id` header:
+
+- `RequestRequestIdMiddleware` reads it from the inbound request, and generates a UUID v7 when it is absent or not a string.
+- The response echoes it in the `x-correlation-id` header and in the response metadata `correlationId`.
+- The logger binds it to each request log entry as `req.id`.
 
 ## Sentry Integration
 
-Sentry is initialized at bootstrap by `src/instrument.ts` using `loggerConfigs.sentry.dsn`. Two independent streams reach Sentry: log entries go to Sentry's Logs product, exceptions go to Sentry's Issues.
+Sentry is initialized at bootstrap by `src/instrument.ts` using `loggerConfigs.sentry.dsn`. Two independent streams reach Sentry:
 
-**Log entries (Sentry Logs).** With `enableLogs: true`, `Sentry.pinoIntegration` auto-forwards Pino log entries (every `logger.log` / `warn` / `error` / ...) to Sentry Logs through Node `diagnostics_channel`. No manual transport is wired. Forwarded levels are environment-aware:
+- log entries go to Sentry's Logs product
+- exceptions go to Sentry's Issues
+
+**Log entries (Sentry Logs).**
+
+- With `enableLogs: true`, `Sentry.pinoIntegration` auto-forwards Pino log entries (every `logger.log` / `warn` / `error` / ...) to Sentry Logs through Node `diagnostics_channel`.
+- No manual transport is wired.
+- Error-level logs reach Sentry Logs only and are not duplicated as Sentry Issues.
+
+Forwarded levels are environment-aware:
 
 - **Production**: `warn`, `error`, `fatal`.
 - **Every other environment**: `trace`, `debug`, `info`, `warn`, `error`, `fatal`.
-
-Error-level logs are forwarded to Sentry Logs only; they are NOT duplicated as Sentry Issues.
 
 **`SentryService`.** `src/common/sentry` holds the Sentry kit:
 
 - `SentryModule.forRoot()` is global, imports `@sentry/nestjs/setup`, and exports `SentryService`
 - Methods: `captureException(exception)`, `captureMessage(message, level)`, `log(level, message, attributes?)`, and `withScope(callback)`
 - Methods never throw: a Sentry SDK failure is logged and swallowed
-- `log` writes to Sentry Logs directly; its `attributes` bypass the pino redaction and are scrubbed only by `beforeSendLog`, so they carry no credential
+- `log` writes to Sentry Logs directly.
+    - Its `attributes` bypass the pino redaction and are scrubbed only by `beforeSendLog`.
+    - They therefore carry no credential.
 - `withScope` runs a callback against a fresh Sentry scope (used by `QueueProcessorBase.onFailed` to attach job attributes before `captureException`)
 
 **Exceptions (Sentry Issues).** Exception reporting goes through `SentryService.captureException`:
@@ -662,7 +727,11 @@ Error-level logs are forwarded to Sentry Logs only; they are NOT duplicated as S
 - `AppBaseExceptionFilter`: reports `rawError ?? exception` for any `AppBaseException` with HTTP status >= 500
 - `AppHttpFilter`: reports the `HttpException` for framework errors with HTTP status >= 500
 - `AppGeneralFilter`: reports all unhandled exceptions (catch-all 500)
-- `QueueProcessorBase`: in `process`, writes BullMQ `job.log` lines (start, metadata-only input, finish or failure) and on catch calls Nest `Logger.error` once then rethrows; in `onFailed`, reports a failed job once when BullMQ will not retry it (final attempt, or immediately for an `UnrecoverableError`), and only when the error is fatal. Before `captureException`, `withScope` sets `job.id`, `job.name`, `job.attemptsMade`, and `job.maxAttempts`. A `QueueException` is reported only when `isFatal` is set
+- `QueueProcessorBase`:
+    - In `process`, it writes BullMQ `job.log` lines (start, metadata-only input, finish or failure). On catch it calls Nest `Logger.error` once, then rethrows.
+    - In `onFailed`, it reports a failed job once when BullMQ will not retry it (final attempt, or immediately for an `UnrecoverableError`), and only when the error is fatal.
+    - Before `captureException`, `withScope` sets `job.id`, `job.name`, `job.attemptsMade`, and `job.maxAttempts`.
+    - A `QueueException` is reported only when `isFatal` is set.
 - `AuthTwoFactorDomain`: reports a stored TOTP secret that fails to decrypt, before answering `409 twoFactorSecretUnavailable`
 
 `beforeSend` is the last filter every Issue passes through. It drops:
@@ -672,17 +741,41 @@ Error-level logs are forwarded to Sentry Logs only; they are NOT duplicated as S
 - an event whose response status code is below 500
 - an event at `info` or `debug` level
 
-Outside production it also attaches the original exception under `event.extra`. `tracesSampler` applies the same excluded-route match to transactions, checked against both the request URL and the span name with its HTTP method prefix removed, returning a `0` sample rate for them.
+Outside production, `beforeSend` also attaches the original exception under `event.extra`.
+
+`tracesSampler` applies the same excluded-route match to transactions:
+
+- It checks both the request URL and the span name with its HTTP method prefix removed.
+- It returns a `0` sample rate for matches.
 
 **Scrubbing.** `instrument.ts` scrubs every payload before it leaves the process, with the same `LoggerSensitiveFields` list (case-insensitive) and the same URL masking as the logger:
 
-| Hook | What it scrubs |
-|---|---|
-| `beforeSend` (after the drops above), `beforeSendTransaction` | `request.url` masked and `request.query_string` removed; sensitive request headers redacted; every cookie value redacted; the request body redacted (below); the transaction name and every span description masked; trace context, span, and breadcrumb data scrubbed as in `beforeBreadcrumb` |
-| `beforeBreadcrumb` | URL keys (`LoggerSentryUrlKeys`) masked, query and fragment keys (`LoggerSentryQueryKeys`) removed, body keys (`LoggerSentryBodyKeys`) redacted, and sensitive `http.request.header.*` / `http.response.header.*` attributes redacted |
-| `beforeSendLog` | Log attributes redacted by key, then scrubbed as in `beforeBreadcrumb` |
+`beforeSend` (after the drops above) and `beforeSendTransaction`:
 
-A request body is redacted by shape: an object is walked key by key up to `LoggerSentryRedactMaxDepth` (10) and replaced whole past it; a JSON string is parsed, redacted, and re-serialized (an unparseable one becomes `[REDACTED]`); an `application/x-www-form-urlencoded` string has the value of each sensitive key replaced; any other string is replaced whole with `[REDACTED]`.
+- `request.url` is masked and `request.query_string` removed.
+- Sensitive request headers are redacted.
+- Every cookie value is redacted.
+- The request body is redacted (below).
+- The transaction name and every span description are masked.
+- Trace context, span, and breadcrumb data are scrubbed as in `beforeBreadcrumb`.
+
+`beforeBreadcrumb`:
+
+- URL keys (`LoggerSentryUrlKeys`) are masked.
+- Query and fragment keys (`LoggerSentryQueryKeys`) are removed.
+- Body keys (`LoggerSentryBodyKeys`) are redacted.
+- Sensitive `http.request.header.*` / `http.response.header.*` attributes are redacted.
+
+`beforeSendLog`:
+
+- Log attributes are redacted by key, then scrubbed as in `beforeBreadcrumb`.
+
+A request body is redacted by shape:
+
+- An object is walked key by key up to `LoggerSentryRedactMaxDepth` (10) and replaced whole past it.
+- A JSON string is parsed, redacted, and re-serialized. An unparseable one becomes `[REDACTED]`.
+- An `application/x-www-form-urlencoded` string has the value of each sensitive key replaced.
+- Any other string is replaced whole with `[REDACTED]`.
 
 ### Sentry Configuration
 
@@ -708,7 +801,12 @@ sentry: {
 }
 ```
 
-`instrument.ts` is loaded first, through `node --import ./dist/instrument.js` in the start scripts and `import '@instrument'` at the top of `src/main.ts`. It reads `sentry.dsn` and skips `Sentry.init` entirely when it is `null`. The sample rates come from the logger config: in production `tracesSampleRateProduction` and `profilesSampleRateProduction`, in every other environment `tracesSampleRate` and `profilesSampleRate`. `tracesSampler` returns the chosen traces rate for every non-excluded transaction. The rest of the initializer options (`normalizeDepth`, `maxValueLength`, `maxBreadcrumbs`, `attachStacktrace`, `sendDefaultPii`) are literals in `instrument.ts`.
+`instrument.ts` is loaded first, through `node --import ./dist/instrument.js` in the start scripts and `import '@instrument'` at the top of `src/main.ts`.
+
+- It reads `sentry.dsn` and skips `Sentry.init` entirely when it is `null`.
+- The sample rates come from the logger config: in production `tracesSampleRateProduction` and `profilesSampleRateProduction`, in every other environment `tracesSampleRate` and `profilesSampleRate`.
+- `tracesSampler` returns the chosen traces rate for every non-excluded transaction.
+- The rest of the initializer options (`normalizeDepth`, `maxValueLength`, `maxBreadcrumbs`, `attachStacktrace`, `sendDefaultPii`) are literals in `instrument.ts`.
 
 ### Disabling Sentry
 
@@ -718,7 +816,11 @@ Sentry is off when `SENTRY_DSN` is unset, blank, or commented out:
 # SENTRY_DSN=https://...
 ```
 
-When DSN is not configured, `SentryService` calls send nothing, exceptions are only logged locally, and the Sentry health indicator reports `down` with `Sentry is not configured`.
+When the DSN is not configured:
+
+- `SentryService` calls send nothing.
+- Exceptions are only logged locally.
+- The Sentry health indicator reports `down` with `Sentry is not configured`.
 
 <!-- REFERENCES -->
 

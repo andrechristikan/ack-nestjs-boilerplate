@@ -11,15 +11,21 @@ Login can require a TOTP (RFC 6238) from an authenticator app, plus one-time bac
 - Challenge-based verification flow
 - Session revocation on security changes
 - Account protection with failed attempts tracking
-- 2FA on login, password change, password reset, disable 2FA, backup code regeneration, and a new setup while 2FA is enabled (backup code)
+- 2FA verification applies to:
+    - login
+    - password change
+    - password reset
+    - disable 2FA
+    - backup code regeneration
+    - a new setup while 2FA is enabled (backup code)
 
 ## Related Documents
 
-- [Authentication Documentation][ref-doc-authentication] - JWT, login, and sessions
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Rate limiting and headers
-- [Cache Documentation][ref-doc-cache] - Challenge tokens in Redis
-- [Activity Log Documentation][ref-doc-activity-log] - Security events
-- [Environment Documentation][ref-doc-environment] - `AUTH_TWO_FACTOR_*`
+- [Authentication Documentation][ref-doc-authentication]: JWT, login, and sessions
+- [Security and Middleware Documentation][ref-doc-security-and-middleware]: Rate limiting and headers
+- [Cache Documentation][ref-doc-cache]: Challenge tokens in Redis
+- [Activity Log Documentation][ref-doc-activity-log]: Security events
+- [Environment Documentation][ref-doc-environment]: `AUTH_TWO_FACTOR_*`
 
 ## Table of Contents
 
@@ -87,9 +93,12 @@ Located in `src/configs/auth.config.ts`:
 A secret copied onto another user's row fails to decrypt. `TwoFactor` holds two sealed values:
 
 - `pendingSecret`: written by every setup, never used to verify a login
-- `secret`: the confirmed authenticator; enable moves `pendingSecret` here and clears `pendingSecret`
+- `secret`: the confirmed authenticator. Enable moves `pendingSecret` here and clears `pendingSecret`.
 
-A code checked against a missing secret, or a secret that fails to decrypt, raises `409 twoFactorSecretUnavailable`. The decrypt failure is also reported to Sentry as an operator fault (a wrong key or a damaged value), not a user error. `pnpm generate:secret:encryption` generates the key (see [Installation][ref-doc-installation]).
+A code checked against a missing secret, or a secret that fails to decrypt, raises `409 twoFactorSecretUnavailable`.
+
+- The decrypt failure is also reported to Sentry as an operator fault (a wrong key or a damaged value), not a user error.
+- `pnpm generate:secret:encryption` generates the key (see [Installation][ref-doc-installation]).
 
 ## Security Features
 
@@ -114,7 +123,7 @@ Attempt 4 (TOTP success) → attempt = 0 (reset)
 When a user reaches the maximum allowed attempts (5 failed verifications), 2FA verification locks with exponential backoff.
 
 1. Lock check happens **before** verification attempt
-2. If locked, return error with `retryAfterSeconds` (HTTP 429)
+2. If locked, return an error (HTTP 429) whose message carries the remaining lock time as `retryAfterSeconds`, in whole seconds rounded up
 3. If not locked, proceed with verification
 4. If verification fails:
    - Increment attempt counter first
@@ -124,7 +133,13 @@ When a user reaches the maximum allowed attempts (5 failed verifications), 2FA v
 5. Lock is stored in Redis cache with automatic expiration
 6. Lock duration increases exponentially based on attempt count
 
-A Redis failure while writing or clearing the lock is logged and the request continues; the attempt counter in the database still increments. A Redis failure while storing the login challenge answers 500, and a failure while deleting a used challenge is logged. Details: [Cache][ref-doc-cache].
+Redis failures:
+
+- A failure while writing or clearing the lock is logged and the request continues. The attempt counter in the database still increments.
+- A failure while storing the login challenge answers 500.
+- A failure while deleting a used challenge is logged.
+
+Details: [Cache][ref-doc-cache].
 
 **Lock timing:**
 - Lock is set **after** the 5th failed attempt
@@ -150,7 +165,7 @@ After 7th failed attempt (attempt=7):
 **User experience flow:**
 1. User enters wrong code 5 times → gets HTTP 401 (invalid code)
 2. Lock is set in background
-3. User tries again (6th attempt) → gets HTTP 429 with `retryAfterSeconds: 240` (4 minutes)
+3. User tries again (6th attempt) → gets HTTP 429 with a message naming the remaining time (`retryAfterSeconds`, up to 240, 4 minutes)
 4. User waits 4 minutes
 5. Lock expires automatically
 6. User can try again
@@ -167,32 +182,42 @@ After 7th failed attempt (attempt=7):
 
 ### Shared Endpoints (User Operations)
 **2FA Management:**
-- `GET /shared/user/2fa/status/get` - Check current 2FA status
-- `POST /shared/user/2fa/setup` - Get TOTP secret and otpauthUrl (**requires an unused backup code while 2FA is enabled**)
-- `POST /shared/user/2fa/enable` - Enable 2FA with code verification
-- `DELETE /shared/user/2fa/disable` - **Disable 2FA (requires an authenticator code or a backup code)**
-- `POST /shared/user/2fa/backup-code/regenerate` - **Regenerate backup codes (requires an authenticator code)**
+- `GET /shared/user/2fa/status/get`: Check current 2FA status
+- `POST /shared/user/2fa/setup`: Get TOTP secret and otpauthUrl (**requires an unused backup code while 2FA is enabled**)
+- `POST /shared/user/2fa/enable`: Enable 2FA with code verification
+- `DELETE /shared/user/2fa/disable`: **Disable 2FA (requires an authenticator code or a backup code)**
+- `POST /shared/user/2fa/backup-code/regenerate`: **Regenerate backup codes (requires an authenticator code)**
 
-`disable` accepts either method: the body carries `method` (`code` or `backupCodes`) with the matching `code` / `backupCode`. `backup-code/regenerate` takes a `code` field only and pins the method to `code` on the server, so a backup code cannot be used to rotate the backup codes. The credential being replaced never authorises its own replacement. Both routes run the same verification path as login, so both are subject to the attempt counter and the temporary lock.
+`disable` and `backup-code/regenerate`:
 
-`setup` takes an optional `backupCode`. While 2FA is disabled the body may be empty. While 2FA is enabled a missing `backupCode` returns `400 twoFactorBackupCodeRequired`; a supplied one is verified under the attempt counter and the lock, and consumed in the same transaction that stores the new `pendingSecret`. The account keeps its confirmed `secret` and remaining backup codes until `enable` confirms the new authenticator, which is the recovery path when the confirmed secret is unreadable (`409 twoFactorSecretUnavailable`).
+- `disable` accepts either method: the body carries `method` (`code` or `backupCodes`) with the matching `code` / `backupCode`.
+- `backup-code/regenerate` takes a `code` field only and pins the method to `code` on the server, so a backup code cannot be used to rotate the backup codes.
+- The credential being replaced never authorises its own replacement.
+- Both routes run the same verification path as login, so both are subject to the attempt counter and the temporary lock.
+
+`setup` takes an optional `backupCode`:
+
+- While 2FA is disabled, the body may be empty.
+- While 2FA is enabled, a missing `backupCode` returns `400 twoFactorBackupCodeRequired`.
+- A supplied `backupCode` is verified under the attempt counter and the lock, and consumed in the same transaction that stores the new `pendingSecret`.
+- The account keeps its confirmed `secret` and remaining backup codes until `enable` confirms the new authenticator. This is the recovery path when the confirmed secret is unreadable (`409 twoFactorSecretUnavailable`).
 
 **Password Operations (require 2FA if enabled):**
-- `PATCH /shared/user/password/change` - **Change password (requires 2FA verification if enabled)**
+- `PATCH /shared/user/password/change`: **Change password (requires 2FA verification if enabled)**
 
 ### Public Endpoints
 **Login Flow:**
-- `POST /public/user/login/credential` - Login with email/password
-- `POST /public/user/login/social/google` - Login with Google OAuth
-- `POST /public/user/login/social/apple` - Login with Apple Sign In
-- `PATCH /public/user/login/2fa/verify` - Verify TOTP code or backup code
-- `POST /public/user/login/2fa/enable` - Complete forced 2FA setup during login
+- `POST /public/user/login/credential`: Login with email/password
+- `POST /public/user/login/social/google`: Login with Google OAuth
+- `POST /public/user/login/social/apple`: Login with Apple Sign In
+- `PATCH /public/user/login/2fa/verify`: Verify TOTP code or backup code
+- `POST /public/user/login/2fa/enable`: Complete forced 2FA setup during login
 
 **Password Recovery (require 2FA if enabled):**
-- `PATCH /public/user/password/reset` - **Reset password (requires 2FA verification if enabled)**
+- `PATCH /public/user/password/reset`: **Reset password (requires 2FA verification if enabled)**
 
 ### Admin Endpoints
-- `PATCH /admin/user/2fa/:userId/reset` - Force reset user's 2FA (clears lock and resets attempts)
+- `PATCH /admin/user/2fa/:userId/reset`: Force reset user's 2FA (clears lock and resets attempts)
 
 Request and response schemas for each route are in the Swagger document.
 
@@ -283,7 +308,13 @@ sequenceDiagram
 
 ### Admin Force Setup Flow
 
-Admin forces a user who already has 2FA enabled to set it up again on next login. The endpoint rejects the admin resetting their own account (`notSelf`), an unknown user (`notFound`), a blocked user (`blockedInvalid`), and a user whose 2FA is not enabled (`twoFactorNotEnabled`).
+Admin forces a user who already has 2FA enabled to set it up again on next login. The endpoint rejects:
+
+- the admin resetting their own account (`notSelf`)
+- an unknown user (`notFound`)
+- a blocked user (`blockedInvalid`)
+- a user whose 2FA is not enabled (`twoFactorNotEnabled`)
+
 ```mermaid
 sequenceDiagram
     participant Admin
@@ -415,6 +446,7 @@ sequenceDiagram
     end
     API->>Cache: Delete every session key of the user
     API->>API: Stage adminUserResetTwoFactor and userResetTwoFactorByAdmin
+    API->>User: Send reset notification email
     API->>Admin: Success confirmation
     
     Admin->>User: 2FA has been reset
@@ -485,7 +517,8 @@ sequenceDiagram
     end
 ```
 
-The password-history check is what makes the reuse window real: a password still held in history for `auth.password.periodInDays` is rejected before the 2FA step, so a user cannot rotate back to a recent password by passing 2FA. A user with no password set (a social sign-up) skips the attempt-limit, old-password, and history checks and goes straight to the 2FA step.
+- The password-history check is what makes the reuse window real. A password still held in history for `auth.password.periodInDays` is rejected before the 2FA step, so a user cannot rotate back to a recent password by passing 2FA.
+- A user with no password set (a social sign-up) skips the attempt-limit, old-password, and history checks and goes straight to the 2FA step.
 
 **Reset Password (Forgot Password):**
 ```mermaid
@@ -575,7 +608,7 @@ sequenceDiagram
 |--------|------------|-------------|
 | 400 | `twoFactorNotEnabled` | 2FA not enabled for this user |
 | 400 | `twoFactorAlreadyEnabled` | 2FA already active |
-| 400 | `twoFactorRequiredSetup` | Must complete setup first |
+| 400 | `twoFactorRequiredSetup` | Setup is required before continuing |
 | 400 | `twoFactorNotRequiredSetup` | Setup already completed |
 | 400 | `twoFactorSetupRequired` | No `pendingSecret` is stored: `POST /shared/user/2fa/setup` (or the forced-setup login) has not run |
 | 400 | `twoFactorMethodRequired` | `method` missing on a request that must verify 2FA |
@@ -588,7 +621,12 @@ sequenceDiagram
 | 403 | `emailNotVerified` | Email not verified |
 | 404 | `notFound` | User not found |
 
-`twoFactorAttemptTemporaryLock` answers a verification attempted while the account is locked. The remaining lock time is interpolated into the localized `message` string (`Please try again after {retryAfterSeconds}s.`) and carries no separate response field. The lock is written once the attempt counter reaches 5, and each further lockout lasts exponentially longer.
+`twoFactorAttemptTemporaryLock`:
+
+- It answers a verification attempted while the account is locked.
+- The remaining lock time, in whole seconds rounded up from the cache TTL, is interpolated into the localized `message` string (`Please try again after {retryAfterSeconds}s.`). It carries no separate response field.
+- The lock is written once the attempt counter reaches 5.
+- Each further lockout lasts exponentially longer.
 
 <!-- REFERENCES -->
 

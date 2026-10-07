@@ -3,22 +3,34 @@
 ## Overview
 
 > [!IMPORTANT]
-> Local-development setup only. The unseal key and root token are written to `generated/vault/init.json` so the stack unseals itself unattended. A dev convenience, not a production pattern. See [Scope](#scope).
+> Local-development setup only.
+>
+> - The unseal key and root token are written to `generated/vault/init.json`, so the stack unseals itself unattended.
+> - It is a dev convenience, not a production pattern. See [Scope](#scope).
 
-Optional [HashiCorp Vault][ref-vault] setup for **local development secret management**. Secrets live in Vault; `pnpm vault:pull` writes them into `.env` on demand. Vault is optional: skip the `vault` profile and keep a hand-managed `.env` as in [Installation][ref-doc-installation].
+Optional [HashiCorp Vault][ref-vault] setup for **local development secret management**.
+
+- Secrets live in Vault, and `pnpm vault:pull` writes them into `.env` on demand.
+- Vault is optional: skip the `vault` profile and keep a hand-managed `.env` as in [Installation][ref-doc-installation].
 
 - Wired through Docker Compose, gated behind the `vault` profile (never starts unless you opt in).
 - **File storage backend**, persistent across restarts.
 - Container entrypoint **auto-initializes and auto-unseals** on every boot.
-- Layout mirrors production: one kv-v2 mount per project, one path per environment, a read-only [AppRole][ref-approle] per environment.
-- Useful in a team: one source of truth in kv-v2 (seeded from `.env.example`), one sync command (`pnpm vault:pull`), AppRole standing in for production OIDC/JWT.
+- Layout mirrors production:
+    - one kv-v2 mount per project
+    - one path per environment
+    - a read-only [AppRole][ref-approle] per environment
+- Useful in a team:
+    - one source of truth in kv-v2, seeded from `.env.example`
+    - one sync command, `pnpm vault:pull`
+    - AppRole standing in for production OIDC/JWT
 
 ## Related Documents
 
-- [Installation Documentation][ref-doc-installation] - Docker setup (including the `vault` profile)
-- [Environment Documentation][ref-doc-environment] - Variables seeded into Vault
-- [Configuration Documentation][ref-doc-configuration] - How the app reads `.env` at startup
-- [Third Party Integration Documentation][ref-doc-third-party-integration] - Other external services
+- [Installation Documentation][ref-doc-installation]: Docker setup (including the `vault` profile)
+- [Environment Documentation][ref-doc-environment]: Variables seeded into Vault
+- [Configuration Documentation][ref-doc-configuration]: How the app reads `.env` at startup
+- [Third Party Integration Documentation][ref-doc-third-party-integration]: Other external services
 
 ## Table of Contents
 
@@ -44,7 +56,9 @@ Optional [HashiCorp Vault][ref-vault] setup for **local development secret manag
 
 ## Scope
 
-Covers the bundled Vault config and the `vault:pull` workflow. The server is persistent and auto-unsealed, so the local flow resembles a real "authenticate, fetch, inject" pattern without the production machinery.
+- This page covers the bundled Vault config and the `vault:pull` workflow.
+- The server is persistent and auto-unsealed.
+- The local flow resembles a real "authenticate, fetch, inject" pattern without the production machinery.
 
 **Covered here:**
 - File-backed Vault server (persistent), auto-init + auto-unseal via the entrypoint.
@@ -111,7 +125,9 @@ Two containers (gated by the `vault` profile) plus one local script:
 
 ### `vault` service
 
-Defined in `docker-compose.yml`. Runs `ci/vault/entrypoint.sh` instead of `-dev` mode so data persists.
+- The local stack defines it in `docker-compose.yml`, which the table below describes.
+- `ci/docker-compose.production.yml` defines the same `vault` and `vault-bootstrap` services under the `vault` profile, with a pinned image and no published port.
+- Runs `ci/vault/entrypoint.sh` instead of `-dev` mode so data persists.
 
 | Property | Value |
 |---|---|
@@ -129,7 +145,8 @@ Defined in `docker-compose.yml`. Runs `ci/vault/entrypoint.sh` instead of `-dev`
 
 ### `vault-bootstrap` service
 
-One-shot provisioner (`ci/vault/bootstrap.sh`), then exits. Depends on the `vault` healthcheck, so it runs only after Vault is unsealed and `init.json` exists.
+- One-shot provisioner (`ci/vault/bootstrap.sh`), then exits.
+- Depends on the `vault` healthcheck, so it runs only after Vault is unsealed and `init.json` exists.
 
 `bootstrap.sh` (idempotent, safe on every boot):
 
@@ -140,23 +157,35 @@ One-shot provisioner (`ci/vault/bootstrap.sh`), then exits. Depends on the `vaul
    - Apply a read-only policy from `ci/vault/policies/<env>-ro.hcl` (one env path, no write, no cross-env access).
    - Create AppRole `ack-nestjs-boilerplate-<env>` with only that policy and a short token TTL.
    - Mint `role_id` + `secret_id`, persist to `generated/vault/<env>.approle`, so `vault:pull` authenticates without root.
-5. Seed `development` from `.env.example`, first run only (empty path). `production` and `staging` stay empty: a dev box must never hold real production secrets.
+5. Seed `development` from `.env.example`, first run only (empty path):
+   - `production` and `staging` stay empty.
+   - A dev box never holds real production secrets.
 
-Roles: bootstrap is the privileged **broker** (holds root, delivers scoped creds). `vault:pull` is a pure **consumer** that never touches root.
+Roles:
 
-Storage is persistent: re-seeding happens only when `development` is empty. Edits in Vault survive restarts.
+- Bootstrap is the privileged **broker** (holds root, delivers scoped creds).
+- `vault:pull` is a pure **consumer** that never touches root.
+
+Storage is persistent:
+
+- Re-seeding happens only when `development` is empty.
+- Edits in Vault survive restarts.
 
 ### `vault:pull` script
 
-`ci/vault/pull.sh`, exposed as `pnpm vault:pull`. The **producer**: pulls one env's secret and writes it to a local env file.
+- `ci/vault/pull.sh`, exposed as `pnpm vault:pull`.
+- The **producer**: pulls one env's secret and writes it to a local env file.
 
 ```bash
 sh ci/vault/pull.sh [ENV] [OUT]
 # ENV defaults to development, OUT defaults to .env
 ```
 
-- Resolves the KV path from `ENV`; runs auth + read **inside** the vault container via `docker compose exec` over `127.0.0.1:8200` (in-container loopback).
-- Reads the AppRole creds bootstrap minted to `generated/vault/<env>.approle` (no root), logs in for a **scoped, read-only token**, runs `kv get` with it. Mirrors production, where a workload holds delivered scoped creds, not root.
+- Resolves the KV path from `ENV`.
+- Runs auth + read **inside** the vault container via `docker compose exec` over `127.0.0.1:8200` (in-container loopback).
+- Reads the AppRole creds bootstrap minted to `generated/vault/<env>.approle`, never the root token.
+- Logs in for a **scoped, read-only token** and runs `kv get` with it.
+- Mirrors production, where a workload holds delivered scoped creds, not root.
 - Flattens `.data.data` to `key=value` via **Node** (already a dependency, no `jq`).
 - Writes a **temp file first**, then `mv` on success, so a failed fetch never truncates an existing env file.
 
@@ -205,7 +234,12 @@ Vault services start only with the `vault` profile:
 docker compose --profile vault up -d
 ```
 
-First boot: entrypoint inits + unseals, bootstrap provisions and seeds `development`. Confirm via logs:
+On first boot:
+
+- The entrypoint inits and unseals Vault.
+- Bootstrap provisions Vault and seeds `development`.
+
+Confirm through the logs:
 
 ```bash
 docker compose logs vault
@@ -229,7 +263,9 @@ pnpm vault:pull
 # vault:pull: wrote .env (env=development)
 ```
 
-`.env` now holds every key from the `development` secret. Target another env with explicit args:
+`.env` now holds every key from the `development` secret.
+
+Target another env with explicit args:
 
 ```bash
 sh ci/vault/pull.sh staging .env.staging
@@ -238,7 +274,7 @@ sh ci/vault/pull.sh staging .env.staging
 ### Step 3: Run the App
 
 > [!NOTE]
-> Vault only **produces** an env file. The app never talks to Vault at runtime; it reads the generated `.env`.
+> Vault only **produces** an env file. The app never talks to Vault at runtime. It reads the generated `.env`.
 
 Unchanged from here. The app reads `.env` as usual:
 
@@ -253,7 +289,17 @@ The seeded `development` secret copies `.env.example`. These fields are empty th
 - `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
 - `AUTH_TWO_FACTOR_ISSUER`
 
-Until those fields hold real values in Vault, `pnpm generate:secret --direct-insert` fills the keys, KIDs, and both encryption secrets in the pulled `.env`, and `AUTH_TWO_FACTOR_ISSUER` is set by hand; the next `pnpm vault:pull` overwrites that file again. The third-party fields (AWS, Firebase, social sign-in, Sentry) also arrive empty, and validation reads an empty value as unset, so those integrations stay off until their values are filled in. See [Installation][ref-doc-installation].
+Until those fields hold real values in Vault:
+
+- `pnpm generate:secret --direct-insert` fills the keys, KIDs, and both encryption secrets in the pulled `.env`.
+- `AUTH_TWO_FACTOR_ISSUER` is set by hand.
+- The next `pnpm vault:pull` overwrites that file again.
+
+The third-party fields:
+
+- AWS, Firebase, social sign-in, and Sentry fields also arrive empty.
+- Validation reads an empty value as unset, so those integrations stay off until their values are filled in.
+- See [Installation][ref-doc-installation].
 
 ### Reading the Root Token
 
@@ -272,7 +318,10 @@ Use the root token for the UI at `http://localhost:8200` (token auth) or the CLI
 ### Updating a Secret
 
 > [!NOTE]
-> Storage is persistent. The change survives restarts and is **not** re-seeded away on next boot. Re-seeding happens only when `development` is empty (a fresh volume).
+> Storage is persistent.
+>
+> - The change survives restarts.
+> - Re-seeding happens only when `development` is empty (a fresh volume), so the next boot does not overwrite the change.
 
 Update in Vault, then re-pull. Auth with the root token from `init.json`:
 
@@ -292,7 +341,10 @@ pnpm vault:pull
 ### Resetting Vault
 
 > [!WARNING]
-> Keep the data volume and `generated/vault/init.json` in sync. Delete the volume and the entrypoint re-inits, overwriting `init.json`. Delete `init.json` while the volume persists and auto-unseal fails (key gone).
+> Keep the data volume and `generated/vault/init.json` in sync.
+>
+> - Deleting the volume makes the entrypoint re-init and overwrite `init.json`.
+> - Deleting `init.json` while the volume persists makes auto-unseal fail, because the key is gone.
 
 Wipe all data and re-initialize (new unseal key + root token):
 
@@ -341,7 +393,8 @@ sequenceDiagram
 
 ## Configuration Reference
 
-The defaults are enough for local development. Override with environment variables when needed.
+- The defaults are enough for local development.
+- Override with environment variables when needed.
 
 | Variable | Used by | Default | Purpose |
 |---|---|---|---|

@@ -25,11 +25,11 @@ consumer
 
 ## Related Documents
 
-- [Authentication][ref-doc-authentication] - JWT, OAuth, API keys, sessions
-- [Authorization][ref-doc-authorization] - Guards and decorator stack
-- [Configuration][ref-doc-configuration] - Request, CORS, and throttle config
-- [Environment][ref-doc-environment] - CORS, proxy, and related env vars
-- [Cache][ref-doc-cache] - Redis client used by rate limiting
+- [Authentication][ref-doc-authentication]: JWT, OAuth, API keys, sessions
+- [Authorization][ref-doc-authorization]: Guards and decorator stack
+- [Configuration][ref-doc-configuration]: Request, CORS, and throttle config
+- [Environment][ref-doc-environment]: CORS, proxy, and related env vars
+- [Cache][ref-doc-cache]: Redis client used by rate limiting
 
 ## Table of Contents
 
@@ -61,8 +61,8 @@ consumer
 
 Guards and sessions are not middleware. See:
 
-- [Authentication][ref-doc-authentication] - JWT, OAuth, API keys, sessions, passwords
-- [Authorization][ref-doc-authorization] - RBAC, policies, user protection
+- [Authentication][ref-doc-authentication]: JWT, OAuth, API keys, sessions, passwords
+- [Authorization][ref-doc-authorization]: RBAC, policies, user protection
 
 ## Helmet
 
@@ -72,9 +72,12 @@ Applies protective HTTP headers using [Helmet][ref-helmet].
 
 **Usage:** Automatically applied to all routes.
 
-Routes behind this chain answer with JSON or a file download (CSV or PDF via `ResponseFileInterceptor`, `Content-Disposition: attachment`). Neither is a browsing document, so `use` builds an explicit Helmet options object and runs `helmet(options)` on every request. Headers a browsing context acts on are off. Headers that still apply to a JSON body or an attachment are on, written in that same object rather than left to Helmet defaults.
+- Routes behind this chain answer with JSON or a file download (CSV or PDF via `ResponseFileInterceptor`, `Content-Disposition: attachment`).
+- Neither is a browsing document, so `use` builds an explicit Helmet options object and runs `helmet(options)` on every request.
+- Headers a browsing context acts on are off.
+- Headers that still apply to a JSON body or an attachment are on, written in that same object rather than left to Helmet defaults.
 
-**On; set in the options object:**
+**On, set in the options object:**
 
 | Header | Value | Option |
 |---|---|---|
@@ -87,7 +90,7 @@ Routes behind this chain answer with JSON or a file download (CSV or PDF via `Re
 
 `X-Download-Options: noopen` is on because file routes return the bytes as an attachment.
 
-**Off; set to `false` in the same object:**
+**Off, set to `false` in the same object:**
 
 - `contentSecurityPolicy`
 - `crossOriginOpenerPolicy`
@@ -98,9 +101,17 @@ Routes behind this chain answer with JSON or a file download (CSV or PDF via `Re
 
 Each governs how a browser renders a document, and none of them changes how a client handles a JSON body or an attachment download.
 
-`Strict-Transport-Security` is the one directive driven by config: `request.helmet.maxAgeInSeconds` (365 days) is the `max-age`, and `request.helmet.includeSubDomains` and `request.helmet.preload` decide whether each directive is appended. See [Configuration][ref-doc-configuration].
+`Strict-Transport-Security` is the one directive driven by config:
 
-`X-Powered-By` appears on no response. Express is told not to write it in `src/main.ts`. The Helmet options object sets `xPoweredBy: false`, so Helmet leaves that header alone:
+- `request.helmet.maxAgeInSeconds` (365 days) is the `max-age`.
+- `request.helmet.includeSubDomains` and `request.helmet.preload` decide whether each directive is appended.
+
+See [Configuration][ref-doc-configuration].
+
+`X-Powered-By` appears on no response:
+
+- Express is told not to write it in `src/main.ts`.
+- The Helmet options object sets `xPoweredBy: false`, so Helmet leaves that header alone.
 
 ```typescript
 app.getHttpAdapter().getInstance<Express>().disable('x-powered-by');
@@ -108,20 +119,26 @@ app.getHttpAdapter().getInstance<Express>().disable('x-powered-by');
 
 ## Trusted Proxy and Client IP
 
-Express `trust proxy` is set once at boot in `src/main.ts` from `app.http.trustedProxy`, which reads the optional `HTTP_TRUSTED_PROXY` environment variable.
+- Express `trust proxy` is set once at boot in `src/main.ts` from `app.http.trustedProxy`.
+- That config key reads the optional `HTTP_TRUSTED_PROXY` environment variable.
 
 ```typescript
 app.getHttpAdapter().getInstance<Express>().set('trust proxy', trustedProxy);
 ```
 
-The value is a **trusted-network list**: `proxy-addr` preset names (`loopback`, `linklocal`, `uniquelocal`) or explicit CIDRs, comma-separated. It is never a hop count and never `true`.
-
+- The value is a **trusted-network list**: `proxy-addr` preset names (`loopback`, `linklocal`, `uniquelocal`) or explicit CIDRs, comma-separated.
+- It is never a hop count and never `true`.
 - **Unset or empty** resolves to `null`, which trusts no proxy. `req.ip` is then the direct socket peer and no client can forge it through `X-Forwarded-For`.
 - **A deployment behind a CDN or edge proxy that connects from a public address depends on that provider's CIDRs being listed.** Without them the proxy stays untrusted, `req.ip` is the proxy's own address, and every client behind it collapses into a single rate-limit bucket.
 
-Only `req.ip` is consulted. `req.ips` is not read anywhere in the codebase.
+Only `req.ip` is consulted.
 
-> The request log (`ipAddress` under `RequestLogStoreKey`) is resolved separately by `RequestUtil.buildRequestLog(req)` through `@supercharge/request-ip`, which reads forwarding headers directly and is not governed by `trust proxy`. The two values can differ. See [Request Store](#request-store).
+`req.ips` is not read anywhere in the codebase.
+
+> - `RequestUtil.buildRequestLog(req)` resolves the request log (`ipAddress` under `RequestLogStoreKey`) separately, through `@supercharge/request-ip`.
+> - That library reads forwarding headers directly and is not governed by `trust proxy`, so the two values can differ.
+>
+> See [Request Store](#request-store).
 
 **Configuration:** See [Environment][ref-doc-environment]
 
@@ -145,15 +162,18 @@ Route tiers are the members of `EnumRequestThrottleRoute`:
 | `moderate` | 20 / 60s |
 | `relaxed` | 60 / 60s |
 
-Every limit lives in `request.config.ts`. A decorator carries a switch or a tier name, never a number.
-
-`default.limit` (300) sits above `user.limit` (100). The per-IP limiter is checked first on every request, so with the two limits equal or inverted a client on a single address always trips the IP bucket first and its per-user limit stops meaning anything.
+- Every limit lives in `request.config.ts`.
+- A decorator carries a switch or a tier name, never a number.
+- `default.limit` (300) sits above `user.limit` (100).
+    - The per-IP limiter is checked first on every request.
+    - With the two limits equal or inverted, a client on a single address always trips the IP bucket first, and its per-user limit stops meaning anything.
 
 **Default (per IP, global):**
 
 - `RequestThrottleDefaultGuard` is one of the two `APP_GUARD` providers registered by `RequestMiddlewareModule`
 - It enforces the single library throttler, explicitly named `default`
-- Tracker is the client IP; applies to every route with no opt-in
+- Tracker is the client IP
+- It applies to every route with no opt-in
 - The library's `@SkipThrottle()` appears nowhere in this codebase, so the global limiter is the floor every endpoint sits on
 
 **Opt-in (`user` and `route`):** enforcement is split across two phases:
@@ -163,7 +183,10 @@ Every limit lives in `request.config.ts`. A decorator carries a switch or a tier
 - Both read the decorator's metadata off the handler
 - The `route` limiter is evaluated first because every global guard runs before every interceptor, so a request rejected by the endpoint limit never touches the personal counter
 
-Being a global guard also puts the `route` limiter ahead of controller-level and route-level guards, which run later. A route tier therefore rejects before `@ApiKeyProtected()`, `@FeatureFlagProtected()`, and the social-login guards do any work: `POST /login/social/google` and `/login/social/apple` carry the `strict` tier, so the limiter gates the outbound provider verification instead of following it.
+Being a global guard also puts the `route` limiter ahead of controller-level and route-level guards, which run later.
+
+- A route tier therefore rejects before `@ApiKeyProtected()`, `@FeatureFlagProtected()`, and the social-login guards do any work.
+- `POST /login/social/google` and `/login/social/apple` carry the `strict` tier, so the limiter gates the outbound provider verification instead of following it.
 
 Both opt-in limiters run through `RequestThrottleService.evaluate()` (`src/common/request/services/request.throttle.service.ts`), the single place that:
 
@@ -172,7 +195,10 @@ Both opt-in limiters run through `RequestThrottleService.evaluate()` (`src/commo
 - raises `ThrottlerException`
 - writes the `X-RateLimit-*` trio
 
-Their responses are therefore identical in shape. `RequestThrottleStorageService.increment()` does the counting and always resolves with a record, so `evaluate()` branches on `isBlocked` alone and a storage failure arrives there as an unblocked record.
+Their responses are therefore identical in shape.
+
+- `RequestThrottleStorageService.increment()` does the counting and always resolves with a record.
+- `evaluate()` therefore branches on `isBlocked` alone, and a storage failure arrives there as an unblocked record.
 
 Every handler carrying `@AuthJwtAccessProtected()` or `@AuthJwtRefreshProtected()` also carries `@RequestThrottle({ user: true })`:
 
@@ -199,15 +225,32 @@ async changePassword(
 }
 ```
 
-Decorator order is irrelevant. `@RequestThrottle` writes metadata and mounts an interceptor; the metadata is read by a global guard for the `route` tier, and the interceptor runs after every guard for the `user` switch, so the `user` limiter always sees the verified `req.user` wherever the decorator sits in the stack.
+Decorator order is irrelevant:
 
-**Tracker resolution:** both guards take `req.ip`, validate it with `net.isIP()`, and fall back to `req.socket.remoteAddress` when it is not an address (`RequestUtil.resolveThrottleTrackerIp`). A non-address `X-Forwarded-For` token therefore cannot become a Redis key segment. See [Trusted Proxy and Client IP](#trusted-proxy-and-client-ip). The `user` limiter never reads the client address.
+- `@RequestThrottle` writes metadata and mounts an interceptor.
+- A global guard reads the metadata for the `route` tier.
+- The interceptor runs after every guard for the `user` switch, so the `user` limiter always sees the verified `req.user` wherever the decorator sits in the stack.
 
-The `route` tracker is a composite rather than a bare IP: `{tier}:{ControllerClass}.{handlerName}:{ip}`. The `user` tracker is the bare `userId`.
+**Tracker resolution:**
 
-**Storage:** `RequestThrottleStorageService` (`implements ThrottlerStorage`) is the store for all three limiters. It runs a single Lua script per check in one round-trip against the **shared cache Redis connection** through `RedisClientCachedProvider`. It does not open a second connection. Cache lives on Redis `db:0`, and the throttler reuses that same connection.
+- Both guards take `req.ip`, validate it with `net.isIP()`, and fall back to `req.socket.remoteAddress` when it is not an address (`RequestUtil.resolveThrottleTrackerIp`).
+- A non-address `X-Forwarded-For` token therefore cannot become a Redis key segment. See [Trusted Proxy and Client IP](#trusted-proxy-and-client-ip).
+- The `user` limiter never reads the client address.
+- The `route` tracker is a composite rather than a bare IP: `{tier}:{ControllerClass}.{handlerName}:{ip}`.
+- The `user` tracker is the bare `userId`.
 
-The algorithm is an **exact sliding window log**, not a fixed window. Each allowed request is appended to a sorted set scored by the Redis clock (`redis.call('TIME')`, never the Node clock), and entries older than the window are trimmed on every check. A rejected request is NOT recorded, so a client hammering a blocked endpoint cannot push its own window forward. When the limit is breached the script sets the block key for `blockDurationInMs`; while that key exists every further request short-circuits with the block's remaining time and no counting happens.
+**Storage:** `RequestThrottleStorageService` (`implements ThrottlerStorage`) is the store for all three limiters.
+
+- It runs a single Lua script per check in one round-trip against the **shared cache Redis connection** through `RedisClientCachedProvider`.
+- It does not open a second connection. Cache lives on Redis `db:0`, and the throttler reuses that same connection.
+
+The algorithm is an **exact sliding window log**, not a fixed window:
+
+- Each allowed request is appended to a sorted set scored by the Redis clock (`redis.call('TIME')`, never the Node clock).
+- Entries older than the window are trimmed on every check.
+- A rejected request is NOT recorded, so a client hammering a blocked endpoint cannot push its own window forward.
+- When the limit is breached, the script sets the block key for `blockDurationInMs`.
+- While that key exists, every further request short-circuits with the block's remaining time and no counting happens.
 
 Durations are converted to **seconds** at the service boundary, so every field of the returned record is in seconds.
 
@@ -235,7 +278,12 @@ Request:Throttle:Block:{name}:{tracker}   # active block
 Request:Throttle:Seq:{name}:{tracker}     # sequence counter, makes log members unique
 ```
 
-**Response headers.** The `default` limiter emits the unsuffixed trio; the `route` guard emits the `-route` suffixed trio and the `user` interceptor the `-user` one. `Retry-After` is unsuffixed on every path and is expressed in **seconds**.
+**Response headers.**
+
+- The `default` limiter emits the unsuffixed trio.
+- The `route` guard emits the `-route` suffixed trio.
+- The `user` interceptor emits the `-user` trio.
+- `Retry-After` is unsuffixed on every path and is expressed in **seconds**.
 
 | Header | Written when |
 |---|---|
@@ -244,11 +292,17 @@ Request:Throttle:Seq:{name}:{tracker}     # sequence counter, makes log members 
 | `X-RateLimit-Limit-user`, `X-RateLimit-Remaining-user`, `X-RateLimit-Reset-user` | the handler carries `user: true`, the request is authenticated, and it passes |
 | `Retry-After` | any limiter blocks the request (the 429 response) |
 
-All ten are listed in `request.cors.exposedHeader` and emitted as `Access-Control-Expose-Headers`, so a browser client can read them cross-origin. See [CORS](#cors).
+- All ten are listed in `request.cors.exposedHeader` and emitted as `Access-Control-Expose-Headers`, so a browser client can read them cross-origin.
+- See [CORS](#cors).
 
 **Breach response:** the blocking limiter throws `ThrottlerException`, a framework `HttpException`, so `AppHttpFilter` builds the envelope. See [Handling Error][ref-doc-handling-error].
 
-**Fail-open (uniform):** any Redis trouble (connection failure, a malformed or non-array reply, a non-numeric value, or any caught error) is logged inside `RequestThrottleStorageService.increment()`, which returns a zero-hit unblocked record, and the request is allowed. All three limiters read that record, so throttling returns no 500 on any path. While Redis is unreachable there is no rate limiting at all: availability wins over enforcement.
+**Fail-open (uniform):**
+
+- Any Redis trouble (connection failure, a malformed or non-array reply, a non-numeric value, or any caught error) is logged inside `RequestThrottleStorageService.increment()`.
+- `increment()` returns a zero-hit unblocked record, and the request is allowed.
+- All three limiters read that record, so throttling returns no 500 on any path.
+- While Redis is unreachable there is no rate limiting at all: availability wins over enforcement.
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
@@ -263,35 +317,38 @@ Manages cross-origin resource sharing (CORS): origin matching with wildcard subd
 - Matches an origin by exact hostname, wildcard subdomain, or explicit port
 - Allows credentials unless the configured origins include the wildcard `*`
 - Takes the allowed methods and request headers from config
-- Emits `request.cors.exposedHeader` as `Access-Control-Expose-Headers`; it carries `Retry-After`, all nine `X-RateLimit-*` variants, and `x-custom-lang`, `x-timestamp`, `x-timezone`, `x-version`, `x-repo-version`, `x-request-id`, and `x-correlation-id`, so a browser client can read its rate-limit state and the response metadata headers cross-origin. See [Rate Limiting](#rate-limiting)
+- Emits `request.cors.exposedHeader` as `Access-Control-Expose-Headers`, so a browser client can read its rate-limit state and the response metadata headers cross-origin. See [Rate Limiting](#rate-limiting). The list carries:
+    - `Retry-After`
+    - all nine `X-RateLimit-*` variants
+    - `x-custom-lang`, `x-timestamp`, `x-timezone`, `x-version`, `x-repo-version`, `x-request-id`, and `x-correlation-id`
 - Builds both header lists from the header-name constants (`RequestCustomLangHeaderName`, `RequestIdHeaderName`, `ResponseTimestampHeaderName`, `ApiKeyHeaderName`, and the rest)
 - Answers OPTIONS preflight requests with `204` and `max-age` 86400 seconds
 - Accepts a single string, an array of origins, a boolean (`true` allows all, `false` denies all), or the wildcard `*`
 
 **Origin Matching Rules:**
 
-1. **Exact Match**; Hostname and port must match exactly
+1. **Exact Match**: Hostname and port match exactly
    ```bash
    Pattern: example.com
    Allowed: http://example.com, https://example.com
    Denied: http://sub.example.com, http://example.com:3000
    ```
 
-2. **With Explicit Port**; Port must match exactly
+2. **With Explicit Port**: The port matches exactly
    ```bash
    Pattern: api.example.com:3000
    Allowed: http://api.example.com:3000, https://api.example.com:3000
    Denied: http://api.example.com (default port), http://api.example.com:8080
    ```
 
-3. **Wildcard Subdomain**; Matches any subdomain (including base domain)
+3. **Wildcard Subdomain**: Matches any subdomain (including base domain)
    ```bash
    Pattern: *.example.com
    Allowed: http://api.example.com, https://app.example.com, http://example.com
    Denied: http://api.myexample.com, http://example.org
    ```
 
-4. **Universal Match**; Allow all origins
+4. **Universal Match**: Allow all origins
    ```bash
    Pattern: *
    Allowed: Any origin
@@ -317,7 +374,8 @@ Restricts endpoint access based on environment.
 @RequestEnvProtected(EnumAppEnvironment.development)
 ```
 
-`RequestEnvProtected` takes one or more `EnumAppEnvironment` values. No controller stacks it.
+- `RequestEnvProtected` takes one or more `EnumAppEnvironment` values.
+- No controller stacks it.
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
@@ -338,9 +396,19 @@ export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Omit<
 }
 ```
 
-`RequestRequestIdMiddleware` assigns `req.id` with UUID v7, copies it to the `x-request-id` header, and writes both `req.id` and `req.correlationId` into the request store. `correlationId` reuses inbound `x-correlation-id` when that header is a string; otherwise it is a new UUID v7.
+`RequestRequestIdMiddleware`:
 
-`id` and `correlationId` are dual-written: they stay on `req` (read by filters, interceptors, and pino `genReqId`) and are also written to the request store under `RequestIdStoreKey` / `RequestCorrelationIdStoreKey` for ambient deep access. See [Request Store](#request-store).
+- assigns `req.id` with UUID v7
+- copies it to the `x-request-id` header
+- writes both `req.id` and `req.correlationId` into the request store
+- reuses inbound `x-correlation-id` as `correlationId` when that header is a string, and otherwise generates a new UUID v7
+
+`id` and `correlationId` are dual-written:
+
+- They stay on `req` (read by filters, interceptors, and pino `genReqId`).
+- They are also written to the request store under `RequestIdStoreKey` / `RequestCorrelationIdStoreKey` for ambient deep access.
+
+See [Request Store](#request-store).
 
 ## Body Parser
 
@@ -369,7 +437,11 @@ Extracts API version from URLs.
 Example: /api/v1/shared/user/profile/get
 ```
 
-**Storage:** the resolved version is written to the request store under `RequestVersionStoreKey` (not on `req`). Response interceptors and exception filters read it from the store, falling back to config `app.urlVersion.version`. See [Request Store](#request-store).
+**Storage:**
+
+- The resolved version is written to the request store under `RequestVersionStoreKey` (not on `req`).
+- Response interceptors and exception filters read it from the store, falling back to config `app.urlVersion.version`.
+- See [Request Store](#request-store).
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
@@ -385,7 +457,12 @@ Processes `x-custom-lang` header for internationalization.
 x-custom-lang: id
 ```
 
-**Storage:** the validated language is written to the request store under `RequestLanguageStoreKey` (not on `req`); the `x-custom-lang` request header is also synced to the resolved value. Response interceptors and exception filters read it from the store, falling back to config `message.language`. See [Request Store](#request-store).
+**Storage:**
+
+- The validated language is written to the request store under `RequestLanguageStoreKey` (not on `req`).
+- The `x-custom-lang` request header is also synced to the resolved value.
+- Response interceptors and exception filters read it from the store, falling back to config `message.language`.
+- See [Request Store](#request-store).
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
@@ -401,7 +478,10 @@ Processes the `x-workspace-id` header for workspace scoping.
 x-workspace-id: 6650f0c5a1b2c3d4e5f60718
 ```
 
-**Storage:** the raw header value (header name `RequestWorkspaceIdHeaderName`) is written to the request store under `RequestWorkspaceIdStoreKey`, or `null` when the header is absent or not a string. The middleware never validates the id; `WorkspaceGuard` resolves and validates it later.
+**Storage:**
+
+- The raw header value (header name `RequestWorkspaceIdHeaderName`) is written to the request store under `RequestWorkspaceIdStoreKey`, or `null` when the header is absent or not a string.
+- The middleware never validates the id. `WorkspaceGuard` resolves and validates it later.
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
@@ -430,7 +510,7 @@ Prevents long-running requests.
 
 **Implementation:** `RequestTimeoutInterceptor`
 
-**Global Registration:** provided as an `APP_INTERCEPTOR` by `RequestModule.forRoot()`, alongside `RequestActorInterceptor` and the global `RequestSchemaValidationPipe`.
+**Global Registration:** `RequestModule.forRoot()` provides it as an `APP_INTERCEPTOR`, alongside `RequestActorInterceptor` and the global `RequestSchemaValidationPipe`.
 ```typescript
 {
   provide: APP_INTERCEPTOR,
@@ -448,7 +528,11 @@ Photo upload (`POST /shared/user/profile/photo/upload`) and user import (`POST /
 
 ## Request Store
 
-Per-request ambient metadata is carried in the generic `RequestStoreService` (`src/common/request`), backed by `nestjs-cls` (AsyncLocalStorage). Services, interceptors, and filters read it via `get<T>(key)`. Repositories never read the store; the caller reads the request log and threads it to the repository as the last method parameter (`requestLog: IRequestLog`).
+Per-request ambient metadata is carried in the generic `RequestStoreService` (`src/common/request`), backed by `nestjs-cls` (AsyncLocalStorage).
+
+- Services, interceptors, and filters read it via `get<T>(key)`.
+- Repositories never read the store.
+- The caller reads the request log and threads it to the repository as the last method parameter (`requestLog: IRequestLog`).
 
 **Keys (`request.constant.ts`):**
 
@@ -479,11 +563,25 @@ Feature modules own the rest of the keys, each declared in its own `constants/` 
 | `ActivityLogStageStoreKey` | `ActivityLogDomain.stagePrepared` | the staged activity events of the request |
 | `PaginationStoreKey` | HTTP services via `PaginationQueryUtil` `storePatch` | the response-metadata block `ResponsePaginationInterceptor` emits |
 
-**Request log (`RequestLogStoreKey`):** `userAgent`, `ipAddress`, and `geoLocation` are resolved once per request by the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), called from `RequestRequestLogMiddleware`. `ActivityLogDomain.flushStaged` reads `get<IRequestLog>(RequestLogStoreKey)` when it writes the staged rows, and throws `ActivityLogContractInvalidException` when the key is absent (the interceptor logs it). `UserLoginDomain` reads the same key with a non-null assertion (no fallback object) and threads the `IRequestLog` to the session and device writes, since the middleware always populates the key before any handler runs. Nothing recomputes ua/ip/geo. `IRequestLog` declares all three fields as present: `ipAddress` and `geoLocation` are `null` when unresolved, never absent. The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators each read one fixed field of that entry and take no argument. See [Store Parameter Decorators](#store-parameter-decorators).
+**Request log (`RequestLogStoreKey`):**
 
-`ClsModule.forRoot({ global: true, middleware: { mount: true } })` is registered in `RequestModule` (before `RequestMiddlewareModule`), so `ClsMiddleware` mounts the store before any request middleware writes to it. Each writer middleware sets only its own key.
+- `RequestRequestLogMiddleware` calls the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), which resolves `userAgent`, `ipAddress`, and `geoLocation` once per request.
+- `ActivityLogDomain.flushStaged` reads `get<IRequestLog>(RequestLogStoreKey)` when it writes the staged rows. It throws `ActivityLogContractInvalidException` when the key is absent (the interceptor logs it).
+- `UserLoginDomain` reads the same key with a non-null assertion (no fallback object) and threads the `IRequestLog` to the session and device writes, since the middleware always populates the key before any handler runs.
+- Nothing recomputes ua/ip/geo.
+- `IRequestLog` declares all three fields as present: `ipAddress` and `geoLocation` are `null` when unresolved, never absent.
+- The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators each read one fixed field of that entry and take no argument. See [Store Parameter Decorators](#store-parameter-decorators).
 
-**Queue boundary exception:** the new-device-login BullMQ job carries `requestLog` explicitly on its payload (`INotificationNewDeviceLoginPayload.requestLog`), snapshotted at enqueue time. A worker runs outside any HTTP request, so no CLS store is active there, and the value crosses the boundary as data.
+`ClsModule.forRoot({ global: true, middleware: { mount: true } })` is registered in `RequestModule` (before `RequestMiddlewareModule`).
+
+- `ClsMiddleware` therefore mounts the store before any request middleware writes to it.
+- Each writer middleware sets only its own key.
+
+**Queue boundary exception:**
+
+- The new-device-login BullMQ job carries `requestLog` explicitly on its payload (`INotificationNewDeviceLoginPayload.requestLog`), snapshotted at enqueue time.
+- A worker runs outside any HTTP request, so no CLS store is active there.
+- The value crosses the boundary as data.
 
 ## Decorators
 
@@ -507,7 +605,8 @@ Restricts endpoint access based on environment.
 RequestEnvProtected(...envs: EnumAppEnvironment[]): MethodDecorator
 ```
 
-Takes one or more `EnumAppEnvironment` values. No controller stacks it.
+- Takes one or more `EnumAppEnvironment` values.
+- No controller stacks it.
 
 ### @RequestThrottle
 
@@ -538,15 +637,20 @@ async profile(
 }
 ```
 
-- **Method decorator only.** The return type is `MethodDecorator`, so placing it above a `@Controller` class is a TypeScript error, not a convention. Both readers take the metadata off `context.getHandler()` alone, so class-level options would be invisible even if the typing allowed them.
-- **One call per handler.** A route needing both switches writes them in the same call: `@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })`. Two separate calls on one handler make the second `SetMetadata` overwrite the first and silently drop a switch.
-- **Position is free.** The `route` tier is read by a global guard and the `user` switch by an interceptor that runs after every guard, so neither depends on where the decorator sits.
+- **Method decorator only.**
+    - The return type is `MethodDecorator`, so placing it above a `@Controller` class is a TypeScript error, not a convention.
+    - Both readers take the metadata off `context.getHandler()` alone, so class-level options would be invisible even if the typing allowed them.
+- **One call per handler.**
+    - A route needing both switches writes them in the same call: `@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })`.
+    - Two separate calls on one handler make the second `SetMetadata` overwrite the first and silently drop a switch.
+- **Position is free.** A global guard reads the `route` tier and an interceptor that runs after every guard reads the `user` switch, so neither depends on where the decorator sits.
 
 See [Rate Limiting](#rate-limiting).
 
 ### Store Parameter Decorators
 
-Each store reader is a `createParamDecorator` factory declared in the module that owns its store key. It reaches the CLS store through `ClsServiceManager.getClsService()` at resolution time, so it holds no injected dependency and needs no pipe.
+- Each store reader is a `createParamDecorator` factory declared in the module that owns its store key.
+- It reaches the CLS store through `ClsServiceManager.getClsService()` at resolution time, so it holds no injected dependency and needs no pipe.
 
 **Signature**, with `Model` the type behind the store key:
 
@@ -554,8 +658,12 @@ Each store reader is a `createParamDecorator` factory declared in the module tha
 StoreReader<K extends Extract<keyof Model, string>>(field?: K): ParameterDecorator
 ```
 
-- Without `field`, the decorator returns the whole stored value; with `field`, it returns that property, typed as a key of the model and non-nullable.
-- Every reader fails fast. An empty store key, or a `field` whose value is `null` or `undefined`, throws `RequestContextMissingException` (500, `50304`, message `request.error.contextMissing`). `@PolicyCurrent()` takes no field and accepts an empty list, which is what a `superAdmin` carries. The key name travels only in the exception's `rawError` and never reaches the response body. A missing value means the guard or middleware that writes the key did not run on the route.
+- Without `field`, the decorator returns the whole stored value. With `field`, it returns that property, typed as a key of the model and non-nullable.
+- Every reader fails fast.
+    - An empty store key, or a `field` whose value is `null` or `undefined`, throws `RequestContextMissingException` (500, `50304`, message `request.error.contextMissing`).
+    - `@PolicyCurrent()` takes no field and accepts an empty list, which is what a `superAdmin` carries.
+    - The key name travels only in the exception's `rawError` and never reaches the response body.
+    - A missing value means the guard or middleware that writes the key did not run on the route.
 - A handler parameter therefore takes the non-null type, as in `@UserCurrent() user: IUser`.
 
 | Decorator | Reads | Store key | Written by |
@@ -570,9 +678,8 @@ StoreReader<K extends Extract<keyof Model, string>>(field?: K): ParameterDecorat
 | `@ProjectCurrent(field?)` | `Project` | `ProjectStoreKey` | `ProjectGuard` |
 | `@ProjectMemberCurrent(field?)` | `ProjectMember` | `ProjectMemberStoreKey` | `ProjectMemberGuard`, bound by the role-less `@ProjectMemberProtected()` |
 
-`@ProjectMemberCurrent()` is valid only on a route carrying the role-less `@ProjectMemberProtected()`. The role form binds `ProjectRoleGuard` instead, which stores no member row, so the read throws there.
-
-`@AuthJwtPayload<T, K>(field?)` reads `request.user` rather than the store, and fails the same way: an empty `request.user`, or a missing field on it, throws `RequestContextMissingException`. See [Authentication][ref-doc-authentication].
+- `@ProjectMemberCurrent()` is valid only on a route carrying the role-less `@ProjectMemberProtected()`. The role form binds `ProjectRoleGuard` instead, which stores no member row, so the read throws there.
+- `@AuthJwtPayload<T, K>(field?)` reads `request.user` rather than the store, and fails the same way: an empty `request.user`, or a missing field on it, throws `RequestContextMissingException`. See [Authentication][ref-doc-authentication].
 
 
 <!-- REFERENCES -->

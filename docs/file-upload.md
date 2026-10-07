@@ -1,23 +1,28 @@
 # File Upload and Presign Documentation
 
-File upload lives in `src/common/file`. S3 lives in `src/common/aws`.
+- File upload lives in `src/common/file`.
+- S3 lives in `src/common/aws`.
 
 ## Overview
 
 Two upload transports:
 
-- Multipart through the API: decorators, pipes, and services for single and multiple uploads, file validation, and CSV processing. Bytes travel as `multipart/form-data` to the Nest controller, then the domain writes to S3 with `AwsS3Service.putItem`.
-- Presign: the client uploads or downloads with a time-limited S3 URL. The API issues the URL and, for uploads, later records the object key. Bytes never pass through the Nest process on the PUT/GET to S3.
+- Multipart through the API: decorators, pipes, and services for single and multiple uploads, file validation, and CSV processing.
+    - Bytes travel as `multipart/form-data` to the Nest controller.
+    - The domain then writes to S3 with `AwsS3Service.putItem`.
+- Presign: the client uploads or downloads with a time-limited S3 URL.
+    - The API issues the URL and, for uploads, later records the object key.
+    - Bytes never pass through the Nest process on the PUT/GET to S3.
 
 ## Related Documents
 
-- [Request Validation Documentation][ref-doc-request-validation] - Request schemas and pipes
-- [Handling Error Documentation][ref-doc-handling-error] - Upload exceptions
-- [Language Message Documentation][ref-doc-message] - i18n for upload errors
-- [Doc Documentation][ref-doc-doc] - OpenAPI for multipart and presign routes
-- [Third Party Integration][ref-doc-third-party] - S3 credentials, the unconfigured state, bucket setup
-- [Environment Documentation][ref-doc-environment] - `AWS_S3_*` variables
-- [Term Policy Documentation][ref-doc-term-policy] - Admin content GET and content upload that use presign
+- [Request Validation Documentation][ref-doc-request-validation]: Request schemas and pipes
+- [Handling Error Documentation][ref-doc-handling-error]: Upload exceptions
+- [Language Message Documentation][ref-doc-message]: i18n for upload errors
+- [Doc Documentation][ref-doc-doc]: OpenAPI for multipart and presign routes
+- [Third Party Integration][ref-doc-third-party]: S3 credentials, the unconfigured state, bucket setup
+- [Environment Documentation][ref-doc-environment]: `AWS_S3_*` variables
+- [Term Policy Documentation][ref-doc-term-policy]: Admin content GET and content upload that use presign
 
 ## Table of Contents
 
@@ -57,13 +62,21 @@ The defaults come from `src/common/file/constants/file.constant.ts`:
 - `FileSizeInBytes` is `bytes('10mb')`
 - `FileMaxMultiple` is `3`
 
-The `options` argument on every decorator is itself optional, but `IFileUploadSingle` and `IFileUploadMultiple` declare their fields as required. Pass the whole object or none of it.
+The `options` argument on every decorator is itself optional, but `IFileUploadSingle` and `IFileUploadMultiple` declare their fields as required.
 
-Each decorator also emits multipart OpenAPI (`ApiConsumes('multipart/form-data')` plus a binary `ApiBody` from the field name(s)) and the upload error kit from `DocFileErrorResponses` in `src/common/doc/constants/doc.constant.ts`. Flow: [Doc Documentation][ref-doc-doc].
+Pass the whole object or none of it.
+
+Each decorator also emits:
+
+- multipart OpenAPI (`ApiConsumes('multipart/form-data')` plus a binary `ApiBody` from the field name(s))
+- the upload error kit from `DocFileErrorResponses` in `src/common/doc/constants/doc.constant.ts`
+
+Flow: [Doc Documentation][ref-doc-doc].
 
 ### FileUploadSingle
 
-Handles single file upload with configurable field name and size limits. It also caps the request at one file.
+- Handles single file upload with configurable field name and size limits.
+- It caps the request at one file.
 
 **Parameters:**
 - `options.field`: Field name in form-data (default when `options` is omitted: `'file'`)
@@ -113,7 +126,11 @@ The global `limits.files` is the sum of the declared per-field `maxFiles`, so th
 
 ### Upload Transport Errors
 
-All three decorators compose `FileUploadErrorInterceptor` (`src/common/file/interceptors/file.upload-error.interceptor.ts`) outermost, ahead of the multer interceptor it wraps. Multer and busboy signal a limit failure as a framework `HttpException` carrying a fixed message; the interceptor matches that message against Nest's `multerExceptions` / `busboyExceptions` and rethrows a typed file exception. The client message comes from the exception's own path (`file.error.exceedMaxSizeUpload`, …), not from a second catalog.
+All three decorators compose `FileUploadErrorInterceptor` (`src/common/file/interceptors/file.upload-error.interceptor.ts`) outermost, ahead of the multer interceptor it wraps.
+
+- Multer and busboy signal a limit failure as a framework `HttpException` carrying a fixed message.
+- The interceptor matches that message against Nest's `multerExceptions` / `busboyExceptions` and rethrows a typed file exception.
+- The client message comes from the exception's own path (`file.error.exceedMaxSizeUpload`, …), not from a second catalog.
 
 | Condition | Framework message | Exception | statusCode | HTTP |
 |---|---|---|---|---|
@@ -122,11 +139,13 @@ All three decorators compose `FileUploadErrorInterceptor` (`src/common/file/inte
 | A file arrives on a field the route did not declare, or past that field's `maxFiles` | `Unexpected field` | `FileFieldUnexpectedException` | 50108 | 422 |
 | A malformed multipart body, or a part / field / nesting limit | `Multipart: Boundary not found`, `Too many parts`, `Field name too long`, and the rest of Nest's multipart messages | `FileMultipartInvalidException` | 50109 | 422 |
 
-The framework appends ` - <field>` to several of those messages, so the interceptor matches on the segment before the first ` - `. A message outside the table passes through untouched.
+- The framework appends the field name to several of those messages after a space, a hyphen, and a space. The interceptor matches on the text before the first such separator.
+- A message outside the table passes through untouched.
 
 ## Enums
 
-File extension enums for validation. These enums are used with `FileExtensionPipe` to restrict allowed file types for uploads.
+- File extension enums for validation.
+- These enums are used with `FileExtensionPipe` to restrict allowed file types for uploads.
 
 ### Available Enums
 
@@ -156,17 +175,30 @@ File extension enums for validation. These enums are used with `FileExtensionPip
 
 ### FileExtensionPipe
 
-A mixin pipe built by `FileExtensionPipe(allowedExtensions)`. The declared extension and the bytes both have to agree with the allow-list. The pipe returns the value untouched; it never rewrites it.
+A mixin pipe built by `FileExtensionPipe(allowedExtensions)`.
+
+- The declared extension and the bytes both agree with the allow-list.
+- The pipe returns the value untouched.
 
 For each file:
 
-1. The declared extension comes off `file.originalname` through `FileService.extractExtensionFromFilename`, and has to be a member of `allowedExtensions`.
-2. The first bytes of `file.buffer` are sniffed through `FileService.sniffExtensionFromBuffer`, which wraps the `file-type` package. The sniffed type is accepted when `FileExtensionContract` (`src/common/file/contracts/file.extension.contract.ts`) maps some member of the allow-list onto it.
+1. The declared extension comes off `file.originalname` through `FileService.extractExtensionFromFilename` and is checked against `allowedExtensions`.
+2. The first bytes of `file.buffer` are sniffed through `FileService.sniffExtensionFromBuffer`, which wraps the `file-type` package.
+    - The sniffed type is accepted when `FileExtensionContract` (`src/common/file/contracts/file.extension.contract.ts`) maps some member of the allow-list onto it.
 
-`csv` is the signature-less member of `FileExtensionContract`: its entry is an empty array. A sniff that returns nothing is accepted when the declared extension is `csv` and that member is in the allow-list, and rejected for every other member. `hbs` is not in the table; templates are not uploaded through this pipe. Adding an uploadable extension to a group enum means adding its row to that table.
+`csv` is the signature-less member of `FileExtensionContract`: its entry is an empty array.
+
+- A sniff that returns nothing is accepted when the declared extension is `csv` and that member is in the allow-list.
+- It is rejected for every other member.
+- `hbs` is not in the table.
+- Templates are not uploaded through this pipe.
+- Adding an uploadable extension to a group enum means adding its row to that table.
 
 **Usage:**
-Pass an array of allowed file extensions from the enum constants. A single file and an array of files are both accepted, and every element of an array is validated: one rejected file rejects the request.
+
+- Pass an array of allowed file extensions from the enum constants.
+- A single file and an array of files are both accepted.
+- Every element of an array is validated, so one rejected file rejects the request.
 
 **Passes through without validating:**
 - A falsy value
@@ -177,7 +209,8 @@ Pass an array of allowed file extensions from the enum constants. A single file 
 
 ### FileCsvParsePipe
 
-Parses CSV (.csv) files into structured data array with rows and columns. This pipe converts raw file buffer into usable JavaScript objects using semicolon (;) as delimiter.
+- Parses CSV (.csv) files into a structured data array with rows and columns.
+- The pipe converts the raw file buffer into JavaScript objects, using semicolon (;) as the delimiter.
 
 **Returns:**
 Array of parsed row objects `T[]`, or `undefined` when no file was uploaded
@@ -199,7 +232,10 @@ Validates every parsed CSV row against a zod request schema and reports the fail
 **How it Works:**
 1. Receives parsed data from `FileCsvParsePipe`
 2. Rejects an empty row set, and a row set larger than the configured row cap
-3. Runs each row through the schema, keeping the parsed output
+3. Runs the rows through the schema in chunks of `file.importValidationConcurrency` (`10`).
+    - The rows of one chunk validate concurrently.
+    - The chunks run one after another.
+    - The parsed output keeps the input order and the row indexes.
 4. A request schema is `z.strictObject`, so an unknown column fails the row
 5. Collects all validation issues with row context, never failing fast on the first bad row
 6. Throws `FileImportException` if any row failed
@@ -208,7 +244,8 @@ Validates every parsed CSV row against a zod request schema and reports the fail
 - The zod schema each row is validated against
 - `options.maxDataImportConfigKey` (optional): config key holding the row cap (default `'file.maxDataImport'`, which is `100`)
 
-The pipe factory runs at decoration time, before config is resolved, so it takes the config KEY and reads the value in the constructor. The user import passes `'user.maxDataImport'`, which is `50`.
+- The pipe factory runs at decoration time, before config is resolved, so it takes the config KEY and reads the value in the constructor.
+- The user import passes `'user.maxDataImport'`, which is `50`.
 
 **Throws:**
 - `FileRequiredExtractFirstException`: No rows were passed in
@@ -238,7 +275,7 @@ flowchart TD
     
     I -->|No Rows| I2[Throw FileRequiredExtractFirstException]
     I -->|Rows > configured row cap| I3[Throw FileExceedMaxDataImportException]
-    I -->|Within Cap| J[Run Each Row Through the Schema]
+    I -->|Within Cap| J[Run Rows Through the Schema in Chunks]
     J --> K[Collect the Standard Schema issues]
     
     K -->|Row Issues| L[Collect Issues with Row Context]
@@ -271,7 +308,10 @@ Single and multiple file uploads with extension validation.
 
 **Single File Upload:**
 
-The live example is `POST /shared/user/profile/photo/upload` on `UserSharedController`. The controller only dispatches: it calls `UserProfileHttpService.uploadPhotoProfile`, which forwards to the domain `UserProfileDomain`, where the S3 write happens.
+The live example is `POST /shared/user/profile/photo/upload` on `UserSharedController`.
+
+- The controller only dispatches: it calls `UserProfileHttpService.uploadPhotoProfile`.
+- That service forwards to the domain `UserProfileDomain`, where the S3 write happens.
 
 ```typescript
 @Doc({ summary: 'upload photo profile' })
@@ -326,13 +366,17 @@ const aws: IAwsS3 | null = await this.awsS3Service.putItem(
 );
 ```
 
-`options.access` is a required argument on every `AwsS3Service` method that reaches a bucket, and a profile photo is served by URL, so this call names `public`.
+- `options.access` is a required argument on every `AwsS3Service` method that reaches a bucket.
+- A profile photo is served by URL, so this call names `public`.
 
 `putItem` behaviour:
 
 - returns `null` when S3 is not configured, and the domain answers `AwsS3NotConfiguredException` (404, `51406`) with no database write
 - raises `AwsS3ObjectExistException` (409, `51402`) when the generated key already holds an object, since this call leaves `forceUpdate` off
-- otherwise the domain prepares `userUpdatePhotoProfile`, stores the S3 reference with one `UserRepository.updatePhotoProfile` update (no transaction), and then stages the event
+- otherwise the domain:
+    1. prepares `userUpdatePhotoProfile`
+    2. stores the S3 reference with one `UserRepository.updatePhotoProfile` update (no transaction)
+    3. stages the event
 
 **Multiple Files Upload:**
 
@@ -352,11 +396,11 @@ Upload routes use `@FileUploadSingle`: `POST /shared/user/profile/photo/upload` 
 
 ### CSV Import
 
-Import and validate data from CSV files. The live example is `POST /admin/user/import` on `UserAdminController`.
-
-The pipe chain order is the contract: presence, then extension, then parse, then per-row validation.
-
-The row shape is an ordinary request schema. `UserImportRequestSchema` picks `email`, `name` and `username` off `UserCreateRequestSchema`, so the import reuses the same field constraints as user creation:
+- Import and validate data from CSV files.
+- The live example is `POST /admin/user/import` on `UserAdminController`.
+- The pipe chain order is the contract: presence, then extension, then parse, then per-row validation.
+- The row shape is an ordinary request schema.
+- `UserImportRequestSchema` picks `email`, `name` and `username` off `UserCreateRequestSchema`, so the import reuses the same field constraints as user creation.
 
 ```typescript
 /**
@@ -411,13 +455,16 @@ async import(
 }
 ```
 
-The row cap on this route is `user.maxDataImport`, which is `50`. The `adminUserImport` activity log is staged by the import flow, not declared on the route (see [Activity Log](activity-log.md)).
-
-`FileCsvParsePipe` can also be used on its own when you only need the raw rows. It returns `T[]` of plain objects with no schema validation applied.
+- The row cap on this route is `user.maxDataImport`, which is `50`.
+- The import flow stages the `adminUserImport` activity log (see [Activity Log](activity-log.md)).
+- The route does not declare the activity log.
+- `FileCsvParsePipe` can also be used on its own when you only need the raw rows. It returns `T[]` of plain objects with no schema validation applied.
 
 ### Multiple Field Upload
 
-`@FileUploadMultipleFields` wires `FileFieldsInterceptor` for named fields, each with its own `maxFiles`. Default size is `FileSizeInBytes`. No controller uses it.
+- `@FileUploadMultipleFields` wires `FileFieldsInterceptor` for named fields, each with its own `maxFiles`.
+- Default size is `FileSizeInBytes`.
+- No controller uses it.
 
 ```typescript
 @FileUploadMultipleFields([
@@ -431,11 +478,13 @@ The row cap on this route is `user.maxDataImport`, which is `50`. The `adminUser
 
 ### FileImportException
 
-Thrown during CSV validation with detailed error context. The exception carries the exact row and its issues.
+- Thrown during CSV validation with detailed error context.
+- The exception carries the exact row and its issues.
 
 **Exception Structure:**
 
-`FileImportException` extends `AppBaseException` and maps to HTTP 422. `AppValidationImportFilter` catches it and formats it into `ResponseErrorDto`:
+- `FileImportException` extends `AppBaseException` and maps to HTTP 422.
+- `AppValidationImportFilter` catches it and formats it into `ResponseErrorDto`:
 
 ```typescript
 {
@@ -468,11 +517,16 @@ Thrown during CSV validation with detailed error context. The exception carries 
 | Exceed Max Files | 50107 | 422 | `file.error.exceedMaxFiles` | The request carries more files than the route's global `limits.files` |
 | Field Unexpected | 50108 | 422 | `file.error.fieldUnexpected` | A file arrived on a field the route does not accept |
 | Multipart Invalid | 50109 | 422 | `file.error.multipartInvalid` | The multipart body is malformed, or a part / field limit was hit |
-| Exceed Max Export | 50104 | 422 | `file.error.exceedMaxDataExport` | A CSV export carries more data rows than its cap: `file.maxDataExport` (1000), overridable per route through `@ResponseFile({ maxDataExportConfigKey })` the way `maxDataImportConfigKey` overrides the import cap. The user export passes `user.maxDataExport` (500) and also bounds its query by it |
+| Exceed Max Export | 50104 | 422 | `file.error.exceedMaxDataExport` | A CSV export carries more data rows than its cap (see the notes below the table) |
 | Exceed Max Size Export | 50105 | 422 | `file.error.exceedMaxSizeExport` | The generated export file exceeds `file.maxSizeExportInBytes` (2 MB) |
 | Validation Failed | 50300 | 422 | `file.error.validationDto` | Schema validation failed, with per-row details |
 
-Every code except `50300` comes from `EnumFileStatusCodeError`. `Validation Failed` reuses `EnumRequestStatusCodeError.validation`, so its `statusCodeKey` is `validation` while its `module` is still `file`. The full catalog is [Status Codes](status-codes.md).
+- Every code except `50300` comes from `EnumFileStatusCodeError`.
+- `Validation Failed` reuses `EnumRequestStatusCodeError.validation`, so its `statusCodeKey` is `validation` while its `module` is still `file`.
+- The export row cap is `file.maxDataExport` (1000).
+    - A route overrides it through `@ResponseFile({ maxDataExportConfigKey })`, the way `maxDataImportConfigKey` overrides the import cap.
+    - The user export passes `user.maxDataExport` (500) and also bounds its query by it.
+- The full catalog is [Status Codes](status-codes.md).
 
 **Error Response Examples:**
 
@@ -513,13 +567,15 @@ Every code except `50300` comes from `EnumFileStatusCodeError`. `Validation Fail
 
 ## Message Translation
 
-File validation errors are automatically translated using the i18n system. The `FileCsvValidationPipe` integrates with `MessageService` to provide localized error messages based on the user's language preference.
+- The i18n system translates file validation errors automatically.
+- The `FileCsvValidationPipe` integrates with `MessageService` to provide localized error messages based on the user's language preference.
 
 **How It Works:**
 
 1. The schema's issues are collected per row
 2. They are passed to `MessageService.setValidationImportMessage()`
-3. The issue message is translated first, so a schema raising a message path speaks for itself; otherwise the camelCase issue code is looked up under `request.error.{key}`
+3. The issue message is translated first, so a schema raising a message path speaks for itself.
+   - Otherwise the camelCase issue code is looked up under `request.error.{key}`.
 4. `{property}` is interpolated with the last segment of the issue path
 5. Localized messages are returned in the error response, each carrying `key`, `property`, and `message`
 
@@ -545,7 +601,12 @@ See [Language Message Documentation][ref-doc-message] for i18n paths.
 
 S3 presigned URLs let a client upload or download an object for a limited time without AWS credentials.
 
-`AwsS3Service.presignGetItem` produces a time-limited GET URL for an object that already exists in S3. Its only caller is `TermPolicyContentDomain.getContentByAdmin`, reached through `TermPolicyContentHttpService` and exposed as `GET /admin/term-policy/content/:termPolicyId/:language/get` on `TermPolicyAdminController` under the message key `termPolicy.getContent`. That call passes the `access` recorded on the stored content itself, so each content entry is signed against the bucket it lives in. There is no request DTO: `termPolicyId` and `language` are path params.
+`AwsS3Service.presignGetItem` produces a time-limited GET URL for an object key.
+
+- Its only caller is `TermPolicyContentDomain.getContentByAdmin`, reached through `TermPolicyContentHttpService`.
+- The route is `GET /admin/term-policy/content/:termPolicyId/:language/get` on `TermPolicyAdminController`, under the message key `termPolicy.getContent`.
+- That call passes the `access` recorded on the stored content itself, so each content entry is signed against the bucket it lives in.
+- There is no request DTO: `termPolicyId` and `language` are path params.
 
 ### Signature
 
@@ -559,21 +620,28 @@ async presignGetItem(
 ### Parameters
 
 - `key`: the S3 object key. A key that starts with `/` raises `AwsS3KeyInvalidException` (500, `51400`).
-- `options.access`: `EnumAwsS3Accessibility.public` or `EnumAwsS3Accessibility.private`, required. It selects which configured bucket is signed against, and the compiler refuses a call that leaves it out.
-- `options.expiredInSeconds`: signature lifetime in seconds. When omitted it falls back to `aws.s3.presignExpiredInSeconds`, defined in `aws.config.ts` as `ms('30m') / 1000` and handed to the signer as it stands.
+- `options.access`: `EnumAwsS3Accessibility.public` or `EnumAwsS3Accessibility.private`, required.
+    - It selects which configured bucket is signed against.
+    - The compiler refuses a call that leaves it out.
+- `options.expiredInSeconds`: signature lifetime in seconds.
+    - When omitted it falls back to `aws.s3.presignExpiredInSeconds`.
+    - `aws.config.ts` defines that value as `ms('30m') / 1000`, and the signer takes it as it stands.
 
 ### Behaviour
 
 - Returns `null` when S3 is not configured, and logs a warning. `TermPolicyContentDomain.getContentByAdmin` turns that `null` into `AwsS3NotConfiguredException` (404, `51406`).
-- Sends a `HeadObjectCommand` before signing. A `NotFound` is swallowed; any other S3 error propagates.
+- Signs the URL without contacting S3.
+    - It does not probe the object, so a key with no object still yields a URL.
+    - S3 answers the GET itself.
 - Derives `extension` and `mime` from the key itself.
-- The returned `IAwsS3Presign` carries `key`, `mime`, `extension`, `presignUrl`, and `expiredInSeconds`, where `expiredInSeconds` is the same lifetime that was used to sign.
+- The returned `IAwsS3Presign` carries `key`, `mime`, `extension`, `presignUrl`, and `expiredInSeconds`. `expiredInSeconds` is the same lifetime that was used to sign.
 
 ---
 
 ## Presign upload
 
-The client uploads directly to S3 with a time-limited PUT URL. The API never sees the file bytes.
+- The client uploads directly to S3 with a time-limited PUT URL.
+- The API never sees the file bytes.
 
 ### How It Works
 
@@ -584,13 +652,16 @@ The client uploads directly to S3 with a time-limited PUT URL. The API never see
 5. Backend saves file reference to database with audit trail
 
 > [!NOTE]
-> **Default expiration:** 30 minutes (`presignExpiredInSeconds: ms('30m') / 1000` in `aws.config.ts`, which is the unit the signer takes). Override per-call via the `expiredInSeconds` option.
+> **Default expiration:** 30 minutes (`presignExpiredInSeconds: ms('30m') / 1000` in `aws.config.ts`, which is the unit the signer takes). A call overrides it via the `expiredInSeconds` option.
 
 ### Implementation
 
-**Step 1 - Request schemas:**
+**Step 1: Request schemas**
 
-Both schemas pick `size` off `AwsS3PresignRequestSchema`, where it is `z.number().int()`. The update schema also reuses its `key` field (non-empty, matching `AwsS3ObjectKeyRegex`) with its own description. `AwsS3ObjectKeyRegex` admits letters, digits, `.`, `_`, `-`, and `/`, and rejects a leading `/`, an empty segment (`//`), and `..`; a key that fails it answers 422 (`50300`).
+- Both schemas pick `size` off `AwsS3PresignRequestSchema`, where it is `z.number().int()`.
+- The update schema also reuses its `key` field (non-empty, matching `AwsS3ObjectKeyRegex`) with its own description.
+- `AwsS3ObjectKeyRegex` admits letters, digits, `.`, `_`, `-`, and `/`, and rejects a leading `/`, an empty segment (`//`), and `..`.
+- A key that fails it answers 422 (`50300`).
 
 ```typescript
 export const UserGeneratePhotoProfileRequestSchema =
@@ -611,9 +682,10 @@ export const UserUpdateProfilePhotoRequestSchema =
     });
 ```
 
-**Step 2 - Controller Endpoints:**
+**Step 2: Controller Endpoints**
 
-`UserSharedController` is registered by `RouterHttpSharedModule`, which the router mounts under `/shared`. The endpoints below are therefore `POST /shared/user/profile/photo/presign/generate` and `PUT /shared/user/profile/photo/update`, under the configured global prefix and the `v1` version prefix.
+- `UserSharedController` is registered by `RouterHttpSharedModule`, which the router mounts under `/shared`.
+- The endpoints below are therefore `POST /shared/user/profile/photo/presign/generate` and `PUT /shared/user/profile/photo/update`, under the configured global prefix and the `v1` version prefix.
 
 ```typescript
 @ApiTags('modules.shared.user')
@@ -669,9 +741,12 @@ export class UserSharedController {
 }
 ```
 
-**Step 3 - Service Implementation:**
+**Step 3: Service Implementation**
 
-`UserProfileHttpService` is a thin hop: it awaits the domain and wraps the presign in `{ data: presign }` for the response interceptor. The S3 work lives in `UserProfileDomain`.
+`UserProfileHttpService` is a thin hop:
+
+- It awaits the domain and wraps the presign in `{ data: presign }` for the response interceptor.
+- The S3 work lives in `UserProfileDomain`.
 
 ```typescript
 @Injectable()
@@ -737,11 +812,17 @@ Two things follow from the options passed:
 - `presignPutItem` and `mapPresign` both name `EnumAwsS3Accessibility.public`, so the photo is signed against, and stored in, the public bucket. `access` is a required option on both, so the value a call means is always written at the call site.
 - No `expiredInSeconds` is passed, so the signature lives for `aws.s3.presignExpiredInSeconds`, which is 30 minutes.
 
-`presignPutItem` returns `null` when S3 is not configured, and the domain converts that into `AwsS3NotConfiguredException` (404, `51406`). `updatePhotoProfile` checks `AwsS3Service.isInitialized()` first and throws the same exception, since `mapPresign` builds the reference without calling S3.
+S3 not configured:
 
-`createRandomFilenamePhotoProfileWithPath` is a method on `UserProfileDomain`. It substitutes `{userId}` into `user.uploadPhotoProfilePath` and delegates to `FileService.createRandomFilename` with a 20-character random segment.
+- `presignPutItem` returns `null`, and the domain converts that into `AwsS3NotConfiguredException` (404, `51406`).
+- `updatePhotoProfile` checks `AwsS3Service.isInitialized()` first and throws the same exception, since `mapPresign` builds the reference without calling S3.
 
-**Step 4 - Client-Side Upload:**
+`createRandomFilenamePhotoProfileWithPath` is a method on `UserProfileDomain`:
+
+- It substitutes `{userId}` into `user.uploadPhotoProfilePath`.
+- It delegates to `FileService.createRandomFilename` with a 20-character random segment.
+
+**Step 4: Client-Side Upload**
 ```typescript
 async function uploadPhotoSimple(file: File) {
   try {
@@ -887,12 +968,14 @@ sequenceDiagram
    - Client notifies backend with S3 key and file size
    - Backend maps presign data to `IAwsS3`
    - `UserProfileDomain` prepares `userUpdatePhotoProfile`, then `UserRepository.updatePhotoProfile` stores the S3 file reference in one update with no transaction
-   - After the update the event is staged; `ActivityLogInterceptor` writes it with the IP address, user agent, and geolocation from the request store (`RequestLogStoreKey`)
+   - After the update the event is staged.
+   - `ActivityLogInterceptor` writes it with the IP address, user agent, and geolocation from the request store (`RequestLogStoreKey`)
 
 
 ### Term Policy Content Presign
 
-The second presign endpoint signs a term policy content upload. `TermPolicyAdminController` is registered by `RouterHttpAdminModule`, so the route is `POST /admin/term-policy/content/presign/generate`.
+- The second presign endpoint signs a term policy content upload.
+- `RouterHttpAdminModule` registers `TermPolicyAdminController`, so the route is `POST /admin/term-policy/content/presign/generate`.
 
 ```typescript
 @Doc({ summary: 'Generate presign url for term or policy content upload' })
@@ -933,8 +1016,8 @@ async generate(
 
 ### Multipart Part Presign
 
-`AwsS3Service.presignPutItemPart({ key, size, uploadId, partNumber }, options)` signs a single `UploadPart` request for an existing multipart upload and returns `IAwsS3PresignPart` (`IAwsS3Presign` plus `partNumber` and `size`).
-
+- `AwsS3Service.presignPutItemPart({ key, size, uploadId, partNumber }, options)` signs a single `UploadPart` request for an existing multipart upload.
+- It returns `IAwsS3PresignPart` (`IAwsS3Presign` plus `partNumber` and `size`).
 - Takes the same required `access` and optional `expiredInSeconds` as the other presign methods
 - Returns `null` when S3 credentials are not configured
 - No controller exposes it, so there is no multipart presign route

@@ -38,7 +38,8 @@ Instances of unacceptable behavior may be reported directly to the maintainer:
 
 📧 **andrechristikan@gmail.com**
 
-All reports are reviewed and investigated promptly and fairly. The maintainer may remove, edit, or reject comments, commits, issues, and other contributions that violate this Code of Conduct.
+- All reports are reviewed and investigated promptly and fairly.
+- The maintainer may remove, edit, or reject comments, commits, issues, and other contributions that violate this Code of Conduct.
 
 ## Attribution
 

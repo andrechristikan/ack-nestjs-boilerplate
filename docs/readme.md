@@ -2,7 +2,8 @@
 
 ## Accuracy
 
-Each document matches the current implementation. If something is wrong, open an issue or a pull request.
+- Each document matches the current implementation.
+- If something is wrong, open an issue or a pull request.
 
 ## Standards & References
 
@@ -35,16 +36,53 @@ This project aligns with the [Twelve-Factor App][ref-12factor] methodology.
 | JWT Refresh Token | ES512; ECDSA + SHA-512 ([RFC 7518][ref-rfc-7518], [RFC 7519][ref-rfc-7519]) |
 | Two-Factor Auth | TOTP; SHA-1, 6 digits, 30s period ([RFC 6238][ref-rfc-6238]) |
 | Password Hashing | bcrypt; 12 salt rounds |
-| Encryption | AES-256-GCM through `node:crypto`; per-payload key derived with HKDF-SHA-256 from a 48-byte root secret, a random 16-byte salt, and a purpose string; 12-byte IV, 16-byte tag, caller context bound as authenticated data. Stored 2FA secrets use `AUTH_TWO_FACTOR_ENCRYPTION_KEY`; notification job payloads use `APP_ENCRYPTION_SECRET_KEY` |
+| Encryption | AES-256-GCM through `node:crypto` (details below) |
 | Token Hashing | SHA-256 through `node:crypto` for stored tokens, backup codes, and API key hashes; compared with `timingSafeEqual` |
 | Randomness | `node:crypto` (`randomInt`, `randomBytes`) for every generated code, token, and secret |
-| HTTP Security Headers | [Helmet][ref-helmet] v8, non-documents profile; Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Cross-Origin-Resource-Policy, X-Download-Options, X-Permitted-Cross-Domain-Policies |
+| HTTP Security Headers | [Helmet][ref-helmet] v8, non-documents profile (details below) |
 | CORS | Configurable allowlist with wildcard subdomain support, preflight max-age 24h |
-| Rate Limiting | Redis-backed sliding window via [@nestjs/throttler][ref-throttler]; global 300 req / 60s per IP, plus opt-in 100 req / 60s per user and per-route tiers (5 / 20 / 60 req per 60s) |
+| Rate Limiting | Redis-backed sliding window via [@nestjs/throttler][ref-throttler] (details below) |
 | Authorization | [CASL][ref-casl]; fine-grained ability-based access control (subject + action) |
 | API Key Auth | Machine-to-machine via `x-api-key` header |
-| Sensitive Data | Redacted from logs and Sentry payloads by key (`LoggerSensitiveFields`: passwords, tokens, API keys, 2FA material, sealed notification fields, cookies) through the Pino `redact` option, `LoggerUtil`, and the `instrument.ts` scrubbers; URL paths masked |
+| Sensitive Data | Redacted from logs and Sentry payloads by key (details below) |
 | Threat Coverage | [OWASP Top 10][ref-owasp]; input validation, injection prevention, auth hardening |
+
+#### Encryption
+
+- Each payload gets its own key, derived with HKDF-SHA-256 from three inputs:
+    - a 48-byte root secret
+    - a random 16-byte salt
+    - a purpose string
+- The cipher uses a 12-byte IV and a 16-byte tag.
+- The caller context is bound as authenticated data.
+- Stored 2FA secrets use `AUTH_TWO_FACTOR_ENCRYPTION_KEY`.
+- Notification job payloads use `APP_ENCRYPTION_SECRET_KEY`.
+
+#### HTTP security headers
+
+Helmet sets:
+
+- Strict-Transport-Security
+- X-Frame-Options
+- X-Content-Type-Options
+- Cross-Origin-Resource-Policy
+- X-Download-Options
+- X-Permitted-Cross-Domain-Policies
+
+#### Rate limiting
+
+- Every request counts against a global limit of 300 requests per 60 seconds per IP.
+- A route opts in to a limit of 100 requests per 60 seconds per user.
+- A route opts in to one of three per-route tiers, each per 60 seconds: 5 (strict), 20 (moderate), or 60 (relaxed) requests.
+
+#### Sensitive data
+
+- `LoggerSensitiveFields` lists the keys redacted from logs and Sentry payloads: passwords, tokens, API keys, 2FA material, sealed notification fields, and cookies.
+- Three mechanisms apply the list:
+    - the Pino `redact` option
+    - `LoggerUtil`
+    - the `instrument.ts` scrubbers
+- URL paths are masked.
 
 
 ## Table of Contents
@@ -52,43 +90,48 @@ This project aligns with the [Twelve-Factor App][ref-12factor] methodology.
 ### Getting Started
 Install and configure the project.
 
-1. [Installation][ref-doc-installation]; Set up the development environment step by step
-2. [Environment][ref-doc-environment]; Configure all environment variables via `.env`
-3. [Configuration][ref-doc-configuration]; Understand the Config Module and per-concern config files
-4. [Project Structure][ref-doc-project-structure]; Modular layout and the repository design pattern
+1. [Installation][ref-doc-installation]: Set up the development environment step by step
+2. [Environment][ref-doc-environment]: Configure all environment variables via `.env`
+3. [Configuration][ref-doc-configuration]: Understand the Config Module and per-concern config files
+4. [Project Structure][ref-doc-project-structure]: Modular layout and the repository design pattern
 
 ### Core
 
-5. [Database][ref-doc-database]; Prisma + MongoDB replica set, transactions, and the Database Module
-6. [Authentication][ref-doc-authentication]; JWT (ES256/ES512), session lifecycle, API key auth
-7. [Authorization][ref-doc-authorization]; `UserProtected`, `RoleProtected`, `PolicyProtected`, `TermPolicyAcceptanceProtected`, `WorkspaceProtected`, `ProjectProtected`
-8. [Device][ref-doc-device]; Device fingerprinting, `DeviceOwnership`, max 1 session per device
-9. [Response][ref-doc-response]; Standardized response decorators, pagination response, file download
-10. [Request Validation][ref-doc-request-validation]; `RequestSchemaValidationPipe`, zod request schemas, body and path validation
-11. [Handling Error][ref-doc-handling-error]; Exception filters, standardized HTTP error responses, i18n errors
-12. [Status Codes][ref-doc-status-codes]; Full catalog of application statusCode values by module
-13. [Language Message][ref-doc-message]; i18n with `nestjs-i18n`, nested JSON message files in `src/languages/`
-14. [Cache][ref-doc-cache]; Redis caching with shared `RedisCacheModule`, TTL strategy
-15. [Queue][ref-doc-queue]; BullMQ background jobs, `QueueProcessorBase`, retry/backoff
-16. [Logger][ref-doc-logger]; Pino logging, file rotation, sensitive data redaction, Sentry integration
-17. [Security and Middleware][ref-doc-security-and-middleware]; HTTP middleware layer, headers, rate limiting
+5. [Database][ref-doc-database]: Prisma + MongoDB replica set, transactions, and the Database Module
+6. [Authentication][ref-doc-authentication]: JWT (ES256/ES512), session lifecycle, API key auth
+7. [Authorization][ref-doc-authorization]: `UserProtected`, `RoleProtected`, `PolicyProtected`, `TermPolicyAcceptanceProtected`, `WorkspaceProtected`, `ProjectProtected`
+8. [Device][ref-doc-device]: Device fingerprinting, `DeviceOwnership`, max 1 session per device
+9. [Response][ref-doc-response]: Standardized response decorators, pagination response, file download
+10. [Request Validation][ref-doc-request-validation]: `RequestSchemaValidationPipe`, zod request schemas, body and path validation
+11. [Handling Error][ref-doc-handling-error]: Exception filters, standardized HTTP error responses, i18n errors
+12. [Status Codes][ref-doc-status-codes]: Full catalog of application statusCode values by module
+13. [Language Message][ref-doc-message]: i18n with `nestjs-i18n`, nested JSON message files in `src/languages/`
+14. [Cache][ref-doc-cache]: Redis caching with shared `RedisCacheModule`, TTL strategy
+15. [Queue][ref-doc-queue]: BullMQ background jobs, `QueueProcessorBase`, retry/backoff
+16. [Logger][ref-doc-logger]: Pino logging, file rotation, sensitive data redaction, Sentry integration
+17. [Security and Middleware][ref-doc-security-and-middleware]: HTTP middleware layer, headers, rate limiting
 
 ### Advanced
 
-18. [Workspace][ref-doc-workspace]; Multi-workspace tenancy via `x-workspace-id`, membership roles, invites, join requests
-19. [Project][ref-doc-project]; Workspace-scoped projects with `:projectId` in the path and their own member roles
-20. [Pagination][ref-doc-pagination]; Offset-based, cursor-based pagination, advanced filtering
-21. [Notification][ref-doc-notification]; Multi-channel notifications (email, push, inApp, silent) via BullMQ
-22. [Email][ref-doc-email]; SES Handlebars templates, sync command, and send mapping
-23. [Two Factor][ref-doc-two-factor]; TOTP 2FA with authenticator apps and backup codes
-24. [Feature Flag][ref-doc-feature-flag]; Dynamic feature management and percentage rollouts
-25. [Activity Log][ref-doc-activity-log]; Recording user activities staged by domains and flushed by `ActivityLogInterceptor`
-26. [Analytic][ref-doc-analytic]; Live admin dashboard metrics, anomaly and fraud reports, current-workspace user metrics
-27. [Term Policy][ref-doc-term-policy]; Legal agreements, versioning, and user consent enforcement
-28. [File Upload][ref-doc-file-upload]; Multipart uploads, CSV processing, and S3 presign (GET, upload, part)
-29. [Third Party Integration][ref-doc-third-party-integration]; AWS S3/SES, Firebase, Sentry, optional configuration and the not-configured behaviour, S3 bucket setup
-30. [Doc][ref-doc-doc]; Swagger/OpenAPI co-located on `@Doc`, `@Response*` / `FileUpload*`, and `*Protected` kits
-31. [Vault][ref-doc-vault]; Optional secret management via HashiCorp Vault
+18. [Workspace][ref-doc-workspace]: Multi-workspace tenancy via `x-workspace-id`, membership roles, invites, join requests
+19. [Project][ref-doc-project]: Workspace-scoped projects with `:projectId` in the path and their own member roles
+20. [Pagination][ref-doc-pagination]: Offset-based, cursor-based pagination, advanced filtering
+21. [Notification][ref-doc-notification]: Multi-channel notifications (email, push, inApp, silent) via BullMQ
+22. [Email][ref-doc-email]: SES Handlebars templates, sync command, and send mapping
+23. [Two Factor][ref-doc-two-factor]: TOTP 2FA with authenticator apps and backup codes
+24. [Feature Flag][ref-doc-feature-flag]: Dynamic feature management and percentage rollouts
+25. [Activity Log][ref-doc-activity-log]: Recording user activities staged by domains and flushed by `ActivityLogInterceptor`
+26. [Analytic][ref-doc-analytic]: Live admin dashboard metrics, anomaly and fraud reports, current-workspace user metrics
+27. [Term Policy][ref-doc-term-policy]: Legal agreements, versioning, and user consent enforcement
+28. [File Upload][ref-doc-file-upload]: Multipart uploads, CSV processing, and S3 presign (GET, upload, part)
+29. [Third Party Integration][ref-doc-third-party-integration]: AWS S3/SES, Firebase, Sentry, optional configuration and the not-configured behaviour, S3 bucket setup
+30. [Doc][ref-doc-doc]: Swagger/OpenAPI co-located on `@Doc`, `@Response*` / `FileUpload*`, and `*Protected` kits
+31. [Vault][ref-doc-vault]: Optional secret management via HashiCorp Vault
+
+### Operations
+Release the application.
+
+32. [Release][ref-doc-release]: Three release paths: existing MongoDB, Redis, and JWKS services; one Docker Compose host; the CI/CD workflows
 
 
 
@@ -123,6 +166,7 @@ Install and configure the project.
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-doc]: doc.md
 [ref-doc-vault]: vault.md
+[ref-doc-release]: release.md
 
 [ref-12factor]: https://12factor.net
 [ref-rfc-7518]: https://datatracker.ietf.org/doc/html/rfc7518

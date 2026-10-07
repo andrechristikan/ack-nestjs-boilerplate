@@ -6,12 +6,12 @@ Term Policy stores versioned legal documents (terms of service, privacy policy, 
 
 ## Related Documents
 
-- [Database Documentation][ref-doc-database] - Migration, seeding, and schema
-- [Authorization Documentation][ref-doc-authorization] - Admin RBAC on term-policy routes
-- [Authentication Documentation][ref-doc-authentication] - JWT and session context
-- [File Upload Documentation][ref-doc-file-upload] - Content upload and admin content GET (presign)
-- [Analytic Documentation][ref-doc-analytic] - Admin acceptance-rate and time-to-accept metrics under `/admin/analytic/term-policies/*`
-- [Email Documentation][ref-doc-email] - SES templates for policy publication (not the HTML bodies)
+- [Database Documentation][ref-doc-database]: Migration, seeding, and schema
+- [Authorization Documentation][ref-doc-authorization]: Admin RBAC on term-policy routes
+- [Authentication Documentation][ref-doc-authentication]: JWT and session context
+- [File Upload Documentation][ref-doc-file-upload]: Content upload and admin content GET (presign)
+- [Analytic Documentation][ref-doc-analytic]: Admin acceptance-rate and time-to-accept metrics under `/admin/analytic/term-policies/*`
+- [Email Documentation][ref-doc-email]: SES templates for policy publication (not the HTML bodies)
 
 ## Table of Contents
 
@@ -55,7 +55,8 @@ Four policy types are available via `EnumTermPolicyType`:
 | `marketing` | Marketing consent |
 | `cookies` | Cookie Policy |
 
-Each type can have multiple versions. A user reaches protected endpoints only after accepting the latest published version.
+- Each type can have multiple versions.
+- A user reaches protected endpoints only after accepting the latest published version.
 
 ## Policy Status
 
@@ -77,9 +78,9 @@ Term policies follow a two-stage status:
 - Every active user re-accepts the new version before reaching protected endpoints again
 - Key: `term-policies/{type}/v{version}/{language}.hbs` (from `termPolicy.contentPublicPath`)
 
-Both paths resolve to the same key, so the two copies differ by bucket alone. The record's `contents` point at the public copy, each entry carrying the `access` of the bucket it names.
-
-Publishing a new version sets `termPolicy[type]` to `false` for every active, non-deleted user, so each one accepts the new version before reaching protected endpoints again.
+- Both paths resolve to the same key, so the two copies differ by bucket alone.
+- The record's `contents` point at the public copy, each entry carrying the `access` of the bucket it names.
+- Publishing a new version sets `termPolicy[type]` to `false` for every active, non-deleted user, so each one accepts the new version before reaching protected endpoints again.
 
 ## Flow
 
@@ -125,7 +126,10 @@ sequenceDiagram
     Note over Users: Users re-accept before the next protected call
 ```
 
-Publishing is the one admin action that fans out to every user: after the transaction commits it queues a `publishTermPolicy` job, which emails every active user who still has the `transactional` + `email` notification setting enabled, in batches of `email.batchSize`.
+Publishing is the one admin action that fans out to every user. After the transaction commits it queues a `publishTermPolicy` job:
+
+- The job emails every active user who still has the `transactional` + `email` notification setting enabled.
+- It sends in batches of `email.batchSize`.
 
 ### User Flow Diagram
 
@@ -191,7 +195,10 @@ POST /shared/user/term-policy/accept
 }
 ```
 
-The request names only the type; the server resolves it to the **latest published version** of that type and records the acceptance against that record. The duplicate check is per policy record, not per type, so a user who accepted version 1 accepts version 2 again once it is published. Accepting the same version twice returns `409` (`alreadyAccepted`). When no published policy exists for the type, it returns `404` (`notFound`).
+- The request names only the type. The server resolves it to the **latest published version** of that type and records the acceptance against that record.
+- The duplicate check is per policy record, not per type, so a user who accepted version 1 accepts version 2 again once it is published.
+- Accepting the same version twice returns `409` (`alreadyAccepted`).
+- When no published policy exists for the type, it returns `404` (`notFound`).
 
 ### View Acceptance History
 
@@ -207,7 +214,20 @@ Returns all policies the user has accepted with timestamps and policy details.
 
 Admins manage the complete lifecycle of term policies from creation to publishing.
 
-Content lives in S3, so these routes need a configured S3 integration. Without one, each of these throws `AwsS3NotConfiguredException` (`404`, `s3NotConfigured`, message `aws.error.s3NotConfigured`): generate presign, create, add content, update content, get content, and publish. Publishing checks S3 before it copies anything, so a policy is never published with empty contents. Remove content and delete run without S3; delete then removes only the record.
+Content lives in S3, so these routes need a configured S3 integration. Without one, each of these throws `AwsS3NotConfiguredException` (`404`, `s3NotConfigured`, message `aws.error.s3NotConfigured`):
+
+- generate presign
+- create
+- add content
+- update content
+- get content
+- publish
+
+Behavior without S3:
+
+- Publishing checks S3 before it copies anything, so a policy is never published with empty contents.
+- Remove content and delete run without S3.
+- Delete then removes only the record.
 
 ### Generate Presign URL
 
@@ -223,7 +243,7 @@ POST /admin/term-policy/content/presign/generate
 }
 ```
 
-The API derives the S3 key itself from `type`, `version`, and `language`; the client does not supply it.
+The API derives the S3 key itself from `type`, `version`, and `language`. The client does not supply it.
 
 Response:
 
@@ -245,7 +265,9 @@ POST /admin/term-policy/create
 }
 ```
 
-Each entry names a key the client already uploaded through a presign URL; the API records it against the private bucket and uploads nothing. A duplicate `type` and `version` returns `409` (`exist`); two entries with the same language fail the request schema and return `422` with status code `50300` (`request.error.validation`) from the validation pipe.
+- Each entry names a key the client already uploaded through a presign URL. The API records it against the private bucket and uploads nothing.
+- A duplicate `type` and `version` returns `409` (`exist`).
+- Two entries with the same language fail the request schema and return `422` with status code `50300` (`request.error.validation`) from the validation pipe.
 
 ### Add Content
 
@@ -279,7 +301,8 @@ Get presigned URL to download policy content:
 GET /admin/term-policy/content/:termPolicyId/:language/get
 ```
 
-Works on draft and published policies alike. The signature targets the bucket named by the stored content's own `access`: the private bucket for a draft, the public one for a published policy.
+- It works on draft and published policies alike.
+- The signature targets the bucket named by the stored content's own `access`: the private bucket for a draft, the public one for a published policy.
 
 ### Publish Policy
 
@@ -294,7 +317,10 @@ Publishing:
 - an already-published policy returns `400` (`statusInvalid`)
 - a policy with no content returns `400` (`contentEmpty`)
 
-Once published, a policy cannot be edited or deleted, and its content files exist in both buckets: the public copy the record points at, and the private original the draft was uploaded to.
+Once published:
+
+- A policy cannot be edited or deleted.
+- Its content files exist in both buckets: the public copy the record points at, and the private original the draft was uploaded to.
 
 ### List Policies
 
@@ -313,7 +339,9 @@ Delete draft policy and remove S3 content:
 ```typescript
 DELETE /admin/term-policy/delete/:termPolicyId
 ```
-Only draft policies can be deleted; anything else returns `400` (`statusInvalid`). The record is hard deleted.
+- Only draft policies can be deleted.
+- Any other policy returns `400` (`statusInvalid`).
+- The record is hard deleted.
 
 ## TermPolicyAcceptanceProtected
 
@@ -378,7 +406,9 @@ export class TermPolicySharedController {
 }
 ```
 
-The decorator takes optional `EnumTermPolicyType` arguments. With none, it requires `termsOfService` and `privacy`. Shared and admin routes in this checkout pass no arguments.
+- The decorator takes optional `EnumTermPolicyType` arguments.
+- With none, it requires `termsOfService` and `privacy`.
+- Shared and admin routes pass no arguments.
 
 ### How It Works
 
@@ -433,8 +463,15 @@ src/migration/seeds/migration.term-policy.seed.ts           # command: termPolic
 src/migration/seeds/migration.template-term-policy.seed.ts  # command: templateTermPolicy
 ```
 
-- `termPolicy` is the seed wired into `pnpm migration:seed` and `pnpm migration:remove`. It upserts the rows in `src/migration/data/migration.term-policy.data.ts`: one version 1 record per type, all `published`, with empty `contents`. Details of that seed (actor, order, remove): [Database Documentation][ref-doc-database].
-- `templateTermPolicy` is run on its own. For each type it uploads the bundled `.hbs` document to the private bucket, copies it to the public content path, and upserts a published version 1 record whose single `en` content entry is the public item, so a seeded policy sits in both buckets like any published one. When S3 is not configured it logs a warning and skips, and its `remove()` is a no-op.
+- `termPolicy` is the seed wired into `pnpm migration:seed` and `pnpm migration:remove`.
+    - It upserts the rows in `src/migration/data/migration.term-policy.data.ts`: one version 1 record per type, all `published`, with empty `contents`.
+    - Details of that seed (actor, order, remove): [Database Documentation][ref-doc-database].
+- `templateTermPolicy` is run on its own. For each type it:
+    1. uploads the bundled `.hbs` document to the private bucket
+    2. copies it to the public content path
+    3. upserts a published version 1 record whose single `en` content entry is the public item, so a seeded policy sits in both buckets like any published one
+
+    When S3 is not configured it logs a warning and skips, and its `remove()` is a no-op.
 
 ```bash
 pnpm migration templateTermPolicy --type seed

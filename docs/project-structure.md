@@ -2,7 +2,8 @@
 
 ## Overview
 
-Feature modules follow the repository pattern. Layout is one folder per feature under `src/modules/`. 
+- Feature modules follow the repository pattern.
+- Layout is one folder per feature under `src/modules/`.
 
 ## Table of Contents
 
@@ -50,7 +51,9 @@ src
 
 Application code imports both through the `@generated/*` alias.
 
-The project is native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`). Every import between `src/` folders goes through a `tsconfig.json` path alias:
+The project is native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`).
+
+Every import between `src/` folders goes through a `tsconfig.json` path alias:
 
 - `@app/*`, `@common/*`, `@configs/*`, `@modules/*`, `@router/*`, `@migration/*`, `@queues/*`, `@generated/*`
 - plus `@instrument`, `@swagger`, `@main`, and `@migration` for the root files
@@ -78,7 +81,13 @@ CommonModule registers shared infrastructure and the global feature modules. Its
 
 **Location:** `src/configs/`
 
-Typed `registerAs` files. `src/configs/index.ts` loads every `*.config.ts` in that folder into `ConfigModule`. Each file maps the env vars and literal settings of its concern; `AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) validates the env vars. The catalog is [Configuration](configuration.md).
+Typed `registerAs` files:
+
+- `src/configs/index.ts` loads every `*.config.ts` in that folder into `ConfigModule`.
+- Each file maps the env vars and literal settings of its concern.
+- `AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) validates the env vars.
+
+The catalog is [Configuration](configuration.md).
 
 ## Languages
 
@@ -92,51 +101,97 @@ i18n JSON, one folder per locale. It contains:
 
 **Location:** `src/migration/`
 
-The migration folder seeds initial data. MongoDB has no migration files; the schema shape is applied by `pnpm db:migrate` (`prisma db push`). It includes:
-- `migration.module.ts`: Registers every seed command as a provider
+The migration folder seeds initial data.
+
+MongoDB has no migration files. `pnpm db:migrate` (`prisma db push`) applies the schema shape.
+
+It includes:
+
+- `migration.module.ts`: registers every seed command as a provider
 - Subfolders for migration bases, data, enums, interfaces, and seeds
-- Populates the reference and bootstrap rows an empty database needs: api keys, countries, feature flags, roles, policies, term policies, users, and workspaces (the eight commands bundled into `pnpm migration:seed`)
-- Ships three on-demand commands that are not part of `pnpm migration:seed`: `awsS3Config` (S3 bucket setup; see [Third Party Integration](third-party-integration.md#bucket-setup)), `templateEmailNotification` (see [Email](email.md)), and `templateTermPolicy` (see [Term Policy](term-policy.md#migration--seeding))
+
+Seed commands:
+
+- Eight commands populate the reference and bootstrap rows an empty database needs, and `pnpm migration:seed` bundles them:
+    - api keys
+    - countries
+    - feature flags
+    - roles
+    - policies
+    - term policies
+    - users
+    - workspaces
+- Three on-demand commands sit outside `pnpm migration:seed`:
+    - `awsS3Config`: S3 bucket setup (see [Third Party Integration](third-party-integration.md#bucket-setup))
+    - `templateEmailNotification`: see [Email](email.md)
+    - `templateTermPolicy`: see [Term Policy](term-policy.md#migration--seeding)
 
 ## Queues
 
 **Location:** `src/queues/`
 
 The queues folder is the BullMQ framework layer. It includes:
-- `queue.module.ts`: `QueueModule.forRoot()` holds the two BullMQ root connections (producer and processor). Named queues are registered by the owning feature's `<feature>.domain.module.ts` through a `RegisterQueueOptionsFactory`; per-queue job defaults are read from `queue.config.ts`
+
+- `queue.module.ts`: `QueueModule.forRoot()` holds the two BullMQ root connections (producer and processor)
 - Subfolders for queue bases, constants, decorators, enums, exceptions, interfaces
-- Processor classes live in their owning feature module (`<module>/processors/`), wired by that module's `<feature>.processor.module.ts`
-- Immediate, delayed, and recurring jobs
+
+Named queues:
+
+- The owning feature's `<feature>.domain.module.ts` registers each one through a `RegisterQueueOptionsFactory`.
+- `queue.config.ts` supplies the per-queue job defaults.
+- Processor classes live in their owning feature module (`<module>/processors/`), wired by that module's `<feature>.processor.module.ts`.
+- Jobs are immediate, delayed, or recurring.
 
 ## Router
 
 **Location:** `src/router/`
 
 The router folder mounts everything the application exposes. It includes:
-- `router.module.ts`: Root router that imports the five access-level modules and registers their path prefixes through `RouterModule.register` from `@nestjs/core`, plus the processor mount
-- `http/`: One module per access level, each holding its controllers and the `<feature>.http.module.ts` imports they need. `router.http.public.module.ts` mounts under `/public`, `router.http.system.module.ts` under `/system`, `router.http.admin.module.ts` under `/admin`, `router.http.user.module.ts` under `/user`, and `router.http.shared.module.ts` under `/shared`
-- `processor/router.processor.module.ts`: Aggregates every `<feature>.processor.module.ts`, so the BullMQ workers boot with the HTTP application
+- `router.module.ts`: root router. It imports the five access-level modules, registers their path prefixes through `RouterModule.register` from `@nestjs/core`, and mounts the processor module.
+- `http/`: one module per access level, each holding its controllers and the `<feature>.http.module.ts` imports they need:
+    - `router.http.public.module.ts` mounts under `/public`
+    - `router.http.system.module.ts` mounts under `/system`
+    - `router.http.admin.module.ts` mounts under `/admin`
+    - `router.http.user.module.ts` mounts under `/user`
+    - `router.http.shared.module.ts` mounts under `/shared`
+- `processor/router.processor.module.ts`: aggregates every `<feature>.processor.module.ts`, so the BullMQ workers boot with the HTTP application.
 
 ## Instrument
 
 **Location:** `src/instrument.ts`
 
-The instrument file configures Sentry. It is loaded before the application code, through `node --import ./dist/instrument.js` in the start scripts and `import '@instrument'` at the top of `src/main.ts`, so Sentry is initialized before anything else.
+The instrument file configures Sentry.
 
-- Initializes Sentry only when `SENTRY_DSN` is set, with the environment and the release version
-- Sets sampling rates for traces and profiles from `logger.sentry` (the `*Production` rates in production, lower than the rates every other environment uses)
-- Drops non-fatal `QueueException` events in `beforeSend`, requests to the `logger.excludedRoutes` config list (health, docs, hello, metrics, favicon, root), responses with status below 500, and events at `info` or `debug`
-- Forwards Pino logs to Sentry Logs through `Sentry.pinoIntegration`, limited to `warn`, `error`, and `fatal` in production and all levels elsewhere
-- Excludes the same noise routes from traces in `tracesSampler`
-- Scrubs every outgoing event, transaction, breadcrumb, and log (`beforeSend`, `beforeSendTransaction`, `beforeBreadcrumb`, `beforeSendLog`): URLs masked, query strings dropped, sensitive headers, cookies, and body fields redacted. See [Logger](logger.md)
-- Sets maximum breadcrumbs, value lengths, and stack trace attachment policies
-- Sends no default PII (`sendDefaultPii: false`)
+It loads before the application code, so Sentry is initialized before anything else:
+
+- The start scripts load it through `node --import ./dist/instrument.js`.
+- `src/main.ts` imports it with `import '@instrument'` at the top.
+
+The file:
+
+- Initializes Sentry only when `SENTRY_DSN` is set, with the environment and the release version.
+- Sets the sampling rates for traces and profiles from `logger.sentry`.
+    - The `*Production` rates apply in production.
+    - They are lower than the rates every other environment uses.
+- `beforeSend` drops these events:
+    - non-fatal `QueueException` events
+    - requests to the `logger.excludedRoutes` config list (health, docs, hello, metrics, favicon, root)
+    - responses with status below 500
+    - events at `info` or `debug`
+- Forwards Pino logs to Sentry Logs through `Sentry.pinoIntegration`: `warn`, `error`, and `fatal` in production, all levels elsewhere.
+- Excludes the same noise routes from traces in `tracesSampler`.
+- Scrubs every outgoing event, transaction, breadcrumb, and log (`beforeSend`, `beforeSendTransaction`, `beforeBreadcrumb`, `beforeSendLog`). See [Logger](logger.md):
+    - URLs are masked
+    - query strings are dropped
+    - sensitive headers, cookies, and body fields are redacted
+- Sets maximum breadcrumbs (30), value lengths, and the stack trace attachment policy.
+- Sends no default PII (`sendDefaultPii: false`).
 
 ## Migration Entrypoint
 
 **Location:** `src/migration.ts`
 
-The migration file is the nest-commander entry point. It boots `MigrationModule` and runs seed commands.
+The migration file is the nest-commander entry point, which boots `MigrationModule` and runs seed commands.
 
 - Creates a NestJS application context for CLI commands
 - Logs through Pino
@@ -147,7 +202,11 @@ The migration file is the nest-commander entry point. It boots `MigrationModule`
 
 **Location:** `src/modules/`
 
-One folder per feature. A request travels Controller to HTTP service to Domain to Repository. A job travels Processor to processor service to Domain. Lookup tables live under `contracts/` (`*.contract.ts`).
+One folder per feature:
+
+- A request travels Controller to HTTP service to Domain to Repository.
+- A job travels Processor to processor service to Domain.
+- Lookup tables live under `contracts/` (`*.contract.ts`).
 
 ```mermaid
 flowchart LR
@@ -183,11 +242,15 @@ modules
   └── workspace
 ```
 
-`analytic` orchestrates live metrics through owner `*AnalyticDomain` / `*AnalyticRepository` siblings (for example `user.analytic.domain.ts` with `user.analytic.repository.ts`). It has no repository module of its own. See [Analytic](analytic.md).
+`analytic`:
+
+- It orchestrates live metrics through owner `*AnalyticDomain` / `*AnalyticRepository` siblings (for example `user.analytic.domain.ts` with `user.analytic.repository.ts`).
+- It has no repository module of its own.
+- See [Analytic](analytic.md).
 
 **Per-layer Nest modules:**
 
-Each layer of a feature gets its own Nest module file at the root of the feature folder, and only the ones with something to provide exist:
+Each layer of a feature gets its own Nest module file at the root of the feature folder. Only the files with something to provide exist:
 
 ```
 modules/<feature>
@@ -198,11 +261,16 @@ modules/<feature>
   └── <feature>.processor.module.ts   # processors and their processor services
 ```
 
-`<feature>.domain.module.ts` is present for every feature. A feature without background jobs has no `<feature>.processor.module.ts`; `notification` and `workspace` are the two that do. `auth`, `policy`, `health`, and `hello` carry only the layers they need.
+- `<feature>.domain.module.ts` is present for every feature.
+- `<feature>.processor.module.ts` exists only in `notification` and `workspace`, the two features with background jobs.
+- `analytic`, `auth`, `health`, and `hello` have no repository module.
+- `auth` has no HTTP module either.
 
 **Folders:**
 
-No module contains every folder below. Each module includes only the folders its feature needs. The folders fall into three tiers:
+Each module includes only the folders its feature needs.
+
+The folders fall into three tiers:
 
 ```
 module
@@ -235,22 +303,38 @@ module
 Defines static values and configuration constants used throughout the module.
 
 ### Contracts
-Static rule maps the module reads at runtime, one file per concept, named `<module>.<concept>.contract.ts` and exported with `@public`. A contract fixes what an enum member means for the feature: `NotificationKindContract` holds the type, priority, i18n keys and channels of each notification kind; `ActivityLogActionContract` holds the user and workspace resolution and the metadata schema of each action; `FileExtensionContract` holds the sniffed types each upload extension accepts. Coverage skips `src/**/*.contract.ts` (`vitest.config.ts`).
+Static rule maps the module reads at runtime:
+
+- One file per concept, named `<module>.<concept>.contract.ts` and exported with `@public`.
+- A contract fixes what an enum member means for the feature.
+
+Examples:
+
+- `NotificationKindContract` holds the type, priority, i18n keys, and channels of each notification kind.
+- `ActivityLogActionContract` holds the user and workspace resolution and the metadata schema of each action.
+- `FileExtensionContract` holds the sniffed types each upload extension accepts.
+
+Coverage skips `src/**/*.contract.ts` (`vitest.config.ts`).
 
 ### Controllers
-Handle incoming HTTP requests, delegate to HTTP services, and return responses. Controllers define the API endpoints for the module.
+- Controllers handle incoming HTTP requests, delegate to HTTP services, and return responses.
+- Controllers define the API endpoints for the module.
 
 ### Decorators
-Custom decorators to add metadata or modify behavior of classes, methods, or properties within the module. OpenAPI for auth and guard kits lives on `*Protected` / auth decorators here; operation metadata and response envelopes live on `@Doc` and `@Response*` from `src/common/`.
+- Custom decorators add metadata or modify behavior of classes, methods, or properties within the module.
+- OpenAPI for auth and guard kits lives on `*Protected` / auth decorators here.
+- Operation metadata and response envelopes live on `@Doc` and `@Response*` from `src/common/`.
 
 ### DTOs (Data Transfer Objects)
-Zod schemas that define the shape of data sent and received on API endpoints, each paired with the type inferred from it. One `*.dto.ts` file holds one schema.
+- Zod schemas define the shape of data sent and received on API endpoints, each paired with the type inferred from it.
+- One `*.dto.ts` file holds one schema.
 
 ### Enums
 Type-safe enumerations for status codes, types, or other fixed sets of values relevant to the module's domain.
 
 ### Exceptions
-Dedicated exception classes, one per error, each extending `AppBaseException`. Named `<module>.<kebab-error>.exception.ts` (e.g., `user.not-found.exception.ts`).
+- Dedicated exception classes, one per error, each extending `AppBaseException`.
+- Files are named `<module>.<kebab-error>.exception.ts` (e.g., `user.not-found.exception.ts`).
 
 ### Factories
 Factory classes or functions for creating instances of complex objects or aggregating dependencies.
@@ -262,7 +346,8 @@ Health-check indicators that report the status of a dependency or subsystem (use
 Authorization and access control logic, protecting routes and resources based on user roles or permissions.
 
 ### Interfaces
-TypeScript interfaces for data shapes and for repository contracts (`*.repository.interface.ts`). Services, domains, and utils are injected as classes and carry no header interface.
+- TypeScript interfaces cover data shapes and repository contracts (`*.repository.interface.ts`).
+- Services, domains, and utils are injected as classes and carry no header interface.
 
 ### Interceptors
 Logic to intercept and modify requests or responses, such as logging, caching, or response transformation.
@@ -271,16 +356,23 @@ Logic to intercept and modify requests or responses, such as logging, caching, o
 Background job handlers, such as BullMQ processors, for asynchronous tasks related to the module.
 
 ### Queues
-The `@Injectable()` classes holding the BullMQ `Queue`, one method per job the feature enqueues. They are provided and exported by `<feature>.domain.module.ts`.
+- The `@Injectable()` classes hold the BullMQ `Queue`, one method per job the feature enqueues.
+- `<feature>.domain.module.ts` provides and exports them.
 
 ### Repositories
 Implements the Repository design pattern for data access, abstracting database operations and providing a clean API for domains.
 
 ### Domains
-Business logic and orchestration of the module. Domains interact with repositories, other domains, utils, and queue classes. They open `DatabaseService.withTransaction` when a write spans more than one repository.
+- Domains hold the business logic and orchestration of the module.
+- Domains interact with repositories, other domains, utils, and queue classes.
+- Domains open `DatabaseService.withTransaction` when a write spans more than one repository.
 
 ### Services
-HTTP services (`*.http.service.ts`) and processor services (`*.processor.service.ts`). They translate transport or job payloads into domain calls and assemble response DTOs. They own no business rule and reach no repository.
+HTTP services (`*.http.service.ts`) and processor services (`*.processor.service.ts`):
+
+- They translate transport or job payloads into domain calls.
+- They assemble response DTOs.
+- They own no business rule and reach no repository.
 
 ### Caches
 Dedicated cache classes that wrap a named cache provider for one feature concern (for example `SessionCache`, `FeatureFlagCache`).
@@ -289,7 +381,9 @@ Dedicated cache classes that wrap a named cache provider for one feature concern
 Reusable templates, such as email templates or message formats, used by the module.
 
 ### Utils
-Pure shaping helpers specific to the module: mappers, predicates, and format checks. A util reaches no cache, repository, queue, request store, or file service; work that needs one of those lives in a domain.
+- Utils are pure shaping helpers specific to the module: mappers, predicates, and format checks.
+- A util reaches no cache, repository, queue, request store, or file service.
+- Work that needs one of those lives in a domain.
 
 
 ## Other Modules
@@ -298,24 +392,55 @@ Below are explanations for the root folders and files outside `src/`:
 
 ### Folders
 
-- **.github/**: GitHub-specific configuration including Actions workflows, issue and pull request templates, and Dependabot settings. `.github/workflows/test.yml` runs `NODE_ENV=test pnpm test` on `workflow_dispatch`. `.github/workflows/linter.yml` runs on `pull_request` and `workflow_dispatch`.
-- **.husky/**: Git hooks. `pre-commit` runs `pnpm lint:staged`, `pnpm typecheck`, `pnpm deadcode`, `pnpm spell`, and `NODE_ENV=test pnpm test`; `commit-msg` runs commitlint.
+- **.github/**: GitHub-specific configuration: Actions workflows, issue and pull request templates, and Dependabot settings.
+    - `.github/workflows/test-unit.yml` runs `NODE_ENV=test pnpm test` on `workflow_dispatch`.
+    - `.github/workflows/linter.yml` runs on `pull_request` and `workflow_dispatch`.
+    - The three `release-with-*.yml` workflows build `ci/dockerfile.production` and deploy it, as described in [Release](release.md).
+    - Dependabot bumps the production Dockerfile and `ci/docker-compose.production.yml` within the current major version.
+- **.husky/**: Git hooks.
+    - `pre-commit` runs `pnpm lint:staged`, `pnpm typecheck`, `pnpm deadcode`, `pnpm spell`, and `NODE_ENV=test pnpm test`.
+    - `commit-msg` runs commitlint.
 - **.vscode/**: Shared editor settings, tasks, launch configurations, and recommended extensions.
-- **ci/**: Dockerfiles (`dockerfile`, `dockerfile.local`), the JWKS server nginx config, the MongoDB replica-set entrypoint, and the Vault bootstrap scripts and policies.
+- **ci/**: production and shared infrastructure files. The development image is the root `dockerfile`.
+    - `dockerfile.production`: the production image
+    - `docker-compose.production.yml`: the production Compose file
+    - `jwks-server/`: the JWKS server nginx config
+    - `mongo/entrypoint.sh`: the MongoDB replica-set entrypoint, shared by both Compose files
+    - `vault/`: the Vault bootstrap scripts and policies
 - **docs/**: Project documentation, including architecture, features, and usage guides.
-- **generated/**: Auto-generated output: the Swagger JSON (`swagger.json`) and the Vault init material (`vault/`). Not tracked by git. The Prisma client lives in `src/generated/` (see [Structure](#structure)).
+- **generated/**: Auto-generated output, not tracked by git.
+    - the Swagger JSON (`swagger.json`)
+    - the Vault init material (`vault/`)
+    - The Prisma client lives in `src/generated/` (see [Structure](#structure)).
 - **coverage/**: Vitest coverage output from `pnpm test:cov`. Not tracked by git.
-- **.vitest/**: A Vitest report directory; no reporter in `vitest.config.ts` writes to it. Ignored by git, Docker, Prettier, ESLint, and cspell, and listed in `tsconfig.json` / `tsconfig.build.json` `exclude`. `node_modules/.vitest-cache` holds `fsModuleCache`.
-- **keys/**: The JWT key pairs, the JWKS files, and `encryption-secret.env`, all written by `pnpm generate:secret`. Not tracked by git.
+- **.vitest/**: A Vitest report directory. No reporter in `vitest.config.ts` writes to it.
+    - Git, Docker, Prettier, ESLint, and cspell ignore it.
+    - `tsconfig.json` and `tsconfig.build.json` list it in `exclude`.
+- **node_modules/.vitest-cache**: Holds the `fsModuleCache` transforms.
+- **keys/**: Everything `pnpm generate:secret` writes. Not tracked by git.
+    - the JWT key pairs
+    - the JWKS files
+    - `encryption-secret.env`
+    - the MongoDB keyfile `mongo-keyfile`
 - **logs/**: Directory for application logs. Not tracked by git.
 - **prisma/**: Contains `schema.prisma`, the single source of truth for the database schema. MongoDB has no migration files.
-- **scripts/**: `generate-secret.ts` (JWT keys, JWKS, and encryption secrets; `pnpm generate:secret`) and `generate-package.ts` (`pnpm generate:package`). Node runs both directly as TypeScript.
+- **scripts/**: Node runs both scripts directly as TypeScript.
+    - `generate-secret.ts` writes the JWT keys, JWKS, encryption secrets, and the MongoDB keyfile (`pnpm generate:secret`).
+    - `generate-package.ts` writes `src/generated/package/package.ts` (`pnpm generate:package`).
 - **test/**: The Vitest spec tree.
-    - `test/unit/` holds the unit specs, mirroring `src/` (`test/unit/app/`, `test/unit/common/`, `test/unit/modules/`, `test/unit/queues/`), plus unit-only helpers in `test/unit/helpers/`. A unit spec tests one class with its collaborators doubled.
-    - `test/helpers/test.logger.helper.ts` is the `setupFiles` entry: it mutes Nest `Logger` and `ConsoleLogger` by assigning no-ops onto instance and static methods. Specs do not spy loggers or `console`.
-    - `pnpm test` is `TZ=UTC vitest run --project unit` and does not collect coverage. `pnpm test:cov` adds `--coverage`, which is when the 100% thresholds apply; `coverage.enabled` is `false` in `vitest.config.ts`.
+    - `test/unit/` holds the unit specs.
+        - They mirror `src/` (`test/unit/app/`, `test/unit/common/`, `test/unit/modules/`, `test/unit/queues/`).
+        - Unit-only helpers sit in `test/unit/helpers/`.
+        - A unit spec tests one class with its collaborators doubled.
+    - `test/helpers/test.logger.helper.ts` is the `setupFiles` entry.
+        - It mutes Nest `Logger` and `ConsoleLogger` by assigning no-ops onto instance and static methods.
+        - Specs do not spy loggers or `console`.
+    - `pnpm test` is `TZ=UTC vitest run --project unit` and does not collect coverage.
+        - `pnpm test:cov` adds `--coverage`, which is when the 100% thresholds apply.
+        - `coverage.enabled` is `false` in `vitest.config.ts`.
     - Controllers, processors, repositories, contracts, modules, enums, interfaces, and constants sit outside the coverage set. The doc kit in `src/common/doc/` is in it.
-    - `pre-commit` and CI (`.github/workflows/test.yml`, `workflow_dispatch`) run `NODE_ENV=test pnpm test`. `testTimeout` is 5000ms.
+    - `pre-commit` and CI (`.github/workflows/test-unit.yml`, `workflow_dispatch`) run `NODE_ENV=test pnpm test`.
+    - `testTimeout` is 5000ms.
 
 ### Files
 
@@ -328,16 +453,101 @@ Below are explanations for the root folders and files outside `src/`:
 - **.prettierrc**: Configuration for Prettier code formatter.
 - **.swcrc**: Configuration for SWC JavaScript/TypeScript compiler.
 - **cspell.json**: Configuration for code spell checking to maintain code quality and consistency.
-- **docker-compose.yml**: Docker Compose configuration for orchestrating multi-container Docker applications, such as local development environments.
-- **eslint.config.mjs**: ESLint flat configuration. It applies `typescript-eslint` recommended rules, `eslint-plugin-security` (every recommended rule at `error`, `detect-object-injection` off, and `detect-non-literal-fs-filename` off for the notification and term-policy template domains and for `scripts/`), and import bans: `Math.random`, `crypto-js`, a bare `'crypto'` import (use `node:crypto`), `lodash` and a default `lodash-es` import (use named `lodash-es` imports), `@generated/prisma-client/internal`, and a relative import path (use a `tsconfig.json` path alias). Member ordering places private methods before protected and public methods, under the constructor. A nullish default uses `??` (`@typescript-eslint/prefer-nullish-coalescing`), and the import block ends with one blank line and holds none between imports (`padding-line-between-statements`). A naming-convention rule enforces camelCase by default, PascalCase for types, an `I` prefix on interfaces, an `Enum` prefix on enum names, and camelCase enum members. A `this.`-rooted call is assigned to a `const` before it is used in an expression position: an argument, a condition, a branch value, a thrown value, a template literal, or a member access. String concatenation goes through a template literal, and an awaited promise is guarded by try/catch rather than `.then()`/`.catch()`. Comment rules ban warning markers (`note`, `xxx`, `hack`, and JSDoc-style tags) and inline comments. `new Date()` and `process.env` are each banned in favor of `HelperDateService` and `ConfigService`, with exceptions: `new Date()` is allowed in `src/configs/`, and `process.env` is allowed in `src/configs/`, `common.module.ts`, `main.ts`, and `queue.decorator.ts`. An `'asc'`/`'desc'` string literal is banned outside the pagination enum module, which is exempted. A `test/**/*.ts` spec bans `fn.mock.*` access (assert through `toHaveBeenCalledWith` and friends instead), `vi.clearAllMocks` (use `vi.resetAllMocks` in `beforeEach`), a `class` declaration, and `@ts-expect-error`/`@ts-ignore`.
-- **knip.json**: The `pnpm deadcode` configuration. Entries are `src/main.ts`, `src/migration.ts`, `src/instrument.ts`, and `scripts/*.ts`. Unused files, exports, types, enum members, and dependencies report as warnings; every other knip rule (unlisted or unresolved imports, unlisted binaries, duplicate exports) is an error.
+- **docker-compose.yml**: Docker Compose configuration for local development: MongoDB replica set, Redis, BullBoard, and the JWKS server, with the `apis` and `vault` profiles. Production uses `ci/docker-compose.production.yml`.
+- **dockerfile**: The development image behind the `apis` profile of `docker-compose.yml`.
+- **eslint.config.mjs**: ESLint flat configuration.
+    - It ignores `docs/`, `.github/`, `.husky/`, `generated/`, and `src/generated/`.
+    - The groups below cover `src/` unless a group names another tree.
+    - **Plugins**
+        - `typescript-eslint` recommended rules
+        - `eslint-plugin-security`, with every recommended rule at `error`
+        - `security/detect-object-injection` is off
+        - `security/detect-non-literal-fs-filename` is off for the notification and term-policy template domains and for `scripts/`
+    - **General**
+        - `@typescript-eslint/no-explicit-any`, explicit function return types, and explicit module boundary types are errors.
+        - `eqeqeq` (with `null` allowed), `curly`, `prefer-const`, and `no-var` are errors.
+        - `no-console` warns.
+        - ESLint directive comments are rejected (`noInlineConfig`).
+        - A nullish default uses `??` (`@typescript-eslint/prefer-nullish-coalescing`).
+    - **Import bans**
+        - `crypto-js`
+        - a bare `'crypto'` import (use `node:crypto`)
+        - `lodash` (use named `lodash-es` imports)
+        - a default `lodash-es` import (use named imports)
+        - `@generated/prisma-client/internal`
+        - a relative import path (use a `tsconfig.json` path alias)
+    - **Import layout**
+        - The import block ends with one blank line and holds none between imports (`padding-line-between-statements`).
+        - `sort-imports` orders the members inside one import.
+    - **Member ordering**
+        - Private methods come before protected methods, which come before public methods, all under the constructor.
+    - **Naming convention** (`@typescript-eslint/naming-convention`)
+        - camelCase by default
+        - PascalCase for types
+        - an `I` prefix on interfaces
+        - an `Enum` prefix on enum names
+        - camelCase enum members
+    - **The `this`-call rule**
+        - A `this.`-rooted call is assigned to a `const` before the code uses its value.
+        - The rule covers these positions: a call or `new` argument, a condition, a ternary branch, an object property value, an operand of a unary, logical, or binary expression, a template literal, a spread, a member access, a thrown value, a `for...of` iterable, and a computed property key.
+    - **Strings and promises**
+        - String concatenation goes through a template literal.
+        - An awaited promise is guarded by try/catch, not `.then()` or `.catch()`.
+    - **The `undefined` ban**
+        - A literal `undefined` as a return value, a `??` fallback, a ternary branch, or an arrow body is rejected in `src/`, so the code writes `null`.
+    - **`await` in a loop**
+        - `no-await-in-loop` is an error.
+        - The seeds and a short list of files that bound their own chunks are exempt.
+    - **Comments**
+        - Warning markers are banned: `note`, `xxx`, `hack`, and JSDoc-style tags.
+        - Inline comments are banned.
+    - **`Date`, `process.env`, `Math.random`, and sort direction**
+        - `new Date()` is banned in favor of `HelperDateService`. `src/configs/` is exempt.
+        - `process.env` is banned in favor of `ConfigService`. `src/configs/`, `common.module.ts`, `main.ts`, and `queue.decorator.ts` are exempt.
+        - `Math.random` is banned.
+        - An `'asc'` or `'desc'` string literal is banned. The pagination enum module is exempt.
+    - **Specs** (`test/**/*.ts`)
+        - `fn.mock.*` access is banned. Assertions use `toHaveBeenCalledWith` and related matchers.
+        - `vi.clearAllMocks` is banned. `beforeEach` uses `vi.resetAllMocks`.
+        - A `class` declaration is banned.
+        - `@ts-expect-error`, `@ts-ignore`, and `@ts-nocheck` are banned.
+        - A relative import is banned.
+        - A `*.spec.ts` declares no function. A helper goes to a `helpers/` folder under `test/`.
+        - A `*.spec.ts` stores no function in a variable.
+        - A `*.spec.ts` writes an arrow only as a direct argument to `describe`, `it`, a hook, `expect`, or a `vi` mock.
+- **knip.json**: The `pnpm deadcode` configuration.
+    - Entries are `src/main.ts`, `src/migration.ts`, `src/instrument.ts`, and `scripts/*.ts`.
+    - Unused files, exports, types, enum members, and dependencies report as warnings.
+    - Every other knip rule (unlisted or unresolved imports, unlisted binaries, duplicate exports) is an error.
 - **nest-cli.json**: Configuration for NestJS CLI, defining project structure and build options.
 - **package.json**: Node.js project manifest, listing dependencies, scripts, and metadata.
 - **pnpm-lock.yaml**: pnpm lockfile.
-- **pnpm-workspace.yaml**: pnpm settings for this single-package repo: `allowBuilds` (the packages permitted to run install scripts, for example `prisma` and `@swc/core`) and `minimumReleaseAgeExclude` (packages exempted from the minimum release-age hold).
-- **tsconfig.json**: TypeScript configuration read by `pnpm typecheck` (`tsc --noEmit`), by knip, by Vitest (`resolve.tsconfigPaths`), and by the editor. It targets native ESM (`module` and `moduleResolution` `nodenext`, `verbatimModuleSyntax`, `isolatedModules`). Its `include` covers `src/**/*`, `test/**/*`, `scripts/**/*`, and `vitest.config.ts`; its `exclude` includes `.vitest`. Path aliases: `@app/*`, `@common/*`, `@configs/*`, `@modules/*`, `@router/*`, `@migration/*`, `@queues/*`, `@test/*`, `@generated/*`, `@instrument`, `@swagger`, `@main`, `@migration`.
-- **tsconfig.build.json**: The build-time TypeScript configuration, named by `nest-cli.json` under `compilerOptions.tsConfigPath`, so `nest build` and `nest start` read it. It extends `tsconfig.json`, narrows `include` to `src/**/*`, and excludes `test`, `scripts`, and `.vitest`.
-- **vitest.config.ts**: The Vitest configuration behind `pnpm test` and `pnpm test:cov`: SWC compilation through `unplugin-swc`, the tsconfig path aliases, `passWithNoTests: true`, and one project, `unit`: `test/unit/**/*.spec.ts`, `test/helpers/test.logger.helper.ts` as `setupFiles`, `isolate: false` (workers reused across files; `pool` is unset, so Vitest uses `forks`), `fsModuleCache: true` (transforms persist under `node_modules/.vitest-cache`), `testTimeout` 5000ms. Coverage is v8 over `src/**/*.ts` (modules, enums, interfaces, constants, contracts, controllers, processors, repositories, `src/generated`, `src/migration`, `src/router`, `src/configs`, `src/languages`, and the root files excluded) with a 100% threshold on branches, functions, lines, and statements. The doc kit in `src/common/doc/` is in the coverage set. Coverage collection is off unless `--coverage` is passed.
+- **pnpm-workspace.yaml**: pnpm settings for this single-package repo.
+    - `allowBuilds` lists the packages permitted to run install scripts, for example `prisma` and `@swc/core`.
+    - `minimumReleaseAgeExclude` lists the packages exempted from the minimum release-age hold.
+- **tsconfig.json**: TypeScript configuration read by `pnpm typecheck` (`tsc --noEmit`), by knip, by Vitest (`resolve.tsconfigPaths`), and by the editor.
+    - It runs `strict` with `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess`.
+    - It targets native ESM: `module` and `moduleResolution` are `nodenext`, with `verbatimModuleSyntax` and `isolatedModules`.
+    - `include` covers `src/**/*`, `test/**/*`, `scripts/**/*`, and `vitest.config.ts`.
+    - `exclude` includes `.vitest`.
+    - Path aliases: `@app/*`, `@common/*`, `@configs/*`, `@modules/*`, `@router/*`, `@migration/*`, `@queues/*`, `@test/*`, `@generated/*`, `@instrument`, `@swagger`, `@main`, `@migration`.
+- **tsconfig.build.json**: The build-time TypeScript configuration, which `nest build` and `nest start` read because `nest-cli.json` names it under `compilerOptions.tsConfigPath`.
+    - It extends `tsconfig.json`.
+    - It narrows `include` to `src/**/*`.
+    - It excludes `test`, `scripts`, and `.vitest`.
+- **vitest.config.ts**: The Vitest configuration behind `pnpm test` and `pnpm test:cov`.
+    - SWC compiles through `unplugin-swc`.
+    - The tsconfig path aliases resolve.
+    - `passWithNoTests` is `true`.
+    - One project, `unit`, runs `test/unit/**/*.spec.ts` with these settings:
+        - `test/helpers/test.logger.helper.ts` as `setupFiles`
+        - `isolate: false`, so workers are reused across files
+        - `pool` unset, so Vitest uses `forks`
+        - `fsModuleCache: true` (transforms persist under `node_modules/.vitest-cache`)
+        - `testTimeout` of 5000ms
+    - Coverage is v8 over `src/**/*.ts` with a 100% threshold on branches, functions, lines, and statements.
+    - Coverage excludes modules, enums, interfaces, constants, contracts, controllers, processors, repositories, `src/generated`, `src/migration`, `src/router`, `src/configs`, `src/languages`, and the root files. The doc kit in `src/common/doc/` is in the coverage set.
+    - Coverage collection is off unless `--coverage` is passed.
 - **README.md**: Project introduction, feature list, and entry point to the documentation.
 - **CONTRIBUTING.md**: Contribution workflow and standards.
 - **CODE_OF_CONDUCT.md**: Community code of conduct.

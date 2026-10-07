@@ -12,18 +12,21 @@ Offset and cursor list helpers, plus filter and order-by parsing:
 - **Error handling**: the same error body as the rest of the app
 
 Ordering support is split across three levels:
-- **HTTP query level**: `orderBy` uses `field:direction` format in a single query parameter (e.g., `name:asc`, `createdAt:desc`). Multiple entries can be sent as repeated params.
+- **HTTP query level**: `orderBy` uses `field:direction` format in a single query parameter (e.g., `name:asc`, `createdAt:desc`).
+    - Multiple entries can be sent as repeated params.
 - **Service level**: `orderBy` is always an array of order objects (`IPaginationOrderBy[]`), which is the shape Prisma receives.
-- **Response metadata level**: `metadata.orderBy` is a string array in the same `field:direction` format as the query (e.g., `["createdAt:desc"]`), symmetric with `metadata.availableOrderBy`. `ResponsePaginationInterceptor` performs the conversion; an empty order renders `[]`.
+- **Response metadata level**: `metadata.orderBy` is a string array in the same `field:direction` format as the query (e.g., `["createdAt:desc"]`), symmetric with `metadata.availableOrderBy`.
+    - `ResponsePaginationInterceptor` performs the conversion.
+    - An empty order renders `[]`.
 
 List query parsing is zod on `@Query({ schema })` plus `PaginationQueryUtil` in the HTTP service.
 
 ## Related Documents
 
-- [Response Documentation][ref-doc-response] - List envelopes
-- [Request Validation Documentation][ref-doc-request-validation] - Query schemas for page/limit and cursor
-- [Database Documentation][ref-doc-database] - Prisma queries behind list repositories
-- [Doc Documentation][ref-doc-doc] - OpenAPI for paginated routes
+- [Response Documentation][ref-doc-response]: List envelopes
+- [Request Validation Documentation][ref-doc-request-validation]: Query schemas for page/limit and cursor
+- [Database Documentation][ref-doc-database]: Prisma queries behind list repositories
+- [Doc Documentation][ref-doc-doc]: OpenAPI for paginated routes
 
 ## Table of Contents
 
@@ -64,24 +67,32 @@ List query parsing is zod on `@Query({ schema })` plus `PaginationQueryUtil` in 
 
 ### PaginationService
 
-Core service that pages at the database. Repositories call it, and the analytic anomaly and fraud domains call `offsetPage`; HTTP services and controllers do not.
+Core service that pages at the database.
 
-**Two tiers of parameter types.** The controller-facing types carry only what a client may influence; the repository-facing types add what only server code may set:
+- Repositories call it.
+- The analytic anomaly and fraud domains call `offsetPage`.
+- HTTP services and controllers do not call it.
+
+**Two tiers of parameter types.** The controller-facing types carry only what a client may influence, and the repository-facing types add what only server code may set:
 
 | Tier | Type | Fields |
 |---|---|---|
-| HTTP-service output of `PaginationQueryUtil` | `IPaginationQueryOffsetParams<TArgsWhere>` | `limit`, `orderBy?`, `where?`, `skip` |
-| HTTP-service output of `PaginationQueryUtil` | `IPaginationQueryCursorParams<TArgsWhere>` | `limit`, `orderBy?`, `where?`, `cursor?`, `cursorField?` |
+| HTTP-service output of `PaginationQueryUtil` | `IPaginationQueryOffsetParams<TArgsWhere>` | `limit`, `orderBy`, `where?`, `skip` |
+| HTTP-service output of `PaginationQueryUtil` | `IPaginationQueryCursorParams<TArgsWhere>` | `limit`, `orderBy`, `where?`, `cursor?`, `cursorField?` |
 | Service args, produced by the repository | `IPaginationOffsetArgs<TArgsWhere>` | the offset params above, plus `include?` or `select?` |
 | Service args, produced by the repository | `IPaginationCursorArgs<TArgsWhere>` | the cursor params above, plus `include?` or `select?`, and `includeCount?` |
 
-Every one of these types takes a single generic, `TArgsWhere`. `include`, `select` and `includeCount` exist only on the repository tier, so the util-output types cannot express them and a client cannot reach them.
+- Every one of these types takes a single generic, `TArgsWhere`.
+- `include`, `select` and `includeCount` exist only on the repository tier, so the util-output types cannot express them and a client cannot reach them.
 
 #### Shaping the row: `include` or `select`
 
-Both repository-tier arg types intersect `IPaginationShape`, a union of `{ include?: unknown; select?: never }` and `{ select?: unknown; include?: never }`. One call therefore carries `include` or `select`, and a call carrying both fails `tsc`.
+Both repository-tier arg types intersect `IPaginationShape`, a union of `{ include?: unknown; select?: never }` and `{ select?: unknown; include?: never }`.
 
-`select` reaches `findMany` and nothing else. The count query is issued as `count({ where })`, so a narrowed projection never changes the total a page reports.
+- One call therefore carries `include` or `select`.
+- A call carrying both fails `tsc`.
+- `select` reaches `findMany` and nothing else.
+- The count query is issued as `count({ where })`, so a narrowed projection never changes the total a page reports.
 
 A read whose row is narrower than the model declares that projection once, as a `satisfies Prisma.<Model>Select` constant in the module's `constants/` folder, and pins the row type to it:
 
@@ -99,7 +110,10 @@ export type ISessionList = Prisma.SessionGetPayload<{
 }>;
 ```
 
-The `GetPayload` form ties the row type to the constant, so a column added to or removed from the projection moves the type with it. A nested relation takes its own select constant in the same place (`user: { select: UserRefSelect }`), and arrives narrowed the same way.
+- The `GetPayload` form ties the row type to the constant, so a column added to or removed from the projection moves the type with it.
+- A nested relation takes its own select constant in the same place (`user: { select: UserRefSelect }`), and arrives narrowed the same way.
+
+Credential columns stay out of paginated reads.
 
 `User.password`, `Session.jti`, `ApiKey.hash`, `PasswordHistory.password` and `WorkspaceInvite.token` sit outside the select constant their module paginates with (`UserAdminListSelect`, `SessionListSelect`, `ApiKeySelect`, `PasswordHistoryListSelect`, `WorkspaceInviteUserListSelect`), so a paginated read of those models leaves the credential in the database.
 
@@ -128,8 +142,8 @@ async offset<TReturn, TArgsWhere = unknown>(
 - Always an array: `[{ createdAt: 'desc' }]`, `[{ createdAt: 'desc' }, { name: 'asc' }]`
 
 **Default Values:**
-- `orderBy`: `[{ createdAt: 'desc' }]` - Sort by creation date descending
-- If omitted, defaults to `PaginationDefaultOrderBy`
+- `orderBy`: `[{ createdAt: 'desc' }]` sorts by creation date descending
+- An empty array resolves to `PaginationDefaultOrderBy`
 
 **Returns:**
 ```typescript
@@ -159,13 +173,16 @@ offsetPage<TReturn>(
 ): IPaginationOffsetReturn<TReturn>
 ```
 
-`offset()` calls it once its count and `findMany` queries resolve. It is also public: the analytic anomaly and fraud detail lists compute their rows, slice `[skip, skip + limit)`, and pass the slice with the full length. The workspace-member, project-member, and activity-log analytic repositories do the same over grouped rows.
+- `offset()` calls it once its count and `findMany` queries resolve.
+- It is also public: the analytic anomaly and fraud detail lists compute their rows, slice `[skip, skip + limit)`, and pass the slice with the full length.
+- The workspace-member, project-member, and activity-log analytic repositories do the same over grouped rows.
 
 The page arithmetic lives here, and every offset response carries the result of it:
 
 - `page` is 1-based: `Math.floor(skip / limit) + 1`, so the first page reports `1`
 - `totalPage` is `Math.ceil(count / limit)`, so a result with no rows reports `0`
-- `hasNext` is `page < totalPage` and `hasPrevious` is `page > 1`; `nextPage` and `previousPage` are present only when the matching flag is `true`
+- `hasNext` is `page < totalPage`, and `hasPrevious` is `page > 1`
+- `nextPage` and `previousPage` are present only when the matching flag is `true`
 
 #### cursor\<TReturn\>()
 
@@ -190,9 +207,9 @@ async cursor<TReturn, TArgsWhere = unknown>(
 - Always an array: `[{ createdAt: 'desc' }]`, `[{ createdAt: 'desc' }, { name: 'asc' }]`
 
 **Default Values:**
-- `orderBy`: `[{ createdAt: 'desc' }]` - Sort by creation date descending
-- If omitted, defaults to `PaginationDefaultOrderBy`
-- `cursorField`: `'id'` - Field used for cursor positioning
+- `orderBy`: `[{ createdAt: 'desc' }]` sorts by creation date descending
+- An empty array resolves to `PaginationDefaultOrderBy`
+- `cursorField`: `'id'` is the field used for cursor positioning
 
 **Cursor Payload:**
 
@@ -205,19 +222,28 @@ The encoded cursor is URL-safe base64 over exactly two fields, and nothing else:
 }
 ```
 
-- `fingerprint` is the first 16 hex characters (the leading 64 bits, `PaginationCursorFingerprintLength`) of a sha256 over the canonicalized `{ where, orderBy }`. Canonicalization sorts object keys at every depth and converts `Date` values to ISO strings, so two equivalent filters hash the same.
-- The composed `where` is **not** carried on the wire. The cursor stays around 94 characters no matter how large or deeply nested the filter is, and the filter itself is never exposed to the client.
+- `fingerprint` is the first 16 hex characters (the leading 64 bits, `PaginationCursorFingerprintLength`) of a sha256 over the canonicalized `{ where, orderBy }`.
+    - Canonicalization sorts object keys at every depth and converts `Date` values to ISO strings, so two equivalent filters hash the same.
+- The composed `where` is **not** carried on the wire.
+    - The cursor stays around 94 characters no matter how large or deeply nested the filter is.
+    - The filter itself is never exposed to the client.
 
 **Cursor Validation:**
 - Each request recomputes the fingerprint from its own `where` and `orderBy`, then compares it to the `fingerprint` in the supplied cursor. A mismatch throws `PaginationInvalidCursorPaginationParamsException` (50203, 422).
-- A cursor that is empty or not a string throws `PaginationInvalidCursorFormatException` (50205). One that decodes to an object missing `cursor` or `fingerprint` throws `PaginationInvalidCursorDataException` (50212), and one whose base64 or JSON cannot be parsed at all throws `PaginationFailedToDecodeCursorException` (50214).
+- Malformed cursors throw:
+    - `PaginationInvalidCursorFormatException` (50205) for a cursor that is empty or not a string
+    - `PaginationInvalidCursorDataException` (50212) for one that decodes to an object missing `cursor` or `fingerprint`
+    - `PaginationFailedToDecodeCursorException` (50214) for one whose base64 or JSON cannot be parsed at all
 - A cursor is bound to the filter, the search term, and the ordering it was issued for. Changing any of them invalidates it, and the client starts again from the first page.
 - For multi-field ordering, the array order feeds the fingerprint, so the same sequence of `orderBy` entries produces a matching cursor and a different sequence does not.
 
 **Cursor Field Tiebreaker:**
-- Before it queries and before it fingerprints, `cursor()` appends `{ [cursorField]: <direction> }` to the resolved `orderBy`. The direction is copied from the last ordering term, so the tiebreaker never fights the primary sort.
-- It is skipped when the client already sorts on `cursorField`.
-- The tiebreaker is what makes the position stable. When the sort key is not unique (several rows sharing one `createdAt`), the cursor row has no deterministic place in the result set, and pages can repeat or skip records. `offset()` does not do this; it anchors on a row count, not on a row.
+- Before it queries and before it fingerprints, `cursor()` appends `{ [cursorField]: <direction> }` to the resolved `orderBy`.
+    - The direction is copied from the last ordering term, so the tiebreaker never fights the primary sort.
+    - It is skipped when the client already sorts on `cursorField`.
+- The tiebreaker is what makes the position stable.
+    - When the sort key is not unique (several rows sharing one `createdAt`), the cursor row has no deterministic place in the result set, and pages can repeat or skip records.
+    - `offset()` does not do this, because it anchors on a row count, not on a row.
 - Because the tiebreaker is part of the `orderBy` that gets fingerprinted, it is also part of what a cursor is bound to.
 
 **Returns:**
@@ -249,13 +275,21 @@ flowchart LR
     Util --> Domain
 ```
 
-1. Kit base schemas `PaginationOffsetQuerySchema` (`page` / `perPage`) and `PaginationCursorQuerySchema` (`cursor` / `perPage`) live under `src/common/pagination/dtos/`.
-2. A module list DTO `.extend`s `search` / `orderBy` only when its allow-lists are non-empty, plus any filter fields. One schema const per `*.dto.ts` file.
+1. Kit base schemas live under `src/common/pagination/dtos/`:
+    - `PaginationOffsetQuerySchema` (`page` / `perPage`)
+    - `PaginationCursorQuerySchema` (`cursor` / `perPage`)
+    - beside them, `PaginationOffsetListQuerySchema` and `PaginationCursorListQuerySchema`, each extending its base with the optional `search` and `orderBy`. They are the shape `PaginationQueryUtil.offset` / `.cursor` read, and the inferred type of every module list schema is assignable to it.
+2. A module list DTO `.extend`s `search` / `orderBy` only when its allow-lists are non-empty, plus any filter fields.
+    - Each `*.dto.ts` file holds one schema const.
 3. The controller binds one `@Query({ schema })` and passes the whole DTO to the HTTP service.
-4. The HTTP service calls `PaginationQueryUtil.offset` / `.cursor` (plus filter helpers) to produce `IPaginationQueryOffsetParams` / `IPaginationQueryCursorParams` and a `storePatch`. It merges the patch into `RequestStoreService` under `PaginationStoreKey` for response metadata.
-5. Domain and repository keep receiving `IPaginationQuery*Params`. The repository widens them with `include` / `select` / `includeCount` and calls `PaginationService`.
+4. The HTTP service calls `PaginationQueryUtil.offset` / `.cursor` (plus filter helpers) to produce `IPaginationQueryOffsetParams` / `IPaginationQueryCursorParams` and a `storePatch`.
+    - It merges the patch into `RequestStoreService` under `PaginationStoreKey` for response metadata.
+5. Domain and repository keep receiving `IPaginationQuery*Params`.
+    - The repository widens them with `include` / `select` / `includeCount` and calls `PaginationService`.
 
-`PaginationQueryUtil` is a pure util under `src/common/pagination/utils/`. It does not inject `RequestStoreService`. OpenAPI for list query params comes only from the zod schema on `@Query({ schema })`. `@ResponsePagination` does not emit `ApiQuery` for page, cursor, `perPage`, `search`, or `orderBy`.
+- `PaginationQueryUtil` is a pure util under `src/common/pagination/utils/`. It does not inject `RequestStoreService`.
+- OpenAPI for list query params comes only from the zod schema on `@Query({ schema })`.
+- `@ResponsePagination` does not emit `ApiQuery` for page, cursor, `perPage`, `search`, or `orderBy`.
 
 #### Kit base schemas
 
@@ -300,7 +334,11 @@ export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
 | the util / zod schema admit named keys only (strict list DTO) | client-invented query keys reaching Prisma (`?where=`, `?select=`, `?include=`, `?includeCount=`) | no (unconditional) |
 | the allow-lists | a client sorting or searching on a column the endpoint never sanctioned | yes |
 
-**Absent allow-lists omit the fields from the schema.** `undefined` or `[]` means the module does not `.extend` `search` / `orderBy`, so Swagger does not advertise them. There is no search predicate; order falls to `PaginationDefaultOrderBy` (`createdAt` desc).
+**Absent allow-lists omit the fields from the schema.**
+
+- `undefined` or `[]` means the module does not `.extend` `search` / `orderBy`, so Swagger does not advertise them.
+- There is no search predicate.
+- Order falls to `PaginationDefaultOrderBy` (`createdAt` desc).
 
 A **configured** allow-list is enforced in the util:
 
@@ -316,7 +354,9 @@ Filter helpers on the util (the HTTP service chooses which to apply per field):
 
 Date bounds use `EnumPaginationFilterDateBetweenType` (never a raw `'start'` / `'end'` string).
 
-Each helper returns `{ where, storeFilter }` or `undefined` when the query value is absent. The HTTP service merges `storeFilter` into the CLS patch and passes `where` fragments to the domain.
+- Each helper returns `{ where, storeFilter }`.
+- Each helper returns `null` when the query value is absent or blank.
+- The HTTP service merges `storeFilter` into the CLS patch and passes `where` fragments to the domain.
 
 ```typescript
 const { params, storePatch } =
@@ -343,13 +383,16 @@ this.requestStoreService.merge(PaginationStoreKey, {
 });
 ```
 
-Wire / query DTO param names are camelCase (`status`, `roleId`). The Prisma field argument at a filter-helper call site is the enum member. `PaginationQueryUtil` filter helpers are model-agnostic (`field: TField extends string`); the kit never imports a feature's Prisma model types.
-
-A filter is a typed structure with named fields. `Record<string, any>`, a raw `filter?: string` query param, or `JSON.parse(rawFilter)` spread into `where` is not this contract.
+- Wire / query DTO param names are camelCase (`status`, `roleId`).
+- The Prisma field argument at a filter-helper call site is the enum member.
+- `PaginationQueryUtil` filter helpers are model-agnostic (`field: TField extends string`), and the kit never imports a feature's Prisma model types.
+- A filter is a typed structure with named fields. `Record<string, any>`, a raw `filter?: string` query param, or `JSON.parse(rawFilter)` spread into `where` is not this contract.
 
 #### Allow-lists
 
-`availableSearch` and `availableOrderBy` live as PascalCase constants in `<module>/constants/<module>.list.constant.ts` (`UserDefaultAvailableSearch`, `ApiKeyDefaultAvailableOrderBy`), beside enum defaults the filters use. That file holds a module's list-endpoint constants and nothing else.
+`availableSearch` and `availableOrderBy` live as PascalCase constants in `<module>/constants/<module>.list.constant.ts` (`UserDefaultAvailableSearch`, `ApiKeyDefaultAvailableOrderBy`), beside enum defaults the filters use.
+
+- That file holds a module's list-endpoint constants and nothing else.
 
 | List kind | Allow-list typing | Filter helper `field` argument |
 |---|---|---|
@@ -372,7 +415,9 @@ export const AnalyticNearLockoutAvailableOrderBy: (keyof IAnalyticNearLockout)[]
 | `undefined` or `[]` | module does not `.extend` `search` / `orderBy` | no search predicate; order falls to `PaginationDefaultOrderBy` |
 | non-empty | module `.extend`s optional field with `.meta` describing the allow-list | search → `contains` `OR`; bad `orderBy` → the order exceptions above |
 
-Set an allow-list wherever the endpoint has a defensible sort order or a real search column, and leave it out where it does not. An `availableOrderBy` names keys the returned row carries. On a cursor route every field in the allow-list is immutable.
+- An allow-list is set wherever the endpoint has a defensible sort order or a real search column, and left out where it does not.
+- An `availableOrderBy` names keys the returned row carries.
+- On a cursor route every field in the allow-list is immutable.
 
 ## Pagination Strategies
 
@@ -385,14 +430,21 @@ The route prefix decides the strategy, not the endpoint:
 | `/admin/**` | offset |
 | `/user`, `/shared`, `/system`, `/public` | cursor |
 
-There is no per-endpoint exception list. The policy lists (`/admin/role/:roleId/policy/list` and `/system/role/:roleId/policy/list`) return the whole set under `@Response`, so they take no pagination at all.
+- There is no per-endpoint exception list.
+- The policy lists (`/admin/role/:roleId/policy/list` and `/system/role/:roleId/policy/list`) return the whole set under `@Response`, so they take no pagination at all.
 
-Two consequences a client has to plan around:
+A client plans around two consequences:
 
 - A non-admin list returns no `count`, no `page`, and no `totalPage`. `includeCount` is a repository-side argument, never a query param, so a client cannot ask for a total.
-- Offset cannot reach past row 2000 (`PaginationDefaultMaxPage` × `PaginationDefaultMaxPerPage`). It narrows and browses; it never scans a whole collection.
+- Offset cannot reach past row 2000 (`PaginationDefaultMaxPage` × `PaginationDefaultMaxPerPage`).
+    - It narrows and browses.
+    - It never scans a whole collection.
 
-Cursor routes also constrain what they will sort on: every field in a cursor route's `availableOrderBy` is immutable. A row whose sort key can change mid-scroll moves position, and no tiebreaker stabilises that. Where a module's offset route allows a mutable field that its cursor route cannot, the two carry separate constants, `<Module>DefaultAvailableOrderBy` and `<Module>CursorAvailableOrderBy`. When every field is immutable both routes share one constant.
+Cursor routes also constrain what they will sort on:
+
+- Every field in a cursor route's `availableOrderBy` is immutable. A row whose sort key can change mid-scroll moves position, and no tiebreaker stabilises that.
+- Where a module's offset route allows a mutable field that its cursor route cannot, the two carry separate constants, `<Module>DefaultAvailableOrderBy` and `<Module>CursorAvailableOrderBy`.
+- When every field is immutable, both routes share one constant.
 
 ### Offset-Based
 
@@ -461,7 +513,11 @@ The pagination fields sit inside the `metadata` block of the standard response e
 
 **Response Example:**
 
-The pagination fields sit inside the `metadata` block of the standard response envelope. The wire field for the encoded cursor is `nextCursor`, not `cursor`; `hasPrevious` is always `false` for this strategy:
+The pagination fields sit inside the `metadata` block of the standard response envelope.
+
+- The wire field for the encoded cursor is `nextCursor`, not `cursor`.
+- `hasPrevious` is always `false` for this strategy.
+
 
 ```json
 {
@@ -542,7 +598,8 @@ this.paginationQueryUtil.notEqual(
 // Query: ?countryId=… → WHERE countryId != '…'
 ```
 
-`equalNumber` takes the same Prisma scalar-field enum member as its first argument and coerces the query value to a number. Invalid boolean, number, or date strings throw `PaginationFilterInvalidValueException` (422).
+- `equalNumber` takes the same Prisma scalar-field enum member as its first argument and coerces the query value to a number.
+- Invalid boolean, number, or date strings throw `PaginationFilterInvalidValueException` (422).
 
 ### Date Filters
 
@@ -585,17 +642,24 @@ orderBy: [
 ]
 ```
 
-All `orderBy` values passed to the service are arrays. The single-element array `[{ createdAt: 'desc' }]` is the typical default. Cursors do not carry the `orderBy` itself, only a fingerprint of it.
+- All `orderBy` values passed to the service are arrays.
+- The single-element array `[{ createdAt: 'desc' }]` is the typical default.
+- Cursors do not carry the `orderBy` itself, only a fingerprint of it.
 
 **Response Metadata Format:**
 ```json
 "orderBy": ["createdAt:desc", "name:asc"]
 ```
 
-The response reports the applied ordering back in the same `field:direction` format the query accepts, not in the internal object form, so a client can echo `metadata.orderBy` straight back as repeated `?orderBy=` params. An empty order renders `[]`.
+- The response reports the applied ordering back in the same `field:direction` format the query accepts, not in the internal object form.
+- A client can therefore echo `metadata.orderBy` straight back as repeated `?orderBy=` params.
+- An empty order renders `[]`.
 
 **Field Whitelist:**
-`availableOrderBy` is optional, but a route that declares it accepts sorting on those fields and nothing else. When present it lives as a `<Module>DefaultAvailableOrderBy` or `<Module>CursorAvailableOrderBy` constant and is passed into `PaginationQueryUtil` and mirrored in the list schema `.meta` description:
+
+- `availableOrderBy` is optional, but a route that declares it accepts sorting on those fields and nothing else.
+- When present it lives as a `<Module>DefaultAvailableOrderBy` or `<Module>CursorAvailableOrderBy` constant.
+- The constant is passed into `PaginationQueryUtil` and mirrored in the list schema `.meta` description:
 ```typescript
 this.paginationQueryUtil.offset(query, {
     availableOrderBy: UserDefaultAvailableOrderBy,
@@ -606,7 +670,11 @@ this.paginationQueryUtil.offset(query, {
 
 ### Basic Offset Pagination
 
-A list route travels `Controller → HTTP Service → Domain → Repository`. The domain forwards the pagination params, the repository is the layer that adds `include` or `select`, and the item schema declared on `@ResponsePagination` shapes each row on the way out.
+A list route travels `Controller → HTTP Service → Domain → Repository`:
+
+- The domain forwards the pagination params.
+- The repository is the layer that adds `include` or `select`.
+- The item schema declared on `@ResponsePagination` shapes each row on the way out.
 
 **Controller:**
 ```typescript
@@ -672,7 +740,10 @@ async getListOffsetByAdmin(
 }
 ```
 
-The page fields (`type`, `count`, `page`, `perPage`, `totalPage`, `hasNext`, `hasPrevious`, `nextPage`, `previousPage`) come from `PaginationService.offset`, which computes them in `offsetPage`: `page` is 1-based, so the first page reports `1`, and `totalPage` is `Math.ceil(count / perPage)`, so a page with no rows reports `0`.
+The page fields (`type`, `count`, `page`, `perPage`, `totalPage`, `hasNext`, `hasPrevious`, `nextPage`, `previousPage`) come from `PaginationService.offset`, which computes them in `offsetPage`:
+
+- `page` is 1-based, so the first page reports `1`.
+- `totalPage` is `Math.ceil(count / perPage)`, so a page with no rows reports `0`.
 
 ### Cursor Pagination
 
@@ -693,11 +764,22 @@ The page fields (`type`, `cursor` emitted as `nextCursor`, `perPage`, `hasNext`,
 
 ### With Filters
 
-Filter fields live on the list request schema. The HTTP service maps each one through a util helper and merges `storeFilter` for response metadata. See Basic Offset Pagination above for the full pattern.
+- Filter fields live on the list request schema.
+- The HTTP service maps each one through a util helper and merges `storeFilter` for response metadata.
+- See Basic Offset Pagination above for the full pattern.
 
 ### Complete Example
 
-The admin user list is the full stack: `UserListRequestSchema` extends `PaginationOffsetQuerySchema`, the controller binds `@Query({ schema })`, the HTTP service runs `PaginationQueryUtil` plus filters, the domain forwards params, and the repository calls `PaginationService.offset` with a `select`. `@ResponsePagination` turns the service's `IPaginationOffsetReturn` into the `metadata` block and serializes each row against the item schema. OpenAPI for the query string comes from the zod schema; pagination error kits live on `@ResponsePagination`.
+The admin user list is the full stack:
+
+1. `UserListRequestSchema` extends `PaginationOffsetQuerySchema`.
+2. The controller binds `@Query({ schema })`.
+3. The HTTP service runs `PaginationQueryUtil` plus filters.
+4. The domain forwards params.
+5. The repository calls `PaginationService.offset` with a `select`.
+6. `@ResponsePagination` turns the service's `IPaginationOffsetReturn` into the `metadata` block and serializes each row against the item schema.
+
+OpenAPI for the query string comes from the zod schema, and pagination error kits live on `@ResponsePagination`.
 
 ## Integration with Doc Module
 
@@ -711,15 +793,19 @@ OpenAPI for list endpoints is co-located on the runtime stack: `@Doc`, `@Respons
 | operation summary + global errors | `@Doc` |
 | auth / guard errors | `*Protected` / auth decorators |
 
-Allow-list text in `.meta({ description })` on the schema and the constants passed to `PaginationQueryUtil` are the same module list constants, so the documented contract and the enforced contract are one source. Flow: [Doc Documentation][ref-doc-doc].
+Allow-list text in `.meta({ description })` on the schema and the constants passed to `PaginationQueryUtil` are the same module list constants, so the documented contract and the enforced contract are one source.
+
+Flow: [Doc Documentation][ref-doc-doc].
 
 ## Implementation Notes
 
 ### Pagination State (CLS store)
 
-`PaginationQueryUtil` returns a `storePatch` and does not touch CLS itself. The HTTP service merges that patch (plus filter `storeFilter` fragments) into the per-request store via `RequestStoreService.merge(PaginationStoreKey, …)`.
+- `PaginationQueryUtil` returns a `storePatch` and does not touch CLS itself.
+- The HTTP service merges that patch (plus filter `storeFilter` fragments) into the per-request store via `RequestStoreService.merge(PaginationStoreKey, …)`.
+- `ResponsePaginationInterceptor` reads the accumulated state back via `RequestStoreService.get(PaginationStoreKey)` to build the `metadata` block on the response.
 
-`ResponsePaginationInterceptor` reads the accumulated state back via `RequestStoreService.get(PaginationStoreKey)` to build the `metadata` block on the response. Key points:
+Key points:
 
 - The store holds page / cursor / perPage / orderBy / availableOrderBy / search / availableSearch / filters for response metadata.
 - The store holds `orderBy` in its object form (`IPaginationOrderBy[]`). `ResponsePaginationInterceptor` flattens it into `field:direction` strings on the way out, so the stored shape and the wire shape differ.
@@ -730,15 +816,14 @@ Allow-list text in `.meta({ description })` on the schema and the constants pass
 ### Performance Considerations
 
 **Offset Pagination:**
-- Use for small datasets (< 10,000 items)
-- Avoid large page numbers
-- Slower with large offsets (DB must skip rows)
-- Use when total count is important
+- Suits small datasets (< 10,000 items)
+- Suits cases where the total count is important
+- Large offsets are slower, because the database skips rows
 
 **Cursor Pagination:**
-- Better for large datasets
-- Consistent performance (indexed lookup)
-- Use for infinite scroll
+- Suits large datasets
+- Performance stays consistent (indexed lookup)
+- Suits infinite scroll
 - Avoids N+1 count queries
 
 

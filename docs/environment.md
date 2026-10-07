@@ -4,16 +4,19 @@ Environment variables are listed in `.env.example`.
 
 ## Overview
 
-Runtime config is environment variables. `AppEnvSchema` validates them at startup. Docker Compose is the recommended way to run MongoDB and Redis locally; see [Installation][ref-doc-installation].
+- Runtime config is environment variables. `AppEnvSchema` validates them at startup.
+- Docker Compose is the recommended way to run MongoDB and Redis locally, described in [Installation][ref-doc-installation].
+- The optional `DOCKER_*` variables configure Compose itself.
+- The application does not read them: see [Docker Settings](#docker-settings).
 
 ## Related Documents
 
-- [Configuration Documentation][ref-doc-configuration] - How env vars map into `registerAs` configs
-- [Installation Documentation][ref-doc-installation] - Creating `.env` (Docker recommended)
-- [Database Documentation][ref-doc-database] - MongoDB connection and replica set
-- [Authentication Documentation][ref-doc-authentication] - JWT and OAuth
-- [Vault Documentation][ref-doc-vault] - Optional secret sync into `.env`
-- [Email Documentation][ref-doc-email] - SES templates
+- [Configuration Documentation][ref-doc-configuration]: How env vars map into `registerAs` configs
+- [Installation Documentation][ref-doc-installation]: Creating `.env` (Docker recommended)
+- [Database Documentation][ref-doc-database]: MongoDB connection and replica set
+- [Authentication Documentation][ref-doc-authentication]: JWT and OAuth
+- [Vault Documentation][ref-doc-vault]: Optional secret sync into `.env`
+- [Email Documentation][ref-doc-email]: SES templates
 
 ## Table of Contents
 
@@ -37,10 +40,11 @@ Runtime config is environment variables. `AppEnvSchema` validates them at startu
   - [Firebase Settings](#firebase-settings)
   - [Redis Settings](#redis-settings)
   - [Debug Settings](#debug-settings)
+  - [Docker Settings](#docker-settings)
 
 ## Environment Validation
 
-`process.env` is validated against a zod schema handed to `ConfigModule.forRoot()` in `src/common/common.module.ts`, so the check runs while the module graph is being built, before any provider resolves a config value:
+`process.env` is validated against a zod schema handed to `ConfigModule.forRoot()` in `src/common/common.module.ts`. The check runs while the module graph is being built, before any provider resolves a config value:
 
 ```typescript
 ConfigModule.forRoot({
@@ -59,14 +63,20 @@ ConfigModule.forRoot({
 - An encryption secret is `RequestEncryptionSecretSchema` (exactly 64 base64url characters)
 - A port is `z.coerce.number().int()`
 - An enum-valued variable is `z.enum` over the matching `Enum*`, so a typo is caught by name at boot
-- A third-party key is `RequestOptionalEnvSchema(...)` or one of its named instances in `src/common/request/validations/request.optional-env.validation.ts`: an absent value and a blank `.env` line (`KEY=`) both parse as unset; any other value must satisfy the inner schema
-  - `RequestOptionalEnvStringSchema`: a non-empty string (social client IDs, AWS credentials, regions, buckets, CDNs, `FIREBASE_PROJECT_ID`, `FIREBASE_PRIVATE_KEY`)
-  - `RequestOptionalEnvEmailSchema`: an email checked by the custom `validateEmail` validator (`EMAIL_NO_REPLY`, `EMAIL_SUPPORT`, `FIREBASE_CLIENT_EMAIL`)
-  - `RequestOptionalEnvSesIdentityArnSchema`: an SES identity ARN (`AWS_SES_IDENTITY_ARN`)
-  - `RequestOptionalEnvUrlNoTrailingSlashSchema`: an absolute URL without a trailing slash (`AWS_S3_ENDPOINT`, `AWS_SES_ENDPOINT`)
-  - `RequestOptionalEnvSchema(z.url())`: a URL (`SENTRY_DSN`)
+- A third-party key is `RequestOptionalEnvSchema(...)` or one of its named instances in `src/common/request/validations/request.optional-env.validation.ts`:
+  - An absent value and a blank `.env` line (`KEY=`) both parse as unset.
+  - Any other value satisfies the inner schema.
+  - The named instances:
+    - `RequestOptionalEnvStringSchema`: a non-empty string (social client IDs, AWS credentials, regions, buckets, CDNs, `FIREBASE_PROJECT_ID`, `FIREBASE_PRIVATE_KEY`)
+    - `RequestOptionalEnvEmailSchema`: an email checked by the custom `validateEmail` validator (`EMAIL_NO_REPLY`, `EMAIL_SUPPORT`, `FIREBASE_CLIENT_EMAIL`)
+    - `RequestOptionalEnvSesIdentityArnSchema`: an SES identity ARN (`AWS_SES_IDENTITY_ARN`)
+    - `RequestOptionalEnvUrlNoTrailingSlashSchema`: an absolute URL without a trailing slash (`AWS_S3_ENDPOINT`, `AWS_SES_ENDPOINT`)
+    - `RequestOptionalEnvSchema(z.url())`: a URL (`SENTRY_DSN`)
 
-The config files under `src/configs/` read each optional key (and `HTTP_TRUSTED_PROXY`) through `readOptionalEnv(process.env.KEY)`, exported from the same file: an absent value and a blank line both read as `null`, so a config interface field is `string | null`.
+The config files under `src/configs/` read each optional key (and `HTTP_TRUSTED_PROXY`) through `readOptionalEnv(process.env.KEY)`, exported from the same file.
+
+- An absent value and a blank line both read as `null`.
+- A config interface field is therefore `string | null`.
 
 Each third-party integration is optional and validated as a group by a `superRefine` on `AppEnvSchema`:
 
@@ -79,16 +89,38 @@ Each third-party integration is optional and validated as a group by a `superRef
 | Apple sign-in | `AUTH_SOCIAL_APPLE_CLIENT_ID` or `AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID` | nothing else |
 | Sentry | `SENTRY_DSN` | nothing else |
 
-An integration left unset boots fine. A request that needs it answers a not-configured error (`AwsS3NotConfiguredException`, `AuthSocialGoogleNotConfiguredException`, `AuthSocialAppleNotConfiguredException`, each 404), its health indicator reports it down (`AWS S3 is not configured`, `Google is not configured`, and so on) while `GET /api/system/health/aws` (S3 and SES) and `GET /api/system/health/third-party` (Sentry, Firebase, Google, Apple) still answer 200, and a seed that needs it logs a warning and skips: `templateEmailNotification` needs SES, `templateTermPolicy` needs S3, and `awsS3Config` needs S3 plus `AWS_S3_IAM_ARN`.
+An integration left unset boots fine:
 
-If validation fails, the application does not start and reports which environment variables are missing or invalid. The error reaches the `bootstrap().catch()` handler in `src/main.ts`, which writes the stack to `stderr` and calls `process.exit(1)`.
+- A request that needs it answers a not-configured error (`AwsS3NotConfiguredException`, `AuthSocialGoogleNotConfiguredException`, `AuthSocialAppleNotConfiguredException`, each 404).
+- Its health indicator reports it down (`AWS S3 is not configured`, `Google is not configured`, and so on).
+- `GET /api/system/health/aws` (S3 and SES) and `GET /api/system/health/third-party` (Sentry, Firebase, Google, Apple) still answer 200.
+- A seed that needs it logs a warning and skips:
+    - `templateEmailNotification` needs SES
+    - `templateTermPolicy` needs S3
+    - `awsS3Config` needs S3 plus `AWS_S3_IAM_ARN`
+
+If validation fails:
+
+- The application does not start.
+- It reports which environment variables are missing or invalid.
+- The error reaches the `bootstrap().catch()` handler in `src/main.ts`, which writes the stack to `stderr` and calls `process.exit(1)`.
 
 ## Example Configuration
 
 Below is an example `.env` file based on the current `.env.example`:
 
 > [!WARNING]
-> **Security**: All secret and key values below (`*_ENCRYPTION_SECRET_KEY`, `*_ENCRYPTION_KEY`, `AUTH_JWT_*_KEY`) are placeholders for illustration only. They are empty in `.env.example`, so startup validation fails until they are set. `AUTH_TWO_FACTOR_ISSUER` is also required and empty in `.env.example`, and `pnpm generate:secret` does not set it, so it is set by hand. `pnpm generate:secret` generates a unique set: the JWT keys and KIDs under `keys/`, and both encryption secrets in `keys/encryption-secret.env`. With `--direct-insert` it also writes them into `.env`. See [Installation][ref-doc-installation].
+> **Security**: All secret and key values below (`*_ENCRYPTION_SECRET_KEY`, `*_ENCRYPTION_KEY`, `AUTH_JWT_*_KEY`) are placeholders for illustration only.
+>
+> - They are empty in `.env.example`, so startup validation fails until they are set.
+> - `AUTH_TWO_FACTOR_ISSUER` is also required and empty in `.env.example`. `pnpm generate:secret` does not set it, so it is set by hand.
+> - `pnpm generate:secret` generates a unique set:
+>     - the JWT keys and KIDs under `keys/`
+>     - both encryption secrets in `keys/encryption-secret.env`
+>     - the MongoDB keyfile `keys/mongo-keyfile`
+> - With `--direct-insert` it also writes the JWT and encryption values into `.env`. The keyfile never goes into `.env`.
+>
+> See [Installation][ref-doc-installation].
 
 ```bash
 # Application Settings
@@ -185,16 +217,25 @@ QUEUE_REDIS_URL=redis://localhost:6379/1
 
 # Debug (Optional)
 SENTRY_DSN=
+
+# Docker Compose (Optional; read by Compose, not by the application)
+DOCKER_MONGO_ROOT_USERNAME=
+DOCKER_MONGO_ROOT_PASSWORD=
+DOCKER_REDIS_PASSWORD=
+DOCKER_BULLBOARD_USER=
+DOCKER_BULLBOARD_PASSWORD=
 ```
 
 ## Environment Variables
 
-Validated by `AppEnvSchema`. Each variable:
+`AppEnvSchema` validates the application variables below.
+
+The `DOCKER_*` variables under [Docker Settings](#docker-settings) are read by Compose and never validated.
 
 ### Application Settings
 
 **`APP_NAME`** *(required)*  
-The name of your application. Used throughout the system for identification.
+The name of your application, used throughout the system for identification.
 ```bash
 APP_NAME=ACKNestJs
 ```
@@ -206,25 +247,43 @@ APP_ENV=local
 ```
 
 **`APP_LANGUAGE`** *(required)*  
-Default language for the application. Validated against `EnumMessageLanguage`; currently only `en` is supported.
+Default language for the application.
+
+- It is validated against `EnumMessageLanguage`.
+- Only `en` is supported.
+
 ```bash
 APP_LANGUAGE=en
 ```
 
 **`APP_TIMEZONE`** *(required)*  
-Default timezone for date operations. Validated against `EnumRequestTimezone`; currently only `Asia/Jakarta` is supported.
+Default timezone for date operations.
+
+- It is validated against `EnumRequestTimezone`.
+- Only `Asia/Jakarta` is supported.
+
 ```bash
 APP_TIMEZONE=Asia/Jakarta
 ```
 
 **`APP_ENCRYPTION_SECRET_KEY`** *(required)*  
-Root secret `HelperEncryptionService` derives AES-256-GCM keys from (HKDF-SHA256). It encrypts the sensitive fields of notification job payloads. Exactly 64 base64url characters, the encoding of 48 random bytes (`RequestEncryptionSecretSchema`). Empty by default; startup validation rejects an unset or malformed value. `pnpm generate:secret:encryption` generates a unique value per environment. Rotating it makes queued notification jobs that were encrypted under the old value fail to decrypt.
+Root secret `HelperEncryptionService` derives AES-256-GCM keys from (HKDF-SHA256).
+
+- It encrypts the sensitive fields of notification job payloads.
+- It is exactly 64 base64url characters, the encoding of 48 random bytes (`RequestEncryptionSecretSchema`).
+- It is empty by default, and startup validation rejects an unset or malformed value.
+- `pnpm generate:secret:encryption` generates a unique value per environment.
+- Rotating it makes queued notification jobs that were encrypted under the old value fail to decrypt.
 ```bash
 APP_ENCRYPTION_SECRET_KEY=<your_app_encryption_secret_key>
 ```
 
 **`NODE_ENV`** *(optional)*  
-Selects the second env file loaded by `ConfigModule.forRoot` in `src/common/common.module.ts`: `.env` is always read, then `.env.${NODE_ENV}`, falling back to `.env.local` when unset. It is not part of `AppEnvSchema`, and `src/main.ts` overwrites it with `app.env` once the config is loaded.
+Selects the second env file loaded by `ConfigModule.forRoot` in `src/common/common.module.ts`.
+
+- `.env` is always read, then `.env.${NODE_ENV}`, falling back to `.env.local` when unset.
+- It is not part of `AppEnvSchema`.
+- `src/main.ts` overwrites it with `app.env` once the config is loaded.
 ```bash
 NODE_ENV=local
 ```
@@ -246,7 +305,10 @@ HOME_URL=https://example.com
 ### HTTP Server Settings
 
 **`HTTP_HOST`** *(required)*  
-Address to bind the HTTP server to. Accepts a hostname such as `localhost` or an IPv4 literal like `0.0.0.0` or `127.0.0.1`.
+Address to bind the HTTP server to.
+
+- It accepts a hostname such as `localhost` or an IPv4 literal like `0.0.0.0` or `127.0.0.1`.
+- Inside a container, use `0.0.0.0`. With `localhost` the app listens on the container's loopback only, and the published port resets connections.
 ```bash
 HTTP_HOST=localhost
 ```
@@ -258,9 +320,15 @@ HTTP_PORT=3000
 ```
 
 **`HTTP_TRUSTED_PROXY`** *(optional)*  
-Comma-separated list of proxy NETWORKS whose forwarding headers Express may trust, passed straight to `trust proxy`. Accepts the `proxy-addr` preset names (`loopback`, `linklocal`, `uniquelocal`) and explicit CIDRs. It is never a hop count and never `true`.
+Comma-separated list of proxy NETWORKS whose forwarding headers Express may trust, passed straight to `trust proxy`.
 
-Empty trusts no proxy: `req.ip` is then the direct socket peer and a client cannot forge it through `X-Forwarded-For`. Behind a CDN or edge proxy that connects from a public address, a value without that provider's CIDRs puts every client behind it in one rate-limit bucket.
+- It accepts the `proxy-addr` preset names (`loopback`, `linklocal`, `uniquelocal`) and explicit CIDRs.
+- It is never a hop count and never `true`.
+
+Effects:
+
+- Empty trusts no proxy: `req.ip` is then the direct socket peer and a client cannot forge it through `X-Forwarded-For`.
+- Behind a CDN or edge proxy that connects from a public address, a value without that provider's CIDRs puts every client behind it in one rate-limit bucket.
 ```bash
 # no proxy trusted
 HTTP_TRUSTED_PROXY=
@@ -281,7 +349,11 @@ LOGGER_ENABLE=true
 ```
 
 **`LOGGER_LEVEL`** *(required)*  
-Minimum log level. Validated against `EnumLoggerLevel`, which declares Pino's own level set. Options: `fatal`, `error`, `warn`, `info`, `debug`, `trace`
+Minimum log level.
+
+- It is validated against `EnumLoggerLevel`, which declares Pino's own level set.
+- Options: `fatal`, `error`, `warn`, `info`, `debug`, `trace`
+
 ```bash
 LOGGER_LEVEL=debug
 ```
@@ -307,7 +379,10 @@ LOGGER_AUTO=false
 ### CORS Settings
 
 **`CORS_ALLOWED_ORIGIN`** *(required)*  
-Comma-separated list of allowed CORS origins. Supports subdomain wildcards and explicit ports, but not port wildcards.
+Comma-separated list of allowed CORS origins.
+
+- Subdomain wildcards and explicit ports are supported.
+- Port wildcards are not.
 
 **Syntax:**
 - `*`: allow all origins (credentials disabled)
@@ -374,10 +449,19 @@ URL_VERSION=1
 ### Database Settings
 
 **`DATABASE_URL`** *(required)*  
-MongoDB connection string. Must target a **replica set** (Prisma transactions need one). Docker Compose is the recommended local path; without Docker use [MongoDB Atlas][ref-mongodb-atlas] (or any MongoDB 8+ replica set). Setup: [Installation][ref-doc-installation].
+MongoDB connection string.
+
+- It targets a **replica set** (Prisma transactions need one).
+- Docker Compose is the recommended local path.
+- Without Docker, use [MongoDB Atlas][ref-mongodb-atlas] or any MongoDB 8.0+ replica set.
+- The project runs MongoDB 8: the production Compose file pins `mongo:8.3.11`.
+- Setup: [Installation][ref-doc-installation].
 ```bash
 # Local Compose replica set (recommended)
 DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
+
+# Local Compose replica set with DOCKER_MONGO_ROOT_PASSWORD set; <user> is DOCKER_MONGO_ROOT_USERNAME (root by default)
+# DATABASE_URL=mongodb://<user>:<password>@localhost:27017/ACKNestJs?authSource=admin&retryWrites=true&w=majority&replicaSet=rs0
 
 # MongoDB Atlas (replica set via mongodb+srv)
 # DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/ACKNestJs
@@ -412,7 +496,11 @@ AUTH_JWT_ACCESS_TOKEN_JWKS_URI=http://localhost:3011/.well-known/access-jwks.jso
 ```
 
 **`AUTH_JWT_ACCESS_TOKEN_KID`** *(required)*  
-Key ID for access token. `pnpm generate:secret:jwt` prints it and, with `--direct-insert`, writes it into `.env`.
+Key ID for access token.
+
+- `pnpm generate:secret:jwt` prints it.
+- With `--direct-insert`, the command also writes it into `.env`.
+
 ```bash
 AUTH_JWT_ACCESS_TOKEN_KID=<your_jwt_access_token_kid>
 ```
@@ -444,7 +532,11 @@ AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://localhost:3011/.well-known/refresh-jwks.j
 ```
 
 **`AUTH_JWT_REFRESH_TOKEN_KID`** *(required)*  
-Key ID for refresh token. `pnpm generate:secret:jwt` prints it and, with `--direct-insert`, writes it into `.env`.
+Key ID for refresh token.
+
+- `pnpm generate:secret:jwt` prints it.
+- With `--direct-insert`, the command also writes it into `.env`.
+
 ```bash
 AUTH_JWT_REFRESH_TOKEN_KID=<your_jwt_refresh_token_kid>
 ```
@@ -470,16 +562,23 @@ AUTH_JWT_REFRESH_TOKEN_EXPIRED=30d
 ### Social Authentication Settings
 
 > [!NOTE]
-> All social authentication settings are optional. Leave them blank to keep social sign-in off; the matching sign-in route then answers 404 (`AuthSocialGoogleNotConfiguredException` or `AuthSocialAppleNotConfiguredException`).
+> All social authentication settings are optional. Leave them blank to keep social sign-in off. The matching sign-in route then answers 404 (`AuthSocialGoogleNotConfiguredException` or `AuthSocialAppleNotConfiguredException`).
 
 **`AUTH_SOCIAL_GOOGLE_CLIENT_ID`** *(optional)*  
-Google OAuth client ID, used as the audience when verifying a Google ID token. Setting it turns Google sign-in on.
+Google OAuth client ID.
+
+- It is the audience when verifying a Google ID token.
+- Setting it turns Google sign-in on.
+
 ```bash
 AUTH_SOCIAL_GOOGLE_CLIENT_ID=
 ```
 
 **`AUTH_SOCIAL_APPLE_CLIENT_ID`** *(optional)*  
-First of the two accepted Apple audiences. Either Apple client ID turns Apple sign-in on; an Apple ID token is accepted when its audience matches any client ID that is set.
+First of the two accepted Apple audiences.
+
+- Either Apple client ID turns Apple sign-in on.
+- An Apple ID token is accepted when its audience matches any client ID that is set.
 ```bash
 AUTH_SOCIAL_APPLE_CLIENT_ID=
 ```
@@ -493,13 +592,22 @@ AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
 ### Two-Factor Authentication Settings
 
 **`AUTH_TWO_FACTOR_ISSUER`** *(required)*  
-Issuer name displayed in authenticator apps. Empty in `.env.example`, and `pnpm generate:secret` leaves it alone; startup validation rejects an unset value. The value below is illustrative.  
+Issuer name displayed in authenticator apps.
+
+- It is empty in `.env.example`, and `pnpm generate:secret` leaves it alone.
+- Startup validation rejects an unset value.
+- The value below is illustrative.
 ```bash
 AUTH_TWO_FACTOR_ISSUER=ACKNestJsTwoFactor
 ```
 
 **`AUTH_TWO_FACTOR_ENCRYPTION_KEY`** *(required)*  
-Root secret `HelperEncryptionService` derives the AES-256-GCM keys for stored TOTP secrets from. Exactly 64 base64url characters, the encoding of 48 random bytes (`RequestEncryptionSecretSchema`). Empty by default; startup validation rejects an unset or malformed value. `pnpm generate:secret:encryption` generates a unique value per environment. Rotating it leaves every stored TOTP secret undecryptable, and an authenticator code check then returns `409 twoFactorSecretUnavailable` (see [Two-Factor][ref-doc-two-factor]).  
+Root secret `HelperEncryptionService` derives the AES-256-GCM keys for stored TOTP secrets from.
+
+- It is exactly 64 base64url characters, the encoding of 48 random bytes (`RequestEncryptionSecretSchema`).
+- It is empty by default, and startup validation rejects an unset or malformed value.
+- `pnpm generate:secret:encryption` generates a unique value per environment.
+- Rotating it leaves every stored TOTP secret undecryptable, and an authenticator code check then returns `409 twoFactorSecretUnavailable` (see [Two-Factor][ref-doc-two-factor]).
 ```bash
 AUTH_TWO_FACTOR_ENCRYPTION_KEY=<your_two_factor_encryption_key>
 ```
@@ -507,24 +615,31 @@ AUTH_TWO_FACTOR_ENCRYPTION_KEY=<your_two_factor_encryption_key>
 ### AWS Settings
 
 > [!NOTE]
-> AWS settings are optional. S3 turns on when an S3 credential is set, SES when an SES credential is set; each then requires its group (see [Environment Validation](#environment-validation)). Without S3, file upload and term-policy content routes answer `AwsS3NotConfiguredException` (404); without SES, email is off.
+> AWS settings are optional.
+>
+> - S3 turns on when an S3 credential is set, and SES when an SES credential is set. Each then requires its group (see [Environment Validation](#environment-validation)).
+> - Without S3, file upload and term-policy content routes answer `AwsS3NotConfiguredException` (404).
+> - Without SES, email is off.
 
 #### S3 Configuration
 
-**`AWS_S3_IAM_CREDENTIAL_KEY`** *(optional; turns S3 on)*  
+**`AWS_S3_IAM_CREDENTIAL_KEY`** *(optional, turns S3 on)*  
 AWS IAM access key ID for S3 bucket operations.
 ```bash
 AWS_S3_IAM_CREDENTIAL_KEY=
 ```
 
-**`AWS_S3_IAM_CREDENTIAL_SECRET`** *(optional; turns S3 on)*  
+**`AWS_S3_IAM_CREDENTIAL_SECRET`** *(optional, turns S3 on)*  
 AWS IAM secret access key for S3 bucket operations.
 ```bash
 AWS_S3_IAM_CREDENTIAL_SECRET=
 ```
 
-**`AWS_S3_IAM_ARN`** *(optional; needed by the `awsS3Config` seed)*  
-IAM principal ARN the public bucket policy grants full access to. Only the `awsS3Config` seed reads it, and that seed skips with a warning when it is unset. The application authenticates with the credential key and secret.
+**`AWS_S3_IAM_ARN`** *(optional, needed by the `awsS3Config` seed)*  
+IAM principal ARN the public bucket policy grants full access to.
+
+- Only the `awsS3Config` seed reads it, and that seed skips with a warning when it is unset.
+- The application authenticates with the credential key and secret.
 ```bash
 AWS_S3_IAM_ARN=
 ```
@@ -536,7 +651,10 @@ AWS_S3_REGION=
 ```
 
 **`AWS_S3_ENDPOINT`** *(optional)*  
-Custom S3 endpoint, such as LocalStack. A URL without a trailing slash. When set, the client uses path-style addressing and object URLs are built as `{endpoint}/{bucket}/{key}`.
+Custom S3 endpoint, such as LocalStack, as a URL without a trailing slash.
+
+- When set, the client uses path-style addressing.
+- Object URLs are built as `{endpoint}/{bucket}/{key}`.
 ```bash
 AWS_S3_ENDPOINT=http://localhost:4566
 ```
@@ -548,7 +666,11 @@ AWS_S3_PUBLIC_BUCKET=
 ```
 
 **`AWS_S3_PUBLIC_CDN`** *(optional)*  
-CloudFront CDN hostname for the public bucket. Set the hostname only, without a scheme: `aws.config.ts` builds the config value as `https://{AWS_S3_PUBLIC_CDN}`.
+CloudFront CDN hostname for the public bucket.
+
+- Set the hostname only, without a scheme.
+- `aws.config.ts` builds the config value as `https://{AWS_S3_PUBLIC_CDN}`.
+
 ```bash
 AWS_S3_PUBLIC_CDN=
 ```
@@ -562,27 +684,34 @@ AWS_S3_PRIVATE_BUCKET=
 ```
 
 **`AWS_S3_PRIVATE_CDN`** *(optional)*  
-CloudFront CDN hostname for the private bucket. Set the hostname only, without a scheme: `aws.config.ts` builds the config value as `https://{AWS_S3_PRIVATE_CDN}`.
+CloudFront CDN hostname for the private bucket.
+
+- Set the hostname only, without a scheme.
+- `aws.config.ts` builds the config value as `https://{AWS_S3_PRIVATE_CDN}`.
+
 ```bash
 AWS_S3_PRIVATE_CDN=
 ```
 
 #### SES (Email Service)
 
-**`AWS_SES_IAM_CREDENTIAL_KEY`** *(optional; turns SES on)*  
+**`AWS_SES_IAM_CREDENTIAL_KEY`** *(optional, turns SES on)*  
 AWS IAM access key ID for SES email service.
 ```bash
 AWS_SES_IAM_CREDENTIAL_KEY=
 ```
 
-**`AWS_SES_IAM_CREDENTIAL_SECRET`** *(optional; turns SES on)*  
+**`AWS_SES_IAM_CREDENTIAL_SECRET`** *(optional, turns SES on)*  
 AWS IAM secret access key for SES email service.
 ```bash
 AWS_SES_IAM_CREDENTIAL_SECRET=
 ```
 
 **`AWS_SES_IDENTITY_ARN`** *(optional)*  
-ARN of a verified SES identity, in the form `arn:aws:ses:<region>:<account-id>:identity/<identity>`. When set, every send passes it as `SourceArn` (sending authorization).
+ARN of a verified SES identity, in the form `arn:aws:ses:<region>:<account-id>:identity/<identity>`.
+
+When set, every send passes it as `SourceArn` (sending authorization).
+
 ```bash
 AWS_SES_IDENTITY_ARN=
 ```
@@ -594,7 +723,7 @@ AWS_SES_REGION=
 ```
 
 **`AWS_SES_ENDPOINT`** *(optional)*  
-Custom SES endpoint, such as LocalStack. A URL without a trailing slash.
+Custom SES endpoint, such as LocalStack, as a URL without a trailing slash.
 ```bash
 AWS_SES_ENDPOINT=http://localhost:4566
 ```
@@ -621,20 +750,23 @@ EMAIL_SUPPORT=support@mail.com
 > [!NOTE]
 > Firebase settings are optional and all-or-none: setting any one requires all three. With none set, push delivery is off.
 
-**`FIREBASE_PROJECT_ID`** *(optional; all three together)*  
+**`FIREBASE_PROJECT_ID`** *(optional, all three together)*  
 Firebase project ID from your Firebase console.
 ```bash
 FIREBASE_PROJECT_ID=
 ```
 
-**`FIREBASE_CLIENT_EMAIL`** *(optional; all three together)*  
+**`FIREBASE_CLIENT_EMAIL`** *(optional, all three together)*  
 Firebase service account client email.
 ```bash
 FIREBASE_CLIENT_EMAIL=
 ```
 
-**`FIREBASE_PRIVATE_KEY`** *(optional; all three together)*  
-Firebase service account private key, accepted either as the PEM block with its newlines written as `\n`, or as the bare base64 PKCS#8 DER body. `FirebaseUtil.normalizePrivateKey` in `src/common/firebase/utils/firebase.util.ts` turns either form into the PEM the Admin SDK expects.
+**`FIREBASE_PRIVATE_KEY`** *(optional, all three together)*  
+Firebase service account private key, accepted either as the PEM block with its newlines written as `\n`, or as the bare base64 PKCS#8 DER body.
+
+`FirebaseUtil.normalizePrivateKey` in `src/common/firebase/utils/firebase.util.ts` turns either form into the PEM the Admin SDK expects.
+
 ```bash
 FIREBASE_PRIVATE_KEY=
 ```
@@ -642,25 +774,113 @@ FIREBASE_PRIVATE_KEY=
 ### Redis Settings
 
 **`CACHE_REDIS_URL`** *(required)*  
-Redis URL for cache (`db:0`). Prefer Compose Redis locally; without Docker use a hosted Redis such as [Amazon ElastiCache][ref-elasticache]. Setup: [Installation][ref-doc-installation].
+Redis URL for cache (`db:0`).
+
+- Locally, Compose Redis is the default choice.
+- Without Docker, use a hosted Redis such as [Amazon ElastiCache][ref-elasticache].
+- Redis 6.0 or later is required, because `SessionCache` runs `SCAN` with the `TYPE` option.
+- Setup: [Installation][ref-doc-installation].
+
 ```bash
 # Local Compose
 CACHE_REDIS_URL=redis://localhost:6379/0
+
+# Local Compose with DOCKER_REDIS_PASSWORD set
+# CACHE_REDIS_URL=redis://:<password>@localhost:6379/0
 ```
 
 **`QUEUE_REDIS_URL`** *(required)*  
-Redis URL for BullMQ (`db:1`). Same host as cache is fine; keep a different logical DB when you can.
+Redis URL for BullMQ (`db:1`).
+
+- The same host as cache is fine.
+- A different logical DB from cache keeps the two apart.
+
 ```bash
 # Local Compose
 QUEUE_REDIS_URL=redis://localhost:6379/1
+
+# Local Compose with DOCKER_REDIS_PASSWORD set
+# QUEUE_REDIS_URL=redis://:<password>@localhost:6379/1
 ```
 
 ### Debug Settings
 
 **`SENTRY_DSN`** *(optional)*  
-Sentry DSN for error tracking and monitoring. A URL when set; blank leaves Sentry off.
+Sentry DSN for error tracking and monitoring.
+
+- A URL when set.
+- Blank leaves Sentry off.
+
 ```bash
 SENTRY_DSN=
+```
+
+### Docker Settings
+
+> [!NOTE]
+> Every `DOCKER_*` variable is optional and empty in `.env.example`.
+>
+> - Docker Compose reads them to configure the `mongo`, `redis`, and `redis-bullboard` services.
+> - The application never reads them, and `AppEnvSchema` does not validate them.
+> - Each is read as `${VAR:-default}` in `docker-compose.yml` and `ci/docker-compose.production.yml`, so an unset variable and an empty one both take the default.
+> - The two passwords default to empty, which means no authentication.
+> - The production file takes its values only when started with `--env-file .env` (see [Release][ref-doc-release]).
+
+> [!WARNING]
+> Without `--env-file`, the production file starts MongoDB and Redis without authentication, and BullBoard accepts the login `admin` / `admin123`.
+
+Both Compose files bind-mount `keys/mongo-keyfile` into the `mongo` service whether or not authentication is on.
+
+- The mount sets `create_host_path: false`, so Compose does not create the file and fails the start when it is missing.
+- The file is required even when MongoDB runs plain.
+- `pnpm generate:secret` and `pnpm generate:secret:mongo` create it.
+
+**`DOCKER_MONGO_ROOT_USERNAME`** *(optional)*  
+Name of the MongoDB root user.
+
+- It falls back to `root`.
+- It is used only when `DOCKER_MONGO_ROOT_PASSWORD` is set.
+- It is the `<user>` in the `DATABASE_URL` that carries credentials.
+```bash
+DOCKER_MONGO_ROOT_USERNAME=
+```
+
+**`DOCKER_MONGO_ROOT_PASSWORD`** *(optional)*  
+Turns MongoDB authentication on.
+
+- Unset or empty starts MongoDB plain.
+- The keyfile `keys/mongo-keyfile` (created by `pnpm generate:secret` or `pnpm generate:secret:mongo`) is mounted either way. The password decides whether `mongod` uses it.
+- When set, `mongod` starts with `--keyFile` and `--auth` and creates the root user on the first start of a database without one.
+- An existing user is left as it is, so changing the variable later does not change the stored password.
+- `DATABASE_URL` then carries the credentials, with `DOCKER_MONGO_ROOT_USERNAME` as `<user>`, and `authSource=admin`.
+- Special characters in the password are percent-encoded inside the URL.
+- A `$` in the password makes the stored password and the one in the URL differ, because Compose interpolates `$` in values it reads with `--env-file` while the app reads `.env` literally (`expandVariables: false`).
+```bash
+DOCKER_MONGO_ROOT_PASSWORD=
+```
+
+**`DOCKER_REDIS_PASSWORD`** *(optional)*  
+Turns Redis authentication on.
+
+- Unset or empty starts Redis plain.
+- When set, Redis starts with `--requirepass`, and BullBoard uses the same value to connect to Redis.
+- BullBoard's own login is `DOCKER_BULLBOARD_USER` and `DOCKER_BULLBOARD_PASSWORD`.
+- `CACHE_REDIS_URL` and `QUEUE_REDIS_URL` then carry the password, percent-encoded where it holds special characters.
+- A `$` in the password causes the same mismatch as for `DOCKER_MONGO_ROOT_PASSWORD`.
+```bash
+DOCKER_REDIS_PASSWORD=
+```
+
+**`DOCKER_BULLBOARD_USER`** *(optional)*  
+BullBoard login name, falling back to `admin`.
+```bash
+DOCKER_BULLBOARD_USER=
+```
+
+**`DOCKER_BULLBOARD_PASSWORD`** *(optional)*  
+BullBoard login password, falling back to `admin123`.
+```bash
+DOCKER_BULLBOARD_PASSWORD=
 ```
 
 
@@ -674,5 +894,6 @@ SENTRY_DSN=
 [ref-doc-two-factor]: two-factor.md
 [ref-doc-vault]: vault.md
 [ref-doc-email]: email.md
+[ref-doc-release]: release.md
 [ref-mongodb-atlas]: https://www.mongodb.com/products/platform/atlas-database
 [ref-elasticache]: https://aws.amazon.com/elasticache/

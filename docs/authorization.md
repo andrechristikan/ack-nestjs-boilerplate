@@ -22,14 +22,14 @@ NestJS applies each layer on the route handler.
 
 ## Related Documents
 
-- [Authentication Documentation][ref-doc-authentication] - JWT, sessions, and API keys
-- [Activity Log Documentation][ref-doc-activity-log] - Authz-related activity rows
-- [Term Policy Documentation][ref-doc-term-policy] - Acceptance gating
-- [Device Documentation][ref-doc-device] - Device revoke and sessions
-- [Workspace Documentation][ref-doc-workspace] - Workspace guards and `x-workspace-id`
-- [Project Documentation][ref-doc-project] - Project guards and owner bypass
-- [Feature Flag Documentation][ref-doc-feature-flag] - `@FeatureFlagProtected` in the stack
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Rate limits and headers
+- [Authentication Documentation][ref-doc-authentication]: JWT, sessions, and API keys
+- [Activity Log Documentation][ref-doc-activity-log]: Authz-related activity rows
+- [Term Policy Documentation][ref-doc-term-policy]: Acceptance gating
+- [Device Documentation][ref-doc-device]: Device revoke and sessions
+- [Workspace Documentation][ref-doc-workspace]: Workspace guards and `x-workspace-id`
+- [Project Documentation][ref-doc-project]: Project guards and owner bypass
+- [Feature Flag Documentation][ref-doc-feature-flag]: `@FeatureFlagProtected` in the stack
+- [Security and Middleware Documentation][ref-doc-security-and-middleware]: Rate limits and headers
 
 ## Table of Contents
 
@@ -72,7 +72,10 @@ NestJS applies each layer on the route handler.
 
 ## Decorator Order
 
-NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method executes FIRST. The order encodes which gate rejects first, so a reshuffle changes the error a caller sees even when the application still boots. Every route uses this order, top to bottom in source:
+- NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method executes FIRST.
+- The order encodes which gate rejects first, so a reshuffle changes the error a caller sees even when the application still boots.
+
+Every route uses this order, top to bottom in source:
 
 ```typescript
 @Doc({ summary: '…' })                     // 1.  OpenAPI operation + global error kit
@@ -92,18 +95,41 @@ NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method e
 @Get('/endpoint')                          // 15. HTTP method, always last
 ```
 
-A route takes only the slots it needs; the relative order of the ones it takes never changes. Guard execution therefore runs `@ApiKeyProtected()` → `@AuthJwtAccessProtected()` → `@FeatureFlagProtected()` → `@UserProtected()` → `@WorkspaceProtected()` → `@WorkspaceMemberProtected()` → `@ProjectProtected()` → `@ProjectMemberProtected()` → `@RoleProtected()` → `@PolicyProtected()` → `@TermPolicyAcceptanceProtected()`.
+A route takes only the slots it needs, and the relative order of the ones it takes never changes. Guard execution therefore runs:
 
-- A social-login guard (`@AuthSocialGoogleProtected()`, `@AuthSocialAppleProtected()`) sits ABOVE `@FeatureFlagProtected()`, so it runs after the flag guard: a disabled flag answers `FeatureFlagDisabledException` (404, `50601`) before the provider token is verified, and the flag guard takes its anonymous branch on those routes.
-- `@RequestThrottle({ ... })` sits outside this order. Its `route` tier is read by a global guard, which runs before every route guard, and its `user` switch mounts an interceptor, which runs after every guard; neither depends on its position in the stack. Routes declare it below `@ApiKeyProtected()`, so the rate limit reads next to the guards protecting the same route. See [Security and Middleware][ref-doc-security-and-middleware].
-- Activity logging takes no slot. Domains build events with `ActivityLogDomain.prepare` and queue them with `ActivityLogDomain.stagePrepared`, and the global `ActivityLogInterceptor` writes them after the handler settles. See [Activity Log][ref-doc-activity-log].
+1. `@ApiKeyProtected()`
+2. `@AuthJwtAccessProtected()`
+3. `@FeatureFlagProtected()`
+4. `@UserProtected()`
+5. `@WorkspaceProtected()`
+6. `@WorkspaceMemberProtected()`
+7. `@ProjectProtected()`
+8. `@ProjectMemberProtected()`
+9. `@RoleProtected()`
+10. `@PolicyProtected()`
+11. `@TermPolicyAcceptanceProtected()`
+
+Placement rules:
+
+- A social-login guard (`@AuthSocialGoogleProtected()`, `@AuthSocialAppleProtected()`) sits ABOVE `@FeatureFlagProtected()`, so it runs after the flag guard.
+    - A disabled flag answers `FeatureFlagDisabledException` (404, `50601`) before the provider token is verified.
+    - The flag guard takes its anonymous branch on those routes.
+- `@RequestThrottle({ ... })` sits outside this order. See [Security and Middleware][ref-doc-security-and-middleware].
+    - Its `route` tier is read by a global guard, which runs before every route guard.
+    - Its `user` switch mounts an interceptor, which runs after every guard.
+    - Neither depends on its position in the stack.
+    - Routes declare it below `@ApiKeyProtected()`, so the rate limit reads next to the guards protecting the same route.
+- Activity logging takes no slot. See [Activity Log][ref-doc-activity-log].
+    - Domains build events with `ActivityLogDomain.prepare` and queue them with `ActivityLogDomain.stagePrepared`.
+    - The global `ActivityLogInterceptor` writes them after the handler settles.
 - A guard that depends on state an earlier guard sets sits ABOVE that guard in source, so it runs after it.
 - `@FeatureFlagProtected()` sits ABOVE `@AuthJwtAccessProtected()` so the flag guard sees `request.user`. Below it the guard always takes its anonymous branch, which makes `targetUserIds` and any rollout below 100% inert on that route.
 - The workspace and project slots are used by the `/user` scope. The `/admin` scope reaches the same resources through `@RoleProtected()` + `@PolicyProtected()` instead, and takes the workspace or project id from the path.
 
 ## User Protected
 
-`UserProtected` applies `UserGuard`, which reads the JWT `userId` and loads the user. Email verification defaults to on.
+- `UserProtected` applies `UserGuard`, which reads the JWT `userId` and loads the user.
+- Email verification defaults to on.
 
 ### Decorators
 
@@ -116,7 +142,11 @@ A route takes only the slots it needs; the relative order of the ones it takes n
 
 **Usage:**
 
-`@UserProtected()` requires email verification. `@UserProtected(false)` skips that check. The default is `true`. Shared profile:
+- `@UserProtected()` requires email verification.
+- `@UserProtected(false)` skips that check.
+- The default is `true`.
+
+Shared profile:
 
 ```typescript
 @TermPolicyAcceptanceProtected()
@@ -229,9 +259,9 @@ flowchart TD
 - `...requiredRoles` (EnumRoleType[]): One or more role types required to access the route
 
 **Available Role Types:**
-- `EnumRoleType.superAdmin` - Super administrator with unrestricted access
-- `EnumRoleType.admin` - Administrator role
-- `EnumRoleType.user` - Standard user role
+- `EnumRoleType.superAdmin`: Super administrator with unrestricted access
+- `EnumRoleType.admin`: Administrator role
+- `EnumRoleType.user`: Standard user role
 
 **Usage:**
 
@@ -254,7 +284,9 @@ async list(
 }
 ```
 
-The decorator accepts more than one type (`@RoleProtected(EnumRoleType.admin, EnumRoleType.user)`). The caller needs one of the listed types. Admin user routes in this checkout pass `EnumRoleType.admin` alone.
+- The decorator accepts more than one type (`@RoleProtected(EnumRoleType.admin, EnumRoleType.user)`).
+- The caller needs one of the listed types.
+- Admin user routes pass `EnumRoleType.admin` alone.
 
 **`superAdmin` is absent from every `@RoleProtected()` list.** The guard returns before the required-role list is read for a `superAdmin`, so listing it would grant nothing.
 
@@ -263,7 +295,9 @@ The decorator accepts more than one type (`@RoleProtected(EnumRoleType.admin, En
 Two parameter decorators read the role:
 
 - `@RoleCurrent(field?)` returns the role `UserGuard` loaded (`IRoleWithPolicies`), or one of its fields: `type`, `name`, `policies`, and the rest. It reads `UserStoreKey`, so a missing user, role, or field throws `RequestContextMissingException` (500, `50304`).
-- `@PolicyCurrent()` returns the `Policy[]` `RoleGuard` stored under `PolicyStoreKey`. An empty list is a valid value (a `superAdmin`); a route without `@RoleProtected()` throws `RequestContextMissingException`.
+- `@PolicyCurrent()` returns the `Policy[]` `RoleGuard` stored under `PolicyStoreKey`.
+    - An empty list is a valid value (a `superAdmin`).
+    - A route without `@RoleProtected()` throws `RequestContextMissingException`.
 
 `@UserCurrent()` also carries the role on the returned `IUser`: `user.role.type`, `user.role.name`, and `user.role.policies`.
 
@@ -320,7 +354,8 @@ flowchart TD
 
 ## Policy Protected
 
-`PolicyProtected` is CASL. A policy names an action (`read`, `create`, `update`, `delete`, `manage`) on a subject (`user`, `role`, `session`, and the rest of `EnumPolicySubject`).
+- `PolicyProtected` is CASL.
+- A policy names an action (`read`, `create`, `update`, `delete`, `manage`) on a subject (`user`, `role`, `session`, and the rest of `EnumPolicySubject`).
 
 ### Decorators
 
@@ -332,26 +367,26 @@ flowchart TD
 - `...requiredPolicies` (PolicyRequestDto[]): One or more `{ subject, action[] }` objects naming the required permissions
 
 **Available Policy Actions:**
-- `EnumPolicyAction.manage` - Full control over a subject
-- `EnumPolicyAction.read` - Read/view permission
-- `EnumPolicyAction.create` - Create new resources
-- `EnumPolicyAction.update` - Modify existing resources
-- `EnumPolicyAction.delete` - Remove resources
+- `EnumPolicyAction.manage`: Full control over a subject
+- `EnumPolicyAction.read`: Read/view permission
+- `EnumPolicyAction.create`: Create new resources
+- `EnumPolicyAction.update`: Modify existing resources
+- `EnumPolicyAction.delete`: Remove resources
 
 **Available Policy Subjects:**
-- `EnumPolicySubject.all` - All resources
-- `EnumPolicySubject.apiKey` - API key management
-- `EnumPolicySubject.role` - Role management
-- `EnumPolicySubject.user` - User management
-- `EnumPolicySubject.session` - Session management
-- `EnumPolicySubject.activityLog` - Activity logs
-- `EnumPolicySubject.passwordHistory` - Password history
-- `EnumPolicySubject.termPolicy` - Terms and policies
-- `EnumPolicySubject.featureFlag` - Feature flags
-- `EnumPolicySubject.device` - Device management
-- `EnumPolicySubject.workspace` - Workspace management
-- `EnumPolicySubject.project` - Project management
-- `EnumPolicySubject.analytic` - Admin analytic dashboard, anomaly, and fraud read routes
+- `EnumPolicySubject.all`: All resources
+- `EnumPolicySubject.apiKey`: API key management
+- `EnumPolicySubject.role`: Role management
+- `EnumPolicySubject.user`: User management
+- `EnumPolicySubject.session`: Session management
+- `EnumPolicySubject.activityLog`: Activity logs
+- `EnumPolicySubject.passwordHistory`: Password history
+- `EnumPolicySubject.termPolicy`: Terms and policies
+- `EnumPolicySubject.featureFlag`: Feature flags
+- `EnumPolicySubject.device`: Device management
+- `EnumPolicySubject.workspace`: Workspace management
+- `EnumPolicySubject.project`: Project management
+- `EnumPolicySubject.analytic`: Admin analytic dashboard, anomaly, and fraud read routes
 
 **Usage:**
 
@@ -483,7 +518,7 @@ The project uses [CASL][casl] for permission checks:
 - The stack reads top to bottom `@PolicyProtected()` → `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
 - Without a stored user the guard throws `AuthJwtAccessTokenInvalidException` (401)
 - Users with `superAdmin` role type have unrestricted access to all `@PolicyProtected` routes, bypassing all ability checks.
-- Every action of a required policy has to be present in the user's policies. Requiring `[EnumPolicyAction.update, EnumPolicyAction.delete]` on the `EnumPolicySubject.user` subject grants access only when the user holds both actions, not just one.
+- Access needs every action of a required policy in the user's policies. Requiring `[EnumPolicyAction.update, EnumPolicyAction.delete]` on the `EnumPolicySubject.user` subject grants access only when the user holds both actions.
 
 ## Term Policy Acceptance Protected
 
@@ -498,13 +533,13 @@ Details: [Term Policy Documentation][ref-doc-term-policy].
 **Method decorator** that applies `TermPolicyGuard` to route handlers.
 
 **Parameters:**
-- `...requiredTermPolicies` (EnumTermPolicyType[], optional): One or more term policy types that must be accepted. If not provided, defaults to `termsOfService` and `privacy`
+- `...requiredTermPolicies` (EnumTermPolicyType[], optional): One or more term policy types the guard checks for acceptance. Defaults to `termsOfService` and `privacy`
 
 **Available Term Policy Types:**
-- `EnumTermPolicyType.termsOfService` - Terms of Service acceptance
-- `EnumTermPolicyType.privacy` - Privacy Policy acceptance
-- `EnumTermPolicyType.cookies` - Cookies Policy acceptance
-- `EnumTermPolicyType.marketing` - Marketing consent acceptance
+- `EnumTermPolicyType.termsOfService`: Terms of Service acceptance
+- `EnumTermPolicyType.privacy`: Privacy Policy acceptance
+- `EnumTermPolicyType.cookies`: Cookies Policy acceptance
+- `EnumTermPolicyType.marketing`: Marketing consent acceptance
 
 **Usage:**
 
@@ -527,7 +562,9 @@ async listAccepted(
 }
 ```
 
-The decorator takes optional `EnumTermPolicyType` arguments. With none, it requires `termsOfService` and `privacy`. Shared and admin routes in this checkout pass no arguments.
+- The decorator takes optional `EnumTermPolicyType` arguments.
+- With none, it requires `termsOfService` and `privacy`.
+- Shared and admin routes pass no arguments.
 
 ### Guards
 
@@ -582,7 +619,8 @@ flowchart TD
 
 ## Workspace and Project Protected
 
-Four decorators scope a `/user` request to one workspace and, inside it, to one project. They occupy slots 6-9 of the stack above and are documented in full by the modules that own them.
+- Four decorators scope a `/user` request to one workspace and, inside it, to one project.
+- They occupy slots 6-9 of the stack above and are documented in full by the modules that own them.
 
 | Decorator | Guards it binds | Selects the resource from |
 |---|---|---|
@@ -601,13 +639,17 @@ For the guard bodies, the exceptions and status codes each one throws, the store
 
 ## Creating Custom Roles
 
-The boilerplate supports creating custom roles through the role management API. A role carries a set of policies, each naming one subject and the actions allowed on it.
-
-A custom role is any role other than `superAdmin`, `admin`, and `user`. Examples: ContentModerator, Accountant, CustomerSupport. Each role carries its own policies.
+- The boilerplate supports creating custom roles through the role management API.
+- A role carries a set of policies, each naming one subject and the actions allowed on it.
+- A custom role is any role other than `superAdmin`, `admin`, and `user`.
+- Examples: ContentModerator, Accountant, CustomerSupport.
 
 ### How to Create a New Role
 
-A role and its policies are two separate admin surfaces: `POST /admin/role/create` creates the role, and `POST /admin/role/:roleId/policy/create` attaches one policy to it. The API documentation is available in your Swagger docs at `/docs`.
+- A role and its policies are two separate admin surfaces.
+    - `POST /admin/role/create` creates the role.
+    - `POST /admin/role/:roleId/policy/create` attaches one policy to it.
+- The API documentation is available in your Swagger docs at `/docs`.
 
 **Basic steps:**
 
@@ -667,7 +709,8 @@ No admin route changes the role of an existing user.
 
 - When a user is assigned a role, they immediately inherit every policy attached to that role
 - `UserGuard` loads the user with its role and the role's policies on every request
-- `RoleGuard` checks the role type and stores the policies; `PolicyGuard` validates permissions against them
+- `RoleGuard` checks the role type and stores the policies
+- `PolicyGuard` validates permissions against the stored policies
 - No application restart or additional configuration is needed
 
 **Permission enforcement flow:**

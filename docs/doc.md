@@ -23,16 +23,19 @@ Internal kit plumbing:
 - Kit constants (`DocGlobalErrorResponses`, `DocPaginationErrorResponses`, `DocFileErrorResponses`, …) live in `src/common/doc/constants/doc.constant.ts`
 - Module kits live as `Doc<Module>ErrorResponses` in that module's `constants/<module>.constant.ts`
 
-The decorators in `src/common/doc/` are in the coverage set; its constants and interfaces files fall under the `*.constant.ts` and `*.interface.ts` coverage excludes.
+Coverage:
+
+- The decorators in `src/common/doc/` are in the coverage set.
+- Its constants and interfaces files fall under the `*.constant.ts` and `*.interface.ts` coverage excludes.
 
 ## Related Documents
 
-- [Request Validation Documentation][ref-doc-request-validation] - Request schemas OpenAPI is built from
-- [Response Documentation][ref-doc-response] - Response structure and formatting
-- [Authentication Documentation][ref-doc-authentication] - Auth decorator usage on routes
-- [Authorization Documentation][ref-doc-authorization] - Guard and protection kits
-- [Pagination Documentation][ref-doc-pagination] - Offset and cursor list contracts
-- [File Upload Documentation][ref-doc-file-upload] - Multipart upload decorators
+- [Request Validation Documentation][ref-doc-request-validation]: Request schemas OpenAPI is built from
+- [Response Documentation][ref-doc-response]: Response structure and formatting
+- [Authentication Documentation][ref-doc-authentication]: Auth decorator usage on routes
+- [Authorization Documentation][ref-doc-authorization]: Guard and protection kits
+- [Pagination Documentation][ref-doc-pagination]: Offset and cursor list contracts
+- [File Upload Documentation][ref-doc-file-upload]: Multipart upload decorators
 
 ## Table of Contents
 
@@ -61,21 +64,22 @@ The decorators in `src/common/doc/` are in the coverage set; its constants and i
 
 ### Doc
 
-Basic operation metadata for an endpoint. Every endpoint carries `@Doc({ summary })` at the top of the decorator stack.
+- Basic operation metadata for an endpoint.
+- Every endpoint carries `@Doc({ summary })` at the top of the decorator stack.
 
 **Parameters:**
 
 - `options?: IDocOptions`
-  - `summary?: string` - Operation summary
-  - `operation?: string` - Operation ID
-  - `deprecated?: boolean` - Mark as deprecated
-  - `description?: string` - Detailed description
+  - `summary?: string`: Operation summary
+  - `operation?: string`: Operation ID
+  - `deprecated?: boolean`: Mark as deprecated
+  - `description?: string`: Detailed description
 
 **Auto-includes:**
 
 - Custom headers:
-  - `x-custom-lang` - Custom language header (default: EN)
-  - `x-correlation-id` - Correlation identifier for tracking requests across services
+  - `x-custom-lang`: Custom language header (default: EN)
+  - `x-correlation-id`: Correlation identifier for tracking requests across services
 - Global kit error responses from `DocGlobalErrorResponses` in `src/common/doc/constants/doc.constant.ts`:
   - Internal server error (500)
   - Request timeout (408)
@@ -103,12 +107,15 @@ async profile(
 
 ### DocErrors
 
-Public escape hatch for endpoint-specific flow errors an endpoint opts into the OpenAPI document, whether the exception lives in a module or in `src/common/`. Controllers do not call `DocResponseError` directly; they use `@DocErrors`.
+Public escape hatch for endpoint-specific flow errors an endpoint opts into the OpenAPI document, whether the exception lives in a module or in `src/common/`.
+
+- Controllers do not call `DocResponseError` directly.
+- They use `@DocErrors`.
 
 **Parameters:**
 
-- `httpStatus: HttpStatus` - HTTP status for the documented responses
-- `...entries: IDocResponseErrorOptions[]` - Each entry is a `statusCode` plus its i18n `messagePath` (and optional `schema` / `baseSchema`)
+- `httpStatus: HttpStatus`: HTTP status for the documented responses
+- `...entries: IDocResponseErrorOptions[]`: Each entry is a `statusCode` plus its i18n `messagePath` (and optional `schema` / `baseSchema`)
 
 **Usage:**
 
@@ -125,13 +132,24 @@ async handler(): Promise<IResponseReturn<SomeResponseDto>> {
 }
 ```
 
-For a flow exception, from a module or from `src/common/`, that no kit already covers and that the endpoint documents in OpenAPI.
+It applies to a flow exception, from a module or from `src/common/`, that no kit already covers and that the endpoint documents in OpenAPI.
 
 ### DocResponseError
 
-Internal kit emitter for responses of one HTTP status. Each entry is a `statusCode` plus its i18n `messagePath` (and optional `schema` for `data`, optional `baseSchema` defaulting to `ResponseSchema`). Paginated success uses `baseSchema: ResponsePaginationSchema`.
+Internal kit emitter for responses of one HTTP status:
 
-It is a `MethodDecorator` that merges entries onto the handler under `DocResponseEntryMetaKey` and re-emits `ApiResponse` for that status, so entries from different primitives at one status compose instead of replacing each other. Deduping key: `httpStatus:statusCode:messagePath`.
+- Each entry is a `statusCode` plus its i18n `messagePath`.
+- An entry may add `schema` for `data`.
+- An entry may add `baseSchema`, which defaults to `ResponseSchema`.
+- Paginated success uses `baseSchema: ResponsePaginationSchema`.
+
+It is a `MethodDecorator`:
+
+- It merges entries onto the handler under `DocResponseEntryMetaKey`.
+- It re-emits `ApiResponse` for that status, so entries from different primitives at one status compose instead of replacing each other.
+- The deduping key is `httpStatus:statusCode:messagePath`.
+
+Output shape:
 
 - One entry at a status emits a plain schema with field examples.
 - Two or more emit one shared response-envelope schema plus named OpenAPI `examples` keyed by `messagePath`, each value the full envelope (`statusCode`, `message`, `metadata`).
@@ -147,7 +165,12 @@ Common kit `DocResponseError` calls live in `src/common/doc/constants/doc.consta
 - `DocSerializationErrorResponses`
 - and related groups
 
-Module `*Protected` / auth kits live as `Doc<Module>ErrorResponses` in that module's `constants/<module>.constant.ts` and are spread into the decorator's `applyDecorators(...)`. Each entry is a bare `DocResponseError(...)` MethodDecorator; kit constants are never pre-composed `applyDecorators` blobs.
+Module `*Protected` / auth kits:
+
+- They live as `Doc<Module>ErrorResponses` in that module's `constants/<module>.constant.ts`.
+- They are spread into the decorator's `applyDecorators(...)`.
+- Each entry is a bare `DocResponseError(...)` MethodDecorator.
+- Kit constants are never pre-composed `applyDecorators` blobs.
 
 ## Who documents what
 
@@ -160,7 +183,9 @@ Module `*Protected` / auth kits live as `Doc<Module>ErrorResponses` in that modu
 | Multipart upload | `FileUploadSingle` / `FileUploadMultiple` / `FileUploadMultipleFields`: `ApiConsumes('multipart/form-data')` plus binary `ApiBody` from field name(s) plus upload error kit |
 | List query (`page` / `cursor` / `perPage` / `search` / `orderBy` + filters) | the list zod schema on `@Query({ schema })`, built from `PaginationOffsetQuerySchema` / `PaginationCursorQuerySchema` plus `.extend` |
 
-A hand-written schema object beside a zod schema is a mirror. Every field carries `.meta({ description, example })` on the zod schema. No schema calls `faker.seed()`.
+- A hand-written schema object beside a zod schema is a mirror.
+- Every field carries `.meta({ description, example })` on the zod schema.
+- No schema calls `faker.seed()`.
 
 ### Success and response-kind errors
 
@@ -171,11 +196,16 @@ A hand-written schema object beside a zod schema is a mirror. Every field carrie
 | `@ResponseFile({ extension?, maxDataExportConfigKey? })` | Success response under the extension's media type (`text/csv` or `application/pdf`, from `ResponseFileMediaTypes`) with a binary string schema; error responses stay `application/json` | Export row cap (`50104`) and size cap (`50105`) from `DocFileErrorResponses` |
 | `FileUpload*` | Multipart consumes + binary body | Upload errors from `DocFileErrorResponses` |
 
-`IResponseOptions` carries only `schema` and `cache`. It does not carry `httpStatus` or `statusCode`. Override either status at runtime via `metadata` on the handler return. `@ResponsePagination` does not emit list `ApiQuery`s; those come from the zod query schema.
+- `IResponseOptions` carries only `schema` and `cache`. It does not carry `httpStatus` or `statusCode`.
+- A handler overrides either status at runtime via `metadata` on its return.
+- `@ResponsePagination` does not emit list `ApiQuery`s.
+- The list `ApiQuery`s come from the zod query schema.
 
 ### Auth and guard errors
 
-Each `*Protected` / auth decorator emits exactly the throw set of the guard class it installs, plus any security scheme (`ApiBearerAuth`, `ApiSecurity`). Where a decorator installs a different guard class depending on its arguments, each class takes its own kit.
+Each `*Protected` / auth decorator emits exactly the throw set of the guard class it installs, plus any security scheme (`ApiBearerAuth`, `ApiSecurity`).
+
+- Where a decorator installs a different guard class depending on its arguments, each class takes its own kit.
 
 OpenAPI security scheme names are the module constants below. `ApiBearerAuth`, `ApiSecurity`, `DocumentBuilder.addBearerAuth`, and `DocumentBuilder.addApiKey` take those consts:
 
@@ -187,14 +217,16 @@ OpenAPI security scheme names are the module constants below. `ApiBearerAuth`, `
 | `AuthSocialAppleDocSecurityName` | `apple` | `src/swagger.ts` + `AuthSocialAppleProtected` |
 | `ApiKeyDocSecurityName` | `xApiKey` | `src/swagger.ts` + `ApiKeyProtected` / `ApiKeySystemProtected` |
 
-Scheme values are camelCase. The API key transport header is `x-api-key`: `addApiKey` takes `ApiKeyHeaderName` as its `name`.
+- Scheme values are camelCase.
+- The API key transport header is `x-api-key`: `addApiKey` takes `ApiKeyHeaderName` as its `name`.
 
 Two kits carry a 404 beside their other entries:
 
 - `FeatureFlagProtected` publishes `DocFeatureFlagErrorResponses`: the `predefined` group (500) and `disabled` (404, `featureFlag.error.disabled`)
 - `AuthSocialGoogleProtected` and `AuthSocialAppleProtected` publish `DocAuthSocialGoogleErrorResponses` / `DocAuthSocialAppleErrorResponses`: the `unauthorized` group (401) and `notConfigured` (404, `auth.error.socialGoogleNotConfigured` / `auth.error.socialAppleNotConfigured`)
 
-`auth.error.accessTokenUnauthorized` belongs to `AuthJwtAccessProtected`. A Protected decorator whose domain also throws when the principal is missing does not publish that 401 again.
+- `auth.error.accessTokenUnauthorized` belongs to `AuthJwtAccessProtected`.
+- A Protected decorator whose domain also throws when the principal is missing does not publish that 401 again.
 
 ### Published errors
 
@@ -207,7 +239,10 @@ One error has one source, from where the exception lives:
 | a module, raised by a guard or an auth strategy | the matching `*Protected` / auth decorator |
 | a module or `src/common/`, raised by a specific endpoint's flow and required in OpenAPI | `@DocErrors` on that handler |
 
-A module marked `@Global()` changes nothing about this. Its errors reach the kit only through a guard or auth strategy that gates them, or through `@DocErrors` when an endpoint opts in.
+A module marked `@Global()` changes nothing about this. Its errors reach the kit through one of two routes:
+
+- a guard or auth strategy that gates them
+- `@DocErrors`, when an endpoint opts in
 
 ```mermaid
 flowchart TB
@@ -227,9 +262,16 @@ flowchart TB
 
 The OpenAPI document describes endpoints, schemas, and metadata for integration and external tools.
 
-The Swagger document is built only when `app.env` is not `production`. In a production environment neither the `/docs` UI, the JSON endpoint, nor `generated/swagger.json` is produced.
+The Swagger document is built only when `app.env` is not `production`. In a production environment, none of these is produced:
 
-Building the document (and loading the Swagger UI) takes noticeably longer because the document carries many examples: per-status error kits emit named OpenAPI `examples` keyed by `messagePath`, and list, query, and response fields carry `.meta` examples.
+- the `/docs` UI
+- the JSON endpoint
+- `generated/swagger.json`
+
+Building the document (and loading the Swagger UI) takes noticeably longer because the document carries many examples:
+
+- Per-status error kits emit named OpenAPI `examples` keyed by `messagePath`.
+- List, query, and response fields carry `.meta` examples.
 
 ### How to Get swagger.json
 
@@ -250,20 +292,32 @@ Both methods provide the same OpenAPI spec: one served live, one written to disk
 
 ## Schema Documentation
 
-A DTO here is a zod schema plus the type inferred from it, and the OpenAPI schema object is produced from that same schema by [zod-openapi][ref-zod-openapi]. There is no separate annotation layer: the response and file decorators call `createSchema(schema)` (or equivalent) and hand the result to `@nestjs/swagger`.
+A DTO here is a zod schema plus the type inferred from it.
 
-Each `*.dto.ts` file declares one schema and its inferred type. Both carry a one-line JSDoc summary followed by `@public`; the same convention covers decorators, enums, exceptions, and constants.
+- [zod-openapi][ref-zod-openapi] produces the OpenAPI schema object from that same schema.
+- There is no separate annotation layer.
+- The response and file decorators call `createSchema(schema)` (or equivalent) and hand the result to `@nestjs/swagger`.
+- Each `*.dto.ts` file declares one schema and its inferred type.
+- The schema and its inferred type each carry a one-line JSDoc summary followed by `@public`.
+- The same convention covers decorators, enums, exceptions, and constants.
 
 ### .meta()
 
 Per-field OpenAPI metadata lives in `.meta()` on the field.
 
 **Common keys:**
-- `description?: string` - Property description
-- `example?: unknown` - Example value
-- `deprecated?: boolean` - Mark the property deprecated
+- `description?: string`: Property description
+- `example?: unknown`: Example value
+- `deprecated?: boolean`: Mark the property deprecated
 
-Everything else the OpenAPI schema carries comes from the zod type itself: `.min()` / `.max()` become `minLength` / `maxLength` or `minimum` / `maximum`, `.regex()` becomes `pattern`, `z.enum()` becomes `enum`, `.optional()` keeps the field out of `required`, `.nullable()` sets the nullable type, and `.default()` becomes `default`.
+Everything else the OpenAPI schema carries comes from the zod type itself:
+
+- `.min()` / `.max()` become `minLength` / `maxLength` or `minimum` / `maximum`.
+- `.regex()` becomes `pattern`.
+- `z.enum()` becomes `enum`.
+- `.optional()` keeps the field out of `required`.
+- `.nullable()` sets the nullable type.
+- `.default()` becomes `default`.
 
 **Usage:**
 
@@ -328,7 +382,8 @@ export type UserForgotPasswordResetRequestDto = z.infer<
 
 ### Complete Admin Endpoint
 
-Zod-bound path params reach OpenAPI from the schema on `@Param`. Auth and role kits live on the Protected decorators.
+- Zod-bound path params reach OpenAPI from the schema on `@Param`.
+- Auth and role kits live on the Protected decorators.
 
 ```typescript
 @Doc({ summary: 'get detail an user' })
@@ -369,11 +424,14 @@ async signUp(
 }
 ```
 
-Body Content-Type and field shapes come from the zod schema on `@Body`. Success HTTP status follows Nest's `POST` default (`201`) unless `@HttpCode` overrides it.
+- Body Content-Type and field shapes come from the zod schema on `@Body`.
+- Success HTTP status follows Nest's `POST` default (`201`) unless `@HttpCode` overrides it.
 
 ### Paginated List Endpoint
 
-List query OpenAPI comes only from the zod schema on `@Query({ schema })`. `@ResponsePagination` documents the page envelope and both pagination error kits; it does not emit `ApiQuery` for `page`, `cursor`, `perPage`, `search`, or `orderBy`.
+- List query OpenAPI comes only from the zod schema on `@Query({ schema })`.
+- `@ResponsePagination` documents the page envelope and both pagination error kits.
+- `@ResponsePagination` does not emit `ApiQuery` for `page`, `cursor`, `perPage`, `search`, or `orderBy`.
 
 ```typescript
 @Doc({ summary: 'get all users' })
@@ -396,7 +454,9 @@ async list(
 }
 ```
 
-`UserListRequestSchema` extends `PaginationOffsetQuerySchema` with `search`, `orderBy`, and filter fields. Allow-list text in `.meta({ description })` uses the same constants the HTTP service passes to `PaginationQueryUtil`. Flow: [Pagination Documentation][ref-doc-pagination].
+- `UserListRequestSchema` extends `PaginationOffsetQuerySchema` with `search`, `orderBy`, and filter fields.
+- Allow-list text in `.meta({ description })` uses the same constants the HTTP service passes to `PaginationQueryUtil`.
+- Flow: [Pagination Documentation][ref-doc-pagination].
 
 ### File Upload Endpoint
 
@@ -430,7 +490,8 @@ async uploadPhotoProfile(
 }
 ```
 
-`FileUploadSingle` publishes multipart consumes, the binary body field, and the upload error kit. `@Response` publishes the success envelope.
+- `FileUploadSingle` publishes multipart consumes, the binary body field, and the upload error kit.
+- `@Response` publishes the success envelope.
 
 See the [NestJS OpenAPI documentation][ref-nestjs-swagger].
 

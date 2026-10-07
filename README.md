@@ -23,11 +23,11 @@ _[Request a feature][ref-ack-issues] or [report a bug][ref-ack-issues]._
 
 A good fit when you are building:
 
-- 🏢 **Enterprise apps** - Auth with roles, CASL policies, and an activity log
-- 🔐 **Auth services** - JWT, Google and Apple sign-in, and TOTP 2FA
-- 📱 **Mobile backends** - REST API with social login, device tracking, and push notifications
-- 🌐 **Multi-tenant SaaS** - Every user belongs to a workspace; projects stay workspace-scoped, with invites and join requests
-- 💼 **Startup MVPs** - Auth, workspaces, notifications, and file upload already wired
+- 🏢 **Enterprise apps**: Auth with roles, CASL policies, and an activity log
+- 🔐 **Auth services**: JWT, Google and Apple sign-in, and TOTP 2FA
+- 📱 **Mobile backends**: REST API with social login, device tracking, and push notifications
+- 🌐 **Multi-tenant SaaS**: Every user belongs to a workspace. Projects stay workspace-scoped, with invites and join requests
+- 💼 **Startup MVPs**: Auth, workspaces, notifications, and file upload already wired
 
 
 ## Table of Contents
@@ -52,6 +52,7 @@ A good fit when you are building:
   - [Quick Start](#quick-start)
   - [Database](#database)
   - [Installation](#installation)
+  - [Release](#release)
   - [License](#license)
   - [Contribute](#contribute)
   - [Contributors](#contributors)
@@ -60,10 +61,18 @@ A good fit when you are building:
 
 ## Important
 
-- MongoDB must run as a replica set; Prisma transactions need it.
-- Third-party integrations (AWS S3, AWS SES, Firebase, Google and Apple sign-in, Sentry) are optional. A blank `.env` line leaves one unset. S3 and SES turn on when their IAM credential key or secret is set, Firebase on any of its three keys; once on, a missing member of the group fails startup validation. Google, Apple, and Sentry each turn on from their own id or DSN and need nothing else. A region, bucket, or `EMAIL_*` value set alone boots fine. A route that needs S3 or a social sign-in that is unset answers 404.
-- When `APP_ENV` is `production`, Swagger is off, and Sentry Logs only get `warn`, `error`, and `fatal` (other environments send every level).
-- Protection decorators follow a fixed stack. Use only the ones you need, and keep that relative order. Activity logging is separate: domains stage events, and a global interceptor writes them.
+- MongoDB runs as a replica set because Prisma transactions need one.
+- Third-party integrations (AWS S3, AWS SES, Firebase, Google and Apple sign-in, Sentry) are optional. A blank `.env` line leaves one unset.
+    - S3 and SES turn on when their IAM credential key or secret is set.
+    - Firebase turns on when any of its three keys is set.
+    - Once S3, SES, or Firebase is on, a missing member of its group fails startup validation.
+    - Google, Apple, and Sentry each turn on from their own id or DSN and need nothing else.
+    - A region, bucket, or `EMAIL_*` value set alone boots fine.
+    - A route that needs S3, or a social sign-in, answers 404 when that integration is unset.
+- When `APP_ENV` is `production`:
+    - Swagger is off.
+    - Sentry Logs only get `warn`, `error`, and `fatal` (other environments send every level).
+- Protection decorators follow a fixed stack. A route carries only the ones it needs, in this relative order:
     ```typescript
     @Doc({ summary: '…' })
     @Response('example.get')          // or @ResponsePagination / @ResponseFile
@@ -83,9 +92,13 @@ A good fit when you are building:
     Nest runs the stack bottom-up, so a decorator that needs state from another one sits above it:
 
     - `@FeatureFlagProtected()` sits above `@AuthJwtAccessProtected()` so the flag guard can see `request.user`
-    - if you flip that order, there is no user yet, `targetUserIds` is skipped, and rollout keys off the anonymous-ID header instead
+    - if you flip that order:
+        - there is no user yet
+        - `targetUserIds` is skipped
+        - rollout keys off the anonymous-ID header instead
 
     Full detail: [Authorization Documentation][ref-doc-authorization].
+- Activity logging is separate from the stack: domains stage events, and a global interceptor writes them.
 
 ## TODO
 
@@ -104,15 +117,15 @@ A good fit when you are building:
 
 You will get more out of this project if you already know:
 
-1. **[NestJs Fundamentals][ref-nestjs]** - Decorators, modules, services, and dependency injection
-2. **[TypeScript][ref-typescript]** - Strong typing, interfaces, and generics
-3. **[Prisma ORM][ref-prisma]** - Schema design, `prisma db push`, and type-safe queries
-4. **[MongoDB][ref-mongodb]** - NoSQL basics, especially **replica sets** for transactions
-5. **[Redis][ref-redis]** - Caching, session storage, and queues
-6. **Repository Design Pattern** - Keeping data access behind a clear layer
-7. **SOLID Principles** - Clean architecture and dependencies
-8. **Queue Systems** - Background jobs with [BullMQ][ref-bullmq]
-9. **[Docker][ref-docker]** (optional) - Handy for running the local stack
+1. **[NestJs Fundamentals][ref-nestjs]**: Decorators, modules, services, and dependency injection
+2. **[TypeScript][ref-typescript]**: Strong typing, interfaces, and generics
+3. **[Prisma ORM][ref-prisma]**: Schema design, `prisma db push`, and type-safe queries
+4. **[MongoDB][ref-mongodb]**: NoSQL basics, especially **replica sets** for transactions
+5. **[Redis][ref-redis]**: Caching, session storage, and queues
+6. **Repository Design Pattern**: Keeping data access behind a clear layer
+7. **SOLID Principles**: Clean architecture and dependencies
+8. **Queue Systems**: Background jobs with [BullMQ][ref-bullmq]
+9. **[Docker][ref-docker]** (optional): Handy for running the local stack
 
 ## Build with
 
@@ -125,8 +138,8 @@ Versions this project expects:
 | PNPM           | >= 10.25.0 (pin `pnpm@12.5.1`) |
 | TypeScript     | v6.0.x   |
 | Prisma         | v6.19.x  |
-| MongoDB        | v8+ (compose: `mongo:latest`)        |
-| Redis          | v8+ (compose: `redis:latest`)   |
+| MongoDB        | v8.0+ replica set (compose: `mongo:latest`) |
+| Redis          | v6.0+ (compose: `redis:latest`) |
 | Docker         | v28.5.x+ |
 | Docker Compose | v2.40.x+ |
 
@@ -145,54 +158,54 @@ See [package.json][ref-package-json] for the full list.
 
 ### 🔐 Authentication & Security
 
-- **JWT + stateful sessions** - ES256 access and ES512 refresh tokens, Redis-backed sessions, and instant revocation
-- **Social sign-in** - Google OAuth and Apple Sign In for mobile and web
-- **TOTP 2FA** - Authenticator apps, encrypted secrets, and backup recovery codes
-- **RBAC & CASL policies** - Roles and fine-grained abilities on top of workspace and project membership
-- **API keys & rate limits** - `x-api-key` guards plus Redis sliding-window limits (per IP, per user, per route)
+- **JWT + stateful sessions**: ES256 access and ES512 refresh tokens, Redis-backed sessions, and instant revocation
+- **Social sign-in**: Google OAuth and Apple Sign In for mobile and web
+- **TOTP 2FA**: Authenticator apps, encrypted secrets, and backup recovery codes
+- **RBAC & CASL policies**: Roles and fine-grained abilities on top of workspace and project membership
+- **API keys & rate limits**: `x-api-key` guards plus Redis sliding-window limits (per IP, per user, per route)
 
 ### 🌐 Workspaces & Projects
 
-- **Multi-workspace tenancy** - Every user gets a workspace; personal by default, or the inviting workspace when they join through an invite
-- **Projects inside workspaces** - Membership, invites, and join requests, with a feature flag when you want the surface off
-- **Feature flags** - On/off, target users, and percentage rollout by user or anonymous ID
+- **Multi-workspace tenancy**: Every user gets a workspace. It is personal by default, or the inviting workspace when the user joins through an invite
+- **Projects inside workspaces**: Membership, invites, and join requests, with a feature flag when you want the surface off
+- **Feature flags**: On/off, target users, and percentage rollout by user or anonymous ID
 
 ### 📊 Database & Storage
 
-- **Prisma on MongoDB** - Type-safe queries with replica-set transactions
-- **Redis cache** - Shared across instances, with configurable TTLs
-- **AWS S3** - Presigned upload and download for public and private buckets
-- **Offset & cursor pagination** - List endpoints that still feel fast as data grows
+- **Prisma on MongoDB**: Type-safe queries with replica-set transactions
+- **Redis cache**: Shared across instances, with configurable TTLs
+- **AWS S3**: Presigned upload and download for public and private buckets
+- **Offset & cursor pagination**: List endpoints that still feel fast as data grows
 
 ### 🔔 Notifications
 
-- **Multi-channel delivery** - Email, push, in-app, and silent, with per-type and per-channel preferences
-- **AWS SES + Firebase FCM** - Templated email and multicast push, including token cleanup
-- **BullMQ workers** - Async delivery and other background jobs in the same process as the API
+- **Multi-channel delivery**: Email, push, in-app, and silent, with per-type and per-channel preferences
+- **AWS SES + Firebase FCM**: Templated email and multicast push, including token cleanup
+- **BullMQ workers**: Async delivery and other background jobs in the same process as the API
 
 📖 [Notification Documentation][ref-doc-notification] covers setup and usage.
 
 ### 📈 Analytics
 
-- **Activity log** - Domains stage user actions; a global interceptor writes them after the request settles (including actor/target pairs)
-- **Analytic dashboard** - Admin metrics, anomaly and fraud reports, and current-workspace user metrics ([docs][ref-doc-analytic])
+- **Activity log**: Domains stage user actions. A global interceptor writes them after the request settles, including actor/target pairs
+- **Analytic dashboard**: Admin metrics, anomaly and fraud reports, and current-workspace user metrics ([docs][ref-doc-analytic])
 
 ### 🩺 Monitoring
 
-- **Sentry** - Errors, performance, and Pino logs, with credentials scrubbed before send
-- **Health checks** - `/api/system/health/{database,aws,third-party,instance}` behind a system API key; each answers 200 and reports an unconfigured integration as down
+- **Sentry**: Errors, performance, and Pino logs, with credentials scrubbed before send
+- **Health checks**: `/api/system/health/{database,aws,third-party,instance}` behind a system API key. Each answers 200 and reports an unconfigured integration as down
 
 ### 🛠 Development
 
-- **NestJS 12 + TypeScript 6** - Strict mode, SWC builds, and hot reload next to a typecheck
-- **OpenAPI 3.1** - Swagger UI and `generated/swagger.json` from the same route schemas (off in production)
-- **Zod contracts** - Request and response shapes checked end to end
-- **i18n** - Localized messages via `x-custom-lang`
-- **Vitest** - Unit suite under `test/unit/`; `pnpm test:cov` enforces 100% coverage
-- **Lint & hooks** - ESLint (incl. security), Prettier, cspell, knip, Husky, and commitlint
-- **Docker Compose** - MongoDB replica set, Redis, BullBoard, and JWKS locally; optional `apis` and `vault` profiles
-- **HashiCorp Vault** - Optional secret sync into `.env` ([docs][ref-doc-vault])
-- **Docs** - 30+ guides, including the [status code catalog][ref-doc-status-codes]
+- **NestJS 12 + TypeScript 6**: Strict mode, SWC builds, and hot reload next to a typecheck
+- **OpenAPI 3.1**: Swagger UI and `generated/swagger.json` from the same route schemas (off in production)
+- **Zod contracts**: Request and response shapes checked end to end
+- **i18n**: Localized messages via `x-custom-lang`
+- **Vitest**: Unit suite under `test/unit/`. `pnpm test:cov` enforces 100% coverage
+- **Lint & hooks**: ESLint (incl. security), Prettier, cspell, knip, Husky, and commitlint
+- **Docker Compose**: MongoDB replica set, Redis, BullBoard, and JWKS locally, with optional `apis` and `vault` profiles. A separate production Compose file and image run the stack on one Docker host ([release][ref-doc-release])
+- **HashiCorp Vault**: Optional secret sync into `.env` ([docs][ref-doc-vault])
+- **Docs**: 30+ guides, including the [status code catalog][ref-doc-status-codes]
 
 ## Quick Start
 
@@ -206,7 +219,11 @@ pnpm install
 # Setup environment
 cp .env.example .env
 
-# Generate JWT keys and encryption secrets into .env
+# Set AUTH_TWO_FACTOR_ISSUER in .env (required, empty in .env.example)
+# AUTH_TWO_FACTOR_ISSUER=ACKNestJs
+
+# Generate the JWT keys, JWKS files, and MongoDB keyfile under keys/,
+# and write the JWT keys and encryption secrets into .env
 pnpm generate:secret --direct-insert
 
 # Generate the Prisma client and src/generated/package/package.ts
@@ -215,8 +232,11 @@ pnpm generate
 # Start infrastructure (MongoDB + Redis + BullBoard + JWKS)
 docker-compose up -d
 
-# Push the schema (MongoDB replica set must already be up)
+# Push the schema (needs the MongoDB replica set above already running)
 pnpm db:migrate
+
+# Seed the initial data, including the API keys
+pnpm migration:seed
 
 # Run the API on the host
 pnpm start:dev
@@ -224,14 +244,22 @@ pnpm start:dev
 
 Swagger UI: `http://localhost:3000/docs`.
 
-Want the API inside Compose too? Use the `apis` profile: `docker-compose --profile apis up -d`.
+The API also runs inside Compose through the `apis` profile: `docker-compose --profile apis up -d`. The container mounts the same `.env` the host app reads, so for it:
+
+- `HTTP_HOST` is `0.0.0.0`.
+- `DATABASE_URL`, `CACHE_REDIS_URL`, `QUEUE_REDIS_URL`, and the two JWKS URIs point at the Compose service hosts `mongo`, `redis`, and `jwks-server`.
+- MongoDB reports `host.docker.internal:27017` as its replica set member host.
+- Compose maps `host.docker.internal` to the host gateway on the `mongo` and `apis` services (`extra_hosts`), so the name resolves inside those two containers.
+- The host machine resolves `host.docker.internal` through its own OS. When it does not resolve, add `127.0.0.1 host.docker.internal` to the host's `/etc/hosts`.
+
+The values, the steps, and the member host detail are in [Installation][ref-doc-installation].
 
 ## Database
 
 This boilerplate uses **MongoDB** (`prisma/schema.prisma` `provider = "mongodb"`). Prisma transactions need a replica set.
 
 - Schema sync: `pnpm db:migrate` (`prisma db push`)
-- No `prisma migrate` history; shape changes go through `db push`
+- No `prisma migrate` history, so shape changes go through `db push`
 - ObjectId helpers, transactions, and seeds assume MongoDB
 
 PostgreSQL is on the [TODO](#todo). Setup and seeding: [Database Documentation][ref-doc-database].
@@ -239,6 +267,10 @@ PostgreSQL is on the [TODO](#todo). Setup and seeding: [Database Documentation][
 ## Installation
 
 Docker is the recommended setup. Step-by-step (Compose first, then Atlas + Redis if you cannot use Docker): [Installation][ref-doc-installation].
+
+## Release
+
+Releasing the application against existing MongoDB, Redis, and JWKS services, on one host with Docker Compose, or through the CI/CD workflows: [Release][ref-doc-release].
 
 ## License
 
@@ -251,8 +283,8 @@ Contributions are welcome. Start with [CONTRIBUTING.md][ref-doc-contributing].
 ## Contributors
 
 - [Gzerox][ref-contributor-gzerox]
-  - [Workspace][ref-doc-workspace] (main contributor)
-  - [Project][ref-doc-project] (main contributor)
+  - [Workspace][ref-doc-workspace]: main contributor
+  - [Project][ref-doc-project]: main contributor
 - [ak2g][ref-contributor-ak2g]
   - [Two-Factor Authentication][ref-doc-two-factor]
   - [Notification][ref-doc-notification]
@@ -354,6 +386,7 @@ If this boilerplate helped you, buy me a coffee to keep this project alive.
 [ref-doc-file-upload]: docs/file-upload.md
 [ref-doc-handling-error]: docs/handling-error.md
 [ref-doc-installation]: docs/installation.md
+[ref-doc-release]: docs/release.md
 [ref-doc-logger]: docs/logger.md
 [ref-doc-message]: docs/language-message.md
 [ref-doc-notification]: docs/notification.md

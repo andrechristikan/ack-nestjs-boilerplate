@@ -2,18 +2,23 @@
 
 Application `statusCode` values, grouped by module.
 
-`statusCode` is the field on `AppBaseException` / `ResponseErrorDto`. It is **not** an HTTP status.
+- `statusCode` is the field on `AppBaseException` / `ResponseErrorDto`.
+- It is **not** an HTTP status.
 
 Related fields on the same error response:
 
 - `httpStatus`: separate field
 - `module` + `statusCodeKey`: identify an error more stably than the raw integer, which is why the envelope carries both
 
-The machine registry is the `*.status-code.enum.ts` files under `src/`. This page is the human catalog.
+The machine registry is the `*.status-code.enum.ts` files under `src/`.
+
+This page is the human catalog.
 
 - A new module takes the next free hundred in the block map below
-- Every status code is five digits; a new member inside an existing block takes the next sequential number with no gaps
-- Scan the `*.status-code.enum.ts` files under `src/` before allocating; reuse a member that already means what you need
+- Every status code is five digits
+- A new member inside an existing block takes the next sequential number with no gaps
+- Scan the `*.status-code.enum.ts` files under `src/` before allocating
+- Reuse a member that already means what you need
 - Error filter flow: [Handling Error](handling-error.md)
 - i18n paths: [Language Message](language-message.md)
 - Response shape: [Response](response.md)
@@ -47,7 +52,8 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `52200` | `helper` | `52200`–`52202` | 3 |
 | `52300` | `firebase` | `52300` | 1 |
 
-Next free hundred: `52400`. The enum files are the source; this map follows them.
+- Next free hundred: `52400`.
+- The enum files are the source of this map.
 
 ## `app`
 
@@ -101,7 +107,8 @@ Next free hundred: `52400`. The enum files are the source; this map follows them
 | `schemaMissing` | `50303` | `schemaMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.schemaMissing` | The request could not be validated. Please try again later. |
 | `contextMissing` | `50304` | `contextMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.contextMissing` | The request could not be processed. Please try again later. |
 
-`contextMissing` is thrown by `RequestContextMissingException` when a store parameter decorator or `@AuthJwtPayload()` finds no value that its guard or middleware writes, or when the named field of that value is absent. See [Security and Middleware](security-and-middleware.md#store-parameter-decorators).
+- `contextMissing` is thrown by `RequestContextMissingException` when a store parameter decorator or `@AuthJwtPayload()` finds no value that its guard or middleware writes, or when the named field of that value is absent.
+- See [Security and Middleware](security-and-middleware.md#store-parameter-decorators).
 
 `50300` is the one code shared by more than one exception class, so it does not map to a single `httpStatus`, `messagePath`, or `module`:
 
@@ -181,7 +188,8 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `socialGoogleNotConfigured` | `50817` | `socialGoogleNotConfigured` | 404 (`NOT_FOUND`) | `auth.error.socialGoogleNotConfigured` | Google login is not configured. |
 | `socialAppleNotConfigured` | `50818` | `socialAppleNotConfigured` | 404 (`NOT_FOUND`) | `auth.error.socialAppleNotConfigured` | Apple login is not configured. |
 
-`socialGoogleNotConfigured` and `socialAppleNotConfigured` are raised by `AuthSocialDomain` when no Google client ID or no Apple client ID is set; `AuthDomain` passes them through unwrapped, so they never become `socialGoogleInvalid` or `socialAppleInvalid`.
+- `socialGoogleNotConfigured` and `socialAppleNotConfigured` are raised by `AuthSocialDomain` when no Google client ID or no Apple client ID is set.
+- `AuthDomain` passes them through unwrapped, so they never become `socialGoogleInvalid` or `socialAppleInvalid`.
 
 ## `country`
 
@@ -260,7 +268,11 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `sesTemplateBodyRequired` | `51405` | `sesTemplateBodyRequired` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.sesTemplateBodyRequired` | An email template needs an HTML or plain-text body. |
 | `s3NotConfigured` | `51406` | `s3NotConfigured` | 404 (`NOT_FOUND`) | `aws.error.s3NotConfigured` | File storage is not configured. |
 
-`s3KeyInvalid` is the shape guard inside `AwsS3Service`: a key, path, source, or destination that starts with `/`, plus a `..` or `//` in a `putItem` key. A client-supplied key meets `AwsS3ObjectKeyRegex` in the request schema first and answers 422 (`50300`) there. `s3ObjectExist` is raised when an upload or presign targets a key that already holds an object and `forceUpdate` is off. `s3NotConfigured` is raised by `UserProfileDomain`, `TermPolicyDomain`, and `TermPolicyContentDomain` when `AwsS3Service` has no credentials and the request needs S3 (a presign, a photo update, a content upload).
+- `s3KeyInvalid` is the shape guard inside `AwsS3Service`.
+    - It rejects a key, path, source, or destination that starts with `/`, plus a `..` or `//` in a `putItem` key.
+    - A client-supplied key meets `AwsS3ObjectKeyRegex` in the request schema first and answers 422 (`50300`) there.
+- `s3ObjectExist` is raised when an upload or presign targets a key that already holds an object and `forceUpdate` is off.
+- `s3NotConfigured` is raised by `UserProfileDomain`, `TermPolicyDomain`, and `TermPolicyContentDomain` when `AwsS3Service` has no credentials and the request needs S3 (a presign, a photo update, a content upload).
 
 ## `term-policy`
 
@@ -352,9 +364,13 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `encryptionSecretInvalid` | `52201` | `encryptionSecretInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.encryptionSecretInvalid` | We couldn't process protected data for this request. |
 | `patternTokenMissing` | `52202` | `patternTokenMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.patternTokenMissing` | We couldn't build a value for this request. Missing pattern token: {token} |
 
-`HelperDecryptFailedException` covers a malformed, tampered, or wrong-key payload; `HelperEncryptionSecretInvalidException` covers a root secret that is not canonical base64url of 48 bytes. `AuthTwoFactorDomain` turns a `decryptFailed` on a stored TOTP secret into `twoFactorSecretUnavailable` (409), and `NotificationEmailProcessor` turns it into a BullMQ `UnrecoverableError`.
-
-`HelperPatternTokenMissingException` carries the offending token in `messageProperties.token`. `HelperStringService.fillPattern` raises it when a `{token}` in the pattern has no entry in the values it was given, so a configured pattern that disagrees with its call site raises an error and no key ever holds the literal `{token}`.
+- `HelperDecryptFailedException` covers a malformed, tampered, or wrong-key payload.
+- `HelperEncryptionSecretInvalidException` covers a root secret that is not canonical base64url of 48 bytes.
+- `AuthTwoFactorDomain` turns a `decryptFailed` on a stored TOTP secret into `twoFactorSecretUnavailable` (409).
+- `NotificationEmailProcessor` turns a `decryptFailed` into a BullMQ `UnrecoverableError`.
+- `HelperPatternTokenMissingException` carries the offending token in `messageProperties.token`.
+- `HelperStringService.fillPattern` raises it when a `{token}` in the pattern has no entry in the values it was given.
+- A configured pattern that disagrees with its call site raises an error, so no key ever holds the literal `{token}`.
 
 ## `firebase`
 
@@ -366,7 +382,14 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 
 ## Related documents
 
-- [Handling Error](handling-error.md)
-- [Language Message](language-message.md)
-- [Response](response.md)
-- [Request Validation](request-validation.md)
+- [Handling Error][ref-doc-handling-error]: error filter flow
+- [Language Message][ref-doc-message]: i18n message paths
+- [Response][ref-doc-response]: response shape
+- [Request Validation][ref-doc-request-validation]: request schema validation errors
+
+<!-- REFERENCES -->
+
+[ref-doc-handling-error]: handling-error.md
+[ref-doc-message]: language-message.md
+[ref-doc-response]: response.md
+[ref-doc-request-validation]: request-validation.md

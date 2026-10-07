@@ -8,12 +8,12 @@ Exception filters turn thrown errors into the same HTTP error body, with i18n me
 
 ## Related Documents
 
-- [Response Documentation][ref-doc-response] - Error envelope shape
-- [Request Validation Documentation][ref-doc-request-validation] - Validation error path
-- [Status Codes Documentation][ref-doc-status-codes] - Application `statusCode` catalog by module
-- [Language Message Documentation][ref-doc-message] - Error message i18n
-- [Logger Documentation][ref-doc-logger] - Error logging and Sentry
-- [Doc Documentation][ref-doc-doc] - OpenAPI kit errors from `@Doc`, `*Protected` / auth kits, and when used `@ResponsePagination` / `FileUpload*` / `@ResponseFile`; module-flow domain exceptions appear only when an endpoint opts in with `@DocErrors`
+- [Response Documentation][ref-doc-response]: Error envelope shape
+- [Request Validation Documentation][ref-doc-request-validation]: Validation error path
+- [Status Codes Documentation][ref-doc-status-codes]: Application `statusCode` catalog by module
+- [Language Message Documentation][ref-doc-message]: Error message i18n
+- [Logger Documentation][ref-doc-logger]: Error logging and Sentry
+- [Doc Documentation][ref-doc-doc]: OpenAPI kit errors from `@Doc`, `*Protected` / auth kits, and when used `@ResponsePagination` / `FileUpload*` / `@ResponseFile`. Module-flow domain exceptions appear only when an endpoint opts in with `@DocErrors`
 
 ## Table of Contents
 
@@ -46,11 +46,11 @@ Five exception filters are registered globally as `APP_FILTER` providers in `src
 
 NestJS evaluates global filters in reverse of the registration array, so the most specific catch runs first. Effective matching order:
 
-1. **AppValidationImportFilter** - Handles `FileImportException`
-2. **AppValidationFilter** - Handles `RequestValidationException`
-3. **AppHttpFilter** - Handles framework `HttpException` (route 404s, rate-limit `ThrottlerException`, etc.)
-4. **AppBaseExceptionFilter** - Handles `AppBaseException` (every application error)
-5. **AppGeneralFilter** - Catches all unhandled exceptions
+1. **AppValidationImportFilter**: Handles `FileImportException`
+2. **AppValidationFilter**: Handles `RequestValidationException`
+3. **AppHttpFilter**: Handles framework `HttpException` (route 404s, rate-limit `ThrottlerException`, etc.)
+4. **AppBaseExceptionFilter**: Handles `AppBaseException` (every application error)
+5. **AppGeneralFilter**: Catches all unhandled exceptions
 
 `AppBaseException` does not extend `HttpException`, so the relative position of those two filters does not change which one catches a given error.
 
@@ -149,7 +149,12 @@ x-request-id: 550e8400-e29b-41d4-a716-446655440000
 x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 ```
 
-A rate-limited 429 also carries `Retry-After`, in seconds. It is set by whichever limiter blocks the request (`RequestThrottleDefaultGuard`, `RequestThrottleRouteGuard`, or `RequestThrottleUserInterceptor`) before the exception reaches any filter, and the filter preserves it. See [Security and Middleware][ref-doc-security-and-middleware].
+A rate-limited 429 also carries `Retry-After`, in seconds.
+
+- Whichever limiter blocks the request sets it (`RequestThrottleDefaultGuard`, `RequestThrottleRouteGuard`, or `RequestThrottleUserInterceptor`), before the exception reaches any filter.
+- The filter preserves it.
+
+See [Security and Middleware][ref-doc-security-and-middleware].
 
 ## Exception Filters
 
@@ -157,12 +162,13 @@ A rate-limited 429 also carries `Retry-After`, in seconds. It is set by whicheve
 
 **Location**: `src/app/filters/app.base-exception.filter.ts`
 
-**Catches**: `@Catch(AppBaseException)` - every application error
+**Catches**: `@Catch(AppBaseException)`, every application error
 
 **Use case**: All errors thrown by application code (services, guards, pipes) as dedicated exception classes extending `AppBaseException`.
 
 **Behavior**:
 - Reads `statusCode`, `httpStatus`, `messagePath`, `messageProperties`, `metadata`, and optional `data` directly from the exception instance
+- `messageProperties` and `metadata` are `null` when the exception carries none
 - Resolves the localized message via the [Message System][ref-doc-message]
 - Merges `exception.metadata` into the response metadata
 - Reports `exception.rawError` (or the exception itself) to Sentry only when `httpStatus >= 500`
@@ -182,7 +188,7 @@ A rate-limited 429 also carries `Retry-After`, in seconds. It is set by whicheve
 
 **Location**: `src/app/filters/app.general.filter.ts`
 
-**Catches**: `@Catch()` - all unhandled exceptions
+**Catches**: `@Catch()`, all unhandled exceptions
 
 **Use case**: Fallback for unexpected errors (database crashes, unhandled promise rejections, runtime errors)
 
@@ -206,13 +212,19 @@ A rate-limited 429 also carries `Retry-After`, in seconds. It is set by whicheve
 
 **Location**: `src/app/filters/app.http.filter.ts`
 
-**Catches**: `@Catch(HttpException)` - framework HTTP exceptions only (route 404s, rate-limit `ThrottlerException` 429, payload limits, etc.)
+**Catches**: `@Catch(HttpException)`, framework HTTP exceptions only (route 404s, rate-limit `ThrottlerException` 429, payload limits, etc.)
 
-**Use case**: NestJS/framework `HttpException`s. Application code does not throw `HttpException`; every application error is an `AppBaseException` subclass handled by `AppBaseExceptionFilter`.
+**Use case**: NestJS/framework `HttpException`s.
+
+- Application code does not throw `HttpException`.
+- Every application error is an `AppBaseException` subclass handled by `AppBaseExceptionFilter`.
 
 **Message**: Resolves the message path `http.{statusCode}` via the [Message System][ref-doc-message]
 
-**statusCodeKey and module**: Taken from the `HttpException` response object when it carries those fields; otherwise `statusCodeKey` is the camelCase `HttpStatus` name and `module` is `'http'`
+**statusCodeKey and module**:
+
+- They come from the `HttpException` response object when it carries those fields.
+- Otherwise `statusCodeKey` is the camelCase `HttpStatus` name and `module` is `'http'`.
 
 **Sentry integration**: Only sends exceptions with HTTP status ≥ 500
 
@@ -227,7 +239,12 @@ A rate-limited 429 also carries `Retry-After`, in seconds. It is set by whicheve
 }
 ```
 
-**Rate-limited response**: a breached rate limit throws `ThrottlerException`, which is a framework `HttpException`, so this filter builds its envelope from `HttpStatus.TOO_MANY_REQUESTS` with no application status code involved. The response also carries a `Retry-After` header in seconds.
+**Rate-limited response**:
+
+- A breached rate limit throws `ThrottlerException`, which is a framework `HttpException`.
+- This filter builds its envelope from `HttpStatus.TOO_MANY_REQUESTS`, with no application status code involved.
+- The response also carries a `Retry-After` header in seconds.
+
 ```json
 {
   "statusCode": 429,
@@ -242,7 +259,7 @@ A rate-limited 429 also carries `Retry-After`, in seconds. It is set by whicheve
 
 **Location**: `src/app/filters/app.validation.filter.ts`
 
-**Catches**: `@Catch(RequestValidationException)` - request validation errors
+**Catches**: `@Catch(RequestValidationException)`, request validation errors
 
 **Use case**: Request body, query parameters, and path parameters that fail their route's zod schema
 
@@ -275,7 +292,7 @@ See [Request Validation][ref-doc-request-validation] for details.
 
 **Location**: `src/app/filters/app.validation-import.filter.ts`
 
-**Catches**: `@Catch(FileImportException)` - file import validation errors
+**Catches**: `@Catch(FileImportException)`, file import validation errors
 
 **Use case**: CSV file import rows that fail their zod schema
 
@@ -350,7 +367,11 @@ super('user.error.passwordMustNew', { messageProperties: { period } });
 
 ### Error wrapping a cause
 
-For a caught error, pass the cause. It is reported to Sentry for 5xx errors and never serialized into the response body. A service that wraps a caught error lets a typed one through first, so a domain exception raised inside the `try` reaches the client with its own status code instead of the generic 500:
+For a caught error, pass the cause.
+
+- It is reported to Sentry for 5xx errors and never serialized into the response body.
+- A service that wraps a caught error lets a typed one through first, so a domain exception raised inside the `try` reaches the client with its own status code instead of the generic 500.
+
 
 ```typescript
 try {

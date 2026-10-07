@@ -4,12 +4,14 @@ Feature Flag lives in `src/modules/feature-flag`.
 
 ## Overview
 
-Flags gate routes and code paths. Targeting uses rollout percentage, a per-user allow-list (`targetUserIds`), and metadata sub-keys. Results are cached.
+- Flags gate routes and code paths.
+- Targeting uses rollout percentage, a per-user allow-list (`targetUserIds`), and metadata sub-keys.
+- Results are cached.
 
 ## Related Documents
 
-- [Cache Documentation][ref-doc-cache] - Flag result caching
-- [Authorization Documentation][ref-doc-authorization] - Decorator stack with `@FeatureFlagProtected`
+- [Cache Documentation][ref-doc-cache]: Flag result caching
+- [Authorization Documentation][ref-doc-authorization]: Decorator stack with `@FeatureFlagProtected`
 
 ## Table of Contents
 
@@ -41,7 +43,9 @@ Feature flags provided in `src/migration/data/migration.feature-flag.data.ts`:
 
 ## Flow
 
-The `FeatureFlagGuard` validates feature flag status before allowing route access. The guard takes a bare flag key; it never reads metadata.
+The `FeatureFlagGuard` validates feature flag status before allowing route access.
+
+The guard takes a bare flag key and never reads metadata.
 
 ```mermaid
 flowchart TD
@@ -78,15 +82,27 @@ flowchart TD
     J1 --> Z
 ```
 
-Every denial (a disabled flag, a lost rollout bucket, an anonymous caller below 100% without a valid `x-anonymous-id`) throws `FeatureFlagDisabledException`: HTTP 404, status code `disabled` (50601), message `featureFlag.error.disabled`. A route behind a disabled flag answers as if it does not exist.
+Every denial (a disabled flag, a lost rollout bucket, an anonymous caller below 100% without a valid `x-anonymous-id`) throws `FeatureFlagDisabledException`:
+
+- HTTP 404
+- status code `disabled` (50601)
+- message `featureFlag.error.disabled`
+
+A route behind a disabled flag answers as if it does not exist.
 
 ## Usage
 
 ### With Decorators
 
-`@FeatureFlagProtected()` provides no authentication; authentication comes from the guards stacked with it. A flag is never an authorization boundary.
+- `@FeatureFlagProtected()` provides no authentication.
+- Authentication comes from the guards stacked with it.
+- A flag is never an authorization boundary.
 
-`@FeatureFlagProtected()` takes a **bare flag key**. A key containing a dot is rejected with `predefinedKeyLengthExceeded` (500), and an empty segment is rejected with `predefinedKeyEmpty` (500). Metadata sub-keys are asserted in the owning domain, not by the decorator (see [Metadata](#metadata)).
+`@FeatureFlagProtected()` takes a **bare flag key**:
+
+- A key containing a dot is rejected with `predefinedKeyLengthExceeded` (500).
+- An empty segment is rejected with `predefinedKeyEmpty` (500).
+- Metadata sub-keys are asserted in the owning domain, not by the decorator (see [Metadata](#metadata)).
 
 ```typescript
 @Response('user.loginWithSocialGoogle', { schema: UserLoginResponseSchema })
@@ -120,7 +136,13 @@ async forgotPassword(
 
 `forgotAllowed` on `changePassword` is asserted inside the password domain, not by the decorator.
 
-`@FeatureFlagProtected()` sits **above** `@AuthJwtAccessProtected()` in the decorator stack. NestJS evaluates stacked decorators bottom-up, so the decorator nearest the HTTP method runs first; sitting above the JWT decorator is what makes the flag guard run *after* the JWT strategy has populated `request.user`. Without that ordering the guard never sees a user and always takes the anonymous branch, making `targetUserIds` and any rollout below 100% inert. See [Authorization Documentation][ref-doc-authorization] for the full stack.
+`@FeatureFlagProtected()` sits **above** `@AuthJwtAccessProtected()` in the decorator stack.
+
+- NestJS evaluates stacked decorators bottom-up, so the decorator nearest the HTTP method runs first.
+- Sitting above the JWT decorator is what makes the flag guard run *after* the JWT strategy has populated `request.user`.
+- Without that ordering the guard never sees a user and always takes the anonymous branch, making `targetUserIds` and any rollout below 100% inert.
+
+See [Authorization Documentation][ref-doc-authorization] for the full stack.
 
 ### With FeatureFlagCache
 
@@ -137,9 +159,8 @@ const featureFlag =
   );
 ```
 
-`FeatureFlagDomain` reads through the same cache: `getByKeyAndCache` on evaluation, `deleteCacheByKey` after an admin update.
-
-`FeatureFlagUtil` sits beside it and holds the metadata shape checks (`checkMetadataKey`) the domain applies on update.
+- `FeatureFlagDomain` reads through the same cache: `getByKeyAndCache` on evaluation, `deleteCacheByKey` after an admin update.
+- `FeatureFlagUtil` sits beside it and holds the metadata shape checks (`checkMetadataKey`) the domain applies on update.
 
 ## Metadata
 
@@ -163,7 +184,8 @@ Metadata on a single flag:
 - An array value is data only, never a gate value. A nested-key gate (below) resolves to a boolean
 - Metadata keys are camelCase, matching `/^[a-z][a-zA-Z0-9]*$/`
 - Metadata keys cannot be added/removed (schema consistency)
-- Only values can be modified. On update, an array value cannot change element type (`string[]` to `number[]` is rejected), and an empty array counts as an empty value and is rejected
+- A value is never empty: an empty string and an empty array are rejected, by the request schema and again by `FeatureFlagUtil.checkMetadataKey`
+- Only values can be modified. On update, an array value cannot change element type (`string[]` to `number[]` is rejected)
 
 **Metadata sub-key gating:**
 
@@ -185,7 +207,8 @@ It throws:
 | metadata value is not a boolean | `predefinedKeyTypeInvalid` | 500 |
 | boolean is `false` | `disabled` | 404 |
 
-Metadata is per-feature config (small on/off and typed values). For per-user targeting use `targetUserIds` (see [Targeting](#targeting)), not metadata.
+- Metadata is per-feature config (small on/off and typed values).
+- For per-user targeting use `targetUserIds` (see [Targeting](#targeting)), not metadata.
 
 ## Targeting
 
@@ -204,7 +227,9 @@ Metadata is per-feature config (small on/off and typed values). For per-user tar
 3. Otherwise the user falls back to rollout percentage.
 4. Anonymous requests (no user) skip targeting and go straight to the anonymous rollout branch (see [Rollout Percentage](#rollout-percentage)).
 
-`targetUserIds` is admin-editable via `PATCH /admin/feature-flag/update/:featureFlagId/status` and defaults to empty. Omit the field to keep the current list; send `[]` to clear it.
+- `targetUserIds` is admin-editable via `PATCH /admin/feature-flag/update/:featureFlagId/status` and defaults to empty.
+- Omit the field to keep the current list.
+- Send `[]` to clear it.
 
 ## Rollout Percentage
 
@@ -216,15 +241,27 @@ Controls gradual feature deployment using deterministic hashing:
 }
 ```
 
-The flag key and the caller identifier are combined and hashed with SHA-256 (`HelperHashService.sha256Hash('key:identifier')`). The first 8 hex characters of the digest, read as an integer, modulo 100 give the percentage (0-99), then compared against `rolloutPercent`. The same identifier always gets the same result per flag. Salting by flag key keeps each flag independent (a user in flag A's 30% is not automatically in flag B's 30%).
+Percentage calculation:
+
+1. The flag key and the caller identifier are combined and hashed with SHA-256 (`HelperHashService.sha256Hash('key:identifier')`).
+2. The first 8 hex characters of the digest, read as an integer, modulo 100 give the percentage (0-99).
+3. The percentage is compared against `rolloutPercent`.
+
+Properties:
+
+- The same identifier always gets the same result per flag.
+- Salting by flag key keeps each flag independent (a user in flag A's 30% is not automatically in flag B's 30%).
 
 **Authenticated callers** use `userId` as the identifier. Rollout runs only when the user is not in `targetUserIds`.
 
 **Anonymous callers** are handled separately:
 
 - `rolloutPercent >= 100` passes without any identifier.
-- Below 100, the identifier comes from the `x-anonymous-id` request header, named by the constant `FeatureFlagAnonymousIdHeaderName` in `src/modules/feature-flag/constants/feature-flag.constant.ts`. Its max length (`idMaxLength`, 100) and allowed charset (`idRegex`, `/^[a-zA-Z0-9-_]+$/`) live in `src/configs/feature-flag.config.ts`.
-- The evaluation **fails closed** with 404 (`disabled`) when that header is absent, empty, over length, or does not match the pattern. An anonymous caller lands in the same bucket only while it sends the same `x-anonymous-id`.
+- Below 100, the identifier comes from the `x-anonymous-id` request header.
+    - The constant `FeatureFlagAnonymousIdHeaderName` in `src/modules/feature-flag/constants/feature-flag.constant.ts` names the header.
+    - Its max length (`idMaxLength`, 100) and allowed charset (`idRegex`, `/^[a-zA-Z0-9-_]+$/`) live in `src/configs/feature-flag.config.ts`.
+- The evaluation **fails closed** with 404 (`disabled`) when that header is absent, empty, over length, or does not match the pattern.
+- An anonymous caller lands in the same bucket only while it sends the same `x-anonymous-id`.
 
 ## Caching
 
@@ -244,7 +281,10 @@ Feature flags are cached. Configuration in `src/configs/feature-flag.config.ts`:
 - Cache on first read
 - Cache invalidation on updates
 - Key format: `FeatureFlag:{key}`
-- Best-effort: cache read/write/delete failures are logged and fall through to the database, so a cache outage never breaks evaluation. There is no fail-open: an unknown flag key still returns 500 (`predefinedKeyNotFound`) and a disabled flag still returns 404 (`disabled`).
+- Best-effort: cache read/write/delete failures are logged and fall through to the database, so a cache outage never breaks evaluation.
+- There is no fail-open:
+    - an unknown flag key still returns 500 (`predefinedKeyNotFound`)
+    - a disabled flag still returns 404 (`disabled`)
 
 See [Cache Documentation][ref-doc-cache] for cache system details.
 
