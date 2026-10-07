@@ -3,9 +3,7 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
 } from '@generated/prisma-client/client';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
@@ -27,12 +25,8 @@ export class UserPasswordHttpService {
         userId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const user = await this.userDomain.getOne(userId);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.User, user)
         );

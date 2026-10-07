@@ -7,6 +7,7 @@ import {
 } from '@generated/prisma-client/client';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import type {
     IEffectivePermission,
@@ -29,46 +30,30 @@ export class PolicyAbilityDomain {
         return value;
     }
 
-    /** Returns the Prisma where clause for a subject, or null when the ability has no rules for it. */
+    /** Reads the ability `PolicyAbilityGuard` stored for the request. */
+    private getAbility(): PolicyAbility {
+        return this.requireStored<PolicyAbility>(PolicyAbilityStoreKey);
+    }
+
+    /** Returns the Prisma where clause the stored ability grants for a subject, and throws `PolicyForbiddenException` when the ability holds no rule for it, so a caller never queries without the predicate. */
     accessibleWhere<TWhere = Record<string, unknown>>(
-        ability: PolicyAbility,
         action: EnumPolicyAction,
         subjectName: EnumPolicySubject
-    ): TWhere | null {
+    ): TWhere {
+        const ability = this.getAbility();
         if (ability.rulesFor(action, subjectName).length === 0) {
-            return null;
+            throw new PolicyForbiddenException();
         }
 
         return accessibleBy(ability, action).ofType(subjectName) as TWhere;
     }
 
-    /** Returns the Prisma where clause for a subject, and throws `PolicyForbiddenException` when the ability holds no rule for it, so a caller never queries without the predicate. */
-    requireAccessibleWhere<TWhere = Record<string, unknown>>(
-        ability: PolicyAbility,
-        action: EnumPolicyAction,
-        subjectName: EnumPolicySubject
-    ): TWhere {
-        const where = this.accessibleWhere<TWhere>(
-            ability,
-            action,
-            subjectName
-        );
-        if (where === null) {
-            throw new PolicyForbiddenException();
-        }
-
-        return where;
-    }
-
     /**
-     * Throws `PolicyForbiddenException` when the provided ability denies `action` on the
+     * Throws `PolicyForbiddenException` when the stored ability denies `action` on the
      * subject, carrying the matched rule's `reason` when one is present.
      */
-    assertCan(
-        ability: PolicyAbility,
-        action: EnumPolicyAction,
-        target: PolicyAbilitySubject
-    ): void {
+    assertCan(action: EnumPolicyAction, target: PolicyAbilitySubject): void {
+        const ability = this.getAbility();
         try {
             ForbiddenError.from(ability).throwUnlessCan(action, target);
         } catch (error) {
@@ -85,13 +70,14 @@ export class PolicyAbilityDomain {
     }
 
     /**
-     * Reports the concrete `EnumPolicyAction` members the ability grants for each subject; a
+     * Reports the concrete `EnumPolicyAction` members the stored ability grants for each subject; a
      * subject the ability grants nothing on is omitted.
      */
     getEffectivePermissions(
-        ability: PolicyAbility,
         subjects: EnumPolicySubject[]
     ): IEffectivePermission[] {
+        const ability = this.getAbility();
+
         return subjects
             .map(subjectName => ({
                 subject: subjectName,

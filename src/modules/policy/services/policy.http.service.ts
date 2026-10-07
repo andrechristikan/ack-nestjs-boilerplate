@@ -9,9 +9,7 @@ import {
     EnumPolicySubject,
     type Prisma,
 } from '@generated/prisma-client/client';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { Injectable } from '@nestjs/common';
@@ -27,12 +25,8 @@ export class PolicyHttpService {
     async listByAdmin(
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const accessibleWhere =
-            this.policyAbilityDomain.requireAccessibleWhere<Prisma.RoleWhereInput>(
-                ability,
+            this.policyAbilityDomain.accessibleWhere<Prisma.RoleWhereInput>(
                 EnumPolicyAction.read,
                 EnumPolicySubject.Role
             );
@@ -60,12 +54,8 @@ export class PolicyHttpService {
         roleId: string,
         body: PolicyCreateRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const role = await this.roleDomain.getOne(roleId);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Role, role)
         );
@@ -79,12 +69,8 @@ export class PolicyHttpService {
         id: string,
         body: PolicyUpdateRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const role = await this.roleDomain.getOne(roleId);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Role, role)
         );
@@ -97,12 +83,8 @@ export class PolicyHttpService {
         roleId: string,
         id: string
     ): Promise<IResponseReturn<void>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const role = await this.roleDomain.getOne(roleId);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Role, role)
         );

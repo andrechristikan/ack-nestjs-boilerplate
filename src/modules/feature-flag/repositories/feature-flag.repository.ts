@@ -33,10 +33,7 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
         >(this.databaseService.client.featureFlag, {
             ...others,
             where: {
-                AND: [
-                    where ?? {},
-                    ...(additionalWhere ? [additionalWhere] : []),
-                ],
+                AND: [where ?? {}, additionalWhere ?? {}],
             },
         });
     }

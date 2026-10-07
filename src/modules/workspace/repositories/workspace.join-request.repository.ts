@@ -72,7 +72,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                         ...(status ?? {}),
                         workspaceId,
                     },
-                    ...(additionalWhere ? [additionalWhere] : []),
+                    additionalWhere ?? {},
                 ],
             },
         });

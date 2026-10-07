@@ -15,9 +15,7 @@ import type {
     Workspace,
     WorkspaceJoinRequest,
 } from '@generated/prisma-client/client';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import {
     WorkspaceJoinRequestDefaultAvailableOrderBy,
     WorkspaceJoinRequestDefaultStatus,
@@ -54,12 +52,8 @@ export class WorkspaceJoinRequestHttpService {
         workspaceId: string,
         query: WorkspaceJoinRequestListRequestDto
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const accessibleWhere =
-            this.policyAbilityDomain.requireAccessibleWhere<Prisma.WorkspaceJoinRequestWhereInput>(
-                ability,
+            this.policyAbilityDomain.accessibleWhere<Prisma.WorkspaceJoinRequestWhereInput>(
                 EnumPolicyAction.read,
                 EnumPolicySubject.WorkspaceJoinRequest
             );
@@ -107,11 +101,7 @@ export class WorkspaceJoinRequestHttpService {
                 workspaceId,
                 workspaceJoinRequestId
             );
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.WorkspaceJoinRequest, joinRequest)
         );

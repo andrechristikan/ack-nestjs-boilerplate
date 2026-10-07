@@ -4,9 +4,7 @@ import {
     EnumPolicySubject,
     Prisma,
 } from '@generated/prisma-client/client';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -42,12 +40,8 @@ export class RoleHttpService {
     async getListOffsetByAdmin(
         query: RoleAdminListRequestDto
     ): Promise<IResponsePaginationReturn<RoleListResponseDto>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const accessibleWhere =
-            this.policyAbilityDomain.requireAccessibleWhere<Prisma.RoleWhereInput>(
-                ability,
+            this.policyAbilityDomain.accessibleWhere<Prisma.RoleWhereInput>(
                 EnumPolicyAction.read,
                 EnumPolicySubject.Role
             );
@@ -163,12 +157,8 @@ export class RoleHttpService {
     }
 
     async getOne(id: string): Promise<IResponseReturn<RoleDto>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const role = await this.roleDomain.getOne(id);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.read,
             subject(EnumPolicySubject.Role, role)
         );
@@ -180,12 +170,8 @@ export class RoleHttpService {
         id: string,
         body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const role = await this.roleDomain.getOne(id);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Role, role)
         );
@@ -203,12 +189,8 @@ export class RoleHttpService {
     }
 
     async deleteByAdmin(id: string): Promise<IResponseReturn<void>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const role = await this.roleDomain.getOne(id);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.delete,
             subject(EnumPolicySubject.Role, role)
         );

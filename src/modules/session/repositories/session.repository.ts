@@ -52,7 +52,7 @@ export class SessionRepository implements ISessionRepository {
                         ...isRevoked,
                         userId,
                     },
-                    ...(additionalWhere ? [additionalWhere] : []),
+                    additionalWhere ?? {},
                 ],
             },
             select: SessionListSelect,

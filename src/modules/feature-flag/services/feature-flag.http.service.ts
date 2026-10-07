@@ -11,9 +11,7 @@ import {
     EnumPolicySubject,
     Prisma,
 } from '@generated/prisma-client/client';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import {
     FeatureFlagDefaultAvailableOrderBy,
@@ -38,12 +36,8 @@ export class FeatureFlagHttpService {
     async getListByAdmin(
         query: FeatureFlagAdminListRequestDto
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const accessibleWhere =
-            this.policyAbilityDomain.requireAccessibleWhere<Prisma.FeatureFlagWhereInput>(
-                ability,
+            this.policyAbilityDomain.accessibleWhere<Prisma.FeatureFlagWhereInput>(
                 EnumPolicyAction.read,
                 EnumPolicySubject.FeatureFlag
             );
@@ -94,12 +88,8 @@ export class FeatureFlagHttpService {
         id: string,
         body: FeatureFlagUpdateStatusRequestDto
     ): Promise<IResponseReturn<FeatureFlag>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const stored = await this.featureFlagDomain.getOne(id);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.FeatureFlag, stored)
         );
@@ -117,12 +107,8 @@ export class FeatureFlagHttpService {
         id: string,
         body: FeatureFlagUpdateMetadataRequestDto
     ): Promise<IResponseReturn<FeatureFlag>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const stored = await this.featureFlagDomain.getOne(id);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.FeatureFlag, stored)
         );

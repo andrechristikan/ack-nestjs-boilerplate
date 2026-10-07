@@ -24,9 +24,7 @@ import type { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/re
 import type { WorkspaceInviteResponseDto } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import type { IWorkspaceInviteList } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
@@ -50,11 +48,7 @@ export class WorkspaceInviteHttpService {
             workspaceId,
             workspaceInviteId
         );
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         this.policyAbilityDomain.assertCan(
-            ability,
             action,
             subject(EnumPolicySubject.WorkspaceInvite, invite)
         );
@@ -64,12 +58,8 @@ export class WorkspaceInviteHttpService {
         workspaceId: string,
         query: WorkspaceInviteListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const accessibleWhere =
-            this.policyAbilityDomain.requireAccessibleWhere<Prisma.WorkspaceInviteWhereInput>(
-                ability,
+            this.policyAbilityDomain.accessibleWhere<Prisma.WorkspaceInviteWhereInput>(
                 EnumPolicyAction.read,
                 EnumPolicySubject.WorkspaceInvite
             );
@@ -119,11 +109,7 @@ export class WorkspaceInviteHttpService {
             expiryDuration,
         }: WorkspaceInviteCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.create,
             subject(EnumPolicySubject.WorkspaceInvite, {
                 workspaceId: workspace.id,

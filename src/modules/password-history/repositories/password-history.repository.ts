@@ -44,7 +44,7 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
                         ...where,
                         userId,
                     },
-                    ...(additionalWhere ? [additionalWhere] : []),
+                    additionalWhere ?? {},
                 ],
             },
             select: PasswordHistoryListSelect,

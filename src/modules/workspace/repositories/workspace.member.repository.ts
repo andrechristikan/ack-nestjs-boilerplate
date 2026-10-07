@@ -48,12 +48,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
             : {};
 
         return {
-            AND: [
-                filters ?? {},
-                ...(where ? [where] : []),
-                roleFilter,
-                { workspaceId },
-            ],
+            AND: [filters ?? {}, where ?? {}, roleFilter, { workspaceId }],
         };
     }
 
@@ -89,11 +84,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
     ): Promise<IWorkspaceMemberWithRole | null> {
         return this.databaseService.client.workspaceMember.findFirst({
             where: {
-                AND: [
-                    { id: workspaceMemberId },
-                    { workspaceId },
-                    ...(where ? [where] : []),
-                ],
+                AND: [{ id: workspaceMemberId }, { workspaceId }, where ?? {}],
             },
             include: WorkspaceMemberRoleInclude,
         });

@@ -63,7 +63,7 @@ export class ProjectRepository implements IProjectRepository {
             where: filters,
             ...others
         }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
-        where: Prisma.ProjectWhereInput
+        where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.cursor<Project, Prisma.ProjectWhereInput>(
             this.databaseService.client.project,
@@ -74,7 +74,7 @@ export class ProjectRepository implements IProjectRepository {
                         filters ?? {},
                         { workspaceId },
                         ProjectActiveFilter,
-                        where,
+                        where ?? {},
                     ],
                 },
             }
@@ -97,7 +97,7 @@ export class ProjectRepository implements IProjectRepository {
                     AND: [
                         filters ?? {},
                         ...(workspaceId ? [{ workspaceId }] : []),
-                        ...(where ? [where] : []),
+                        where ?? {},
                     ],
                 },
             }

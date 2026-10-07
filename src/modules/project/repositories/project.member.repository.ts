@@ -55,11 +55,7 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
     ): Promise<IProjectMemberWithRole | null> {
         return this.databaseService.client.projectMember.findFirst({
             where: {
-                AND: [
-                    { id: projectMemberId },
-                    { projectId },
-                    ...(where ? [where] : []),
-                ],
+                AND: [{ id: projectMemberId }, { projectId }, where ?? {}],
             },
             include: ProjectMemberRoleInclude,
         });
@@ -96,7 +92,7 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
                         ...where,
                         projectId,
                     },
-                    ...(additionalWhere ? [additionalWhere] : []),
+                    additionalWhere ?? {},
                 ],
             },
             include: {

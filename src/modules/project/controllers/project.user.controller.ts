@@ -98,7 +98,7 @@ export class ProjectUserController {
 
     @Doc({
         summary:
-            'list projects in the current workspace; a caller whose platform or workspace role holds Project read sees every project that read allows, others only their assigned projects',
+            'list the projects in the current workspace that the Project read policy of the caller allows; a workspace member sees the projects they are assigned to',
     })
     @ResponsePagination('project.list', {
         schema: ProjectResponseSchema,
@@ -116,14 +116,9 @@ export class ProjectUserController {
     async list(
         @Query({ schema: ProjectUserListRequestSchema })
         query: ProjectUserListRequestDto,
-        @WorkspaceCurrent() workspace: Workspace,
-        @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember
+        @WorkspaceCurrent() workspace: Workspace
     ): Promise<IResponsePaginationReturn<Project>> {
-        return this.projectHttpService.getListForMember(
-            workspace.id,
-            workspaceMember,
-            query
-        );
+        return this.projectHttpService.getListForMember(workspace.id, query);
     }
 
     @Doc({ summary: 'create a project in the current workspace' })

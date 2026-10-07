@@ -14,7 +14,7 @@ import {
     EnumRoleScope,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
@@ -140,22 +140,16 @@ export class ProjectDomain {
         );
     }
 
-    /** Lists projects in the workspace using the effective access predicate from the HTTP layer. */
+    /** Lists projects in the workspace narrowed by the policy predicate from the HTTP layer; which projects a member sees is the policy's call. */
     async getListForMember(
         workspaceId: string,
-        workspaceMember: WorkspaceMember,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
         where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.projectRepository.findWithPaginationCursorForWorkspace(
             workspaceId,
             pagination,
-            {
-                AND: [
-                    { members: { some: { userId: workspaceMember.userId } } },
-                    ...(where ? [where] : []),
-                ],
-            }
+            where
         );
     }
 

@@ -14,9 +14,7 @@ import {
     EnumPolicySubject,
     Prisma,
 } from '@generated/prisma-client/client';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
@@ -71,12 +69,8 @@ export class UserImportHttpService {
     async exportByAdmin(
         query: UserExportRequestDto
     ): Promise<IResponseFileReturn> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const accessibleWhere =
-            this.policyAbilityDomain.requireAccessibleWhere<Prisma.UserWhereInput>(
-                ability,
+            this.policyAbilityDomain.accessibleWhere<Prisma.UserWhereInput>(
                 EnumPolicyAction.read,
                 EnumPolicySubject.User
             );

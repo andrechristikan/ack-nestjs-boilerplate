@@ -134,7 +134,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                         ...(status ?? {}),
                         workspaceId,
                     },
-                    ...(additionalWhere ? [additionalWhere] : []),
+                    additionalWhere ?? {},
                 ],
             },
             select: WorkspaceInviteUserListSelect,

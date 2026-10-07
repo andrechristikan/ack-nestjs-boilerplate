@@ -11,9 +11,7 @@ import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/requ
 import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermPolicyContentDomain } from '@modules/term-policy/domains/term-policy.content.domain';
 import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -39,12 +37,8 @@ export class TermPolicyContentHttpService {
         termPolicyId: string,
         body: TermPolicyContentRequestDto
     ): Promise<IResponseReturn<void>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const stored = await this.termPolicyDomain.getOne(termPolicyId);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.TermPolicy, stored)
         );
@@ -60,12 +54,8 @@ export class TermPolicyContentHttpService {
         termPolicyId: string,
         body: TermPolicyContentRequestDto
     ): Promise<IResponseReturn<void>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const stored = await this.termPolicyDomain.getOne(termPolicyId);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.TermPolicy, stored)
         );
@@ -81,12 +71,8 @@ export class TermPolicyContentHttpService {
         termPolicyId: string,
         { language }: TermPolicyRemoveContentRequestDto
     ): Promise<IResponseReturn<void>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const stored = await this.termPolicyDomain.getOne(termPolicyId);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.TermPolicy, stored)
         );
@@ -102,12 +88,8 @@ export class TermPolicyContentHttpService {
         termPolicyId: string,
         language: EnumMessageLanguage
     ): Promise<IResponseReturn<IAwsS3Presign>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const stored = await this.termPolicyDomain.getOne(termPolicyId);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.read,
             subject(EnumPolicySubject.TermPolicy, stored)
         );

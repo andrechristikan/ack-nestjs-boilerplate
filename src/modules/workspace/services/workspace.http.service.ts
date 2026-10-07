@@ -13,11 +13,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import type {
-    IEffectivePermission,
-    PolicyAbility,
-} from '@modules/policy/interfaces/policy.interface';
+import type { IEffectivePermission } from '@modules/policy/interfaces/policy.interface';
 import { WorkspacePermissionSubjects } from '@modules/workspace/constants/workspace.constant';
 import {
     WorkspaceCursorAvailableOrderBy,
@@ -89,11 +85,7 @@ export class WorkspaceHttpService {
         actorId: string,
         { name, description }: WorkspaceUpdateRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Workspace, workspaceTarget)
         );
@@ -111,11 +103,7 @@ export class WorkspaceHttpService {
         actorId: string,
         { isPublic }: WorkspaceUpdateIsPublicRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Workspace, workspaceTarget)
         );
@@ -133,11 +121,7 @@ export class WorkspaceHttpService {
         actorId: string,
         { slug }: WorkspaceUpdateSlugRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Workspace, workspaceTarget)
         );
@@ -161,11 +145,7 @@ export class WorkspaceHttpService {
         workspaceTarget: Workspace,
         actorId: string
     ): Promise<void> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.delete,
             subject(EnumPolicySubject.Workspace, workspaceTarget)
         );
@@ -178,12 +158,8 @@ export class WorkspaceHttpService {
     async getListForAdmin(
         query: WorkspaceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Workspace>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const accessibleWhere =
-            this.policyAbilityDomain.requireAccessibleWhere<Prisma.WorkspaceWhereInput>(
-                ability,
+            this.policyAbilityDomain.accessibleWhere<Prisma.WorkspaceWhereInput>(
                 EnumPolicyAction.read,
                 EnumPolicySubject.Workspace
             );
@@ -220,13 +196,9 @@ export class WorkspaceHttpService {
     async getForAdmin(
         workspaceId: string
     ): Promise<IResponseReturn<Workspace>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const workspace =
             await this.workspaceDomain.getByIdForAdmin(workspaceId);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.read,
             subject(EnumPolicySubject.Workspace, workspace)
         );
@@ -243,12 +215,7 @@ export class WorkspaceHttpService {
     getEffectivePermissions(): IResponseReturn<{
         permissions: IEffectivePermission[];
     }> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
-
         const permissions = this.policyAbilityDomain.getEffectivePermissions(
-            ability,
             WorkspacePermissionSubjects
         );
 

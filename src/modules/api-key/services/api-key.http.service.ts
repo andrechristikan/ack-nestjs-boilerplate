@@ -11,9 +11,7 @@ import {
     EnumPolicySubject,
     Prisma,
 } from '@generated/prisma-client/client';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import type { ApiKey } from '@generated/prisma-client/client';
 import {
     ApiKeyDefaultAvailableOrderBy,
@@ -44,12 +42,8 @@ export class ApiKeyHttpService {
     async getListByAdmin(
         query: ApiKeyListRequestDto
     ): Promise<IResponsePaginationReturn<IApiKeyList>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const accessibleWhere =
-            this.policyAbilityDomain.requireAccessibleWhere<Prisma.ApiKeyWhereInput>(
-                ability,
+            this.policyAbilityDomain.accessibleWhere<Prisma.ApiKeyWhereInput>(
                 EnumPolicyAction.read,
                 EnumPolicySubject.ApiKey
             );
@@ -102,12 +96,8 @@ export class ApiKeyHttpService {
         id: string,
         { isActive }: ApiKeyUpdateStatusRequestDto
     ): Promise<IResponseReturn<ApiKey>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const stored = await this.apiKeyDomain.getOne(id);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.ApiKey, stored)
         );
@@ -125,12 +115,8 @@ export class ApiKeyHttpService {
         id: string,
         { name }: ApiKeyUpdateRequestDto
     ): Promise<IResponseReturn<ApiKey>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const stored = await this.apiKeyDomain.getOne(id);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.ApiKey, stored)
         );
@@ -145,12 +131,8 @@ export class ApiKeyHttpService {
         id: string,
         { startAt, endAt }: ApiKeyUpdateDateRequestDto
     ): Promise<IResponseReturn<ApiKey>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const stored = await this.apiKeyDomain.getOne(id);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.ApiKey, stored)
         );
@@ -168,12 +150,8 @@ export class ApiKeyHttpService {
     async resetByAdmin(
         id: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const stored = await this.apiKeyDomain.getOne(id);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.ApiKey, stored)
         );
@@ -184,12 +162,8 @@ export class ApiKeyHttpService {
     }
 
     async deleteByAdmin(id: string): Promise<IResponseReturn<ApiKey>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const stored = await this.apiKeyDomain.getOne(id);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.delete,
             subject(EnumPolicySubject.ApiKey, stored)
         );

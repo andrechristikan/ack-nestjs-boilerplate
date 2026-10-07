@@ -105,7 +105,7 @@ export class UserRepository implements IUserRepository {
                             ...roleId,
                             deletedAt: null,
                         },
-                        ...(additionalWhere ? [additionalWhere] : []),
+                        additionalWhere ?? {},
                     ],
                 },
                 select: UserAdminListSelect,

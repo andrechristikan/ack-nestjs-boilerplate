@@ -11,9 +11,7 @@ import {
     EnumPolicySubject,
     Prisma,
 } from '@generated/prisma-client/client';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import {
     TermPolicyDefaultAvailableOrderBy,
@@ -38,12 +36,8 @@ export class TermPolicyHttpService {
     async getListByAdmin(
         query: TermPolicyAdminListRequestDto
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const accessibleWhere =
-            this.policyAbilityDomain.requireAccessibleWhere<Prisma.TermPolicyWhereInput>(
-                ability,
+            this.policyAbilityDomain.accessibleWhere<Prisma.TermPolicyWhereInput>(
                 EnumPolicyAction.read,
                 EnumPolicySubject.TermPolicy
             );
@@ -127,12 +121,8 @@ export class TermPolicyHttpService {
     async deleteByAdmin(
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicy>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const stored = await this.termPolicyDomain.getOne(termPolicyId);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.delete,
             subject(EnumPolicySubject.TermPolicy, stored)
         );
@@ -145,12 +135,8 @@ export class TermPolicyHttpService {
         termPolicyId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const stored = await this.termPolicyDomain.getOne(termPolicyId);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.TermPolicy, stored)
         );

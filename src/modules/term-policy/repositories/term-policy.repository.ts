@@ -54,7 +54,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                         ...type,
                         ...status,
                     },
-                    ...(additionalWhere ? [additionalWhere] : []),
+                    additionalWhere ?? {},
                 ],
             },
         });

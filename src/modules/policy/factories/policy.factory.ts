@@ -1,4 +1,5 @@
 import { createPrismaAbility } from '@casl/prisma';
+import type { Prisma } from '@generated/prisma-client/client';
 import type {
     IPolicyConditions,
     IPolicyRule,
@@ -18,6 +19,32 @@ export class PolicyAbilityFactory {
         );
     }
 
+    /** Resolves every placeholder in a condition value at any depth; `undefined` when one has no value. */
+    private interpolateValue(
+        value: Prisma.JsonValue,
+        values: PolicyPlaceholderValues
+    ): Prisma.JsonValue | undefined {
+        if (Array.isArray(value)) {
+            const items: Prisma.JsonArray = [];
+            for (const item of value) {
+                const resolved = this.interpolateValue(item, values);
+                if (resolved === undefined) {
+                    return undefined;
+                }
+
+                items.push(resolved);
+            }
+
+            return items;
+        }
+
+        if (this.isPlainJsonObject(value)) {
+            return this.interpolate(value, values) ?? undefined;
+        }
+
+        return isPolicyPlaceholder(value) ? values[value] : value;
+    }
+
     private interpolate(
         conditions: IPolicyConditions,
         values: PolicyPlaceholderValues
@@ -25,11 +52,10 @@ export class PolicyAbilityFactory {
         const entries: IPolicyConditions = {};
 
         for (const [key, value] of Object.entries(conditions)) {
-            if (typeof value === 'object' && value !== null) {
-                return null;
-            }
-
-            const resolved = isPolicyPlaceholder(value) ? values[value] : value;
+            const resolved =
+                value === undefined
+                    ? undefined
+                    : this.interpolateValue(value, values);
             if (resolved === undefined) {
                 return null;
             }
@@ -41,9 +67,11 @@ export class PolicyAbilityFactory {
     }
 
     /**
-     * Resolves one persisted policy into a plain ability rule. An allow whose placeholder has no
-     * value, or whose conditions are not flat scalars, is omitted (`null`); an inverted rule in that
-     * state becomes an unconditional deny on its subject and actions. Both fail closed.
+     * Resolves one persisted policy into a plain ability rule. Placeholders resolve at any depth,
+     * so a seeded relational condition (`members.some.userId`) keeps its user. An allow whose
+     * placeholder has no value, or whose conditions are not a plain object, is omitted (`null`); an
+     * inverted rule in that state becomes an unconditional deny on its subject and actions. Both
+     * fail closed.
      */
     private toAbilityRule(
         policy: IPolicyRule,

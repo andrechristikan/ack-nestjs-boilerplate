@@ -23,7 +23,7 @@ export interface IProjectRepository {
     findWithPaginationCursorForWorkspace(
         workspaceId: string,
         params: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
-        where: Prisma.ProjectWhereInput
+        where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>>;
     findWithPaginationOffsetForAdmin(
         params: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,

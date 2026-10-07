@@ -54,7 +54,7 @@ export class RoleRepository implements IRoleRepository {
                         ...where,
                         ...scope,
                     },
-                    ...(additionalWhere ? [additionalWhere] : []),
+                    additionalWhere ?? {},
                 ],
             },
             include: { _count: { select: { policies: true } } },

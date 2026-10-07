@@ -19,9 +19,7 @@ import {
     EnumPolicySubject,
     Prisma,
 } from '@generated/prisma-client/client';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
 import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/user.check-username.request.dto';
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
@@ -52,12 +50,8 @@ export class UserHttpService {
     async getListOffsetByAdmin(
         query: UserListRequestDto
     ): Promise<IResponsePaginationReturn<IUserList>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const accessibleWhere =
-            this.policyAbilityDomain.requireAccessibleWhere<Prisma.UserWhereInput>(
-                ability,
+            this.policyAbilityDomain.accessibleWhere<Prisma.UserWhereInput>(
                 EnumPolicyAction.read,
                 EnumPolicySubject.User
             );
@@ -99,12 +93,8 @@ export class UserHttpService {
     }
 
     async getOne(userId: string): Promise<IResponseReturn<IUserProfile>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const user = await this.userDomain.getOne(userId);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.read,
             subject(EnumPolicySubject.User, user)
         );
@@ -147,12 +137,8 @@ export class UserHttpService {
         { status }: UserUpdateStatusRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        const ability = this.policyAbilityDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const user = await this.userDomain.getOne(userId);
         this.policyAbilityDomain.assertCan(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.User, user)
         );

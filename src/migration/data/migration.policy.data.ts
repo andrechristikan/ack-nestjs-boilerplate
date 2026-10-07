@@ -72,6 +72,20 @@ const projectRule = (
 const projectCreateRule = (): IMigrationPolicyRule =>
     rule(EnumPolicySubject.Project, [EnumPolicyAction.create]);
 
+/**
+ * `Project` read limited to the workspace's projects the caller is a member
+ * of. The `members` relation is a list-query predicate: a record check on a
+ * `Project` loaded without `members` does not match it, so a project route
+ * relies on the caller's project role instead.
+ */
+const assignedProjectReadRule = (): IMigrationPolicyRule =>
+    rule(EnumPolicySubject.Project, [EnumPolicyAction.read], {
+        workspaceId: EnumPolicyConditionPlaceholder.workspaceId,
+        members: {
+            some: { userId: EnumPolicyConditionPlaceholder.userId },
+        },
+    });
+
 const PolicyData: IMigrationPolicyData[] = [
     {
         scope: EnumRoleScope.platform,
@@ -177,6 +191,7 @@ const PolicyData: IMigrationPolicyData[] = [
             workspaceRule(EnumPolicySubject.WorkspaceMember, [
                 EnumPolicyAction.read,
             ]),
+            assignedProjectReadRule(),
         ],
     },
     {

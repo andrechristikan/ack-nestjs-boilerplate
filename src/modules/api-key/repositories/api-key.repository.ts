@@ -44,7 +44,7 @@ export class ApiKeyRepository implements IApiKeyRepository {
                         ...isActive,
                         ...type,
                     },
-                    ...(additionalWhere ? [additionalWhere] : []),
+                    additionalWhere ?? {},
                 ],
             },
             select: ApiKeyAdminListSelect,

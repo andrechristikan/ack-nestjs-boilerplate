@@ -206,7 +206,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
                         ...isRevoked,
                         userId,
                     },
-                    ...(additionalWhere ? [additionalWhere] : []),
+                    additionalWhere ?? {},
                 ],
             },
             include: {
