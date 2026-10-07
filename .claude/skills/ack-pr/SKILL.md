@@ -59,7 +59,9 @@ Shape: description and create fill .github/pull_request_template.md, same headin
   in the same voice.
 Acceptance: every claim traced to the diff; public voice; no branch-compare framing, no
   local ref, no working-artifact path, no .claude/ mention (.claude/rules/authoring.md);
-  a version identity may appear. Run humanizer in file mode on the document.
+  a version identity may appear. Indicative for a fact or an obligation, imperative for a
+  procedure step; one idea per paragraph; an entry with several separate facts is a list,
+  one fact per item, numbered when order matters. Run humanizer in file mode on the document.
 Rules to read: .claude/rules/authoring.md
 Report: the file path, and every open question the diff could not settle (hand-back only,
   not a document section).

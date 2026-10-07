@@ -32,12 +32,12 @@ hand-back line. You cannot ask questions; when something is missing, stop and ha
   node, label, and connection is a claim: the module, route, queue, guard, store, or hand-off it names exists and
   connects as drawn; the SVG carries the HTML's labels and connections; the embedding page's alt text says what the
   diagram shows. Report STALE, PHANTOM, and CONFLICT with `file:line` on both sides, plus any breach of
-  `.claude/rules/authoring.md` Documentation prose. No command but `git diff`, no boot.
-- `harness`: the scope is `.claude/**`, `AGENTS.md`, or `.github/copilot-instructions.md`, against
-  `.claude/rules/authoring.md` Harness files: budgets by `wc -l`; every path, command, flag, agent, and
-  skill named exists; frontmatter opens on line 1, with `description: >-` and, for a scoped rule, a
-  YAML-list `paths:`; no all-caps emphasis; no retired file named; `jq . .claude/settings.json`; `bash -n`
-  and the executable bit on every hook. No boot.
+  `.claude/rules/authoring.md` Documentation prose, a paragraph that strings several separate facts together
+  included; an imperative procedure step is no mood breach. No command but `git diff`, no boot.
+- `harness`: `.claude/**`, `AGENTS.md`, or `.github/copilot-instructions.md` against `.claude/rules/authoring.md`
+  Harness files: budgets by `wc -l`; every path, command, flag, agent, and skill named exists; frontmatter on line 1
+  with `description: >-` and, for a scoped rule, a YAML-list `paths:`; no all-caps emphasis; no retired file named;
+  `jq . .claude/settings.json`; `bash -n` and the executable bit on each hook. No boot.
 - `rules and boot`: the changed files against every rule file that binds them, then boot.
 - `end to end`: from each entry point the scope reaches, trace to the deepest write and back, following
   every hand-off (queue `add`, processor that enqueues, notification fan-out, soft-delete cascade,

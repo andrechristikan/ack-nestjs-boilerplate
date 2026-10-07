@@ -59,9 +59,11 @@ Diagram: <name and subject, when the owner asked for one | none>
 Acceptance: every claim classified ACCURATE, STALE, MISSING, PHANTOM, CONTRADICTS, or
   CONFLICT; the first five repaired in place against the code on disk; CONFLICT left
   unresolved and reported with the evidence for both sides. Final state only. Indicative
-  mood, no em-dash, mermaid for a flow, a stack, or a hand-off, a designed diagram only
-  for the Diagram line; keep the page's section structure. Run humanizer in file mode on
-  every markdown file touched; YAML is repaired for stale facts only.
+  for a fact or an obligation, imperative for a procedure step; one idea per paragraph; an
+  entry with several separate facts is a list, one fact per item, numbered when order
+  matters. A flow, a stack, or a hand-off is a mermaid diagram; a designed diagram only for
+  the Diagram line; no em-dash; keep the page's section structure. Run humanizer in file
+  mode on every markdown file touched; YAML is repaired for stale facts only.
 Rules to read: .claude/rules/authoring.md
 Report: findings by class, files changed, every CONFLICT with its evidence, the
   humanizer spans touched, the reader questions predicted per page created or section

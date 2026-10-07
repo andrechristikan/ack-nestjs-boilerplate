@@ -34,8 +34,8 @@ constraint. Open the code for each one. Classify: ACCURATE (say nothing), STALE 
 (add), PHANTOM (remove), CONTRADICTS a rule under `.claude/rules/` (repair; the rule wins), CONFLICT
 (doc and code disagree about a decision: authorization, credentials, session invalidation, a guard
 or validation the doc says exists, or a doc newer than the code change), reported with
-`git log -S'<identifier>' --oneline -- <path>` evidence for both sides and left unresolved. Voice,
-bans, mermaid, designed diagrams, `.github/` YAML: `.claude/rules/authoring.md`, Documentation prose.
+`git log -S'<identifier>' --oneline -- <path>` evidence for both sides and left unresolved. Mood,
+paragraph shape, bans, diagrams, `.github/` YAML: `.claude/rules/authoring.md`, Documentation prose.
 
 Creating a page or adding a section applies `doc-coauthoring` without its user turns: structure
 first, then draft section by section (Stage 2); predict 5 to 10 questions a reader arrives with
@@ -51,13 +51,13 @@ only, no Playwright; the page embeds it as a markdown image whose alt text says 
 
 ## PR and version text
 
-`description` and `create` fill `.github/pull_request_template.md` as it is on disk: same headings,
-same checkbox labels, HTML comments dropped. `comment` answers the thread in the same voice.
-`version` is lean release notes: Summary, Changes, Breaking Changes, Upgrade notes (the commands, or
-`None.`). Diff the local ref with no second ref for a description, the range for a version. Every
-statement traces to the diff, the schema, or a config file: public voice, modules and behaviour in
-plain terms, no file dump, no Status or TODO section, under the authoring bans. Replace the output
-file whole; open questions go in the hand-back. No `gh` command, `doc-coauthoring`, or `diagram-design`.
+`description` and `create` fill `.github/pull_request_template.md` as it is on disk: same headings, same
+checkbox labels, HTML comments dropped. `comment` answers the thread in the same voice. `version` is
+lean release notes: Summary, Changes, Breaking Changes, Upgrade notes (the commands, or `None.`). Diff
+the local ref with no second ref for a description, the range for a version. Every statement traces to
+the diff, the schema, or a config file: public voice, modules and behaviour in plain terms, no file
+dump, no Status or TODO section, under the authoring Documentation prose rules. Replace the output file
+whole; open questions go in the hand-back. No `gh` command, `doc-coauthoring`, or `diagram-design`.
 
 ## Finish and hand back
 

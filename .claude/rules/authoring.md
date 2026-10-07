@@ -41,38 +41,38 @@ state goes (`the count is not stored on the model`). Rewrite it as what is (`act
 
 ## Documentation prose
 
-Binds `docs/*.md`, the root people files, and `.github/` markdown. In `.github/` YAML, `writer` repairs stale facts
-only; a workflow or `dependabot.yml` a change moves or a plan task lists is `coder`'s run surface (`rules/layering.md`).
+Binds `docs/*.md`, the root people files, `.github/` markdown, and PR and version text, all public paste-ready prose.
+In `.github/` YAML, `writer` repairs stale facts only; a workflow or `dependabot.yml` a change moves or a plan task
+lists is `coder`'s run surface (`rules/layering.md`). A small correction keeps the page's existing section structure.
 
-- Indicative mood; an obligation is a fact: `all three paths produce the same idempotency key`, not `keys must match`.
-- No `.claude/`, no rule cited by path, no working artifact (`.superpowers/`, `generated/`, `.claude/worktrees/`),
-  no local-only git ref, no absolute filesystem path, no branch-compare framing
-  (`main`, `development`, `origin/*`, "against base"). A version identity the release is about may appear.
-- No em-dash; use a period, comma, semicolon, colon, or parentheses. No filler, no rhetorical question, no
-  synonym stacking. Bullets first; keep the existing section structure on a small correction.
+- A fact or an obligation is indicative (`the keys match`, not `keys must match`); a procedure step is imperative.
+- Bullets first; one paragraph, one idea. An entry stating several separate facts (the rules of a config, the steps
+  of a procedure, the fields of a payload) is a list, one fact per item, numbered when order matters, related items
+  under a sub-heading or nested bullets. No paragraph strings separate facts together with "and" or semicolons.
+- No `.claude/`, no rule cited by path, no working artifact (`.superpowers/`, `generated/docs/`, `.claude/worktrees/`),
+  no local-only git ref, absolute path, or branch-compare framing (`main`, `development`, `origin/*`, "against base").
+  The released version, `generated/swagger.json`, and `generated/vault/` may appear. `CONTRIBUTING.md` names its branch
+  flow (`development`, `main`) and the `upstream` remote.
+- No em-dash (write a period, comma, colon, or parentheses), filler, rhetorical question, synonym stacking.
+- A colon joins a label to its description, never ` - ` or a semicolon; a link list item is `[Title][ref]: description`.
 - A flow, a stack, or a hand-off is a mermaid diagram (`flowchart`, `sequenceDiagram`, `stateDiagram-v2`).
 - A designed diagram exists only where the owner asked for one: HTML source and SVG export together under
   `docs/assets/`, kebab-case names; the page embeds the SVG as a markdown image, alt text saying what it shows.
 
-A PR description fills `.github/pull_request_template.md`; a version description is lean release notes. Both
-are public paste-ready prose under the same bans.
-
 ## Harness files
 
-`.claude/**`, `AGENTS.md`, and `copilot-instructions.md` are written for the model: imperative, present tense,
-short sentences, bullets for parallel items, tables only for real lookups, no ALL-CAPS emphasis. A `file:line`
-pointer instead of a pasted snippet unless the snippet is the convention. No census counts, version numbers,
-or port lists that live in a file; point at the file. Anything ESLint, Prettier, `tsc`, commitlint, `engines`,
-or a hook enforces is not a rule; a lint-enforceable line the linter does not yet cover is one line plus an
-entry under a "Move to ESLint" heading in `rules/code-style.md`, created with its first entry. Verify every
-path, command, and flag against the checkout before writing it. `copilot-instructions.md` states nothing the rules do not.
+`.claude/**`, `AGENTS.md`, and `copilot-instructions.md` address the model: imperative, present tense, short sentences,
+bullets for parallel items, tables only for real lookups, no ALL-CAPS emphasis. A `file:line` pointer replaces a snippet
+unless the snippet is the convention. A census count, version number, or port list points at the file holding it.
+Anything ESLint, Prettier, `tsc`, commitlint, `engines`, or a hook enforces is not a rule; a lint-enforceable rule is
+one line plus an entry under `rules/code-style.md` "Move to ESLint". Verify each path, command, and flag in the checkout
+before writing it. `copilot-instructions.md` states nothing the rules do not. Name `.superpowers/`, `generated/docs/`,
+and `.claude/worktrees/` only as locations a workflow writes or reads; never as the source of a rule or a project fact.
 
-Budgets: `.claude/CLAUDE.md` ≤ 120 lines; `AGENTS.md` ≤ 80; `copilot-instructions.md` ≤ 60; a rule ≤ 80; an
-agent body ≤ 60 after frontmatter; a `SKILL.md` ≤ 150 (long material in `references/`); a reference file ≤ 120.
-
-A rule file opens with `paths:` as a YAML list unless it is one of the four unscoped ones. A skill's `SKILL.md`
-and an agent's `.md` open with YAML frontmatter whose `description` is a folded block scalar (`description: >-`);
-a plain scalar containing `: ` does not parse, and `.claude/hooks/roster.sh` reads the folded form.
+Budgets: `.claude/CLAUDE.md` ≤ 120 lines; `AGENTS.md` ≤ 80; `copilot-instructions.md` ≤ 60; a rule ≤ 80; an agent body ≤
+60 after frontmatter; a `SKILL.md` ≤ 150 (long material in `references/`); a reference file ≤ 120. Every rule but the
+four unscoped ones opens with a YAML-list `paths:`. A `SKILL.md` and an agent `.md` open with frontmatter holding a
+folded `description: >-`: a plain scalar with `: ` does not parse, and `.claude/hooks/roster.sh` reads the folded form.
 
 ## Language
 

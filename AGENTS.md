@@ -43,8 +43,9 @@ test/e2e/               HTTP route and flow specs on Testcontainers
 test/helpers/           helpers two or more test types share
 docs/                   durable project documentation
 scripts/                generate-secret.ts, generate-package.ts
-ci/                     dockerfile (production), dockerfile.local (the compose apis service), mongo, vault, jwks-server
-keys/                   generated JWT keys and encryption secret, gitignored
+ci/                     dockerfile.production, docker-compose.production.yml (production); mongo/, vault/, jwks-server/ (both compose files)
+dockerfile              development image, the compose apis service
+keys/                   generated JWT keys, encryption secret, and Mongo keyfile, gitignored
 generated/              swagger, vault init, agent reports under docs/, gitignored
 ```
 
@@ -72,8 +73,7 @@ validation-import; NestJS evaluates them in reverse, so the most specific runs f
 `prisma/schema.prisma` is editable. Applying it is the owner's: `pnpm db:migrate`, `pnpm db:studio`, `pnpm migration`,
 `pnpm migration:seed`, `pnpm migration:remove`, `pnpm migration:fresh`, `node dist/migration.js`, `prisma db *`,
 `prisma migrate *`, `prisma studio` (bare, `npx`, `pnpm exec`, `pnpm dlx`), `mongosh`, `redis-cli`. Edit the
-schema, then hand back the commands the owner runs.
-One exception: the integration and e2e global-setup runs `prisma db push --skip-generate` on its throwaway Mongo.
+schema, then hand back the commands the owner runs. One exception: the integration and e2e global-setup runs `prisma db push --skip-generate` on its throwaway Mongo.
 
 ## Commit gates
 

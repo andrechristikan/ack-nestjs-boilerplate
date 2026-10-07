@@ -52,7 +52,10 @@ order matters occur only in these cases, each named at the site in a one-line `/
 - a gate that decides whether the request proceeds (a feature-flag gate, an existence or permission check) runs before
   the work it guards, so a closed gate starts no query and its exception is the one the caller sees;
 - side effects whose order is part of the contract (a reset before a boot, seeds that read rows an earlier seed wrote);
-- a fan-out over an unbounded collection: concurrent within a bounded chunk (as above), the chunks in turn.
+- a fan-out over an unbounded collection: concurrent within a bounded chunk (as above), the chunks in turn; the chunk
+  size is a config key (`config.md`), as `analytic.fraud.concurrency` and `file.importValidationConcurrency`.
+
+A file holding a sanctioned awaiting loop is listed in the `code-style/await-in-loop-allowed` block of `eslint.config.mjs`.
 
 `.catch()` belongs only to `bootstrap().catch` in `src/main.ts` and `src/migration.ts` and to a promise never awaited.
 
@@ -72,9 +75,6 @@ export carries it; the tag keeps an unused export out of the knip report, and an
 
 ## Move to ESLint
 
-- `no-await-in-loop` for the concurrency rule, enabled once the sequential awaits in the tree are swept. `ts/default`
-  sets `noInlineConfig`, so every sanctioned loop (one `tx`, a cursor page, bounded chunks, a retry) takes a
-  file-scoped override block in `eslint.config.mjs`.
 - `ts/test` gains what `ts/default` enforces in `src/`, and a spec holds to it now: `@typescript-eslint/no-explicit-any`,
   `@typescript-eslint/prefer-nullish-coalescing`, `prefer-template`, the this-call `no-restricted-syntax` selectors
-  (a `this.` call lands in a `const` first), and the Prisma `internal/` import pattern.
+  (a `this.` call lands in a `const` first), `no-await-in-loop`, and the Prisma `internal/` import pattern.

@@ -27,7 +27,7 @@ case "$rel" in
         ;;
     generated/docs/*) ;;
     generated/*|*/generated/*)
-        deny "generated/ and src/generated/ are produced by pnpm generate. Reports go to generated/docs/."
+        deny "src/generated/ is produced by pnpm generate; generated/swagger.json by src/swagger.ts and generated/vault/ by the Vault containers. Reports go to generated/docs/."
         ;;
     docs/superpowers/*|*/docs/superpowers/*)
         deny "Skill output goes to .superpowers/ (gitignored). docs/ is tracked project documentation."

@@ -26,8 +26,8 @@ paths:
 - `src/instrument.ts` runs before Nest and calls the config factories directly; everything else reads
   `ConfigService.get<T>('namespace.key')`, `T` named, into a `private readonly` field once, in the class constructor;
   a module `useFactory`, a queue options factory, `main.ts`, and `swagger.ts` read where they build.
-- A TTL, retry or backoff count, size threshold, rollout percent, sample rate, cron pattern, rate limit, or max-attempts
-  budget is a camelCase config key, never a literal or a bare `const` in a service, util, guard, or module wiring.
+- A TTL, retry or backoff count, size threshold, chunk size, rollout percent, sample rate, cron pattern, rate limit, or
+  max-attempts budget is a camelCase config key, never a literal or a bare `const` in a service, util, guard, or module wiring.
 - A duration key is named for its consumer's unit (`InMs`, `InSeconds`, `InDays`) and built from `ms('<string>')`,
   divided inside the config file (`ms('7d') / 1000`); no raw number, no call-site arithmetic. A duration computed at
   request time has no key. A size key is `InBytes` from `bytes('<string>')`.
@@ -36,8 +36,10 @@ paths:
 - A header name, CLS store key, metadata key, or wire label is a constant or enum, never config; a header is
   `<Module>[<Concern>]HeaderName`, in `src/common/` when the kit reads it. `request.config.ts` builds the CORS header
   lists from those constants, the one config importing from `@modules`.
-- A credential comes from the environment, no literal default (deployed: Vault via `pnpm vault:pull`); `.env.example`
-  carries every key empty; a config interface holds no `Buffer`; an encryption root (`dto.md`) is exposed as validated.
+- A credential comes from the environment (deployed: `pnpm vault:pull`). An application credential has no literal
+  default and is empty in `.env.example`; a `DOCKER_` key is the one exception, empty in `.env.example` with its
+  fallback in the compose file (`docker.md`). A non-`DOCKER_` key with no secret may carry a default in `.env.example`
+  (`APP_NAME`, `HTTP_PORT`). A config interface holds no `Buffer`; an encryption root (`dto.md`) is exposed validated.
 - An optional adapter (`AwsS3Service`, `AwsSESService`, `FirebaseService`) with unset credentials logs one `warn` in
   `onModuleInit` and stays uninitialised (`isInitialized()`): each method warns and returns an empty result, so a send
   is a no-op. Firebase set but broken (the key fails to normalise, `initializeApp` throws) fails boot. A third-party
@@ -45,17 +47,15 @@ paths:
 
 ## Logging
 
-- Pino behind Nest's `Logger` through `LoggerModule.forRoot()`; `LoggerOptionService` builds the options,
-  `LoggerUtil` (`src/common/logger/utils/logger.util.ts`) shapes and redacts.
+- Pino behind `Logger` via `LoggerModule.forRoot()`; `LoggerOptionService` builds options, `LoggerUtil` shapes and redacts.
 - One `private readonly logger = new Logger(ClassName.name)` per class, never module-level, no `console.*` in `src/`;
   `error` is object-first (`this.logger.error(error, 'context')`, the reverse drops the stack), the rest message-first.
 - `EnumLoggerLevel` is the Pino level (`logger.level` config); `EnumLoggerSeverity` is the `severity` field
   `LoggerUtil.mapLevelToSeverity` (`:254`) writes. Pick by who must act: `fatal` process cannot continue, `error`
   someone must look, `warn` degraded but handled, `info` a lifecycle fact, `debug` / `trace` detail.
-- `LoggerSensitiveFields` (`src/common/logger/constants/logger.constant.ts:44`) is the one list of sensitive keys;
-  `LoggerUtil.redactValue` (`logger.util.ts:172`) masks them at any depth, a request log carries a masked `route` and never a
-  body, and `src/instrument.ts` `beforeSend`, `beforeSendTransaction`, `beforeBreadcrumb`, `beforeSendLog` (`:311`
-  on) scrub Sentry from the same constants. A new credential key goes on that list.
+- `LoggerSensitiveFields` (`logger.constant.ts:44`) is the one list of sensitive keys, and a new credential key goes on
+  it; `LoggerUtil.redactValue` (`logger.util.ts:172`) masks them at any depth, a request log carries a masked `route`
+  and never a body, and the `src/instrument.ts` hooks from `beforeSend` (`:315`) on scrub Sentry from the same constants.
 - `SentryService` (`src/common/sentry/services/sentry.service.ts`: `captureException`, `captureMessage`, `log`,
   `withScope`) is the one way to report. Callers: the `APP_FILTER` chain by `httpStatus`, `QueueProcessorBase.onFailed`
   once when fatal, and a domain reporting an operator fault the client receives as a non-5xx (`AuthTwoFactorDomain`).

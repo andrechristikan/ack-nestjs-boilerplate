@@ -102,9 +102,9 @@ asks the owner and dispatches again. Anything outside its dispatch is one line i
   check the subject against `.commitlintrc` first. A commit touching either tree goes through the hooks,
   and a red gate is fixed, not skipped.
 - `lint-staged` restages what prettier touches, so a granular commit series is not possible.
-- Working artifacts are gitignored. `.superpowers/` holds every superpowers skill output (spec, plan, sdd brief
-  and ledger); `generated/docs/` holds agent reports, the sweep log, and PR, comment, and version text; neither holds
-  the other's files. Cite neither from `docs/`, a rule, or a PR description; harness files name them only as locations.
+- Working artifacts are gitignored: `.superpowers/` holds every superpowers skill output (spec, plan, sdd brief and
+  ledger); `generated/docs/` holds agent reports, the sweep log, and PR, comment, and version text; neither holds the
+  other's files. What prose may not cite: `.claude/rules/authoring.md`, Documentation prose and Harness files.
 - Run every command in the foreground, bounded (`timeout 90` on a boot, which never ends on its own; GNU coreutils,
   `brew install coreutils` on stock macOS). `run_in_background` is denied (`guard-bash.sh`). Start no process the
   call leaves behind (`&`, `nohup`); a call Claude Code moves to the background at its timeout is the one exception
@@ -115,6 +115,5 @@ asks the owner and dispatches again. Anything outside its dispatch is one line i
 
 ### Rules
 
-Rules load by path from `.claude/rules/`; the four unscoped ones bind every file:
-`layering.md`, `cross-module.md`, `null-safety.md`, `naming.md`. `authoring.md` binds every
-prose tree, this file included.
+Rules load by path from `.claude/rules/`; the four unscoped ones bind every file: `layering.md`, `cross-module.md`,
+`null-safety.md`, `naming.md`. `authoring.md` binds every prose tree, this file included.
