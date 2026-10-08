@@ -12,7 +12,7 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import { Prisma } from '@generated/prisma-client/client';
 import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
 import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/user.check-username.request.dto';
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
@@ -23,18 +23,15 @@ import type {
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
-import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
-import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
+import { OnboardingDomain } from '@modules/onboarding/domains/onboarding.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
-import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class UserHttpService {
     constructor(
         private readonly userDomain: UserDomain,
-        private readonly userOnboardingDomain: UserOnboardingDomain,
-        private readonly workspaceDomain: WorkspaceDomain,
+        private readonly onboardingDomain: OnboardingDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -88,31 +85,12 @@ export class UserHttpService {
         { countryId, email, name, roleId, username }: UserCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        const { input, passwordString } =
-            await this.userDomain.prepareCreateByAdmin(
-                { countryId, email, name: name ?? null, roleId, username },
-                createdBy
-            );
-        const createTimeoutInMs =
-            this.userOnboardingDomain.getCreateTimeoutInMs();
-        const createdUsers = await this.workspaceDomain.commitOnboarding(
-            [input],
-            EnumUserCreateMode.admin,
-            createTimeoutInMs,
-            EnumActivityLogAction.adminUserCreate
+        const id = await this.onboardingDomain.createByAdmin(
+            { countryId, email, name: name ?? null, roleId, username },
+            createdBy
         );
-        const created = createdUsers[0]!;
-        if (input.password) {
-            await this.userDomain.notifyWelcomeByAdmin(
-                created.id,
-                passwordString,
-                input.password.passwordCreated,
-                input.password.passwordExpired,
-                createdBy
-            );
-        }
 
-        return { data: { id: created.id } };
+        return { data: { id } };
     }
 
     async updateStatusByAdmin(

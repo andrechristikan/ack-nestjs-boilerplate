@@ -19,6 +19,7 @@ import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.do
 import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
+import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
 import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -225,12 +226,16 @@ export class TermPolicyDomain {
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
             throw new TermPolicyNotFoundException();
-        } else if (termPolicy.status === EnumTermPolicyStatus.published) {
+        }
+        if (termPolicy.status === EnumTermPolicyStatus.published) {
             throw new TermPolicyStatusInvalidException();
-        } else if (
-            (termPolicy.contents as unknown as ITermPolicyContent[]).length ===
-            0
-        ) {
+        }
+
+        const contents = this.termPolicyUtil.toContents(termPolicy.contents);
+        if (contents instanceof TermPolicyContentInvalidException) {
+            throw contents;
+        }
+        if (contents.length === 0) {
             throw new TermPolicyContentEmptyException();
         }
 
@@ -244,9 +249,6 @@ export class TermPolicyDomain {
                 termPolicy.type,
                 termPolicy.version
             );
-            const contents =
-                termPolicy.contents as unknown as ITermPolicyContent[];
-
             const newItems = await this.awsS3Service.copyItems(
                 contents,
                 contentPublicPath,

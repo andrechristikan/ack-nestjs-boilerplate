@@ -35,6 +35,7 @@ import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.do
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionCache } from '@modules/session/caches/session.cache';
+import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import type {
@@ -448,10 +449,14 @@ export class UserLoginDomain {
             refreshToken
         );
 
+        if (!oldJti) {
+            throw new AuthJwtRefreshTokenInvalidException();
+        }
+
         // Sequential by design: gate before the work it guards
         const session = await this.sessionCache.getLogin(userId, sessionId);
-        if (!session || !oldJti) {
-            throw new AuthJwtRefreshTokenInvalidException();
+        if (!session) {
+            throw new SessionRevokedException();
         }
 
         const sessionJtiHash = this.helperHashService.sha256Hash(session.jti);
@@ -461,7 +466,7 @@ export class UserLoginDomain {
             oldJtiHash
         );
         if (!isJtiMatch) {
-            throw new AuthJwtRefreshTokenInvalidException();
+            throw new SessionRevokedException();
         }
 
         try {
@@ -498,7 +503,7 @@ export class UserLoginDomain {
                 expiredInMs
             );
             if (!isRotated) {
-                throw new AuthJwtRefreshTokenInvalidException();
+                throw new SessionRevokedException();
             }
 
             this.activityLogDomain.stagePrepared(events);

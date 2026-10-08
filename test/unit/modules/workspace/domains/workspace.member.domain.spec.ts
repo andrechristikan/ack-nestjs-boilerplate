@@ -513,6 +513,34 @@ describe('WorkspaceMemberDomain', () => {
             });
         });
 
+        it('throws WorkspaceMemberPeerForbiddenException when the actor targets itself', async () => {
+            const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
+            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
+                actor
+            );
+
+            await expect(
+                domain.updateMemberRole(
+                    'workspace-1',
+                    actor,
+                    'member-1',
+                    EnumWorkspaceMemberRole.admin
+                )
+            ).rejects.toMatchObject({
+                constructor: WorkspaceMemberPeerForbiddenException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.memberPeerForbidden
+                    ],
+                messagePath: 'workspace.error.memberPeerForbidden',
+            });
+            expect(activityLogDomain.prepare).not.toHaveBeenCalled();
+            expect(workspaceMemberRepository.updateRole).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+        });
+
         it('throws WorkspaceMemberPeerForbiddenException via assertPeerActionAllowed when the target is the owner', async () => {
             const actor = {
                 ...baseMember,
@@ -547,46 +575,6 @@ describe('WorkspaceMemberDomain', () => {
                 messagePath: 'workspace.error.memberPeerForbidden',
             });
             expect(workspaceMemberRepository.updateRole).not.toHaveBeenCalled();
-        });
-
-        it('updates the role, stages only the actor event in order when the actor targets itself', async () => {
-            const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
-                actor
-            );
-            const callOrder: string[] = [];
-            workspaceMemberRepository.updateRole.mockImplementation(
-                async () => {
-                    callOrder.push('updateRole');
-                }
-            );
-            activityLogDomain.stagePrepared.mockImplementation(() => {
-                callOrder.push('stagePrepared');
-            });
-
-            await domain.updateMemberRole(
-                'workspace-1',
-                actor,
-                'member-1',
-                EnumWorkspaceMemberRole.admin
-            );
-
-            expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
-            expect(activityLogDomain.prepare).toHaveBeenCalledWith({
-                action: EnumActivityLogAction.workspaceMemberRoleUpdated,
-                userId: 'user-1',
-                createdBy: 'user-1',
-                workspaceId: 'workspace-1',
-                metadata: { targetUserId: 'user-1' },
-            });
-            expect(workspaceMemberRepository.updateRole).toHaveBeenCalledWith(
-                'member-1',
-                EnumWorkspaceMemberRole.admin
-            );
-            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
-            ]);
-            expect(callOrder).toEqual(['updateRole', 'stagePrepared']);
         });
 
         it('updates the role and stages the by-admin event when the target differs from the actor', async () => {

@@ -183,7 +183,7 @@ Both cache modules:
 - Each path then stages its activity rows.
 - Flow narrative: [Authentication][ref-doc-authentication].
 
-A refresh rotates the entry with `updateLogin` after its database commit. When the entry is gone (a revoke purged it while the refresh ran), nothing is written and the refresh answers `AuthJwtRefreshTokenInvalidException` (401, `50801`).
+A refresh rotates the entry with `updateLogin` after its database commit. When the entry is gone (a revoke purged it while the refresh ran), nothing is written and the refresh answers `SessionRevokedException` (401, `50401`).
 
 ### Redis Failures
 
@@ -193,8 +193,8 @@ Writes and deletes split into three groups:
 
 | Group | Calls | On a Redis failure |
 | --- | --- | --- |
-| Propagate | `SessionCache.setLogin` (every login), `SessionCache.updateLogin` (refresh), `AuthCache.createChallenge` (login with two-factor), `ApiKeyCache.deleteCacheByKey` (API key admin writes, `MigrationApiKeySeed.remove`) | The request answers 500 |
-| Caught in the cache class and logged | `AuthCache.clearChallenge`, `AuthCache.lockTwoFactorAttempt`, `AuthCache.clearLockTwoFactorAttempt`, `ApiKeyCache.setCacheByKey`, every `FeatureFlagCache` and `AnalyticCache` call | The request continues |
+| Propagate | `SessionCache.setLogin` (every login), `SessionCache.updateLogin` (refresh), `AuthCache.createChallenge` (login with two-factor), `AuthCache.lockTwoFactorAttempt` (the lock set when a failed verification reaches the attempt limit), `ApiKeyCache.deleteCacheByKey` (API key admin writes, `MigrationApiKeySeed.remove`) | The request answers 500 |
+| Caught in the cache class and logged | `AuthCache.clearChallenge`, `AuthCache.clearLockTwoFactorAttempt`, `ApiKeyCache.setCacheByKey`, every `FeatureFlagCache` and `AnalyticCache` call | The request continues |
 | Caught in `SessionDomain` and logged | `SessionCache.deleteLogins`, `SessionCache.deleteLoginsByUser` | The request continues |
 
 `ResponseCacheInterceptor` inherits the error handling of `@nestjs/cache-manager`'s `CacheInterceptor`, which logs a failed write and runs the handler when the cache lookup fails.

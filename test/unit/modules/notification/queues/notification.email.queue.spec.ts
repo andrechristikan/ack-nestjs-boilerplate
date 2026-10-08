@@ -88,7 +88,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.welcomeByAdmin,
                 { send, data },
                 {
-                    jobId: 'welcomeByAdmin-user-id',
+                    jobId: 'notification-id-sendEmail',
                     deduplication: {
                         id: 'welcomeByAdmin-user-id',
                         ttl: 60_000,
@@ -113,6 +113,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.temporaryPasswordByAdmin,
                 { send, data },
                 {
+                    jobId: 'notification-id-sendEmail',
                     deduplication: {
                         id: 'temporaryPasswordByAdmin-user-id',
                         ttl: 60_000,
@@ -131,6 +132,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.resetPassword,
                 { send, data: null },
                 {
+                    jobId: 'notification-id-sendEmail',
                     priority: EnumQueuePriority.low,
                     deduplication: {
                         id: 'resetPassword-user-id',
@@ -153,6 +155,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.resetPassword,
                 { send: sendWithRecipients, data: null },
                 {
+                    jobId: 'notification-id-sendEmail',
                     priority: EnumQueuePriority.low,
                     deduplication: {
                         id: 'resetPassword-user-id',
@@ -171,6 +174,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.changePassword,
                 { send, data: null },
                 {
+                    jobId: 'notification-id-sendEmail',
                     priority: EnumQueuePriority.low,
                     deduplication: {
                         id: 'changePassword-user-id',
@@ -196,6 +200,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.verificationEmail,
                 { send, data },
                 {
+                    jobId: 'notification-id-sendVerificationEmail',
                     deduplication: {
                         id: 'verificationEmail-user-id',
                         ttl: 900_000,
@@ -214,7 +219,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.welcome,
                 { send, data: null },
                 {
-                    jobId: 'welcome-user-id',
+                    jobId: 'notification-id-sendWelcomeEmail',
                     deduplication: {
                         id: 'welcome-user-id',
                         ttl: 60_000,
@@ -233,7 +238,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.welcomeSocial,
                 { send, data: null },
                 {
-                    jobId: 'welcomeSocial-user-id',
+                    jobId: 'notification-id-sendEmail',
                     deduplication: {
                         id: 'welcomeSocial-user-id',
                         ttl: 60_000,
@@ -254,7 +259,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.verifiedEmail,
                 { send, data },
                 {
-                    jobId: 'verifiedEmail-user-id',
+                    jobId: 'notification-id-sendEmail',
                     deduplication: {
                         id: 'verifiedEmail-user-id',
                         ttl: 60_000,
@@ -281,6 +286,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.forgotPassword,
                 { send, data },
                 {
+                    jobId: 'notification-id-sendEmail',
                     deduplication: {
                         id: 'forgotPassword-user-id',
                         ttl: 300_000,
@@ -305,7 +311,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.verifiedMobileNumber,
                 { send, data },
                 {
-                    jobId: 'verifiedMobileNumber-user-id',
+                    jobId: 'notification-id-sendEmail',
                     deduplication: {
                         id: 'verifiedMobileNumber-user-id',
                         ttl: 120_000,
@@ -324,6 +330,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.resetTwoFactorByAdmin,
                 { send, data: null },
                 {
+                    jobId: 'notification-id-sendEmail',
                     deduplication: {
                         id: 'resetTwoFactorByAdmin-user-id',
                         ttl: 60_000,
@@ -361,6 +368,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.newDeviceLogin,
                 { send, data },
                 {
+                    jobId: 'notification-id-sendEmail',
                     deduplication: {
                         id: 'newDeviceLogin-user-id',
                         ttl: 60_000,
@@ -431,6 +439,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.workspaceInvite,
                 { send, data },
                 {
+                    jobId: 'notification-id-sendEmail',
                     priority: EnumQueuePriority.high,
                     deduplication: {
                         id: 'workspaceInvite-ref-1',
@@ -512,6 +521,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.workspaceJoinRequest,
                 { send, data },
                 {
+                    jobId: 'notification-id-sendEmail',
                     priority: EnumQueuePriority.medium,
                     deduplication: {
                         id: 'workspaceJoinRequest-workspace-id-user-id',
@@ -532,6 +542,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.workspaceJoinAccepted,
                 { send, data },
                 {
+                    jobId: 'notification-id-sendEmail',
                     priority: EnumQueuePriority.medium,
                     deduplication: {
                         id: 'workspaceJoinAccepted-workspace-id-user-id',
@@ -557,6 +568,7 @@ describe('NotificationEmailQueue', () => {
                 EnumNotificationProcess.workspaceJoinRejected,
                 { send, data },
                 {
+                    jobId: 'notification-id-sendEmail',
                     priority: EnumQueuePriority.medium,
                     deduplication: {
                         id: 'workspaceJoinRejected-workspace-id-user-id',

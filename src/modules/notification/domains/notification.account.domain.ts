@@ -1,8 +1,12 @@
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationStep,
+} from '@modules/notification/enums/notification.enum';
 import type {
     INotificationEmailSendPayload,
+    INotificationStepFailure,
+    INotificationStepResult,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
@@ -10,9 +14,9 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /** Writes and fans out the sign-up, welcome and verification notifications. */
 @Injectable()
@@ -21,278 +25,576 @@ export class NotificationAccountDomain {
         private readonly notificationRepository: NotificationRepository,
         private readonly userDomain: UserDomain,
         private readonly helperStringService: HelperStringService,
-        private readonly databaseUtil: DatabaseUtil,
+        private readonly notificationUtil: NotificationUtil,
         private readonly notificationEmailQueue: NotificationEmailQueue
     ) {}
 
     async processWelcomeByAdmin(
         userId: string,
         proceedBy: string,
-        data: INotificationWelcomeByAdminEncryptedPayload
-    ): Promise<IQueueResponse> {
+        data: INotificationWelcomeByAdminEncryptedPayload,
+        notificationId: string,
+        completedSteps: EnumNotificationStep[]
+    ): Promise<INotificationStepResult> {
         const user = await this.userDomain.getOneActive(userId);
 
         if (!user) {
             return {
                 message:
                     'User not found, skipping welcome by admin notification',
+                completedSteps,
+                failedSteps: [],
             };
         }
 
-        const notificationId = this.databaseUtil.createId();
-        const emailPayload: INotificationEmailSendPayload = {
-            userId: user.id,
-            email: user.email,
-            username: user.username,
-            notificationId,
-            cc: [],
-            bcc: [],
+        const done = [...completedSteps];
+        if (!done.includes(EnumNotificationStep.createNotification)) {
+            try {
+                // Sequential by design: gate before the work it guards
+                await this.notificationRepository.createMany([
+                    {
+                        kind: EnumNotificationKind.welcomeByAdmin,
+                        payload: {
+                            id: notificationId,
+                            userId: user.id,
+                            metadata: { username: user.username },
+                            createdBy: proceedBy,
+                        },
+                    },
+                ]);
+                done.push(EnumNotificationStep.createNotification);
+            } catch (error: unknown) {
+                const failure = this.notificationUtil.toStepFailure(
+                    EnumNotificationStep.createNotification,
+                    error
+                );
+
+                return {
+                    message: 'Welcome by admin notification failed',
+                    completedSteps: done,
+                    failedSteps: [failure],
+                };
+            }
+        }
+
+        const steps: EnumNotificationStep[] = [];
+        const promises: Promise<void>[] = [];
+        if (!done.includes(EnumNotificationStep.sendEmail)) {
+            const emailPayload: INotificationEmailSendPayload = {
+                userId: user.id,
+                email: user.email,
+                username: user.username,
+                notificationId,
+                cc: [],
+                bcc: [],
+            };
+            const emailSent = this.notificationEmailQueue.sendWelcomeByAdmin(
+                emailPayload,
+                data
+            );
+            steps.push(EnumNotificationStep.sendEmail);
+            promises.push(emailSent);
+        }
+
+        const outcomes = await Promise.allSettled(promises);
+        const failedSteps: INotificationStepFailure[] = [];
+        outcomes.forEach((outcome, index) => {
+            const step = steps[index]!;
+            if (outcome.status === 'fulfilled') {
+                done.push(step);
+
+                return;
+            }
+
+            const failure = this.notificationUtil.toStepFailure(
+                step,
+                outcome.reason
+            );
+            failedSteps.push(failure);
+        });
+
+        return {
+            message: 'Welcome by admin notification processed',
+            completedSteps: done,
+            failedSteps,
         };
-
-        const results = await Promise.allSettled([
-            this.notificationRepository.create(
-                EnumNotificationKind.welcomeByAdmin,
-                {
-                    id: notificationId,
-                    userId: user.id,
-                    metadata: { username: user.username },
-                    createdBy: proceedBy,
-                }
-            ),
-            this.notificationEmailQueue.sendWelcomeByAdmin(emailPayload, data),
-        ]);
-
-        return { message: 'Welcome by admin notification processed', results };
     }
 
     async processWelcome(
         userId: string,
-        data: INotificationVerificationEmailEncryptedPayload
-    ): Promise<IQueueResponse> {
+        data: INotificationVerificationEmailEncryptedPayload,
+        notificationId: string,
+        verificationNotificationId: string,
+        completedSteps: EnumNotificationStep[]
+    ): Promise<INotificationStepResult> {
         const user = await this.userDomain.getOneActive(userId);
 
         if (!user) {
-            return { message: 'User not found, skipping welcome notification' };
+            return {
+                message: 'User not found, skipping welcome notification',
+                completedSteps,
+                failedSteps: [],
+            };
         }
 
-        const welcomeNotificationId = this.databaseUtil.createId();
-        const welcomePayload: INotificationEmailSendPayload = {
-            userId: user.id,
-            email: user.email,
-            username: user.username,
-            notificationId: welcomeNotificationId,
-            cc: [],
-            bcc: [],
-        };
-
-        const verificationEmailNotificationId = this.databaseUtil.createId();
-        const verificationEmailPayload: INotificationEmailSendPayload = {
-            userId: user.id,
-            email: user.email,
-            username: user.username,
-            notificationId: verificationEmailNotificationId,
-            cc: [],
-            bcc: [],
-        };
-
-        const results = await Promise.allSettled([
-            this.notificationRepository.createMany([
-                {
-                    kind: EnumNotificationKind.welcome,
-                    payload: {
-                        id: welcomeNotificationId,
-                        userId: user.id,
-                        metadata: { username: user.username },
-                        createdBy: user.id,
+        const done = [...completedSteps];
+        if (!done.includes(EnumNotificationStep.createNotification)) {
+            try {
+                // Sequential by design: gate before the work it guards
+                await this.notificationRepository.createMany([
+                    {
+                        kind: EnumNotificationKind.welcome,
+                        payload: {
+                            id: notificationId,
+                            userId: user.id,
+                            metadata: { username: user.username },
+                            createdBy: user.id,
+                        },
                     },
-                },
-                {
-                    kind: EnumNotificationKind.verificationEmail,
-                    payload: {
-                        id: verificationEmailNotificationId,
-                        userId: user.id,
-                        metadata: { username: user.username },
-                        createdBy: user.id,
+                    {
+                        kind: EnumNotificationKind.verificationEmail,
+                        payload: {
+                            id: verificationNotificationId,
+                            userId: user.id,
+                            metadata: { username: user.username },
+                            createdBy: user.id,
+                        },
                     },
-                },
-            ]),
-            this.notificationEmailQueue.sendWelcome(welcomePayload),
-            this.notificationEmailQueue.sendVerificationEmail(
-                verificationEmailPayload,
-                data
-            ),
-        ]);
+                ]);
+                done.push(EnumNotificationStep.createNotification);
+            } catch (error: unknown) {
+                const failure = this.notificationUtil.toStepFailure(
+                    EnumNotificationStep.createNotification,
+                    error
+                );
 
-        return { message: 'Welcome notification processed', results };
+                return {
+                    message: 'Welcome notification failed',
+                    completedSteps: done,
+                    failedSteps: [failure],
+                };
+            }
+        }
+
+        const steps: EnumNotificationStep[] = [];
+        const promises: Promise<void>[] = [];
+        if (!done.includes(EnumNotificationStep.sendWelcomeEmail)) {
+            const welcomePayload: INotificationEmailSendPayload = {
+                userId: user.id,
+                email: user.email,
+                username: user.username,
+                notificationId,
+                cc: [],
+                bcc: [],
+            };
+            const welcomeSent =
+                this.notificationEmailQueue.sendWelcome(welcomePayload);
+            steps.push(EnumNotificationStep.sendWelcomeEmail);
+            promises.push(welcomeSent);
+        }
+
+        if (!done.includes(EnumNotificationStep.sendVerificationEmail)) {
+            const verificationEmailPayload: INotificationEmailSendPayload = {
+                userId: user.id,
+                email: user.email,
+                username: user.username,
+                notificationId: verificationNotificationId,
+                cc: [],
+                bcc: [],
+            };
+            const verificationSent =
+                this.notificationEmailQueue.sendVerificationEmail(
+                    verificationEmailPayload,
+                    data
+                );
+            steps.push(EnumNotificationStep.sendVerificationEmail);
+            promises.push(verificationSent);
+        }
+
+        const outcomes = await Promise.allSettled(promises);
+        const failedSteps: INotificationStepFailure[] = [];
+        outcomes.forEach((outcome, index) => {
+            const step = steps[index]!;
+            if (outcome.status === 'fulfilled') {
+                done.push(step);
+
+                return;
+            }
+
+            const failure = this.notificationUtil.toStepFailure(
+                step,
+                outcome.reason
+            );
+            failedSteps.push(failure);
+        });
+
+        return {
+            message: 'Welcome notification processed',
+            completedSteps: done,
+            failedSteps,
+        };
     }
 
-    async processWelcomeSocial(userId: string): Promise<IQueueResponse> {
+    async processWelcomeSocial(
+        userId: string,
+        notificationId: string,
+        completedSteps: EnumNotificationStep[]
+    ): Promise<INotificationStepResult> {
         const user = await this.userDomain.getOneActive(userId);
 
         if (!user) {
             return {
                 message: 'User not found, skipping welcome social notification',
+                completedSteps,
+                failedSteps: [],
             };
         }
 
-        const notificationId = this.databaseUtil.createId();
-        const emailPayload: INotificationEmailSendPayload = {
-            userId: user.id,
-            email: user.email,
-            username: user.username,
-            notificationId,
-            cc: [],
-            bcc: [],
+        const done = [...completedSteps];
+        if (!done.includes(EnumNotificationStep.createNotification)) {
+            try {
+                // Sequential by design: gate before the work it guards
+                await this.notificationRepository.createMany([
+                    {
+                        kind: EnumNotificationKind.welcomeSocial,
+                        payload: {
+                            id: notificationId,
+                            userId: user.id,
+                            metadata: { username: user.username },
+                            createdBy: user.id,
+                        },
+                    },
+                ]);
+                done.push(EnumNotificationStep.createNotification);
+            } catch (error: unknown) {
+                const failure = this.notificationUtil.toStepFailure(
+                    EnumNotificationStep.createNotification,
+                    error
+                );
+
+                return {
+                    message: 'Welcome social notification failed',
+                    completedSteps: done,
+                    failedSteps: [failure],
+                };
+            }
+        }
+
+        const steps: EnumNotificationStep[] = [];
+        const promises: Promise<void>[] = [];
+        if (!done.includes(EnumNotificationStep.sendEmail)) {
+            const emailPayload: INotificationEmailSendPayload = {
+                userId: user.id,
+                email: user.email,
+                username: user.username,
+                notificationId,
+                cc: [],
+                bcc: [],
+            };
+            const emailSent =
+                this.notificationEmailQueue.sendWelcomeSocial(emailPayload);
+            steps.push(EnumNotificationStep.sendEmail);
+            promises.push(emailSent);
+        }
+
+        const outcomes = await Promise.allSettled(promises);
+        const failedSteps: INotificationStepFailure[] = [];
+        outcomes.forEach((outcome, index) => {
+            const step = steps[index]!;
+            if (outcome.status === 'fulfilled') {
+                done.push(step);
+
+                return;
+            }
+
+            const failure = this.notificationUtil.toStepFailure(
+                step,
+                outcome.reason
+            );
+            failedSteps.push(failure);
+        });
+
+        return {
+            message: 'Welcome social notification processed',
+            completedSteps: done,
+            failedSteps,
         };
-
-        const results = await Promise.allSettled([
-            this.notificationRepository.create(
-                EnumNotificationKind.welcomeSocial,
-                {
-                    id: notificationId,
-                    userId: user.id,
-                    metadata: { username: user.username },
-                    createdBy: user.id,
-                }
-            ),
-            this.notificationEmailQueue.sendWelcomeSocial(emailPayload),
-        ]);
-
-        return { message: 'Welcome social notification processed', results };
     }
 
     async processVerifiedEmail(
         userId: string,
-        data: INotificationVerifiedEmailPayload
-    ): Promise<IQueueResponse> {
+        data: INotificationVerifiedEmailPayload,
+        notificationId: string,
+        completedSteps: EnumNotificationStep[]
+    ): Promise<INotificationStepResult> {
         const user = await this.userDomain.getOneActive(userId);
 
         if (!user) {
             return {
                 message: 'User not found, skipping verified email notification',
+                completedSteps,
+                failedSteps: [],
             };
         }
 
-        const notificationId = this.databaseUtil.createId();
-        const emailPayload: INotificationEmailSendPayload = {
-            userId: user.id,
-            email: user.email,
-            username: user.username,
-            notificationId,
-            cc: [],
-            bcc: [],
+        const done = [...completedSteps];
+        if (!done.includes(EnumNotificationStep.createNotification)) {
+            try {
+                // Sequential by design: gate before the work it guards
+                await this.notificationRepository.createMany([
+                    {
+                        kind: EnumNotificationKind.verifiedEmail,
+                        payload: {
+                            id: notificationId,
+                            userId: user.id,
+                            metadata: { username: user.username },
+                            createdBy: user.id,
+                        },
+                    },
+                ]);
+                done.push(EnumNotificationStep.createNotification);
+            } catch (error: unknown) {
+                const failure = this.notificationUtil.toStepFailure(
+                    EnumNotificationStep.createNotification,
+                    error
+                );
+
+                return {
+                    message: 'Verified email notification failed',
+                    completedSteps: done,
+                    failedSteps: [failure],
+                };
+            }
+        }
+
+        const steps: EnumNotificationStep[] = [];
+        const promises: Promise<void>[] = [];
+        if (!done.includes(EnumNotificationStep.sendEmail)) {
+            const emailPayload: INotificationEmailSendPayload = {
+                userId: user.id,
+                email: user.email,
+                username: user.username,
+                notificationId,
+                cc: [],
+                bcc: [],
+            };
+            const emailSent = this.notificationEmailQueue.sendVerifiedEmail(
+                emailPayload,
+                data
+            );
+            steps.push(EnumNotificationStep.sendEmail);
+            promises.push(emailSent);
+        }
+
+        const outcomes = await Promise.allSettled(promises);
+        const failedSteps: INotificationStepFailure[] = [];
+        outcomes.forEach((outcome, index) => {
+            const step = steps[index]!;
+            if (outcome.status === 'fulfilled') {
+                done.push(step);
+
+                return;
+            }
+
+            const failure = this.notificationUtil.toStepFailure(
+                step,
+                outcome.reason
+            );
+            failedSteps.push(failure);
+        });
+
+        return {
+            message: 'Verified email notification processed',
+            completedSteps: done,
+            failedSteps,
         };
-
-        const results = await Promise.allSettled([
-            this.notificationRepository.create(
-                EnumNotificationKind.verifiedEmail,
-                {
-                    id: notificationId,
-                    userId: user.id,
-                    metadata: { username: user.username },
-                    createdBy: user.id,
-                }
-            ),
-            this.notificationEmailQueue.sendVerifiedEmail(emailPayload, data),
-        ]);
-
-        return { message: 'Verified email notification processed', results };
     }
 
     async processVerificationEmail(
         userId: string,
-        data: INotificationVerificationEmailEncryptedPayload
-    ): Promise<IQueueResponse> {
+        data: INotificationVerificationEmailEncryptedPayload,
+        notificationId: string,
+        completedSteps: EnumNotificationStep[]
+    ): Promise<INotificationStepResult> {
         const user = await this.userDomain.getOneActive(userId);
 
         if (!user) {
             return {
                 message:
                     'User not found, skipping verification email notification',
+                completedSteps,
+                failedSteps: [],
             };
         }
 
-        const notificationId = this.databaseUtil.createId();
-        const emailPayload: INotificationEmailSendPayload = {
-            userId: user.id,
-            email: user.email,
-            username: user.username,
-            notificationId,
-            cc: [],
-            bcc: [],
-        };
+        const done = [...completedSteps];
+        if (!done.includes(EnumNotificationStep.createNotification)) {
+            try {
+                // Sequential by design: gate before the work it guards
+                await this.notificationRepository.createMany([
+                    {
+                        kind: EnumNotificationKind.verificationEmail,
+                        payload: {
+                            id: notificationId,
+                            userId: user.id,
+                            metadata: { username: user.username },
+                            createdBy: user.id,
+                        },
+                    },
+                ]);
+                done.push(EnumNotificationStep.createNotification);
+            } catch (error: unknown) {
+                const failure = this.notificationUtil.toStepFailure(
+                    EnumNotificationStep.createNotification,
+                    error
+                );
 
-        const results = await Promise.allSettled([
-            this.notificationRepository.create(
-                EnumNotificationKind.verificationEmail,
-                {
-                    id: notificationId,
-                    userId: user.id,
-                    metadata: { username: user.username },
-                    createdBy: user.id,
-                }
-            ),
-            this.notificationEmailQueue.sendVerificationEmail(
+                return {
+                    message: 'Verification email notification failed',
+                    completedSteps: done,
+                    failedSteps: [failure],
+                };
+            }
+        }
+
+        const steps: EnumNotificationStep[] = [];
+        const promises: Promise<void>[] = [];
+        if (!done.includes(EnumNotificationStep.sendVerificationEmail)) {
+            const emailPayload: INotificationEmailSendPayload = {
+                userId: user.id,
+                email: user.email,
+                username: user.username,
+                notificationId,
+                cc: [],
+                bcc: [],
+            };
+            const emailSent = this.notificationEmailQueue.sendVerificationEmail(
                 emailPayload,
                 data
-            ),
-        ]);
+            );
+            steps.push(EnumNotificationStep.sendVerificationEmail);
+            promises.push(emailSent);
+        }
+
+        const outcomes = await Promise.allSettled(promises);
+        const failedSteps: INotificationStepFailure[] = [];
+        outcomes.forEach((outcome, index) => {
+            const step = steps[index]!;
+            if (outcome.status === 'fulfilled') {
+                done.push(step);
+
+                return;
+            }
+
+            const failure = this.notificationUtil.toStepFailure(
+                step,
+                outcome.reason
+            );
+            failedSteps.push(failure);
+        });
 
         return {
             message: 'Verification email notification processed',
-            results,
+            completedSteps: done,
+            failedSteps,
         };
     }
 
     async processVerifiedMobileNumber(
         userId: string,
-        data: INotificationVerifiedMobileNumberPayload
-    ): Promise<IQueueResponse> {
+        data: INotificationVerifiedMobileNumberPayload,
+        notificationId: string,
+        completedSteps: EnumNotificationStep[]
+    ): Promise<INotificationStepResult> {
         const user = await this.userDomain.getOneActive(userId);
 
         if (!user) {
             return {
                 message:
                     'User not found, skipping verified mobile number notification',
+                completedSteps,
+                failedSteps: [],
             };
         }
 
-        const notificationId = this.databaseUtil.createId();
-        const emailPayload: INotificationEmailSendPayload = {
-            userId: user.id,
-            email: user.email,
-            username: user.username,
-            notificationId,
-            cc: [],
-            bcc: [],
-        };
+        const done = [...completedSteps];
+        if (!done.includes(EnumNotificationStep.createNotification)) {
+            const censoredMobileNumber = this.helperStringService.censor(
+                data.mobileNumber
+            );
 
-        const censoredMobileNumber = this.helperStringService.censor(
-            data.mobileNumber
-        );
-
-        const results = await Promise.allSettled([
-            this.notificationRepository.create(
-                EnumNotificationKind.verifiedMobileNumber,
-                {
-                    id: notificationId,
-                    userId: user.id,
-                    metadata: {
-                        username: user.username,
-                        mobileNumber: censoredMobileNumber,
+            try {
+                // Sequential by design: gate before the work it guards
+                await this.notificationRepository.createMany([
+                    {
+                        kind: EnumNotificationKind.verifiedMobileNumber,
+                        payload: {
+                            id: notificationId,
+                            userId: user.id,
+                            metadata: {
+                                username: user.username,
+                                mobileNumber: censoredMobileNumber,
+                            },
+                            createdBy: user.id,
+                        },
                     },
-                    createdBy: user.id,
-                }
-            ),
-            this.notificationEmailQueue.sendVerifiedMobileNumber(
-                emailPayload,
-                data
-            ),
-        ]);
+                ]);
+                done.push(EnumNotificationStep.createNotification);
+            } catch (error: unknown) {
+                const failure = this.notificationUtil.toStepFailure(
+                    EnumNotificationStep.createNotification,
+                    error
+                );
+
+                return {
+                    message: 'Mobile number verified notification failed',
+                    completedSteps: done,
+                    failedSteps: [failure],
+                };
+            }
+        }
+
+        const steps: EnumNotificationStep[] = [];
+        const promises: Promise<void>[] = [];
+        if (!done.includes(EnumNotificationStep.sendEmail)) {
+            const emailPayload: INotificationEmailSendPayload = {
+                userId: user.id,
+                email: user.email,
+                username: user.username,
+                notificationId,
+                cc: [],
+                bcc: [],
+            };
+            const emailSent =
+                this.notificationEmailQueue.sendVerifiedMobileNumber(
+                    emailPayload,
+                    data
+                );
+            steps.push(EnumNotificationStep.sendEmail);
+            promises.push(emailSent);
+        }
+
+        const outcomes = await Promise.allSettled(promises);
+        const failedSteps: INotificationStepFailure[] = [];
+        outcomes.forEach((outcome, index) => {
+            const step = steps[index]!;
+            if (outcome.status === 'fulfilled') {
+                done.push(step);
+
+                return;
+            }
+
+            const failure = this.notificationUtil.toStepFailure(
+                step,
+                outcome.reason
+            );
+            failedSteps.push(failure);
+        });
 
         return {
             message: 'Mobile number verified notification processed',
-            results,
+            completedSteps: done,
+            failedSteps,
         };
     }
 }

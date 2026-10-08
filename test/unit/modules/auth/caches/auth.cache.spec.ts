@@ -236,7 +236,7 @@ describe('AuthCache', () => {
             );
         });
 
-        it('swallows a thrown store write', async () => {
+        it('propagates a thrown store write', async () => {
             cacheManager.set.mockImplementation(() => {
                 throw new Error('redis down');
             });
@@ -245,9 +245,9 @@ describe('AuthCache', () => {
                 twoFactor: { ...twoFactor, attempt: 1 },
             };
 
-            await expect(
-                cache.lockTwoFactorAttempt(user)
-            ).resolves.toBeUndefined();
+            await expect(cache.lockTwoFactorAttempt(user)).rejects.toThrow(
+                'redis down'
+            );
         });
     });
 

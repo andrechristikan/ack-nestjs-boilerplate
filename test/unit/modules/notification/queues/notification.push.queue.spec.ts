@@ -39,7 +39,6 @@ describe('NotificationPushQueue', () => {
             const values: Record<string, unknown> = {
                 'app.timezone': 'UTC',
                 'notification.dedupTtlInMs': 60_000,
-                'notification.push.cleanupDedupTtlInMs': 30_000,
                 'notification.push.cleanupStaleTokensCron': '0 3 * * *',
             };
 
@@ -70,8 +69,9 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.temporaryPasswordByAdmin,
-                { send, data },
+                { send, data, completedSteps: [], failureTokens: null },
                 {
+                    jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.high,
                     deduplication: {
                         id: 'temporaryPasswordByAdmin-user-id',
@@ -88,11 +88,31 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.resetPassword,
-                { send, data: null },
+                { send, data: null, completedSteps: [], failureTokens: null },
                 {
+                    jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.medium,
                     deduplication: {
                         id: 'resetPassword-user-id',
+                        ttl: 60_000,
+                    },
+                }
+            );
+        });
+    });
+
+    describe('sendForgotPassword', () => {
+        it('enqueues the forgotPassword job with high priority', async () => {
+            await queue.sendForgotPassword(send);
+
+            expect(notificationPushQueue.add).toHaveBeenCalledWith(
+                EnumNotificationPushProcess.forgotPassword,
+                { send, data: null, completedSteps: [], failureTokens: null },
+                {
+                    jobId: 'notification-id-sendPush',
+                    priority: EnumQueuePriority.high,
+                    deduplication: {
+                        id: 'forgotPassword-user-id',
                         ttl: 60_000,
                     },
                 }
@@ -106,8 +126,9 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.resetTwoFactorByAdmin,
-                { send, data: null },
+                { send, data: null, completedSteps: [], failureTokens: null },
                 {
+                    jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.high,
                     deduplication: {
                         id: 'resetTwoFactorByAdmin-user-id',
@@ -143,8 +164,9 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.newDeviceLogin,
-                { send, data },
+                { send, data, completedSteps: [], failureTokens: null },
                 {
+                    jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.high,
                     deduplication: {
                         id: 'newDeviceLogin-user-id',
@@ -170,8 +192,9 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.workspaceInvite,
-                { send, data },
+                { send, data, completedSteps: [], failureTokens: null },
                 {
+                    jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.high,
                     deduplication: {
                         id: 'workspaceInvite-ref-1',
@@ -194,8 +217,9 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.workspaceJoinRequest,
-                { send, data },
+                { send, data, completedSteps: [], failureTokens: null },
                 {
+                    jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.medium,
                     deduplication: {
                         id: 'workspaceJoinRequest-workspace-id-user-id',
@@ -214,8 +238,9 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.workspaceJoinAccepted,
-                { send, data },
+                { send, data, completedSteps: [], failureTokens: null },
                 {
+                    jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.medium,
                     deduplication: {
                         id: 'workspaceJoinAccepted-workspace-id-user-id',
@@ -239,8 +264,9 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.workspaceJoinRejected,
-                { send, data },
+                { send, data, completedSteps: [], failureTokens: null },
                 {
+                    jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.medium,
                     deduplication: {
                         id: 'workspaceJoinRejected-workspace-id-user-id',
@@ -253,7 +279,10 @@ describe('NotificationPushQueue', () => {
 
     describe('sendCleanupTokens', () => {
         it('enqueues the cleanupTokens job with low priority when there are failure tokens', async () => {
-            await queue.sendCleanupTokens('user-id', ['token-1', 'token-2']);
+            await queue.sendCleanupTokens('notification-id', 'user-id', [
+                'token-1',
+                'token-2',
+            ]);
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.cleanupTokens,
@@ -262,17 +291,14 @@ describe('NotificationPushQueue', () => {
                     userId: 'user-id',
                 },
                 {
+                    jobId: 'notification-id-cleanupTokens',
                     priority: EnumQueuePriority.low,
-                    deduplication: {
-                        id: 'cleanupTokens-user-id',
-                        ttl: 30_000,
-                    },
                 }
             );
         });
 
         it('does not enqueue when there are no failure tokens', async () => {
-            await queue.sendCleanupTokens('user-id', []);
+            await queue.sendCleanupTokens('notification-id', 'user-id', []);
 
             expect(notificationPushQueue.add).not.toHaveBeenCalled();
         });

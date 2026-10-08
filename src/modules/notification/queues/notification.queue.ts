@@ -1,3 +1,4 @@
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
@@ -25,6 +26,7 @@ import type {
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
     INotificationWelcomeByAdminPayload,
+    INotificationWelcomeEncryptedPayload,
     INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceInvitePayload,
     INotificationWorkspaceJoinAcceptedPayload,
@@ -51,7 +53,8 @@ export class NotificationQueue {
         private readonly notificationQueue: Queue,
         private readonly configService: ConfigService,
         private readonly helperEncryptionService: HelperEncryptionService,
-        private readonly helperStringService: HelperStringService
+        private readonly helperStringService: HelperStringService,
+        private readonly databaseUtil: DatabaseUtil
     ) {
         this.dedupTtlInMs = this.configService.get<number>(
             'notification.dedupTtlInMs'
@@ -80,9 +83,12 @@ export class NotificationQueue {
         createdBy: string
     ): Promise<void> {
         const encryptedPassword = this.encryptValue(password, userId);
+        const notificationId = this.databaseUtil.createId();
         const payload: INotificationQueuePayload<INotificationWelcomeByAdminEncryptedPayload> =
             {
                 userId,
+                notificationId,
+                completedSteps: [],
                 proceedBy: createdBy,
                 data: {
                     encryptedPassword,
@@ -119,15 +125,20 @@ export class NotificationQueue {
         }: INotificationVerificationEmailPayload
     ): Promise<void> {
         const encryptedLink = this.encryptValue(link, userId);
-        const payload: INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload> =
+        const notificationId = this.databaseUtil.createId();
+        const verificationNotificationId = this.databaseUtil.createId();
+        const payload: INotificationQueuePayload<INotificationWelcomeEncryptedPayload> =
             {
                 userId,
+                notificationId,
+                completedSteps: [],
                 proceedBy: userId,
                 data: {
                     encryptedLink,
                     expiredAt,
                     expiredInMinutes,
                     reference,
+                    verificationNotificationId,
                 },
             };
 
@@ -150,8 +161,11 @@ export class NotificationQueue {
     }
 
     async sendWelcomeSocial(userId: string): Promise<void> {
+        const notificationId = this.databaseUtil.createId();
         const payload: INotificationQueuePayload = {
             userId,
+            notificationId,
+            completedSteps: [],
             proceedBy: userId,
             data: null,
         };
@@ -184,9 +198,12 @@ export class NotificationQueue {
         createdBy: string
     ): Promise<void> {
         const encryptedPassword = this.encryptValue(password, userId);
+        const notificationId = this.databaseUtil.createId();
         const payload: INotificationQueuePayload<INotificationTemporaryPasswordEncryptedPayload> =
             {
                 userId,
+                notificationId,
+                completedSteps: [],
                 proceedBy: createdBy,
                 data: {
                     encryptedPassword,
@@ -217,8 +234,11 @@ export class NotificationQueue {
     }
 
     async sendChangePassword(userId: string): Promise<void> {
+        const notificationId = this.databaseUtil.createId();
         const payload: INotificationQueuePayload = {
             userId,
+            notificationId,
+            completedSteps: [],
             proceedBy: userId,
             data: null,
         };
@@ -245,9 +265,12 @@ export class NotificationQueue {
         userId: string,
         verified: INotificationVerifiedEmailPayload
     ): Promise<void> {
+        const notificationId = this.databaseUtil.createId();
         const payload: INotificationQueuePayload<INotificationVerifiedEmailPayload> =
             {
                 userId,
+                notificationId,
+                completedSteps: [],
                 data: verified,
                 proceedBy: userId,
             };
@@ -280,9 +303,12 @@ export class NotificationQueue {
         }: INotificationVerificationEmailPayload
     ): Promise<void> {
         const encryptedLink = this.encryptValue(link, userId);
+        const notificationId = this.databaseUtil.createId();
         const payload: INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload> =
             {
                 userId,
+                notificationId,
+                completedSteps: [],
                 proceedBy: userId,
                 data: {
                     encryptedLink,
@@ -324,9 +350,12 @@ export class NotificationQueue {
         }: INotificationForgotPasswordPayload
     ): Promise<void> {
         const encryptedLink = this.encryptValue(link, userId);
+        const notificationId = this.databaseUtil.createId();
         const payload: INotificationQueuePayload<INotificationForgotPasswordEncryptedPayload> =
             {
                 userId,
+                notificationId,
+                completedSteps: [],
                 proceedBy: userId,
                 data: {
                     encryptedLink,
@@ -356,8 +385,11 @@ export class NotificationQueue {
     }
 
     async sendResetPassword(userId: string): Promise<void> {
+        const notificationId = this.databaseUtil.createId();
         const payload: INotificationQueuePayload = {
             userId,
+            notificationId,
+            completedSteps: [],
             proceedBy: userId,
             data: null,
         };
@@ -384,8 +416,11 @@ export class NotificationQueue {
         userId: string,
         createdBy: string
     ): Promise<void> {
+        const notificationId = this.databaseUtil.createId();
         const payload: INotificationQueuePayload = {
             userId,
+            notificationId,
+            completedSteps: [],
             proceedBy: createdBy,
             data: null,
         };
@@ -415,9 +450,12 @@ export class NotificationQueue {
         userId: string,
         newDevice: INotificationNewDeviceLoginPayload
     ): Promise<void> {
+        const notificationId = this.databaseUtil.createId();
         const payload: INotificationQueuePayload<INotificationNewDeviceLoginPayload> =
             {
                 userId,
+                notificationId,
+                completedSteps: [],
                 data: newDevice,
                 proceedBy: userId,
             };
@@ -472,9 +510,12 @@ export class NotificationQueue {
         userId: string,
         verifiedMobile: INotificationVerifiedMobileNumberPayload
     ): Promise<void> {
+        const notificationId = this.databaseUtil.createId();
         const payload: INotificationQueuePayload<INotificationVerifiedMobileNumberPayload> =
             {
                 userId,
+                notificationId,
+                completedSteps: [],
                 data: verifiedMobile,
                 proceedBy: userId,
             };
@@ -504,9 +545,12 @@ export class NotificationQueue {
         userId: string,
         payload: INotificationAcceptTermPolicyPayload
     ): Promise<void> {
+        const notificationId = this.databaseUtil.createId();
         const queuePayload: INotificationQueuePayload<INotificationAcceptTermPolicyPayload> =
             {
                 userId,
+                notificationId,
+                completedSteps: [],
                 data: payload,
                 proceedBy: userId,
             };
@@ -543,9 +587,12 @@ export class NotificationQueue {
             inviteAcceptLink,
             userId
         );
+        const notificationId = this.databaseUtil.createId();
         const payload: INotificationQueuePayload<INotificationWorkspaceInviteEncryptedPayload> =
             {
                 userId,
+                notificationId,
+                completedSteps: [],
                 proceedBy: invitedByUserId,
                 data: {
                     ...invite,
@@ -587,9 +634,12 @@ export class NotificationQueue {
             joinRequestReviewLink,
             userId
         );
+        const notificationId = this.databaseUtil.createId();
         const payload: INotificationQueuePayload<INotificationWorkspaceJoinRequestEncryptedPayload> =
             {
                 userId,
+                notificationId,
+                completedSteps: [],
                 proceedBy: requestedByUserId,
                 data: {
                     ...joinRequest,
@@ -624,9 +674,12 @@ export class NotificationQueue {
         payload: INotificationWorkspaceJoinAcceptedPayload,
         reviewedByUserId: string
     ): Promise<void> {
+        const notificationId = this.databaseUtil.createId();
         const queuePayload: INotificationQueuePayload<INotificationWorkspaceJoinAcceptedPayload> =
             {
                 userId,
+                notificationId,
+                completedSteps: [],
                 data: payload,
                 proceedBy: reviewedByUserId,
             };
@@ -658,9 +711,12 @@ export class NotificationQueue {
         payload: INotificationWorkspaceJoinRejectedPayload,
         reviewedByUserId: string
     ): Promise<void> {
+        const notificationId = this.databaseUtil.createId();
         const queuePayload: INotificationQueuePayload<INotificationWorkspaceJoinRejectedPayload> =
             {
                 userId,
+                notificationId,
+                completedSteps: [],
                 data: payload,
                 proceedBy: reviewedByUserId,
             };

@@ -100,11 +100,10 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 { status: 'pending', count: 2 },
             ]);
 
-            const result = await service.inviteFunnel(
-                'workspace-1',
+            const result = await service.inviteFunnel('workspace-1', {
                 startDate,
-                endDate
-            );
+                endDate,
+            });
 
             expect(result).toEqual({
                 data: { statuses: [{ status: 'pending', count: 2 }] },
@@ -114,18 +113,18 @@ describe('AnalyticWorkspaceUserHttpService', () => {
             ).toHaveBeenCalledWith('workspace-1', startDate, endDate);
         });
 
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
             analyticWorkspaceUserDomain.inviteFunnel.mockResolvedValue([]);
 
-            await service.inviteFunnel('workspace-1', null, null);
+            await service.inviteFunnel('workspace-1', { startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -140,11 +139,10 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 { status: 'pending', count: 2 },
             ]);
 
-            const result = await service.joinOutcomes(
-                'workspace-1',
+            const result = await service.joinOutcomes('workspace-1', {
                 startDate,
-                endDate
-            );
+                endDate,
+            });
 
             expect(result).toEqual({
                 data: { statuses: [{ status: 'pending', count: 2 }] },
@@ -154,18 +152,18 @@ describe('AnalyticWorkspaceUserHttpService', () => {
             ).toHaveBeenCalledWith('workspace-1', startDate, endDate);
         });
 
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
             analyticWorkspaceUserDomain.joinOutcomes.mockResolvedValue([]);
 
-            await service.joinOutcomes('workspace-1', null, null);
+            await service.joinOutcomes('workspace-1', { startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -197,11 +195,10 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 count: 12,
             });
 
-            const result = await service.activity(
-                'workspace-1',
+            const result = await service.activity('workspace-1', {
                 startDate,
-                endDate
-            );
+                endDate,
+            });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(analyticWorkspaceUserDomain.activity).toHaveBeenCalledWith(
@@ -211,7 +208,7 @@ describe('AnalyticWorkspaceUserHttpService', () => {
             );
         });
 
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -220,11 +217,11 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 count: 0,
             });
 
-            await service.activity('workspace-1', null, null);
+            await service.activity('workspace-1', { startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });

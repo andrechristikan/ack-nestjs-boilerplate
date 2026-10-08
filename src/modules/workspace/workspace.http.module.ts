@@ -18,7 +18,6 @@ import { Module } from '@nestjs/common';
         WorkspaceMemberHttpService,
         WorkspaceInviteHttpService,
         WorkspaceJoinRequestHttpService,
-        WorkspaceDomainModule,
     ],
     imports: [WorkspaceDomainModule],
 })

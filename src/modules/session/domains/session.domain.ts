@@ -11,8 +11,8 @@ import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
-import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
+import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type {
     ISession,
     ISessionList,
@@ -101,7 +101,7 @@ export class SessionDomain {
             jti
         );
         if (!isUpdated) {
-            throw new AuthJwtRefreshTokenInvalidException();
+            throw new SessionRevokedException();
         }
     }
 

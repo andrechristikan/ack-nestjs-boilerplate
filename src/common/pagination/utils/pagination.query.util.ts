@@ -14,8 +14,8 @@ import {
     EnumPaginationFilterDateBetweenType,
     EnumPaginationOrderDirectionType,
 } from '@common/pagination/enums/pagination.enum';
-import type { PaginationCursorListQueryDto } from '@common/pagination/dtos/pagination.cursor-list-query.dto';
-import type { PaginationOffsetListQueryDto } from '@common/pagination/dtos/pagination.offset-list-query.dto';
+import type { PaginationCursorQueryDto } from '@common/pagination/dtos/pagination.cursor-query.dto';
+import type { PaginationOffsetQueryDto } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { PaginationCursorTooLongException } from '@common/pagination/exceptions/pagination.cursor-too-long.exception';
 import { PaginationFilterInvalidValueEnumException } from '@common/pagination/exceptions/pagination.filter-invalid-value-enum.exception';
 import { PaginationFilterInvalidValueException } from '@common/pagination/exceptions/pagination.filter-invalid-value.exception';
@@ -34,6 +34,7 @@ import type {
     IPaginationDate,
     IPaginationEqual,
     IPaginationIn,
+    IPaginationListQuery,
     IPaginationNin,
     IPaginationNotEqual,
     IPaginationOrderBy,
@@ -354,7 +355,7 @@ export class PaginationQueryUtil {
     }
 
     offset<TArgsWhere = unknown>(
-        dto: PaginationOffsetListQueryDto,
+        dto: PaginationOffsetQueryDto & IPaginationListQuery,
         options: IPaginationQueryOffsetOptions = {}
     ): {
         params: IPaginationQueryOffsetParams<TArgsWhere>;
@@ -404,7 +405,7 @@ export class PaginationQueryUtil {
     }
 
     cursor<TArgsWhere = unknown>(
-        dto: PaginationCursorListQueryDto,
+        dto: PaginationCursorQueryDto & IPaginationListQuery,
         options: IPaginationQueryCursorOptions = {}
     ): {
         params: IPaginationQueryCursorParams<TArgsWhere>;

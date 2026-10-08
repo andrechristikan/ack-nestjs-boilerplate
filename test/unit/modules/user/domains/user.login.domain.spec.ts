@@ -27,6 +27,7 @@ import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/a
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import type {
     IAuthJwtRefreshTokenPayload,
     IAuthRefreshTokenGenerate,
@@ -1374,20 +1375,20 @@ describe('UserLoginDomain', () => {
             expect(sessionCache.getLogin).not.toHaveBeenCalled();
         });
 
-        it('throws AuthJwtRefreshTokenInvalidException when there is no cached session', async () => {
+        it('throws SessionRevokedException when there is no cached session', async () => {
             authJwtDomain.payloadToken.mockReturnValue(payload);
             sessionCache.getLogin.mockResolvedValue(null);
 
             const call = domain.refreshSession(baseUser, 'refresh-token');
 
             await expect(call).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
+                module: 'session',
+                statusCode: EnumSessionStatusCodeError.revoked,
                 statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtRefreshTokenInvalid
+                    EnumSessionStatusCodeError[
+                        EnumSessionStatusCodeError.revoked
                     ],
-                messagePath: 'auth.error.refreshTokenUnauthorized',
+                messagePath: 'session.error.revoked',
             });
         });
 
@@ -1409,9 +1410,10 @@ describe('UserLoginDomain', () => {
                     ],
                 messagePath: 'auth.error.refreshTokenUnauthorized',
             });
+            expect(sessionCache.getLogin).not.toHaveBeenCalled();
         });
 
-        it('throws AuthJwtRefreshTokenInvalidException when the jti does not match', async () => {
+        it('throws SessionRevokedException when the jti does not match', async () => {
             authJwtDomain.payloadToken.mockReturnValue(payload);
             sessionCache.getLogin.mockResolvedValue(session);
             helperHashService.sha256Hash.mockImplementation(
@@ -1422,17 +1424,17 @@ describe('UserLoginDomain', () => {
             const call = domain.refreshSession(baseUser, 'refresh-token');
 
             await expect(call).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
+                module: 'session',
+                statusCode: EnumSessionStatusCodeError.revoked,
                 statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtRefreshTokenInvalid
+                    EnumSessionStatusCodeError[
+                        EnumSessionStatusCodeError.revoked
                     ],
-                messagePath: 'auth.error.refreshTokenUnauthorized',
+                messagePath: 'session.error.revoked',
             });
         });
 
-        it('rethrows an AppBaseException raised while rotating the session', async () => {
+        it('throws SessionRevokedException when the cache rotation is lost', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 session,
@@ -1443,13 +1445,13 @@ describe('UserLoginDomain', () => {
             const call = domain.refreshSession(baseUser, 'refresh-token');
 
             await expect(call).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
+                module: 'session',
+                statusCode: EnumSessionStatusCodeError.revoked,
                 statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtRefreshTokenInvalid
+                    EnumSessionStatusCodeError[
+                        EnumSessionStatusCodeError.revoked
                     ],
-                messagePath: 'auth.error.refreshTokenUnauthorized',
+                messagePath: 'session.error.revoked',
             });
         });
 
@@ -1564,6 +1566,22 @@ describe('UserLoginDomain', () => {
             await domain['recordTwoFactorFailure'](user);
 
             expect(authCache.lockTwoFactorAttempt).not.toHaveBeenCalled();
+        });
+
+        it('fails the request when the lock write fails', async () => {
+            const user = { ...baseUser };
+            userTwoFactorRepository.increaseTwoFactorAttempt.mockResolvedValue({
+                ...baseTwoFactor,
+                attempt: 5,
+            });
+            authTwoFactorDomain.checkAttempt.mockReturnValue(true);
+            authCache.lockTwoFactorAttempt.mockRejectedValue(
+                new Error('redis down')
+            );
+
+            await expect(
+                domain['recordTwoFactorFailure'](user)
+            ).rejects.toThrow('redis down');
         });
     });
 });

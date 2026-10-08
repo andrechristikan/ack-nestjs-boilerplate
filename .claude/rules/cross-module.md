@@ -17,6 +17,8 @@
 
 Anything a `@Global()` module or the composed `src/common/` kit exports is reachable with no import. That reach runs one way: `@Global()` widens who may inject a util, not what the util may inject.
 
+`src/modules/analytic/` aggregates every feature's analytics, so a feature's analytic repository, its port, and its analytic domain import their shapes from `@modules/analytic/interfaces` (`src/modules/user/repositories/user.analytic.repository.ts:139`).
+
 ## A repository owns its model
 
 A repository issues statements against the model it owns and satellite models with no repository of their own (`NotificationRepository` owns `Notification`, `NotificationDelivery`, and `TermPolicyRecipient`). Ownership is per class: `UserPasswordRepository` does not write `User`, and a `*.analytic.repository.ts` reads a model its module's write repository owns and writes nothing (`layering.md`). A nested write counts as a statement against the related model. A read may `include`, `select`, or filter on a relation. `ActivityLog` has one writer, `ActivityLogRepository`.
@@ -33,7 +35,7 @@ A circular import is a broken boundary to re-architect. `forwardRef` makes it bo
 
 1. One direction is wrong: the reverse dependency is a convenience call on the caller's side.
 2. The shared piece has a third owner: extract it and let both import that.
-3. The coupling is event-shaped: a fire-and-forget hand-off is a queue job (`queue.md`).
+3. The coupling is a fire-and-forget hand-off: it is a queue job (`queue.md`).
 
 ## An exception names the subject that failed
 

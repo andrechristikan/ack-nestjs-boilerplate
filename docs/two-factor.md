@@ -138,7 +138,8 @@ When a user reaches the maximum allowed attempts (5 failed verifications), 2FA v
 
 Redis failures:
 
-- A failure while writing or clearing the lock is logged and the request continues. The attempt counter in the database still increments.
+- A failure while writing the lock answers 500, because the lock is the brute-force barrier. The attempt counter in the database has already incremented.
+- A failure while clearing the lock is logged and the request continues.
 - A failure while storing the login challenge answers 500.
 - A failure while deleting a used challenge is logged.
 

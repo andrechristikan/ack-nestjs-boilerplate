@@ -10,7 +10,10 @@ import {
     EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationStep,
+} from '@modules/notification/enums/notification.enum';
 
 export interface INotificationKindContract {
     type: EnumNotificationType;
@@ -192,6 +195,10 @@ export interface INotificationWorkspaceJoinRejectedPayload {
     rejectReasonCode: EnumWorkspaceJoinRejectReason;
 }
 
+export interface INotificationWelcomeEncryptedPayload extends INotificationVerificationEmailEncryptedPayload {
+    verificationNotificationId: string;
+}
+
 export interface INotificationBulkQueuePayload<T = null> {
     proceedBy: string;
     data: T;
@@ -201,6 +208,8 @@ export interface INotificationQueuePayload<
     T = null,
 > extends INotificationBulkQueuePayload<T> {
     userId: string;
+    notificationId: string;
+    completedSteps: EnumNotificationStep[];
 }
 
 export interface INotificationSendPushPayload {
@@ -213,6 +222,8 @@ export interface INotificationSendPushPayload {
 export interface INotificationPushQueuePayload<T = null> {
     send: INotificationSendPushPayload;
     data: T;
+    completedSteps: EnumNotificationStep[];
+    failureTokens: string[] | null;
 }
 
 export interface INotificationPushCleanupTokenPayload {
@@ -249,4 +260,19 @@ export interface INotificationEmailSendUnregisteredPayload {
 export interface INotificationEmailUnregisteredQueuePayload<T = null> {
     send: INotificationEmailSendUnregisteredPayload;
     data: T;
+}
+
+export interface INotificationStepFailure {
+    step: EnumNotificationStep;
+    error: string;
+}
+
+export interface INotificationStepResult {
+    message: string;
+    completedSteps: EnumNotificationStep[];
+    failedSteps: INotificationStepFailure[];
+}
+
+export interface INotificationPushStepResult extends INotificationStepResult {
+    failureTokens: string[] | null;
 }

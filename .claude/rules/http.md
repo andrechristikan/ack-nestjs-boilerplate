@@ -42,7 +42,7 @@ Nest runs guards bottom-up: the decorator nearest the method executes first, so 
 
 - The class carries `@ApiTags('modules.<scope>[.<parent>].<moduleCamel>')` and `@Controller({ version: '1', path })`; only the health and hello controllers are `VERSION_NEUTRAL`.
 - One `async` endpoint, one `<Module>HttpService` method, the whole request DTO passed in (`null-safety.md`). Its body is `return this.<module>HttpService.<method>(...);` and nothing else: the HTTP service builds every envelope (`dto.md`), `{}` included.
-- One controller per scope (`admin public user system shared`), registered by `router.http.<scope>.module.ts` (`src/router/http/`) with the feature's `<Module>HttpModule` in `imports`, never the domain module.
+- One controller per scope (`admin public user system shared`), registered by `router.http.<scope>.module.ts` (`src/router/http/`); what that module imports: `layering.md`, Module files.
 - A path or query value binds a zod schema (`@Param('userId', { schema: RequestMongoIdSchema })`; a token or slug takes `RequestRequiredStringSchema`). Params are camelCase and explicit, never a bare `:id`; the template and the `@Param` key agree or the value is `undefined`. A new `x-*` header is a `HeaderName` constant `request.config.ts` lists in the CORS headers (`config.md`).
 
 ## Route path shape

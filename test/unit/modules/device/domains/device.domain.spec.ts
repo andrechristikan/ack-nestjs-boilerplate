@@ -472,6 +472,43 @@ describe('DeviceDomain', () => {
             );
         });
 
+        it('refreshes the device with a null platform and a null notification provider when no platform is given', async () => {
+            const omittedPlatform: IDeviceRefresh = {
+                name: null,
+                platform: null,
+                notificationToken: null,
+            };
+            deviceOwnershipRepository.existsActive.mockResolvedValue(true);
+            deviceUtil.resolveNotificationProvider.mockReturnValue(null);
+            helperDateService.create.mockReturnValue(now);
+            deviceOwnershipRepository.touchInTx.mockResolvedValue('device-1');
+            activityLogDomain.prepare.mockReturnValue({
+                action: EnumActivityLogAction.userDeviceRefresh,
+                metadata: {},
+                onError: false,
+                userId: null,
+                createdBy: null,
+                workspaceId: null,
+            });
+            databaseService.withTransaction.mockImplementation(
+                async fn => fn(tx) as never
+            );
+
+            await domain.refresh(
+                'user-1',
+                'device-ownership-1',
+                omittedPlatform
+            );
+
+            expect(deviceRepository.refreshInTx).toHaveBeenCalledWith(
+                tx,
+                'device-1',
+                { name: null, platform: null, notificationToken: null },
+                null,
+                now
+            );
+        });
+
         it('rethrows an AppBaseException raised inside the transaction unchanged', async () => {
             deviceOwnershipRepository.existsActive.mockResolvedValue(true);
             deviceUtil.resolveNotificationProvider.mockReturnValue(null);

@@ -5,6 +5,7 @@ import type { Queue } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
@@ -35,6 +36,7 @@ describe('NotificationQueue', () => {
     const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const helperEncryptionService: MockProxy<HelperEncryptionService> =
         mock<HelperEncryptionService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     let queue: NotificationQueue;
 
     beforeEach(async () => {
@@ -47,6 +49,7 @@ describe('NotificationQueue', () => {
 
             return values[key];
         });
+        databaseUtil.createId.mockReturnValue('n-1');
         helperEncryptionService.aes256Encrypt.mockImplementation(
             (plaintext: string) => `cipher(${plaintext})`
         );
@@ -63,6 +66,7 @@ describe('NotificationQueue', () => {
                     provide: HelperEncryptionService,
                     useValue: helperEncryptionService,
                 },
+                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
         queue = module.get(NotificationQueue);
@@ -88,6 +92,8 @@ describe('NotificationQueue', () => {
                 EnumNotificationProcess.welcomeByAdmin,
                 {
                     userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
                     proceedBy: 'admin-id',
                     data: {
                         encryptedPassword: 'cipher(plain-password)',
@@ -115,6 +121,10 @@ describe('NotificationQueue', () => {
                 reference: 'ref-1',
             };
 
+            databaseUtil.createId
+                .mockReturnValueOnce('n-1')
+                .mockReturnValueOnce('n-2');
+
             await queue.sendWelcome('user-id', payload);
 
             expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
@@ -127,12 +137,15 @@ describe('NotificationQueue', () => {
                 EnumNotificationProcess.welcome,
                 {
                     userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
                     proceedBy: 'user-id',
                     data: {
                         encryptedLink: 'cipher(https://verify.example.com)',
                         expiredAt: payload.expiredAt,
                         expiredInMinutes: payload.expiredInMinutes,
                         reference: payload.reference,
+                        verificationNotificationId: 'n-2',
                     },
                 },
                 {
@@ -152,7 +165,13 @@ describe('NotificationQueue', () => {
 
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.welcomeSocial,
-                { userId: 'user-id', proceedBy: 'user-id', data: null },
+                {
+                    userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
+                    proceedBy: 'user-id',
+                    data: null,
+                },
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
@@ -188,6 +207,8 @@ describe('NotificationQueue', () => {
                 EnumNotificationProcess.temporaryPasswordByAdmin,
                 {
                     userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
                     proceedBy: 'admin-id',
                     data: {
                         encryptedPassword: 'cipher(plain-password)',
@@ -212,7 +233,13 @@ describe('NotificationQueue', () => {
 
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.changePassword,
-                { userId: 'user-id', proceedBy: 'user-id', data: null },
+                {
+                    userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
+                    proceedBy: 'user-id',
+                    data: null,
+                },
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
@@ -232,7 +259,13 @@ describe('NotificationQueue', () => {
 
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.verifiedEmail,
-                { userId: 'user-id', data: verified, proceedBy: 'user-id' },
+                {
+                    userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
+                    data: verified,
+                    proceedBy: 'user-id',
+                },
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
@@ -265,6 +298,8 @@ describe('NotificationQueue', () => {
                 EnumNotificationProcess.verificationEmail,
                 {
                     userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
                     proceedBy: 'user-id',
                     data: {
                         encryptedLink: 'cipher(https://verify.example.com)',
@@ -306,6 +341,8 @@ describe('NotificationQueue', () => {
                 EnumNotificationProcess.forgotPassword,
                 {
                     userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
                     proceedBy: 'user-id',
                     data: {
                         encryptedLink: 'cipher(https://reset.example.com)',
@@ -332,7 +369,13 @@ describe('NotificationQueue', () => {
 
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.resetPassword,
-                { userId: 'user-id', proceedBy: 'user-id', data: null },
+                {
+                    userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
+                    proceedBy: 'user-id',
+                    data: null,
+                },
                 {
                     priority: EnumQueuePriority.medium,
                     deduplication: {
@@ -350,7 +393,13 @@ describe('NotificationQueue', () => {
 
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.resetTwoFactorByAdmin,
-                { userId: 'user-id', proceedBy: 'admin-id', data: null },
+                {
+                    userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
+                    proceedBy: 'admin-id',
+                    data: null,
+                },
                 {
                     priority: EnumQueuePriority.high,
                     deduplication: {
@@ -387,7 +436,13 @@ describe('NotificationQueue', () => {
 
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.newDeviceLogin,
-                { userId: 'user-id', data: newDevice, proceedBy: 'user-id' },
+                {
+                    userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
+                    data: newDevice,
+                    proceedBy: 'user-id',
+                },
                 {
                     priority: EnumQueuePriority.high,
                     deduplication: {
@@ -434,6 +489,8 @@ describe('NotificationQueue', () => {
                 EnumNotificationProcess.verifiedMobileNumber,
                 {
                     userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
                     data: verifiedMobile,
                     proceedBy: 'user-id',
                 },
@@ -460,7 +517,13 @@ describe('NotificationQueue', () => {
 
             expect(notificationQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.userAcceptTermPolicy,
-                { userId: 'user-id', data: payload, proceedBy: 'user-id' },
+                {
+                    userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
+                    data: payload,
+                    proceedBy: 'user-id',
+                },
                 {
                     priority: EnumQueuePriority.low,
                     deduplication: {
@@ -496,6 +559,8 @@ describe('NotificationQueue', () => {
                 EnumNotificationProcess.workspaceInvite,
                 {
                     userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
                     proceedBy: 'admin-id',
                     data: {
                         workspaceId: payload.workspaceId,
@@ -544,6 +609,8 @@ describe('NotificationQueue', () => {
                 EnumNotificationProcess.workspaceJoinRequest,
                 {
                     userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
                     proceedBy: 'requester-id',
                     data: {
                         workspaceId: payload.workspaceId,
@@ -581,6 +648,8 @@ describe('NotificationQueue', () => {
                 EnumNotificationProcess.workspaceJoinAccepted,
                 {
                     userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
                     data: payload,
                     proceedBy: 'reviewer-id',
                 },
@@ -614,6 +683,8 @@ describe('NotificationQueue', () => {
                 EnumNotificationProcess.workspaceJoinRejected,
                 {
                     userId: 'user-id',
+                    notificationId: 'n-1',
+                    completedSteps: [],
                     data: payload,
                     proceedBy: 'reviewer-id',
                 },

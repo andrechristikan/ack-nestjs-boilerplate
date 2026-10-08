@@ -36,45 +36,52 @@ export class MigrationAwsS3ConfigSeed
     private async setPrivateBucketPolicies(): Promise<void> {
         this.logger.log('Setting policies for private bucket...');
 
-        // Sequential by design: the policy calls are order-dependent.
-        await this.awsS3Service.settingBlockPublicAccessConfiguration({
-            access: EnumAwsS3Accessibility.private,
-        });
-        await this.awsS3Service.settingDisableAclConfiguration({
-            access: EnumAwsS3Accessibility.private,
-        });
-        await this.awsS3Service.settingBucketPolicy({
-            access: EnumAwsS3Accessibility.private,
-        });
-        await this.awsS3Service.settingCorsConfiguration({
-            access: EnumAwsS3Accessibility.private,
-        });
-        await this.awsS3Service.settingBucketExpiredObjectLifecycle({
-            access: EnumAwsS3Accessibility.private,
-        });
+        await Promise.all([
+            this.awsS3Service.settingBlockPublicAccessConfiguration({
+                access: EnumAwsS3Accessibility.private,
+            }),
+            this.awsS3Service.settingDisableAclConfiguration({
+                access: EnumAwsS3Accessibility.private,
+            }),
+            this.awsS3Service.settingBucketPolicy({
+                access: EnumAwsS3Accessibility.private,
+            }),
+            this.awsS3Service.settingCorsConfiguration({
+                access: EnumAwsS3Accessibility.private,
+            }),
+            this.awsS3Service.settingBucketExpiredObjectLifecycle({
+                access: EnumAwsS3Accessibility.private,
+            }),
+        ]);
 
         this.logger.log('Finished setting policies for private bucket.');
+    }
+
+    private async setPublicBucketAccessAndPolicy(): Promise<void> {
+        // Sequential by design: side effects whose order is part of the contract
+        await this.awsS3Service.settingBlockPublicAccessConfiguration({
+            access: EnumAwsS3Accessibility.public,
+        });
+        await this.awsS3Service.settingBucketPolicy({
+            access: EnumAwsS3Accessibility.public,
+        });
     }
 
     private async setPublicBucketPolicies(): Promise<void> {
         this.logger.log('Setting policies for public bucket...');
 
-        // Sequential by design: the policy calls are order-dependent.
-        await this.awsS3Service.settingBlockPublicAccessConfiguration({
-            access: EnumAwsS3Accessibility.public,
-        });
-        await this.awsS3Service.settingDisableAclConfiguration({
-            access: EnumAwsS3Accessibility.public,
-        });
-        await this.awsS3Service.settingBucketPolicy({
-            access: EnumAwsS3Accessibility.public,
-        });
-        await this.awsS3Service.settingCorsConfiguration({
-            access: EnumAwsS3Accessibility.public,
-        });
-        await this.awsS3Service.settingBucketExpiredObjectLifecycle({
-            access: EnumAwsS3Accessibility.public,
-        });
+        await Promise.all([
+            this.setPublicBucketAccessAndPolicy(),
+            this.awsS3Service.settingDisableAclConfiguration({
+                access: EnumAwsS3Accessibility.public,
+            }),
+            this.awsS3Service.settingCorsConfiguration({
+                access: EnumAwsS3Accessibility.public,
+            }),
+            this.awsS3Service.settingBucketExpiredObjectLifecycle({
+                access: EnumAwsS3Accessibility.public,
+            }),
+        ]);
 
         this.logger.log('Finished setting policies for public bucket.');
     }

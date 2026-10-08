@@ -327,7 +327,11 @@ Concurrency:
 
 - `analytic.fraud.concurrency` (10) is the chunk size for the fraud detectors that look up one row per flagged user. Each chunk runs concurrently and the chunks run one after another.
 - `GET /fraud/risk-scores` reads the shared fingerprints once, takes the first 100 users near lockout, and scores them in chunks of that size.
+    - It scores each listed user from the near-lockout row it already read and does not read the user again, so a user deleted mid-request is still scored.
 - A score already cached for a user is reused.
+- `GET /fraud/risk-score/:userId` reads the user first and answers `UserNotFoundException` for a missing one.
+
+Each required-range route binds `AnalyticDateRangeRequestDto` on `@Query({ schema })` and passes the whole DTO to its analytic HTTP service. A workspace route passes the workspace id first, then the DTO. The HTTP service destructures `startDate` and `endDate`, validates them through `AnalyticDateDomain`, and passes the validated range to the domain.
 
 Date range validation lives in `AnalyticDateDomain` (`requireRange`, `optionalRange`):
 

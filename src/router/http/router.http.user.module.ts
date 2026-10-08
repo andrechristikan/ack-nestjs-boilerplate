@@ -6,6 +6,9 @@ import { WorkspaceUserController } from '@modules/workspace/controllers/workspac
 import { WorkspaceHttpModule } from '@modules/workspace/workspace.http.module';
 import { AnalyticHttpModule } from '@modules/analytic/analytic.http.module';
 import { AnalyticUserController } from '@modules/analytic/controllers/analytic.user.controller';
+import { ProjectDomainModule } from '@modules/project/project.domain.module';
+import { UserDomainModule } from '@modules/user/user.domain.module';
+import { WorkspaceDomainModule } from '@modules/workspace/workspace.domain.module';
 import { Module } from '@nestjs/common';
 
 /**
@@ -25,6 +28,9 @@ import { Module } from '@nestjs/common';
         WorkspaceHttpModule,
         ProjectHttpModule,
         AnalyticHttpModule,
+        UserDomainModule,
+        WorkspaceDomainModule,
+        ProjectDomainModule,
     ],
 })
 export class RouterHttpUserModule {}

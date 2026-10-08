@@ -7,11 +7,11 @@ import { MessageService } from '@common/message/services/message.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
-    EnumNotificationChannel,
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import { NotificationPushSecurityDomain } from '@modules/notification/domains/notification.push.security.domain';
+import { EnumNotificationStep } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
     INotificationSendPushPayload,
@@ -19,6 +19,18 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import {
+    buildPushNotification,
+    expectPushAllStepsSkipped,
+    expectPushRetrySkipsSend,
+    expectPushSendFailure,
+    expectPushSentAtFailure,
+    expectPushSentWithCleanup,
+    PushAllSteps,
+    PushRecordedSteps,
+} from '@test/unit/helpers/test.unit.notification-push.helper';
+import type { INotificationPushDoubles } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('NotificationPushSecurityDomain', () => {
     const firebaseService: MockProxy<FirebaseService> = mock<FirebaseService>();
@@ -39,10 +51,22 @@ describe('NotificationPushSecurityDomain', () => {
         notificationTokens: ['token-1', 'token-2'],
         username: 'nadia',
     };
-    const pushResult = {
-        failureTokens: ['token-2'],
+    const notification = buildPushNotification();
+    const partialFailure = {
+        failureTokens: ['bad'],
         successCount: 1,
         failureCount: 1,
+    };
+    const fullSuccess = {
+        failureTokens: [],
+        successCount: 2,
+        failureCount: 0,
+    };
+    const recorded = PushRecordedSteps;
+    const doubles: INotificationPushDoubles = {
+        firebaseService,
+        notificationRepository,
+        notificationPushQueue,
     };
 
     beforeEach(async () => {
@@ -50,6 +74,7 @@ describe('NotificationPushSecurityDomain', () => {
         const module = await Test.createTestingModule({
             providers: [
                 NotificationPushSecurityDomain,
+                NotificationUtil,
                 { provide: FirebaseService, useValue: firebaseService },
                 {
                     provide: NotificationRepository,
@@ -68,6 +93,8 @@ describe('NotificationPushSecurityDomain', () => {
             ],
         }).compile();
         domain = module.get(NotificationPushSecurityDomain);
+        firebaseService.isInitialized.mockReturnValue(true);
+        notificationRepository.updateProcessAt.mockResolvedValue(notification);
     });
 
     describe('processNewDeviceLogin', () => {
@@ -96,39 +123,7 @@ describe('NotificationPushSecurityDomain', () => {
             requestLog,
         };
 
-        it('skips when Firebase is not initialized', async () => {
-            firebaseService.isInitialized.mockReturnValue(false);
-
-            const result = await domain.processNewDeviceLogin(send, data);
-
-            expect(result).toEqual({
-                message:
-                    'Firebase not initialized, skipping new login notification',
-            });
-            expect(
-                notificationRepository.updateProcessAt
-            ).not.toHaveBeenCalled();
-        });
-
-        it('skips when the notification row is missing', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue(null);
-
-            const result = await domain.processNewDeviceLogin(send, data);
-
-            expect(result).toEqual({
-                message:
-                    'Notification not found, skipping new login notification',
-            });
-            expect(firebaseService.sendMulticast).not.toHaveBeenCalled();
-        });
-
-        it('sends the push, cleans up failed tokens, and marks the notification sent', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue({
-                title: 'notification.title.newDeviceLogin',
-                body: 'notification.body.newDeviceLogin',
-            });
+        beforeEach(() => {
             requestContextService.resolveDevice.mockReturnValue(
                 'Chrome on macOS'
             );
@@ -142,23 +137,43 @@ describe('NotificationPushSecurityDomain', () => {
             messageService.setMessage
                 .mockReturnValueOnce('New login')
                 .mockReturnValueOnce('New login from Chrome on macOS');
-            firebaseService.sendMulticast.mockResolvedValue(pushResult);
+        });
 
-            const result = await domain.processNewDeviceLogin(send, data);
+        it('returns the progress as passed when Firebase is not initialized', async () => {
+            firebaseService.isInitialized.mockReturnValue(false);
 
-            expect(requestContextService.resolveDevice).toHaveBeenCalledWith(
-                requestLog.userAgent
+            const result = await domain.processNewDeviceLogin(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                ['bad']
             );
-            expect(requestContextService.resolveCity).toHaveBeenCalledWith(
-                requestLog.geoLocation
+
+            expect(result).toEqual({
+                message:
+                    'Firebase not initialized, skipping new login notification',
+                completedSteps: [EnumNotificationStep.updateProcessAt],
+                failedSteps: [],
+                failureTokens: ['bad'],
+            });
+            expect(
+                notificationRepository.updateProcessAt
+            ).not.toHaveBeenCalled();
+        });
+
+        it('sends, then cleans up and stamps sentAt with the failed tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
+
+            const result = await domain.processNewDeviceLogin(
+                send,
+                data,
+                [],
+                null
             );
-            expect(messageService.setMessage).toHaveBeenNthCalledWith(
-                1,
-                'notification.title.newDeviceLogin'
-            );
+
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
-                'notification.body.newDeviceLogin',
+                'body',
                 {
                     properties: {
                         device: 'Chrome on macOS',
@@ -172,113 +187,158 @@ describe('NotificationPushSecurityDomain', () => {
                 send.notificationTokens,
                 { title: 'New login', body: 'New login from Chrome on macOS' }
             );
-            expect(
-                notificationPushQueue.sendCleanupTokens
-            ).toHaveBeenCalledWith(send.userId, pushResult.failureTokens);
-            expect(notificationRepository.updateSentAt).toHaveBeenCalledWith(
-                send.userId,
-                send.notificationId,
-                EnumNotificationChannel.push,
-                pushResult.failureTokens
+            expectPushSentWithCleanup(
+                doubles,
+                send,
+                result,
+                'New login notification processed'
             );
-            expect(result).toEqual({
-                message: 'New login notification processed',
-                result: pushResult,
-            });
         });
 
-        it('still marks the notification sent when the cleanup enqueue fails', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue({
-                title: 'notification.title.newDeviceLogin',
-                body: 'notification.body.newDeviceLogin',
-            });
-            requestContextService.resolveDevice.mockReturnValue(
-                'Chrome on macOS'
-            );
-            requestContextService.resolveCity.mockReturnValue('San Francisco');
-            helperDateService.createFromIso.mockImplementation(
-                (iso: string) => new Date(iso)
-            );
-            helperDateService.formatToRFC2822.mockImplementation((date: Date) =>
-                date.toISOString()
-            );
-            messageService.setMessage
-                .mockReturnValueOnce('New login')
-                .mockReturnValueOnce('New login from Chrome on macOS');
-            firebaseService.sendMulticast.mockResolvedValue(pushResult);
-            notificationPushQueue.sendCleanupTokens.mockRejectedValue(
-                new Error('queue down')
+        it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
+            const result = await domain.processNewDeviceLogin(
+                send,
+                data,
+                recorded,
+                ['bad']
             );
 
-            await domain.processNewDeviceLogin(send, data);
+            expectPushRetrySkipsSend(doubles, send, result);
+        });
 
-            expect(notificationRepository.updateSentAt).toHaveBeenCalledWith(
-                send.userId,
-                send.notificationId,
-                EnumNotificationChannel.push,
-                pushResult.failureTokens
+        it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
+            const result = await domain.processNewDeviceLogin(
+                send,
+                data,
+                PushAllSteps,
+                null
             );
+
+            expectPushAllStepsSkipped(doubles, result);
+        });
+
+        it('names a rejected updateSentAt and still runs the cleanup', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+            notificationRepository.updateSentAt.mockRejectedValue(
+                new Error('mongo')
+            );
+
+            const result = await domain.processNewDeviceLogin(
+                send,
+                data,
+                [],
+                null
+            );
+
+            expectPushSentAtFailure(doubles, result);
+        });
+
+        it('names a thrown sendMulticast and runs neither cleanup nor sentAt', async () => {
+            firebaseService.sendMulticast.mockRejectedValue(new Error('fcm'));
+
+            const result = await domain.processNewDeviceLogin(
+                send,
+                data,
+                [],
+                null
+            );
+
+            expectPushSendFailure(doubles, result);
         });
     });
 
     describe('processResetTwoFactorByAdmin', () => {
-        it('skips when Firebase is not initialized', async () => {
+        beforeEach(() => {
+            messageService.setMessage
+                .mockReturnValueOnce('Two-factor reset')
+                .mockReturnValueOnce('Your two-factor was reset');
+        });
+
+        it('returns the progress as passed when Firebase is not initialized', async () => {
             firebaseService.isInitialized.mockReturnValue(false);
 
-            const result = await domain.processResetTwoFactorByAdmin(send);
+            const result = await domain.processResetTwoFactorByAdmin(
+                send,
+                [],
+                null
+            );
 
             expect(result).toEqual({
                 message:
                     'Firebase not initialized, skipping reset two-factor notification',
+                completedSteps: [],
+                failedSteps: [],
+                failureTokens: null,
             });
         });
 
-        it('skips when the notification row is missing', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue(null);
+        it('sends, then cleans up and stamps sentAt with the failed tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
 
-            const result = await domain.processResetTwoFactorByAdmin(send);
-
-            expect(result).toEqual({
-                message:
-                    'Notification not found, skipping reset two-factor notification',
-            });
-        });
-
-        it('sends the push and reports the result', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue({
-                title: 'title',
-                body: 'body',
-            });
-            messageService.setMessage
-                .mockReturnValueOnce('Two-factor reset')
-                .mockReturnValueOnce('Your two-factor was reset');
-            firebaseService.sendMulticast.mockResolvedValue(pushResult);
-
-            const result = await domain.processResetTwoFactorByAdmin(send);
+            const result = await domain.processResetTwoFactorByAdmin(
+                send,
+                [],
+                null
+            );
 
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
                 'body',
-                {
-                    properties: { username: send.username },
-                }
+                { properties: { username: send.username } }
             );
-            expect(
-                notificationPushQueue.sendCleanupTokens
-            ).toHaveBeenCalledWith(send.userId, pushResult.failureTokens);
-            expect(notificationRepository.updateSentAt).toHaveBeenCalledWith(
-                send.userId,
-                send.notificationId,
-                EnumNotificationChannel.push,
-                pushResult.failureTokens
+            expectPushSentWithCleanup(
+                doubles,
+                send,
+                result,
+                'Reset two-factor notification processed'
             );
-            expect(result).toEqual({
-                message: 'Reset two-factor notification processed',
-                result: pushResult,
-            });
+        });
+
+        it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
+            const result = await domain.processResetTwoFactorByAdmin(
+                send,
+                recorded,
+                ['bad']
+            );
+
+            expectPushRetrySkipsSend(doubles, send, result);
+        });
+
+        it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
+            const result = await domain.processResetTwoFactorByAdmin(
+                send,
+                PushAllSteps,
+                null
+            );
+
+            expectPushAllStepsSkipped(doubles, result);
+        });
+
+        it('names a rejected updateSentAt and still runs the cleanup', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+            notificationRepository.updateSentAt.mockRejectedValue(
+                new Error('mongo')
+            );
+
+            const result = await domain.processResetTwoFactorByAdmin(
+                send,
+                [],
+                null
+            );
+
+            expectPushSentAtFailure(doubles, result);
+        });
+
+        it('names a thrown sendMulticast and runs neither cleanup nor sentAt', async () => {
+            firebaseService.sendMulticast.mockRejectedValue(new Error('fcm'));
+
+            const result = await domain.processResetTwoFactorByAdmin(
+                send,
+                [],
+                null
+            );
+
+            expectPushSendFailure(doubles, result);
         });
     });
 
@@ -288,41 +348,7 @@ describe('NotificationPushSecurityDomain', () => {
             passwordCreatedAt: '2024-01-01T00:00:00.000Z',
         };
 
-        it('skips when Firebase is not initialized', async () => {
-            firebaseService.isInitialized.mockReturnValue(false);
-
-            const result = await domain.processTemporaryPasswordByAdmin(
-                send,
-                data
-            );
-
-            expect(result).toEqual({
-                message:
-                    'Firebase not initialized, skipping temporary password notification',
-            });
-        });
-
-        it('skips when the notification row is missing', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue(null);
-
-            const result = await domain.processTemporaryPasswordByAdmin(
-                send,
-                data
-            );
-
-            expect(result).toEqual({
-                message:
-                    'Notification not found, skipping temporary password notification',
-            });
-        });
-
-        it('formats the expiry date and sends the push', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue({
-                title: 'title',
-                body: 'body',
-            });
+        beforeEach(() => {
             helperDateService.createFromIso.mockImplementation(
                 (iso: string) => new Date(iso)
             );
@@ -332,11 +358,35 @@ describe('NotificationPushSecurityDomain', () => {
             messageService.setMessage
                 .mockReturnValueOnce('Temporary password')
                 .mockReturnValueOnce('Your temporary password expires soon');
-            firebaseService.sendMulticast.mockResolvedValue(pushResult);
+        });
+
+        it('returns the progress as passed when Firebase is not initialized', async () => {
+            firebaseService.isInitialized.mockReturnValue(false);
 
             const result = await domain.processTemporaryPasswordByAdmin(
                 send,
-                data
+                data,
+                [],
+                null
+            );
+
+            expect(result).toEqual({
+                message:
+                    'Firebase not initialized, skipping temporary password notification',
+                completedSteps: [],
+                failedSteps: [],
+                failureTokens: null,
+            });
+        });
+
+        it('sends, then cleans up and stamps sentAt with the failed tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
+
+            const result = await domain.processTemporaryPasswordByAdmin(
+                send,
+                data,
+                [],
+                null
             );
 
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
@@ -349,98 +399,217 @@ describe('NotificationPushSecurityDomain', () => {
                     },
                 }
             );
-            expect(result).toEqual({
-                message: 'Temporary password notification processed',
-                result: pushResult,
-            });
+            expectPushSentWithCleanup(
+                doubles,
+                send,
+                result,
+                'Temporary password notification processed'
+            );
+        });
+
+        it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
+            const result = await domain.processTemporaryPasswordByAdmin(
+                send,
+                data,
+                recorded,
+                ['bad']
+            );
+
+            expectPushRetrySkipsSend(doubles, send, result);
+        });
+
+        it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
+            const result = await domain.processTemporaryPasswordByAdmin(
+                send,
+                data,
+                PushAllSteps,
+                null
+            );
+
+            expectPushAllStepsSkipped(doubles, result);
+        });
+
+        it('names a rejected updateSentAt and still runs the cleanup', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+            notificationRepository.updateSentAt.mockRejectedValue(
+                new Error('mongo')
+            );
+
+            const result = await domain.processTemporaryPasswordByAdmin(
+                send,
+                data,
+                [],
+                null
+            );
+
+            expectPushSentAtFailure(doubles, result);
+        });
+
+        it('names a thrown sendMulticast and runs neither cleanup nor sentAt', async () => {
+            firebaseService.sendMulticast.mockRejectedValue(new Error('fcm'));
+
+            const result = await domain.processTemporaryPasswordByAdmin(
+                send,
+                data,
+                [],
+                null
+            );
+
+            expectPushSendFailure(doubles, result);
         });
     });
 
     describe('processResetPassword', () => {
-        it('skips when Firebase is not initialized', async () => {
+        beforeEach(() => {
+            messageService.setMessage
+                .mockReturnValueOnce('Reset password')
+                .mockReturnValueOnce('Your password was reset');
+        });
+
+        it('returns the progress as passed when Firebase is not initialized', async () => {
             firebaseService.isInitialized.mockReturnValue(false);
 
-            const result = await domain.processResetPassword(send);
+            const result = await domain.processResetPassword(send, [], null);
 
             expect(result).toEqual({
                 message:
                     'Firebase not initialized, skipping reset password notification',
+                completedSteps: [],
+                failedSteps: [],
+                failureTokens: null,
             });
         });
 
-        it('skips when the notification row is missing', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue(null);
+        it('sends, then cleans up and stamps sentAt with the failed tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
 
-            const result = await domain.processResetPassword(send);
+            const result = await domain.processResetPassword(send, [], null);
 
-            expect(result).toEqual({
-                message:
-                    'Notification not found, skipping reset password notification',
-            });
+            expect(messageService.setMessage).toHaveBeenNthCalledWith(
+                2,
+                'body',
+                { properties: { username: send.username } }
+            );
+            expectPushSentWithCleanup(
+                doubles,
+                send,
+                result,
+                'Reset password notification processed'
+            );
         });
 
-        it('sends the push and reports the result', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue({
-                title: 'title',
-                body: 'body',
-            });
-            messageService.setMessage
-                .mockReturnValueOnce('Reset password')
-                .mockReturnValueOnce('Your password was reset');
-            firebaseService.sendMulticast.mockResolvedValue(pushResult);
+        it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
+            const result = await domain.processResetPassword(send, recorded, [
+                'bad',
+            ]);
 
-            const result = await domain.processResetPassword(send);
+            expectPushRetrySkipsSend(doubles, send, result);
+        });
 
-            expect(result).toEqual({
-                message: 'Reset password notification processed',
-                result: pushResult,
-            });
+        it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
+            const result = await domain.processResetPassword(
+                send,
+                PushAllSteps,
+                null
+            );
+
+            expectPushAllStepsSkipped(doubles, result);
+        });
+
+        it('names a rejected updateSentAt and still runs the cleanup', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+            notificationRepository.updateSentAt.mockRejectedValue(
+                new Error('mongo')
+            );
+
+            const result = await domain.processResetPassword(send, [], null);
+
+            expectPushSentAtFailure(doubles, result);
+        });
+
+        it('names a thrown sendMulticast and runs neither cleanup nor sentAt', async () => {
+            firebaseService.sendMulticast.mockRejectedValue(new Error('fcm'));
+
+            const result = await domain.processResetPassword(send, [], null);
+
+            expectPushSendFailure(doubles, result);
         });
     });
 
     describe('processForgotPassword', () => {
-        it('skips when Firebase is not initialized', async () => {
+        beforeEach(() => {
+            messageService.setMessage
+                .mockReturnValueOnce('Forgot password')
+                .mockReturnValueOnce('You requested a password reset');
+        });
+
+        it('returns the progress as passed when Firebase is not initialized', async () => {
             firebaseService.isInitialized.mockReturnValue(false);
 
-            const result = await domain.processForgotPassword(send);
+            const result = await domain.processForgotPassword(send, [], null);
 
             expect(result).toEqual({
                 message:
                     'Firebase not initialized, skipping forgot password notification',
+                completedSteps: [],
+                failedSteps: [],
+                failureTokens: null,
             });
         });
 
-        it('skips when the notification row is missing', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue(null);
+        it('sends, then cleans up and stamps sentAt with the failed tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
 
-            const result = await domain.processForgotPassword(send);
+            const result = await domain.processForgotPassword(send, [], null);
 
-            expect(result).toEqual({
-                message:
-                    'Notification not found, skipping forgot password notification',
-            });
+            expect(messageService.setMessage).toHaveBeenNthCalledWith(
+                2,
+                'body',
+                { properties: { username: send.username } }
+            );
+            expectPushSentWithCleanup(
+                doubles,
+                send,
+                result,
+                'Forgot password notification processed'
+            );
         });
 
-        it('sends the push and reports the result', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue({
-                title: 'title',
-                body: 'body',
-            });
-            messageService.setMessage
-                .mockReturnValueOnce('Forgot password')
-                .mockReturnValueOnce('You requested a password reset');
-            firebaseService.sendMulticast.mockResolvedValue(pushResult);
+        it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
+            const result = await domain.processForgotPassword(send, recorded, [
+                'bad',
+            ]);
 
-            const result = await domain.processForgotPassword(send);
+            expectPushRetrySkipsSend(doubles, send, result);
+        });
 
-            expect(result).toEqual({
-                message: 'Forgot password notification processed',
-                result: pushResult,
-            });
+        it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
+            const result = await domain.processForgotPassword(
+                send,
+                PushAllSteps,
+                null
+            );
+
+            expectPushAllStepsSkipped(doubles, result);
+        });
+
+        it('names a rejected updateSentAt and still runs the cleanup', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+            notificationRepository.updateSentAt.mockRejectedValue(
+                new Error('mongo')
+            );
+
+            const result = await domain.processForgotPassword(send, [], null);
+
+            expectPushSentAtFailure(doubles, result);
+        });
+
+        it('names a thrown sendMulticast and runs neither cleanup nor sentAt', async () => {
+            firebaseService.sendMulticast.mockRejectedValue(new Error('fcm'));
+
+            const result = await domain.processForgotPassword(send, [], null);
+
+            expectPushSendFailure(doubles, result);
         });
     });
 });

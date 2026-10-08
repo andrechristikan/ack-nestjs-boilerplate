@@ -46,6 +46,7 @@ import type {
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
 import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
+import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -86,10 +87,12 @@ export class AnalyticFraudHttpService {
         );
     }
 
-    async accountTakeoverSummary(
-        startDate: Date | null,
-        endDate: Date | null
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
+    async accountTakeoverSummary({
+        startDate,
+        endDate,
+    }: AnalyticDateRangeRequestDto): Promise<
+        IResponseReturn<IAnalyticFraudSummary>
+    > {
         const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticFraudDomain.accountTakeoverSummary(
             range.startDate,
@@ -198,10 +201,12 @@ export class AnalyticFraudHttpService {
         return this.analyticFraudDomain.sharedFingerprintList(params);
     }
 
-    async sessionAfterAdminSummary(
-        startDate: Date | null,
-        endDate: Date | null
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
+    async sessionAfterAdminSummary({
+        startDate,
+        endDate,
+    }: AnalyticDateRangeRequestDto): Promise<
+        IResponseReturn<IAnalyticFraudSummary>
+    > {
         const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticFraudDomain.sessionAfterAdminSummary(
             range.startDate,

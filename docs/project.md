@@ -277,6 +277,7 @@ Its activity rows are prepared before the write and staged after it.
 | Leave       | `projectMemberLeft`        | none                              |
 
 - A caller who assigns themselves or updates their own role gets the actor row only.
+- A removal always writes both rows, because removing yourself throws.
 - Both rows of a pair carry the project's `workspaceId`.
 - See [Activity Log][ref-doc-activity-log].
 

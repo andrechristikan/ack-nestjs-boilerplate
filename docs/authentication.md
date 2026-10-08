@@ -434,7 +434,7 @@ sequenceDiagram
         API->>Database: withTransaction: rotate jti on a session that is<br/>not revoked and not expired, update last-login fields
         alt No live session matched
             Database-->>API: Transaction aborted
-            API-->>Client: 401 Unauthorized (AuthJwtRefreshTokenInvalidException, 50801)
+            API-->>Client: 401 Unauthorized (SessionRevokedException, 50401)
         else Committed
             API->>Redis: SET session with new jti, PX remaining life, XX
             alt Key still exists
@@ -444,7 +444,7 @@ sequenceDiagram
                 Note over Client,API: Session ID remains the same<br/>New refresh token expires at the same<br/>instant the old one would have
             else Key purged meanwhile
                 Redis-->>API: Not written
-                API-->>Client: 401 Unauthorized (AuthJwtRefreshTokenInvalidException, 50801)
+                API-->>Client: 401 Unauthorized (SessionRevokedException, 50401)
             else Redis failure
                 API-->>Client: 500 (AppUnknownException)
             end
@@ -453,7 +453,9 @@ sequenceDiagram
 ```
 
 - `AuthJwtRefreshGuard` runs the first session check before the handler. A missing key or a `jti` mismatch answers `SessionRevokedException` (401, `50401`), the same answer `AuthJwtAccessGuard` gives.
-- `refreshSession` repeats the check against the same key and answers `AuthJwtRefreshTokenInvalidException` (401, `50801`) when it fails.
+- `refreshSession` repeats the check against the same key and answers `SessionRevokedException` (401, `50401`) when it fails.
+- The same `SessionRevokedException` answers a lost refresh race: the rotation matches no live session row (`SessionDomain.updateJtiInTx`), or the Redis rewrite finds the key purged.
+- A refresh token without a `jti` answers `AuthJwtRefreshTokenInvalidException` (401, `50801`), in the guard and in `refreshSession` before any cache read.
 - `userRefreshToken` is success-only, so a refresh that ends in 401 or 500 writes no row.
 
 #### JWT Logout Flow
@@ -697,7 +699,7 @@ A unique identifier (32-character random string) generated during login and toke
     - Client sends request with access token
     - API extracts the jti from the access token payload
     - API retrieves session from Redis using userId and sessionId
-    - API compares token jti with session jti
+    - API hashes both values with SHA-256 and compares the hashes with `HelperHashService.sha256Compare`, a constant-time comparison (`AuthDomain`)
     - **If jti matches**: Request is allowed
     - **If jti doesn't match**: Request is rejected (401 Unauthorized, potential token reuse)
 
@@ -705,7 +707,7 @@ A unique identifier (32-character random string) generated during login and toke
     - Client sends the refresh token to the API
     - API extracts the jti from the refresh token payload
     - API retrieves session from Redis using userId and sessionId
-    - API compares token jti with session jti
+    - API compares the hashed jti values the same way
     - **If jti matches**: Token refresh proceeds with a new jti
     - **If jti doesn't match**: Request is rejected (401 Unauthorized, potential security breach)
 
@@ -714,7 +716,7 @@ A unique identifier (32-character random string) generated during login and toke
     - Old jti is invalidated
     - New jti is stored in the database session record, then in Redis once the transaction has committed
     - The Redis write happens only while the session key still exists
-    - A key purged by a revoke in the meantime makes the refresh answer 401
+    - A key purged by a revoke in the meantime makes the refresh answer `SessionRevokedException` (401, `50401`)
     - New tokens contain the new jti
     - The session's absolute expiry is never pushed out
     - The new refresh token and the Redis TTL both carry only the time still left on the presented refresh token

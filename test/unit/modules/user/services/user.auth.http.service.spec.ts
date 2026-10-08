@@ -13,41 +13,23 @@ import {
 } from '@generated/prisma-client/client';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { UserAuthDomain } from '@modules/user/domains/user.auth.domain';
-import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
+import { OnboardingDomain } from '@modules/onboarding/domains/onboarding.domain';
 import { UserAuthHttpService } from '@modules/user/services/user.auth.http.service';
-import {
-    EnumUserCreateMode,
-    EnumUserSignUpWorkspaceContextType,
-} from '@modules/user/enums/user.enum';
-import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
-import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import type { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import type { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import type {
     IUser,
-    IUserCreateWithWorkspaceInput,
     IUserLoginOutcome,
-    IUserSignUpWorkspacePersonal,
-    IUserVerificationEmailCreate,
 } from '@modules/user/interfaces/user.interface';
 
 describe('UserAuthHttpService', () => {
     const userAuthDomain: MockProxy<UserAuthDomain> = mock<UserAuthDomain>();
-    const userOnboardingDomain: MockProxy<UserOnboardingDomain> =
-        mock<UserOnboardingDomain>();
-    const workspaceInviteDomain: MockProxy<WorkspaceInviteDomain> =
-        mock<WorkspaceInviteDomain>();
-    const workspaceDomain: MockProxy<WorkspaceDomain> = mock<WorkspaceDomain>();
+    const onboardingDomain: MockProxy<OnboardingDomain> =
+        mock<OnboardingDomain>();
 
     let service: UserAuthHttpService;
 
-    const workspaceContext: IUserSignUpWorkspacePersonal = {
-        type: EnumUserSignUpWorkspaceContextType.personal,
-        workspaceId: 'workspace-bramble',
-        slugCandidates: ['w-bramble'],
-        name: "bramble2fox's Workspace",
-    };
     const outcome: IUserLoginOutcome = {
         isTwoFactorEnable: false,
         lastWorkspaceId: null,
@@ -120,15 +102,7 @@ describe('UserAuthHttpService', () => {
             providers: [
                 UserAuthHttpService,
                 { provide: UserAuthDomain, useValue: userAuthDomain },
-                {
-                    provide: UserOnboardingDomain,
-                    useValue: userOnboardingDomain,
-                },
-                {
-                    provide: WorkspaceInviteDomain,
-                    useValue: workspaceInviteDomain,
-                },
-                { provide: WorkspaceDomain, useValue: workspaceDomain },
+                { provide: OnboardingDomain, useValue: onboardingDomain },
             ],
         }).compile();
         service = module.get(UserAuthHttpService);
@@ -200,38 +174,9 @@ describe('UserAuthHttpService', () => {
             from: EnumUserLoginFrom.website,
             device,
         };
-        const prepared: IUserCreateWithWorkspaceInput = {
-            userId: 'user-bramble',
-            email: 'bramble@example.com',
-            name: dto.name ?? null,
-            username: dto.username,
-            countryId: dto.countryId,
-            roleId: 'role-bramble',
-            signUpFrom: EnumUserSignUpFrom.website,
-            signUpWith: EnumUserSignUpWith.socialGoogle,
-            isVerified: true,
-            termPolicy: {
-                termsOfService: true,
-                privacy: true,
-                marketing: true,
-                cookies: true,
-            },
-            acceptedTermPolicyTypes: [],
-            password: null,
-            passwordHistoryType: null,
-            verification: null,
-            workspaceContext,
-            createdBy: 'user-bramble',
-        };
 
-        it('commits onboarding and logs in when the user is new', async () => {
-            workspaceInviteDomain.resolveForSignUp.mockResolvedValue(
-                workspaceContext
-            );
-            userAuthDomain.prepareSocialCreate.mockResolvedValue(prepared);
-            userOnboardingDomain.getCreateTimeoutInMs.mockReturnValue(10000);
-            workspaceDomain.commitOnboarding.mockResolvedValue([baseUser]);
-            userAuthDomain.loginWithSocial.mockResolvedValue(outcome);
+        it('delegates to OnboardingDomain and wraps the outcome', async () => {
+            onboardingDomain.loginWithSocial.mockResolvedValue(outcome);
 
             const result = await service.loginWithSocial(
                 'bramble@example.com',
@@ -240,12 +185,7 @@ describe('UserAuthHttpService', () => {
             );
 
             expect(result).toEqual({ data: outcome });
-            expect(workspaceDomain.commitOnboarding).toHaveBeenCalledWith(
-                [prepared],
-                EnumUserCreateMode.social,
-                10000
-            );
-            expect(userAuthDomain.loginWithSocial).toHaveBeenCalledWith(
+            expect(onboardingDomain.loginWithSocial).toHaveBeenCalledWith(
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
                 {
@@ -264,82 +204,9 @@ describe('UserAuthHttpService', () => {
                     marketing: dto.marketing,
                 }
             );
-            expect(userAuthDomain.notifyWelcomeSocial).toHaveBeenCalledWith(
-                'user-bramble'
-            );
         });
 
-        it('enqueues the social welcome once when a new user gets a two-factor challenge', async () => {
-            const challengeOutcome: IUserLoginOutcome = {
-                isTwoFactorEnable: true,
-                lastWorkspaceId: null,
-                lastWorkspaceChangedAt: null,
-                twoFactor: {
-                    isRequiredSetup: false,
-                    challengeToken: 'challenge-token',
-                    challengeExpiresInMs: 300000,
-                    backupCodesRemaining: 5,
-                },
-            };
-            workspaceInviteDomain.resolveForSignUp.mockResolvedValue(
-                workspaceContext
-            );
-            userAuthDomain.prepareSocialCreate.mockResolvedValue(prepared);
-            userOnboardingDomain.getCreateTimeoutInMs.mockReturnValue(10000);
-            workspaceDomain.commitOnboarding.mockResolvedValue([baseUser]);
-            userAuthDomain.loginWithSocial.mockResolvedValue(challengeOutcome);
-
-            const result = await service.loginWithSocial(
-                'bramble@example.com',
-                EnumUserLoginWith.socialGoogle,
-                dto
-            );
-
-            expect(result).toEqual({ data: challengeOutcome });
-            expect(userAuthDomain.notifyWelcomeSocial).toHaveBeenCalledTimes(1);
-            expect(userAuthDomain.notifyWelcomeSocial).toHaveBeenCalledWith(
-                'user-bramble'
-            );
-        });
-
-        it('rejects without enqueuing the welcome when the login of a new user fails', async () => {
-            const failure = new Error('login failed');
-            workspaceInviteDomain.resolveForSignUp.mockResolvedValue(
-                workspaceContext
-            );
-            userAuthDomain.prepareSocialCreate.mockResolvedValue(prepared);
-            userOnboardingDomain.getCreateTimeoutInMs.mockReturnValue(10000);
-            workspaceDomain.commitOnboarding.mockResolvedValue([baseUser]);
-            userAuthDomain.loginWithSocial.mockRejectedValue(failure);
-
-            await expect(
-                service.loginWithSocial(
-                    'bramble@example.com',
-                    EnumUserLoginWith.socialGoogle,
-                    dto
-                )
-            ).rejects.toBe(failure);
-            expect(userAuthDomain.notifyWelcomeSocial).not.toHaveBeenCalled();
-        });
-
-        it('logs in directly without committing onboarding when the user already exists', async () => {
-            workspaceInviteDomain.resolveForSignUp.mockResolvedValue(
-                workspaceContext
-            );
-            userAuthDomain.prepareSocialCreate.mockResolvedValue(null);
-            userAuthDomain.loginWithSocial.mockResolvedValue(outcome);
-
-            await service.loginWithSocial(
-                'bramble@example.com',
-                EnumUserLoginWith.socialGoogle,
-                dto
-            );
-
-            expect(workspaceDomain.commitOnboarding).not.toHaveBeenCalled();
-            expect(userAuthDomain.notifyWelcomeSocial).not.toHaveBeenCalled();
-        });
-
-        it('passes a null name to the login when the dto omits it', async () => {
+        it('passes a null name when the dto omits it', async () => {
             const dtoWithoutName: UserCreateSocialRequestDto = {
                 username: dto.username,
                 countryId: dto.countryId,
@@ -348,11 +215,7 @@ describe('UserAuthHttpService', () => {
                 from: dto.from,
                 device,
             };
-            workspaceInviteDomain.resolveForSignUp.mockResolvedValue(
-                workspaceContext
-            );
-            userAuthDomain.prepareSocialCreate.mockResolvedValue(null);
-            userAuthDomain.loginWithSocial.mockResolvedValue(outcome);
+            onboardingDomain.loginWithSocial.mockResolvedValue(outcome);
 
             await service.loginWithSocial(
                 'bramble@example.com',
@@ -360,24 +223,26 @@ describe('UserAuthHttpService', () => {
                 dtoWithoutName
             );
 
-            expect(userAuthDomain.loginWithSocial).toHaveBeenCalledWith(
+            expect(onboardingDomain.loginWithSocial).toHaveBeenCalledWith(
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
-                {
-                    from: dto.from,
-                    device: {
-                        fingerprint: dto.device.fingerprint,
-                        name: null,
-                        platform: null,
-                        notificationToken: null,
-                    },
-                    username: dto.username,
-                    inviteToken: null,
-                    name: null,
-                    countryId: dto.countryId,
-                    cookies: dto.cookies,
-                    marketing: dto.marketing,
-                }
+                expect.objectContaining({ name: null, inviteToken: null })
+            );
+        });
+
+        it('forwards the invite token when the dto carries one', async () => {
+            onboardingDomain.loginWithSocial.mockResolvedValue(outcome);
+
+            await service.loginWithSocial(
+                'bramble@example.com',
+                EnumUserLoginWith.socialGoogle,
+                { ...dto, inviteToken: 'invite-bramble' }
+            );
+
+            expect(onboardingDomain.loginWithSocial).toHaveBeenCalledWith(
+                'bramble@example.com',
+                EnumUserLoginWith.socialGoogle,
+                expect.objectContaining({ inviteToken: 'invite-bramble' })
             );
         });
     });
@@ -399,77 +264,45 @@ describe('UserAuthHttpService', () => {
     });
 
     describe('signUp', () => {
-        it('commits onboarding and notifies the new user', async () => {
-            const dto: UserSignUpRequestDto = {
-                username: 'bramble2fox',
-                countryId: 'country-bramble',
-                email: 'bramble@example.com' as Lowercase<string>,
-                password: 'plainPassword123!',
-                marketing: true,
-                cookies: true,
-                from: EnumUserSignUpFrom.website,
-            };
-            workspaceInviteDomain.resolveForSignUp.mockResolvedValue(
-                workspaceContext
-            );
-            const input: IUserCreateWithWorkspaceInput = {
-                userId: 'user-bramble',
-                email: dto.email,
-                name: null,
-                username: dto.username,
+        const dto: UserSignUpRequestDto = {
+            username: 'bramble2fox',
+            countryId: 'country-bramble',
+            email: 'bramble@example.com' as Lowercase<string>,
+            password: 'plainPassword123!',
+            marketing: true,
+            cookies: true,
+            from: EnumUserSignUpFrom.website,
+        };
+
+        it('delegates sign-up to OnboardingDomain and returns an empty envelope', async () => {
+            const result = await service.signUp(dto);
+
+            expect(onboardingDomain.signUp).toHaveBeenCalledWith({
                 countryId: dto.countryId,
-                roleId: 'role-bramble',
-                signUpFrom: dto.from,
-                signUpWith: EnumUserSignUpWith.credential,
-                isVerified: false,
-                termPolicy: {
-                    termsOfService: true,
-                    privacy: true,
-                    marketing: true,
-                    cookies: true,
-                },
-                acceptedTermPolicyTypes: [],
-                password: null,
-                passwordHistoryType: null,
-                verification: null,
-                workspaceContext,
-                createdBy: 'user-bramble',
-            };
-            const emailVerification: IUserVerificationEmailCreate = {
-                type: 'email',
-                expiredAt: new Date('2026-03-05T00:00:00.000Z'),
-                expiredInMinutes: 15,
-                resendInMinutes: 5,
-                reference: 'VRF-bramble',
-                token: 'raw-token',
-                hashedToken: 'hashed-token',
-                link: 'https://example.com/verify?token=raw-token',
-            };
-            userAuthDomain.prepareSignUp.mockResolvedValue({
-                input,
-                emailVerification,
+                email: dto.email,
+                username: dto.username,
+                password: dto.password,
+                inviteToken: null,
+                name: null,
+                from: dto.from,
+                cookies: dto.cookies,
+                marketing: dto.marketing,
             });
-            userOnboardingDomain.getCreateTimeoutInMs.mockReturnValue(10000);
-            const created = baseUser;
-            workspaceDomain.commitOnboarding.mockResolvedValue([created]);
+            expect(result).toEqual({});
+        });
 
-            await service.signUp(dto);
+        it('forwards the name and invite token when the dto carries them', async () => {
+            await service.signUp({
+                ...dto,
+                name: 'Bramble Fox',
+                inviteToken: 'invite-bramble',
+            });
 
-            expect(userAuthDomain.prepareSignUp).toHaveBeenCalledWith(
+            expect(onboardingDomain.signUp).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    inviteToken: null,
-                    name: dto.name ?? null,
-                }),
-                workspaceContext
-            );
-            expect(workspaceDomain.commitOnboarding).toHaveBeenCalledWith(
-                [input],
-                EnumUserCreateMode.signUp,
-                10000
-            );
-            expect(userAuthDomain.notifyWelcome).toHaveBeenCalledWith(
-                created.id,
-                emailVerification
+                    name: 'Bramble Fox',
+                    inviteToken: 'invite-bramble',
+                })
             );
         });
     });

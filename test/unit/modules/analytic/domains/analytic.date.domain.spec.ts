@@ -2,7 +2,6 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
 import { EnumAnalyticStatusCodeError } from '@modules/analytic/enums/analytic.status-code.enum';
-import { HttpStatus } from '@nestjs/common';
 
 describe('AnalyticDateDomain', () => {
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
@@ -26,41 +25,6 @@ describe('AnalyticDateDomain', () => {
                 startDate,
                 endDate,
             });
-        });
-
-        it('throws AnalyticInvalidDateRangeException when startDate is missing', () => {
-            try {
-                domain.requireRange(null, endDate);
-                throw new Error('expected throw');
-            } catch (error) {
-                expect(error).toMatchObject({
-                    module: 'analytic',
-                    statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
-                    statusCodeKey:
-                        EnumAnalyticStatusCodeError[
-                            EnumAnalyticStatusCodeError.invalidDateRange
-                        ],
-                    httpStatus: HttpStatus.BAD_REQUEST,
-                    messagePath: 'analytic.error.invalidDateRange',
-                });
-            }
-        });
-
-        it('throws AnalyticInvalidDateRangeException when endDate is missing', () => {
-            try {
-                domain.requireRange(startDate, null);
-                throw new Error('expected throw');
-            } catch (error) {
-                expect(error).toMatchObject({
-                    module: 'analytic',
-                    statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
-                    statusCodeKey:
-                        EnumAnalyticStatusCodeError[
-                            EnumAnalyticStatusCodeError.invalidDateRange
-                        ],
-                    messagePath: 'analytic.error.invalidDateRange',
-                });
-            }
         });
 
         it('throws AnalyticInvalidDateRangeException when start equals end', () => {

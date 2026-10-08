@@ -6,11 +6,13 @@ import type {
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationQueuePayload,
+    INotificationStepResult,
     INotificationTemporaryPasswordEncryptedPayload,
     INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
+    INotificationWelcomeEncryptedPayload,
     INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceJoinAcceptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
@@ -20,7 +22,9 @@ import { NotificationAccountDomain } from '@modules/notification/domains/notific
 import { NotificationSecurityDomain } from '@modules/notification/domains/notification.security.domain';
 import { NotificationTermPolicyDomain } from '@modules/notification/domains/notification.term-policy.domain';
 import { NotificationWorkspaceDomain } from '@modules/notification/domains/notification.workspace.domain';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
+import { QueueException } from '@queues/exceptions/queue.exception';
 import { Job } from 'bullmq';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
@@ -30,153 +34,244 @@ export class NotificationProcessorService {
         private readonly notificationAccountDomain: NotificationAccountDomain,
         private readonly notificationSecurityDomain: NotificationSecurityDomain,
         private readonly notificationTermPolicyDomain: NotificationTermPolicyDomain,
-        private readonly notificationWorkspaceDomain: NotificationWorkspaceDomain
+        private readonly notificationWorkspaceDomain: NotificationWorkspaceDomain,
+        private readonly notificationUtil: NotificationUtil
     ) {}
 
-    async processWelcomeByAdmin({
-        data: { proceedBy, userId, data },
-    }: Job<
-        INotificationQueuePayload<INotificationWelcomeByAdminEncryptedPayload>,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationAccountDomain.processWelcomeByAdmin(
+    private async recordSteps<T>(
+        job: Job<
+            INotificationQueuePayload<T>,
+            unknown,
+            EnumNotificationProcess
+        >,
+        result: INotificationStepResult
+    ): Promise<IQueueResponse> {
+        await job.updateData({
+            ...job.data,
+            completedSteps: result.completedSteps,
+        });
+        if (result.failedSteps.length > 0) {
+            const summary = this.notificationUtil.toStepSummary(
+                result.failedSteps
+            );
+            throw new QueueException(summary, true);
+        }
+
+        return this.notificationUtil.toStepResponse(result);
+    }
+
+    async processWelcomeByAdmin(
+        job: Job<
+            INotificationQueuePayload<INotificationWelcomeByAdminEncryptedPayload>,
+            unknown,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        const { proceedBy, userId, data, notificationId, completedSteps } =
+            job.data;
+        const result =
+            await this.notificationAccountDomain.processWelcomeByAdmin(
+                userId,
+                proceedBy,
+                data,
+                notificationId,
+                completedSteps
+            );
+
+        return this.recordSteps(job, result);
+    }
+
+    async processWelcome(
+        job: Job<
+            INotificationQueuePayload<INotificationWelcomeEncryptedPayload>,
+            unknown,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        const { userId, data, notificationId, completedSteps } = job.data;
+        const { verificationNotificationId, ...verification } = data;
+        const result = await this.notificationAccountDomain.processWelcome(
             userId,
-            proceedBy,
-            data
+            verification,
+            notificationId,
+            verificationNotificationId,
+            completedSteps
         );
+
+        return this.recordSteps(job, result);
     }
 
-    async processWelcome({
-        data: { userId, data },
-    }: Job<
-        INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationAccountDomain.processWelcome(userId, data);
+    async processWelcomeSocial(
+        job: Job<INotificationQueuePayload, unknown, EnumNotificationProcess>
+    ): Promise<IQueueResponse> {
+        const { userId, notificationId, completedSteps } = job.data;
+        const result =
+            await this.notificationAccountDomain.processWelcomeSocial(
+                userId,
+                notificationId,
+                completedSteps
+            );
+
+        return this.recordSteps(job, result);
     }
 
-    async processWelcomeSocial({
-        data: { userId },
-    }: Job<
-        INotificationQueuePayload,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationAccountDomain.processWelcomeSocial(userId);
+    async processVerifiedEmail(
+        job: Job<
+            INotificationQueuePayload<INotificationVerifiedEmailPayload>,
+            unknown,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        const { userId, data, notificationId, completedSteps } = job.data;
+        const result =
+            await this.notificationAccountDomain.processVerifiedEmail(
+                userId,
+                data,
+                notificationId,
+                completedSteps
+            );
+
+        return this.recordSteps(job, result);
     }
 
-    async processVerifiedEmail({
-        data: { userId, data },
-    }: Job<
-        INotificationQueuePayload<INotificationVerifiedEmailPayload>,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationAccountDomain.processVerifiedEmail(
-            userId,
-            data
-        );
+    async processVerificationEmail(
+        job: Job<
+            INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
+            unknown,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        const { userId, data, notificationId, completedSteps } = job.data;
+        const result =
+            await this.notificationAccountDomain.processVerificationEmail(
+                userId,
+                data,
+                notificationId,
+                completedSteps
+            );
+
+        return this.recordSteps(job, result);
     }
 
-    async processVerificationEmail({
-        data: { userId, data },
-    }: Job<
-        INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationAccountDomain.processVerificationEmail(
-            userId,
-            data
-        );
+    async processVerifiedMobileNumber(
+        job: Job<
+            INotificationQueuePayload<INotificationVerifiedMobileNumberPayload>,
+            unknown,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        const { userId, data, notificationId, completedSteps } = job.data;
+        const result =
+            await this.notificationAccountDomain.processVerifiedMobileNumber(
+                userId,
+                data,
+                notificationId,
+                completedSteps
+            );
+
+        return this.recordSteps(job, result);
     }
 
-    async processVerifiedMobileNumber({
-        data: { userId, data },
-    }: Job<
-        INotificationQueuePayload<INotificationVerifiedMobileNumberPayload>,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationAccountDomain.processVerifiedMobileNumber(
-            userId,
-            data
-        );
+    async processTemporaryPasswordByAdmin(
+        job: Job<
+            INotificationQueuePayload<INotificationTemporaryPasswordEncryptedPayload>,
+            unknown,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        const { proceedBy, userId, data, notificationId, completedSteps } =
+            job.data;
+        const result =
+            await this.notificationSecurityDomain.processTemporaryPasswordByAdmin(
+                userId,
+                proceedBy,
+                data,
+                notificationId,
+                completedSteps
+            );
+
+        return this.recordSteps(job, result);
     }
 
-    async processTemporaryPasswordByAdmin({
-        data: { proceedBy, userId, data },
-    }: Job<
-        INotificationQueuePayload<INotificationTemporaryPasswordEncryptedPayload>,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationSecurityDomain.processTemporaryPasswordByAdmin(
-            userId,
-            proceedBy,
-            data
-        );
+    async processChangePassword(
+        job: Job<INotificationQueuePayload, unknown, EnumNotificationProcess>
+    ): Promise<IQueueResponse> {
+        const { userId, notificationId, completedSteps } = job.data;
+        const result =
+            await this.notificationSecurityDomain.processChangePassword(
+                userId,
+                notificationId,
+                completedSteps
+            );
+
+        return this.recordSteps(job, result);
     }
 
-    async processChangePassword({
-        data: { userId },
-    }: Job<
-        INotificationQueuePayload,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationSecurityDomain.processChangePassword(userId);
+    async processForgotPassword(
+        job: Job<
+            INotificationQueuePayload<INotificationForgotPasswordEncryptedPayload>,
+            unknown,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        const { userId, data, notificationId, completedSteps } = job.data;
+        const result =
+            await this.notificationSecurityDomain.processForgotPassword(
+                userId,
+                data,
+                notificationId,
+                completedSteps
+            );
+
+        return this.recordSteps(job, result);
     }
 
-    async processForgotPassword({
-        data: { userId, data },
-    }: Job<
-        INotificationQueuePayload<INotificationForgotPasswordEncryptedPayload>,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationSecurityDomain.processForgotPassword(
-            userId,
-            data
-        );
+    async processResetPassword(
+        job: Job<INotificationQueuePayload, unknown, EnumNotificationProcess>
+    ): Promise<IQueueResponse> {
+        const { userId, notificationId, completedSteps } = job.data;
+        const result =
+            await this.notificationSecurityDomain.processResetPassword(
+                userId,
+                notificationId,
+                completedSteps
+            );
+
+        return this.recordSteps(job, result);
     }
 
-    async processResetPassword({
-        data: { userId },
-    }: Job<
-        INotificationQueuePayload,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationSecurityDomain.processResetPassword(userId);
+    async processResetTwoFactorByAdmin(
+        job: Job<INotificationQueuePayload, unknown, EnumNotificationProcess>
+    ): Promise<IQueueResponse> {
+        const { userId, proceedBy, notificationId, completedSteps } = job.data;
+        const result =
+            await this.notificationSecurityDomain.processResetTwoFactorByAdmin(
+                userId,
+                proceedBy,
+                notificationId,
+                completedSteps
+            );
+
+        return this.recordSteps(job, result);
     }
 
-    async processResetTwoFactorByAdmin({
-        data: { userId, proceedBy },
-    }: Job<
-        INotificationQueuePayload,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationSecurityDomain.processResetTwoFactorByAdmin(
-            userId,
-            proceedBy
-        );
-    }
+    async processNewDeviceLogin(
+        job: Job<
+            INotificationQueuePayload<INotificationNewDeviceLoginPayload>,
+            unknown,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        const { userId, data, notificationId, completedSteps } = job.data;
+        const result =
+            await this.notificationSecurityDomain.processNewDeviceLogin(
+                userId,
+                data,
+                notificationId,
+                completedSteps
+            );
 
-    async processNewDeviceLogin({
-        data: { userId, data },
-    }: Job<
-        INotificationQueuePayload<INotificationNewDeviceLoginPayload>,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationSecurityDomain.processNewDeviceLogin(
-            userId,
-            data
-        );
+        return this.recordSteps(job, result);
     }
 
     async processPublishTermPolicy({
@@ -192,72 +287,106 @@ export class NotificationProcessorService {
         );
     }
 
-    async processUserAcceptTermPolicy({
-        data: { userId, data },
-    }: Job<
-        INotificationQueuePayload<INotificationAcceptTermPolicyPayload>,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationTermPolicyDomain.processUserAcceptTermPolicy(
-            userId,
-            data
-        );
+    async processUserAcceptTermPolicy(
+        job: Job<
+            INotificationQueuePayload<INotificationAcceptTermPolicyPayload>,
+            unknown,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        const { userId, data, notificationId, completedSteps } = job.data;
+        const result =
+            await this.notificationTermPolicyDomain.processUserAcceptTermPolicy(
+                userId,
+                data,
+                notificationId,
+                completedSteps
+            );
+
+        return this.recordSteps(job, result);
     }
 
-    async processWorkspaceInvite({
-        data: { userId, proceedBy, data },
-    }: Job<
-        INotificationQueuePayload<INotificationWorkspaceInviteEncryptedPayload>,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationWorkspaceDomain.processWorkspaceInvite(
-            userId,
-            proceedBy,
-            data
-        );
+    async processWorkspaceInvite(
+        job: Job<
+            INotificationQueuePayload<INotificationWorkspaceInviteEncryptedPayload>,
+            unknown,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        const { userId, proceedBy, data, notificationId, completedSteps } =
+            job.data;
+        const result =
+            await this.notificationWorkspaceDomain.processWorkspaceInvite(
+                userId,
+                proceedBy,
+                data,
+                notificationId,
+                completedSteps
+            );
+
+        return this.recordSteps(job, result);
     }
 
-    async processWorkspaceJoinRequest({
-        data: { userId, proceedBy, data },
-    }: Job<
-        INotificationQueuePayload<INotificationWorkspaceJoinRequestEncryptedPayload>,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationWorkspaceDomain.processWorkspaceJoinRequest(
-            userId,
-            proceedBy,
-            data
-        );
+    async processWorkspaceJoinRequest(
+        job: Job<
+            INotificationQueuePayload<INotificationWorkspaceJoinRequestEncryptedPayload>,
+            unknown,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        const { userId, proceedBy, data, notificationId, completedSteps } =
+            job.data;
+        const result =
+            await this.notificationWorkspaceDomain.processWorkspaceJoinRequest(
+                userId,
+                proceedBy,
+                data,
+                notificationId,
+                completedSteps
+            );
+
+        return this.recordSteps(job, result);
     }
 
-    async processWorkspaceJoinAccepted({
-        data: { userId, proceedBy, data },
-    }: Job<
-        INotificationQueuePayload<INotificationWorkspaceJoinAcceptedPayload>,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationWorkspaceDomain.processWorkspaceJoinAccepted(
-            userId,
-            proceedBy,
-            data
-        );
+    async processWorkspaceJoinAccepted(
+        job: Job<
+            INotificationQueuePayload<INotificationWorkspaceJoinAcceptedPayload>,
+            unknown,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        const { userId, proceedBy, data, notificationId, completedSteps } =
+            job.data;
+        const result =
+            await this.notificationWorkspaceDomain.processWorkspaceJoinAccepted(
+                userId,
+                proceedBy,
+                data,
+                notificationId,
+                completedSteps
+            );
+
+        return this.recordSteps(job, result);
     }
 
-    async processWorkspaceJoinRejected({
-        data: { userId, proceedBy, data },
-    }: Job<
-        INotificationQueuePayload<INotificationWorkspaceJoinRejectedPayload>,
-        unknown,
-        EnumNotificationProcess
-    >): Promise<IQueueResponse> {
-        return this.notificationWorkspaceDomain.processWorkspaceJoinRejected(
-            userId,
-            proceedBy,
-            data
-        );
+    async processWorkspaceJoinRejected(
+        job: Job<
+            INotificationQueuePayload<INotificationWorkspaceJoinRejectedPayload>,
+            unknown,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        const { userId, proceedBy, data, notificationId, completedSteps } =
+            job.data;
+        const result =
+            await this.notificationWorkspaceDomain.processWorkspaceJoinRejected(
+                userId,
+                proceedBy,
+                data,
+                notificationId,
+                completedSteps
+            );
+
+        return this.recordSteps(job, result);
     }
 }

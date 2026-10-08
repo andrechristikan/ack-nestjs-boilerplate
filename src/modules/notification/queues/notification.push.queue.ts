@@ -1,10 +1,14 @@
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     NotificationReferenceJobIdPattern,
+    NotificationStepJobIdPattern,
     NotificationUserJobIdPattern,
     NotificationWorkspaceUserJobIdPattern,
 } from '@modules/notification/constants/notification.constant';
-import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationPushProcess,
+    EnumNotificationStep,
+} from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
     INotificationPushCleanupTokenPayload,
@@ -29,7 +33,6 @@ import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 export class NotificationPushQueue {
     private readonly defTz: string;
     private readonly dedupTtlInMs: number;
-    private readonly cleanupDedupTtlInMs: number;
     private readonly cleanupStaleTokensCron: string;
 
     constructor(
@@ -41,9 +44,6 @@ export class NotificationPushQueue {
         this.defTz = this.configService.get<string>('app.timezone')!;
         this.dedupTtlInMs = this.configService.get<number>(
             'notification.dedupTtlInMs'
-        )!;
-        this.cleanupDedupTtlInMs = this.configService.get<number>(
-            'notification.push.cleanupDedupTtlInMs'
         )!;
         this.cleanupStaleTokensCron = this.configService.get<string>(
             'notification.push.cleanupStaleTokensCron'
@@ -61,6 +61,8 @@ export class NotificationPushQueue {
             {
                 send: sendPayload,
                 data: { passwordCreatedAt, passwordExpiredAt },
+                completedSteps: [],
+                failureTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -71,10 +73,19 @@ export class NotificationPushQueue {
             }
         );
 
+        const jobId = this.helperStringService.fillPattern(
+            NotificationStepJobIdPattern,
+            {
+                notificationId: sendPayload.notificationId,
+                step: EnumNotificationStep.sendPush,
+            }
+        );
+
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.temporaryPasswordByAdmin,
             payload,
             {
+                jobId,
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: deduplicationId,
@@ -90,6 +101,8 @@ export class NotificationPushQueue {
         const payload: INotificationPushQueuePayload = {
             send: sendPayload,
             data: null,
+            completedSteps: [],
+            failureTokens: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -100,11 +113,60 @@ export class NotificationPushQueue {
             }
         );
 
+        const jobId = this.helperStringService.fillPattern(
+            NotificationStepJobIdPattern,
+            {
+                notificationId: sendPayload.notificationId,
+                step: EnumNotificationStep.sendPush,
+            }
+        );
+
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.resetPassword,
             payload,
             {
+                jobId,
                 priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: deduplicationId,
+                    ttl: this.dedupTtlInMs,
+                },
+            }
+        );
+    }
+
+    async sendForgotPassword(
+        sendPayload: INotificationSendPushPayload
+    ): Promise<void> {
+        const payload: INotificationPushQueuePayload = {
+            send: sendPayload,
+            data: null,
+            completedSteps: [],
+            failureTokens: null,
+        };
+
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationUserJobIdPattern,
+            {
+                process: EnumNotificationPushProcess.forgotPassword,
+                userId: sendPayload.userId,
+            }
+        );
+
+        const jobId = this.helperStringService.fillPattern(
+            NotificationStepJobIdPattern,
+            {
+                notificationId: sendPayload.notificationId,
+                step: EnumNotificationStep.sendPush,
+            }
+        );
+
+        await this.notificationPushQueue.add(
+            EnumNotificationPushProcess.forgotPassword,
+            payload,
+            {
+                jobId,
+                priority: EnumQueuePriority.high,
                 deduplication: {
                     id: deduplicationId,
                     ttl: this.dedupTtlInMs,
@@ -119,6 +181,8 @@ export class NotificationPushQueue {
         const payload: INotificationPushQueuePayload = {
             send: sendPayload,
             data: null,
+            completedSteps: [],
+            failureTokens: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -129,10 +193,19 @@ export class NotificationPushQueue {
             }
         );
 
+        const jobId = this.helperStringService.fillPattern(
+            NotificationStepJobIdPattern,
+            {
+                notificationId: sendPayload.notificationId,
+                step: EnumNotificationStep.sendPush,
+            }
+        );
+
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.resetTwoFactorByAdmin,
             payload,
             {
+                jobId,
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: deduplicationId,
@@ -150,6 +223,8 @@ export class NotificationPushQueue {
             {
                 send: sendPayload,
                 data,
+                completedSteps: [],
+                failureTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -160,10 +235,19 @@ export class NotificationPushQueue {
             }
         );
 
+        const jobId = this.helperStringService.fillPattern(
+            NotificationStepJobIdPattern,
+            {
+                notificationId: sendPayload.notificationId,
+                step: EnumNotificationStep.sendPush,
+            }
+        );
+
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.newDeviceLogin,
             payload,
             {
+                jobId,
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: deduplicationId,
@@ -195,6 +279,8 @@ export class NotificationPushQueue {
                     reference,
                     expiredAt,
                 },
+                completedSteps: [],
+                failureTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -205,10 +291,19 @@ export class NotificationPushQueue {
             }
         );
 
+        const jobId = this.helperStringService.fillPattern(
+            NotificationStepJobIdPattern,
+            {
+                notificationId: sendPayload.notificationId,
+                step: EnumNotificationStep.sendPush,
+            }
+        );
+
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.workspaceInvite,
             payload,
             {
+                jobId,
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: deduplicationId,
@@ -230,6 +325,8 @@ export class NotificationPushQueue {
             {
                 send: sendPayload,
                 data: { workspaceId, workspaceName, requesterName },
+                completedSteps: [],
+                failureTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -241,10 +338,19 @@ export class NotificationPushQueue {
             }
         );
 
+        const jobId = this.helperStringService.fillPattern(
+            NotificationStepJobIdPattern,
+            {
+                notificationId: sendPayload.notificationId,
+                step: EnumNotificationStep.sendPush,
+            }
+        );
+
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.workspaceJoinRequest,
             payload,
             {
+                jobId,
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: deduplicationId,
@@ -262,6 +368,8 @@ export class NotificationPushQueue {
             {
                 send: sendPayload,
                 data,
+                completedSteps: [],
+                failureTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -273,10 +381,19 @@ export class NotificationPushQueue {
             }
         );
 
+        const jobId = this.helperStringService.fillPattern(
+            NotificationStepJobIdPattern,
+            {
+                notificationId: sendPayload.notificationId,
+                step: EnumNotificationStep.sendPush,
+            }
+        );
+
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.workspaceJoinAccepted,
             payload,
             {
+                jobId,
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: deduplicationId,
@@ -294,6 +411,8 @@ export class NotificationPushQueue {
             {
                 send: sendPayload,
                 data,
+                completedSteps: [],
+                failureTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -305,10 +424,19 @@ export class NotificationPushQueue {
             }
         );
 
+        const jobId = this.helperStringService.fillPattern(
+            NotificationStepJobIdPattern,
+            {
+                notificationId: sendPayload.notificationId,
+                step: EnumNotificationStep.sendPush,
+            }
+        );
+
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.workspaceJoinRejected,
             payload,
             {
+                jobId,
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: deduplicationId,
@@ -319,6 +447,7 @@ export class NotificationPushQueue {
     }
 
     async sendCleanupTokens(
+        notificationId: string,
         userId: string,
         failureTokens: string[]
     ): Promise<void> {
@@ -328,11 +457,11 @@ export class NotificationPushQueue {
                 userId,
             };
 
-            const deduplicationId = this.helperStringService.fillPattern(
-                NotificationUserJobIdPattern,
+            const jobId = this.helperStringService.fillPattern(
+                NotificationStepJobIdPattern,
                 {
-                    process: EnumNotificationPushProcess.cleanupTokens,
-                    userId,
+                    notificationId,
+                    step: EnumNotificationStep.cleanupTokens,
                 }
             );
 
@@ -340,11 +469,8 @@ export class NotificationPushQueue {
                 EnumNotificationPushProcess.cleanupTokens,
                 payload,
                 {
+                    jobId,
                     priority: EnumQueuePriority.low,
-                    deduplication: {
-                        id: deduplicationId,
-                        ttl: this.cleanupDedupTtlInMs,
-                    },
                 }
             );
         }

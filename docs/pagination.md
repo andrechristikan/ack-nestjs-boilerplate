@@ -291,7 +291,9 @@ flowchart LR
 1. Kit base schemas live under `src/common/pagination/dtos/`:
     - `PaginationOffsetQuerySchema` (`page` / `perPage`)
     - `PaginationCursorQuerySchema` (`cursor` / `perPage`)
-    - beside them, `PaginationOffsetListQuerySchema` and `PaginationCursorListQuerySchema`, each extending its base with the optional `search` and `orderBy`. They are the shape `PaginationQueryUtil.offset` / `.cursor` read, and the inferred type of every module list schema is assignable to it.
+    - `search` and `orderBy` live in the module list schemas, not in the kit base schemas.
+    - `PaginationQueryUtil.offset` takes `PaginationOffsetQueryDto & IPaginationListQuery`, and `.cursor` takes `PaginationCursorQueryDto & IPaginationListQuery`.
+    - `IPaginationListQuery` (`pagination.interface.ts`) is `{ search?: string | undefined; orderBy?: string | string[] | undefined }`. The inferred type of every module list schema is assignable to it.
 2. A module list DTO `.extend`s `search` / `orderBy` only when its allow-lists are non-empty, plus any filter fields.
     - Each `*.dto.ts` file holds one schema const.
 3. The controller binds one `@Query({ schema })` and passes the whole DTO to the HTTP service.

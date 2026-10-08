@@ -85,8 +85,7 @@ export class DeviceRepository implements IDeviceRepository {
             where: { id: deviceId },
             data: {
                 ...(name !== null && { name }),
-                ...(platform !== null && { platform }),
-                notificationProvider,
+                ...(platform !== null && { platform, notificationProvider }),
                 ...(notificationToken !== null && { notificationToken }),
                 lastActiveAt: now,
             },

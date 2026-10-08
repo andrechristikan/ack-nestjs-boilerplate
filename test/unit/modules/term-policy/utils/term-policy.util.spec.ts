@@ -12,7 +12,8 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
-import type { Prisma, TermPolicy } from '@generated/prisma-client/client';
+import type { TermPolicy } from '@generated/prisma-client/client';
+import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import type { ITermPolicyContent } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
@@ -169,23 +170,35 @@ describe('TermPolicyUtil', () => {
         });
     });
 
-    describe('checkContentExist', () => {
-        it('returns true when a content in the language exists', () => {
-            const contents = [
-                { language: EnumMessageLanguage.en },
-            ] as unknown as Prisma.JsonArray;
+    describe('toContents', () => {
+        const stored = {
+            language: EnumMessageLanguage.en,
+            bucket: 'bucket',
+            key: 'term/en.pdf',
+            cdnUrl: null,
+            completedUrl: 'https://bucket/term/en.pdf',
+            mime: 'application/pdf',
+            extension: 'pdf',
+            access: EnumAwsS3Accessibility.private,
+            size: 10,
+        };
 
-            expect(
-                util.checkContentExist(contents, EnumMessageLanguage.en)
-            ).toBe(true);
+        it('returns the contents typed when every language and access is known', () => {
+            const result = util.toContents([stored]);
+
+            expect(result).toEqual([stored]);
         });
 
-        it('returns false when no content in the language exists', () => {
-            const contents = [] as unknown as Prisma.JsonArray;
+        it('returns TermPolicyContentInvalidException for an unknown language', () => {
+            const result = util.toContents([{ ...stored, language: 'xx' }]);
 
-            expect(
-                util.checkContentExist(contents, EnumMessageLanguage.en)
-            ).toBe(false);
+            expect(result).toBeInstanceOf(TermPolicyContentInvalidException);
+        });
+
+        it('returns TermPolicyContentInvalidException for an unknown access', () => {
+            const result = util.toContents([{ ...stored, access: 'open' }]);
+
+            expect(result).toBeInstanceOf(TermPolicyContentInvalidException);
         });
     });
 

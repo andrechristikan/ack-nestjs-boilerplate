@@ -86,8 +86,7 @@ export class AnalyticUserController {
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
         return this.analyticWorkspaceUserHttpService.inviteFunnel(
             workspace.id,
-            query.startDate,
-            query.endDate
+            query
         );
     }
 
@@ -113,8 +112,7 @@ export class AnalyticUserController {
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
         return this.analyticWorkspaceUserHttpService.joinOutcomes(
             workspace.id,
-            query.startDate,
-            query.endDate
+            query
         );
     }
 
@@ -157,8 +155,7 @@ export class AnalyticUserController {
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         return this.analyticWorkspaceUserHttpService.activity(
             workspace.id,
-            query.startDate,
-            query.endDate
+            query
         );
     }
 }

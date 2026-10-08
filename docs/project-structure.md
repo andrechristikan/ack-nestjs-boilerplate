@@ -2,7 +2,7 @@
 
 ## Overview
 
-- Feature modules follow the repository pattern.
+- A feature module that persists data holds a repository layer. `analytic`, `auth`, `health`, `hello`, and `onboarding` have none (see [Modules](#modules)).
 - Layout is one folder per feature under `src/modules/`.
 
 ## Table of Contents
@@ -65,7 +65,7 @@ Every import between `src/` folders goes through a `tsconfig.json` path alias:
 
 The App Module is the root module. It:
 
-- Imports `CommonModule` (shared infrastructure and global feature modules) and `RouterModule` (HTTP route mounting and the queue processor mount)
+- Imports `CommonModule` (shared infrastructure and global feature modules) and the project's own `RouterModule` from `src/router/router.module.ts` (HTTP route mounting and the queue processor mount)
 - Registers five global exception filters: general, application, HTTP, validation, and import validation
 
 ## Common Module
@@ -150,8 +150,8 @@ Named queues:
 
 The router folder mounts everything the application exposes. It includes:
 
-- `router.module.ts`: root router. It imports the five access-level modules, registers their path prefixes through `RouterModule.register` from `@nestjs/core`, and mounts the processor module.
-- `http/`: one module per access level, each holding its controllers and the `<feature>.http.module.ts` imports they need:
+- `router.module.ts`: the project's `RouterModule`. It imports the five access-level modules, registers their path prefixes through `RouterModule.register` from `@nestjs/core` (imported there as `NestJsRouterModule`, a different class), and mounts the processor module.
+- `http/`: one module per access level, each holding its controllers, the `<feature>.http.module.ts` imports they need, and the `<feature>.domain.module.ts` of each non-`@Global()` feature whose domains the guards on its controllers inject:
     - `router.http.public.module.ts` mounts under `/public`
     - `router.http.system.module.ts` mounts under `/system`
     - `router.http.admin.module.ts` mounts under `/admin`
@@ -235,6 +235,7 @@ modules
   ├── health
   ├── hello
   ├── notification
+  ├── onboarding
   ├── password-history
   ├── policy
   ├── project
@@ -251,6 +252,13 @@ modules
 - It has no repository module of its own.
 - See [Analytic](analytic.md).
 
+`onboarding`:
+
+- It holds `OnboardingDomain`, the cross-module sequences that create a user together with its workspace.
+- Its methods are `signUp`, `loginWithSocial`, `createByAdmin`, and `importByAdmin`.
+- Each one prepares the input through the user domains, commits through `WorkspaceDomain.commitOnboarding`, and notifies the created users.
+- It has a domain module only, `OnboardingDomainModule`, which `UserHttpModule` imports. It owns no repository, HTTP, or processor layer.
+
 **Per-layer Nest modules:**
 
 Each layer of a feature gets its own Nest module file at the root of the feature folder. Only the files with something to provide exist:
@@ -266,8 +274,9 @@ modules/<feature>
 
 - `<feature>.domain.module.ts` is present for every feature.
 - `<feature>.processor.module.ts` exists only in `notification` and `workspace`, the two features with background jobs.
-- `analytic`, `auth`, `health`, and `hello` have no repository module.
-- `auth` has no HTTP module either.
+- `analytic`, `auth`, `health`, `hello`, and `onboarding` have no repository module.
+- `auth` and `onboarding` have no HTTP module either.
+- A `<feature>.http.module.ts` exports its HTTP services only, never a domain module.
 
 **Folders:**
 

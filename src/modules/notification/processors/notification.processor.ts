@@ -11,6 +11,7 @@ import type {
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminEncryptedPayload,
+    INotificationWelcomeEncryptedPayload,
     INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceJoinAcceptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
@@ -100,7 +101,7 @@ export class NotificationProcessor extends QueueProcessorBase {
             case EnumNotificationProcess.welcome:
                 return await this.notificationProcessorService.processWelcome(
                     job as Job<
-                        INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
+                        INotificationQueuePayload<INotificationWelcomeEncryptedPayload>,
                         IQueueResponse,
                         EnumNotificationProcess
                     >

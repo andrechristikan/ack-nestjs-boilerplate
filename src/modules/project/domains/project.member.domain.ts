@@ -267,17 +267,14 @@ export class ProjectMemberDomain {
                 workspaceId: project.workspaceId,
                 metadata: { targetUserId: targetMember.userId },
             }),
-        ];
-        if (targetMember.userId !== actorId) {
-            const removedByAdminEvent = this.activityLogDomain.prepare({
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberRemovedByAdmin,
                 userId: targetMember.userId,
                 createdBy: actorId,
                 workspaceId: project.workspaceId,
                 metadata: { actorUserId: actorId },
-            });
-            events.push(removedByAdminEvent);
-        }
+            }),
+        ];
 
         await this.projectMemberRepository.removeMember(targetMember.id);
 

@@ -42,7 +42,7 @@ This page is the human catalog.
 | `51200` | `notification` | `51200`–`51203` | 4       |
 | `51300` | `device`       | `51300`         | 1       |
 | `51400` | `aws`          | `51400`–`51406` | 7       |
-| `51500` | `term-policy`  | `51500`–`51508` | 9       |
+| `51500` | `term-policy`  | `51500`–`51509` | 10      |
 | `51600` | `workspace`    | `51600`–`51620` | 21      |
 | `51700` | `project`      | `51700`–`51707` | 8       |
 | `51800` | `database`     | `51800`         | 1       |
@@ -125,6 +125,10 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | --- | --- | --- | --- | --- | --- |
 | `notFound` | `50400` | `notFound` | 404 (`NOT_FOUND`) | `session.error.notFound` | Sorry, we couldn't find the session. |
 | `revoked` | `50401` | `revoked` | 401 (`UNAUTHORIZED`) | `session.error.revoked` | Your session has expired or been revoked. Please sign in again. |
+
+- `revoked` is raised by the JWT guards for a missing session key or a `jti` mismatch.
+- `UserLoginDomain.refreshSession` and `SessionDomain.updateJtiInTx` raise it for a lost refresh race: the session cache entry is gone, the `jti` hash does not match, the rotation matches no live session row, or the Redis rewrite finds the key purged.
+- A refresh token without a `jti` answers `jwtRefreshTokenInvalid` (`50801`) instead.
 
 ## `role`
 
@@ -287,6 +291,9 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `contentNotFound` | `51506` | `contentNotFound` | 404 (`NOT_FOUND`) | `termPolicy.error.contentNotFound` | Term policy content not found. |
 | `contentExist` | `51507` | `contentExist` | 409 (`CONFLICT`) | `termPolicy.error.contentExist` | This content already exists in the term policy. |
 | `contentEmpty` | `51508` | `contentEmpty` | 400 (`BAD_REQUEST`) | `termPolicy.error.contentEmpty` | Term policy content cannot be empty. |
+| `contentInvalid` | `51509` | `contentInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `termPolicy.error.contentInvalid` | Term policy content is invalid. |
+
+- `contentInvalid` is raised by `TermPolicyContentDomain` and `TermPolicyDomain` when `TermPolicyUtil.toContents` finds a stored content whose language or access is not a known enum value.
 
 ## `workspace`
 

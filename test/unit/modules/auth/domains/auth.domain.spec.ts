@@ -14,6 +14,7 @@ import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/
 import { AuthSocialGoogleNotConfiguredException } from '@modules/auth/exceptions/auth.social-google-not-configured.exception';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import { SessionCache } from '@modules/session/caches/session.cache';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type { ISessionCache } from '@modules/session/interfaces/session.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
@@ -26,6 +27,8 @@ describe('AuthDomain', () => {
     const authSocialDomain: MockProxy<AuthSocialDomain> =
         mock<AuthSocialDomain>();
     const sessionCache: MockProxy<SessionCache> = mock<SessionCache>();
+    const helperHashService: MockProxy<HelperHashService> =
+        mock<HelperHashService>();
     let domain: AuthDomain;
 
     const accessPayload: IAuthJwtAccessTokenPayload = {
@@ -59,6 +62,7 @@ describe('AuthDomain', () => {
                 AuthDomain,
                 { provide: AuthSocialDomain, useValue: authSocialDomain },
                 { provide: SessionCache, useValue: sessionCache },
+                { provide: HelperHashService, useValue: helperHashService },
             ],
         }).compile();
         domain = module.get(AuthDomain);
@@ -179,6 +183,7 @@ describe('AuthDomain', () => {
                 jti: 'different-jti',
             };
             sessionCache.getLogin.mockResolvedValue(cached);
+            helperHashService.sha256Compare.mockReturnValue(false);
 
             await expect(
                 domain.validateJwtAccessStrategy(accessPayload)
@@ -193,6 +198,27 @@ describe('AuthDomain', () => {
             });
         });
 
+        it('compares the jti through sha256Compare', async () => {
+            const cached: ISessionCache = {
+                userId: 'user-1',
+                sessionId: 'session-1',
+                expiredAt: new Date('2026-02-01T00:00:00.000Z'),
+                jti: 'jti-value',
+            };
+            sessionCache.getLogin.mockResolvedValue(cached);
+            helperHashService.sha256Hash.mockImplementation(
+                value => `hash(${value})`
+            );
+            helperHashService.sha256Compare.mockReturnValue(true);
+
+            await domain.validateJwtAccessStrategy(accessPayload);
+
+            expect(helperHashService.sha256Compare).toHaveBeenCalledWith(
+                `hash(${cached.jti})`,
+                `hash(${accessPayload.jti})`
+            );
+        });
+
         it('returns the payload when the session is valid and the jti matches', async () => {
             const cached: ISessionCache = {
                 userId: 'user-1',
@@ -201,6 +227,7 @@ describe('AuthDomain', () => {
                 jti: 'jti-value',
             };
             sessionCache.getLogin.mockResolvedValue(cached);
+            helperHashService.sha256Compare.mockReturnValue(true);
 
             const result =
                 await domain.validateJwtAccessStrategy(accessPayload);
@@ -410,6 +437,7 @@ describe('AuthDomain', () => {
                 jti: 'different-jti',
             };
             sessionCache.getLogin.mockResolvedValue(cached);
+            helperHashService.sha256Compare.mockReturnValue(false);
 
             await expect(
                 domain.validateJwtRefreshStrategy(refreshPayload)
@@ -424,6 +452,27 @@ describe('AuthDomain', () => {
             });
         });
 
+        it('compares the jti through sha256Compare', async () => {
+            const cached: ISessionCache = {
+                userId: 'user-1',
+                sessionId: 'session-1',
+                expiredAt: new Date('2026-02-01T00:00:00.000Z'),
+                jti: 'jti-value',
+            };
+            sessionCache.getLogin.mockResolvedValue(cached);
+            helperHashService.sha256Hash.mockImplementation(
+                value => `hash(${value})`
+            );
+            helperHashService.sha256Compare.mockReturnValue(true);
+
+            await domain.validateJwtRefreshStrategy(refreshPayload);
+
+            expect(helperHashService.sha256Compare).toHaveBeenCalledWith(
+                `hash(${cached.jti})`,
+                `hash(${refreshPayload.jti})`
+            );
+        });
+
         it('returns the payload when the session is valid and the jti matches', async () => {
             const cached: ISessionCache = {
                 userId: 'user-1',
@@ -432,6 +481,7 @@ describe('AuthDomain', () => {
                 jti: 'jti-value',
             };
             sessionCache.getLogin.mockResolvedValue(cached);
+            helperHashService.sha256Compare.mockReturnValue(true);
 
             const result =
                 await domain.validateJwtRefreshStrategy(refreshPayload);

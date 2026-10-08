@@ -1,14 +1,19 @@
 import type { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
+import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import type { ITermPolicyContent } from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumTermPolicyType, Prisma } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
+import { EnumTermPolicyType } from '@generated/prisma-client/client';
+import type {
+    TermPolicy,
+    TermPolicyContent,
+} from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyUtil {
@@ -61,13 +66,27 @@ export class TermPolicyUtil {
         return fullPath;
     }
 
-    checkContentExist(
-        contents: Prisma.JsonArray,
-        language: EnumMessageLanguage
-    ): boolean {
-        return !!(contents as unknown as ITermPolicyContent[]).find(
-            c => c.language === language
-        );
+    toContents(
+        contents: TermPolicyContent[]
+    ): ITermPolicyContent[] | TermPolicyContentInvalidException {
+        const mapped: ITermPolicyContent[] = [];
+        for (const content of contents) {
+            const language =
+                Object.values(EnumMessageLanguage).find(
+                    value => value === content.language
+                ) ?? null;
+            const access =
+                Object.values(EnumAwsS3Accessibility).find(
+                    value => value === content.access
+                ) ?? null;
+            if (language === null || access === null) {
+                return new TermPolicyContentInvalidException();
+            }
+
+            mapped.push({ ...content, language, access });
+        }
+
+        return mapped;
     }
 
     getContentPublicPath(type: EnumTermPolicyType, version: number): string {

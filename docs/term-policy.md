@@ -315,6 +315,8 @@ Remove specific language variant from the draft record (`404` `contentNotFound` 
 DELETE /admin/term-policy/content/:termPolicyId/remove
 ```
 
+Add, update, remove, and get content read the stored contents through `TermPolicyUtil.toContents`. A stored content with an unknown language or access answers `500` (`contentInvalid`).
+
 ### Get Content
 
 Get presigned URL to download policy content:
@@ -340,6 +342,7 @@ Publishing:
 - queues the publication email described under [Admin Flow Diagram](#admin-flow-diagram)
 - an already-published policy returns `400` (`statusInvalid`)
 - a policy with no content returns `400` (`contentEmpty`)
+- a stored content with an unknown language or access returns `500` (`contentInvalid`)
 
 Once published:
 

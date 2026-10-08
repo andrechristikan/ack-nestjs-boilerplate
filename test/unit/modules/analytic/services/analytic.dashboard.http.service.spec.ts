@@ -69,14 +69,17 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            const result = await service.usersRegistrations(startDate, endDate);
+            const result = await service.usersRegistrations({
+                startDate,
+                endDate,
+            });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
                 analyticDashboardDomain.usersRegistrations
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -85,11 +88,11 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.usersRegistrations(null, null);
+            await service.usersRegistrations({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -106,7 +109,7 @@ describe('AnalyticDashboardHttpService', () => {
                 rate: 0.4,
             });
 
-            const result = await service.usersChurn(startDate, endDate);
+            const result = await service.usersChurn({ startDate, endDate });
 
             expect(result).toEqual({
                 data: { count: 4, total: 10, rate: 0.4 },
@@ -116,7 +119,7 @@ describe('AnalyticDashboardHttpService', () => {
                 endDate
             );
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -127,11 +130,11 @@ describe('AnalyticDashboardHttpService', () => {
                 rate: 0.4,
             });
 
-            await service.usersChurn(null, null);
+            await service.usersChurn({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -147,7 +150,7 @@ describe('AnalyticDashboardHttpService', () => {
                 current: 5,
             });
 
-            const result = await service.usersBlocked(startDate, endDate);
+            const result = await service.usersBlocked({ startDate, endDate });
 
             expect(result).toEqual({ data: { trend: 3, current: 5 } });
             expect(analyticDashboardDomain.usersBlocked).toHaveBeenCalledWith(
@@ -155,7 +158,7 @@ describe('AnalyticDashboardHttpService', () => {
                 endDate
             );
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -165,11 +168,11 @@ describe('AnalyticDashboardHttpService', () => {
                 current: 5,
             });
 
-            await service.usersBlocked(null, null);
+            await service.usersBlocked({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -439,14 +442,17 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            const result = await service.usersSelfDelete(startDate, endDate);
+            const result = await service.usersSelfDelete({
+                startDate,
+                endDate,
+            });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
                 analyticDashboardDomain.usersSelfDelete
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -455,11 +461,11 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.usersSelfDelete(null, null);
+            await service.usersSelfDelete({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -474,14 +480,17 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            const result = await service.usersClaimUsername(startDate, endDate);
+            const result = await service.usersClaimUsername({
+                startDate,
+                endDate,
+            });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
                 analyticDashboardDomain.usersClaimUsername
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -490,11 +499,11 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.usersClaimUsername(null, null);
+            await service.usersClaimUsername({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -511,7 +520,10 @@ describe('AnalyticDashboardHttpService', () => {
                 deleted: 3,
             });
 
-            const result = await service.usersMobileChurn(startDate, endDate);
+            const result = await service.usersMobileChurn({
+                startDate,
+                endDate,
+            });
 
             expect(result).toEqual({
                 data: { added: 1, updated: 2, deleted: 3 },
@@ -520,7 +532,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.usersMobileChurn
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -531,11 +543,11 @@ describe('AnalyticDashboardHttpService', () => {
                 deleted: 3,
             });
 
-            await service.usersMobileChurn(null, null);
+            await service.usersMobileChurn({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -550,14 +562,17 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            const result = await service.authLoginFrequency(startDate, endDate);
+            const result = await service.authLoginFrequency({
+                startDate,
+                endDate,
+            });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
                 analyticDashboardDomain.authLoginFrequency
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -566,11 +581,11 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.authLoginFrequency(null, null);
+            await service.authLoginFrequency({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -684,7 +699,7 @@ describe('AnalyticDashboardHttpService', () => {
                 maxAttempt: 3,
             });
 
-            const result = await service.authLockout(startDate, endDate);
+            const result = await service.authLockout({ startDate, endDate });
 
             expect(result).toEqual({ data: { failed: 6, maxAttempt: 3 } });
             expect(analyticDashboardDomain.authLockout).toHaveBeenCalledWith(
@@ -692,7 +707,7 @@ describe('AnalyticDashboardHttpService', () => {
                 endDate
             );
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -702,11 +717,11 @@ describe('AnalyticDashboardHttpService', () => {
                 maxAttempt: 3,
             });
 
-            await service.authLockout(null, null);
+            await service.authLockout({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -721,14 +736,17 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            const result = await service.authSessionRevoke(startDate, endDate);
+            const result = await service.authSessionRevoke({
+                startDate,
+                endDate,
+            });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
                 analyticDashboardDomain.authSessionRevoke
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -737,11 +755,11 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.authSessionRevoke(null, null);
+            await service.authSessionRevoke({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -871,17 +889,17 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            const result = await service.authRefreshTokenVolume(
+            const result = await service.authRefreshTokenVolume({
                 startDate,
-                endDate
-            );
+                endDate,
+            });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
                 analyticDashboardDomain.authRefreshTokenVolume
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -890,11 +908,11 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.authRefreshTokenVolume(null, null);
+            await service.authRefreshTokenVolume({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -909,7 +927,7 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            const result = await service.authLogoutRate(startDate, endDate);
+            const result = await service.authLogoutRate({ startDate, endDate });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(analyticDashboardDomain.authLogoutRate).toHaveBeenCalledWith(
@@ -917,7 +935,7 @@ describe('AnalyticDashboardHttpService', () => {
                 endDate
             );
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -926,11 +944,11 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.authLogoutRate(null, null);
+            await service.authLogoutRate({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -946,10 +964,10 @@ describe('AnalyticDashboardHttpService', () => {
                 mobile: { used: 4, unused: 1, total: 5, rate: 0.8 },
             });
 
-            const result = await service.authVerificationFunnel(
+            const result = await service.authVerificationFunnel({
                 startDate,
-                endDate
-            );
+                endDate,
+            });
 
             expect(result).toEqual({
                 data: {
@@ -961,7 +979,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.authVerificationFunnel
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -971,11 +989,11 @@ describe('AnalyticDashboardHttpService', () => {
                 mobile: { used: 4, unused: 1, total: 5, rate: 0.8 },
             });
 
-            await service.authVerificationFunnel(null, null);
+            await service.authVerificationFunnel({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -1010,14 +1028,17 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            const result = await service.authPasswordChange(startDate, endDate);
+            const result = await service.authPasswordChange({
+                startDate,
+                endDate,
+            });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
                 analyticDashboardDomain.authPasswordChange
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -1026,11 +1047,11 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.authPasswordChange(null, null);
+            await service.authPasswordChange({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -1045,10 +1066,10 @@ describe('AnalyticDashboardHttpService', () => {
                 { created: 5, used: 2, rate: 0.4 }
             );
 
-            const result = await service.authForgotPasswordConversion(
+            const result = await service.authForgotPasswordConversion({
                 startDate,
-                endDate
-            );
+                endDate,
+            });
 
             expect(result).toEqual({
                 data: { created: 5, used: 2, rate: 0.4 },
@@ -1057,7 +1078,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.authForgotPasswordConversion
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -1066,11 +1087,11 @@ describe('AnalyticDashboardHttpService', () => {
                 { created: 5, used: 2, rate: 0.4 }
             );
 
-            await service.authForgotPasswordConversion(null, null);
+            await service.authForgotPasswordConversion({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -1085,17 +1106,17 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            const result = await service.authAdminForcePassword(
+            const result = await service.authAdminForcePassword({
                 startDate,
-                endDate
-            );
+                endDate,
+            });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
                 analyticDashboardDomain.authAdminForcePassword
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -1104,11 +1125,11 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.authAdminForcePassword(null, null);
+            await service.authAdminForcePassword({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -1142,17 +1163,17 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            const result = await service.authTwoFactorAdminReset(
+            const result = await service.authTwoFactorAdminReset({
                 startDate,
-                endDate
-            );
+                endDate,
+            });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
                 analyticDashboardDomain.authTwoFactorAdminReset
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -1161,11 +1182,11 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.authTwoFactorAdminReset(null, null);
+            await service.authTwoFactorAdminReset({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -1180,17 +1201,17 @@ describe('AnalyticDashboardHttpService', () => {
                 { count: 12 }
             );
 
-            const result = await service.authTwoFactorVerifySuccess(
+            const result = await service.authTwoFactorVerifySuccess({
                 startDate,
-                endDate
-            );
+                endDate,
+            });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
                 analyticDashboardDomain.authTwoFactorVerifySuccess
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -1199,11 +1220,11 @@ describe('AnalyticDashboardHttpService', () => {
                 { count: 12 }
             );
 
-            await service.authTwoFactorVerifySuccess(null, null);
+            await service.authTwoFactorVerifySuccess({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -1218,17 +1239,17 @@ describe('AnalyticDashboardHttpService', () => {
                 { count: 12 }
             );
 
-            const result = await service.authBackupCodeRegeneration(
+            const result = await service.authBackupCodeRegeneration({
                 startDate,
-                endDate
-            );
+                endDate,
+            });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
                 analyticDashboardDomain.authBackupCodeRegeneration
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -1237,11 +1258,11 @@ describe('AnalyticDashboardHttpService', () => {
                 { count: 12 }
             );
 
-            await service.authBackupCodeRegeneration(null, null);
+            await service.authBackupCodeRegeneration({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -1274,17 +1295,17 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            const result = await service.devicesRegistration(
+            const result = await service.devicesRegistration({
                 startDate,
-                endDate
-            );
+                endDate,
+            });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
                 analyticDashboardDomain.devicesRegistration
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -1293,11 +1314,11 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.devicesRegistration(null, null);
+            await service.devicesRegistration({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -1348,14 +1369,17 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            const result = await service.devicesInfoRefresh(startDate, endDate);
+            const result = await service.devicesInfoRefresh({
+                startDate,
+                endDate,
+            });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
                 analyticDashboardDomain.devicesInfoRefresh
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -1364,11 +1388,11 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.devicesInfoRefresh(null, null);
+            await service.devicesInfoRefresh({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -1437,7 +1461,10 @@ describe('AnalyticDashboardHttpService', () => {
                 deleted: 4,
             });
 
-            const result = await service.apiKeysLifecycle(startDate, endDate);
+            const result = await service.apiKeysLifecycle({
+                startDate,
+                endDate,
+            });
 
             expect(result).toEqual({
                 data: { created: 1, reset: 2, updated: 3, deleted: 4 },
@@ -1446,7 +1473,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.apiKeysLifecycle
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -1458,11 +1485,11 @@ describe('AnalyticDashboardHttpService', () => {
                 deleted: 4,
             });
 
-            await service.apiKeysLifecycle(null, null);
+            await service.apiKeysLifecycle({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -1608,14 +1635,17 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            const result = await service.workspacesCreation(startDate, endDate);
+            const result = await service.workspacesCreation({
+                startDate,
+                endDate,
+            });
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(
                 analyticDashboardDomain.workspacesCreation
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -1624,11 +1654,11 @@ describe('AnalyticDashboardHttpService', () => {
                 count: 12,
             });
 
-            await service.workspacesCreation(null, null);
+            await service.workspacesCreation({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -1660,10 +1690,10 @@ describe('AnalyticDashboardHttpService', () => {
                 { status: 'pending', count: 2 },
             ]);
 
-            const result = await service.workspacesInviteFunnel(
+            const result = await service.workspacesInviteFunnel({
                 startDate,
-                endDate
-            );
+                endDate,
+            });
 
             expect(result).toEqual({
                 data: { statuses: [{ status: 'pending', count: 2 }] },
@@ -1672,7 +1702,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.workspacesInviteFunnel
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -1681,11 +1711,11 @@ describe('AnalyticDashboardHttpService', () => {
                 []
             );
 
-            await service.workspacesInviteFunnel(null, null);
+            await service.workspacesInviteFunnel({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -1700,10 +1730,10 @@ describe('AnalyticDashboardHttpService', () => {
                 { status: 'pending', count: 2 },
             ]);
 
-            const result = await service.workspacesJoinOutcomes(
+            const result = await service.workspacesJoinOutcomes({
                 startDate,
-                endDate
-            );
+                endDate,
+            });
 
             expect(result).toEqual({
                 data: { statuses: [{ status: 'pending', count: 2 }] },
@@ -1712,7 +1742,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.workspacesJoinOutcomes
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -1721,11 +1751,11 @@ describe('AnalyticDashboardHttpService', () => {
                 []
             );
 
-            await service.workspacesJoinOutcomes(null, null);
+            await service.workspacesJoinOutcomes({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -1803,7 +1833,10 @@ describe('AnalyticDashboardHttpService', () => {
                 perWorkspace: [{ workspaceId: 'workspace-1', count: 2 }],
             });
 
-            const result = await service.projectsCreation(startDate, endDate);
+            const result = await service.projectsCreation({
+                startDate,
+                endDate,
+            });
 
             expect(result).toEqual({
                 data: {
@@ -1815,7 +1848,7 @@ describe('AnalyticDashboardHttpService', () => {
                 analyticDashboardDomain.projectsCreation
             ).toHaveBeenCalledWith(startDate, endDate);
         });
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -1825,11 +1858,11 @@ describe('AnalyticDashboardHttpService', () => {
                 perWorkspace: [{ workspaceId: 'workspace-1', count: 2 }],
             });
 
-            await service.projectsCreation(null, null);
+            await service.projectsCreation({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });

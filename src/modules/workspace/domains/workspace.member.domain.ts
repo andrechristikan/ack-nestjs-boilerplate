@@ -216,6 +216,10 @@ export class WorkspaceMemberDomain {
             throw new WorkspaceMemberNotFoundException();
         }
 
+        if (targetMember.userId === actorMember.userId) {
+            throw new WorkspaceMemberPeerForbiddenException();
+        }
+
         this.assertPeerActionAllowed(actorMember, targetMember);
 
         const events = [
@@ -226,18 +230,14 @@ export class WorkspaceMemberDomain {
                 workspaceId: workspaceId,
                 metadata: { targetUserId: targetMember.userId },
             }),
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
+                userId: targetMember.userId,
+                createdBy: actorMember.userId,
+                workspaceId: workspaceId,
+                metadata: { actorUserId: actorMember.userId },
+            }),
         ];
-        if (targetMember.userId !== actorMember.userId) {
-            const workspaceMemberRoleUpdatedByAdminEvent =
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
-                    userId: targetMember.userId,
-                    createdBy: actorMember.userId,
-                    workspaceId: workspaceId,
-                    metadata: { actorUserId: actorMember.userId },
-                });
-            events.push(workspaceMemberRoleUpdatedByAdminEvent);
-        }
 
         await this.workspaceMemberRepository.updateRole(
             targetMember.id,
@@ -275,18 +275,14 @@ export class WorkspaceMemberDomain {
                 workspaceId: workspaceId,
                 metadata: { targetUserId: targetMember.userId },
             }),
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
+                userId: targetMember.userId,
+                createdBy: actorMember.userId,
+                workspaceId: workspaceId,
+                metadata: { actorUserId: actorMember.userId },
+            }),
         ];
-        if (targetMember.userId !== actorMember.userId) {
-            const workspaceMemberRemovedByAdminEvent =
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
-                    userId: targetMember.userId,
-                    createdBy: actorMember.userId,
-                    workspaceId: workspaceId,
-                    metadata: { actorUserId: actorMember.userId },
-                });
-            events.push(workspaceMemberRemovedByAdminEvent);
-        }
 
         await this.workspaceMemberRepository.removeMember(targetMember.id);
 

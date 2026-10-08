@@ -187,10 +187,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.usersRegistrations(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersRegistrations(query);
     }
 
     @Doc({ summary: 'admin get user churn rate by date range' })
@@ -212,10 +209,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricRate>> {
-        return this.analyticDashboardHttpService.usersChurn(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersChurn(query);
     }
 
     @Doc({ summary: 'admin get blocked user counts by date range' })
@@ -237,10 +231,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBlockedUsers>> {
-        return this.analyticDashboardHttpService.usersBlocked(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersBlocked(query);
     }
 
     @Doc({ summary: 'admin get user sign up method distribution' })
@@ -413,10 +404,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.usersSelfDelete(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersSelfDelete(query);
     }
 
     @Doc({ summary: 'admin get username claim count by date range' })
@@ -438,10 +426,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.usersClaimUsername(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersClaimUsername(query);
     }
 
     @Doc({ summary: 'admin get user mobile number churn by date range' })
@@ -463,10 +448,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMobileChurn>> {
-        return this.analyticDashboardHttpService.usersMobileChurn(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersMobileChurn(query);
     }
 
     @Doc({ summary: 'admin get login frequency by date range' })
@@ -488,10 +470,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.authLoginFrequency(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authLoginFrequency(query);
     }
 
     @Doc({ summary: 'admin get login method distribution' })
@@ -557,10 +536,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticLockoutMetrics>> {
-        return this.analyticDashboardHttpService.authLockout(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authLockout(query);
     }
 
     @Doc({ summary: 'admin get session revoke count by date range' })
@@ -582,10 +558,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.authSessionRevoke(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authSessionRevoke(query);
     }
 
     @Doc({ summary: 'admin get concurrent session distribution' })
@@ -672,10 +645,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.authRefreshTokenVolume(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authRefreshTokenVolume(query);
     }
 
     @Doc({ summary: 'admin get logout count by date range' })
@@ -697,10 +667,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.authLogoutRate(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authLogoutRate(query);
     }
 
     @Doc({
@@ -725,10 +692,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticVerificationFunnels>> {
-        return this.analyticDashboardHttpService.authVerificationFunnel(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authVerificationFunnel(query);
     }
 
     @Doc({ summary: 'admin get password expiry snapshot' })
@@ -771,10 +735,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.authPasswordChange(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authPasswordChange(query);
     }
 
     @Doc({ summary: 'admin get forgot password conversion by date range' })
@@ -797,8 +758,7 @@ export class AnalyticAdminController {
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticForgotPasswordConversion>> {
         return this.analyticDashboardHttpService.authForgotPasswordConversion(
-            query.startDate,
-            query.endDate
+            query
         );
     }
 
@@ -823,10 +783,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.authAdminForcePassword(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authAdminForcePassword(query);
     }
 
     @Doc({ summary: 'admin get two factor adoption snapshot' })
@@ -869,10 +826,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.authTwoFactorAdminReset(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authTwoFactorAdminReset(query);
     }
 
     @Doc({ summary: 'admin get two factor verify success count by date range' })
@@ -895,8 +849,7 @@ export class AnalyticAdminController {
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         return this.analyticDashboardHttpService.authTwoFactorVerifySuccess(
-            query.startDate,
-            query.endDate
+            query
         );
     }
 
@@ -920,8 +873,7 @@ export class AnalyticAdminController {
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         return this.analyticDashboardHttpService.authBackupCodeRegeneration(
-            query.startDate,
-            query.endDate
+            query
         );
     }
 
@@ -965,10 +917,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.devicesRegistration(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.devicesRegistration(query);
     }
 
     @Doc({ summary: 'admin get device platform distribution' })
@@ -1028,10 +977,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.devicesInfoRefresh(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.devicesInfoRefresh(query);
     }
 
     @Doc({ summary: 'admin get session to device ratio' })
@@ -1112,10 +1058,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticApiKeyLifecycle>> {
-        return this.analyticDashboardHttpService.apiKeysLifecycle(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.apiKeysLifecycle(query);
     }
 
     @Doc({ summary: 'admin get active and expired api key counts' })
@@ -1225,10 +1168,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.workspacesCreation(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.workspacesCreation(query);
     }
 
     @Doc({ summary: 'admin get workspace visibility distribution' })
@@ -1271,10 +1211,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
-        return this.analyticDashboardHttpService.workspacesInviteFunnel(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.workspacesInviteFunnel(query);
     }
 
     @Doc({ summary: 'admin get workspace join request outcomes by date range' })
@@ -1296,10 +1233,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
-        return this.analyticDashboardHttpService.workspacesJoinOutcomes(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.workspacesJoinOutcomes(query);
     }
 
     @Doc({ summary: 'admin get member counts per workspace' })
@@ -1367,10 +1301,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticProjectCreation>> {
-        return this.analyticDashboardHttpService.projectsCreation(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.projectsCreation(query);
     }
 
     @Doc({ summary: 'admin get member counts per project' })
@@ -1458,10 +1389,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticFraudHttpService.accountTakeoverSummary(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticFraudHttpService.accountTakeoverSummary(query);
     }
 
     @Doc({ summary: 'admin get all account takeover fraud detections' })
@@ -1642,10 +1570,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticFraudHttpService.sessionAfterAdminSummary(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticFraudHttpService.sessionAfterAdminSummary(query);
     }
 
     @Doc({

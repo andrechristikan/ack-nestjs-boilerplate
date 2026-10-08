@@ -158,10 +158,10 @@ describe('AnalyticFraudHttpService', () => {
                 window: '24h',
             });
 
-            const result = await service.accountTakeoverSummary(
+            const result = await service.accountTakeoverSummary({
                 startDate,
-                endDate
-            );
+                endDate,
+            });
 
             expect(result).toEqual({
                 data: {
@@ -174,7 +174,7 @@ describe('AnalyticFraudHttpService', () => {
             ).toHaveBeenCalledWith(startDate, endDate);
         });
 
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -184,11 +184,11 @@ describe('AnalyticFraudHttpService', () => {
                 window: null,
             });
 
-            await service.accountTakeoverSummary(null, null);
+            await service.accountTakeoverSummary({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });
@@ -422,10 +422,10 @@ describe('AnalyticFraudHttpService', () => {
                 window: '24h',
             });
 
-            const result = await service.sessionAfterAdminSummary(
+            const result = await service.sessionAfterAdminSummary({
                 startDate,
-                endDate
-            );
+                endDate,
+            });
 
             expect(result).toEqual({
                 data: {
@@ -438,7 +438,7 @@ describe('AnalyticFraudHttpService', () => {
             ).toHaveBeenCalledWith(startDate, endDate);
         });
 
-        it('passes null when dates are omitted', async () => {
+        it('passes the query dates to the range check', async () => {
             analyticDateDomain.requireRange.mockReturnValue({
                 startDate,
                 endDate,
@@ -448,11 +448,11 @@ describe('AnalyticFraudHttpService', () => {
                 window: null,
             });
 
-            await service.sessionAfterAdminSummary(null, null);
+            await service.sessionAfterAdminSummary({ startDate, endDate });
 
             expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
-                null,
-                null
+                startDate,
+                endDate
             );
         });
     });

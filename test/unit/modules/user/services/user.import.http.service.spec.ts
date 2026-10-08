@@ -3,7 +3,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -16,25 +15,17 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
 import { UserImportDomain } from '@modules/user/domains/user.import.domain';
-import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
+import { OnboardingDomain } from '@modules/onboarding/domains/onboarding.domain';
 import { UserImportHttpService } from '@modules/user/services/user.import.http.service';
-import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
-import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
-import type {
-    IUser,
-    IUserCreateWithWorkspaceInput,
-} from '@modules/user/interfaces/user.interface';
-import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 
 describe('UserImportHttpService', () => {
     const userImportDomain: MockProxy<UserImportDomain> =
         mock<UserImportDomain>();
-    const userOnboardingDomain: MockProxy<UserOnboardingDomain> =
-        mock<UserOnboardingDomain>();
-    const workspaceDomain: MockProxy<WorkspaceDomain> = mock<WorkspaceDomain>();
+    const onboardingDomain: MockProxy<OnboardingDomain> =
+        mock<OnboardingDomain>();
     const fileService: MockProxy<FileService> = mock<FileService>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
@@ -101,11 +92,7 @@ describe('UserImportHttpService', () => {
             providers: [
                 UserImportHttpService,
                 { provide: UserImportDomain, useValue: userImportDomain },
-                {
-                    provide: UserOnboardingDomain,
-                    useValue: userOnboardingDomain,
-                },
-                { provide: WorkspaceDomain, useValue: workspaceDomain },
+                { provide: OnboardingDomain, useValue: onboardingDomain },
                 { provide: FileService, useValue: fileService },
                 {
                     provide: PaginationQueryUtil,
@@ -121,7 +108,7 @@ describe('UserImportHttpService', () => {
     });
 
     describe('importByAdmin', () => {
-        it('prepares, commits and notifies the imported rows', async () => {
+        it('delegates the rows to OnboardingDomain and returns an empty envelope', async () => {
             const rows: UserImportRequestDto[] = [
                 {
                     email: 'fable@example.com' as Lowercase<string>,
@@ -129,56 +116,11 @@ describe('UserImportHttpService', () => {
                     username: 'fable2sterling',
                 },
             ];
-            const input: IUserCreateWithWorkspaceInput = {
-                userId: 'user-fable',
-                email: rows[0]!.email,
-                name: rows[0]!.name ?? null,
-                username: rows[0]!.username,
-                countryId: 'country-fable',
-                roleId: 'role-fable',
-                signUpFrom: EnumUserSignUpFrom.admin,
-                signUpWith: EnumUserSignUpWith.credential,
-                isVerified: false,
-                termPolicy: {
-                    termsOfService: true,
-                    privacy: true,
-                    marketing: false,
-                    cookies: false,
-                },
-                acceptedTermPolicyTypes: [],
-                password: null,
-                passwordHistoryType: null,
-                verification: null,
-                workspaceContext: {
-                    type: EnumUserSignUpWorkspaceContextType.personal,
-                    workspaceId: 'workspace-fable',
-                    slugCandidates: ['w-fable'],
-                    name: "fable2sterling's Workspace",
-                },
-                createdBy: 'admin-fable',
-            };
-            const passwordHasheds: IAuthPassword[] = [
-                {
-                    passwordHash: 'hashed',
-                    passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-                    passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-                    passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
-                },
-            ];
-            userImportDomain.prepareImportByAdmin.mockResolvedValue({
-                inputs: [input],
-                passwordHasheds,
-                passwordStrings: ['random-password'],
-            });
-            userOnboardingDomain.getCreateBulkTimeoutInMs.mockReturnValue(
-                30000
-            );
-            const users = [baseUser];
-            workspaceDomain.commitOnboarding.mockResolvedValue(users);
 
-            await service.importByAdmin(rows, 'admin-fable');
+            const result = await service.importByAdmin(rows, 'admin-fable');
 
-            expect(userImportDomain.prepareImportByAdmin).toHaveBeenCalledWith(
+            expect(result).toEqual({});
+            expect(onboardingDomain.importByAdmin).toHaveBeenCalledWith(
                 [
                     {
                         email: rows[0]!.email,
@@ -186,18 +128,6 @@ describe('UserImportHttpService', () => {
                         username: rows[0]!.username,
                     },
                 ],
-                'admin-fable'
-            );
-            expect(workspaceDomain.commitOnboarding).toHaveBeenCalledWith(
-                [input],
-                EnumUserCreateMode.admin,
-                30000,
-                EnumActivityLogAction.adminUserImport
-            );
-            expect(userImportDomain.notifyImported).toHaveBeenCalledWith(
-                users,
-                passwordHasheds,
-                ['random-password'],
                 'admin-fable'
             );
         });
@@ -209,19 +139,10 @@ describe('UserImportHttpService', () => {
                     username: 'fable2sterling',
                 },
             ];
-            userImportDomain.prepareImportByAdmin.mockResolvedValue({
-                inputs: [],
-                passwordHasheds: [],
-                passwordStrings: [],
-            });
-            userOnboardingDomain.getCreateBulkTimeoutInMs.mockReturnValue(
-                30000
-            );
-            workspaceDomain.commitOnboarding.mockResolvedValue([]);
 
             await service.importByAdmin(rows, 'admin-fable');
 
-            expect(userImportDomain.prepareImportByAdmin).toHaveBeenCalledWith(
+            expect(onboardingDomain.importByAdmin).toHaveBeenCalledWith(
                 [
                     {
                         email: rows[0]!.email,

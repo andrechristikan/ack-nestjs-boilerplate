@@ -89,11 +89,7 @@ export class AuthCache {
         const ttlExponentialInMs =
             Math.pow(2, (user.twoFactor?.attempt ?? 0) / this.maxAttempt) *
             this.lockAttemptDurationInMs;
-        try {
-            await this.cacheManager.set<boolean>(key, true, ttlExponentialInMs);
-        } catch (error: unknown) {
-            this.logger.error(error, 'Two-factor lock cache write failed');
-        }
+        await this.cacheManager.set<boolean>(key, true, ttlExponentialInMs);
     }
 
     /** Returns the remaining 2FA lock duration in ms, or 0 when not locked. */

@@ -1,8 +1,6 @@
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type {
-    INotificationCreate,
     INotificationCreateEntry,
     INotificationTermPolicyRecipientCreate,
     INotificationTermPolicyRecipientSend,
@@ -26,10 +24,6 @@ export interface INotificationRepository {
         userId: string,
         notificationId: string
     ): Promise<{ isRead: boolean } | null>;
-    create(
-        kind: EnumNotificationKind,
-        payload: INotificationCreate
-    ): Promise<Notification>;
     createMany(entries: INotificationCreateEntry[]): Promise<Notification[]>;
     findTermPolicyRecipients(
         termPolicyId: string,
@@ -65,7 +59,7 @@ export interface INotificationRepository {
         userId: string,
         notificationId: string,
         channel: EnumNotificationChannel
-    ): Promise<{ title: string; body: string } | null>;
+    ): Promise<Notification>;
     updateSentAt(
         userId: string,
         notificationId: string,

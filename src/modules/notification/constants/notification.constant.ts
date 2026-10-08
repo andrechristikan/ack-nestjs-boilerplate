@@ -47,6 +47,12 @@ export const NotificationUserTermPolicyJobIdPattern =
     '{process}-{userId}-{termPolicyId}';
 
 /**
+ * Job id pattern for a job keyed by notification id and the step it runs.
+ * @public
+ */
+export const NotificationStepJobIdPattern = '{notificationId}-{step}';
+
+/**
  * Prisma where of a recipient user that is not deleted.
  * @public
  */

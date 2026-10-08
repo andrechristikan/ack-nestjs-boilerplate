@@ -6,25 +6,20 @@ import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import type { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import type { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
-import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 import type {
     IUser,
     IUserLoginOutcome,
     IUserLoginSocial,
 } from '@modules/user/interfaces/user.interface';
+import { OnboardingDomain } from '@modules/onboarding/domains/onboarding.domain';
 import { UserAuthDomain } from '@modules/user/domains/user.auth.domain';
-import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
-import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
-import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class UserAuthHttpService {
     constructor(
         private readonly userAuthDomain: UserAuthDomain,
-        private readonly userOnboardingDomain: UserOnboardingDomain,
-        private readonly workspaceInviteDomain: WorkspaceInviteDomain,
-        private readonly workspaceDomain: WorkspaceDomain
+        private readonly onboardingDomain: OnboardingDomain
     ) {}
 
     private toDeviceIdentity(device: DeviceRequestDto): IDeviceIdentity {
@@ -78,40 +73,11 @@ export class UserAuthHttpService {
             cookies,
             marketing,
         };
-        const workspaceContext =
-            await this.workspaceInviteDomain.resolveForSignUp(
-                loginSocial.inviteToken,
-                email,
-                username
-            );
-        const prepared = await this.userAuthDomain.prepareSocialCreate(
-            email,
-            loginWith,
-            loginSocial,
-            workspaceContext
-        );
-        let createdUserId: string | null = null;
-        if (prepared) {
-            const createTimeoutInMs =
-                this.userOnboardingDomain.getCreateTimeoutInMs();
-            const createdUsers = await this.workspaceDomain.commitOnboarding(
-                [prepared],
-                EnumUserCreateMode.social,
-                createTimeoutInMs
-            );
-            createdUserId = createdUsers[0]!.id;
-        }
-
-        const outcome = await this.userAuthDomain.loginWithSocial(
+        const outcome = await this.onboardingDomain.loginWithSocial(
             email,
             loginWith,
             loginSocial
         );
-
-        // Sequential by design: write must not run if an earlier step throws
-        if (createdUserId !== null) {
-            await this.userAuthDomain.notifyWelcomeSocial(createdUserId);
-        }
 
         return { data: outcome };
     }
@@ -136,36 +102,17 @@ export class UserAuthHttpService {
         cookies,
         marketing,
     }: UserSignUpRequestDto): Promise<IResponseReturn<void>> {
-        const workspaceContext =
-            await this.workspaceInviteDomain.resolveForSignUp(
-                inviteToken ?? null,
-                email,
-                username
-            );
-        const { input, emailVerification } =
-            await this.userAuthDomain.prepareSignUp(
-                {
-                    countryId,
-                    email,
-                    username,
-                    password,
-                    inviteToken: inviteToken ?? null,
-                    name: name ?? null,
-                    from,
-                    cookies,
-                    marketing,
-                },
-                workspaceContext
-            );
-        const createTimeoutInMs =
-            this.userOnboardingDomain.getCreateTimeoutInMs();
-        const createdUsers = await this.workspaceDomain.commitOnboarding(
-            [input],
-            EnumUserCreateMode.signUp,
-            createTimeoutInMs
-        );
-        const created = createdUsers[0]!;
-        await this.userAuthDomain.notifyWelcome(created.id, emailVerification);
+        await this.onboardingDomain.signUp({
+            countryId,
+            email,
+            username,
+            password,
+            inviteToken: inviteToken ?? null,
+            name: name ?? null,
+            from,
+            cookies,
+            marketing,
+        });
 
         return {};
     }

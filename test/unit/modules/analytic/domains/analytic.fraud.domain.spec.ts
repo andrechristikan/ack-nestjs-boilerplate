@@ -1003,6 +1003,37 @@ describe('AnalyticFraudDomain', () => {
             );
         });
 
+        it('scores a listed user from the near-lockout row without re-reading the user', async () => {
+            userAnalyticDomain.getNearLockout.mockResolvedValue([
+                {
+                    id: 'user-1',
+                    email: 'a@example.com',
+                    passwordAttempt: 4,
+                    lastLoginAt: null,
+                    createdAt: now,
+                },
+            ]);
+            deviceAnalyticDomain.getSharedFingerprints.mockResolvedValue([]);
+            analyticCache.getRiskScore.mockResolvedValue(null);
+            userAnalyticDomain.getOneById.mockResolvedValue(null);
+
+            await domain.riskScores(null, pagination);
+
+            expect(userAnalyticDomain.getOneById).not.toHaveBeenCalled();
+            expect(analyticSortUtil.sortRows).toHaveBeenCalledWith(
+                [
+                    {
+                        userId: 'user-1',
+                        score: 10,
+                        band: 'monitor',
+                        contributingSignalCodes: ['nearLockout'],
+                    },
+                ],
+                [],
+                AnalyticFraudRiskScoreAvailableOrderBy
+            );
+        });
+
         it('scores the near-lockout users in chunks of analytic.fraud.concurrency', async () => {
             userAnalyticDomain.getNearLockout.mockResolvedValue([]);
             deviceAnalyticDomain.getSharedFingerprints.mockResolvedValue([]);

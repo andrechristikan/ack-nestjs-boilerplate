@@ -233,8 +233,7 @@ The credential lockout (`UserPasswordDomain.reachMaxPasswordAttempt`) is the sec
 - The ownership is looked up first. One that does not exist, belongs to another user, or is already revoked produces a 404 with status code `51300` (`EnumDeviceStatusCodeError.notFound`).
 - A field the body omits (`name`, `platform`, `notificationToken`) leaves the stored value unchanged.
 - `notificationProvider` is re-derived from the `platform` in the body and written on the shared `Device` row.
-    - A body without `platform` writes `null` there.
-    - The stored `platform` itself stays.
+    - A body without `platform` leaves `notificationProvider` and the stored `platform` unchanged.
 - `lastActiveAt` is stamped on both the `DeviceOwnership` and the `Device`.
 - `DeviceDomain.refresh` prepares `userDeviceRefresh`, opens `withTransaction` around `DeviceOwnershipRepository.touchInTx` (which returns the device id) and `DeviceRepository.refreshInTx`, then stages the prepared event after the commit.
 - The refresh write leaves `lastLoginAt` and `lastIPAddress` on `User` untouched. The login path stamps those.

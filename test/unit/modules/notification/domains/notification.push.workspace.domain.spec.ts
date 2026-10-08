@@ -4,7 +4,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { MessageService } from '@common/message/services/message.service';
 import {
-    EnumNotificationChannel,
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
@@ -18,6 +17,18 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import {
+    buildPushNotification,
+    expectPushAllStepsSkipped,
+    expectPushRetrySkipsSend,
+    expectPushSendFailure,
+    expectPushSentAtFailure,
+    expectPushSentWithCleanup,
+    PushAllSteps,
+    PushRecordedSteps,
+} from '@test/unit/helpers/test.unit.notification-push.helper';
+import type { INotificationPushDoubles } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('NotificationPushWorkspaceDomain', () => {
     const firebaseService: MockProxy<FirebaseService> = mock<FirebaseService>();
@@ -34,10 +45,22 @@ describe('NotificationPushWorkspaceDomain', () => {
         notificationTokens: ['token-1', 'token-2'],
         username: 'nadia',
     };
-    const pushResult = {
-        failureTokens: ['token-2'],
+    const notification = buildPushNotification();
+    const partialFailure = {
+        failureTokens: ['bad'],
         successCount: 1,
         failureCount: 1,
+    };
+    const fullSuccess = {
+        failureTokens: [],
+        successCount: 2,
+        failureCount: 0,
+    };
+    const recorded = PushRecordedSteps;
+    const doubles: INotificationPushDoubles = {
+        firebaseService,
+        notificationRepository,
+        notificationPushQueue,
     };
 
     beforeEach(async () => {
@@ -45,6 +68,7 @@ describe('NotificationPushWorkspaceDomain', () => {
         const module = await Test.createTestingModule({
             providers: [
                 NotificationPushWorkspaceDomain,
+                NotificationUtil,
                 { provide: FirebaseService, useValue: firebaseService },
                 {
                     provide: NotificationRepository,
@@ -58,6 +82,8 @@ describe('NotificationPushWorkspaceDomain', () => {
             ],
         }).compile();
         domain = module.get(NotificationPushWorkspaceDomain);
+        firebaseService.isInitialized.mockReturnValue(true);
+        notificationRepository.updateProcessAt.mockResolvedValue(notification);
     });
 
     describe('processWorkspaceInvite', () => {
@@ -70,41 +96,40 @@ describe('NotificationPushWorkspaceDomain', () => {
             expiredAt: '2024-02-01T00:00:00.000Z',
         };
 
-        it('skips when Firebase is not initialized', async () => {
+        beforeEach(() => {
+            messageService.setMessage
+                .mockReturnValueOnce('Workspace invite')
+                .mockReturnValueOnce('Omar invited you to Acme');
+        });
+
+        it('returns the progress as passed when Firebase is not initialized', async () => {
             firebaseService.isInitialized.mockReturnValue(false);
 
-            const result = await domain.processWorkspaceInvite(send, data);
+            const result = await domain.processWorkspaceInvite(
+                send,
+                data,
+                [],
+                null
+            );
 
             expect(result).toEqual({
                 message:
                     'Firebase not initialized, skipping workspace invite notification',
+                completedSteps: [],
+                failedSteps: [],
+                failureTokens: null,
             });
         });
 
-        it('skips when the notification row is missing', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue(null);
+        it('sends, then cleans up and stamps sentAt with the failed tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
 
-            const result = await domain.processWorkspaceInvite(send, data);
-
-            expect(result).toEqual({
-                message:
-                    'Notification not found, skipping workspace invite notification',
-            });
-        });
-
-        it('sends the push, cleans up failed tokens, and marks the notification sent', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue({
-                title: 'title',
-                body: 'body',
-            });
-            messageService.setMessage
-                .mockReturnValueOnce('Workspace invite')
-                .mockReturnValueOnce('Omar invited you to Acme');
-            firebaseService.sendMulticast.mockResolvedValue(pushResult);
-
-            const result = await domain.processWorkspaceInvite(send, data);
+            const result = await domain.processWorkspaceInvite(
+                send,
+                data,
+                [],
+                null
+            );
 
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
@@ -121,19 +146,63 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send.notificationTokens,
                 { title: 'Workspace invite', body: 'Omar invited you to Acme' }
             );
-            expect(
-                notificationPushQueue.sendCleanupTokens
-            ).toHaveBeenCalledWith(send.userId, pushResult.failureTokens);
-            expect(notificationRepository.updateSentAt).toHaveBeenCalledWith(
-                send.userId,
-                send.notificationId,
-                EnumNotificationChannel.push,
-                pushResult.failureTokens
+            expectPushSentWithCleanup(
+                doubles,
+                send,
+                result,
+                'Workspace invite notification processed'
             );
-            expect(result).toEqual({
-                message: 'Workspace invite notification processed',
-                result: pushResult,
-            });
+        });
+
+        it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
+            const result = await domain.processWorkspaceInvite(
+                send,
+                data,
+                recorded,
+                ['bad']
+            );
+
+            expectPushRetrySkipsSend(doubles, send, result);
+        });
+
+        it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
+            const result = await domain.processWorkspaceInvite(
+                send,
+                data,
+                PushAllSteps,
+                null
+            );
+
+            expectPushAllStepsSkipped(doubles, result);
+        });
+
+        it('names a rejected updateSentAt and still runs the cleanup', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+            notificationRepository.updateSentAt.mockRejectedValue(
+                new Error('mongo')
+            );
+
+            const result = await domain.processWorkspaceInvite(
+                send,
+                data,
+                [],
+                null
+            );
+
+            expectPushSentAtFailure(doubles, result);
+        });
+
+        it('names a thrown sendMulticast and runs neither cleanup nor sentAt', async () => {
+            firebaseService.sendMulticast.mockRejectedValue(new Error('fcm'));
+
+            const result = await domain.processWorkspaceInvite(
+                send,
+                data,
+                [],
+                null
+            );
+
+            expectPushSendFailure(doubles, result);
         });
     });
 
@@ -144,41 +213,40 @@ describe('NotificationPushWorkspaceDomain', () => {
             requesterName: 'Omar',
         };
 
-        it('skips when Firebase is not initialized', async () => {
+        beforeEach(() => {
+            messageService.setMessage
+                .mockReturnValueOnce('Join request')
+                .mockReturnValueOnce('Omar requested to join Acme');
+        });
+
+        it('returns the progress as passed when Firebase is not initialized', async () => {
             firebaseService.isInitialized.mockReturnValue(false);
 
-            const result = await domain.processWorkspaceJoinRequest(send, data);
+            const result = await domain.processWorkspaceJoinRequest(
+                send,
+                data,
+                [],
+                null
+            );
 
             expect(result).toEqual({
                 message:
                     'Firebase not initialized, skipping workspace join request notification',
+                completedSteps: [],
+                failedSteps: [],
+                failureTokens: null,
             });
         });
 
-        it('skips when the notification row is missing', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue(null);
+        it('sends, then cleans up and stamps sentAt with the failed tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
 
-            const result = await domain.processWorkspaceJoinRequest(send, data);
-
-            expect(result).toEqual({
-                message:
-                    'Notification not found, skipping workspace join request notification',
-            });
-        });
-
-        it('sends the push and reports the result', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue({
-                title: 'title',
-                body: 'body',
-            });
-            messageService.setMessage
-                .mockReturnValueOnce('Join request')
-                .mockReturnValueOnce('Omar requested to join Acme');
-            firebaseService.sendMulticast.mockResolvedValue(pushResult);
-
-            const result = await domain.processWorkspaceJoinRequest(send, data);
+            const result = await domain.processWorkspaceJoinRequest(
+                send,
+                data,
+                [],
+                null
+            );
 
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
@@ -191,10 +259,63 @@ describe('NotificationPushWorkspaceDomain', () => {
                     },
                 }
             );
-            expect(result).toEqual({
-                message: 'Workspace join request notification processed',
-                result: pushResult,
-            });
+            expectPushSentWithCleanup(
+                doubles,
+                send,
+                result,
+                'Workspace join request notification processed'
+            );
+        });
+
+        it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
+            const result = await domain.processWorkspaceJoinRequest(
+                send,
+                data,
+                recorded,
+                ['bad']
+            );
+
+            expectPushRetrySkipsSend(doubles, send, result);
+        });
+
+        it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
+            const result = await domain.processWorkspaceJoinRequest(
+                send,
+                data,
+                PushAllSteps,
+                null
+            );
+
+            expectPushAllStepsSkipped(doubles, result);
+        });
+
+        it('names a rejected updateSentAt and still runs the cleanup', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+            notificationRepository.updateSentAt.mockRejectedValue(
+                new Error('mongo')
+            );
+
+            const result = await domain.processWorkspaceJoinRequest(
+                send,
+                data,
+                [],
+                null
+            );
+
+            expectPushSentAtFailure(doubles, result);
+        });
+
+        it('names a thrown sendMulticast and runs neither cleanup nor sentAt', async () => {
+            firebaseService.sendMulticast.mockRejectedValue(new Error('fcm'));
+
+            const result = await domain.processWorkspaceJoinRequest(
+                send,
+                data,
+                [],
+                null
+            );
+
+            expectPushSendFailure(doubles, result);
         });
     });
 
@@ -204,49 +325,39 @@ describe('NotificationPushWorkspaceDomain', () => {
             workspaceName: 'Acme',
         };
 
-        it('skips when Firebase is not initialized', async () => {
+        beforeEach(() => {
+            messageService.setMessage
+                .mockReturnValueOnce('Join accepted')
+                .mockReturnValueOnce('You joined Acme');
+        });
+
+        it('returns the progress as passed when Firebase is not initialized', async () => {
             firebaseService.isInitialized.mockReturnValue(false);
 
             const result = await domain.processWorkspaceJoinAccepted(
                 send,
-                data
+                data,
+                [],
+                null
             );
 
             expect(result).toEqual({
                 message:
                     'Firebase not initialized, skipping workspace join accepted notification',
+                completedSteps: [],
+                failedSteps: [],
+                failureTokens: null,
             });
         });
 
-        it('skips when the notification row is missing', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue(null);
+        it('sends, then cleans up and stamps sentAt with the failed tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
 
             const result = await domain.processWorkspaceJoinAccepted(
                 send,
-                data
-            );
-
-            expect(result).toEqual({
-                message:
-                    'Notification not found, skipping workspace join accepted notification',
-            });
-        });
-
-        it('sends the push and reports the result', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue({
-                title: 'title',
-                body: 'body',
-            });
-            messageService.setMessage
-                .mockReturnValueOnce('Join accepted')
-                .mockReturnValueOnce('You joined Acme');
-            firebaseService.sendMulticast.mockResolvedValue(pushResult);
-
-            const result = await domain.processWorkspaceJoinAccepted(
-                send,
-                data
+                data,
+                [],
+                null
             );
 
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
@@ -259,10 +370,63 @@ describe('NotificationPushWorkspaceDomain', () => {
                     },
                 }
             );
-            expect(result).toEqual({
-                message: 'Workspace join accepted notification processed',
-                result: pushResult,
-            });
+            expectPushSentWithCleanup(
+                doubles,
+                send,
+                result,
+                'Workspace join accepted notification processed'
+            );
+        });
+
+        it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
+            const result = await domain.processWorkspaceJoinAccepted(
+                send,
+                data,
+                recorded,
+                ['bad']
+            );
+
+            expectPushRetrySkipsSend(doubles, send, result);
+        });
+
+        it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
+            const result = await domain.processWorkspaceJoinAccepted(
+                send,
+                data,
+                PushAllSteps,
+                null
+            );
+
+            expectPushAllStepsSkipped(doubles, result);
+        });
+
+        it('names a rejected updateSentAt and still runs the cleanup', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+            notificationRepository.updateSentAt.mockRejectedValue(
+                new Error('mongo')
+            );
+
+            const result = await domain.processWorkspaceJoinAccepted(
+                send,
+                data,
+                [],
+                null
+            );
+
+            expectPushSentAtFailure(doubles, result);
+        });
+
+        it('names a thrown sendMulticast and runs neither cleanup nor sentAt', async () => {
+            firebaseService.sendMulticast.mockRejectedValue(new Error('fcm'));
+
+            const result = await domain.processWorkspaceJoinAccepted(
+                send,
+                data,
+                [],
+                null
+            );
+
+            expectPushSendFailure(doubles, result);
         });
     });
 
@@ -273,50 +437,40 @@ describe('NotificationPushWorkspaceDomain', () => {
             rejectReasonCode: EnumWorkspaceJoinRejectReason.memberLimitReached,
         };
 
-        it('skips when Firebase is not initialized', async () => {
+        beforeEach(() => {
+            messageService.setMessage
+                .mockReturnValueOnce('Workspace is full')
+                .mockReturnValueOnce('Join rejected')
+                .mockReturnValueOnce('Your request to join Acme was rejected');
+        });
+
+        it('returns the progress as passed when Firebase is not initialized', async () => {
             firebaseService.isInitialized.mockReturnValue(false);
 
             const result = await domain.processWorkspaceJoinRejected(
                 send,
-                data
+                data,
+                [],
+                null
             );
 
             expect(result).toEqual({
                 message:
                     'Firebase not initialized, skipping workspace join rejected notification',
+                completedSteps: [],
+                failedSteps: [],
+                failureTokens: null,
             });
         });
 
-        it('skips when the notification row is missing', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue(null);
+        it('resolves the reject reason label, then sends, cleans up and stamps sentAt', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
 
             const result = await domain.processWorkspaceJoinRejected(
                 send,
-                data
-            );
-
-            expect(result).toEqual({
-                message:
-                    'Notification not found, skipping workspace join rejected notification',
-            });
-        });
-
-        it('resolves the reject reason label and sends the push', async () => {
-            firebaseService.isInitialized.mockReturnValue(true);
-            notificationRepository.updateProcessAt.mockResolvedValue({
-                title: 'title',
-                body: 'body',
-            });
-            messageService.setMessage
-                .mockReturnValueOnce('Workspace is full')
-                .mockReturnValueOnce('Join rejected')
-                .mockReturnValueOnce('Your request to join Acme was rejected');
-            firebaseService.sendMulticast.mockResolvedValue(pushResult);
-
-            const result = await domain.processWorkspaceJoinRejected(
-                send,
-                data
+                data,
+                [],
+                null
             );
 
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
@@ -334,10 +488,63 @@ describe('NotificationPushWorkspaceDomain', () => {
                     },
                 }
             );
-            expect(result).toEqual({
-                message: 'Workspace join rejected notification processed',
-                result: pushResult,
-            });
+            expectPushSentWithCleanup(
+                doubles,
+                send,
+                result,
+                'Workspace join rejected notification processed'
+            );
+        });
+
+        it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
+            const result = await domain.processWorkspaceJoinRejected(
+                send,
+                data,
+                recorded,
+                ['bad']
+            );
+
+            expectPushRetrySkipsSend(doubles, send, result);
+        });
+
+        it('runs no step and returns the recorded steps on a retry with every step recorded', async () => {
+            const result = await domain.processWorkspaceJoinRejected(
+                send,
+                data,
+                PushAllSteps,
+                null
+            );
+
+            expectPushAllStepsSkipped(doubles, result);
+        });
+
+        it('names a rejected updateSentAt and still runs the cleanup', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+            notificationRepository.updateSentAt.mockRejectedValue(
+                new Error('mongo')
+            );
+
+            const result = await domain.processWorkspaceJoinRejected(
+                send,
+                data,
+                [],
+                null
+            );
+
+            expectPushSentAtFailure(doubles, result);
+        });
+
+        it('names a thrown sendMulticast and runs neither cleanup nor sentAt', async () => {
+            firebaseService.sendMulticast.mockRejectedValue(new Error('fcm'));
+
+            const result = await domain.processWorkspaceJoinRejected(
+                send,
+                data,
+                [],
+                null
+            );
+
+            expectPushSendFailure(doubles, result);
         });
     });
 });

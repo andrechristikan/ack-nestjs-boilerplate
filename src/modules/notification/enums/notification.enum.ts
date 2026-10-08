@@ -33,6 +33,7 @@ export enum EnumNotificationPushProcess {
     cleanupStaleTokens = 'cleanupStaleTokens',
     resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
     temporaryPasswordByAdmin = 'temporaryPasswordByAdmin',
+    forgotPassword = 'forgotPassword',
     resetPassword = 'resetPassword',
     newDeviceLogin = 'newDeviceLogin',
     workspaceInvite = 'workspaceInvite',
@@ -64,4 +65,20 @@ export enum EnumNotificationKind {
     workspaceJoinRequest = 'workspaceJoinRequest',
     workspaceJoinAccepted = 'workspaceJoinAccepted',
     workspaceJoinRejected = 'workspaceJoinRejected',
+}
+
+/**
+ * Steps a notification job runs, recorded in the job data so a retry skips completed ones.
+ * @public
+ */
+export enum EnumNotificationStep {
+    createNotification = 'createNotification',
+    sendEmail = 'sendEmail',
+    sendWelcomeEmail = 'sendWelcomeEmail',
+    sendVerificationEmail = 'sendVerificationEmail',
+    sendPush = 'sendPush',
+    updateProcessAt = 'updateProcessAt',
+    sendMulticast = 'sendMulticast',
+    cleanupTokens = 'cleanupTokens',
+    updateSentAt = 'updateSentAt',
 }

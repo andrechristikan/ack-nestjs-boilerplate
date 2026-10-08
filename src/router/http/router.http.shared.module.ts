@@ -13,6 +13,8 @@ import { TermPolicyHttpModule } from '@modules/term-policy/term-policy.http.modu
 import { UserSharedController } from '@modules/user/controllers/user.shared.controller';
 import { UserHttpModule } from '@modules/user/user.http.module';
 import { WorkspaceHttpModule } from '@modules/workspace/workspace.http.module';
+import { UserDomainModule } from '@modules/user/user.domain.module';
+import { WorkspaceDomainModule } from '@modules/workspace/workspace.domain.module';
 import { Module } from '@nestjs/common';
 
 /**
@@ -40,6 +42,8 @@ import { Module } from '@nestjs/common';
         TermPolicyHttpModule,
         NotificationHttpModule,
         WorkspaceHttpModule,
+        UserDomainModule,
+        WorkspaceDomainModule,
     ],
 })
 export class RouterHttpSharedModule {}

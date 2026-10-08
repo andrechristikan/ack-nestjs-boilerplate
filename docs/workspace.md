@@ -215,10 +215,13 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 
 Callers:
 
-- `UserAuthHttpService` (sign-up and social create) calls `WorkspaceInviteDomain.resolveForSignUp`, then forwards to `commitOnboarding`
-- `UserHttpService.createByAdmin` and `UserImportHttpService.importByAdmin` forward prepared inputs to the same composer
-- `UserHttpModule` imports `WorkspaceDomainModule`
-- `UserDomainModule` does not
+- `OnboardingDomain` (`src/modules/onboarding/`) calls `commitOnboarding` for every user-creation path:
+    - `signUp` and `loginWithSocial` call `WorkspaceInviteDomain.resolveForSignUp` first, then forward to `commitOnboarding`.
+    - `createByAdmin` and `importByAdmin` forward the inputs the user domains prepared to the same composer.
+- `UserAuthHttpService`, `UserHttpService`, and `UserImportHttpService` each delegate to the matching `OnboardingDomain` method.
+- `UserHttpModule` imports `OnboardingDomainModule`.
+- `OnboardingDomainModule` imports `UserDomainModule` and `WorkspaceDomainModule`.
+- `UserDomainModule` does not import `WorkspaceDomainModule`.
 
 `buildPersonalWorkspaceContexts` draws `workspace.slugMaxAttempts` (5) slug candidates per row and carries them on the context as `slugCandidates`.
 
@@ -327,9 +330,9 @@ These routes are:
 - the target is an `owner`, or
 - the actor is an `admin` and the target is an `admin`.
 
-`removeMember` adds one check of its own, ahead of that call:
+`updateMemberRole` and `removeMember` each add one check of their own, ahead of that call:
 
-- An actor who removes their own membership row is rejected with the same exception.
+- An actor who targets their own membership row is rejected with the same exception, on a role update and on a removal.
 - A member who wants out calls `POST /user/workspace/leave`.
 
 **Transfer ownership**:
@@ -485,6 +488,7 @@ After the commit, `workspaceDeleted` is staged and `ActivityLogInterceptor` writ
 - Every row in the table below carries the workspace id.
 - An action taken on another user writes an actor row for the caller, carrying `targetUserId`, and a target row for the affected user, carrying `actorUserId`, with `createdBy` set to the caller.
 - When the affected user is the caller, only the actor row is written.
+    - Member role update and member removal reject a self target, so both rows are always written for them.
 
 | Operation | Actor row (caller) | Target row | Target row owner |
 | --- | --- | --- | --- |

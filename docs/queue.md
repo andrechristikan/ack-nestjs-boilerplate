@@ -157,6 +157,8 @@ export class NotificationPushQueue {
             {
                 send: sendPayload,
                 data,
+                completedSteps: [],
+                failureTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -167,10 +169,19 @@ export class NotificationPushQueue {
             }
         );
 
+        const jobId = this.helperStringService.fillPattern(
+            NotificationStepJobIdPattern,
+            {
+                notificationId: sendPayload.notificationId,
+                step: EnumNotificationStep.sendPush,
+            }
+        );
+
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.newDeviceLogin,
             payload,
             {
+                jobId,
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: deduplicationId,
@@ -187,6 +198,7 @@ A deduplication id is a `{token}` pattern from `src/modules/notification/constan
 - `NotificationUserJobIdPattern` is `{process}-{userId}`.
 - The other patterns key by invite reference, workspace and user, or user and term policy.
 - The two term-policy publication patterns, `{process}-{termPolicyId}` and `{process}-{termPolicyId}-{batchId}`, fill a BullMQ `jobId` instead and carry no deduplication TTL.
+- `NotificationStepJobIdPattern` is `{notificationId}-{step}`. It fills the `jobId` of a push job, of a cleanup job, and of an email job for a recipient with an account, so one notification enqueues each step once.
 
 A domain that needs the job injects the queue class and calls that method:
 
@@ -524,6 +536,8 @@ throw new QueueException('Temporary service unavailable', false);
 // Default behavior (non-fatal)
 throw new QueueException('Minor validation error');
 ```
+
+A notification processor service throws `QueueException(summary, true)` when a step of the job fails, so BullMQ retries and Sentry hears of it on the last attempt (see [Notification][ref-doc-notification]).
 
 ### Properties
 

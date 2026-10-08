@@ -1,13 +1,18 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationStep,
+} from '@modules/notification/enums/notification.enum';
 import type {
     INotificationAcceptTermPolicyPayload,
     INotificationCreateEntry,
     INotificationPublishTermPolicyPayload,
+    INotificationStepResult,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -24,6 +29,7 @@ export class NotificationTermPolicyDomain {
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly notificationUtil: NotificationUtil,
         private readonly notificationEmailQueue: NotificationEmailQueue
     ) {
         this.emailBatchSize =
@@ -165,35 +171,58 @@ export class NotificationTermPolicyDomain {
 
     async processUserAcceptTermPolicy(
         userId: string,
-        data: INotificationAcceptTermPolicyPayload
-    ): Promise<IQueueResponse> {
+        data: INotificationAcceptTermPolicyPayload,
+        notificationId: string,
+        completedSteps: EnumNotificationStep[]
+    ): Promise<INotificationStepResult> {
         const user = await this.userDomain.getOneActive(userId);
 
         if (!user) {
             return {
                 message:
                     'User not found, skipping user accept term policy notification',
+                completedSteps,
+                failedSteps: [],
             };
         }
 
-        const notificationId = this.databaseUtil.createId();
+        const done = [...completedSteps];
+        if (!done.includes(EnumNotificationStep.createNotification)) {
+            try {
+                await this.notificationRepository.createMany([
+                    {
+                        kind: EnumNotificationKind.userAcceptTermPolicy,
+                        payload: {
+                            id: notificationId,
+                            userId: user.id,
+                            metadata: {
+                                username: user.username,
+                                type: data.type,
+                                version: data.version,
+                            },
+                            createdBy: user.id,
+                        },
+                    },
+                ]);
+                done.push(EnumNotificationStep.createNotification);
+            } catch (error: unknown) {
+                const failure = this.notificationUtil.toStepFailure(
+                    EnumNotificationStep.createNotification,
+                    error
+                );
 
-        await this.notificationRepository.create(
-            EnumNotificationKind.userAcceptTermPolicy,
-            {
-                id: notificationId,
-                userId: user.id,
-                metadata: {
-                    username: user.username,
-                    type: data.type,
-                    version: data.version,
-                },
-                createdBy: user.id,
+                return {
+                    message: 'User accept term policy notification failed',
+                    completedSteps: done,
+                    failedSteps: [failure],
+                };
             }
-        );
+        }
 
         return {
             message: 'User accept term policy notification processed',
+            completedSteps: done,
+            failedSteps: [],
         };
     }
 }

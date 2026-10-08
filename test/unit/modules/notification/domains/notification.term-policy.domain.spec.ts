@@ -17,9 +17,13 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import { NotificationTermPolicyDomain } from '@modules/notification/domains/notification.term-policy.domain';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationStep,
+} from '@modules/notification/enums/notification.enum';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
 
 describe('NotificationTermPolicyDomain', () => {
@@ -106,6 +110,7 @@ describe('NotificationTermPolicyDomain', () => {
         const module = await Test.createTestingModule({
             providers: [
                 NotificationTermPolicyDomain,
+                NotificationUtil,
                 {
                     provide: NotificationRepository,
                     useValue: notificationRepository,
@@ -291,10 +296,7 @@ describe('NotificationTermPolicyDomain', () => {
         });
 
         it('skips a candidate whose marker is already enqueued, creating and re-adding nothing', async () => {
-            userDomain.getListIdCursor.mockResolvedValueOnce([
-                'u1',
-                'u2',
-            ]);
+            userDomain.getListIdCursor.mockResolvedValueOnce(['u1', 'u2']);
             notificationRepository.findTermPolicyRecipients.mockResolvedValue([
                 { userId: 'u1', batchId: 'B0', enqueuedAt },
             ]);
@@ -543,41 +545,93 @@ describe('NotificationTermPolicyDomain', () => {
 
             const result = await domain.processUserAcceptTermPolicy(
                 'user-id',
-                acceptData
+                acceptData,
+                'n-1',
+                []
             );
 
             expect(result).toEqual({
                 message:
                     'User not found, skipping user accept term policy notification',
+                completedSteps: [],
+                failedSteps: [],
             });
-            expect(notificationRepository.create).not.toHaveBeenCalled();
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
         });
 
-        it('writes the notification for an active user', async () => {
+        it('creates the row with the job notification id and reports the step completed', async () => {
             userDomain.getOneActive.mockResolvedValue(user);
-            databaseUtil.createId.mockReturnValue('notification-id');
-            notificationRepository.create.mockResolvedValue(notification);
+            notificationRepository.createMany.mockResolvedValue([notification]);
 
             const result = await domain.processUserAcceptTermPolicy(
                 'user-id',
-                acceptData
+                acceptData,
+                'n-1',
+                []
             );
 
-            expect(notificationRepository.create).toHaveBeenCalledWith(
-                EnumNotificationKind.userAcceptTermPolicy,
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
                 {
-                    id: 'notification-id',
-                    userId: user.id,
-                    metadata: {
-                        username: user.username,
-                        type: acceptData.type,
-                        version: acceptData.version,
+                    kind: EnumNotificationKind.userAcceptTermPolicy,
+                    payload: {
+                        id: 'n-1',
+                        userId: user.id,
+                        metadata: {
+                            username: user.username,
+                            type: acceptData.type,
+                            version: acceptData.version,
+                        },
+                        createdBy: user.id,
                     },
-                    createdBy: user.id,
-                }
-            );
+                },
+            ]);
             expect(result).toEqual({
                 message: 'User accept term policy notification processed',
+                completedSteps: [EnumNotificationStep.createNotification],
+                failedSteps: [],
+            });
+        });
+
+        it('skips the create on a retry', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+
+            const result = await domain.processUserAcceptTermPolicy(
+                'user-id',
+                acceptData,
+                'n-1',
+                [EnumNotificationStep.createNotification]
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'User accept term policy notification processed',
+                completedSteps: [EnumNotificationStep.createNotification],
+                failedSteps: [],
+            });
+        });
+
+        it('names the create step when the rows cannot be written', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationRepository.createMany.mockRejectedValue(
+                new Error('mongo')
+            );
+
+            const result = await domain.processUserAcceptTermPolicy(
+                'user-id',
+                acceptData,
+                'n-1',
+                []
+            );
+
+            expect(result).toEqual({
+                message: 'User accept term policy notification failed',
+                completedSteps: [],
+                failedSteps: [
+                    {
+                        step: EnumNotificationStep.createNotification,
+                        error: 'mongo',
+                    },
+                ],
             });
         });
     });

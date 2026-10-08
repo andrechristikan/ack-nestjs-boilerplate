@@ -651,8 +651,8 @@ onboarding: {
 }
 ```
 
-> - Single-user callers (`UserHttpService.createByAdmin`, `UserAuthHttpService` sign-up and social create) pass `createTimeoutInMs` from `UserOnboardingDomain.getCreateTimeoutInMs`.
-> - `UserImportHttpService.importByAdmin` passes `createBulkTimeoutInMs` from `UserOnboardingDomain.getCreateBulkTimeoutInMs`.
+> - Single-user callers (`OnboardingDomain.createByAdmin`, `signUp`, and `loginWithSocial`) pass `createTimeoutInMs` from `UserOnboardingDomain.getCreateTimeoutInMs`.
+> - `OnboardingDomain.importByAdmin` passes `createBulkTimeoutInMs` from `UserOnboardingDomain.getCreateBulkTimeoutInMs`.
 > - Both reach `WorkspaceDomain.commitOnboarding` as `timeoutInMs`.
 
 ### Documentation Configuration
@@ -1020,7 +1020,6 @@ dedupTtlInMs: number; // BullMQ deduplication TTL for a notification job (ms('1s
 
 ```typescript
 push: {
-    cleanupDedupTtlInMs: number; // Deduplication TTL for the cleanup job (ms('1h'))
     cleanupStaleTokensCron: string; // Cron pattern for the stale-token cleanup (default: '0 0 * * *')
     staleTokenThresholdInMs: number; // Device inactivity after which its push token is cleared (ms('30d'))
 }

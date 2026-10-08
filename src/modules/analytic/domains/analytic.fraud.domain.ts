@@ -515,8 +515,7 @@ export class AnalyticFraudDomain {
     }
 
     private async scoreCached(
-        userId: string,
-        shared: IAnalyticSharedFingerprint[] | null
+        userId: string
     ): Promise<IAnalyticFraudRiskScore> {
         const cached =
             await this.analyticCache.getRiskScore<IAnalyticFraudRiskScore>(
@@ -532,15 +531,26 @@ export class AnalyticFraudDomain {
             throw new UserNotFoundException();
         }
 
-        if (shared !== null) {
-            return this.scoreUser(user, shared);
-        }
-
         const fingerprints =
             await this.deviceAnalyticDomain.getSharedFingerprints(
                 this.sharedFingerprintMinUsersPerFingerprint
             );
         return this.scoreUser(user, fingerprints);
+    }
+
+    private async scoreListed(
+        user: IUserAnalyticRef,
+        shared: IAnalyticSharedFingerprint[]
+    ): Promise<IAnalyticFraudRiskScore> {
+        const cached =
+            await this.analyticCache.getRiskScore<IAnalyticFraudRiskScore>(
+                user.id
+            );
+        if (cached) {
+            return cached;
+        }
+
+        return this.scoreUser(user, shared);
     }
 
     private async scoreUser(
@@ -1094,7 +1104,7 @@ export class AnalyticFraudDomain {
     }
 
     async riskScore(userId: string): Promise<IAnalyticFraudRiskScore> {
-        return this.scoreCached(userId, null);
+        return this.scoreCached(userId);
     }
 
     async riskScores(
@@ -1116,7 +1126,7 @@ export class AnalyticFraudDomain {
         for (const batch of batches) {
             // Sequential by design: bounded chunks, concurrent within a chunk
             const batchScores = await Promise.all(
-                batch.map(u => this.scoreCached(u.id, shared))
+                batch.map(u => this.scoreListed(u, shared))
             );
             all.push(...batchScores);
         }

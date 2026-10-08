@@ -1,7 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { Notification, User } from '@generated/prisma-client/client';
 import {
@@ -15,9 +14,13 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import { NotificationAccountDomain } from '@modules/notification/domains/notification.account.domain';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationStep,
+} from '@modules/notification/enums/notification.enum';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
 
 describe('NotificationAccountDomain', () => {
@@ -26,7 +29,6 @@ describe('NotificationAccountDomain', () => {
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
     const helperStringService: MockProxy<HelperStringService> =
         mock<HelperStringService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const notificationEmailQueue: MockProxy<NotificationEmailQueue> =
         mock<NotificationEmailQueue>();
     let domain: NotificationAccountDomain;
@@ -86,11 +88,22 @@ describe('NotificationAccountDomain', () => {
         updatedBy: null,
     };
 
+    const emailPayload = {
+        userId: user.id,
+        email: user.email,
+        username: user.username,
+        notificationId: 'n-1',
+        cc: [],
+        bcc: [],
+    };
+
     beforeEach(async () => {
         vi.resetAllMocks();
+        notificationRepository.createMany.mockResolvedValue([notification]);
         const module = await Test.createTestingModule({
             providers: [
                 NotificationAccountDomain,
+                NotificationUtil,
                 {
                     provide: NotificationRepository,
                     useValue: notificationRepository,
@@ -100,7 +113,6 @@ describe('NotificationAccountDomain', () => {
                     provide: HelperStringService,
                     useValue: helperStringService,
                 },
-                { provide: DatabaseUtil, useValue: databaseUtil },
                 {
                     provide: NotificationEmailQueue,
                     useValue: notificationEmailQueue,
@@ -123,57 +135,173 @@ describe('NotificationAccountDomain', () => {
             const result = await domain.processWelcomeByAdmin(
                 'user-id',
                 'admin-id',
-                data
+                data,
+                'n-1',
+                []
             );
 
             expect(result).toEqual({
                 message:
                     'User not found, skipping welcome by admin notification',
+                completedSteps: [],
+                failedSteps: [],
             });
-            expect(notificationRepository.create).not.toHaveBeenCalled();
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
             expect(
                 notificationEmailQueue.sendWelcomeByAdmin
             ).not.toHaveBeenCalled();
         });
 
-        it('writes the notification and enqueues the email for an active user', async () => {
+        it('creates the row, then enqueues the email, and reports every step completed', async () => {
             userDomain.getOneActive.mockResolvedValue(user);
-            databaseUtil.createId.mockReturnValue('notification-id');
-            notificationRepository.create.mockResolvedValue(notification);
-            notificationEmailQueue.sendWelcomeByAdmin.mockResolvedValue(
-                undefined
+
+            const result = await domain.processWelcomeByAdmin(
+                'user-id',
+                'admin-id',
+                data,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
+                {
+                    kind: EnumNotificationKind.welcomeByAdmin,
+                    payload: {
+                        id: 'n-1',
+                        userId: user.id,
+                        metadata: { username: user.username },
+                        createdBy: 'admin-id',
+                    },
+                },
+            ]);
+            expect(
+                notificationEmailQueue.sendWelcomeByAdmin
+            ).toHaveBeenCalledWith(emailPayload, data);
+            expect(result).toEqual({
+                message: 'Welcome by admin notification processed',
+                completedSteps: [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendEmail,
+                ],
+                failedSteps: [],
+            });
+        });
+
+        it('skips the create on a retry and enqueues the email', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+
+            const result = await domain.processWelcomeByAdmin(
+                'user-id',
+                'admin-id',
+                data,
+                'n-1',
+                [EnumNotificationStep.createNotification]
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendWelcomeByAdmin
+            ).toHaveBeenCalledTimes(1);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendEmail,
+            ]);
+        });
+
+        it('skips every completed step on a retry', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+
+            const result = await domain.processWelcomeByAdmin(
+                'user-id',
+                'admin-id',
+                data,
+                'n-1',
+                [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendEmail,
+                ]
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendWelcomeByAdmin
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'Welcome by admin notification processed',
+                completedSteps: [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendEmail,
+                ],
+                failedSteps: [],
+            });
+        });
+
+        it('continues when the rows already exist and the progress is empty', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationRepository.createMany.mockResolvedValue([notification]);
+
+            const result = await domain.processWelcomeByAdmin(
+                'user-id',
+                'admin-id',
+                data,
+                'n-1',
+                []
+            );
+
+            expect(result.failedSteps).toEqual([]);
+            expect(
+                notificationEmailQueue.sendWelcomeByAdmin
+            ).toHaveBeenCalledTimes(1);
+        });
+
+        it('names a rejected side effect', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationEmailQueue.sendWelcomeByAdmin.mockRejectedValue(
+                new Error('redis')
             );
 
             const result = await domain.processWelcomeByAdmin(
                 'user-id',
                 'admin-id',
-                data
+                data,
+                'n-1',
+                []
             );
 
-            expect(notificationRepository.create).toHaveBeenCalledWith(
-                EnumNotificationKind.welcomeByAdmin,
-                {
-                    id: 'notification-id',
-                    userId: user.id,
-                    metadata: { username: user.username },
-                    createdBy: 'admin-id',
-                }
+            expect(result.failedSteps).toEqual([
+                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+            ]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+            ]);
+        });
+
+        it('stops at the create gate when the rows cannot be written', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationRepository.createMany.mockRejectedValue(
+                new Error('mongo')
             );
+
+            const result = await domain.processWelcomeByAdmin(
+                'user-id',
+                'admin-id',
+                data,
+                'n-1',
+                []
+            );
+
             expect(
                 notificationEmailQueue.sendWelcomeByAdmin
-            ).toHaveBeenCalledWith(
-                {
-                    userId: user.id,
-                    email: user.email,
-                    username: user.username,
-                    notificationId: 'notification-id',
-                    cc: [],
-                    bcc: [],
-                },
-                data
-            );
-            expect(result).toMatchObject({
-                message: 'Welcome by admin notification processed',
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'Welcome by admin notification failed',
+                completedSteps: [],
+                failedSteps: [
+                    {
+                        step: EnumNotificationStep.createNotification,
+                        error: 'mongo',
+                    },
+                ],
             });
         });
     });
@@ -185,36 +313,52 @@ describe('NotificationAccountDomain', () => {
             encryptedLink: 'cipher-link',
             reference: 'ref-1',
         };
+        const verificationEmailPayload = {
+            ...emailPayload,
+            notificationId: 'n-2',
+        };
+        const allSteps = [
+            EnumNotificationStep.createNotification,
+            EnumNotificationStep.sendWelcomeEmail,
+            EnumNotificationStep.sendVerificationEmail,
+        ];
 
         it('skips when the user is not active', async () => {
             userDomain.getOneActive.mockResolvedValue(null);
 
-            const result = await domain.processWelcome('user-id', data);
+            const result = await domain.processWelcome(
+                'user-id',
+                data,
+                'n-1',
+                'n-2',
+                []
+            );
 
             expect(result).toEqual({
                 message: 'User not found, skipping welcome notification',
+                completedSteps: [],
+                failedSteps: [],
             });
             expect(notificationRepository.createMany).not.toHaveBeenCalled();
         });
 
-        it('writes both notifications and enqueues both emails for an active user', async () => {
+        it('creates both rows in one call, then enqueues both emails, and reports every step completed', async () => {
             userDomain.getOneActive.mockResolvedValue(user);
-            databaseUtil.createId
-                .mockReturnValueOnce('welcome-id')
-                .mockReturnValueOnce('verification-id');
-            notificationRepository.createMany.mockResolvedValue([notification]);
-            notificationEmailQueue.sendWelcome.mockResolvedValue(undefined);
-            notificationEmailQueue.sendVerificationEmail.mockResolvedValue(
-                undefined
+
+            const result = await domain.processWelcome(
+                'user-id',
+                data,
+                'n-1',
+                'n-2',
+                []
             );
 
-            const result = await domain.processWelcome('user-id', data);
-
+            expect(notificationRepository.createMany).toHaveBeenCalledTimes(1);
             expect(notificationRepository.createMany).toHaveBeenCalledWith([
                 {
                     kind: EnumNotificationKind.welcome,
                     payload: {
-                        id: 'welcome-id',
+                        id: 'n-1',
                         userId: user.id,
                         metadata: { username: user.username },
                         createdBy: user.id,
@@ -223,36 +367,140 @@ describe('NotificationAccountDomain', () => {
                 {
                     kind: EnumNotificationKind.verificationEmail,
                     payload: {
-                        id: 'verification-id',
+                        id: 'n-2',
                         userId: user.id,
                         metadata: { username: user.username },
                         createdBy: user.id,
                     },
                 },
             ]);
-            expect(notificationEmailQueue.sendWelcome).toHaveBeenCalledWith({
-                userId: user.id,
-                email: user.email,
-                username: user.username,
-                notificationId: 'welcome-id',
-                cc: [],
-                bcc: [],
-            });
+            expect(notificationEmailQueue.sendWelcome).toHaveBeenCalledWith(
+                emailPayload
+            );
             expect(
                 notificationEmailQueue.sendVerificationEmail
-            ).toHaveBeenCalledWith(
-                {
-                    userId: user.id,
-                    email: user.email,
-                    username: user.username,
-                    notificationId: 'verification-id',
-                    cc: [],
-                    bcc: [],
-                },
-                data
-            );
-            expect(result).toMatchObject({
+            ).toHaveBeenCalledWith(verificationEmailPayload, data);
+            expect(result).toEqual({
                 message: 'Welcome notification processed',
+                completedSteps: allSteps,
+                failedSteps: [],
+            });
+        });
+
+        it('skips the completed steps on a retry', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+
+            const result = await domain.processWelcome(
+                'user-id',
+                data,
+                'n-1',
+                'n-2',
+                [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendWelcomeEmail,
+                ]
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(notificationEmailQueue.sendWelcome).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendVerificationEmail
+            ).toHaveBeenCalledTimes(1);
+            expect(result.completedSteps).toEqual(allSteps);
+        });
+
+        it('skips the verification email when its step is already recorded', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+
+            const result = await domain.processWelcome(
+                'user-id',
+                data,
+                'n-1',
+                'n-2',
+                allSteps
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(notificationEmailQueue.sendWelcome).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendVerificationEmail
+            ).not.toHaveBeenCalled();
+            expect(result.failedSteps).toEqual([]);
+            expect(result.completedSteps).toEqual(allSteps);
+        });
+
+        it('continues when the rows already exist and the progress is empty', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationRepository.createMany.mockResolvedValue([
+                notification,
+                notification,
+            ]);
+
+            const result = await domain.processWelcome(
+                'user-id',
+                data,
+                'n-1',
+                'n-2',
+                []
+            );
+
+            expect(result.failedSteps).toEqual([]);
+            expect(result.completedSteps).toEqual(allSteps);
+        });
+
+        it('names a rejected side effect and still runs the other', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationEmailQueue.sendWelcome.mockRejectedValue(
+                new Error('redis')
+            );
+
+            const result = await domain.processWelcome(
+                'user-id',
+                data,
+                'n-1',
+                'n-2',
+                []
+            );
+
+            expect(
+                notificationEmailQueue.sendVerificationEmail
+            ).toHaveBeenCalledTimes(1);
+            expect(result.failedSteps).toEqual([
+                { step: EnumNotificationStep.sendWelcomeEmail, error: 'redis' },
+            ]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendVerificationEmail,
+            ]);
+        });
+
+        it('stops at the create gate when the rows cannot be written', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationRepository.createMany.mockRejectedValue(
+                new Error('mongo')
+            );
+
+            const result = await domain.processWelcome(
+                'user-id',
+                data,
+                'n-1',
+                'n-2',
+                []
+            );
+
+            expect(notificationEmailQueue.sendWelcome).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendVerificationEmail
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'Welcome notification failed',
+                completedSteps: [],
+                failedSteps: [
+                    {
+                        step: EnumNotificationStep.createNotification,
+                        error: 'mongo',
+                    },
+                ],
             });
         });
     });
@@ -261,45 +509,155 @@ describe('NotificationAccountDomain', () => {
         it('skips when the user is not active', async () => {
             userDomain.getOneActive.mockResolvedValue(null);
 
-            const result = await domain.processWelcomeSocial('user-id');
+            const result = await domain.processWelcomeSocial(
+                'user-id',
+                'n-1',
+                []
+            );
 
             expect(result).toEqual({
                 message: 'User not found, skipping welcome social notification',
+                completedSteps: [],
+                failedSteps: [],
             });
-            expect(notificationRepository.create).not.toHaveBeenCalled();
-        });
-
-        it('writes the notification and enqueues the email for an active user', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            databaseUtil.createId.mockReturnValue('notification-id');
-            notificationRepository.create.mockResolvedValue(notification);
-            notificationEmailQueue.sendWelcomeSocial.mockResolvedValue(
-                undefined
-            );
-
-            const result = await domain.processWelcomeSocial('user-id');
-
-            expect(notificationRepository.create).toHaveBeenCalledWith(
-                EnumNotificationKind.welcomeSocial,
-                {
-                    id: 'notification-id',
-                    userId: user.id,
-                    metadata: { username: user.username },
-                    createdBy: user.id,
-                }
-            );
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
             expect(
                 notificationEmailQueue.sendWelcomeSocial
-            ).toHaveBeenCalledWith({
-                userId: user.id,
-                email: user.email,
-                username: user.username,
-                notificationId: 'notification-id',
-                cc: [],
-                bcc: [],
-            });
-            expect(result).toMatchObject({
+            ).not.toHaveBeenCalled();
+        });
+
+        it('creates the row, then enqueues the email, and reports every step completed', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+
+            const result = await domain.processWelcomeSocial(
+                'user-id',
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
+                {
+                    kind: EnumNotificationKind.welcomeSocial,
+                    payload: {
+                        id: 'n-1',
+                        userId: user.id,
+                        metadata: { username: user.username },
+                        createdBy: user.id,
+                    },
+                },
+            ]);
+            expect(
+                notificationEmailQueue.sendWelcomeSocial
+            ).toHaveBeenCalledWith(emailPayload);
+            expect(result).toEqual({
                 message: 'Welcome social notification processed',
+                completedSteps: [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendEmail,
+                ],
+                failedSteps: [],
+            });
+        });
+
+        it('skips the create on a retry and enqueues the email', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+
+            const result = await domain.processWelcomeSocial('user-id', 'n-1', [
+                EnumNotificationStep.createNotification,
+            ]);
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendWelcomeSocial
+            ).toHaveBeenCalledTimes(1);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendEmail,
+            ]);
+        });
+
+        it('skips every completed step on a retry', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+
+            const result = await domain.processWelcomeSocial('user-id', 'n-1', [
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendEmail,
+            ]);
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendWelcomeSocial
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'Welcome social notification processed',
+                completedSteps: [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendEmail,
+                ],
+                failedSteps: [],
+            });
+        });
+
+        it('continues when the rows already exist and the progress is empty', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationRepository.createMany.mockResolvedValue([notification]);
+
+            const result = await domain.processWelcomeSocial(
+                'user-id',
+                'n-1',
+                []
+            );
+
+            expect(result.failedSteps).toEqual([]);
+            expect(
+                notificationEmailQueue.sendWelcomeSocial
+            ).toHaveBeenCalledTimes(1);
+        });
+
+        it('names a rejected side effect', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationEmailQueue.sendWelcomeSocial.mockRejectedValue(
+                new Error('redis')
+            );
+
+            const result = await domain.processWelcomeSocial(
+                'user-id',
+                'n-1',
+                []
+            );
+
+            expect(result.failedSteps).toEqual([
+                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+            ]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+            ]);
+        });
+
+        it('stops at the create gate when the rows cannot be written', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationRepository.createMany.mockRejectedValue(
+                new Error('mongo')
+            );
+
+            const result = await domain.processWelcomeSocial(
+                'user-id',
+                'n-1',
+                []
+            );
+
+            expect(
+                notificationEmailQueue.sendWelcomeSocial
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'Welcome social notification failed',
+                completedSteps: [],
+                failedSteps: [
+                    {
+                        step: EnumNotificationStep.createNotification,
+                        error: 'mongo',
+                    },
+                ],
             });
         });
     });
@@ -310,48 +668,168 @@ describe('NotificationAccountDomain', () => {
         it('skips when the user is not active', async () => {
             userDomain.getOneActive.mockResolvedValue(null);
 
-            const result = await domain.processVerifiedEmail('user-id', data);
+            const result = await domain.processVerifiedEmail(
+                'user-id',
+                data,
+                'n-1',
+                []
+            );
 
             expect(result).toEqual({
                 message: 'User not found, skipping verified email notification',
+                completedSteps: [],
+                failedSteps: [],
             });
-            expect(notificationRepository.create).not.toHaveBeenCalled();
-        });
-
-        it('writes the notification and enqueues the email for an active user', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
-            databaseUtil.createId.mockReturnValue('notification-id');
-            notificationRepository.create.mockResolvedValue(notification);
-            notificationEmailQueue.sendVerifiedEmail.mockResolvedValue(
-                undefined
-            );
-
-            const result = await domain.processVerifiedEmail('user-id', data);
-
-            expect(notificationRepository.create).toHaveBeenCalledWith(
-                EnumNotificationKind.verifiedEmail,
-                {
-                    id: 'notification-id',
-                    userId: user.id,
-                    metadata: { username: user.username },
-                    createdBy: user.id,
-                }
-            );
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
             expect(
                 notificationEmailQueue.sendVerifiedEmail
-            ).toHaveBeenCalledWith(
-                {
-                    userId: user.id,
-                    email: user.email,
-                    username: user.username,
-                    notificationId: 'notification-id',
-                    cc: [],
-                    bcc: [],
-                },
-                data
+            ).not.toHaveBeenCalled();
+        });
+
+        it('creates the row, then enqueues the email, and reports every step completed', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+
+            const result = await domain.processVerifiedEmail(
+                'user-id',
+                data,
+                'n-1',
+                []
             );
-            expect(result).toMatchObject({
+
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
+                {
+                    kind: EnumNotificationKind.verifiedEmail,
+                    payload: {
+                        id: 'n-1',
+                        userId: user.id,
+                        metadata: { username: user.username },
+                        createdBy: user.id,
+                    },
+                },
+            ]);
+            expect(
+                notificationEmailQueue.sendVerifiedEmail
+            ).toHaveBeenCalledWith(emailPayload, data);
+            expect(result).toEqual({
                 message: 'Verified email notification processed',
+                completedSteps: [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendEmail,
+                ],
+                failedSteps: [],
+            });
+        });
+
+        it('skips the create on a retry and enqueues the email', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+
+            const result = await domain.processVerifiedEmail(
+                'user-id',
+                data,
+                'n-1',
+                [EnumNotificationStep.createNotification]
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendVerifiedEmail
+            ).toHaveBeenCalledTimes(1);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendEmail,
+            ]);
+        });
+
+        it('skips every completed step on a retry', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+
+            const result = await domain.processVerifiedEmail(
+                'user-id',
+                data,
+                'n-1',
+                [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendEmail,
+                ]
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendVerifiedEmail
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'Verified email notification processed',
+                completedSteps: [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendEmail,
+                ],
+                failedSteps: [],
+            });
+        });
+
+        it('continues when the rows already exist and the progress is empty', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationRepository.createMany.mockResolvedValue([notification]);
+
+            const result = await domain.processVerifiedEmail(
+                'user-id',
+                data,
+                'n-1',
+                []
+            );
+
+            expect(result.failedSteps).toEqual([]);
+            expect(
+                notificationEmailQueue.sendVerifiedEmail
+            ).toHaveBeenCalledTimes(1);
+        });
+
+        it('names a rejected side effect', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationEmailQueue.sendVerifiedEmail.mockRejectedValue(
+                new Error('redis')
+            );
+
+            const result = await domain.processVerifiedEmail(
+                'user-id',
+                data,
+                'n-1',
+                []
+            );
+
+            expect(result.failedSteps).toEqual([
+                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+            ]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+            ]);
+        });
+
+        it('stops at the create gate when the rows cannot be written', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationRepository.createMany.mockRejectedValue(
+                new Error('mongo')
+            );
+
+            const result = await domain.processVerifiedEmail(
+                'user-id',
+                data,
+                'n-1',
+                []
+            );
+
+            expect(
+                notificationEmailQueue.sendVerifiedEmail
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'Verified email notification failed',
+                completedSteps: [],
+                failedSteps: [
+                    {
+                        step: EnumNotificationStep.createNotification,
+                        error: 'mongo',
+                    },
+                ],
             });
         });
     });
@@ -369,53 +847,170 @@ describe('NotificationAccountDomain', () => {
 
             const result = await domain.processVerificationEmail(
                 'user-id',
-                data
+                data,
+                'n-1',
+                []
             );
 
             expect(result).toEqual({
                 message:
                     'User not found, skipping verification email notification',
+                completedSteps: [],
+                failedSteps: [],
             });
-            expect(notificationRepository.create).not.toHaveBeenCalled();
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendVerificationEmail
+            ).not.toHaveBeenCalled();
         });
 
-        it('writes the notification and enqueues the email for an active user', async () => {
+        it('creates the row, then enqueues the email, and reports every step completed', async () => {
             userDomain.getOneActive.mockResolvedValue(user);
-            databaseUtil.createId.mockReturnValue('notification-id');
-            notificationRepository.create.mockResolvedValue(notification);
-            notificationEmailQueue.sendVerificationEmail.mockResolvedValue(
-                undefined
+
+            const result = await domain.processVerificationEmail(
+                'user-id',
+                data,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
+                {
+                    kind: EnumNotificationKind.verificationEmail,
+                    payload: {
+                        id: 'n-1',
+                        userId: user.id,
+                        metadata: { username: user.username },
+                        createdBy: user.id,
+                    },
+                },
+            ]);
+            expect(
+                notificationEmailQueue.sendVerificationEmail
+            ).toHaveBeenCalledWith(emailPayload, data);
+            expect(result).toEqual({
+                message: 'Verification email notification processed',
+                completedSteps: [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendVerificationEmail,
+                ],
+                failedSteps: [],
+            });
+        });
+
+        it('skips the create on a retry and enqueues the email', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+
+            const result = await domain.processVerificationEmail(
+                'user-id',
+                data,
+                'n-1',
+                [EnumNotificationStep.createNotification]
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendVerificationEmail
+            ).toHaveBeenCalledTimes(1);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendVerificationEmail,
+            ]);
+        });
+
+        it('skips every completed step on a retry', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+
+            const result = await domain.processVerificationEmail(
+                'user-id',
+                data,
+                'n-1',
+                [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendVerificationEmail,
+                ]
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendVerificationEmail
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'Verification email notification processed',
+                completedSteps: [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendVerificationEmail,
+                ],
+                failedSteps: [],
+            });
+        });
+
+        it('continues when the rows already exist and the progress is empty', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationRepository.createMany.mockResolvedValue([notification]);
+
+            const result = await domain.processVerificationEmail(
+                'user-id',
+                data,
+                'n-1',
+                []
+            );
+
+            expect(result.failedSteps).toEqual([]);
+            expect(
+                notificationEmailQueue.sendVerificationEmail
+            ).toHaveBeenCalledTimes(1);
+        });
+
+        it('names a rejected side effect', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationEmailQueue.sendVerificationEmail.mockRejectedValue(
+                new Error('redis')
             );
 
             const result = await domain.processVerificationEmail(
                 'user-id',
-                data
+                data,
+                'n-1',
+                []
             );
 
-            expect(notificationRepository.create).toHaveBeenCalledWith(
-                EnumNotificationKind.verificationEmail,
+            expect(result.failedSteps).toEqual([
                 {
-                    id: 'notification-id',
-                    userId: user.id,
-                    metadata: { username: user.username },
-                    createdBy: user.id,
-                }
+                    step: EnumNotificationStep.sendVerificationEmail,
+                    error: 'redis',
+                },
+            ]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+            ]);
+        });
+
+        it('stops at the create gate when the rows cannot be written', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationRepository.createMany.mockRejectedValue(
+                new Error('mongo')
             );
+
+            const result = await domain.processVerificationEmail(
+                'user-id',
+                data,
+                'n-1',
+                []
+            );
+
             expect(
                 notificationEmailQueue.sendVerificationEmail
-            ).toHaveBeenCalledWith(
-                {
-                    userId: user.id,
-                    email: user.email,
-                    username: user.username,
-                    notificationId: 'notification-id',
-                    cc: [],
-                    bcc: [],
-                },
-                data
-            );
-            expect(result).toMatchObject({
-                message: 'Verification email notification processed',
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'Verification email notification failed',
+                completedSteps: [],
+                failedSteps: [
+                    {
+                        step: EnumNotificationStep.createNotification,
+                        error: 'mongo',
+                    },
+                ],
             });
         });
     });
@@ -427,66 +1022,179 @@ describe('NotificationAccountDomain', () => {
             mobileNumber: '+15551234567',
         };
 
+        beforeEach(() => {
+            helperStringService.censor.mockReturnValue('+1555****567');
+        });
+
         it('skips when the user is not active', async () => {
             userDomain.getOneActive.mockResolvedValue(null);
 
             const result = await domain.processVerifiedMobileNumber(
                 'user-id',
-                data
+                data,
+                'n-1',
+                []
             );
 
             expect(result).toEqual({
                 message:
                     'User not found, skipping verified mobile number notification',
+                completedSteps: [],
+                failedSteps: [],
             });
-            expect(notificationRepository.create).not.toHaveBeenCalled();
-            expect(helperStringService.censor).not.toHaveBeenCalled();
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendVerifiedMobileNumber
+            ).not.toHaveBeenCalled();
         });
 
-        it('censors the mobile number, writes the notification, and enqueues the email', async () => {
+        it('creates the row, then enqueues the email, and reports every step completed', async () => {
             userDomain.getOneActive.mockResolvedValue(user);
-            databaseUtil.createId.mockReturnValue('notification-id');
-            helperStringService.censor.mockReturnValue('+1555****567');
-            notificationRepository.create.mockResolvedValue(notification);
-            notificationEmailQueue.sendVerifiedMobileNumber.mockResolvedValue(
-                undefined
+
+            const result = await domain.processVerifiedMobileNumber(
+                'user-id',
+                data,
+                'n-1',
+                []
+            );
+
+            expect(notificationRepository.createMany).toHaveBeenCalledWith([
+                {
+                    kind: EnumNotificationKind.verifiedMobileNumber,
+                    payload: {
+                        id: 'n-1',
+                        userId: user.id,
+                        metadata: {
+                            username: user.username,
+                            mobileNumber: '+1555****567',
+                        },
+                        createdBy: user.id,
+                    },
+                },
+            ]);
+            expect(
+                notificationEmailQueue.sendVerifiedMobileNumber
+            ).toHaveBeenCalledWith(emailPayload, data);
+            expect(result).toEqual({
+                message: 'Mobile number verified notification processed',
+                completedSteps: [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendEmail,
+                ],
+                failedSteps: [],
+            });
+        });
+
+        it('skips the create on a retry and enqueues the email', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+
+            const result = await domain.processVerifiedMobileNumber(
+                'user-id',
+                data,
+                'n-1',
+                [EnumNotificationStep.createNotification]
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendVerifiedMobileNumber
+            ).toHaveBeenCalledTimes(1);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+                EnumNotificationStep.sendEmail,
+            ]);
+        });
+
+        it('skips every completed step on a retry', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+
+            const result = await domain.processVerifiedMobileNumber(
+                'user-id',
+                data,
+                'n-1',
+                [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendEmail,
+                ]
+            );
+
+            expect(notificationRepository.createMany).not.toHaveBeenCalled();
+            expect(
+                notificationEmailQueue.sendVerifiedMobileNumber
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'Mobile number verified notification processed',
+                completedSteps: [
+                    EnumNotificationStep.createNotification,
+                    EnumNotificationStep.sendEmail,
+                ],
+                failedSteps: [],
+            });
+        });
+
+        it('continues when the rows already exist and the progress is empty', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationRepository.createMany.mockResolvedValue([notification]);
+
+            const result = await domain.processVerifiedMobileNumber(
+                'user-id',
+                data,
+                'n-1',
+                []
+            );
+
+            expect(result.failedSteps).toEqual([]);
+            expect(
+                notificationEmailQueue.sendVerifiedMobileNumber
+            ).toHaveBeenCalledTimes(1);
+        });
+
+        it('names a rejected side effect', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationEmailQueue.sendVerifiedMobileNumber.mockRejectedValue(
+                new Error('redis')
             );
 
             const result = await domain.processVerifiedMobileNumber(
                 'user-id',
-                data
+                data,
+                'n-1',
+                []
             );
 
-            expect(helperStringService.censor).toHaveBeenCalledWith(
-                data.mobileNumber
+            expect(result.failedSteps).toEqual([
+                { step: EnumNotificationStep.sendEmail, error: 'redis' },
+            ]);
+            expect(result.completedSteps).toEqual([
+                EnumNotificationStep.createNotification,
+            ]);
+        });
+
+        it('stops at the create gate when the rows cannot be written', async () => {
+            userDomain.getOneActive.mockResolvedValue(user);
+            notificationRepository.createMany.mockRejectedValue(
+                new Error('mongo')
             );
-            expect(notificationRepository.create).toHaveBeenCalledWith(
-                EnumNotificationKind.verifiedMobileNumber,
-                {
-                    id: 'notification-id',
-                    userId: user.id,
-                    metadata: {
-                        username: user.username,
-                        mobileNumber: '+1555****567',
-                    },
-                    createdBy: user.id,
-                }
+
+            const result = await domain.processVerifiedMobileNumber(
+                'user-id',
+                data,
+                'n-1',
+                []
             );
+
             expect(
                 notificationEmailQueue.sendVerifiedMobileNumber
-            ).toHaveBeenCalledWith(
-                {
-                    userId: user.id,
-                    email: user.email,
-                    username: user.username,
-                    notificationId: 'notification-id',
-                    cc: [],
-                    bcc: [],
-                },
-                data
-            );
-            expect(result).toMatchObject({
-                message: 'Mobile number verified notification processed',
+            ).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                message: 'Mobile number verified notification failed',
+                completedSteps: [],
+                failedSteps: [
+                    {
+                        step: EnumNotificationStep.createNotification,
+                        error: 'mongo',
+                    },
+                ],
             });
         });
     });

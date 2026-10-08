@@ -5,27 +5,20 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponseFileReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumActivityLogAction,
-    EnumTermPolicyType,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumTermPolicyType, Prisma } from '@generated/prisma-client/client';
 import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import type { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
-import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
+import { OnboardingDomain } from '@modules/onboarding/domains/onboarding.domain';
 import { UserImportDomain } from '@modules/user/domains/user.import.domain';
-import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
-import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class UserImportHttpService {
     constructor(
         private readonly userImportDomain: UserImportDomain,
-        private readonly userOnboardingDomain: UserOnboardingDomain,
-        private readonly workspaceDomain: WorkspaceDomain,
+        private readonly onboardingDomain: OnboardingDomain,
         private readonly fileService: FileService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
@@ -35,27 +28,12 @@ export class UserImportHttpService {
         data: UserImportRequestDto[],
         createdBy: string
     ): Promise<IResponseReturn<void>> {
-        const { inputs, passwordHasheds, passwordStrings } =
-            await this.userImportDomain.prepareImportByAdmin(
-                data.map(({ email, name, username }) => ({
-                    email,
-                    name: name ?? null,
-                    username,
-                })),
-                createdBy
-            );
-        const createBulkTimeoutInMs =
-            this.userOnboardingDomain.getCreateBulkTimeoutInMs();
-        const users = await this.workspaceDomain.commitOnboarding(
-            inputs,
-            EnumUserCreateMode.admin,
-            createBulkTimeoutInMs,
-            EnumActivityLogAction.adminUserImport
-        );
-        await this.userImportDomain.notifyImported(
-            users,
-            passwordHasheds,
-            passwordStrings,
+        await this.onboardingDomain.importByAdmin(
+            data.map(({ email, name, username }) => ({
+                email,
+                name: name ?? null,
+                username,
+            })),
             createdBy
         );
 

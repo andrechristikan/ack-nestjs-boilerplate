@@ -14,7 +14,6 @@ import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import type {
     ISession,
@@ -270,19 +269,19 @@ describe('SessionDomain', () => {
             ).resolves.toBeUndefined();
         });
 
-        it('throws AuthJwtRefreshTokenInvalidException when no row matched', async () => {
+        it('throws SessionRevokedException when no row matched', async () => {
             sessionRepository.updateJtiInTx.mockResolvedValue(false);
 
             const rejection = domain.updateJtiInTx(tx, 'session-1', 'new-jti');
 
             await expect(rejection).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
+                module: 'session',
+                statusCode: EnumSessionStatusCodeError.revoked,
                 statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtRefreshTokenInvalid
+                    EnumSessionStatusCodeError[
+                        EnumSessionStatusCodeError.revoked
                     ],
-                messagePath: 'auth.error.refreshTokenUnauthorized',
+                messagePath: 'session.error.revoked',
             });
         });
     });

@@ -31,6 +31,7 @@ import {
 import type { Prisma, TermPolicy } from '@generated/prisma-client/client';
 import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
+import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
 import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -120,6 +121,7 @@ describe('TermPolicyDomain', () => {
             timestamp,
         });
         activityLogDomain.prepare.mockReturnValue(preparedEvent);
+        termPolicyUtil.toContents.mockReturnValue([contentEn]);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -620,10 +622,31 @@ describe('TermPolicyDomain', () => {
             });
         });
 
+        it('throws TermPolicyContentInvalidException when the stored contents are invalid', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.toContents.mockReturnValue(
+                new TermPolicyContentInvalidException()
+            );
+
+            await expect(
+                domain.publishByAdmin('term-policy-1', 'user-1')
+            ).rejects.toMatchObject({
+                constructor: TermPolicyContentInvalidException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentInvalid,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.contentInvalid
+                    ],
+                messagePath: 'termPolicy.error.contentInvalid',
+            });
+        });
+
         it('throws TermPolicyContentEmptyException when there is no content', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(
                 emptyDraftTermPolicy
             );
+            termPolicyUtil.toContents.mockReturnValue([]);
 
             await expect(
                 domain.publishByAdmin('term-policy-1', 'user-1')
@@ -657,9 +680,7 @@ describe('TermPolicyDomain', () => {
             });
             expect(awsS3Service.copyItems).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(
-                userDomain.resetTermPolicyInTx
-            ).not.toHaveBeenCalled();
+            expect(userDomain.resetTermPolicyInTx).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendPublishTermPolicy
             ).not.toHaveBeenCalled();
@@ -689,9 +710,7 @@ describe('TermPolicyDomain', () => {
             termPolicyRepository.findOneByIdInTx.mockResolvedValue(
                 publishedRow
             );
-            userDomain.resetTermPolicyInTx.mockResolvedValue(
-                undefined
-            );
+            userDomain.resetTermPolicyInTx.mockResolvedValue(undefined);
             notificationQueue.sendPublishTermPolicy.mockResolvedValue(
                 undefined
             );
@@ -712,9 +731,10 @@ describe('TermPolicyDomain', () => {
                 tx,
                 'term-policy-1'
             );
-            expect(
-                userDomain.resetTermPolicyInTx
-            ).toHaveBeenCalledWith(tx, EnumTermPolicyType.privacy);
+            expect(userDomain.resetTermPolicyInTx).toHaveBeenCalledWith(
+                tx,
+                EnumTermPolicyType.privacy
+            );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 preparedEvent,
             ]);
@@ -760,9 +780,7 @@ describe('TermPolicyDomain', () => {
                     ],
                 messagePath: 'termPolicy.error.statusInvalid',
             });
-            expect(
-                userDomain.resetTermPolicyInTx
-            ).not.toHaveBeenCalled();
+            expect(userDomain.resetTermPolicyInTx).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendPublishTermPolicy
@@ -794,9 +812,7 @@ describe('TermPolicyDomain', () => {
                     ],
                 messagePath: 'termPolicy.error.notFound',
             });
-            expect(
-                userDomain.resetTermPolicyInTx
-            ).not.toHaveBeenCalled();
+            expect(userDomain.resetTermPolicyInTx).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendPublishTermPolicy

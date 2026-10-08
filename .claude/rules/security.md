@@ -40,7 +40,7 @@ A guard reads transport inputs and delegates to a domain; the stack is `http.md`
 
 ## Activity log
 
-`ActivityLogDomain.prepare` (`activity-log.domain.ts:199`) builds and validates one event against `ActivityLogActionContract`; `stagePrepared` (`:225`) puts it on the CLS queue; `ActivityLogInterceptor` flushes. Prepare before the write, stage after it; a value only the write produces is drawn before it (`DatabaseUtil.createId()`) or prepared after the commit. `prepare({ onError: true })` also flushes on the error path; an event on a path that always throws carries it. Every `EnumActivityLogAction` member has a contract row and an `activityLog` i18n key. An action one user takes on another writes two rows: the actor's under the plain action with `targetUserId`, the affected user's under the paired `…ByAdmin` / `…ByOwner` / `…ByInvitee` action with `actorUserId`.
+`ActivityLogDomain.prepare` (`activity-log.domain.ts:199`) builds and validates one entry against `ActivityLogActionContract`; `stagePrepared` (`:225`) puts it on the CLS queue; `ActivityLogInterceptor` flushes. Prepare before the write, stage after it; a value only the write produces is drawn before it (`DatabaseUtil.createId()`) or prepared after the commit. `prepare({ onError: true })` also flushes on the error path; an entry on a path that always throws carries it. Every `EnumActivityLogAction` member has a contract row and an `activityLog` i18n key. An action one user takes on another writes two rows: the actor's under the plain action with `targetUserId`, the affected user's under the paired `…ByAdmin` / `…ByOwner` / `…ByInvitee` action with `actorUserId`.
 
 ## Request store
 

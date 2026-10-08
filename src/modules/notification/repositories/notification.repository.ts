@@ -104,27 +104,23 @@ export class NotificationRepository implements INotificationRepository {
         });
     }
 
-    async create(
-        kind: EnumNotificationKind,
-        payload: INotificationCreate
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-
-        const createData = this.buildCreateData(kind, payload, today);
-
-        return this.databaseService.client.notification.create({
-            data: createData,
-        });
-    }
-
     async createMany(
         entries: INotificationCreateEntry[]
     ): Promise<Notification[]> {
         const today = this.helperDateService.create();
+        const ids = entries.map(({ payload }) => payload.id);
 
         return this.databaseService.withTransaction(async tx => {
+            const existing = await tx.notification.findMany({
+                where: { id: { in: ids } },
+            });
+            const existingIds = new Set(existing.map(row => row.id));
             const created: Notification[] = [];
             for (const { kind, payload } of entries) {
+                if (existingIds.has(payload.id)) {
+                    continue;
+                }
+
                 const createData = this.buildCreateData(kind, payload, today);
                 const row = await tx.notification.create({
                     data: createData,
@@ -132,7 +128,7 @@ export class NotificationRepository implements INotificationRepository {
                 created.push(row);
             }
 
-            return created;
+            return [...existing, ...created];
         });
     }
 
@@ -140,12 +136,10 @@ export class NotificationRepository implements INotificationRepository {
         termPolicyId: string,
         userIds: string[]
     ): Promise<INotificationTermPolicyRecipientState[]> {
-        return this.databaseService.client.termPolicyRecipient.findMany(
-            {
-                where: { termPolicyId, userId: { in: userIds } },
-                select: NotificationTermPolicyRecipientStateSelect,
-            }
-        );
+        return this.databaseService.client.termPolicyRecipient.findMany({
+            where: { termPolicyId, userId: { in: userIds } },
+            select: NotificationTermPolicyRecipientStateSelect,
+        });
     }
 
     async createTermPolicyRecipients(
@@ -182,16 +176,14 @@ export class NotificationRepository implements INotificationRepository {
         enqueuedAt: Date,
         updatedBy: string
     ): Promise<void> {
-        await this.databaseService.client.termPolicyRecipient.updateMany(
-            {
-                where: {
-                    termPolicyId,
-                    batchId: { in: batchIds },
-                    enqueuedAt: null,
-                },
-                data: { enqueuedAt, updatedBy },
-            }
-        );
+        await this.databaseService.client.termPolicyRecipient.updateMany({
+            where: {
+                termPolicyId,
+                batchId: { in: batchIds },
+                enqueuedAt: null,
+            },
+            data: { enqueuedAt, updatedBy },
+        });
     }
 
     async findTermPolicyRecipientsUnsent(
@@ -199,16 +191,14 @@ export class NotificationRepository implements INotificationRepository {
         batchId: string
     ): Promise<INotificationTermPolicyRecipientSend[]> {
         const rows =
-            await this.databaseService.client.termPolicyRecipient.findMany(
-                {
-                    where: {
-                        ...NotificationTermPolicyRecipientSendWhere,
-                        termPolicyId,
-                        batchId,
-                    },
-                    select: NotificationTermPolicyRecipientSendSelect,
-                }
-            );
+            await this.databaseService.client.termPolicyRecipient.findMany({
+                where: {
+                    ...NotificationTermPolicyRecipientSendWhere,
+                    termPolicyId,
+                    batchId,
+                },
+                select: NotificationTermPolicyRecipientSendSelect,
+            });
 
         return rows.map(({ userId, notificationId, user }) => ({
             userId,
@@ -225,17 +215,15 @@ export class NotificationRepository implements INotificationRepository {
         sentAt: Date,
         updatedBy: string
     ): Promise<void> {
-        await this.databaseService.client.termPolicyRecipient.updateMany(
-            {
-                where: {
-                    termPolicyId,
-                    batchId,
-                    userId: { in: userIds },
-                    sentAt: null,
-                },
-                data: { sentAt, updatedBy },
-            }
-        );
+        await this.databaseService.client.termPolicyRecipient.updateMany({
+            where: {
+                termPolicyId,
+                batchId,
+                userId: { in: userIds },
+                sentAt: null,
+            },
+            data: { sentAt, updatedBy },
+        });
     }
 
     async markAsRead(
@@ -276,7 +264,7 @@ export class NotificationRepository implements INotificationRepository {
         userId: string,
         notificationId: string,
         channel: EnumNotificationChannel
-    ): Promise<{ title: string; body: string } | null> {
+    ): Promise<Notification> {
         const today = this.helperDateService.create();
         return this.databaseService.client.notification.update({
             where: { id: notificationId, userId },
@@ -295,7 +283,6 @@ export class NotificationRepository implements INotificationRepository {
                     },
                 },
             },
-            select: { title: true, body: true },
         });
     }
 

@@ -3,7 +3,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -15,27 +14,19 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { UserDomain } from '@modules/user/domains/user.domain';
-import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
+import { OnboardingDomain } from '@modules/onboarding/domains/onboarding.domain';
 import { UserHttpService } from '@modules/user/services/user.http.service';
-import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
-import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
 import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/user.check-username.request.dto';
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import type {
-    IUser,
-    IUserCreateWithWorkspaceInput,
-    IUserList,
-} from '@modules/user/interfaces/user.interface';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import type { IUser, IUserList } from '@modules/user/interfaces/user.interface';
 
 describe('UserHttpService', () => {
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
-    const userOnboardingDomain: MockProxy<UserOnboardingDomain> =
-        mock<UserOnboardingDomain>();
-    const workspaceDomain: MockProxy<WorkspaceDomain> = mock<WorkspaceDomain>();
+    const onboardingDomain: MockProxy<OnboardingDomain> =
+        mock<OnboardingDomain>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
@@ -101,11 +92,7 @@ describe('UserHttpService', () => {
             providers: [
                 UserHttpService,
                 { provide: UserDomain, useValue: userDomain },
-                {
-                    provide: UserOnboardingDomain,
-                    useValue: userOnboardingDomain,
-                },
-                { provide: WorkspaceDomain, useValue: workspaceDomain },
+                { provide: OnboardingDomain, useValue: onboardingDomain },
                 {
                     provide: PaginationQueryUtil,
                     useValue: paginationQueryUtil,
@@ -229,79 +216,37 @@ describe('UserHttpService', () => {
             roleId: 'role-cinder',
             countryId: 'country-cinder',
         };
-        const input: IUserCreateWithWorkspaceInput = {
-            userId: 'user-cinder',
-            email: dto.email,
-            name: null,
-            username: dto.username,
-            countryId: dto.countryId,
-            roleId: dto.roleId,
-            signUpFrom: EnumUserSignUpFrom.admin,
-            signUpWith: EnumUserSignUpWith.credential,
-            isVerified: false,
-            termPolicy: {
-                termsOfService: true,
-                privacy: true,
-                marketing: false,
-                cookies: false,
-            },
-            acceptedTermPolicyTypes: [],
-            password: {
-                passwordHash: 'hashed',
-                passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-                passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-                passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
-            },
-            passwordHistoryType: null,
-            verification: null,
-            workspaceContext: {
-                type: EnumUserSignUpWorkspaceContextType.personal,
-                workspaceId: 'workspace-cinder',
-                slugCandidates: ['w-cinder'],
-                name: "cinder2wolfe's Workspace",
-            },
-            createdBy: 'admin-cinder',
-        };
 
-        it('creates the user and notifies them of the temporary password', async () => {
-            userDomain.prepareCreateByAdmin.mockResolvedValue({
-                input,
-                passwordString: 'random-password',
-            });
-            userOnboardingDomain.getCreateTimeoutInMs.mockReturnValue(10000);
-            const created = baseUser;
-            workspaceDomain.commitOnboarding.mockResolvedValue([created]);
+        it('delegates creation to OnboardingDomain and returns the id', async () => {
+            onboardingDomain.createByAdmin.mockResolvedValue('user-cinder');
 
             const result = await service.createByAdmin(dto, 'admin-cinder');
 
-            expect(result.data).toEqual({ id: created.id });
-            expect(workspaceDomain.commitOnboarding).toHaveBeenCalledWith(
-                [input],
-                EnumUserCreateMode.admin,
-                10000,
-                EnumActivityLogAction.adminUserCreate
-            );
-            expect(userDomain.notifyWelcomeByAdmin).toHaveBeenCalledWith(
-                created.id,
-                'random-password',
-                input.password!.passwordCreated,
-                input.password!.passwordExpired,
+            expect(result).toEqual({ data: { id: 'user-cinder' } });
+            expect(onboardingDomain.createByAdmin).toHaveBeenCalledWith(
+                {
+                    username: dto.username,
+                    email: dto.email,
+                    name: null,
+                    roleId: dto.roleId,
+                    countryId: dto.countryId,
+                },
                 'admin-cinder'
             );
         });
 
-        it('skips the welcome notification when no password was generated', async () => {
-            userDomain.prepareCreateByAdmin.mockResolvedValue({
-                input: { ...input, password: null },
-                passwordString: 'random-password',
-            });
-            userOnboardingDomain.getCreateTimeoutInMs.mockReturnValue(10000);
-            const created = baseUser;
-            workspaceDomain.commitOnboarding.mockResolvedValue([created]);
+        it('forwards the name when the dto carries one', async () => {
+            onboardingDomain.createByAdmin.mockResolvedValue('user-cinder');
 
-            await service.createByAdmin(dto, 'admin-cinder');
+            await service.createByAdmin(
+                { ...dto, name: 'Cinder Wolfe' },
+                'admin-cinder'
+            );
 
-            expect(userDomain.notifyWelcomeByAdmin).not.toHaveBeenCalled();
+            expect(onboardingDomain.createByAdmin).toHaveBeenCalledWith(
+                expect.objectContaining({ name: 'Cinder Wolfe' }),
+                'admin-cinder'
+            );
         });
     });
 

@@ -10,6 +10,7 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
+import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
@@ -115,6 +116,10 @@ export class TermPolicyContentDomain {
         { key, size, language }: ITermPolicyContentUpload
     ): Promise<void> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
+        const contents = this.termPolicyUtil.toContents(termPolicy.contents);
+        if (contents instanceof TermPolicyContentInvalidException) {
+            throw contents;
+        }
 
         const isS3Initialized = this.awsS3Service.isInitialized();
         if (!isS3Initialized) {
@@ -142,7 +147,7 @@ export class TermPolicyContentDomain {
             ];
             await this.termPolicyRepository.updateContent(
                 termPolicyId,
-                termPolicy.contents as unknown as ITermPolicyContent[],
+                contents,
                 mappedContent
             );
 
@@ -163,9 +168,13 @@ export class TermPolicyContentDomain {
         { key, size, language }: ITermPolicyContentUpload
     ): Promise<void> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
+        const contents = this.termPolicyUtil.toContents(termPolicy.contents);
+        if (contents instanceof TermPolicyContentInvalidException) {
+            throw contents;
+        }
 
         const existingContent = this.termPolicyUtil.getContentByLanguage(
-            termPolicy.contents as unknown as ITermPolicyContent[],
+            contents,
             language
         );
         if (existingContent) {
@@ -218,9 +227,13 @@ export class TermPolicyContentDomain {
         language: EnumMessageLanguage
     ): Promise<void> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
+        const contents = this.termPolicyUtil.toContents(termPolicy.contents);
+        if (contents instanceof TermPolicyContentInvalidException) {
+            throw contents;
+        }
 
         const existingContent = this.termPolicyUtil.getContentByLanguage(
-            termPolicy.contents as unknown as ITermPolicyContent[],
+            contents,
             language
         );
         if (!existingContent) {
@@ -238,7 +251,7 @@ export class TermPolicyContentDomain {
             ];
             await this.termPolicyRepository.removeContent(
                 termPolicyId,
-                termPolicy.contents as unknown as ITermPolicyContent[],
+                contents,
                 { language }
             );
 
@@ -263,9 +276,13 @@ export class TermPolicyContentDomain {
         if (!termPolicy) {
             throw new TermPolicyNotFoundException();
         }
+        const contents = this.termPolicyUtil.toContents(termPolicy.contents);
+        if (contents instanceof TermPolicyContentInvalidException) {
+            throw contents;
+        }
 
         const existContent = this.termPolicyUtil.getContentByLanguage(
-            termPolicy.contents as unknown as ITermPolicyContent[],
+            contents,
             language
         );
         if (!existContent) {

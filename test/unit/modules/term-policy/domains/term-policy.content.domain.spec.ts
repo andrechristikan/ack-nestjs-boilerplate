@@ -25,6 +25,7 @@ import {
 import type { TermPolicy } from '@generated/prisma-client/client';
 import { TermPolicyContentDomain } from '@modules/term-policy/domains/term-policy.content.domain';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
+import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
@@ -98,6 +99,7 @@ describe('TermPolicyContentDomain', () => {
             timestamp,
         });
         activityLogDomain.prepare.mockReturnValue(preparedEvent);
+        termPolicyUtil.toContents.mockReturnValue([existingContent]);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -219,6 +221,30 @@ describe('TermPolicyContentDomain', () => {
                         EnumTermPolicyStatusCodeError.notFound
                     ],
                 messagePath: 'termPolicy.error.notFound',
+            });
+        });
+
+        it('throws TermPolicyContentInvalidException when the stored contents are invalid', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.toContents.mockReturnValue(
+                new TermPolicyContentInvalidException()
+            );
+
+            await expect(
+                domain.updateContentByAdmin('term-policy-1', {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/v1/en.hbs',
+                })
+            ).rejects.toMatchObject({
+                constructor: TermPolicyContentInvalidException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentInvalid,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.contentInvalid
+                    ],
+                messagePath: 'termPolicy.error.contentInvalid',
             });
         });
 
@@ -375,6 +401,30 @@ describe('TermPolicyContentDomain', () => {
             });
         });
 
+        it('throws TermPolicyContentInvalidException when the stored contents are invalid', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.toContents.mockReturnValue(
+                new TermPolicyContentInvalidException()
+            );
+
+            await expect(
+                domain.addContentByAdmin('term-policy-1', {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/v1/fr.hbs',
+                })
+            ).rejects.toMatchObject({
+                constructor: TermPolicyContentInvalidException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentInvalid,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.contentInvalid
+                    ],
+                messagePath: 'termPolicy.error.contentInvalid',
+            });
+        });
+
         it('throws TermPolicyContentExistException when the language is already present', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getContentByLanguage.mockReturnValue(
@@ -522,6 +572,29 @@ describe('TermPolicyContentDomain', () => {
             });
         });
 
+        it('throws TermPolicyContentInvalidException when the stored contents are invalid', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.toContents.mockReturnValue(
+                new TermPolicyContentInvalidException()
+            );
+
+            await expect(
+                domain.removeContentByAdmin(
+                    'term-policy-1',
+                    EnumMessageLanguage.en
+                )
+            ).rejects.toMatchObject({
+                constructor: TermPolicyContentInvalidException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentInvalid,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.contentInvalid
+                    ],
+                messagePath: 'termPolicy.error.contentInvalid',
+            });
+        });
+
         it('throws TermPolicyContentNotFoundException when the language is absent', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getContentByLanguage.mockReturnValue(null);
@@ -636,6 +709,29 @@ describe('TermPolicyContentDomain', () => {
                         EnumTermPolicyStatusCodeError.notFound
                     ],
                 messagePath: 'termPolicy.error.notFound',
+            });
+        });
+
+        it('throws TermPolicyContentInvalidException when the stored contents are invalid', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.toContents.mockReturnValue(
+                new TermPolicyContentInvalidException()
+            );
+
+            await expect(
+                domain.getContentByAdmin(
+                    'term-policy-1',
+                    EnumMessageLanguage.en
+                )
+            ).rejects.toMatchObject({
+                constructor: TermPolicyContentInvalidException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentInvalid,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.contentInvalid
+                    ],
+                messagePath: 'termPolicy.error.contentInvalid',
             });
         });
 
