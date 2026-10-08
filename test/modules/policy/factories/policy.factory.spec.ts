@@ -83,10 +83,73 @@ describe('PolicyAbilityFactory', () => {
         ).toEqual([]);
     });
 
-    it('drops nested condition objects instead of supporting arbitrary query syntax', () => {
+    it('resolves a placeholder nested inside a relational condition', () => {
         expect(
             factory.build(
-                [buildPolicy({ workspace: { id: 'workspace-1' } })],
+                [
+                    buildPolicy({
+                        members: {
+                            some: {
+                                userId: EnumPolicyConditionPlaceholder.userId,
+                            },
+                        },
+                    }),
+                ],
+                { [EnumPolicyConditionPlaceholder.userId]: 'user-1' }
+            ).rules
+        ).toEqual([
+            {
+                subject: EnumPolicySubject.WorkspaceMember,
+                action: [EnumPolicyAction.read],
+                inverted: false,
+                conditions: { members: { some: { userId: 'user-1' } } },
+            },
+        ]);
+    });
+
+    it('resolves placeholders inside a nested array', () => {
+        expect(
+            factory.build(
+                [
+                    buildPolicy({
+                        id: {
+                            in: [
+                                EnumPolicyConditionPlaceholder.workspaceId,
+                                'workspace-2',
+                            ],
+                        },
+                    }),
+                ],
+                { [EnumPolicyConditionPlaceholder.workspaceId]: 'workspace-1' }
+            ).rules[0]?.conditions
+        ).toEqual({ id: { in: ['workspace-1', 'workspace-2'] } });
+    });
+
+    it('drops a rule when a nested placeholder has no resolved value', () => {
+        expect(
+            factory.build(
+                [
+                    buildPolicy({
+                        members: {
+                            some: {
+                                userId: EnumPolicyConditionPlaceholder.userId,
+                            },
+                        },
+                    }),
+                ],
+                {}
+            ).rules
+        ).toEqual([]);
+    });
+
+    it('drops a rule when a placeholder inside a nested array has no resolved value', () => {
+        expect(
+            factory.build(
+                [
+                    buildPolicy({
+                        id: { in: [EnumPolicyConditionPlaceholder.projectId] },
+                    }),
+                ],
                 {}
             ).rules
         ).toEqual([]);
@@ -101,7 +164,9 @@ describe('PolicyAbilityFactory', () => {
     it('keeps the surviving rules when another rule is dropped', () => {
         const { rules } = factory.build(
             [
-                buildPolicy({ workspace: { id: 'workspace-1' } }),
+                buildPolicy({
+                    workspaceId: EnumPolicyConditionPlaceholder.workspaceId,
+                }),
                 buildPolicy(null),
             ],
             {}
@@ -209,9 +274,18 @@ describe('PolicyAbilityFactory', () => {
         ).toBe(false);
     });
 
-    it('keeps an inverted rule with nested conditions as an unconditional deny', () => {
+    it('keeps an inverted rule with an unresolved nested placeholder as an unconditional deny', () => {
         const ability = factory.build(
-            [{ ...buildPolicy({ workspace: { id: 'x' } }), inverted: true }],
+            [
+                {
+                    ...buildPolicy({
+                        workspace: {
+                            id: EnumPolicyConditionPlaceholder.workspaceId,
+                        },
+                    }),
+                    inverted: true,
+                },
+            ],
             {}
         );
 

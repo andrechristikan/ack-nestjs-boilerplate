@@ -102,6 +102,25 @@ describe('TermPolicyDomain', () => {
         service = moduleRef.get(TermPolicyDomain);
     });
 
+    describe('getOne', () => {
+        it('returns the stored policy without judging it', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draft);
+
+            await expect(service.getOne(draft.id)).resolves.toEqual(draft);
+            expect(termPolicyRepository.findOneById).toHaveBeenCalledWith(
+                draft.id
+            );
+        });
+
+        it('throws TermPolicyNotFoundException when the policy is unknown', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(null);
+
+            await expect(service.getOne('missing')).rejects.toBeInstanceOf(
+                TermPolicyNotFoundException
+            );
+        });
+    });
+
     it('rejects publication of an unknown policy', async () => {
         termPolicyRepository.findOneById.mockResolvedValue(null);
 

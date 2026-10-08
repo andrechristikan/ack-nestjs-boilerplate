@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
@@ -63,28 +64,55 @@ describe('PolicyAbilityDomain', () => {
     });
 
     describe('accessibleWhere', () => {
-        it('returns null when the ability has no rules for the subject', () => {
-            ability.rulesFor.mockReturnValue([]);
+        const useAbility = (stored: PolicyAbility): void => {
+            requestStoreService.get.mockReturnValue(stored);
+        };
 
-            expect(
+        it('reads the ability stored under PolicyAbilityStoreKey', () => {
+            useAbility(
+                buildRealAbility([
+                    {
+                        action: EnumPolicyAction.read,
+                        subject: 'Project',
+                        conditions: { workspaceId: 'workspace-1' },
+                    },
+                ])
+            );
+
+            domain.accessibleWhere(
+                EnumPolicyAction.read,
+                EnumPolicySubject.Project
+            );
+
+            expect(requestStoreService.get).toHaveBeenCalledWith(
+                PolicyAbilityStoreKey
+            );
+        });
+
+        it('throws RequestContextMissingException when no ability is stored', () => {
+            requestStoreService.get.mockReturnValue(null);
+
+            expect(() =>
                 domain.accessibleWhere(
-                    ability,
                     EnumPolicyAction.read,
                     EnumPolicySubject.Project
                 )
-            ).toBeNull();
+            ).toThrow(RequestContextMissingException);
         });
 
         it('converts matching CASL rules into a Prisma where clause', () => {
+            useAbility(
+                buildRealAbility([
+                    {
+                        action: EnumPolicyAction.read,
+                        subject: 'Project',
+                        conditions: { workspaceId: 'workspace-1' },
+                    },
+                ])
+            );
+
             expect(
                 domain.accessibleWhere(
-                    buildRealAbility([
-                        {
-                            action: EnumPolicyAction.read,
-                            subject: 'Project',
-                            conditions: { workspaceId: 'workspace-1' },
-                        },
-                    ]),
                     EnumPolicyAction.read,
                     EnumPolicySubject.Project
                 )
@@ -92,20 +120,23 @@ describe('PolicyAbilityDomain', () => {
         });
 
         it('combines multiple allow rules into an OR where clause', () => {
+            useAbility(
+                buildRealAbility([
+                    {
+                        action: EnumPolicyAction.read,
+                        subject: 'Project',
+                        conditions: { workspaceId: 'workspace-1' },
+                    },
+                    {
+                        action: EnumPolicyAction.read,
+                        subject: 'Project',
+                        conditions: { workspaceId: 'workspace-2' },
+                    },
+                ])
+            );
+
             expect(
                 domain.accessibleWhere(
-                    buildRealAbility([
-                        {
-                            action: EnumPolicyAction.read,
-                            subject: 'Project',
-                            conditions: { workspaceId: 'workspace-1' },
-                        },
-                        {
-                            action: EnumPolicyAction.read,
-                            subject: 'Project',
-                            conditions: { workspaceId: 'workspace-2' },
-                        },
-                    ]),
                     EnumPolicyAction.read,
                     EnumPolicySubject.Project
                 )
@@ -118,21 +149,24 @@ describe('PolicyAbilityDomain', () => {
         });
 
         it('translates an inverted condition into a denying Prisma clause', () => {
+            useAbility(
+                buildRealAbility([
+                    {
+                        action: EnumPolicyAction.read,
+                        subject: 'Project',
+                        conditions: {},
+                    },
+                    {
+                        action: EnumPolicyAction.read,
+                        subject: 'Project',
+                        inverted: true,
+                        conditions: { archived: true },
+                    },
+                ])
+            );
+
             expect(
                 domain.accessibleWhere(
-                    buildRealAbility([
-                        {
-                            action: EnumPolicyAction.read,
-                            subject: 'Project',
-                            conditions: {},
-                        },
-                        {
-                            action: EnumPolicyAction.read,
-                            subject: 'Project',
-                            inverted: true,
-                            conditions: { archived: true },
-                        },
-                    ]),
                     EnumPolicyAction.read,
                     EnumPolicySubject.Project
                 )
@@ -140,29 +174,12 @@ describe('PolicyAbilityDomain', () => {
                 OR: [{ AND: [{}, { NOT: { archived: true } }] }],
             });
         });
-    });
-
-    describe('requireAccessibleWhere', () => {
-        it('returns the Prisma where clause the ability grants for the subject', () => {
-            expect(
-                domain.requireAccessibleWhere(
-                    buildRealAbility([
-                        {
-                            action: EnumPolicyAction.read,
-                            subject: 'Project',
-                            conditions: { workspaceId: 'workspace-1' },
-                        },
-                    ]),
-                    EnumPolicyAction.read,
-                    EnumPolicySubject.Project
-                )
-            ).toEqual({ OR: [{ workspaceId: 'workspace-1' }] });
-        });
 
         it('throws PolicyForbiddenException when the ability has no rules for the subject', () => {
+            useAbility(buildRealAbility([]));
+
             try {
-                domain.requireAccessibleWhere(
-                    buildRealAbility([]),
+                domain.accessibleWhere(
                     EnumPolicyAction.read,
                     EnumPolicySubject.Project
                 );
@@ -174,12 +191,21 @@ describe('PolicyAbilityDomain', () => {
                     statusCode: EnumPolicyStatusCodeError.forbidden,
                     messagePath: 'policy.error.forbidden',
                 });
+                expect((error as PolicyForbiddenException).metadata).toEqual({
+                    missing: [
+                        {
+                            subject: EnumPolicySubject.Project,
+                            actions: [EnumPolicyAction.read],
+                        },
+                    ],
+                });
             }
         });
     });
 
     describe('assertCan', () => {
         beforeEach(() => {
+            requestStoreService.get.mockReturnValue(ability);
             ability.detectSubjectType.mockReturnValue(
                 'Project' as ReturnType<PolicyAbility['detectSubjectType']>
             );
@@ -193,7 +219,6 @@ describe('PolicyAbilityDomain', () => {
 
             expect(() =>
                 domain.assertCan(
-                    ability,
                     EnumPolicyAction.read,
                     EnumPolicySubject.Project
                 )
@@ -205,7 +230,6 @@ describe('PolicyAbilityDomain', () => {
 
             try {
                 domain.assertCan(
-                    ability,
                     EnumPolicyAction.delete,
                     EnumPolicySubject.Project
                 );
@@ -217,9 +241,14 @@ describe('PolicyAbilityDomain', () => {
                     statusCode: EnumPolicyStatusCodeError.forbidden,
                     messagePath: 'policy.error.forbidden',
                 });
-                expect(
-                    (error as PolicyForbiddenException).metadata
-                ).toBeUndefined();
+                expect((error as PolicyForbiddenException).metadata).toEqual({
+                    missing: [
+                        {
+                            subject: EnumPolicySubject.Project,
+                            actions: [EnumPolicyAction.delete],
+                        },
+                    ],
+                });
             }
         });
 
@@ -231,7 +260,6 @@ describe('PolicyAbilityDomain', () => {
 
             try {
                 domain.assertCan(
-                    ability,
                     EnumPolicyAction.delete,
                     EnumPolicySubject.Project
                 );
@@ -240,6 +268,12 @@ describe('PolicyAbilityDomain', () => {
                 expect(error).toBeInstanceOf(PolicyForbiddenException);
                 expect((error as PolicyForbiddenException).metadata).toEqual({
                     reason: 'blocked by rule',
+                    missing: [
+                        {
+                            subject: EnumPolicySubject.Project,
+                            actions: [EnumPolicyAction.delete],
+                        },
+                    ],
                 });
             }
         });
@@ -250,14 +284,22 @@ describe('PolicyAbilityDomain', () => {
             ability.relevantRuleFor.mockReturnValue(null);
 
             try {
-                domain.assertCan(ability, EnumPolicyAction.update, target);
+                domain.assertCan(EnumPolicyAction.update, target);
                 throw new Error('expected throw');
-            } catch {
+            } catch (error) {
                 expect(ability.relevantRuleFor).toHaveBeenCalledWith(
                     EnumPolicyAction.update,
                     target,
                     undefined
                 );
+                expect((error as PolicyForbiddenException).metadata).toEqual({
+                    missing: [
+                        {
+                            subject: EnumPolicySubject.Workspace,
+                            actions: [EnumPolicyAction.update],
+                        },
+                    ],
+                });
             }
         });
 
@@ -269,7 +311,6 @@ describe('PolicyAbilityDomain', () => {
 
             expect(() =>
                 domain.assertCan(
-                    ability,
                     EnumPolicyAction.read,
                     EnumPolicySubject.Project
                 )
@@ -286,16 +327,16 @@ describe('PolicyAbilityDomain', () => {
                 },
             ]);
 
+            requestStoreService.get.mockReturnValue(realAbility);
+
             expect(() =>
                 domain.assertCan(
-                    realAbility,
                     EnumPolicyAction.update,
                     subject(EnumPolicySubject.Workspace, { id: 'workspace-1' })
                 )
             ).not.toThrow();
             expect(() =>
                 domain.assertCan(
-                    realAbility,
                     EnumPolicyAction.update,
                     subject(EnumPolicySubject.Workspace, { id: 'workspace-2' })
                 )
@@ -303,7 +344,160 @@ describe('PolicyAbilityDomain', () => {
         });
     });
 
+    describe('assertCanEvery', () => {
+        const useAbility = (stored: PolicyAbility): void => {
+            requestStoreService.get.mockReturnValue(stored);
+        };
+        const catchForbidden = (run: () => void): PolicyForbiddenException => {
+            try {
+                run();
+            } catch (error) {
+                return error as PolicyForbiddenException;
+            }
+            throw new Error('expected throw');
+        };
+
+        it('passes when every required action is granted', () => {
+            useAbility(
+                buildRealAbility([
+                    {
+                        action: [
+                            EnumPolicyAction.read,
+                            EnumPolicyAction.update,
+                        ],
+                        subject: 'Project',
+                    },
+                ])
+            );
+
+            expect(() =>
+                domain.assertCanEvery([
+                    {
+                        subject: EnumPolicySubject.Project,
+                        action: [
+                            EnumPolicyAction.read,
+                            EnumPolicyAction.update,
+                        ],
+                    },
+                ])
+            ).not.toThrow();
+        });
+
+        it('reports every missing action of a subject in one exception', () => {
+            useAbility(buildRealAbility([]));
+
+            const error = catchForbidden(() =>
+                domain.assertCanEvery([
+                    {
+                        subject: EnumPolicySubject.Project,
+                        action: [
+                            EnumPolicyAction.read,
+                            EnumPolicyAction.update,
+                        ],
+                    },
+                ])
+            );
+
+            expect(error).toBeInstanceOf(PolicyForbiddenException);
+            expect(error.metadata).toEqual({
+                missing: [
+                    {
+                        subject: EnumPolicySubject.Project,
+                        actions: [
+                            EnumPolicyAction.read,
+                            EnumPolicyAction.update,
+                        ],
+                    },
+                ],
+            });
+        });
+
+        it('lists only the denied actions, merges and dedupes repeated subjects', () => {
+            useAbility(
+                buildRealAbility([
+                    { action: EnumPolicyAction.read, subject: 'Project' },
+                ])
+            );
+
+            const error = catchForbidden(() =>
+                domain.assertCanEvery([
+                    {
+                        subject: EnumPolicySubject.Project,
+                        action: [
+                            EnumPolicyAction.read,
+                            EnumPolicyAction.update,
+                        ],
+                    },
+                    {
+                        subject: EnumPolicySubject.User,
+                        action: [EnumPolicyAction.read],
+                    },
+                    {
+                        subject: EnumPolicySubject.Project,
+                        action: [
+                            EnumPolicyAction.update,
+                            EnumPolicyAction.delete,
+                        ],
+                    },
+                ])
+            );
+
+            expect(error.metadata).toEqual({
+                missing: [
+                    {
+                        subject: EnumPolicySubject.Project,
+                        actions: [
+                            EnumPolicyAction.update,
+                            EnumPolicyAction.delete,
+                        ],
+                    },
+                    {
+                        subject: EnumPolicySubject.User,
+                        actions: [EnumPolicyAction.read],
+                    },
+                ],
+            });
+        });
+
+        it('carries the reason of the first denying inverted rule', () => {
+            useAbility(
+                buildRealAbility([
+                    { action: EnumPolicyAction.read, subject: 'Project' },
+                    {
+                        action: EnumPolicyAction.read,
+                        subject: 'Project',
+                        inverted: true,
+                        reason: 'blocked by rule',
+                    },
+                ])
+            );
+
+            const error = catchForbidden(() =>
+                domain.assertCanEvery([
+                    {
+                        subject: EnumPolicySubject.Project,
+                        action: [EnumPolicyAction.read],
+                    },
+                ])
+            );
+
+            expect(error.metadata).toEqual({
+                reason: 'blocked by rule',
+                missing: [
+                    {
+                        subject: EnumPolicySubject.Project,
+                        actions: [EnumPolicyAction.read],
+                    },
+                ],
+            });
+        });
+    });
+
     describe('getEffectivePermissions', () => {
+        beforeEach(() => {
+            requestStoreService.get.mockReturnValue(ability);
+        });
+
         it('returns only the concrete actions granted for each subject', () => {
             ability.can.mockImplementation(
                 (action, subjectName) =>
@@ -312,7 +506,7 @@ describe('PolicyAbilityDomain', () => {
             );
 
             expect(
-                domain.getEffectivePermissions(ability, [
+                domain.getEffectivePermissions([
                     EnumPolicySubject.User,
                     EnumPolicySubject.Project,
                 ])
@@ -328,9 +522,7 @@ describe('PolicyAbilityDomain', () => {
             ability.can.mockReturnValue(false);
 
             expect(
-                domain.getEffectivePermissions(ability, [
-                    EnumPolicySubject.Workspace,
-                ])
+                domain.getEffectivePermissions([EnumPolicySubject.Workspace])
             ).toEqual([]);
             expect(ability.can).toHaveBeenCalledTimes(
                 Object.values(EnumPolicyAction).length

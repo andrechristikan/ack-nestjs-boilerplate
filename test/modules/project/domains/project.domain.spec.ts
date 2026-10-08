@@ -19,7 +19,6 @@ import {
     EnumRoleScope,
     type Prisma,
     type Project,
-    type WorkspaceMember,
 } from '@generated/prisma-client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
@@ -119,32 +118,24 @@ describe('ProjectDomain', () => {
     });
 
     describe('getListForMember', () => {
-        const workspaceMember = mock<WorkspaceMember>({ userId: 'user-id' });
         const pagination =
             mock<IPaginationQueryCursorParams<Prisma.ProjectWhereInput>>();
         const page = mock<IResponsePaginationReturn<Project>>();
-        const where: Prisma.ProjectWhereInput = {
-            workspaceId: 'workspace-id',
-        };
 
-        it('forwards the effective where predicate', async () => {
+        it('forwards the policy predicate as the only access filter', async () => {
+            const where: Prisma.ProjectWhereInput = {
+                OR: [{ members: { some: { userId: 'user-id' } } }],
+            };
             projectRepository.findWithPaginationCursorForWorkspace.mockResolvedValue(
                 page
             );
 
             await expect(
-                domain.getListForMember(
-                    'workspace-id',
-                    workspaceMember,
-                    pagination,
-                    where
-                )
+                domain.getListForMember('workspace-id', pagination, where)
             ).resolves.toBe(page);
             expect(
                 projectRepository.findWithPaginationCursorForWorkspace
-            ).toHaveBeenCalledWith('workspace-id', pagination, {
-                AND: [{ members: { some: { userId: 'user-id' } } }, where],
-            });
+            ).toHaveBeenCalledWith('workspace-id', pagination, where);
         });
     });
 

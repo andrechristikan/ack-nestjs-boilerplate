@@ -179,6 +179,25 @@ describe('ApiKeyDomain', () => {
         });
     });
 
+    describe('getOne', () => {
+        it('returns the stored key without judging it', async () => {
+            apiKeyRepository.findOneById.mockResolvedValue(apiKey);
+
+            await expect(service.getOne(apiKey.id)).resolves.toEqual(apiKey);
+            expect(apiKeyRepository.findOneById).toHaveBeenCalledWith(
+                apiKey.id
+            );
+        });
+
+        it('throws ApiKeyNotFoundException when the key is unknown', async () => {
+            apiKeyRepository.findOneById.mockResolvedValue(null);
+
+            await expect(service.getOne('unknown')).rejects.toBeInstanceOf(
+                ApiKeyNotFoundException
+            );
+        });
+    });
+
     describe('administration', () => {
         it('delegates the administrator list filters', async () => {
             const pagination = { limit: 20, page: 1, skip: 0 };

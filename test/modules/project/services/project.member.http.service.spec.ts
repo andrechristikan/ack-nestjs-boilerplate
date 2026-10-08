@@ -14,10 +14,8 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
@@ -83,10 +81,8 @@ describe('ProjectMemberHttpService', () => {
         };
 
         it('passes the read predicate of ProjectMember to the domain list', async () => {
-            const ability = mock<PolicyAbility>();
             const member = mock<IProjectMember>();
-            policyAbilityDomain.requireStored.mockReturnValue(ability);
-            policyAbilityDomain.requireAccessibleWhere.mockReturnValue(
+            policyAbilityDomain.accessibleWhere.mockReturnValue(
                 accessibleWhere
             );
             paginationQueryUtil.cursor.mockReturnValue({
@@ -104,13 +100,7 @@ describe('ProjectMemberHttpService', () => {
 
             const result = await service.getMembersList(project, query);
 
-            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
-                PolicyAbilityStoreKey
-            );
-            expect(
-                policyAbilityDomain.requireAccessibleWhere
-            ).toHaveBeenCalledWith(
-                ability,
+            expect(policyAbilityDomain.accessibleWhere).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
                 EnumPolicySubject.ProjectMember
             );
@@ -130,11 +120,9 @@ describe('ProjectMemberHttpService', () => {
         });
 
         it('propagates PolicyForbiddenException and skips the domain when the ability has no read rule', async () => {
-            policyAbilityDomain.requireAccessibleWhere.mockImplementation(
-                () => {
-                    throw new PolicyForbiddenException();
-                }
-            );
+            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
 
             await expect(
                 service.getMembersList(project, query)
@@ -148,9 +136,7 @@ describe('ProjectMemberHttpService', () => {
             userId: 'user-id',
             roleId: 'role-id',
         });
-        const ability = mock<PolicyAbility>();
         const member = mock<IProjectMember>();
-        policyAbilityDomain.requireStored.mockReturnValue(ability);
         workspaceMemberDomain.getOneByWorkspaceAndUser.mockResolvedValue(
             mock<WorkspaceMember>({
                 userId: body.userId,
@@ -168,11 +154,7 @@ describe('ProjectMemberHttpService', () => {
             expect.objectContaining({ userId: body.userId }),
             body.roleId
         );
-        expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
-            PolicyAbilityStoreKey
-        );
         expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-            ability,
             EnumPolicyAction.create,
             expect.objectContaining({
                 __caslSubjectType__: EnumPolicySubject.ProjectMember,
@@ -187,22 +169,16 @@ describe('ProjectMemberHttpService', () => {
         const body = mock<ProjectMemberUpdateRoleRequestDto>({
             roleId: 'role-id',
         });
-        const ability = mock<PolicyAbility>();
         projectMemberDomain.getOneByIdAndProject.mockResolvedValue(
             targetMember
         );
-        policyAbilityDomain.requireStored.mockReturnValue(ability);
         await service.updateMemberRole(
             project,
             'actor-id',
             'target-member-id',
             body
         );
-        expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
-            PolicyAbilityStoreKey
-        );
         expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-            ability,
             EnumPolicyAction.update,
             subject(EnumPolicySubject.ProjectMember, targetMember)
         );
@@ -218,12 +194,10 @@ describe('ProjectMemberHttpService', () => {
         const body = mock<ProjectMemberUpdateRoleRequestDto>({
             roleId: 'role-id',
         });
-        const ability = mock<PolicyAbility>();
         const error = new Error('forbidden');
         projectMemberDomain.getOneByIdAndProject.mockResolvedValue(
             targetMember
         );
-        policyAbilityDomain.requireStored.mockReturnValue(ability);
         policyAbilityDomain.assertCan.mockImplementation(() => {
             throw error;
         });
@@ -240,17 +214,11 @@ describe('ProjectMemberHttpService', () => {
     });
 
     it('checks the target member before delegating a removal', async () => {
-        const ability = mock<PolicyAbility>();
         projectMemberDomain.getOneByIdAndProject.mockResolvedValue(
             targetMember
         );
-        policyAbilityDomain.requireStored.mockReturnValue(ability);
         await service.removeMember(project, 'actor-id', 'target-member-id');
-        expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
-            PolicyAbilityStoreKey
-        );
         expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-            ability,
             EnumPolicyAction.delete,
             subject(EnumPolicySubject.ProjectMember, targetMember)
         );

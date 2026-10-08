@@ -18,7 +18,6 @@ import type { Prisma, Workspace } from '@generated/prisma-client/client';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
 import { WorkspaceMemberDefaultAvailableOrderBy } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceAdminMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-member-list.request.dto';
@@ -41,7 +40,6 @@ describe('WorkspaceMemberHttpService', () => {
         mock<RequestStoreService>();
     const policyAbilityDomain: MockProxy<PolicyAbilityDomain> =
         mock<PolicyAbilityDomain>();
-    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
     const accessibleMemberWhere: Prisma.WorkspaceMemberWhereInput = {
         workspaceId: 'workspace-id',
     };
@@ -154,8 +152,7 @@ describe('WorkspaceMemberHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        policyAbilityDomain.requireStored.mockReturnValue(ability);
-        policyAbilityDomain.requireAccessibleWhere.mockReturnValue(
+        policyAbilityDomain.accessibleWhere.mockReturnValue(
             accessibleMemberWhere
         );
 
@@ -191,7 +188,6 @@ describe('WorkspaceMemberHttpService', () => {
             await service.transferOwnership(workspace, actorMember, dto);
 
             expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-                ability,
                 EnumPolicyAction.update,
                 subject(EnumPolicySubject.Workspace, workspace)
             );
@@ -310,20 +306,14 @@ describe('WorkspaceMemberHttpService', () => {
 
             await service.getMembersList('workspace-id', {});
 
-            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
-                PolicyAbilityStoreKey
-            );
-            expect(
-                policyAbilityDomain.requireAccessibleWhere
-            ).toHaveBeenCalledWith(
-                ability,
+            expect(policyAbilityDomain.accessibleWhere).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
                 EnumPolicySubject.WorkspaceMember
             );
         });
 
         it('throws RequestContextMissingException when no ability is stored and never lists', async () => {
-            policyAbilityDomain.requireStored.mockImplementation(() => {
+            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
@@ -334,11 +324,9 @@ describe('WorkspaceMemberHttpService', () => {
         });
 
         it('propagates the policy rejection when the ability holds no read rule and never lists', async () => {
-            policyAbilityDomain.requireAccessibleWhere.mockImplementation(
-                () => {
-                    throw new PolicyForbiddenException();
-                }
-            );
+            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
 
             await expect(
                 service.getMembersList('workspace-id', {})
@@ -364,7 +352,6 @@ describe('WorkspaceMemberHttpService', () => {
             );
 
             expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-                ability,
                 EnumPolicyAction.update,
                 subject(EnumPolicySubject.WorkspaceMember, targetMember)
             );
@@ -410,7 +397,6 @@ describe('WorkspaceMemberHttpService', () => {
             );
 
             expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-                ability,
                 EnumPolicyAction.delete,
                 subject(EnumPolicySubject.WorkspaceMember, targetMember)
             );
@@ -473,25 +459,34 @@ describe('WorkspaceMemberHttpService', () => {
                 offsetParams,
                 accessibleMemberWhere
             );
-            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
-                PolicyAbilityStoreKey
-            );
-            expect(
-                policyAbilityDomain.requireAccessibleWhere
-            ).toHaveBeenCalledWith(
-                ability,
+            expect(policyAbilityDomain.assertCan).not.toHaveBeenCalled();
+            expect(policyAbilityDomain.accessibleWhere).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
                 EnumPolicySubject.WorkspaceMember
             );
             expect(result).toEqual(offsetPage);
         });
 
+        it('throws RequestContextMissingException and writes nothing when no ability is stored', async () => {
+            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+                throw new RequestContextMissingException(PolicyAbilityStoreKey);
+            });
+
+            await expect(
+                service.getMembersListForAdmin('workspace-id', {
+                    page: 1,
+                    perPage: 20,
+                })
+            ).rejects.toThrow(RequestContextMissingException);
+            expect(
+                workspaceMemberDomain.getMembersListForAdmin
+            ).not.toHaveBeenCalled();
+        });
+
         it('propagates PolicyForbiddenException and skips the domain when the ability has no read rule', async () => {
-            policyAbilityDomain.requireAccessibleWhere.mockImplementation(
-                () => {
-                    throw new PolicyForbiddenException();
-                }
-            );
+            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
 
             await expect(
                 service.getMembersListForAdmin('workspace-id', {

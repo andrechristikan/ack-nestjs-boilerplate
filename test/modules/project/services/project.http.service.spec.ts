@@ -19,18 +19,11 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
 } from '@generated/prisma-client/client';
-import type {
-    Prisma,
-    Project,
-    WorkspaceMember,
-} from '@generated/prisma-client/client';
+import type { Prisma, Project } from '@generated/prisma-client/client';
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
-import type {
-    IEffectivePermission,
-    PolicyAbility,
-} from '@modules/policy/interfaces/policy.interface';
+import type { IEffectivePermission } from '@modules/policy/interfaces/policy.interface';
 import { ProjectPermissionSubjects } from '@modules/project/constants/project.constant';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
@@ -48,12 +41,10 @@ describe('ProjectHttpService', () => {
         mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
     const project = mock<Project>({
         id: 'project-id',
         workspaceId: 'workspace-id',
     });
-    const workspaceMember = mock<WorkspaceMember>({ userId: 'user-id' });
     const page = {
         type: EnumPaginationType.cursor as const,
         count: 1,
@@ -80,7 +71,6 @@ describe('ProjectHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        policyAbilityDomain.requireStored.mockReturnValue(ability);
         paginationQueryUtil.cursor.mockReturnValue(cursorResult);
         paginationQueryUtil.offset.mockReturnValue(offsetResult);
 
@@ -106,7 +96,7 @@ describe('ProjectHttpService', () => {
     describe('getListForMember', () => {
         const query = {} satisfies ProjectUserListRequestDto;
 
-        it('passes the member and read predicates to the domain', async () => {
+        it('passes the read predicate of Project to the domain', async () => {
             policyAbilityDomain.accessibleWhere.mockReturnValue(
                 accessibleWhere
             );
@@ -114,12 +104,10 @@ describe('ProjectHttpService', () => {
 
             const result = await service.getListForMember(
                 'workspace-id',
-                workspaceMember,
                 query
             );
 
             expect(policyAbilityDomain.accessibleWhere).toHaveBeenCalledWith(
-                ability,
                 EnumPolicyAction.read,
                 EnumPolicySubject.Project
             );
@@ -129,38 +117,30 @@ describe('ProjectHttpService', () => {
             );
             expect(projectDomain.getListForMember).toHaveBeenCalledWith(
                 'workspace-id',
-                workspaceMember,
                 cursorResult.params,
                 accessibleWhere
             );
             expect(result).toEqual(page);
         });
 
-        it('passes no policy predicate when the ability has no project read rules', async () => {
-            policyAbilityDomain.accessibleWhere.mockReturnValue(null);
-            projectDomain.getListForMember.mockResolvedValue(page);
+        it('propagates PolicyForbiddenException and never lists when the ability has no Project read rule', async () => {
+            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
 
-            await service.getListForMember(
-                'workspace-id',
-                workspaceMember,
-                query
-            );
-
-            expect(projectDomain.getListForMember).toHaveBeenCalledWith(
-                'workspace-id',
-                workspaceMember,
-                cursorResult.params,
-                undefined
-            );
+            await expect(
+                service.getListForMember('workspace-id', query)
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(projectDomain.getListForMember).not.toHaveBeenCalled();
         });
 
         it('throws RequestContextMissingException when no ability is stored and never lists', async () => {
-            policyAbilityDomain.requireStored.mockImplementation(() => {
+            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
             await expect(
-                service.getListForMember('workspace-id', workspaceMember, query)
+                service.getListForMember('workspace-id', query)
             ).rejects.toThrow(RequestContextMissingException);
             expect(projectDomain.getListForMember).not.toHaveBeenCalled();
         });
@@ -177,11 +157,7 @@ describe('ProjectHttpService', () => {
             await expect(
                 service.createProject('workspace-id', 'actor-id', dto)
             ).resolves.toEqual({ data: project });
-            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
-                PolicyAbilityStoreKey
-            );
             expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-                ability,
                 EnumPolicyAction.create,
                 subject(EnumPolicySubject.Project, {
                     workspaceId: 'workspace-id',
@@ -199,7 +175,6 @@ describe('ProjectHttpService', () => {
         it('authorizes and wraps the guarded project', () => {
             expect(service.getProject(project)).toEqual({ data: project });
             expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-                ability,
                 EnumPolicyAction.read,
                 subject(EnumPolicySubject.Project, project)
             );
@@ -214,7 +189,6 @@ describe('ProjectHttpService', () => {
                 data: project,
             });
             expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-                ability,
                 EnumPolicyAction.read,
                 subject(EnumPolicySubject.Project, project)
             );
@@ -233,7 +207,6 @@ describe('ProjectHttpService', () => {
                 service.updateProject(project, 'actor-id', dto)
             ).resolves.toEqual({ data: project });
             expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-                ability,
                 EnumPolicyAction.update,
                 subject(EnumPolicySubject.Project, project)
             );
@@ -254,7 +227,6 @@ describe('ProjectHttpService', () => {
                 service.updateProjectSlug(project, 'actor-id', dto)
             ).resolves.toEqual({ data: project });
             expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-                ability,
                 EnumPolicyAction.update,
                 subject(EnumPolicySubject.Project, project)
             );
@@ -271,7 +243,6 @@ describe('ProjectHttpService', () => {
             await service.softDeleteProject(project, 'actor-id');
 
             expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-                ability,
                 EnumPolicyAction.delete,
                 subject(EnumPolicySubject.Project, project)
             );
@@ -287,17 +258,14 @@ describe('ProjectHttpService', () => {
             const query: ProjectAdminListRequestDto = {
                 workspaceId: 'workspace-id',
             };
-            policyAbilityDomain.requireAccessibleWhere.mockReturnValue(
+            policyAbilityDomain.accessibleWhere.mockReturnValue(
                 accessibleWhere
             );
             projectDomain.getListForAdmin.mockResolvedValue(page);
 
             const result = await service.getListForAdmin(query);
 
-            expect(
-                policyAbilityDomain.requireAccessibleWhere
-            ).toHaveBeenCalledWith(
-                ability,
+            expect(policyAbilityDomain.accessibleWhere).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
                 EnumPolicySubject.Project
             );
@@ -318,7 +286,7 @@ describe('ProjectHttpService', () => {
         });
 
         it('lists without a workspace filter when the query carries none', async () => {
-            policyAbilityDomain.requireAccessibleWhere.mockReturnValue(
+            policyAbilityDomain.accessibleWhere.mockReturnValue(
                 accessibleWhere
             );
             projectDomain.getListForAdmin.mockResolvedValue(page);
@@ -333,7 +301,7 @@ describe('ProjectHttpService', () => {
         });
 
         it('throws RequestContextMissingException when no ability is stored and never lists', async () => {
-            policyAbilityDomain.requireStored.mockImplementation(() => {
+            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
 
@@ -344,11 +312,9 @@ describe('ProjectHttpService', () => {
         });
 
         it('propagates the policy rejection when the ability holds no read rule and never lists', async () => {
-            policyAbilityDomain.requireAccessibleWhere.mockImplementation(
-                () => {
-                    throw new PolicyForbiddenException();
-                }
-            );
+            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
 
             await expect(service.getListForAdmin({})).rejects.toThrow(
                 PolicyForbiddenException
@@ -368,14 +334,18 @@ describe('ProjectHttpService', () => {
 
             expect(
                 policyAbilityDomain.getEffectivePermissions
-            ).toHaveBeenCalledWith(ability, ProjectPermissionSubjects);
+            ).toHaveBeenCalledWith(ProjectPermissionSubjects);
             expect(result).toEqual({ data: { permissions } });
         });
 
         it('throws when the ability is absent from the store', () => {
-            policyAbilityDomain.requireStored.mockImplementation(() => {
-                throw new RequestContextMissingException(PolicyAbilityStoreKey);
-            });
+            policyAbilityDomain.getEffectivePermissions.mockImplementation(
+                () => {
+                    throw new RequestContextMissingException(
+                        PolicyAbilityStoreKey
+                    );
+                }
+            );
 
             expect(() => service.getEffectivePermissions()).toThrow(
                 RequestContextMissingException

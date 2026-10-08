@@ -533,6 +533,29 @@ describe('DeviceDomain', () => {
         });
     });
 
+    describe('getOneActive', () => {
+        it('returns the active ownership of the user without judging it', async () => {
+            deviceOwnershipRepository.findOneActive.mockResolvedValue(
+                ownership
+            );
+
+            await expect(
+                service.getOneActive('user-id', ownership.id)
+            ).resolves.toEqual(ownership);
+            expect(
+                deviceOwnershipRepository.findOneActive
+            ).toHaveBeenCalledWith('user-id', ownership.id);
+        });
+
+        it('throws DeviceNotFoundException when the ownership is not active for the user', async () => {
+            deviceOwnershipRepository.findOneActive.mockResolvedValue(null);
+
+            await expect(
+                service.getOneActive('user-id', 'foreign-ownership')
+            ).rejects.toBeInstanceOf(DeviceNotFoundException);
+        });
+    });
+
     describe('removeByAdmin failure mapping and self removal', () => {
         it('throws DeviceNotFoundException when the ownership is not active', async () => {
             deviceOwnershipRepository.existsActive.mockResolvedValue(false);

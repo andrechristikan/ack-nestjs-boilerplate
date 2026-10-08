@@ -15,10 +15,8 @@ import {
     EnumWorkspaceInviteStatus,
 } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import { EnumRoleProjectKey } from '@modules/role/enums/role.project-key.enum';
 import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
@@ -46,7 +44,6 @@ describe('WorkspaceInviteHttpService', () => {
         mock<RequestStoreService>();
     const policyAbilityDomain: MockProxy<PolicyAbilityDomain> =
         mock<PolicyAbilityDomain>();
-    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
     const accessibleWhere = { workspaceId: 'workspace-id' };
     const now = new Date('2026-01-01T00:00:00.000Z');
     const expiredAt = new Date('2026-02-01T00:00:00.000Z');
@@ -159,10 +156,7 @@ describe('WorkspaceInviteHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        policyAbilityDomain.requireStored.mockReturnValue(ability);
-        policyAbilityDomain.requireAccessibleWhere.mockReturnValue(
-            accessibleWhere
-        );
+        policyAbilityDomain.accessibleWhere.mockReturnValue(accessibleWhere);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -217,13 +211,7 @@ describe('WorkspaceInviteHttpService', () => {
                 { status: { in: ['pending'] } },
                 accessibleWhere
             );
-            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
-                PolicyAbilityStoreKey
-            );
-            expect(
-                policyAbilityDomain.requireAccessibleWhere
-            ).toHaveBeenCalledWith(
-                ability,
+            expect(policyAbilityDomain.accessibleWhere).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
                 EnumPolicySubject.WorkspaceInvite
             );
@@ -257,11 +245,9 @@ describe('WorkspaceInviteHttpService', () => {
         });
 
         it('propagates PolicyForbiddenException and skips the domain when the ability has no read rule', async () => {
-            policyAbilityDomain.requireAccessibleWhere.mockImplementation(
-                () => {
-                    throw new PolicyForbiddenException();
-                }
-            );
+            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
 
             await expect(
                 service.getInvitesList('workspace-id', {})
@@ -289,11 +275,7 @@ describe('WorkspaceInviteHttpService', () => {
             );
 
             expect(result).toEqual({ data: inviteResponse });
-            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
-                PolicyAbilityStoreKey
-            );
             expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-                ability,
                 EnumPolicyAction.create,
                 subject(EnumPolicySubject.WorkspaceInvite, {
                     workspaceId: workspace.id,
@@ -352,7 +334,6 @@ describe('WorkspaceInviteHttpService', () => {
                 'invite-id'
             );
             expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-                ability,
                 EnumPolicyAction.update,
                 subject(EnumPolicySubject.WorkspaceInvite, invite)
             );
@@ -404,7 +385,6 @@ describe('WorkspaceInviteHttpService', () => {
                 'invite-id'
             );
             expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-                ability,
                 EnumPolicyAction.delete,
                 subject(EnumPolicySubject.WorkspaceInvite, invite)
             );

@@ -18,10 +18,8 @@ import type {
     Workspace,
     WorkspaceJoinRequest,
 } from '@generated/prisma-client/client';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
 import type { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
 import type { WorkspaceJoinRequestListRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-list.request.dto';
 import type { WorkspaceJoinRequestRejectRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
@@ -37,7 +35,6 @@ describe('WorkspaceJoinRequestHttpService', () => {
         mock<RequestStoreService>();
     const policyAbilityDomain: MockProxy<PolicyAbilityDomain> =
         mock<PolicyAbilityDomain>();
-    const ability: MockProxy<PolicyAbility> = mock<PolicyAbility>();
     const accessibleWhere = { workspaceId: 'workspace-id' };
     const now = new Date('2026-01-01T00:00:00.000Z');
     const workspace = {
@@ -94,10 +91,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        policyAbilityDomain.requireStored.mockReturnValue(ability);
-        policyAbilityDomain.requireAccessibleWhere.mockReturnValue(
-            accessibleWhere
-        );
+        policyAbilityDomain.accessibleWhere.mockReturnValue(accessibleWhere);
         workspaceJoinRequestDomain.getJoinRequest.mockResolvedValue(
             joinRequest
         );
@@ -183,13 +177,7 @@ describe('WorkspaceJoinRequestHttpService', () => {
                 { status: { in: ['pending'] } },
                 accessibleWhere
             );
-            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
-                PolicyAbilityStoreKey
-            );
-            expect(
-                policyAbilityDomain.requireAccessibleWhere
-            ).toHaveBeenCalledWith(
-                ability,
+            expect(policyAbilityDomain.accessibleWhere).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
                 EnumPolicySubject.WorkspaceJoinRequest
             );
@@ -227,11 +215,9 @@ describe('WorkspaceJoinRequestHttpService', () => {
         });
 
         it('propagates PolicyForbiddenException and skips the domain when the ability has no read rule', async () => {
-            policyAbilityDomain.requireAccessibleWhere.mockImplementation(
-                () => {
-                    throw new PolicyForbiddenException();
-                }
-            );
+            policyAbilityDomain.accessibleWhere.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
 
             await expect(
                 service.getJoinRequestsList('workspace-id', {})
@@ -267,14 +253,10 @@ describe('WorkspaceJoinRequestHttpService', () => {
                 'join-request-id'
             );
 
-            expect(policyAbilityDomain.requireStored).toHaveBeenCalledWith(
-                PolicyAbilityStoreKey
-            );
             expect(
                 workspaceJoinRequestDomain.getJoinRequest
             ).toHaveBeenCalledWith('workspace-id', 'join-request-id');
             expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-                ability,
                 EnumPolicyAction.update,
                 subject(EnumPolicySubject.WorkspaceJoinRequest, joinRequest)
             );
@@ -317,7 +299,6 @@ describe('WorkspaceJoinRequestHttpService', () => {
             );
 
             expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
-                ability,
                 EnumPolicyAction.update,
                 subject(EnumPolicySubject.WorkspaceJoinRequest, joinRequest)
             );

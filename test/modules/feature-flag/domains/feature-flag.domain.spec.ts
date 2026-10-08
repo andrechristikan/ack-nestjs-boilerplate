@@ -306,6 +306,27 @@ describe('FeatureFlagDomain', () => {
         });
     });
 
+    describe('getOne', () => {
+        it('returns the stored flag without judging it', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(featureFlag);
+
+            await expect(service.getOne(featureFlag.id)).resolves.toEqual(
+                featureFlag
+            );
+            expect(featureFlagRepository.findOneById).toHaveBeenCalledWith(
+                featureFlag.id
+            );
+        });
+
+        it('throws FeatureFlagNotFoundException when the flag is unknown', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(null);
+
+            await expect(service.getOne('unknown')).rejects.toBeInstanceOf(
+                FeatureFlagNotFoundException
+            );
+        });
+    });
+
     describe('updateStatusByAdmin', () => {
         it('throws FeatureFlagNotFoundException when the flag is unknown', async () => {
             featureFlagRepository.findOneById.mockResolvedValue(null);

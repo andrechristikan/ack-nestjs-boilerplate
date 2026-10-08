@@ -267,134 +267,61 @@ describe('ActivityLogDomain', () => {
         });
     });
 
-    it('delegates user and workspace list methods to the repository', async () => {
+    it('delegates the offset and cursor lists to the repository with the scope', async () => {
         const offsetPagination = { skip: 0, limit: 10 };
         const cursorPagination = { cursor: 'cursor', limit: 10 };
-
-        activityLogRepository.findUserScopedWithPaginationOffset.mockResolvedValue(
-            {
-                type: EnumPaginationType.offset,
-                data: [],
-                count: 0,
-                perPage: 10,
-                hasNext: false,
-                hasPrevious: false,
-                page: 1,
-                totalPage: 0,
-            }
+        const offsetPage = {
+            type: EnumPaginationType.offset,
+            data: [],
+            count: 0,
+            perPage: 10,
+            hasNext: false,
+            hasPrevious: false,
+            page: 1,
+            totalPage: 0,
+        };
+        const cursorPage = {
+            type: EnumPaginationType.cursor as const,
+            data: [],
+            perPage: 10,
+            hasNext: false,
+        };
+        activityLogRepository.findWithPaginationOffset.mockResolvedValue(
+            offsetPage
         );
-        activityLogRepository.findUserScopedWithPaginationCursor.mockResolvedValue(
-            {
-                type: EnumPaginationType.cursor,
-                data: [],
-                perPage: 10,
-                hasNext: false,
-            }
-        );
-        activityLogRepository.findByWorkspaceWithPaginationOffset.mockResolvedValue(
-            {
-                type: EnumPaginationType.offset,
-                data: [],
-                count: 0,
-                perPage: 10,
-                hasNext: false,
-                hasPrevious: false,
-                page: 1,
-                totalPage: 0,
-            }
-        );
-        activityLogRepository.findByWorkspaceWithPaginationCursor.mockResolvedValue(
-            {
-                type: EnumPaginationType.cursor,
-                data: [],
-                perPage: 10,
-                hasNext: false,
-            }
+        activityLogRepository.findWithPaginationCursor.mockResolvedValue(
+            cursorPage
         );
 
-        await domain.getListOffsetByUser('user-id', offsetPagination);
-        await domain.getListCursorByUser('user-id', cursorPagination);
-        await domain.getListOffsetByWorkspace(
-            'workspace-id',
-            'user-id',
-            offsetPagination
-        );
-        await domain.getListCursorByWorkspace(
-            'workspace-id',
-            null,
-            cursorPagination
-        );
+        const userScope = { userId: 'user-id' };
+        const workspaceScope = { workspaceId: 'workspace-id' };
+
+        await domain.getListOffset(userScope, offsetPagination);
+        await domain.getListCursor(workspaceScope, cursorPagination);
 
         expect(
-            activityLogRepository.findUserScopedWithPaginationOffset
-        ).toHaveBeenCalledWith('user-id', offsetPagination, undefined);
+            activityLogRepository.findWithPaginationOffset
+        ).toHaveBeenCalledWith(userScope, offsetPagination, undefined);
         expect(
-            activityLogRepository.findUserScopedWithPaginationCursor
-        ).toHaveBeenCalledWith('user-id', cursorPagination);
-        expect(
-            activityLogRepository.findByWorkspaceWithPaginationOffset
-        ).toHaveBeenCalledWith(
-            'workspace-id',
-            'user-id',
-            offsetPagination,
-            undefined
-        );
-        expect(
-            activityLogRepository.findByWorkspaceWithPaginationCursor
-        ).toHaveBeenCalledWith('workspace-id', null, cursorPagination);
+            activityLogRepository.findWithPaginationCursor
+        ).toHaveBeenCalledWith(workspaceScope, cursorPagination, undefined);
     });
 
-    it('forwards the accessible where as the trailing repository argument of the user and workspace offset lists', async () => {
+    it('forwards the accessible where as the trailing repository argument', async () => {
         const offsetPagination = { skip: 0, limit: 10 };
+        const cursorPagination = { cursor: 'cursor', limit: 10 };
         const accessibleWhere = { userId: 'user-id' };
-        activityLogRepository.findUserScopedWithPaginationOffset.mockResolvedValue(
-            {
-                type: EnumPaginationType.offset,
-                data: [],
-                count: 0,
-                perPage: 10,
-                hasNext: false,
-                hasPrevious: false,
-                page: 1,
-                totalPage: 0,
-            }
-        );
-        activityLogRepository.findByWorkspaceWithPaginationOffset.mockResolvedValue(
-            {
-                type: EnumPaginationType.offset,
-                data: [],
-                count: 0,
-                perPage: 10,
-                hasNext: false,
-                hasPrevious: false,
-                page: 1,
-                totalPage: 0,
-            }
-        );
+        const scope = { workspaceId: 'workspace-id', userId: 'user-id' };
 
-        await domain.getListOffsetByUser(
-            'user-id',
-            offsetPagination,
-            accessibleWhere
-        );
-        await domain.getListOffsetByWorkspace(
-            'workspace-id',
-            null,
-            offsetPagination,
-            accessibleWhere
-        );
+        await domain.getListOffset(scope, offsetPagination, accessibleWhere);
+        await domain.getListCursor(scope, cursorPagination, accessibleWhere);
 
         expect(
-            activityLogRepository.findUserScopedWithPaginationOffset
-        ).toHaveBeenCalledWith('user-id', offsetPagination, accessibleWhere);
+            activityLogRepository.findWithPaginationOffset
+        ).toHaveBeenCalledWith(scope, offsetPagination, accessibleWhere);
         expect(
-            activityLogRepository.findByWorkspaceWithPaginationOffset
-        ).toHaveBeenCalledWith(
-            'workspace-id',
-            null,
-            offsetPagination,
-            accessibleWhere
-        );
+            activityLogRepository.findWithPaginationCursor
+        ).toHaveBeenCalledWith(scope, cursorPagination, accessibleWhere);
     });
 
     describe('getContract', () => {
