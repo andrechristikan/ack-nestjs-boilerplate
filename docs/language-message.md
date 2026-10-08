@@ -26,15 +26,15 @@ i18n through [nestjs-i18n][ref-nestjs-i18n].
 - [Configuration](#configuration)
 - [Message Files](#message-files)
 - [Usage](#usage)
-  - [Basic Translation](#basic-translation)
-  - [Filter Language](#filter-language)
-  - [Bulk Import Validation Messages](#bulk-import-validation-messages)
-  - [Translation with Variables](#translation-with-variables)
-  - [Custom Language](#custom-language)
+    - [Basic Translation](#basic-translation)
+    - [Filter Language](#filter-language)
+    - [Bulk Import Validation Messages](#bulk-import-validation-messages)
+    - [Translation with Variables](#translation-with-variables)
+    - [Custom Language](#custom-language)
 - [Integration](#integration)
-  - [Exception Filters](#exception-filters)
-  - [Response Decorator](#response-decorator)
-  - [Validation Pipe](#validation-pipe)
+    - [Exception Filters](#exception-filters)
+    - [Response Decorator](#response-decorator)
+    - [Validation Pipe](#validation-pipe)
 - [Adding New Language](#adding-new-language)
 
 ## Configuration
@@ -49,13 +49,10 @@ Configuration structure:
 
 ```typescript
 // src/configs/message.config.ts
-export default registerAs(
-    'message',
-    (): IConfigMessage => ({
-        availableLanguage: Object.values(EnumMessageLanguage),
-        language: process.env.APP_LANGUAGE!,
-    })
-);
+export default registerAs('message', (): IConfigMessage => ({
+    availableLanguage: Object.values(EnumMessageLanguage),
+    language: process.env.APP_LANGUAGE!,
+}));
 ```
 
 `MessageModule.forRoot()` registers nestjs-i18n with:
@@ -80,7 +77,7 @@ Message files use JSON format with nested structure.
 - Files are located in `src/languages/en/`:
 
 | File | Description |
-|------|-------------|
+| --- | --- |
 | `activityLog.json` | Activity log messages |
 | `analytic.json` | Analytic messages |
 | `apiKey.json` | API key messages |
@@ -163,7 +160,7 @@ Use `setValidationImportMessage` to format validation errors for bulk/import ope
 
 ```typescript
 const errors = this.messageService.setValidationImportMessage([
-    { row: 1, errors: validationErrors }
+    { row: 1, errors: validationErrors },
 ]);
 // Returns: [{ row: 1, errors: [{ key, property, message }] }]
 ```
@@ -202,7 +199,7 @@ Override default language using the `customLanguage` option:
 
 ```typescript
 const message = this.messageService.setMessage('user.updateProfile', {
-    customLanguage: 'id' // Indonesian
+    customLanguage: 'id', // Indonesian
 });
 ```
 
@@ -385,12 +382,9 @@ export enum EnumMessageLanguage {
 
 4. Restart the application to load new language files.
 
-
-
 <!-- REFERENCES -->
 
 [ref-nestjs-i18n]: https://nestjs-i18n.com
-
 [ref-doc-response]: response.md
 [ref-doc-handling-error]: handling-error.md
 [ref-doc-request-validation]: request-validation.md

@@ -38,6 +38,24 @@ export interface INotificationCreateEntry {
     payload: INotificationCreate;
 }
 
+export interface INotificationTermPolicyRecipientState {
+    userId: string;
+    batchId: string;
+    enqueuedAt: Date | null;
+}
+
+export interface INotificationTermPolicyRecipientCreate {
+    userId: string;
+    notificationId: string;
+}
+
+export interface INotificationTermPolicyRecipientSend {
+    userId: string;
+    notificationId: string;
+    email: string;
+    username: string;
+}
+
 export interface INotificationUserSettingUpdate {
     channel: EnumNotificationChannel;
     type: EnumNotificationType;
@@ -108,13 +126,13 @@ export interface INotificationNewDeviceLoginPayload {
 }
 
 export interface INotificationPublishTermPolicyPayload {
+    termPolicyId: string;
     type: EnumTermPolicyType;
     version: number;
 }
 
-export interface INotificationAcceptTermPolicyPayload extends INotificationPublishTermPolicyPayload {
-    termPolicyId: string;
-}
+export type INotificationAcceptTermPolicyPayload =
+    INotificationPublishTermPolicyPayload;
 
 export interface INotificationWorkspaceInvitePayload {
     workspaceId: string;
@@ -217,8 +235,9 @@ export interface INotificationEmailQueuePayload<T = null> {
 }
 
 export interface INotificationEmailBulkQueuePayload<T = null> {
-    send: INotificationEmailSendPayload[];
     data: T;
+    batchId: string;
+    proceedBy: string;
 }
 
 export interface INotificationEmailSendUnregisteredPayload {

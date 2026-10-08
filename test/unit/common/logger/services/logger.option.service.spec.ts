@@ -6,6 +6,11 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import {
+    RequestCorrelationIdStoreKey,
+    RequestIdStoreKey,
+} from '@common/request/constants/request.constant';
 import { LoggerUtil } from '@common/logger/utils/logger.util';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 import { LoggerAutoContext } from '@common/logger/constants/logger.constant';
@@ -20,11 +25,14 @@ describe('LoggerOptionService', () => {
         mock<HelperDateService>();
     const requestContextService: MockProxy<RequestContextService> =
         mock<RequestContextService>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
     const loggerUtil: MockProxy<LoggerUtil> = mock<LoggerUtil>();
     const loggerDoubles: ILoggerOptionServiceDoubles = {
         helperStringService,
         helperDateService,
         requestContextService,
+        requestStoreService,
         loggerUtil,
     };
 
@@ -51,7 +59,6 @@ describe('LoggerOptionService', () => {
                 { ...baseConfig, 'logger.enable': true },
                 loggerDoubles
             );
-            loggerUtil.getRequestId.mockReturnValue('req-id');
 
             const options = await service.createOptions();
 
@@ -59,7 +66,6 @@ describe('LoggerOptionService', () => {
                 { path: '{*wildcard}', method: RequestMethod.ALL },
             ]);
             const pinoHttp = options.pinoHttp as unknown as {
-                genReqId: (req: IRequestApp) => string;
                 messageKey: string;
                 timestamp: boolean;
                 wrapSerializers: boolean;
@@ -71,7 +77,8 @@ describe('LoggerOptionService', () => {
             expect(pinoHttp.wrapSerializers).toBe(false);
             expect(pinoHttp.base).toBeNull();
             expect(pinoHttp.level).toBe(EnumLoggerLevel.info);
-            expect(pinoHttp.genReqId({} as IRequestApp)).toBe('req-id');
+            expect(pinoHttp).not.toHaveProperty('genReqId');
+            expect(pinoHttp).not.toHaveProperty('customProps');
         });
 
         it('omits the transport key when no transport is enabled', async () => {
@@ -275,15 +282,48 @@ describe('LoggerOptionService', () => {
     });
 
     describe('createMixin', () => {
-        it('returns the pino level unchanged', async () => {
+        it('returns the pino level with the request and correlation ids from the store', async () => {
             const service = await createLoggerOptionService(
                 baseConfig,
                 loggerDoubles
             );
+            requestStoreService.get.mockImplementation(key =>
+                key === RequestIdStoreKey
+                    ? 'request-id-1'
+                    : key === RequestCorrelationIdStoreKey
+                      ? 'correlation-id-1'
+                      : null
+            );
 
             const mixin = service['createMixin']();
 
-            expect(mixin({}, 30)).toEqual({ level: 30 });
+            expect(mixin({}, 30)).toEqual({
+                level: 30,
+                requestId: 'request-id-1',
+                correlationId: 'correlation-id-1',
+            });
+            expect(requestStoreService.get).toHaveBeenCalledWith(
+                RequestIdStoreKey
+            );
+            expect(requestStoreService.get).toHaveBeenCalledWith(
+                RequestCorrelationIdStoreKey
+            );
+        });
+
+        it('returns null ids when the store holds none', async () => {
+            const service = await createLoggerOptionService(
+                baseConfig,
+                loggerDoubles
+            );
+            requestStoreService.get.mockReturnValue(null);
+
+            const mixin = service['createMixin']();
+
+            expect(mixin({}, 30)).toEqual({
+                level: 30,
+                requestId: null,
+                correlationId: null,
+            });
         });
     });
 
@@ -319,6 +359,55 @@ describe('LoggerOptionService', () => {
                 additionalData: { extra: 'field' },
             });
             expect(result.debug).toBeDefined();
+        });
+
+        it('writes the ids at the top level and none under additionalData', async () => {
+            const service = await createLoggerOptionService(
+                baseConfig,
+                loggerDoubles
+            );
+            helperDateService.create.mockReturnValue(new Date());
+            requestContextService.getHostname.mockReturnValue('host-1');
+            loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
+            loggerUtil.sanitizeMessage.mockImplementation(m => m);
+
+            const formatter = service['createLogFormatter']();
+            const result = formatter({
+                level: 30,
+                requestId: 'request-id-1',
+                correlationId: 'correlation-id-1',
+                extra: 'field',
+            });
+
+            expect(result).toMatchObject({
+                requestId: 'request-id-1',
+                correlationId: 'correlation-id-1',
+                additionalData: { extra: 'field' },
+            });
+            expect(result.additionalData).not.toHaveProperty('requestId');
+            expect(result.additionalData).not.toHaveProperty('correlationId');
+        });
+
+        it('writes both ids as top-level null when the mixin supplies null', async () => {
+            const service = await createLoggerOptionService(
+                baseConfig,
+                loggerDoubles
+            );
+            helperDateService.create.mockReturnValue(new Date());
+            requestContextService.getHostname.mockReturnValue('host-1');
+            loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
+            loggerUtil.sanitizeMessage.mockImplementation(m => m);
+
+            const formatter = service['createLogFormatter']();
+            const result = formatter({
+                level: 30,
+                requestId: null,
+                correlationId: null,
+            });
+
+            expect(result).toHaveProperty('requestId', null);
+            expect(result).toHaveProperty('correlationId', null);
+            expect(result.additionalData).toBeUndefined();
         });
 
         it('keeps the given context when present', async () => {

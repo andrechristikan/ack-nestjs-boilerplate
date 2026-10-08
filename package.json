@@ -33,7 +33,7 @@
         "start": "nest start application --config nest-cli.json --exec \"node --import ./dist/instrument.js\"",
         "start:dev": "concurrently -n \"Nest,TypeCheck\" -c \"green,yellow\" \"nest start application --watch --config nest-cli.json --exec 'node --import ./dist/instrument.js'\" \"pnpm typecheck:watch\"",
         "start:prod": "node --import ./dist/instrument.js dist/main.js",
-        "lint": "eslint",
+        "lint": "eslint --max-warnings 0",
         "lint:staged": "lint-staged",
         "lint:fix": "eslint --fix",
         "test": "TZ=UTC vitest run --project unit",
@@ -173,6 +173,9 @@
             "stop-only --file"
         ],
         "*.{json,yml,yaml}": [
+            "prettier --write"
+        ],
+        "*.md": [
             "prettier --write"
         ]
     },

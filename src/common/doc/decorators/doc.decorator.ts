@@ -17,6 +17,7 @@ import {
 import {
     RequestCorrelationIdHeaderName,
     RequestCustomLangHeaderName,
+    RequestIdHeaderName,
 } from '@common/request/constants/request.constant';
 import { faker } from '@faker-js/faker';
 
@@ -170,6 +171,16 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                 schema: {
                     default: EnumMessageLanguage.en,
                     example: EnumMessageLanguage.en,
+                    type: 'string',
+                },
+            },
+            {
+                name: RequestIdHeaderName,
+                description:
+                    'Request identifier; a valid value is kept, otherwise the server generates one',
+                required: false,
+                schema: {
+                    example: faker.string.uuid(),
                     type: 'string',
                 },
             },

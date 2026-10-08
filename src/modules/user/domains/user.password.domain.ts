@@ -329,14 +329,9 @@ export class UserPasswordDomain {
                 throw new UserPasswordNotMatchException();
             }
 
-            const resetAttemptPromise = this.userDomain.resetPasswordAttempt(
-                user.id
-            );
-            const passwordHistoriesPromise =
-                this.passwordHistoryDomain.getActiveByUser(user.id);
             const [, passwordHistories] = await Promise.all([
-                resetAttemptPromise,
-                passwordHistoriesPromise,
+                this.userDomain.resetPasswordAttempt(user.id),
+                this.passwordHistoryDomain.getActiveByUser(user.id),
             ]);
             const passwordCheck = this.authPasswordUtil.checkPasswordPeriod(
                 passwordHistories,

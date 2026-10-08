@@ -29,31 +29,31 @@ Two upload transports:
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Decorators](#decorators)
-  - [FileUploadSingle](#fileuploadsingle)
-  - [FileUploadMultiple](#fileuploadmultiple)
-  - [FileUploadMultipleFields](#fileuploadmultiplefields)
-  - [Upload Transport Errors](#upload-transport-errors)
+    - [FileUploadSingle](#fileuploadsingle)
+    - [FileUploadMultiple](#fileuploadmultiple)
+    - [FileUploadMultipleFields](#fileuploadmultiplefields)
+    - [Upload Transport Errors](#upload-transport-errors)
 - [Enums](#enums)
 - [Pipes](#pipes)
-  - [FileExtensionPipe](#fileextensionpipe)
-  - [FileCsvParsePipe](#filecsvparsepipe)
-  - [FileCsvValidationPipe](#filecsvvalidationpipe)
+    - [FileExtensionPipe](#fileextensionpipe)
+    - [FileCsvParsePipe](#filecsvparsepipe)
+    - [FileCsvValidationPipe](#filecsvvalidationpipe)
 - [CSV Import Flow](#csv-import-flow)
 - [Usage](#usage)
-  - [Basic File Upload](#basic-file-upload)
-  - [CSV Import](#csv-import)
-  - [Multiple Field Upload](#multiple-field-upload)
+    - [Basic File Upload](#basic-file-upload)
+    - [CSV Import](#csv-import)
+    - [Multiple Field Upload](#multiple-field-upload)
 - [Error Handling](#error-handling)
 - [Message Translation](#message-translation)
 - [Presign GET](#presign-get)
 - [Presign upload](#presign-upload)
-  - [How It Works](#how-it-works)
-  - [Implementation](#implementation)
-  - [Configuration Options](#configuration-options)
-  - [Response Structure](#response-structure)
-  - [Flow Diagram](#flow-diagram)
-  - [Term Policy Content Presign](#term-policy-content-presign)
-  - [Multipart Part Presign](#multipart-part-presign)
+    - [How It Works](#how-it-works)
+    - [Implementation](#implementation)
+    - [Configuration Options](#configuration-options)
+    - [Response Structure](#response-structure)
+    - [Flow Diagram](#flow-diagram)
+    - [Term Policy Content Presign](#term-policy-content-presign)
+    - [Multipart Part Presign](#multipart-part-presign)
 
 ## Decorators
 
@@ -79,10 +79,12 @@ Flow: [Doc Documentation][ref-doc-doc].
 - It caps the request at one file.
 
 **Parameters:**
+
 - `options.field`: Field name in form-data (default when `options` is omitted: `'file'`)
 - `options.fileSize`: Maximum file size in bytes (default when `options` is omitted: `FileSizeInBytes`)
 
 **Example:**
+
 ```typescript
 @FileUploadSingle({ field: 'photo', fileSize: bytes('5mb') })
 ```
@@ -92,11 +94,13 @@ Flow: [Doc Documentation][ref-doc-doc].
 Handles multiple files upload with the same field name.
 
 **Parameters:**
+
 - `options.field`: Field name in form-data (default when `options` is omitted: `'files'`)
 - `options.maxFiles`: Maximum number of files (default when `options` is omitted: `FileMaxMultiple`)
 - `options.fileSize`: Maximum file size per file in bytes (default when `options` is omitted: `FileSizeInBytes`)
 
 **Example:**
+
 ```typescript
 @FileUploadMultiple({ field: 'documents', maxFiles: 5, fileSize: bytes('5mb') })
 ```
@@ -106,14 +110,16 @@ Handles multiple files upload with the same field name.
 Handles multiple files from different form fields.
 
 **Parameters:**
+
 - `fields`: Array of field configurations
-  - `field`: Field name
-  - `maxFiles`: Maximum files for this field
+    - `field`: Field name
+    - `maxFiles`: Maximum files for this field
 - `options.fileSize` (optional): Maximum file size per file in bytes (default: `FileSizeInBytes`)
 
 The global `limits.files` is the sum of the declared per-field `maxFiles`, so the request-wide cap admits exactly what the per-field caps allow.
 
 **Example:**
+
 ```typescript
 @FileUploadMultipleFields(
   [
@@ -133,7 +139,7 @@ All three decorators compose `FileUploadErrorInterceptor` (`src/common/file/inte
 - The client message comes from the exception's own path (`file.error.exceedMaxSizeUpload`, …), not from a second catalog.
 
 | Condition | Framework message | Exception | statusCode | HTTP |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | A file exceeds `fileSize` | `File too large` | `FileExceedMaxSizeUploadException` | 50106 | 413 |
 | The request carries more files than the global `limits.files` | `Too many files` | `FileExceedMaxFilesException` | 50107 | 422 |
 | A file arrives on a field the route did not declare, or past that field's `maxFiles` | `Unexpected field` | `FileFieldUnexpectedException` | 50108 | 422 |
@@ -150,23 +156,24 @@ All three decorators compose `FileUploadErrorInterceptor` (`src/common/file/inte
 ### Available Enums
 
 - `EnumFileExtensionImage`: Image files
-  - `jpg`, `jpeg`, `png`
+    - `jpg`, `jpeg`, `png`
 
 - `EnumFileExtensionDocument`: Document files
-  - `pdf`, `csv`
+    - `pdf`, `csv`
 
 - `EnumFileExtensionAudio`: Audio files
-  - `mpeg`, `m4a`, `mp3`
+    - `mpeg`, `m4a`, `mp3`
 
 - `EnumFileExtensionVideo`: Video files
-  - `mp4`
+    - `mp4`
 
 - `EnumFileExtensionTemplate`: Template files
-  - `hbs`
+    - `hbs`
 
 - `EnumFileExtension`: both a const object merging every group above and a union type of the five enums
 
 **When to Use:**
+
 - Mix members of several enums to accept more than one kind: `[EnumFileExtensionImage.jpg, EnumFileExtensionDocument.pdf]`
 - Use specific enum for strict type control: only `EnumFileExtensionImage` values
 - CSV enum is typically used with `FileCsvParsePipe` for data import features
@@ -201,10 +208,12 @@ For each file:
 - Every element of an array is validated, so one rejected file rejects the request.
 
 **Passes through without validating:**
+
 - A falsy value
 - An empty object or an empty array
 
 **Throws:**
+
 - `FileExtensionInvalidException`: `originalname` is missing, the declared extension is not in the allow-list, the sniffed type maps to no member of the allow-list, or nothing was sniffed for an extension that carries a signature
 
 ### FileCsvParsePipe
@@ -212,16 +221,17 @@ For each file:
 - Parses CSV (.csv) files into a structured data array with rows and columns.
 - The pipe converts the raw file buffer into JavaScript objects, using semicolon (;) as the delimiter.
 
-**Returns:**
-Array of parsed row objects `T[]`, or `undefined` when no file was uploaded
+**Returns:** Array of parsed row objects `T[]`, or `undefined` when no file was uploaded
 
 **Supports:**
+
 - CSV files (.csv) with semicolon delimiter
 - Headers in first row become object property names
 - Empty lines are automatically skipped
 - Empty cells are parsed as `null`
 
 **Throws:**
+
 - `FileRequiredException`: Buffer is missing or zero-length
 - `FileExtensionInvalidException`: Missing `originalname`, or an extension other than `csv`
 
@@ -230,6 +240,7 @@ Array of parsed row objects `T[]`, or `undefined` when no file was uploaded
 Validates every parsed CSV row against a zod request schema and reports the failures row by row.
 
 **How it Works:**
+
 1. Receives parsed data from `FileCsvParsePipe`
 2. Rejects an empty row set, and a row set larger than the configured row cap
 3. Runs the rows through the schema in chunks of `file.importValidationConcurrency` (`10`).
@@ -241,6 +252,7 @@ Validates every parsed CSV row against a zod request schema and reports the fail
 6. Throws `FileImportException` if any row failed
 
 **Parameters:**
+
 - The zod schema each row is validated against
 - `options.maxDataImportConfigKey` (optional): config key holding the row cap (default `'file.maxDataImport'`, which is `100`)
 
@@ -248,6 +260,7 @@ Validates every parsed CSV row against a zod request schema and reports the fail
 - The user import passes `'user.maxDataImport'`, which is `50`.
 
 **Throws:**
+
 - `FileRequiredExtractFirstException`: No rows were passed in
 - `FileExceedMaxDataImportException`: Row count exceeds the row cap read from the configured key
 - `FileImportException`: Contains detailed validation errors with row context
@@ -260,34 +273,34 @@ CSV upload processing:
 flowchart TD
     A[Client Upload<br/>CSV File] --> B[ @UploadedFile Decorator]
     B --> B2{FileRequiredPipe()}
-    
+
     B2 -->|Missing File| B3[Throw FileRequiredException]
     B2 -->|Present| C{FileExtensionPipe}
-    
+
     C -->|Invalid Extension| D[Throw FileExtensionInvalidException]
     C -->|Valid Extension| E{FileCsvParsePipe}
-    
+
     E -->|Empty Buffer| F[Throw FileRequiredException]
     E -->|Not a .csv| G[Throw FileExtensionInvalidException]
     E -->|Success| H[Parse CSV to Array]
-    
+
     H --> I{FileCsvValidationPipe}
-    
+
     I -->|No Rows| I2[Throw FileRequiredExtractFirstException]
     I -->|Rows > configured row cap| I3[Throw FileExceedMaxDataImportException]
     I -->|Within Cap| J[Run Rows Through the Schema in Chunks]
     J --> K[Collect the Standard Schema issues]
-    
+
     K -->|Row Issues| L[Collect Issues with Row Context]
     L --> M[Throw FileImportException]
-    
+
     K -->|All Valid| N[Return Validated Data Array]
     N --> O[Controller Receives Data Array]
     O --> P[Process Validated Data]
-    
+
     P --> Q[Save to Database]
     Q --> R[Return Success Response]
-    
+
     style A fill:#e1f5ff
     style B3 fill:#ffe1e1
     style D fill:#ffe1e1
@@ -347,22 +360,21 @@ async uploadPhotoProfile(
 
 ```typescript
 const extension: EnumFileExtensionImage =
-  this.fileService.extractExtensionFromFilename(
-    file.originalname
-  ) as EnumFileExtensionImage;
+    this.fileService.extractExtensionFromFilename(
+        file.originalname
+    ) as EnumFileExtensionImage;
 
-const key: string = this.createRandomFilenamePhotoProfileWithPath(
-  userId,
-  { extension }
-);
+const key: string = this.createRandomFilenamePhotoProfileWithPath(userId, {
+    extension,
+});
 
 const aws: IAwsS3 | null = await this.awsS3Service.putItem(
-  {
-    key,
-    size: file.size,
-    file: file.buffer,
-  },
-  { access: EnumAwsS3Accessibility.public }
+    {
+        key,
+        size: file.size,
+        file: file.buffer,
+    },
+    { access: EnumAwsS3Accessibility.public }
 );
 ```
 
@@ -488,26 +500,26 @@ async import(
 
 ```typescript
 {
-  statusCode: number;       // EnumRequestStatusCodeError.validation
-  statusCodeKey: string;    // 'validation'
-  module: string;           // 'file'
-  message: string;
-  metadata: object;         // standard response metadata
-  errors: Array<{
-    row: number;            // Row index (0-based)
+    statusCode: number; // EnumRequestStatusCodeError.validation
+    statusCodeKey: string; // 'validation'
+    module: string; // 'file'
+    message: string;
+    metadata: object; // standard response metadata
     errors: Array<{
-      key: string;          // camelCase zod issue code (e.g. 'invalidFormat', 'tooSmall')
-      property: string;     // dotted property path
-      message: string;      // Translated error message
+        row: number; // Row index (0-based)
+        errors: Array<{
+            key: string; // camelCase zod issue code (e.g. 'invalidFormat', 'tooSmall')
+            property: string; // dotted property path
+            message: string; // Translated error message
+        }>;
     }>;
-  }>;
 }
 ```
 
 ### Common Errors
 
 | Error Type | Status Code | HTTP | Message | Description |
-|------------|-------------|------|---------|-------------|
+| --- | --- | --- | --- | --- |
 | Invalid Extension | 50101 | 415 | `file.error.extensionInvalid` | The declared extension is not in the allow-list, or the sniffed bytes disagree with it |
 | Empty File | 50100 | 422 | `file.error.required` | File buffer is empty or missing |
 | Invalid Format | 50101 | 415 | `file.error.extensionInvalid` | File passed to CSV pipe is not a `.csv` file |
@@ -575,7 +587,7 @@ async import(
 1. The schema's issues are collected per row
 2. They are passed to `MessageService.setValidationImportMessage()`
 3. The issue message is translated first, so a schema raising a message path speaks for itself.
-   - Otherwise the camelCase issue code is looked up under `request.error.{key}`.
+    - Otherwise the camelCase issue code is looked up under `request.error.{key}`.
 4. `{property}` is interpolated with the last segment of the issue path
 5. Localized messages are returned in the error response, each carrying `key`, `property`, and `message`
 
@@ -585,11 +597,11 @@ Add messages in `src/languages/<lang>/request.json`, one entry per zod issue cod
 
 ```json
 {
-  "error": {
-    "tooSmall": "{property} is shorter than the minimum allowed.",
-    "tooBig": "{property} is longer than the maximum allowed.",
-    "invalidFormat": "{property} does not match the expected format."
-  }
+    "error": {
+        "tooSmall": "{property} is shorter than the minimum allowed.",
+        "tooBig": "{property} is longer than the maximum allowed.",
+        "invalidFormat": "{property} does not match the expected format."
+    }
 }
 ```
 
@@ -651,8 +663,7 @@ async presignGetItem(
 4. Client notifies the backend of successful upload with the S3 key
 5. Backend saves file reference to database with audit trail
 
-> [!NOTE]
-> **Default expiration:** 30 minutes (`presignExpiredInSeconds: ms('30m') / 1000` in `aws.config.ts`, which is the unit the signer takes). A call overrides it via the `expiredInSeconds` option.
+> [!NOTE] **Default expiration:** 30 minutes (`presignExpiredInSeconds: ms('30m') / 1000` in `aws.config.ts`, which is the unit the signer takes). A call overrides it via the `expiredInSeconds` option.
 
 ### Implementation
 
@@ -690,54 +701,54 @@ export const UserUpdateProfilePhotoRequestSchema =
 ```typescript
 @ApiTags('modules.shared.user')
 @Controller({
-  version: '1',
-  path: '/user',
+    version: '1',
+    path: '/user',
 })
 export class UserSharedController {
-  constructor(
-    private readonly userProfileHttpService: UserProfileHttpService,
-    // ... the other HTTP services this controller dispatches to
-  ) {}
+    constructor(
+        private readonly userProfileHttpService: UserProfileHttpService
+        // ... the other HTTP services this controller dispatches to
+    ) {}
 
-  @Doc({ summary: 'generate upload photo profile presign' })
-  @Response('user.generatePhotoProfilePresign', {
-    schema: AwsS3PresignResponseSchema,
-  })
-  @TermPolicyAcceptanceProtected()
-  @UserProtected()
-  @AuthJwtAccessProtected()
-  @ApiKeyProtected()
-  @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
-  @HttpCode(HttpStatus.OK)
-  @Post('/profile/photo/presign/generate')
-  async generatePhotoProfilePresign(
-    @AuthJwtPayload('userId') userId: string,
-    @Body({ schema: UserGeneratePhotoProfileRequestSchema })
-    body: UserGeneratePhotoProfileRequestDto
-  ): Promise<IResponseReturn<IAwsS3Presign>> {
-    return this.userProfileHttpService.generatePhotoProfilePresign(
-      userId,
-      body
-    );
-  }
+    @Doc({ summary: 'generate upload photo profile presign' })
+    @Response('user.generatePhotoProfilePresign', {
+        schema: AwsS3PresignResponseSchema,
+    })
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
+    @HttpCode(HttpStatus.OK)
+    @Post('/profile/photo/presign/generate')
+    async generatePhotoProfilePresign(
+        @AuthJwtPayload('userId') userId: string,
+        @Body({ schema: UserGeneratePhotoProfileRequestSchema })
+        body: UserGeneratePhotoProfileRequestDto
+    ): Promise<IResponseReturn<IAwsS3Presign>> {
+        return this.userProfileHttpService.generatePhotoProfilePresign(
+            userId,
+            body
+        );
+    }
 
-  @Doc({ summary: 'update photo profile' })
-  @Response('user.updatePhotoProfile')
-  @TermPolicyAcceptanceProtected()
-  @UserProtected()
-  @AuthJwtAccessProtected()
-  @ApiKeyProtected()
-  @RequestThrottle({ user: true })
-  @Put('/profile/photo/update')
-  async updatePhotoProfile(
-    @AuthJwtPayload('userId') userId: string,
-    @Body({ schema: UserUpdateProfilePhotoRequestSchema })
-    body: UserUpdateProfilePhotoRequestDto
-  ): Promise<IResponseReturn<void>> {
-    await this.userProfileHttpService.updatePhotoProfile(userId, body);
+    @Doc({ summary: 'update photo profile' })
+    @Response('user.updatePhotoProfile')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true })
+    @Put('/profile/photo/update')
+    async updatePhotoProfile(
+        @AuthJwtPayload('userId') userId: string,
+        @Body({ schema: UserUpdateProfilePhotoRequestSchema })
+        body: UserUpdateProfilePhotoRequestDto
+    ): Promise<IResponseReturn<void>> {
+        await this.userProfileHttpService.updatePhotoProfile(userId, body);
 
-    return {};
-  }
+        return {};
+    }
 }
 ```
 
@@ -751,59 +762,63 @@ export class UserSharedController {
 ```typescript
 @Injectable()
 export class UserProfileDomain {
-  async generatePhotoProfilePresign(
-    userId: string,
-    { extension, size }: IUserGeneratePhotoProfile
-  ): Promise<IAwsS3Presign> {
-    const key: string = this.createRandomFilenamePhotoProfileWithPath(userId, {
-      extension,
-    });
+    async generatePhotoProfilePresign(
+        userId: string,
+        { extension, size }: IUserGeneratePhotoProfile
+    ): Promise<IAwsS3Presign> {
+        const key: string = this.createRandomFilenamePhotoProfileWithPath(
+            userId,
+            {
+                extension,
+            }
+        );
 
-    const aws: IAwsS3Presign | null = await this.awsS3Service.presignPutItem(
-      { key, size },
-      { forceUpdate: true, access: EnumAwsS3Accessibility.public }
-    );
+        const aws: IAwsS3Presign | null =
+            await this.awsS3Service.presignPutItem(
+                { key, size },
+                { forceUpdate: true, access: EnumAwsS3Accessibility.public }
+            );
 
-    if (!aws) {
-      throw new AwsS3NotConfiguredException();
+        if (!aws) {
+            throw new AwsS3NotConfiguredException();
+        }
+
+        return aws;
     }
 
-    return aws;
-  }
+    async updatePhotoProfile(
+        userId: string,
+        { key, size }: IUserUpdatePhotoProfile
+    ): Promise<void> {
+        const isS3Initialized = this.awsS3Service.isInitialized();
+        if (!isS3Initialized) {
+            throw new AwsS3NotConfiguredException();
+        }
 
-  async updatePhotoProfile(
-    userId: string,
-    { key, size }: IUserUpdatePhotoProfile
-  ): Promise<void> {
-    const isS3Initialized = this.awsS3Service.isInitialized();
-    if (!isS3Initialized) {
-      throw new AwsS3NotConfiguredException();
+        try {
+            const aws: IAwsS3 = this.awsS3Service.mapPresign(
+                { key, size },
+                { access: EnumAwsS3Accessibility.public }
+            );
+
+            const events = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userUpdatePhotoProfile,
+                }),
+            ];
+            await this.userRepository.updatePhotoProfile(userId, aws);
+
+            this.activityLogDomain.stagePrepared(events);
+
+            return;
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            throw new AppUnknownException(err);
+        }
     }
-
-    try {
-      const aws: IAwsS3 = this.awsS3Service.mapPresign(
-        { key, size },
-        { access: EnumAwsS3Accessibility.public }
-      );
-
-      const events = [
-        this.activityLogDomain.prepare({
-          action: EnumActivityLogAction.userUpdatePhotoProfile,
-        }),
-      ];
-      await this.userRepository.updatePhotoProfile(userId, aws);
-
-      this.activityLogDomain.stagePrepared(events);
-
-      return;
-    } catch (err: unknown) {
-      if (err instanceof AppBaseException) {
-        throw err;
-      }
-
-      throw new AppUnknownException(err);
-    }
-  }
 }
 ```
 
@@ -823,66 +838,71 @@ S3 not configured:
 - It delegates to `FileService.createRandomFilename` with a 20-character random segment.
 
 **Step 4: Client-Side Upload**
+
 ```typescript
 async function uploadPhotoSimple(file: File) {
-  try {
-    // Step 1: Request presigned URL
-    const response = await fetch('/api/v1/shared/user/profile/photo/presign/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-        'x-api-key': apiKey
-      },
-      body: JSON.stringify({
-        extension: file.name.split('.').pop(),
-        size: file.size
-      })
-    });
+    try {
+        // Step 1: Request presigned URL
+        const response = await fetch(
+            '/api/v1/shared/user/profile/photo/presign/generate',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${accessToken}`,
+                    'x-api-key': apiKey,
+                },
+                body: JSON.stringify({
+                    extension: file.name.split('.').pop(),
+                    size: file.size,
+                }),
+            }
+        );
 
-    const { data: presignData } = await response.json();
+        const { data: presignData } = await response.json();
 
-    // Step 2: Upload to S3 (simple PUT request)
-    const uploadResponse = await fetch(presignData.presignUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': presignData.mime,
-      },
-      body: file
-    });
+        // Step 2: Upload to S3 (simple PUT request)
+        const uploadResponse = await fetch(presignData.presignUrl, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': presignData.mime,
+            },
+            body: file,
+        });
 
-    if (!uploadResponse.ok) {
-      throw new Error('S3 upload failed');
+        if (!uploadResponse.ok) {
+            throw new Error('S3 upload failed');
+        }
+
+        // Step 3: Notify backend
+        await fetch('/api/v1/shared/user/profile/photo/update', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${accessToken}`,
+                'x-api-key': apiKey,
+            },
+            body: JSON.stringify({
+                key: presignData.key,
+                size: file.size,
+            }),
+        });
+
+        console.log('Upload complete!');
+    } catch (error) {
+        console.error('Upload failed:', error);
+        throw error;
     }
-
-    // Step 3: Notify backend
-    await fetch('/api/v1/shared/user/profile/photo/update', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-        'x-api-key': apiKey
-      },
-      body: JSON.stringify({
-        key: presignData.key,
-        size: file.size
-      })
-    });
-
-    console.log('Upload complete!');
-  } catch (error) {
-    console.error('Upload failed:', error);
-    throw error;
-  }
 }
 ```
 
 ### Configuration Options
+
 ```typescript
 interface IAwsS3PresignPutItemOptions {
-  access: EnumAwsS3Accessibility; // public or private, required
-  expiredInSeconds?: number; // Expiration time in seconds (default from config)
-  forceUpdate?: boolean; // Allow overwriting existing files
+    access: EnumAwsS3Accessibility; // public or private, required
+    expiredInSeconds?: number; // Expiration time in seconds (default from config)
+    forceUpdate?: boolean; // Allow overwriting existing files
 }
 ```
 
@@ -892,17 +912,18 @@ interface IAwsS3PresignPutItemOptions {
 
 ```typescript
 export const AwsS3PresignResponseSchema = z.object({
-  key: z.string(),          // S3 object key (save this for later reference)
-  mime: z.string(),         // MIME type (use this as Content-Type header)
-  extension: z.string(),    // File extension
-  presignUrl: z.string(),   // The presigned URL for upload
-  expiredInSeconds: z.number(), // URL lifetime in seconds
+    key: z.string(), // S3 object key (save this for later reference)
+    mime: z.string(), // MIME type (use this as Content-Type header)
+    extension: z.string(), // File extension
+    presignUrl: z.string(), // The presigned URL for upload
+    expiredInSeconds: z.number(), // URL lifetime in seconds
 });
 ```
 
 `AwsS3PresignPartResponseSchema` extends it with `partNumber` and `size`.
 
 ### Flow Diagram
+
 ```mermaid
 sequenceDiagram
     participant Client
@@ -915,30 +936,30 @@ sequenceDiagram
     Client->>Backend: POST /profile/photo/presign/generate<br/>{extension, size}
     Backend->>UserProfileDomain: createRandomFilenamePhotoProfileWithPath()
     UserProfileDomain-->>Backend: unique S3 key
-    
+
     Backend->>AwsS3Service: presignPutItem({key, size}, {forceUpdate: true, access: public})
     Note over AwsS3Service: ServerSideEncryption AES256,<br/>ChecksumAlgorithm SHA256,<br/>ContentDisposition inline
     AwsS3Service->>S3: Request presigned URL
     S3-->>AwsS3Service: Presigned URL (expires per config, default 30 min)
     AwsS3Service-->>Backend: IAwsS3Presign
     Backend-->>Client: {presignUrl, key, mime, expiredInSeconds}
-    
+
     Note over Client,S3: Direct Upload (Bypass Backend)
     Client->>S3: PUT file to presignUrl<br/>Header: Content-Type only
-    
+
     alt Upload success
         S3->>S3: Encrypt file with AES256
         S3-->>Client: 200 OK
-        
+
         Client->>Backend: PUT /profile/photo/update<br/>{key, size}
         Backend->>AwsS3Service: mapPresign({ key, size }, { access: public })
         AwsS3Service-->>Backend: IAwsS3
-        
+
         Backend->>Repository: updatePhotoProfile(userId, aws)
         Repository->>Repository: Save S3 reference + audit trail (request log read from store)
         Repository-->>Backend: Success
         Backend-->>Client: 200 OK
-        
+
         Note over Client,Repository: Upload Complete
     else Upload failed
         S3-->>Client: Error (4xx/5xx)
@@ -952,25 +973,24 @@ sequenceDiagram
 **Flow Explanation:**
 
 1. **Generate Presigned URL Stage:**
-   - Client requests presigned URL with file metadata (extension, size)
-   - Backend generates a unique S3 key through `UserProfileDomain.createRandomFilenamePhotoProfileWithPath`, which delegates to `FileService.createRandomFilename`
-   - `AwsS3Service` creates time-limited presigned URL with encryption enabled
-   - Backend returns presigned URL data to client
+    - Client requests presigned URL with file metadata (extension, size)
+    - Backend generates a unique S3 key through `UserProfileDomain.createRandomFilenamePhotoProfileWithPath`, which delegates to `FileService.createRandomFilename`
+    - `AwsS3Service` creates time-limited presigned URL with encryption enabled
+    - Backend returns presigned URL data to client
 
 2. **Direct Upload Stage:**
-   - Client uploads file **directly to S3** using presigned URL
-   - Only `Content-Type` header needed (encryption is automatic)
-   - No backend involvement during actual file transfer
-   - S3 encrypts file at rest with AES-256
-   - Reduces server bandwidth and improves performance
+    - Client uploads file **directly to S3** using presigned URL
+    - Only `Content-Type` header needed (encryption is automatic)
+    - No backend involvement during actual file transfer
+    - S3 encrypts file at rest with AES-256
+    - Reduces server bandwidth and improves performance
 
 3. **Database Update Stage:**
-   - Client notifies backend with S3 key and file size
-   - Backend maps presign data to `IAwsS3`
-   - `UserProfileDomain` prepares `userUpdatePhotoProfile`, then `UserRepository.updatePhotoProfile` stores the S3 file reference in one update with no transaction
-   - After the update the event is staged.
-   - `ActivityLogInterceptor` writes it with the IP address, user agent, and geolocation from the request store (`RequestLogStoreKey`)
-
+    - Client notifies backend with S3 key and file size
+    - Backend maps presign data to `IAwsS3`
+    - `UserProfileDomain` prepares `userUpdatePhotoProfile`, then `UserRepository.updatePhotoProfile` stores the S3 file reference in one update with no transaction
+    - After the update the event is staged.
+    - `ActivityLogInterceptor` writes it with the IP address, user agent, and geolocation from the request store (`RequestLogStoreKey`)
 
 ### Term Policy Content Presign
 
@@ -1021,7 +1041,6 @@ async generate(
 - Takes the same required `access` and optional `expiredInSeconds` as the other presign methods
 - Returns `null` when S3 credentials are not configured
 - No controller exposes it, so there is no multipart presign route
-
 
 <!-- REFERENCES -->
 

@@ -178,14 +178,14 @@ export class FirebaseService implements OnModuleInit {
         const chunkedTokens = this.helperArrayService.chunk(tokens, chunkSize);
 
         const content = this.buildMessageContent(payload);
-        const promises = chunkedTokens.map(chunk =>
-            this.messaging!.sendEachForMulticast({
-                tokens: chunk,
-                ...content,
-            })
+        const responses = await Promise.allSettled(
+            chunkedTokens.map(chunk =>
+                this.messaging!.sendEachForMulticast({
+                    tokens: chunk,
+                    ...content,
+                })
+            )
         );
-
-        const responses = await Promise.allSettled(promises);
 
         let successCount = 0;
         let failureCount = 0;

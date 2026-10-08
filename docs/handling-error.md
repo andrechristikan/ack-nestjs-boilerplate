@@ -20,19 +20,19 @@ Exception filters turn thrown errors into the same HTTP error body, with i18n me
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Exception Filters](#exception-filters)
-  - [AppBaseExceptionFilter](#appbaseexceptionfilter)
-  - [AppGeneralFilter](#appgeneralfilter)
-  - [AppHttpFilter](#apphttpfilter)
-  - [AppValidationFilter](#appvalidationfilter)
-  - [AppValidationImportFilter](#appvalidationimportfilter)
+    - [AppBaseExceptionFilter](#appbaseexceptionfilter)
+    - [AppGeneralFilter](#appgeneralfilter)
+    - [AppHttpFilter](#apphttpfilter)
+    - [AppValidationFilter](#appvalidationfilter)
+    - [AppValidationImportFilter](#appvalidationimportfilter)
 - [Error Response Structure](#error-response-structure)
 - [Response Metadata](#response-metadata)
 - [Response Headers](#response-headers)
 - [Usage](#usage)
-  - [Throwing an error](#throwing-an-error)
-  - [Error with message interpolation](#error-with-message-interpolation)
-  - [Error wrapping a cause](#error-wrapping-a-cause)
-  - [Defining a new exception](#defining-a-new-exception)
+    - [Throwing an error](#throwing-an-error)
+    - [Error with message interpolation](#error-with-message-interpolation)
+    - [Error wrapping a cause](#error-wrapping-a-cause)
+    - [Defining a new exception](#defining-a-new-exception)
 
 ## Exception Filters
 
@@ -72,6 +72,7 @@ flowchart TD
 ```
 
 **Common behavior**:
+
 - Build metadata and headers via the shared `ResponseMetadataService` (`create()` / `setHeaders()`), sourced from the request store (`RequestLanguageStoreKey` / `RequestVersionStoreKey` / `RequestIdStoreKey` / `RequestCorrelationIdStoreKey`)
 - Generate timestamp and timezone information
 - Resolve localized error message using [Message System][ref-doc-message]
@@ -98,7 +99,7 @@ All errors are formatted into `ResponseErrorDto`:
 **Field descriptions**:
 
 | Field | Type | Required | Description |
-|-------|------|----------|-------------|
+| --- | --- | --- | --- |
 | `statusCode` | `number` | Yes | Custom status code for error identification |
 | `statusCodeKey` | `string` | Yes | Status-code enum key (camelCase). Domain errors: enum key (e.g. `'notFound'`). Framework HTTP errors: camelCase HTTP status name (e.g. `'notFound'`). General/unknown: `'unknown'` |
 | `module` | `string` | Yes | Owning module. Domain errors: module name (e.g. `'user'`). Framework HTTP errors: `'http'`. General/unknown: `'app'` |
@@ -126,7 +127,7 @@ All errors are formatted into `ResponseErrorDto`:
 **Field sources**:
 
 | Field | Source | Fallback |
-|-------|--------|----------|
+| --- | --- | --- |
 | `language` | Request store `RequestLanguageStoreKey` | Config `message.language` |
 | `timestamp` | `HelperDateService.getTimestamp()` | - |
 | `timezone` | `HelperDateService.getZone()` | - |
@@ -167,6 +168,7 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 **Use case**: All errors thrown by application code (services, guards, pipes) as dedicated exception classes extending `AppBaseException`.
 
 **Behavior**:
+
 - Reads `statusCode`, `httpStatus`, `messagePath`, `messageProperties`, `metadata`, and optional `data` directly from the exception instance
 - `messageProperties` and `metadata` are `null` when the exception carries none
 - Resolves the localized message via the [Message System][ref-doc-message]
@@ -174,6 +176,7 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 - Reports `exception.rawError` (or the exception itself) to Sentry only when `httpStatus >= 500`
 
 **Response example**:
+
 ```json
 {
   "statusCode": 51000,
@@ -193,11 +196,13 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 **Use case**: Fallback for unexpected errors (database crashes, unhandled promise rejections, runtime errors)
 
 **Behavior**:
+
 - Always returns HTTP 500
 - Uses message path `http.serverError.internalServerError` and status code `50000` (`EnumAppStatusCodeError.unknown`)
 - Sends all exceptions to Sentry
 
 **Response example**:
+
 ```json
 {
   "statusCode": 50000,
@@ -229,6 +234,7 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 **Sentry integration**: Only sends exceptions with HTTP status ≥ 500
 
 **Response example**:
+
 ```json
 {
   "statusCode": 404,
@@ -264,11 +270,13 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 **Use case**: Request body, query parameters, and path parameters that fail their route's zod schema
 
 **Behavior**:
+
 - Formats field-specific validation errors
 - Uses `MessageService.setValidationMessage()`
 - Does not send to Sentry
 
 **Response example**:
+
 ```json
 {
   "statusCode": 50300,
@@ -297,11 +305,13 @@ See [Request Validation][ref-doc-request-validation] for details.
 **Use case**: CSV file import rows that fail their zod schema
 
 **Behavior**:
+
 - Formats row-level validation errors
 - Uses `MessageService.setValidationImportMessage()`
 - Does not send to Sentry
 
 **Response example**:
+
 ```json
 {
   "statusCode": 50300,
@@ -352,16 +362,18 @@ throw new UserPasswordMustNewException(period);
 ```
 
 The class wires it internally:
+
 ```typescript
 super('user.error.passwordMustNew', { messageProperties: { period } });
 ```
 
 **Message file** (`en/user.json`):
+
 ```json
 {
-  "error": {
-    "passwordMustNew": "New password must be different from previous passwords within the past {period} days."
-  }
+    "error": {
+        "passwordMustNew": "New password must be different from previous passwords within the past {period} days."
+    }
 }
 ```
 
@@ -372,16 +384,15 @@ For a caught error, pass the cause.
 - It is reported to Sentry for 5xx errors and never serialized into the response body.
 - A service that wraps a caught error lets a typed one through first, so a domain exception raised inside the `try` reaches the client with its own status code instead of the generic 500.
 
-
 ```typescript
 try {
-  // ...
+    // ...
 } catch (err: unknown) {
-  if (err instanceof AppBaseException) {
-    throw err;
-  }
+    if (err instanceof AppBaseException) {
+        throw err;
+    }
 
-  throw new AppUnknownException(err);
+    throw new AppUnknownException(err);
 }
 ```
 
@@ -402,12 +413,9 @@ export class ExampleSomethingException extends AppBaseException {
 }
 ```
 
-
-
 <!-- REFERENCES -->
 
 [ref-nestjs-exception-filters]: https://docs.nestjs.com/exception-filters
-
 [ref-doc-response]: response.md
 [ref-doc-request-validation]: request-validation.md
 [ref-doc-status-codes]: status-codes.md

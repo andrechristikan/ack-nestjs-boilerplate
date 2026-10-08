@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
 import { DatabaseModelRelations } from '@common/database/constants/database.constant';
+import type { IDatabaseExtension } from '@common/database/interfaces/database.client.interface';
 import type {
     IDatabaseData,
     IDatabaseModelContext,
@@ -212,10 +213,8 @@ export class DatabaseExtensionUtil {
 
     /**
      * Builds the audit extension, closing over this instance's actor getter, clock, and stampers.
-     * The return type stays inferred because annotating it erases the softDelete and restore model
-     * methods; the lint exception is `ts/database-inferred-client` in `eslint.config.mjs`.
      */
-    build() {
+    build(): IDatabaseExtension {
         const getActor = (): string | null =>
             this.requestStoreService.get<string>(RequestActorStoreKey);
         const getNow = (): Date => this.helperDateService.create();

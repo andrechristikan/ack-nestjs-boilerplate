@@ -22,18 +22,18 @@ Use [MongoDB Atlas][ref-mongodb] and your own Redis only when you cannot run Doc
 - [Prerequisites](#prerequisites)
 - [Clone Repository](#clone-repository)
 - [Installation with Docker (Recommended)](#installation-with-docker-recommended)
-  - [What's Included](#whats-included)
-  - [Install Packages](#install-packages)
-  - [Create Environment](#create-environment)
-  - [Generate Keys](#generate-keys)
-  - [Run Containers](#run-containers)
-  - [Troubleshooting](#troubleshooting)
+    - [What's Included](#whats-included)
+    - [Install Packages](#install-packages)
+    - [Create Environment](#create-environment)
+    - [Generate Keys](#generate-keys)
+    - [Run Containers](#run-containers)
+    - [Troubleshooting](#troubleshooting)
 - [Installation without Docker](#installation-without-docker)
-  - [Hosted MongoDB and Redis](#hosted-mongodb-and-redis)
-  - [Install Packages](#install-packages-1)
-  - [Create Environment](#create-environment-1)
-  - [Generate Keys](#generate-keys-1)
-  - [Host JWKS Files](#host-jwks-files)
+    - [Hosted MongoDB and Redis](#hosted-mongodb-and-redis)
+    - [Install Packages](#install-packages-1)
+    - [Create Environment](#create-environment-1)
+    - [Generate Keys](#generate-keys-1)
+    - [Host JWKS Files](#host-jwks-files)
 - [Secret Management with Vault (Optional)](#secret-management-with-vault-optional)
 - [Generate Database Client](#generate-database-client)
 - [Database Migration \& Seeding](#database-migration--seeding)
@@ -41,14 +41,12 @@ Use [MongoDB Atlas][ref-mongodb] and your own Redis only when you cannot run Doc
 - [Development Tools](#development-tools)
 - [Accessing the Application](#accessing-the-application)
 
-
 ## Prerequisites
 
-> [!NOTE]
-> This project uses PNPM. Examples below use PNPM commands.
+> [!NOTE] This project uses PNPM. Examples below use PNPM commands.
 
 | Tool | Version | Notes |
-|------|---------|--------|
+| --- | --- | --- |
 | [Node.js](https://nodejs.org) | >= 24.15.0 | Always required |
 | [PNPM](http://pnpm.io) | >= 10.25.0 (pin `pnpm@12.5.1`) | Always required |
 | [Git](https://git-scm.com) | v2.39.x+ | Always required |
@@ -61,8 +59,7 @@ Without Docker you also need:
 - The project runs MongoDB 8: the production Compose file pins `mongo:8.3.11`.
 - A Redis 6.0+ instance for cache (`db:0`) and queues (`db:1`). `SessionCache` runs `SCAN` with the `TYPE` option, which Redis supports from 6.0.
 
-> [!IMPORTANT]
-> Prefer [Installation with Docker](#installation-with-docker-recommended). Local single-node MongoDB without a replica set will break Prisma transactions.
+> [!IMPORTANT] Prefer [Installation with Docker](#installation-with-docker-recommended). Local single-node MongoDB without a replica set will break Prisma transactions.
 
 ## Clone Repository
 
@@ -100,23 +97,27 @@ cp .env.example .env
 Point the host app at the Compose services:
 
 **Database**
+
 ```bash
 DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
 ```
 
 **Redis**
+
 ```bash
 CACHE_REDIS_URL=redis://localhost:6379/0
 QUEUE_REDIS_URL=redis://localhost:6379/1
 ```
 
 **JWKS (Compose-hosted)**
+
 ```bash
 AUTH_JWT_ACCESS_TOKEN_JWKS_URI=http://localhost:3011/.well-known/access-jwks.json
 AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://localhost:3011/.well-known/refresh-jwks.json
 ```
 
 **Two-factor issuer** (required and empty in `.env.example`, which `pnpm generate:secret` leaves alone)
+
 ```bash
 AUTH_TWO_FACTOR_ISSUER=ACKNestJs
 ```
@@ -165,8 +166,7 @@ The app uses:
 
 Compose also mounts a MongoDB keyfile, `keys/mongo-keyfile`.
 
-> [!WARNING]
-> Back up `keys/` and `.env` before regenerating. New JWT keys invalidate every issued token. New encryption secrets leave existing ciphertext (TOTP secrets, queued notification jobs) undecryptable.
+> [!WARNING] Back up `keys/` and `.env` before regenerating. New JWT keys invalidate every issued token. New encryption secrets leave existing ciphertext (TOTP secrets, queued notification jobs) undecryptable.
 
 ```bash
 # JWT keys, JWKS files, both encryption secrets, and the MongoDB keyfile;
@@ -184,17 +184,20 @@ pnpm generate:secret:mongo
 ```
 
 **What `jwt` does:**
+
 - Writes access/refresh PEM key pairs under `keys/` (private keys `0600`)
 - Writes `keys/access-jwks.json` and `keys/refresh-jwks.json` (the `jwks-server` container mounts these)
 - Prints paths and key IDs only, never key material
 - With `--direct-insert`: upserts `AUTH_JWT_ACCESS_TOKEN_KID`, `AUTH_JWT_REFRESH_TOKEN_KID`, and the four `AUTH_JWT_*_PRIVATE_KEY` / `AUTH_JWT_*_PUBLIC_KEY` values into `.env`
 
 **What `encryption` does:**
+
 - Draws both encryption secrets (48 random bytes each, 64 base64url characters)
 - Writes them to `keys/encryption-secret.env` (`0600`) and prints only that path
 - With `--direct-insert`: upserts those two variables into `.env`
 
 **What `mongo` does:**
+
 - Draws 756 random bytes, base64 encoded, and writes them to `keys/mongo-keyfile` with mode `0400`
 - Replaces an existing keyfile
 - Never writes to `.env`, and `--direct-insert` does nothing for it: Compose mounts the file at `/etc/mongo/keyfile`
@@ -206,11 +209,9 @@ Command behavior:
 - `--direct-insert` sets `.env` to `0644`, so the non-root production container user can read it through the bind mount.
 - The `keys/` directory is gitignored.
 
-> [!NOTE]
-> Both Compose files mount `keys/access-jwks.json`, `keys/refresh-jwks.json`, and `keys/mongo-keyfile` as bind mounts that fail the start when the file is missing. Run `pnpm generate:secret` before the first `docker-compose up`.
+> [!NOTE] Both Compose files mount `keys/access-jwks.json`, `keys/refresh-jwks.json`, and `keys/mongo-keyfile` as bind mounts that fail the start when the file is missing. Run `pnpm generate:secret` before the first `docker-compose up`.
 
-> [!NOTE]
-> The app reads `AUTH_JWT_*_PRIVATE_KEY` / `AUTH_JWT_*_PUBLIC_KEY` as base64 (DER), not raw PEM. `--direct-insert` writes the encoded values.
+> [!NOTE] The app reads `AUTH_JWT_*_PRIVATE_KEY` / `AUTH_JWT_*_PUBLIC_KEY` as base64 (DER), not raw PEM. `--direct-insert` writes the encoded values.
 
 Without `--direct-insert`, a manual `.env` needs these values from each target:
 
@@ -232,11 +233,13 @@ By default Compose starts dependencies only (MongoDB, Redis, JWKS, BullBoard).
 The API stays on the host unless the `apis` profile is enabled.
 
 **Dependencies only:**
+
 ```bash
 docker-compose up -d
 ```
 
 **Dependencies + API container:**
+
 ```bash
 docker-compose --profile apis up -d
 ```
@@ -316,13 +319,12 @@ Use this only when Docker is not an option:
 
 1. **MongoDB**: Create a [MongoDB Atlas][ref-mongodb] cluster, or use any MongoDB deployment that is a **replica set**. Copy the connection string into `DATABASE_URL`.
 2. **Redis**: Use a hosted Redis 6.0+ service such as [Amazon ElastiCache][ref-elasticache]. Point cache and queues at different logical DBs when you can:
-   ```bash
-   CACHE_REDIS_URL=redis://<host>:6379/0
-   QUEUE_REDIS_URL=redis://<host>:6379/1
-   ```
+    ```bash
+    CACHE_REDIS_URL=redis://<host>:6379/0
+    QUEUE_REDIS_URL=redis://<host>:6379/1
+    ```
 
-> [!IMPORTANT]
-> Prisma transactions need a replica set, so Atlas (and any other MongoDB you use) runs as one. Without one, transactions fail.
+> [!IMPORTANT] Prisma transactions need a replica set, so Atlas (and any other MongoDB you use) runs as one. Without one, transactions fail.
 
 ### Install Packages
 
@@ -386,7 +388,6 @@ The bundled config:
 
 Full detail: [Vault Documentation][ref-doc-vault].
 
-
 ## Generate Database Client
 
 `pnpm generate` writes the two gitignored sources the build imports:
@@ -404,19 +405,20 @@ pnpm generate
 ## Database Migration & Seeding
 
 **Sync schema to MongoDB:**
+
 ```bash
 pnpm db:migrate
 ```
 
 **Seed initial data:**
+
 ```bash
 pnpm migration:seed
 ```
 
 **Remove seeded data:**
 
-> [!WARNING]
-> `migration:remove` deletes more than the seeded rows: the `user` seed's removal deletes every user, session, and activity log, and the API key, country, feature flag, role, and term policy seeds each delete their whole collection.
+> [!WARNING] `migration:remove` deletes more than the seeded rows: the `user` seed's removal deletes every user, session, and activity log, and the API key, country, feature flag, role, and term policy seeds each delete their whole collection.
 
 ```bash
 pnpm migration:remove
@@ -429,8 +431,7 @@ pnpm migration:remove
 
 **Reset and reseed:**
 
-> [!WARNING]
-> `migration:fresh` runs `prisma db push --force-reset`, which drops all existing data.
+> [!WARNING] `migration:fresh` runs `prisma db push --force-reset`, which drops all existing data.
 
 ```bash
 pnpm migration:fresh
@@ -466,7 +467,6 @@ pnpm migration awsS3Config --type seed
 ```
 
 Database row seeds and schema sync: [Database Documentation][ref-doc-database].
-
 
 ## Run Project
 
@@ -519,11 +519,9 @@ pnpm package:upgrade
 pnpm clean && pnpm install
 ```
 
-> [!NOTE]
-> `pnpm clean` removes `dist` and `node_modules` and prunes the pnpm store before a fresh install.
+> [!NOTE] `pnpm clean` removes `dist` and `node_modules` and prunes the pnpm store before a fresh install.
 >
 > It helps after dependency conflicts or a broken build.
-
 
 ## Accessing the Application
 
@@ -537,14 +535,11 @@ Quick checks:
 2. Swagger at `http://localhost:3000/docs`
 3. App logs for MongoDB and Redis connections
 
-
-
 <!-- REFERENCES -->
 
 [ref-vault]: https://developer.hashicorp.com/vault
 [ref-mongodb]: https://www.mongodb.com/products/platform/atlas-database
 [ref-elasticache]: https://aws.amazon.com/elasticache/
-
 [ref-doc-environment]: environment.md
 [ref-doc-database]: database.md
 [ref-doc-configuration]: configuration.md

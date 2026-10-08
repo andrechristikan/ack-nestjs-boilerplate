@@ -53,7 +53,6 @@ import type {
     IUser,
     IUserCheckEmail,
     IUserCheckUsername,
-    IUserContact,
     IUserCreateByAdmin,
     IUserCreateByAdminPrepared,
     IUserList,
@@ -188,11 +187,11 @@ export class UserDomain {
         await this.userRepository.acceptTermPolicyInTx(tx, userId, type);
     }
 
-    async resetTermPolicyForActiveUsersInTx(
+    async resetTermPolicyInTx(
         tx: IDatabaseTransactionClient,
         type: EnumTermPolicyType
     ): Promise<void> {
-        await this.userRepository.resetTermPolicyForActiveUsersInTx(tx, type);
+        await this.userRepository.resetTermPolicyInTx(tx, type);
     }
 
     async increasePasswordAttempt(userId: string): Promise<User> {
@@ -252,8 +251,11 @@ export class UserDomain {
         await this.userRepository.touchUpdatedByInTx(tx, userId);
     }
 
-    async getListActive(): Promise<IUserContact[]> {
-        return this.userRepository.findActive();
+    async getListIdCursor(
+        cursor: string | null,
+        take: number
+    ): Promise<string[]> {
+        return this.userRepository.findIdsCursor(cursor, take);
     }
 
     async getOne(id: string): Promise<IUserProfile> {
@@ -269,15 +271,6 @@ export class UserDomain {
         { countryId, email, name, roleId, username }: IUserCreateByAdmin,
         createdBy: string
     ): Promise<IUserCreateByAdminPrepared> {
-        const checkRolePromise = this.roleDomain.getById(roleId);
-        const emailExistPromise = this.userRepository.existsByEmail(email);
-        const checkCountryPromise = this.countryDomain.existsById(countryId);
-        const checkUsernamePatternPromise =
-            this.userUtil.checkUsernamePattern(username);
-        const checkUsernameBadWordPromise =
-            this.userUtil.checkBadWord(username);
-        const usernameExistPromise =
-            this.userRepository.existsByUsername(username);
         const [
             checkRole,
             emailExist,
@@ -286,12 +279,12 @@ export class UserDomain {
             checkUsernameBadWord,
             usernameExist,
         ] = await Promise.all([
-            checkRolePromise,
-            emailExistPromise,
-            checkCountryPromise,
-            checkUsernamePatternPromise,
-            checkUsernameBadWordPromise,
-            usernameExistPromise,
+            this.roleDomain.getById(roleId),
+            this.userRepository.existsByEmail(email),
+            this.countryDomain.existsById(countryId),
+            this.userUtil.checkUsernamePattern(username),
+            this.userUtil.checkBadWord(username),
+            this.userRepository.existsByUsername(username),
         ]);
 
         if (!checkRole) {

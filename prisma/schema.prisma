@@ -167,6 +167,7 @@ model User {
   workspaceMembers        WorkspaceMember[]          @relation("UserWorkspaceMembers")
   workspaceJoinRequests   WorkspaceJoinRequest[]     @relation("UserWorkspaceJoinRequests")
   projectMembers          ProjectMember[]            @relation("UserProjectMembers")
+  termPolicyRecipients    TermPolicyRecipient[]      @relation("UserTermPolicyRecipients")
 
   @@unique(fields: [username])
   @@unique(fields: [email])
@@ -373,6 +374,27 @@ model TermPolicy {
   @@unique(fields: [type, version])
   @@index(fields: [type, status, publishedAt(sort: Desc)])
   @@map("TermPolicies")
+}
+
+model TermPolicyRecipient {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  termPolicyId   String    @db.ObjectId
+  userId         String    @db.ObjectId
+  notificationId String    @db.ObjectId
+  batchId        String    @db.ObjectId
+  enqueuedAt     DateTime?
+  sentAt         DateTime?
+
+  user User @relation("UserTermPolicyRecipients", fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  @@unique(fields: [termPolicyId, userId])
+  @@index(fields: [termPolicyId, batchId])
+  @@map("TermPolicyRecipients")
 }
 
 model TermPolicyUserAcceptance {

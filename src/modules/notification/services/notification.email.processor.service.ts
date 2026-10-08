@@ -193,7 +193,9 @@ export class NotificationEmailProcessorService {
         >
     ): Promise<IQueueResponse> {
         return this.notificationEmailTermPolicyDomain.processPublishTermPolicy(
-            job.data.data
+            job.data.data,
+            job.data.batchId,
+            job.data.proceedBy
         );
     }
 

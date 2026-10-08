@@ -10,7 +10,6 @@ import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/use
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type {
     IUser,
-    IUserContact,
     IUserCreateWithWorkspaceInput,
     IUserList,
     IUserProfile,
@@ -36,7 +35,7 @@ export interface IUserRepository {
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<IUserList>>;
-    findActive(): Promise<IUserContact[]>;
+    findIdsCursor(cursor: string | null, take: number): Promise<string[]>;
     findOneById(id: string): Promise<User | null>;
     findOneActiveById(id: string): Promise<User | null>;
     findOneActiveByEmail(email: string): Promise<User | null>;
@@ -119,7 +118,7 @@ export interface IUserRepository {
         userId: string,
         type: EnumTermPolicyType
     ): Promise<void>;
-    resetTermPolicyForActiveUsersInTx(
+    resetTermPolicyInTx(
         tx: IDatabaseTransactionClient,
         type: EnumTermPolicyType
     ): Promise<void>;

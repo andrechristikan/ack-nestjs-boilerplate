@@ -38,6 +38,7 @@ src
   ├── modules
   ├── router
   ├── queues
+  ├── configure.ts
   ├── instrument.ts
   ├── main.ts
   ├── migration.ts
@@ -56,7 +57,7 @@ The project is native ESM (`"type": "module"`, `module: nodenext`, `verbatimModu
 Every import between `src/` folders goes through a `tsconfig.json` path alias:
 
 - `@app/*`, `@common/*`, `@configs/*`, `@modules/*`, `@router/*`, `@migration/*`, `@queues/*`, `@generated/*`
-- plus `@instrument`, `@swagger`, `@main`, and `@migration` for the root files
+- plus `@configure`, `@instrument`, `@swagger`, `@main`, and `@migration` for the root files
 
 ## App Module
 
@@ -94,6 +95,7 @@ The catalog is [Configuration](configuration.md).
 **Location:** `src/languages/`
 
 i18n JSON, one folder per locale. It contains:
+
 - Subfolders for each supported language (e.g., `en/` for English)
 - JSON files for each domain or feature (e.g., `user.json`, `auth.json`, `policy.json`) containing translation strings and messages
 
@@ -147,6 +149,7 @@ Named queues:
 **Location:** `src/router/`
 
 The router folder mounts everything the application exposes. It includes:
+
 - `router.module.ts`: root router. It imports the five access-level modules, registers their path prefixes through `RouterModule.register` from `@nestjs/core`, and mounts the processor module.
 - `http/`: one module per access level, each holding its controllers and the `<feature>.http.module.ts` imports they need:
     - `router.http.public.module.ts` mounts under `/public`
@@ -300,9 +303,11 @@ module
 ```
 
 ### Constants
+
 Defines static values and configuration constants used throughout the module.
 
 ### Contracts
+
 Static rule maps the module reads at runtime:
 
 - One file per concept, named `<module>.<concept>.contract.ts` and exported with `@public`.
@@ -317,57 +322,72 @@ Examples:
 Coverage skips `src/**/*.contract.ts` (`vitest.config.ts`).
 
 ### Controllers
+
 - Controllers handle incoming HTTP requests, delegate to HTTP services, and return responses.
 - Controllers define the API endpoints for the module.
 
 ### Decorators
+
 - Custom decorators add metadata or modify behavior of classes, methods, or properties within the module.
 - OpenAPI for auth and guard kits lives on `*Protected` / auth decorators here.
 - Operation metadata and response envelopes live on `@Doc` and `@Response*` from `src/common/`.
 
 ### DTOs (Data Transfer Objects)
+
 - Zod schemas define the shape of data sent and received on API endpoints, each paired with the type inferred from it.
 - One `*.dto.ts` file holds one schema.
 
 ### Enums
+
 Type-safe enumerations for status codes, types, or other fixed sets of values relevant to the module's domain.
 
 ### Exceptions
+
 - Dedicated exception classes, one per error, each extending `AppBaseException`.
 - Files are named `<module>.<kebab-error>.exception.ts` (e.g., `user.not-found.exception.ts`).
 
 ### Factories
+
 Factory classes or functions for creating instances of complex objects or aggregating dependencies.
 
 ### Indicators
+
 Health-check indicators that report the status of a dependency or subsystem (used by the health module).
 
 ### Guards
+
 Authorization and access control logic, protecting routes and resources based on user roles or permissions.
 
 ### Interfaces
+
 - TypeScript interfaces cover data shapes and repository contracts (`*.repository.interface.ts`).
 - Services, domains, and utils are injected as classes and carry no header interface.
 
 ### Interceptors
+
 Logic to intercept and modify requests or responses, such as logging, caching, or response transformation.
 
 ### Processors
+
 Background job handlers, such as BullMQ processors, for asynchronous tasks related to the module.
 
 ### Queues
+
 - The `@Injectable()` classes hold the BullMQ `Queue`, one method per job the feature enqueues.
 - `<feature>.domain.module.ts` provides and exports them.
 
 ### Repositories
+
 Implements the Repository design pattern for data access, abstracting database operations and providing a clean API for domains.
 
 ### Domains
+
 - Domains hold the business logic and orchestration of the module.
 - Domains interact with repositories, other domains, utils, and queue classes.
 - Domains open `DatabaseService.withTransaction` when a write spans more than one repository.
 
 ### Services
+
 HTTP services (`*.http.service.ts`) and processor services (`*.processor.service.ts`):
 
 - They translate transport or job payloads into domain calls.
@@ -375,16 +395,18 @@ HTTP services (`*.http.service.ts`) and processor services (`*.processor.service
 - They own no business rule and reach no repository.
 
 ### Caches
+
 Dedicated cache classes that wrap a named cache provider for one feature concern (for example `SessionCache`, `FeatureFlagCache`).
 
 ### Templates
+
 Reusable templates, such as email templates or message formats, used by the module.
 
 ### Utils
+
 - Utils are pure shaping helpers specific to the module: mappers, predicates, and format checks.
 - A util reaches no cache, repository, queue, request store, or file service.
 - Work that needs one of those lives in a domain.
-
 
 ## Other Modules
 
@@ -462,12 +484,11 @@ Below are explanations for the root folders and files outside `src/`:
         - `typescript-eslint` recommended rules
         - `eslint-plugin-security`, with every recommended rule at `error`
         - `security/detect-object-injection` is off
-        - `security/detect-non-literal-fs-filename` is off for the notification and term-policy template domains and for `scripts/`
     - **General**
         - `@typescript-eslint/no-explicit-any`, explicit function return types, and explicit module boundary types are errors.
         - `eqeqeq` (with `null` allowed), `curly`, `prefer-const`, and `no-var` are errors.
         - `no-console` warns.
-        - ESLint directive comments are rejected (`noInlineConfig`).
+        - ESLint directive comments are rejected in `src/`, `test/`, `scripts/`, and `vitest.config.ts` (`noInlineConfig`).
         - A nullish default uses `??` (`@typescript-eslint/prefer-nullish-coalescing`).
     - **Import bans**
         - `crypto-js`
@@ -495,23 +516,21 @@ Below are explanations for the root folders and files outside `src/`:
         - An awaited promise is guarded by try/catch, not `.then()` or `.catch()`.
     - **The `undefined` ban**
         - A literal `undefined` as a return value, a `??` fallback, a ternary branch, or an arrow body is rejected in `src/`, so the code writes `null`.
-    - **`await` in a loop**
-        - `no-await-in-loop` is an error.
-        - The seeds and a short list of files that bound their own chunks are exempt.
     - **Comments**
         - Warning markers are banned: `note`, `xxx`, `hack`, and JSDoc-style tags.
         - Inline comments are banned.
     - **`Date`, `process.env`, `Math.random`, and sort direction**
-        - `new Date()` is banned in favor of `HelperDateService`. `src/configs/` is exempt.
-        - `process.env` is banned in favor of `ConfigService`. `src/configs/`, `common.module.ts`, `main.ts`, and `queue.decorator.ts` are exempt.
-        - `Math.random` is banned.
-        - An `'asc'` or `'desc'` string literal is banned. The pagination enum module is exempt.
+        - `new Date()` is banned in favor of `HelperDateService`.
+        - `process.env` is banned in favor of `ConfigService`. The `ts/env-boundary` block lifts it for `src/configs/**`, `src/main.ts`, `src/instrument.ts`, and `src/queues/decorators/queue.decorator.ts`.
+        - `Math.random` is banned in `src/` and `test/`, the env boundary included.
+        - An `'asc'` or `'desc'` string literal is banned. An enum member declaring the value is exempt.
     - **Specs** (`test/**/*.ts`)
         - `fn.mock.*` access is banned. Assertions use `toHaveBeenCalledWith` and related matchers.
         - `vi.clearAllMocks` is banned. `beforeEach` uses `vi.resetAllMocks`.
         - A `class` declaration is banned.
         - `@ts-expect-error`, `@ts-ignore`, and `@ts-nocheck` are banned.
         - A relative import is banned.
+        - The `crypto-js`, bare `crypto`, `lodash`, default `lodash-es`, and `@generated/prisma-client/internal` import bans of `src/` apply here too.
         - A `*.spec.ts` declares no function. A helper goes to a `helpers/` folder under `test/`.
         - A `*.spec.ts` stores no function in a variable.
         - A `*.spec.ts` writes an arrow only as a direct argument to `describe`, `it`, a hook, `expect`, or a `vi` mock.
@@ -553,8 +572,3 @@ Below are explanations for the root folders and files outside `src/`:
 - **CODE_OF_CONDUCT.md**: Community code of conduct.
 - **SECURITY.md**: Supported versions and vulnerability reporting process.
 - **LICENSE.md**: Project license.
-
-
-
-
-

@@ -20,8 +20,8 @@ export function QueueProcessor(
             configKey: QueueProcessorConfigKey,
         },
         {
-            name: `${process.env.APP_NAME}-${process.env.APP_ENV}:${name}:consumer`,
             ...options,
+            name: `${process.env.APP_NAME}-${process.env.APP_ENV}:${name}:consumer`,
         }
     );
 }

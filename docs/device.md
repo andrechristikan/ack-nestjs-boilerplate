@@ -43,8 +43,8 @@ Repository boundary:
 - [Account Self-Deletion](#account-self-deletion)
 - [Refreshing Device Info](#refreshing-device-info)
 - [Endpoints](#endpoints)
-  - [Shared (User Self-Service)](#shared-user-self-service)
-  - [Admin](#admin)
+    - [Shared (User Self-Service)](#shared-user-self-service)
+    - [Admin](#admin)
 - [Policy Control](#policy-control)
 
 ## Device Model
@@ -55,6 +55,7 @@ A Device represents a physical or virtual client.
 - Multiple users can own it.
 
 **Fields:**
+
 - `fingerprint`: Globally unique identifier for the device.
     - The frontend generates this value and sends it with every login request.
     - The device row is upserted on it.
@@ -87,25 +88,26 @@ A Device represents a physical or virtual client.
 
 **`EnumDevicePlatform`**
 
-| Value | Description |
-|-------|-------------|
-| `ios` | Apple iOS device |
-| `android` | Android device |
-| `web` | Web browser |
+| Value     | Description      |
+| --------- | ---------------- |
+| `ios`     | Apple iOS device |
+| `android` | Android device   |
+| `web`     | Web browser      |
 
 **`EnumDeviceNotificationProvider`**
 
 - It is derived from `platform`, on login and on every refresh.
 - It stays `null` for the `web` platform.
 
-| Value | Platform | Description |
-|-------|----------|-------------|
-| `fcm` | `android` | Firebase Cloud Messaging |
-| `apns` | `ios` | Apple Push Notification Service |
+| Value  | Platform  | Description                     |
+| ------ | --------- | ------------------------------- |
+| `fcm`  | `android` | Firebase Cloud Messaging        |
+| `apns` | `ios`     | Apple Push Notification Service |
 
 ## DeviceOwnership Model
 
 The `DeviceOwnership` model represents the relationship between a `User` and a `Device`. It tracks:
+
 - Which device a user owns (`deviceId`, `userId`)
 - Revocation status and history (`isRevoked`, `revokedAt`, `revokedById`)
 - `lastActiveAt` for that device-user pair, stamped on login and on device refresh
@@ -162,7 +164,7 @@ Steps:
 The rows depend on the path:
 
 | Path | Rows |
-|---|---|
+| --- | --- |
 | Self-service (`remove`) | `userRemoveDevice`; `userId` and `createdBy` are the device owner |
 | Admin (`removeByAdmin`), another user's device | `adminDeviceRemove` on the admin, plus `userRemoveDeviceByAdmin` on the device owner with `createdBy` set to the admin |
 | Admin (`removeByAdmin`), the admin's own device | `adminDeviceRemove` only |
@@ -243,7 +245,7 @@ The credential lockout (`UserPasswordDomain.reachMaxPasswordAttempt`) is the sec
 ### Shared (User Self-Service)
 
 | Method | Path | Description |
-|--------|------|-------------|
+| --- | --- | --- |
 | `GET` | `/shared/user/device/list` | List own active devices (cursor-based, ordered by `createdAt`); each entry carries `activeSessionCount` and an `isCurrentDevice` flag matched against the calling session |
 | `POST` | `/shared/user/device/refresh` | Update device info (name, push token, platform); returns no data |
 | `DELETE` | `/shared/user/device/remove/:deviceOwnershipId` | Remove own device; revokes all its sessions immediately |
@@ -251,7 +253,7 @@ The credential lockout (`UserPasswordDomain.reachMaxPasswordAttempt`) is the sec
 ### Admin
 
 | Method | Path | Description |
-|--------|------|-------------|
+| --- | --- | --- |
 | `GET` | `/admin/user/:userId/device/list` | List a user's devices, revoked ones included (offset-based, orderable by `createdAt` or `lastActiveAt`), filterable by `isRevoked`. The query loads no sessions, so `isCurrentDevice` is `false` on every entry |
 | `DELETE` | `/admin/user/:userId/device/remove/:deviceOwnershipId` | Remove a user's device; revokes all its sessions immediately |
 
@@ -276,7 +278,6 @@ Device endpoints are protected using `EnumPolicySubject.device`. Admin endpoints
 - Shared (user self-service) endpoints carry `@ApiKeyProtected()`, `@AuthJwtAccessProtected()`, `@UserProtected()`, and `@TermPolicyAcceptanceProtected()`.
 - They carry no policy subject check, since users can only manage their own devices.
 - The admin endpoints add `@RoleProtected(EnumRoleType.admin)` on top of the policy abilities.
-
 
 <!-- REFERENCES -->
 

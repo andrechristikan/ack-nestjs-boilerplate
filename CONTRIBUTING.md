@@ -28,14 +28,14 @@ This project follows a [Code of Conduct][ref-code-of-conduct]. By participating,
 
 1. **Fork** the repository
 2. **Clone** your fork locally
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/ack-nestjs-boilerplate.git
-   cd ack-nestjs-boilerplate
-   ```
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/ack-nestjs-boilerplate.git
+    cd ack-nestjs-boilerplate
+    ```
 3. Add upstream remote
-   ```bash
-   git remote add upstream https://github.com/andrechristikan/ack-nestjs-boilerplate.git
-   ```
+    ```bash
+    git remote add upstream https://github.com/andrechristikan/ack-nestjs-boilerplate.git
+    ```
 
 ---
 
@@ -55,7 +55,7 @@ This project follows a [Code of Conduct][ref-code-of-conduct]. By participating,
 ### Prerequisites
 
 | Tool | Version |
-|------|---------|
+| --- | --- |
 | Node.js | >= 24.15.0 |
 | pnpm | >= 10.25.0 (pin `pnpm@12.5.1`) |
 | Docker | v28.5.x+ (recommended for local MongoDB, Redis, JWKS, BullBoard) |
@@ -107,14 +107,14 @@ This project uses **TypeScript** with `strict`, `exactOptionalPropertyTypes`, an
 - All database interactions go through **Prisma ORM** and the repository layer.
 - Every new module has the existing **modular structure** in `src/`.
 - Run the linter before submitting:
-  ```bash
-  pnpm lint
-  pnpm lint:fix
-  ```
+    ```bash
+    pnpm lint
+    pnpm lint:fix
+    ```
 - Run the tests:
-  ```bash
-  pnpm test
-  ```
+    ```bash
+    pnpm test
+    ```
 - `any` is a lint error in `src/` (`@typescript-eslint/no-explicit-any`).
 - Every public method and function carries explicit types (`explicit-function-return-type`, `explicit-module-boundary-types`).
 
@@ -148,24 +148,25 @@ This project follows [Conventional Commits][ref-conventional-commits]:
 
 **Types:**
 
-| Type | When to use |
-|------|-------------|
-| `feat` | New feature |
-| `fix` | Bug fix |
-| `hotfix` | Urgent production fix |
-| `docs` | Documentation changes |
-| `refactor` | Code refactor (no feature/fix) |
-| `perf` | Performance improvement |
-| `style` | Formatting only, no change in code meaning |
-| `test` | Adding or updating tests |
-| `build` | Build system or compiler changes |
-| `ci` | CI/CD pipeline changes |
-| `chore` | Build process, dependencies |
-| `revert` | Revert a previous commit |
+| Type       | When to use                                |
+| ---------- | ------------------------------------------ |
+| `feat`     | New feature                                |
+| `fix`      | Bug fix                                    |
+| `hotfix`   | Urgent production fix                      |
+| `docs`     | Documentation changes                      |
+| `refactor` | Code refactor (no feature/fix)             |
+| `perf`     | Performance improvement                    |
+| `style`    | Formatting only, no change in code meaning |
+| `test`     | Adding or updating tests                   |
+| `build`    | Build system or compiler changes           |
+| `ci`       | CI/CD pipeline changes                     |
+| `chore`    | Build process, dependencies                |
+| `revert`   | Revert a previous commit                   |
 
 The list above is the complete `type-enum` in `.commitlintrc`. Any other type is rejected by the `commit-msg` hook.
 
 **Examples:**
+
 ```
 feat(auth): add refresh token rotation
 fix(user): resolve pagination offset issue
@@ -177,23 +178,23 @@ docs(readme): update docker setup instructions
 ## Pull Request Process
 
 1. Create a branch from `development`:
-   ```bash
-   git fetch upstream
-   git checkout -b feat/your-feature-name upstream/development
-   ```
+    ```bash
+    git fetch upstream
+    git checkout -b feat/your-feature-name upstream/development
+    ```
 2. Make your changes
 3. Ensure the husky pre-commit gates pass. The hook runs, in order:
-   - `pnpm lint:staged`
-   - `pnpm typecheck`
-   - `pnpm deadcode`
-   - `pnpm spell`
-   - `NODE_ENV=test pnpm test`
+    - `pnpm lint:staged`
+    - `pnpm typecheck`
+    - `pnpm deadcode`
+    - `pnpm spell`
+    - `NODE_ENV=test pnpm test`
 4. Push the branch to your fork and open a PR against `development`.
 5. Fill in the PR template so a reviewer can follow the work:
-   - **Summary**, **Related Issue**, **Scope**, **How Has This Been Tested?**, **Checklist**
-   - **Out of scope**, **Breaking Changes**, **Additional Notes** when they apply
+    - **Summary**, **Related Issue**, **Scope**, **How Has This Been Tested?**, **Checklist**
+    - **Out of scope**, **Breaking Changes**, **Additional Notes** when they apply
 6. Wait for review.
-   - Merging takes at least **1 maintainer approval**.
+    - Merging takes at least **1 maintainer approval**.
 
 Branches:
 
@@ -210,6 +211,7 @@ The Checklist and the gates:
 - The test workflows run on manual dispatch only.
 
 **PR will be rejected if:**
+
 - Tests are failing
 - Linting errors exist
 - No Summary of what changed and why

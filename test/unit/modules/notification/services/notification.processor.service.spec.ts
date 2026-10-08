@@ -409,6 +409,7 @@ describe('NotificationProcessorService', () => {
     describe('processPublishTermPolicy', () => {
         it('forwards proceedBy and data to the term-policy domain', async () => {
             const data = {
+                termPolicyId: 'term-policy-id',
                 type: EnumTermPolicyType.privacy,
                 version: 2,
             };

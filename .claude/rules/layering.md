@@ -1,80 +1,36 @@
 # Layering
 
-Five roles on the request path, one reason to change each: `Controller → HTTP Service → Domain →
-Repository → DatabaseService`, with `Processor → Processor Service` joining at the domain. Two supporting
-classes: a util, which shapes data, and a queue class, the one place a job is enqueued. Procedure for a new
-module: `.claude/skills/ack-build/references/add-module.md`.
+Five roles on the request path, one reason to change each: `Controller → HTTP Service → Domain → Repository → DatabaseService`, with `Processor → Processor Service` joining at the domain. Two supporting classes: a util, which shapes data, and a queue class, the one place a job is enqueued. Procedure for a new module: `.claude/skills/ack-build/references/add-module.md`.
 
 ## Roles
 
-- Repository (`repositories/<module>[.<concern>].repository.ts`): data access only. Injects `DatabaseService`
-  as a class; every statement runs on `this.databaseService.client` or on the `tx` of an `*InTx` method. Owns
-  one Prisma model plus satellite models with no repository of their own, and `null → {}` filter
-  normalization. Returns Prisma models, `I<Module>*` shapes, `IResponsePaginationReturn<T>` from `PaginationService`,
-  or primitives; never a response DTO, never `unknown`. Takes a request DTO only when no layer above derived
-  from it. Implements `I<Module>[<Concern>]Repository` from `interfaces/`. Reads `ConfigService` for write
-  mechanics only; a business value arrives as a parameter. Injects no repository.
-- Analytic repository (`repositories/<module>[.<concern>].analytic.repository.ts`): read-only aggregates over
-  a model its module's write repository owns, injected only by that module's `*.analytic.domain.ts`.
-  `AnalyticDomainModule` consumes those domains; `src/modules/analytic/` owns no repository.
-- Domain (`domains/<module>[.<concern>].domain.ts`): business rules, typed exceptions, orchestration across
-  its own repositories and other domains. No `IRequestApp`, no `Job`, no response envelope, no response
-  DTO in a signature. Injects `DatabaseService` only to call `withTransaction`; a model query on `client`
-  here is the defect. The only layer another feature consumes.
-- HTTP service (`services/<module>[.<concern>].http.service.ts`): the controller's only collaborator.
-  Translates a request DTO into the domain call and the result into the response envelope (`dto.md`), `{}` or
-  `{ metadata }` alone for a route with no data. No business rule, no repository.
-- Processor service (`services/<module>[.<concern>].processor.service.ts`): the same shape on the queue
-  side; translates a job payload and returns `IQueueResponse` (`queue.md`).
+- Repository (`repositories/<module>[.<concern>].repository.ts`): data access and its own transactions. Owns one Prisma model plus satellite models with no repository of their own, and `null → {}` filter normalization. Injects `DatabaseService` as a class; a statement runs on `this.databaseService.client`, on an `*InTx` method's `tx`, or in its own `withTransaction` for a multi-statement write on those models (`database.md`; `notification.repository.ts:151`). Returns Prisma models, `I<Module>*` shapes, `IResponsePaginationReturn<T>` from `PaginationService`, or primitives; never a response DTO, never `unknown`. Takes a request DTO only when no layer above derived from it. Implements `I<Module>[<Concern>]Repository` from `interfaces/`. Reads `ConfigService` for write mechanics only; a business value arrives as a parameter. Injects no repository.
+- Analytic repository (`repositories/<module>[.<concern>].analytic.repository.ts`): read-only aggregates over a model its module's write repository owns, injected only by that module's `*.analytic.domain.ts`. `AnalyticDomainModule` consumes those domains; `src/modules/analytic/` owns no repository.
+- Domain (`domains/<module>[.<concern>].domain.ts`): business rules, typed exceptions, orchestration across its own repositories and other domains; the only layer another feature consumes. No `IRequestApp`, no `Job`, no response envelope, no response DTO in a signature. Injects `DatabaseService` only for `withTransaction` across repositories, each joined as `*InTx(tx, ...)` (`cross-module.md`); a model query on `client` here is the defect.
+- HTTP service (`services/<module>[.<concern>].http.service.ts`): the controller's only collaborator. Translates a request DTO into the domain call and the result into the response envelope (`dto.md`), `{}` or `{ metadata }` alone for a route with no data. No business rule, no repository.
+- Processor service (`services/<module>[.<concern>].processor.service.ts`): the same shape on the queue side; translates a job payload and returns `IQueueResponse` (`queue.md`).
 - Controller: one endpoint, returning one HTTP service call as is (`http.md`); decorators and param extraction only.
-- Util (`utils/<module>[.<concern>].util.ts`): pure shaping, arguments in and a value out. Injects
-  `ConfigService` and the in-memory kit only (`Helper*`, `MessageService`, `DatabaseUtil`); no cache,
-  repository, `Queue`, `RequestStoreService`, `FileService`, or another module's util. Maps an error to
-  an exception and returns it; the caller throws. An empty util is deleted with its provider entries.
-- Queue class (`queues/<module>[.<concern>].queue.ts`): holds the `@InjectQueue`, builds the payload,
-  encrypts sensitive fields, calls `add` / `upsertJobScheduler`. Injected by a domain or processor service,
-  never by a controller or HTTP service. The one other `@InjectQueue` is a health indicator probing the
-  queue connection (`src/modules/health/indicators/health.queue.indicator.ts:14`).
+- Util (`utils/<module>[.<concern>].util.ts`): pure shaping, arguments in and a value out. Injects `ConfigService` and the in-memory kit only (`Helper*`, `MessageService`, `DatabaseUtil`); no cache, repository, `Queue`, `RequestStoreService`, `FileService`, or another module's util. Maps an error to an exception and returns it; the caller throws. An empty util is deleted with its provider entries.
+- Queue class (`queues/<module>[.<concern>].queue.ts`): holds the `@InjectQueue`, builds the payload, encrypts sensitive fields, calls `add` / `upsertJobScheduler`. Injected by a domain or processor service, never by a controller or HTTP service. The one other `@InjectQueue` is a health indicator probing the queue connection (`src/modules/health/indicators/health.queue.indicator.ts:14`).
 
 ## Header interfaces
 
-A repository has one, alone in its file, and callers inject the class. Domain, HTTP service, processor
-service, util, cache, queue, factory, and every `src/common/` service get none. Data shapes (`IUser`,
-payloads, option bags) and framework contracts stay. Inject by class; a DI token is only for a real seam.
+A repository has one, alone in its file, and callers inject the class. Domain, HTTP service, processor service, util, cache, queue, factory, and every `src/common/` service get none. Data shapes (`IUser`, payloads, option bags) and framework contracts stay. Inject by class; a DI token is only for a real seam.
 
 ## Tiers
 
 | Tier | What | Who may inject it |
-|---|---|---|
+| --- | --- | --- |
 | 1 kit | the `src/common/` modules `common.module.ts` composes | anyone; a util takes the in-memory part only |
 | 2 global feature | a `src/modules/<x>` domain module carrying `@Global()` | anyone, same carve-out |
 | 3 feature | the rest of `src/modules/` | its own layers; from another module only what its domain module exports, injected by a domain, HTTP service, or processor service |
 
-Read tier 2 from `@Global()` in the code. `AwsModule` is imported where used. A util never injects another
-module's util in any tier. `src/common/` reaches a feature only through `common.module.ts` composition and
-`import type` (`src/common/request/interfaces/request.interface.ts:2`). Promote only a module-agnostic concept
-with three or more callers. An exported, complete member of a family with a used member is kit surface whatever
-its call-site count; a `pnpm deadcode` warning on it is not a finding. YAGNI rejects structure: a base, a token,
-a knob, a branch, a stub.
+Read tier 2 from `@Global()` in the code. `AwsModule` is imported where used. A util never injects another module's util in any tier. `src/common/` reaches a feature only through `common.module.ts` composition and `import type` (`src/common/request/interfaces/request.interface.ts:2`). Promote only a module-agnostic concept with three or more callers. An exported, complete member of a family with a used member is kit surface whatever its call-site count; a `pnpm deadcode` warning on it is not a finding. YAGNI rejects structure: a base, a token, a knob, a branch, a stub.
 
 ## Module files
 
-`<module>.repository.module.ts` (repositories, `imports: []`, imported only by its own domain module and
-`MigrationModule`); `<module>.domain.module.ts` (domains, utils, caches, queue classes, factories, strategies,
-interceptors, indicators; registers its queues with `BullModule.registerQueueAsync`, exports `BullModule`);
-`<module>.http.module.ts` (HTTP services); `<module>.processor.module.ts` (processors and processor services),
-the last two leaves imported only by `src/router/`. Only files with something to provide exist. A `@Module({})`
-lists `controllers`, `providers`, `exports`, `imports` in that order, none omitted; `controllers` is `[]` in
-these four: `src/router/http/router.http.<scope>.module.ts` registers controllers and
-`src/router/processor/router.processor.module.ts` aggregates processor modules. Composition roots:
-`src/app/app.module.ts`, `src/common/common.module.ts`, `src/router/router.module.ts`; `forRoot()` runs once,
-there. A feature module imports none of the composed kit and never `QueueModule`. `tsc` and Vitest pass with a
-broken `imports:` array; a cycle raises `ReferenceError` at bootstrap, a missing provider raises
-`UnknownDependenciesException`. Verify a wiring change by booting; `forwardRef` is no fix (`cross-module.md`).
+`<module>.repository.module.ts` (repositories, `imports: []`, imported only by its own domain module and `MigrationModule`); `<module>.domain.module.ts` (domains, utils, caches, queue classes, factories, strategies, interceptors, indicators; registers its queues with `BullModule.registerQueueAsync`, exports `BullModule`); `<module>.http.module.ts` (HTTP services); `<module>.processor.module.ts` (processors and processor services), the last two leaves imported only by `src/router/`. Only files with something to provide exist. A `@Module({})` lists `controllers`, `providers`, `exports`, `imports` in that order, none omitted; `controllers` is `[]` in these four: `src/router/http/router.http.<scope>.module.ts` registers controllers and `src/router/processor/router.processor.module.ts` aggregates processor modules. Composition roots: `src/app/app.module.ts`, `src/common/common.module.ts`, `src/router/router.module.ts`; `forRoot()` runs once, there. A feature module imports none of the composed kit and never `QueueModule`. `tsc` and Vitest pass with a broken `imports:` array; a cycle raises `ReferenceError` at bootstrap, a missing provider raises `UnknownDependenciesException`. Verify a wiring change by booting; `forwardRef` is no fix (`cross-module.md`).
 
 ## The run surface is a call site
 
-A command, port, path, or script a change moves also moves in `package.json`, `scripts/`, `ci/` (`dockerfile.production`,
-`docker-compose.production.yml`, mongo, vault, jwks-server), the root `dockerfile` and `docker-compose.yml`, `.dockerignore`,
-`.env.example` (the `DOCKER_` variables), `.github/workflows/`, `.github/dependabot.yml`, `nest-cli.json`, `.swcrc`,
-`vitest.config.ts`, `knip.json`, `cspell.json`, `tsconfig*.json`, `eslint.config.mjs`, `.husky/`, and `.gitignore`.
+A command, port, path, or script a change moves also moves in `package.json`, `scripts/`, `ci/` (`dockerfile.production`, `docker-compose.production.yml`, mongo, vault, jwks-server), the root `dockerfile` and `docker-compose.yml`, `.dockerignore`, `.env.example` (the `DOCKER_` variables), `.github/workflows/`, `.github/dependabot.yml`, `nest-cli.json`, `.swcrc`, `vitest.config.ts`, `knip.json`, `cspell.json`, `tsconfig*.json`, `eslint.config.mjs`, `.husky/`, and `.gitignore`.

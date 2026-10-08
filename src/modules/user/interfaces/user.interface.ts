@@ -46,8 +46,6 @@ export type IUserNearLockout = Prisma.UserGetPayload<{
     select: typeof UserAdminNearLockoutSelect;
 }>;
 
-export type IUserContact = Pick<User, 'id' | 'email' | 'username'>;
-
 export interface IUserRef {
     id: string;
     name: string | null;

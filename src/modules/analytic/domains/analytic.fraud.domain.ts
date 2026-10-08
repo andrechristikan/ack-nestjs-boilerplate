@@ -1101,11 +1101,12 @@ export class AnalyticFraudDomain {
         minScore: number | null,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
-        const nearPromise = this.userAnalyticDomain.getNearLockout(1);
-        const sharedPromise = this.deviceAnalyticDomain.getSharedFingerprints(
-            this.sharedFingerprintMinUsersPerFingerprint
-        );
-        const [near, shared] = await Promise.all([nearPromise, sharedPromise]);
+        const [near, shared] = await Promise.all([
+            this.userAnalyticDomain.getNearLockout(1),
+            this.deviceAnalyticDomain.getSharedFingerprints(
+                this.sharedFingerprintMinUsersPerFingerprint
+            ),
+        ]);
 
         const all: IAnalyticFraudRiskScore[] = [];
         const batches = this.helperArrayService.chunk(
@@ -1113,11 +1114,10 @@ export class AnalyticFraudDomain {
             this.concurrency
         );
         for (const batch of batches) {
-            const batchPromises = batch.map(u =>
-                this.scoreCached(u.id, shared)
-            );
             // Sequential by design: bounded chunks, concurrent within a chunk
-            const batchScores = await Promise.all(batchPromises);
+            const batchScores = await Promise.all(
+                batch.map(u => this.scoreCached(u.id, shared))
+            );
             all.push(...batchScores);
         }
 

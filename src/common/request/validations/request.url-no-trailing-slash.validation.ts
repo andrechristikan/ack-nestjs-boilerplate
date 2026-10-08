@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 /**
  * Absolute URL that does not end with a slash.
+ * @public
  */
 export const RequestUrlNoTrailingSlashSchema = z
     .url()

@@ -482,15 +482,15 @@ describe('UserDomain', () => {
         });
     });
 
-    describe('resetTermPolicyForActiveUsersInTx', () => {
+    describe('resetTermPolicyInTx', () => {
         it('delegates to the repository', async () => {
-            await domain.resetTermPolicyForActiveUsersInTx(
+            await domain.resetTermPolicyInTx(
                 tx,
                 EnumTermPolicyType.marketing
             );
 
             expect(
-                userRepository.resetTermPolicyForActiveUsersInTx
+                userRepository.resetTermPolicyInTx
             ).toHaveBeenCalledWith(tx, EnumTermPolicyType.marketing);
         });
     });
@@ -579,18 +579,18 @@ describe('UserDomain', () => {
         });
     });
 
-    describe('getListActive', () => {
-        it('delegates to the repository', async () => {
-            const contacts = [
-                {
-                    id: 'user-cobalt',
-                    email: 'cobalt@example.com',
-                    username: 'cobaltReyes',
-                },
-            ];
-            userRepository.findActive.mockResolvedValue(contacts);
+    describe('getListIdCursor', () => {
+        it('forwards the cursor and take to the repository', async () => {
+            const ids = ['user-cobalt', 'user-indigo'];
+            userRepository.findIdsCursor.mockResolvedValue(ids);
 
-            await expect(domain.getListActive()).resolves.toBe(contacts);
+            await expect(
+                domain.getListIdCursor('user-amber', 2)
+            ).resolves.toBe(ids);
+            expect(userRepository.findIdsCursor).toHaveBeenCalledWith(
+                'user-amber',
+                2
+            );
         });
     });
 

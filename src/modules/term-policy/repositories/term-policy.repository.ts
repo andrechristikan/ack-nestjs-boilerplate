@@ -102,6 +102,17 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         });
     }
 
+    async findOneByIdInTx(
+        tx: IDatabaseTransactionClient,
+        termPolicyId: string
+    ): Promise<TermPolicy | null> {
+        return tx.termPolicy.findUnique({
+            where: {
+                id: termPolicyId,
+            },
+        });
+    }
+
     async findLatestPublishedByType(type: EnumTermPolicyType): Promise<{
         id: string;
         type: EnumTermPolicyType;
@@ -309,12 +320,13 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
         contents: ITermPolicyContent[]
-    ): Promise<TermPolicy> {
+    ): Promise<boolean> {
         const publishedAt = this.helperDateService.create();
 
-        return tx.termPolicy.update({
+        const { count } = await tx.termPolicy.updateMany({
             where: {
                 id: termPolicyId,
+                status: EnumTermPolicyStatus.draft,
             },
             data: {
                 status: EnumTermPolicyStatus.published,
@@ -322,5 +334,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                 contents,
             },
         });
+
+        return count > 0;
     }
 }

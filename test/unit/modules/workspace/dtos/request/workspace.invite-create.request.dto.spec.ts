@@ -41,13 +41,45 @@ describe('WorkspaceInviteCreateRequestSchema', () => {
         });
     });
 
-    it('rejects an invalid email', () => {
-        expect(() =>
-            WorkspaceInviteCreateRequestSchema.parse({
-                ...payload,
-                email: 'not-an-email',
-            })
-        ).toThrow();
+    it('rejects an invalid email with its message path', () => {
+        const result = WorkspaceInviteCreateRequestSchema.safeParse({
+            ...payload,
+            email: 'not-an-email',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                code: 'custom',
+                path: ['email'],
+                message: 'request.error.email.invalid',
+            }),
+        ]);
+    });
+
+    it('accepts an email of 100 characters', () => {
+        const email = `${'a'.repeat(64)}@${'b'.repeat(31)}.com`;
+
+        const result = WorkspaceInviteCreateRequestSchema.safeParse({
+            ...payload,
+            email,
+        });
+
+        expect(email).toHaveLength(100);
+        expect(result.success).toBe(true);
+    });
+
+    it('rejects an email of 101 characters with a too_big issue', () => {
+        const email = `${'a'.repeat(64)}@${'b'.repeat(32)}.com`;
+
+        const result = WorkspaceInviteCreateRequestSchema.safeParse({
+            ...payload,
+            email,
+        });
+
+        expect(email).toHaveLength(101);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ code: 'too_big', path: ['email'] }),
+        ]);
     });
 
     it('rejects a workspaceRole of owner', () => {

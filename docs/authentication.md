@@ -114,31 +114,28 @@ Password handling covers:
 All password settings are configured in `src/configs/auth.config.ts`:
 
 ```typescript
-export default registerAs(
-    'auth',
-    (): IConfigAuth => ({
-        password: {
-            // Enable/disable login attempt limiting feature
-            attempt: true,
-            
-            // Failed login attempts tolerated; the next login inactivates the user
-            maxAttempt: 5,
-            
-            // Number of bcrypt salt rounds used for password hashing
-            saltLength: 12,
-            
-            // Password expiration (182 days), stored in milliseconds
-            expiredInMs: ms('182d'),
-            
-            // Temporary password expiration (3 days), stored in milliseconds
-            expiredTemporaryInMs: ms('3d'),
-            
-            // Password reuse window in days (90), the unit the reuse check takes
-            // A password kept in history for this long cannot be set again
-            periodInDays: ms('90d') / ms('1d'),
-        },
-    })
-);
+export default registerAs('auth', (): IConfigAuth => ({
+    password: {
+        // Enable/disable login attempt limiting feature
+        attempt: true,
+
+        // Failed login attempts tolerated; the next login inactivates the user
+        maxAttempt: 5,
+
+        // Number of bcrypt salt rounds used for password hashing
+        saltLength: 12,
+
+        // Password expiration (182 days), stored in milliseconds
+        expiredInMs: ms('182d'),
+
+        // Temporary password expiration (3 days), stored in milliseconds
+        expiredTemporaryInMs: ms('3d'),
+
+        // Password reuse window in days (90), the unit the reuse check takes
+        // A password kept in history for this long cannot be set again
+        periodInDays: ms('90d') / ms('1d'),
+    },
+}));
 ```
 
 ### Password Flow
@@ -171,70 +168,70 @@ graph TD
 - This project signs them with ECDSA: ES256 for access, ES512 for refresh.
 - Specs: [JWT.io][ref-jwt].
 
-> [!NOTE]
-> JWT authentication uses cryptographic key pairs. Key generation is covered under Generate Keys in the [Installation Documentation][ref-doc-installation].
+> [!NOTE] JWT authentication uses cryptographic key pairs. Key generation is covered under Generate Keys in the [Installation Documentation][ref-doc-installation].
 
 ### JWT Configuration
 
 All JWT settings are configured in `src/configs/auth.config.ts`:
 
 ```typescript
-export default registerAs(
-    'auth',
-    (): IConfigAuth => ({
-        jwt: {
-            accessToken: {
-                // JWKS URI the access-token strategy verifies signatures against (required)
-                jwksUri: process.env.AUTH_JWT_ACCESS_TOKEN_JWKS_URI,
-                
-                // Key ID stamped into the token header as `kid` (required)
-                kid: process.env.AUTH_JWT_ACCESS_TOKEN_KID,
-                
-                // Algorithm for signing and verifying access tokens
-                algorithm: 'ES256',  // ECDSA using P-256 and SHA-256
-                
-                // Private key for signing access tokens (from environment)
-                privateKey: process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY,
-                
-                // Public key, used by the direct verify helpers on AuthJwtDomain
-                publicKey: process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY,
-                
-                // Access token expiration in seconds, the unit the JWT signer takes,
-                // parsed from the ms() string in AUTH_JWT_ACCESS_TOKEN_EXPIRED
-                expirationTimeInSeconds:
-                    ms(process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED) / 1000,
-            },
+export default registerAs('auth', (): IConfigAuth => ({
+    jwt: {
+        accessToken: {
+            // JWKS URI the access-token strategy verifies signatures against (required)
+            jwksUri: process.env.AUTH_JWT_ACCESS_TOKEN_JWKS_URI!,
 
-            refreshToken: {
-                // JWKS URI the refresh-token strategy verifies signatures against (required)
-                jwksUri: process.env.AUTH_JWT_REFRESH_TOKEN_JWKS_URI,
-                
-                // Key ID stamped into the token header as `kid` (required)
-                kid: process.env.AUTH_JWT_REFRESH_TOKEN_KID,
-                
-                // Algorithm for signing and verifying refresh tokens
-                algorithm: 'ES512',  // ECDSA using P-521 and SHA-512
-                
-                // Private key for signing refresh tokens (from environment)
-                privateKey: process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY,
-                
-                // Public key, used by the direct verify helpers on AuthJwtDomain
-                publicKey: process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY,
-                
-                // Refresh token expiration in seconds, parsed from the ms() string in
-                // AUTH_JWT_REFRESH_TOKEN_EXPIRED; it also sets the initial session expiry and Redis TTL
-                expirationTimeInSeconds:
-                    ms(process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED) / 1000,
-            },
+            // Key ID stamped into the token header as `kid` (required)
+            kid: process.env.AUTH_JWT_ACCESS_TOKEN_KID!,
 
-            // JWT audience claim (identifies intended recipients)
-            audience: process.env.AUTH_JWT_AUDIENCE,
-            
-            // JWT issuer claim (identifies who issued the token)
-            issuer: process.env.AUTH_JWT_ISSUER,
+            // Algorithm for signing and verifying access tokens
+            algorithm: 'ES256', // ECDSA using P-256 and SHA-256
+
+            // Private key for signing access tokens (from environment)
+            privateKey: process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY!,
+
+            // Public key, used by the direct verify helpers on AuthJwtDomain
+            publicKey: process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY!,
+
+            // Access token expiration in seconds, the unit the JWT signer takes,
+            // parsed from the ms() string in AUTH_JWT_ACCESS_TOKEN_EXPIRED
+            expirationTimeInSeconds:
+                ms(
+                    process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED as ms.StringValue
+                ) / 1000,
         },
-    })
-);
+
+        refreshToken: {
+            // JWKS URI the refresh-token strategy verifies signatures against (required)
+            jwksUri: process.env.AUTH_JWT_REFRESH_TOKEN_JWKS_URI!,
+
+            // Key ID stamped into the token header as `kid` (required)
+            kid: process.env.AUTH_JWT_REFRESH_TOKEN_KID!,
+
+            // Algorithm for signing and verifying refresh tokens
+            algorithm: 'ES512', // ECDSA using P-521 and SHA-512
+
+            // Private key for signing refresh tokens (from environment)
+            privateKey: process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY!,
+
+            // Public key, used by the direct verify helpers on AuthJwtDomain
+            publicKey: process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY!,
+
+            // Refresh token expiration in seconds, parsed from the ms() string in
+            // AUTH_JWT_REFRESH_TOKEN_EXPIRED; it also sets the initial session expiry and Redis TTL
+            expirationTimeInSeconds:
+                ms(
+                    process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED as ms.StringValue
+                ) / 1000,
+        },
+
+        // JWT audience claim (identifies intended recipients)
+        audience: process.env.AUTH_JWT_AUDIENCE!,
+
+        // JWT issuer claim (identifies who issued the token)
+        issuer: process.env.AUTH_JWT_ISSUER!,
+    },
+}));
 ```
 
 The header and scheme a token travels in are constants in `src/modules/auth/constants/auth.constant.ts`:
@@ -272,31 +269,31 @@ sequenceDiagram
     Client->>API: POST /public/user/login/credential
     API->>Database: Validate credentials
     Database-->>API: User validated
-    
+
     API->>API: Generate sessionId and jti (32-char random string)
-    
+
     API->>Database: One transaction: upsert device, resolve device ownership,<br/>revoke prior active sessions on that ownership,<br/>update last-login fields, create session record
     Database-->>API: Session created, device ownership id and superseded session ids returned
-    
+
     API->>API: Generate Access Token (ES256, 1 hour, includes jti and the persisted device ownership id)
     API->>API: Generate Refresh Token (ES512, 30 days, includes jti and the persisted device ownership id)
-    
+
     API->>Redis: Store session with TTL, delete superseded session keys
     Note over Redis: Key: User:{userId}:Session:{sessionId}<br/>Value: {userId, sessionId, jti, expiredAt}<br/>TTL: follows AUTH_JWT_REFRESH_TOKEN_EXPIRED
     Redis-->>API: Session cached
-    
+
     API-->>Client: Response with tokens
     Note over Client: data.isTwoFactorEnable: false<br/>data.lastWorkspaceId, data.lastWorkspaceChangedAt<br/>data.tokens: { tokenType: Bearer,<br/>roleType: user/admin/superAdmin,<br/>expiresIn: 3600,<br/>accessToken, refreshToken }
-    
+
     Client->>Client: Store tokens securely
-    
+
     Note over Client,Redis: Every API request validates session in Redis via jti
-    
+
     Client->>API: API Request with Access Token
     API->>API: Verify token signature (ES256)
     API->>API: Extract sessionId & jti from token
     API->>Redis: Get session data by userId:sessionId
-    
+
     alt Session exists and jti matches
         Redis-->>API: Session valid (jti matches)
         API-->>Client: Response
@@ -515,7 +512,7 @@ sequenceDiagram
 
 #### JWT Access Token
 
-A short-lived token used to authenticate API requests. 
+A short-lived token used to authenticate API requests.
 
 - **Algorithm**: ES256 (ECDSA using P-256 and SHA-256)
 - **Validity**: Configured in `auth.config.ts` (default: 1 hour)
@@ -551,7 +548,7 @@ Interface `IAuthJwtAccessTokenPayload`
     sessionId: string;
     deviceOwnershipId: string;
     roleId: string;
-    
+
     // Standard JWT claims
     jti?: string;  // JWT ID - unique token identifier
     iat?: number;  // Issued at
@@ -577,7 +574,7 @@ A type alias derived from `IAuthJwtAccessTokenPayload` with `Omit`. The refresh 
     userId: string;
     sessionId: string;
     deviceOwnershipId: string;
-    
+
     // Standard JWT claims
     jti?: string;  // JWT ID - unique token identifier
     iat?: number;
@@ -653,10 +650,10 @@ async profile(
 
 `AuthJwtPayload<T, K>(field?)` reads `request.user`, which the authenticating guard wrote.
 
-| Piece | Meaning |
-|---|---|
-| `T` | payload type; defaults to `IAuthJwtAccessTokenPayload` |
-| `field` | typed as a key of `T` |
+| Piece   | Meaning                                                |
+| ------- | ------------------------------------------------------ |
+| `T`     | payload type; defaults to `IAuthJwtAccessTokenPayload` |
+| `field` | typed as a key of `T`                                  |
 
 - Without a field it returns the whole payload
 - With a field it returns that field, non-null
@@ -692,42 +689,42 @@ A unique identifier (32-character random string) generated during login and toke
 #### How it Works
 
 1. **During Login**
-   - API generates a unique jti (32-character random string)
-   - jti is stored in Redis session
-   - jti is embedded in both access and refresh tokens as a standard JWT claim
+    - API generates a unique jti (32-character random string)
+    - jti is stored in Redis session
+    - jti is embedded in both access and refresh tokens as a standard JWT claim
 
 2. **During Every API Request (Access Token)**
-   - Client sends request with access token
-   - API extracts the jti from the access token payload
-   - API retrieves session from Redis using userId and sessionId
-   - API compares token jti with session jti
-   - **If jti matches**: Request is allowed
-   - **If jti doesn't match**: Request is rejected (401 Unauthorized, potential token reuse)
+    - Client sends request with access token
+    - API extracts the jti from the access token payload
+    - API retrieves session from Redis using userId and sessionId
+    - API compares token jti with session jti
+    - **If jti matches**: Request is allowed
+    - **If jti doesn't match**: Request is rejected (401 Unauthorized, potential token reuse)
 
 3. **During Token Refresh (Refresh Token)**
-   - Client sends the refresh token to the API
-   - API extracts the jti from the refresh token payload
-   - API retrieves session from Redis using userId and sessionId
-   - API compares token jti with session jti
-   - **If jti matches**: Token refresh proceeds with a new jti
-   - **If jti doesn't match**: Request is rejected (401 Unauthorized, potential security breach)
+    - Client sends the refresh token to the API
+    - API extracts the jti from the refresh token payload
+    - API retrieves session from Redis using userId and sessionId
+    - API compares token jti with session jti
+    - **If jti matches**: Token refresh proceeds with a new jti
+    - **If jti doesn't match**: Request is rejected (401 Unauthorized, potential security breach)
 
 4. **jti Rotation**
-   - Each successful token refresh generates a **new jti** (32-character random string)
-   - Old jti is invalidated
-   - New jti is stored in the database session record, then in Redis once the transaction has committed
-   - The Redis write happens only while the session key still exists
-   - A key purged by a revoke in the meantime makes the refresh answer 401
-   - New tokens contain the new jti
-   - The session's absolute expiry is never pushed out
-   - The new refresh token and the Redis TTL both carry only the time still left on the presented refresh token
-   - A session cannot outlive `AUTH_JWT_REFRESH_TOKEN_EXPIRED` counted from login
+    - Each successful token refresh generates a **new jti** (32-character random string)
+    - Old jti is invalidated
+    - New jti is stored in the database session record, then in Redis once the transaction has committed
+    - The Redis write happens only while the session key still exists
+    - A key purged by a revoke in the meantime makes the refresh answer 401
+    - New tokens contain the new jti
+    - The session's absolute expiry is never pushed out
+    - The new refresh token and the Redis TTL both carry only the time still left on the presented refresh token
+    - A session cannot outlive `AUTH_JWT_REFRESH_TOKEN_EXPIRED` counted from login
 
 5. **What the check catches**
-   - An access or refresh token presented after a refresh carries the old jti, which no longer matches
-   - Each refresh writes a new jti, so a token maps to one point in the session's history
-   - Deleting the session key from Redis invalidates every token carrying that sessionId at once
-   - An intercepted old token cannot be replayed
+    - An access or refresh token presented after a refresh carries the old jti, which no longer matches
+    - Each refresh writes a new jti, so a token maps to one point in the session's history
+    - Deleting the session key from Redis invalidates every token carrying that sessionId at once
+    - An intercepted old token cannot be replayed
 
 ## Social Authentication
 
@@ -735,6 +732,7 @@ A unique identifier (32-character random string) generated during login and toke
 - The backend validates the OAuth tokens provided by the client and extracts user information to create a session, similar to credential-based authentication.
 
 **Supported Providers:**
+
 - Google OAuth 2.0
 - Apple Sign In
 
@@ -758,7 +756,7 @@ sequenceDiagram
     User->>Client: Click "Sign in with Google/Apple"
     Client->>GoogleApple: Request OAuth token
     GoogleApple-->>Client: OAuth token
-    
+
     Client->>API: POST /public/user/login/social/{google|apple}
     Note over Client,API: Authorization: Bearer <oauth_token>
 
@@ -852,17 +850,18 @@ When the account does not exist:
 Google authentication is configured in `auth.config.ts`:
 
 ```typescript
-export default registerAs(
-    'auth',
-    (): IConfigAuth => ({
-        google: {
-            clientId: readOptionalEnv(process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID),
-        }
-    })
-);
+export default registerAs('auth', (): IConfigAuth => ({
+    google: {
+        clientId:
+            process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID === ''
+                ? null
+                : (process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID ?? null),
+    },
+}));
 ```
 
 **Environment Variables:**
+
 - `AUTH_SOCIAL_GOOGLE_CLIENT_ID`: Google OAuth 2.0 client ID
     - Empty or unset leaves Google sign-in unconfigured
 
@@ -920,20 +919,22 @@ async loginWithGoogle(
 Apple authentication is configured in `auth.config.ts`:
 
 ```typescript
-export default registerAs(
-    'auth',
-    (): IConfigAuth => ({
-        apple: {
-            clientId: readOptionalEnv(process.env.AUTH_SOCIAL_APPLE_CLIENT_ID),
-            signInClientId: readOptionalEnv(
-                process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID
-            ),
-        }
-    })
-);
+export default registerAs('auth', (): IConfigAuth => ({
+    apple: {
+        clientId:
+            process.env.AUTH_SOCIAL_APPLE_CLIENT_ID === ''
+                ? null
+                : (process.env.AUTH_SOCIAL_APPLE_CLIENT_ID ?? null),
+        signInClientId:
+            process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID === ''
+                ? null
+                : (process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID ?? null),
+    },
+}));
 ```
 
 **Environment Variables:**
+
 - `AUTH_SOCIAL_APPLE_CLIENT_ID`: Apple service ID
 - `AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID`: Apple sign-in client ID
 
@@ -989,35 +990,33 @@ async loginWithApple(
 Two-Factor settings are configured in `src/configs/auth.config.ts`:
 
 ```typescript
-export default registerAs(
-    'auth',
-    (): IConfigAuth => ({
-        twoFactor: {
-            strategy: 'totp',          // OTP strategy (totp)
-            algorithm: 'sha1',         // Hash algorithm (sha1)
-            issuer: process.env.AUTH_TWO_FACTOR_ISSUER,
-            digits: 6,
-            periodInSeconds: ms('30s') / 1000, // Token validity window in seconds, the unit otplib takes
-            window: 1,
-            secretLength: 32,
-            challengeTtlInMs: ms('5m'),
-            challengeKeyPattern: 'TwoFactor:Challenge:{token}',
-            lockKeyPattern: 'TwoFactor:Lock:{userId}',
-            backupCodes: {
-                count: 8,
-                length: 10,
-            },
-            maxAttempt: 5,
-            lockAttemptDurationInMs: ms('2m'),
-            encryption: {
-                key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY,
-            },
+export default registerAs('auth', (): IConfigAuth => ({
+    twoFactor: {
+        strategy: 'totp', // OTP strategy (totp)
+        algorithm: 'sha1', // Hash algorithm (sha1)
+        issuer: process.env.AUTH_TWO_FACTOR_ISSUER!,
+        digits: 6,
+        periodInSeconds: ms('30s') / 1000, // Token validity window in seconds, the unit otplib takes
+        window: 1,
+        secretLength: 32,
+        challengeTtlInMs: ms('5m'),
+        challengeKeyPattern: 'TwoFactor:Challenge:{token}',
+        lockKeyPattern: 'TwoFactor:Lock:{userId}',
+        backupCodes: {
+            count: 8,
+            length: 10,
         },
-    })
-);
+        maxAttempt: 5,
+        lockAttemptDurationInMs: ms('2m'),
+        encryption: {
+            key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY!,
+        },
+    },
+}));
 ```
 
 **Configuration Options:**
+
 - `strategy`: OTP strategy, `totp` (time-based)
 - `algorithm`: Hash algorithm used for TOTP generation, `sha1`
 - `issuer`: Label shown in the authenticator app, from `AUTH_TWO_FACTOR_ISSUER`
@@ -1070,17 +1069,15 @@ API keys authenticate machines:
 API Key authentication is configured in `auth.config.ts`:
 
 ```typescript
-export default registerAs(
-    'auth',
-    (): IConfigAuth => ({
-        xApiKey: {
-            keyPattern: 'ApiKey:{key}',
-        },
-    })
-);
+export default registerAs('auth', (): IConfigAuth => ({
+    xApiKey: {
+        keyPattern: 'ApiKey:{key}',
+    },
+}));
 ```
 
 **Configuration Options:**
+
 - `keyPattern`: Redis cache key pattern for API key caching (`{key}` is replaced with the key)
 
 An admin write that changes or deletes a key runs in this order:
@@ -1100,6 +1097,7 @@ Details: [Cache][ref-doc-cache].
 Default API keys are used for standard external integrations and third-party access.
 
 **Characteristics:**
+
 - Type: `EnumApiKeyType.default`
 - Purpose: General-purpose API access
 - Use Case: External clients, third-party integrations
@@ -1107,6 +1105,7 @@ Default API keys are used for standard external integrations and third-party acc
 - Cache: Cached in Redis for performance
 
 **Guard Decorator:**
+
 ```typescript
 @ApiKeyProtected()
 ```
@@ -1132,6 +1131,7 @@ async loginWithCredential(
 System API keys are used for internal system operations that bypass standard authentication.
 
 **Characteristics:**
+
 - Type: `EnumApiKeyType.system`
 - Purpose: System-level operations
 - Use Case: Internal services, background jobs, system maintenance
@@ -1139,6 +1139,7 @@ System API keys are used for internal system operations that bypass standard aut
 - Cache: Cached in Redis for performance
 
 **Guard Decorator:**
+
 ```typescript
 @ApiKeySystemProtected()
 ```
@@ -1160,11 +1161,13 @@ async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
 - The header sends that full value.
 
 **Header Format:**
+
 ```
 x-api-key: ${key}:${secret}
 ```
 
 **Format Rules:**
+
 - Pattern: `key:secret`, where `key` is the full `<APP_ENV>_<random>` value
 - Separator: Colon (`:`)
 - Both key and secret are required
@@ -1235,7 +1238,7 @@ sequenceDiagram
     else Valid Format
         Guard->>Guard: Split into [key, secret]
         Guard->>Cache: Check cache for API key
-        
+
         alt Cache Hit
             Cache-->>Guard: API Key data
         else Cache Miss
@@ -1281,6 +1284,7 @@ Sessions sit on `DeviceOwnership` (one user on one device):
 - A device can still be owned by more than one user.
 
 Storage:
+
 - **Redis:** validation and TTL, for both access and refresh tokens
 - **Database:** listing, management, and audit trail
 
@@ -1289,7 +1293,7 @@ Storage:
 Global prefix `/api` and version `v1` apply as elsewhere.
 
 | Method | Path | Scope |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/shared/user/session/list` | The caller's own sessions (cursor) |
 | `DELETE` | `/shared/user/session/revoke/:sessionId` | Revoke one of the caller's sessions |
 | `GET` | `/admin/user/:userId/session/list` | A user's sessions (offset), filterable by `isRevoked` |
@@ -1323,7 +1327,7 @@ Outcome:
 It answers with the message `session.revokeAll`.
 
 | Case | Exception | statusCode | HTTP |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `userId` is the admin's own account | `UserNotSelfException` | `51001` | 400 |
 | The user holds no active session, or does not exist | `SessionNotFoundException` | `50400` | 404 |
 
@@ -1346,27 +1350,31 @@ Used to validate **both access and refresh tokens**.
 - A session key that is missing, or a jti that does not match, rejects the request at once, even with a valid token signature.
 
 **Data Stored:**
+
 ```typescript
 {
     sessionId: string;
     userId: string;
-    jti: string;  // JWT ID for token validation
+    jti: string; // JWT ID for token validation
     expiredAt: Date;
 }
 ```
 
 **Redis Key Pattern:**
+
 ```
 User:{userId}:Session:{sessionId}
 ```
 
 **TTL Behavior:**
+
 - Initial TTL: `expiredAt - now`, where `expiredAt` is login time plus the refresh token expiration from `auth.config.ts` (default: 30 days)
 - TTL Source: `AUTH_JWT_REFRESH_TOKEN_EXPIRED` environment variable
 - On refresh: the entry is rewritten with the new jti and a TTL equal to the **remaining** lifetime of the presented refresh token, so the absolute expiry set at login is preserved and **never extended**
 - Auto Cleanup: Expired sessions are automatically removed by Redis when TTL expires
 
 **Example:**
+
 - If `AUTH_JWT_REFRESH_TOKEN_EXPIRED=30d`, the session expires 30 days after login
 - If `AUTH_JWT_REFRESH_TOKEN_EXPIRED=7d`, the session expires 7 days after login
 - Refreshing on day 20 of a 30-day session leaves 10 days, both on the new refresh token and on the Redis TTL
@@ -1376,6 +1384,7 @@ User:{userId}:Session:{sessionId}
 Used for session listing and management purposes.
 
 **Fields Stored:**
+
 - `jti`: JWT ID for session tracking
 - `ipAddress`: Client IP at login time
 - `userAgent`: Parsed user agent (browser, OS, device)
@@ -1384,12 +1393,14 @@ Used for session listing and management purposes.
 - `expiredAt`, `revokedAt`, `isRevoked`, `revokedById`: Lifecycle and revocation tracking fields
 
 **When Updated:**
+
 - Created during login with initial jti (linked to a DeviceOwnership)
 - Updated when session jti is rotated during token refresh
 - Updated when session is revoked
 - Can be queried to show user's active sessions across devices
 
 **Not Used For:**
+
 - Token validation (Redis handles this via jti matching)
 - Real-time validation during API requests
 
@@ -1399,30 +1410,30 @@ Used for session listing and management purposes.
 graph TB
     A[User Login] --> B[Create Session in Database with jti]
     A --> C[Create Session in Redis with jti and TTL 30d]
-    
+
     D[API Request with Access Token] --> E{Check Redis}
     E -->|Session Found| F{jti Match?}
     E -->|Session Not Found| G[Reject 401]
-    
+
     F -->|Yes| H[Allow Request]
     F -->|No| G
-    
+
     I[Token Refresh Request] --> J{Check Redis}
     J -->|Session Found| K{jti Match?}
     J -->|Session Not Found| L[Reject 401]
-    
+
     K -->|Yes| M[Generate new jti and new tokens<br/>Absolute expiry unchanged]
     K -->|No| L
-    
+
     M --> N{Rotate jti in Database<br/>on a live session}
     N -->|No live session| L
     N -->|Committed| O{Rewrite Redis entry<br/>only if the key exists}
     O -->|Key gone| L
     O -->|Written| W[Return new tokens]
-    
+
     P[View Sessions] --> Q[Query Database]
     Q --> R[Display Active Sessions List]
-    
+
     T[Revoke Session] --> S[Mark Revoked in Database]
     S --> U[Purge from Redis after the commit:<br/>the revoked ids, or every key of the user]
     U --> V[All Tokens Invalid Immediately<br/>session lookup fails]
@@ -1433,13 +1444,13 @@ graph TB
 When a session is revoked:
 
 1. **Database**: Session record is updated with revocation metadata, and the write is awaited (inside a transaction when the revoke is part of a larger operation):
-   - `isRevoked = true`
-   - `revokedAt = now`
-   - `revokedById = userId` (who initiated the revocation)
+    - `isRevoked = true`
+    - `revokedAt = now`
+    - `revokedById = userId` (who initiated the revocation)
 2. **Redis**: After the commit:
-   - A path that revokes one session or a subset calls `SessionDomain.purgeRevokedLogins(userId, sessions)`, which deletes exactly the revoked session ids.
-   - A path that revokes every session of the user calls `SessionDomain.purgeLoginsByUser(userId)`, which deletes every session key of the user found by `SCAN`, including a stale key whose row was already revoked.
-   - A purge failure is logged and the request still succeeds. An unpurged key keeps passing the session check until its TTL expires.
+    - A path that revokes one session or a subset calls `SessionDomain.purgeRevokedLogins(userId, sessions)`, which deletes exactly the revoked session ids.
+    - A path that revokes every session of the user calls `SessionDomain.purgeLoginsByUser(userId)`, which deletes every session key of the user found by `SCAN`, including a stale key whose row was already revoked.
+    - A purge failure is logged and the request still succeeds. An unpurged key keeps passing the session check until its TTL expires.
 3. **Activity log**: The rows are staged after the purge.
 4. **Access Tokens**: All access tokens for this session become invalid immediately (jti validation fails)
 5. **Refresh Tokens**: All refresh tokens for this session become invalid immediately (jti validation fails). A refresh already running when the key is purged answers 401, because its Redis rewrite requires the key to exist
@@ -1448,42 +1459,42 @@ When a session is revoked:
 ### Session Lifecycle
 
 1. **Creation (Login)**
-   - User logs in successfully
-   - System generates unique sessionId and jti
-   - Session linked to a `DeviceOwnership` (the specific user-device pair)
-   - **Device Constraint**: Only one active session per device-user pair is allowed
-   - Session stored in both Redis (with TTL) and Database (with jti and deviceOwnershipId)
-   - Tokens issued containing sessionId and jti
+    - User logs in successfully
+    - System generates unique sessionId and jti
+    - Session linked to a `DeviceOwnership` (the specific user-device pair)
+    - **Device Constraint**: Only one active session per device-user pair is allowed
+    - Session stored in both Redis (with TTL) and Database (with jti and deviceOwnershipId)
+    - Tokens issued containing sessionId and jti
 
 2. **Validation (Every Request)**
-   - Access token received
-   - Token signature verified (ES256)
-   - sessionId and jti extracted from token
-   - Redis checked for session existence
-   - jti compared between token and Redis session
-   - Request allowed only if session exists AND jti matches
+    - Access token received
+    - Token signature verified (ES256)
+    - sessionId and jti extracted from token
+    - Redis checked for session existence
+    - jti compared between token and Redis session
+    - Request allowed only if session exists AND jti matches
 
 3. **Refresh**
-   - Refresh token received
-   - Token signature verified (ES512)
-   - sessionId and jti extracted from token
-   - Redis checked for session existence
-   - jti compared between token and Redis session
-   - If valid: new jti generated, session updated in the Database, then in Redis while its key still exists
-   - New tokens issued with new jti
-   - Old jti invalidated (old tokens won't work)
+    - Refresh token received
+    - Token signature verified (ES512)
+    - sessionId and jti extracted from token
+    - Redis checked for session existence
+    - jti compared between token and Redis session
+    - If valid: new jti generated, session updated in the Database, then in Redis while its key still exists
+    - New tokens issued with new jti
+    - Old jti invalidated (old tokens won't work)
 
 4. **Expiration**
-   - Redis TTL expires (based on config)
-   - Session automatically removed from Redis
-   - All tokens become invalid (session not found in Redis)
-   - Database record remains for audit trail
+    - Redis TTL expires (based on config)
+    - Session automatically removed from Redis
+    - All tokens become invalid (session not found in Redis)
+    - Database record remains for audit trail
 
 5. **Revocation**
-   - User or admin revokes session
-   - Database record marked as revoked
-   - Revoked session id purged from Redis after the commit, then the activity row staged
-   - All tokens for this session become invalid immediately
+    - User or admin revokes session
+    - Database record marked as revoked
+    - Revoked session id purged from Redis after the commit, then the activity row staged
+    - All tokens for this session become invalid immediately
 
 **What invalidates sessions.** Every trigger follows one order:
 
@@ -1499,7 +1510,7 @@ Around that order:
 - The password change, forgot-password reset, admin temporary password, and admin two-factor reset enqueue their notification last, after the purge and the staged rows.
 
 | Trigger | Scope | Redis purge |
-|---|---|---|
+| --- | --- | --- |
 | Password change (`PATCH /shared/user/password/change`) | All sessions of the user | Every key of the user |
 | Forgot-password reset (`PATCH /public/user/password/reset`) | All sessions of the user | Every key of the user |
 | Admin temporary password | All sessions of the target user | Every key of the user |
@@ -1549,25 +1560,25 @@ sequenceDiagram
     participant Database
 
     Client->>API: API Request with Access Token
-    
+
     API->>JWT: Verify Token Signature (ES256)
     alt Invalid Signature
         JWT-->>Client: 401 Unauthorized (AuthJwtAccessTokenInvalidException)
     else Valid Signature
         JWT->>API: Signature valid
-        
+
         API->>API: Extract sessionId & jti from payload
-        
+
         API->>Redis: GET User:{userId}:Session:{sessionId}
-        
+
         alt Session Not Found
             Redis-->>API: null
             API-->>Client: 401 Unauthorized (SessionRevokedException)
         else Session Found
             Redis-->>API: {userId, sessionId, jti, expiredAt}
-            
+
             API->>API: Compare token jti with Redis jti
-            
+
             alt jti Mismatch
                 API-->>Client: 401 Unauthorized (SessionRevokedException)
                 Note over API: Potential security breach:<br/>Old token used after refresh
@@ -1585,7 +1596,6 @@ sequenceDiagram
 [ref-jwt]: https://jwt.io
 [ref-google-console]: https://console.cloud.google.com/
 [ref-google-client-secret]: https://developers.google.com/identity/protocols/oauth2
-
 [ref-doc-installation]: installation.md
 [ref-doc-cache]: cache.md
 [ref-doc-configuration]: configuration.md

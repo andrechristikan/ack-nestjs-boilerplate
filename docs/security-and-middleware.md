@@ -8,20 +8,72 @@ HTTP middleware is registered in `RequestMiddlewareModule` and applied to every 
 
 ```typescript
 consumer
-  .apply(
-    RequestRequestIdMiddleware,      // 1. Request & Correlation IDs
-    RequestRequestLogMiddleware,     // 2. Request log (userAgent / ipAddress / geoLocation)
-    RequestHelmetMiddleware,         // 3. Security headers
-    RequestBodyParserMiddleware,     // 4. Body parsing
-    RequestCorsMiddleware,           // 5. CORS handling
-    RequestUrlVersionMiddleware,     // 6. API version extraction
-    RequestResponseTimeMiddleware,   // 7. Response time tracking
-    RequestCustomLanguageMiddleware, // 8. Language detection
-    RequestWorkspaceMiddleware,      // 9. Active workspace header
-    RequestCompressionMiddleware     // 10. Response compression
-  )
-  .forRoutes('{*wildcard}');
+    .apply(
+        RequestRequestIdMiddleware, // 1. Request id and correlation id
+        RequestRequestLogMiddleware, // 2. Request log (userAgent / ipAddress / geoLocation)
+        RequestHelmetMiddleware, // 3. Security headers
+        RequestBodyParserMiddleware, // 4. Body parsing
+        RequestCorsMiddleware, // 5. CORS handling
+        RequestUrlVersionMiddleware, // 6. API version extraction
+        RequestResponseTimeMiddleware, // 7. Response time tracking
+        RequestCustomLanguageMiddleware, // 8. Language detection
+        RequestWorkspaceMiddleware, // 9. Active workspace header
+        RequestCompressionMiddleware // 10. Response compression
+    )
+    .forRoutes('{*wildcard}');
 ```
+
+Boot and per-request order are separate.
+
+### Boot
+
+`src/main.ts` runs these steps in order:
+
+1. Imports `@instrument`, which starts Sentry.
+2. Calls `NestFactory.create(AppModule, ConfigureOptions)`.
+3. Writes `NODE_ENV` from `app.env` (`APP_ENV`) and `TZ` from `app.timezone` (`APP_TIMEZONE`) into `process.env`.
+4. Enables the shutdown hooks.
+5. Calls `configure(app)` once.
+6. Runs Swagger, `listen`, and the startup banner.
+
+`configure(app)` in `src/configure.ts` applies the HTTP settings of the app and mounts no middleware:
+
+1. Attaches the Pino logger with `app.useLogger`.
+2. Sets the global prefix from `app.globalPrefix`.
+3. Sets Express `trust proxy` from `app.http.trustedProxy`.
+4. Turns `x-powered-by` off.
+5. Enables URI versioning when `app.urlVersion.enable` is on.
+
+### Per request
+
+```mermaid
+flowchart TD
+    Req([Incoming request]) --> Pino[nestjs-pino HTTP middleware<br/>mounted by the nestjs-pino LoggerModule]
+    Pino --> Cls[ClsMiddleware<br/>mounted by the ClsModule of RequestModule]
+    Cls --> Chain
+
+    subgraph Chain [RequestMiddlewareModule chain]
+        direction TB
+        M1[1 Request id] --> M2[2 Request log]
+        M2 --> M3[3 Helmet]
+        M3 --> M4[4 Body parser]
+        M4 --> M5[5 CORS]
+        M5 --> M6[6 URL version]
+        M6 --> M7[7 Response time]
+        M7 --> M8[8 Custom language]
+        M8 --> M9[9 Active workspace]
+        M9 --> M10[10 Compression]
+    end
+
+    Chain --> Rest([Guards, interceptors, pipes, handler])
+```
+
+- nestjs-pino's HTTP middleware is module middleware that nestjs-pino's `LoggerModule` mounts in its `configure`.
+- `RequestModule` registers `ClsModule.forRoot` with `middleware: { mount: true }`, so the module mounts `ClsMiddleware`, which opens the request store.
+- The nestjs-pino `LoggerModule` and the root module of `ClsModule` are both `@Global()`, and Nest registers the middleware of global modules before that of any other module.
+- Among global modules the order follows the module scan order, and `CommonModule` imports `LoggerModule` before `RequestModule`, so the pino middleware runs first.
+- `RequestMiddlewareModule` is not global, so its chain runs after both, and the store exists when `RequestRequestIdMiddleware` writes to it.
+- `configure(app)` mounts no middleware.
 
 ## Related Documents
 
@@ -34,6 +86,8 @@ consumer
 ## Table of Contents
 
 - [Overview](#overview)
+    - [Boot](#boot)
+    - [Per request](#per-request)
 - [Related Documents](#related-documents)
 - [Authentication & Authorization](#authentication--authorization)
 - [Helmet](#helmet)
@@ -51,11 +105,10 @@ consumer
 - [Request Timeout](#request-timeout)
 - [Request Store](#request-store)
 - [Decorators](#decorators)
-  - [@RequestTimeout](#requesttimeout)
-  - [@RequestEnvProtected](#requestenvprotected)
-  - [@RequestThrottle](#requestthrottle)
-  - [Store Parameter Decorators](#store-parameter-decorators)
-
+    - [@RequestTimeout](#requesttimeout)
+    - [@RequestEnvProtected](#requestenvprotected)
+    - [@RequestThrottle](#requestthrottle)
+    - [Store Parameter Decorators](#store-parameter-decorators)
 
 ## Authentication & Authorization
 
@@ -80,7 +133,7 @@ Applies protective HTTP headers using [Helmet][ref-helmet].
 **On, set in the options object:**
 
 | Header | Value | Option |
-|---|---|---|
+| --- | --- | --- |
 | `Cross-Origin-Resource-Policy` | `same-origin` | `crossOriginResourcePolicy: { policy: 'same-origin' }` |
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | `strictTransportSecurity` from `request.helmet.*` |
 | `X-Content-Type-Options` | `nosniff` | `xContentTypeOptions: true` |
@@ -110,7 +163,7 @@ See [Configuration][ref-doc-configuration].
 
 `X-Powered-By` appears on no response:
 
-- Express is told not to write it in `src/main.ts`.
+- Express is told not to write it in `configure(app)` (`src/configure.ts`).
 - The Helmet options object sets `xPoweredBy: false`, so Helmet leaves that header alone.
 
 ```typescript
@@ -119,7 +172,7 @@ app.getHttpAdapter().getInstance<Express>().disable('x-powered-by');
 
 ## Trusted Proxy and Client IP
 
-- Express `trust proxy` is set once at boot in `src/main.ts` from `app.http.trustedProxy`.
+- Express `trust proxy` is set once at boot in `configure(app)` (`src/configure.ts`) from `app.http.trustedProxy`.
 - That config key reads the optional `HTTP_TRUSTED_PROXY` environment variable.
 
 ```typescript
@@ -149,18 +202,18 @@ Prevents abuse using [Throttler][ref-throttler], backed by Redis so counters and
 **Three limiters run independently.** Each keeps its own counter, its own block, and its own response headers.
 
 | Limiter | Keyed by | Applied | Limit | Block on breach |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `default` | client IP | every route, always, no opt-in | 300 / 60s | 60s |
 | `user` | authenticated `userId` | opt-in, `@RequestThrottle({ user: true })` | 100 / 60s | 60s |
 | `route` | client IP, per handler | opt-in, `@RequestThrottle({ route: <tier> })` | per tier, below | 5m |
 
 Route tiers are the members of `EnumRequestThrottleRoute`:
 
-| Tier | Limit |
-|---|---|
-| `strict` | 5 / 60s |
+| Tier       | Limit    |
+| ---------- | -------- |
+| `strict`   | 5 / 60s  |
 | `moderate` | 20 / 60s |
-| `relaxed` | 60 / 60s |
+| `relaxed`  | 60 / 60s |
 
 - Every limit lives in `request.config.ts`.
 - A decorator carries a switch or a tier name, never a number.
@@ -255,23 +308,29 @@ The algorithm is an **exact sliding window log**, not a fixed window:
 Durations are converted to **seconds** at the service boundary, so every field of the returned record is in seconds.
 
 **Registration:** the storage service is provided by `RequestThrottleModule` and injected into `ThrottlerModule.forRootAsync`:
+
 ```typescript
 ThrottlerModule.forRootAsync({
-  imports: [ConfigModule, RequestThrottleModule],
-  inject: [ConfigService, RequestThrottleStorageService],
-  useFactory: (config, storage) => ({
-    throttlers: [{
-      name: EnumRequestThrottleName.default,
-      ttl: config.get<number>('request.throttle.default.ttlInMs'),
-      limit: config.get<number>('request.throttle.default.limit'),
-      blockDuration: config.get<number>('request.throttle.default.blockDurationInMs'),
-    }],
-    storage,
-  }),
-})
+    imports: [ConfigModule, RequestThrottleModule],
+    inject: [ConfigService, RequestThrottleStorageService],
+    useFactory: (config, storage) => ({
+        throttlers: [
+            {
+                name: EnumRequestThrottleName.default,
+                ttl: config.get<number>('request.throttle.default.ttlInMs'),
+                limit: config.get<number>('request.throttle.default.limit'),
+                blockDuration: config.get<number>(
+                    'request.throttle.default.blockDurationInMs'
+                ),
+            },
+        ],
+        storage,
+    }),
+});
 ```
 
 **Redis keys** follow the configured patterns, with `{name}` one of the `EnumRequestThrottleName` values `default` / `user` / `route` and `{tracker}` the value described above:
+
 ```
 Request:Throttle:{name}:{tracker}         # sliding window log (sorted set)
 Request:Throttle:Block:{name}:{tracker}   # active block
@@ -286,7 +345,7 @@ Request:Throttle:Seq:{name}:{tracker}     # sequence counter, makes log members 
 - `Retry-After` is unsuffixed on every path and is expressed in **seconds**.
 
 | Header | Written when |
-|---|---|
+| --- | --- |
 | `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` | every request that passes the global limiter |
 | `X-RateLimit-Limit-route`, `X-RateLimit-Remaining-route`, `X-RateLimit-Reset-route` | the handler carries a `route` tier and passes it |
 | `X-RateLimit-Limit-user`, `X-RateLimit-Remaining-user`, `X-RateLimit-Reset-user` | the handler carries `user: true`, the request is authenticated, and it passes |
@@ -313,6 +372,7 @@ Manages cross-origin resource sharing (CORS): origin matching with wildcard subd
 **Implementation:** `RequestCorsMiddleware`
 
 **Features:**
+
 - Accepts both `http` and `https` origins for the same pattern
 - Matches an origin by exact hostname, wildcard subdomain, or explicit port
 - Allows credentials unless the configured origins include the wildcard `*`
@@ -321,6 +381,7 @@ Manages cross-origin resource sharing (CORS): origin matching with wildcard subd
     - `Retry-After`
     - all nine `X-RateLimit-*` variants
     - `x-custom-lang`, `x-timestamp`, `x-timezone`, `x-version`, `x-repo-version`, `x-request-id`, and `x-correlation-id`
+- Carries `x-request-id` and `x-correlation-id` in both the allowed list (`request.cors.allowedHeader`) and the exposed list.
 - Builds both header lists from the header-name constants (`RequestCustomLangHeaderName`, `RequestIdHeaderName`, `ResponseTimestampHeaderName`, `ApiKeyHeaderName`, and the rest)
 - Answers OPTIONS preflight requests with `204` and `max-age` 86400 seconds
 - Accepts a single string, an array of origins, a boolean (`true` allows all, `false` denies all), or the wildcard `*`
@@ -328,34 +389,38 @@ Manages cross-origin resource sharing (CORS): origin matching with wildcard subd
 **Origin Matching Rules:**
 
 1. **Exact Match**: Hostname and port match exactly
-   ```bash
-   Pattern: example.com
-   Allowed: http://example.com, https://example.com
-   Denied: http://sub.example.com, http://example.com:3000
-   ```
+
+    ```bash
+    Pattern: example.com
+    Allowed: http://example.com, https://example.com
+    Denied: http://sub.example.com, http://example.com:3000
+    ```
 
 2. **With Explicit Port**: The port matches exactly
-   ```bash
-   Pattern: api.example.com:3000
-   Allowed: http://api.example.com:3000, https://api.example.com:3000
-   Denied: http://api.example.com (default port), http://api.example.com:8080
-   ```
+
+    ```bash
+    Pattern: api.example.com:3000
+    Allowed: http://api.example.com:3000, https://api.example.com:3000
+    Denied: http://api.example.com (default port), http://api.example.com:8080
+    ```
 
 3. **Wildcard Subdomain**: Matches any subdomain (including base domain)
-   ```bash
-   Pattern: *.example.com
-   Allowed: http://api.example.com, https://app.example.com, http://example.com
-   Denied: http://api.myexample.com, http://example.org
-   ```
+
+    ```bash
+    Pattern: *.example.com
+    Allowed: http://api.example.com, https://app.example.com, http://example.com
+    Denied: http://api.myexample.com, http://example.org
+    ```
 
 4. **Universal Match**: Allow all origins
-   ```bash
-   Pattern: *
-   Allowed: Any origin
-   Credentials: Not allowed (CORS restriction)
-   ```
+    ```bash
+    Pattern: *
+    Allowed: Any origin
+    Credentials: Not allowed (CORS restriction)
+    ```
 
 **Credentials Handling:**
+
 - When `allowedOrigin` is wildcard (`*`), credentials are **not allowed** (CORS security restriction)
 - When using specific origins, credentials are **automatically allowed**
 - This is configured via `credentials: true|false` in CORS options
@@ -381,32 +446,47 @@ Restricts endpoint access based on environment.
 
 ## Request & Correlation IDs
 
-Generates unique identifiers for request tracking.
+Every request carries a server-issued request id and a correlation id.
 
-**Implementation:** `RequestRequestIdMiddleware`
+**Implementation:** `RequestRequestIdMiddleware` (`src/common/request/middlewares/request.request-id.middleware.ts`)
 
-**Request Properties:**
+- It is the first middleware of the `RequestMiddlewareModule` chain.
+- It runs inside the request's CLS context, which `ClsMiddleware` has already opened.
+
+**Request properties:**
+
 ```typescript
 export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Omit<
     Request,
     'user'
 > {
+    id: string;
     correlationId: string;
     user?: T;
 }
 ```
 
-`RequestRequestIdMiddleware`:
+**Request id:**
 
-- assigns `req.id` with UUID v7
-- copies it to the `x-request-id` header
-- writes both `req.id` and `req.correlationId` into the request store
-- reuses inbound `x-correlation-id` as `correlationId` when that header is a string, and otherwise generates a new UUID v7
+- The inbound `x-request-id` is kept when it matches `RequestIdRegex` (`^[A-Za-z0-9._-]{1,128}$`).
+- An absent value, a non-string value, or a value that fails the pattern is replaced with a new UUID v7.
+- The middleware writes the result to `req.id` and to the `x-request-id` request header.
+- `x-request-id` is an allowed CORS request header.
+- `x-request-id` is an exposed response header.
 
-`id` and `correlationId` are dual-written:
+**Correlation id:**
 
-- They stay on `req` (read by filters, interceptors, and pino `genReqId`).
-- They are also written to the request store under `RequestIdStoreKey` / `RequestCorrelationIdStoreKey` for ambient deep access.
+- The inbound `x-correlation-id` follows the same rule, against the same `RequestIdRegex`.
+- The middleware writes the result to `req.correlationId` and to the `x-correlation-id` request header.
+- `x-correlation-id` is an allowed CORS request header.
+- `x-correlation-id` is an exposed response header.
+
+**Where the ids live:**
+
+- The middleware also writes both values to the request store under `RequestIdStoreKey` and `RequestCorrelationIdStoreKey`.
+- The logger reads the store each time it writes an entry and logs both ids as top-level fields. See [Logger][ref-doc-logger].
+- `ResponseMetadataService` reads the store to build the `requestId` and `correlationId` metadata fields and the two response headers.
+- The `@Doc` decorator documents `x-request-id` and `x-correlation-id` as optional inbound headers.
 
 See [Request Store](#request-store).
 
@@ -417,6 +497,7 @@ Parses request bodies based on content-type.
 **Implementation:** `RequestBodyParserMiddleware`
 
 **Supported Content Types:**
+
 - `application/json`
 - `application/x-www-form-urlencoded`
 - `text/*`
@@ -432,6 +513,7 @@ Extracts API version from URLs.
 **Implementation:** `RequestUrlVersionMiddleware`
 
 **URL Pattern:**
+
 ```
 /{globalPrefix}/{versionPrefix}{version}/resource
 Example: /api/v1/shared/user/profile/get
@@ -452,6 +534,7 @@ Processes `x-custom-lang` header for internationalization.
 **Implementation:** `RequestCustomLanguageMiddleware`
 
 **Usage:**
+
 ```bash
 # Request header
 x-custom-lang: id
@@ -473,6 +556,7 @@ Processes the `x-workspace-id` header for workspace scoping.
 **Implementation:** `RequestWorkspaceMiddleware`
 
 **Usage:**
+
 ```bash
 # Request header
 x-workspace-id: 6650f0c5a1b2c3d4e5f60718
@@ -500,6 +584,7 @@ Measures request duration using [response-time][ref-response-time].
 **Implementation:** `RequestResponseTimeMiddleware`
 
 **Header Example:**
+
 ```
 X-Response-Time: 123.456ms
 ```
@@ -511,6 +596,7 @@ Prevents long-running requests.
 **Implementation:** `RequestTimeoutInterceptor`
 
 **Global Registration:** `RequestModule.forRoot()` provides it as an `APP_INTERCEPTOR`, alongside `RequestActorInterceptor` and the global `RequestSchemaValidationPipe`.
+
 ```typescript
 {
   provide: APP_INTERCEPTOR,
@@ -537,12 +623,12 @@ Per-request ambient metadata is carried in the generic `RequestStoreService` (`s
 **Keys (`request.constant.ts`):**
 
 | Key | Written by | Holds |
-|---|---|---|
+| --- | --- | --- |
 | `RequestLogStoreKey` | `RequestRequestLogMiddleware` (`RequestUtil.buildRequestLog(req)`) | `IRequestLog` (`userAgent` / `ipAddress` / `geoLocation`), computed once per request |
 | `RequestLanguageStoreKey` | `RequestCustomLanguageMiddleware` | resolved language code |
 | `RequestVersionStoreKey` | `RequestUrlVersionMiddleware` | resolved API version |
-| `RequestIdStoreKey` | `RequestRequestIdMiddleware` | `req.id` (dual-write) |
-| `RequestCorrelationIdStoreKey` | `RequestRequestIdMiddleware` | `req.correlationId` (dual-write) |
+| `RequestIdStoreKey` | `RequestRequestIdMiddleware` | the request id also set on `req.id` |
+| `RequestCorrelationIdStoreKey` | `RequestRequestIdMiddleware` | the correlation id also set on `req.correlationId` |
 | `RequestActorStoreKey` | `RequestActorInterceptor` | `req.user.userId`, set only when the request is authenticated |
 | `RequestThrottleHandledStoreKey` | `RequestThrottleUserInterceptor` | `true` once the per-user limiter has run for this request; NestJS mounts the interceptor once per `@RequestThrottle` on the handler, and the flag keeps a second mount from counting a second hit |
 | `RequestWorkspaceIdStoreKey` | `RequestWorkspaceMiddleware` | the raw `x-workspace-id` header, or `null` |
@@ -550,7 +636,7 @@ Per-request ambient metadata is carried in the generic `RequestStoreService` (`s
 Feature modules own the rest of the keys, each declared in its own `constants/` file:
 
 | Key | Written by | Holds |
-|---|---|---|
+| --- | --- | --- |
 | `AuthPayloadStoreKey` | `AuthJwtAccessGuard`, `AuthJwtRefreshGuard` | the verified JWT payload |
 | `UserStoreKey` | `UserGuard` | the loaded `IUser` |
 | `ApiKeyStoreKey` | `ApiKeyXApiKeyGuard` | the authenticated `ApiKey` |
@@ -574,7 +660,8 @@ Feature modules own the rest of the keys, each declared in its own `constants/` 
 
 `ClsModule.forRoot({ global: true, middleware: { mount: true } })` is registered in `RequestModule` (before `RequestMiddlewareModule`).
 
-- `ClsMiddleware` therefore mounts the store before any request middleware writes to it.
+- `ClsMiddleware` runs before the chain, so the store exists before any request middleware writes to it.
+- `RequestRequestIdMiddleware` writes the two id keys.
 - Each writer middleware sets only its own key.
 
 **Queue boundary exception:**
@@ -590,6 +677,7 @@ Feature modules own the rest of the keys, each declared in its own `constants/` 
 Sets custom timeout for specific endpoints.
 
 **Signature:**
+
 ```typescript
 RequestTimeout(seconds: ms.StringValue): MethodDecorator
 ```
@@ -601,6 +689,7 @@ Photo upload and user import both set `@RequestTimeout('1m')`.
 Restricts endpoint access based on environment.
 
 **Signature:**
+
 ```typescript
 RequestEnvProtected(...envs: EnumAppEnvironment[]): MethodDecorator
 ```
@@ -613,6 +702,7 @@ RequestEnvProtected(...envs: EnumAppEnvironment[]): MethodDecorator
 Switches on the opt-in `user` and `route` limiters for one endpoint, on top of the always-on global per-IP limiter.
 
 **Signature:**
+
 ```typescript
 RequestThrottle(options: IRequestThrottleOptions): MethodDecorator
 
@@ -623,6 +713,7 @@ interface IRequestThrottleOptions {
 ```
 
 **Example:**
+
 ```typescript
 @TermPolicyAcceptanceProtected()
 @UserProtected()
@@ -667,7 +758,7 @@ StoreReader<K extends Extract<keyof Model, string>>(field?: K): ParameterDecorat
 - A handler parameter therefore takes the non-null type, as in `@UserCurrent() user: IUser`.
 
 | Decorator | Reads | Store key | Written by |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `@RequestIPAddress()`, `@RequestGeoLocation()`, `@RequestUserAgent()` | one fixed field of the request log, no argument | `RequestLogStoreKey` | `RequestRequestLogMiddleware` |
 | `@UserCurrent(field?)` | `IUser` | `UserStoreKey` | `UserGuard` |
 | `@RoleCurrent(field?)` | `IRoleWithPolicies`, the role on the stored user | `UserStoreKey` | `UserGuard` |
@@ -681,7 +772,6 @@ StoreReader<K extends Extract<keyof Model, string>>(field?: K): ParameterDecorat
 - `@ProjectMemberCurrent()` is valid only on a route carrying the role-less `@ProjectMemberProtected()`. The role form binds `ProjectRoleGuard` instead, which stores no member row, so the read throws there.
 - `@AuthJwtPayload<T, K>(field?)` reads `request.user` rather than the store, and fails the same way: an empty `request.user`, or a missing field on it, throws `RequestContextMissingException`. See [Authentication][ref-doc-authentication].
 
-
 <!-- REFERENCES -->
 
 [ref-helmet]: https://helmetjs.github.io
@@ -689,10 +779,10 @@ StoreReader<K extends Extract<keyof Model, string>>(field?: K): ParameterDecorat
 [ref-compression]: https://www.npmjs.com/package/compression
 [ref-response-time]: https://www.npmjs.com/package/response-time
 [ref-ms]: https://github.com/vercel/ms
-
 [ref-doc-authentication]: authentication.md
 [ref-doc-authorization]: authorization.md
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
 [ref-doc-handling-error]: handling-error.md
 [ref-doc-cache]: cache.md
+[ref-doc-logger]: logger.md

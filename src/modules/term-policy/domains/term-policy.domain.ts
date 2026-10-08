@@ -258,12 +258,25 @@ export class TermPolicyDomain {
             // Sequential by design: write must not run if an earlier step throws
             const events = await this.databaseService.withTransaction(
                 async tx => {
-                    const row = await this.termPolicyRepository.publishInTx(
+                    const published =
+                        await this.termPolicyRepository.publishInTx(
+                            tx,
+                            termPolicyId,
+                            newContents
+                        );
+                    if (!published) {
+                        throw new TermPolicyStatusInvalidException();
+                    }
+
+                    const row = await this.termPolicyRepository.findOneByIdInTx(
                         tx,
-                        termPolicyId,
-                        newContents
+                        termPolicyId
                     );
-                    await this.userDomain.resetTermPolicyForActiveUsersInTx(
+                    if (!row) {
+                        throw new TermPolicyNotFoundException();
+                    }
+
+                    await this.userDomain.resetTermPolicyInTx(
                         tx,
                         termPolicy.type
                     );
@@ -282,6 +295,7 @@ export class TermPolicyDomain {
 
             await this.notificationQueue.sendPublishTermPolicy(
                 {
+                    termPolicyId,
                     type: termPolicy.type,
                     version: termPolicy.version,
                 },

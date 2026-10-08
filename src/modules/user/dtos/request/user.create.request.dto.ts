@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { validateEmail } from '@common/request/validations/request.custom-email.validation';
+import { RequestEmailSchema } from '@common/request/validations/request.email.validation';
 import { UserClaimUsernameRequestSchema } from '@modules/user/dtos/request/user.claim-username.request.dto';
 
 /**
@@ -13,15 +13,7 @@ export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
         .trim()
         .toLowerCase()
         .max(100)
-        .superRefine((value, ctx) => {
-            const validation = validateEmail(value);
-            if (!validation.validated) {
-                ctx.addIssue({
-                    code: 'custom',
-                    message: validation.messagePath,
-                });
-            }
-        })
+        .pipe(RequestEmailSchema)
         .meta({
             description: 'Email address of the user to create',
             example: faker.internet.email(),

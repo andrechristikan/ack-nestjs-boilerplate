@@ -15,10 +15,6 @@ import {
     LoggerRedactedValue,
     LoggerRedactMaxArrayLength,
 } from '@common/logger/constants/logger.constant';
-import {
-    RequestCorrelationIdHeaderName,
-    RequestIdHeaderName,
-} from '@common/request/constants/request.constant';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 
 describe('LoggerUtil', () => {
@@ -57,46 +53,6 @@ describe('LoggerUtil', () => {
         }).compile();
 
         util = module.get(LoggerUtil);
-    });
-
-    describe('getRequestId', () => {
-        it('returns request.id when there are no headers', () => {
-            const request = {
-                ...baseRequest,
-                id: 'fallback',
-                headers: undefined,
-            } as unknown as IRequestApp;
-
-            expect(util.getRequestId(request)).toBe('fallback');
-        });
-
-        it('returns the correlation id header when present', () => {
-            const request = {
-                ...baseRequest,
-                headers: { [RequestCorrelationIdHeaderName]: 'corr-1' },
-            } as unknown as IRequestApp;
-
-            expect(util.getRequestId(request)).toBe('corr-1');
-        });
-
-        it('falls back to the request id header when correlation id is absent', () => {
-            const request = {
-                ...baseRequest,
-                headers: { [RequestIdHeaderName]: 'req-2' },
-            } as unknown as IRequestApp;
-
-            expect(util.getRequestId(request)).toBe('req-2');
-        });
-
-        it('falls back to request.id when neither header is present', () => {
-            const request = {
-                ...baseRequest,
-                id: 'fallback-2',
-                headers: {},
-            } as unknown as IRequestApp;
-
-            expect(util.getRequestId(request)).toBe('fallback-2');
-        });
     });
 
     describe('sanitizeMessage', () => {
@@ -167,8 +123,8 @@ describe('LoggerUtil', () => {
 
             const result = util.serializeRequest(request);
 
+            expect(result).not.toHaveProperty('id');
             expect(result).toMatchObject({
-                id: 'req-3',
                 method: 'POST',
                 route: '/api/user',
                 userAgent: 'agent',

@@ -18,12 +18,12 @@ import { TermPolicyDomainModule } from '@modules/term-policy/term-policy.domain.
 import { FirebaseModule } from '@common/firebase/firebase.module';
 import { ActivityLogDomainModule } from '@modules/activity-log/activity-log.domain.module';
 import { NotificationDomainModule } from '@modules/notification/notification.domain.module';
-import { AppEnvSchema } from '@app/dtos/app.env.dto';
 import { SessionDomainModule } from '@modules/session/session.domain.module';
 import { PolicyDomainModule } from '@modules/policy/policy.domain.module';
 import { RoleDomainModule } from '@modules/role/role.domain.module';
 import { FeatureFlagDomainModule } from '@modules/feature-flag/feature-flag.domain.module';
 import { SentryModule } from '@common/sentry/sentry.module';
+import { AppEnvSchema } from '@app/dtos/app.env.dto';
 
 /**
  * Composes kit `forRoot()` modules and the app-wide `@Global()` feature domains.
@@ -42,7 +42,7 @@ import { SentryModule } from '@common/sentry/sentry.module';
             load: configs,
             isGlobal: true,
             cache: true,
-            envFilePath: ['.env', `.env.${process.env.NODE_ENV ?? 'local'}`],
+            envFilePath: ['.env'],
             expandVariables: false,
             validationSchema: AppEnvSchema,
         }),

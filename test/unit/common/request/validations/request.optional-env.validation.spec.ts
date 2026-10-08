@@ -5,61 +5,47 @@ import {
     RequestOptionalEnvSesIdentityArnSchema,
     RequestOptionalEnvStringSchema,
     RequestOptionalEnvUrlNoTrailingSlashSchema,
-    readOptionalEnv,
+    RequestOptionalEnvUrlSchema,
 } from '@common/request/validations/request.optional-env.validation';
 
 describe('request.optional-env.validation', () => {
-    describe('readOptionalEnv', () => {
-        it('returns null for an absent value', () => {
-            expect(readOptionalEnv(undefined)).toBeNull();
+    describe('RequestOptionalEnvSchema', () => {
+        it('parses an absent value to null', () => {
+            expect(RequestOptionalEnvSchema.parse(undefined)).toBeNull();
         });
 
-        it('returns null for an empty string', () => {
-            expect(readOptionalEnv('')).toBeNull();
+        it('parses an empty string to null', () => {
+            expect(RequestOptionalEnvSchema.parse('')).toBeNull();
         });
 
-        it('returns a non-empty value as it is', () => {
-            expect(readOptionalEnv('eu-west-1')).toBe('eu-west-1');
+        it('parses a non-empty value as it is', () => {
+            expect(RequestOptionalEnvSchema.parse('eu-west-1')).toBe(
+                'eu-west-1'
+            );
         });
 
         it('keeps a whitespace-only value', () => {
-            expect(readOptionalEnv(' ')).toBe(' ');
-        });
-    });
-
-    describe('RequestOptionalEnvSchema', () => {
-        const schema = RequestOptionalEnvSchema(z.email());
-
-        it('parses an absent value to undefined', () => {
-            expect(schema.parse(undefined)).toBeUndefined();
+            expect(RequestOptionalEnvSchema.parse(' ')).toBe(' ');
         });
 
-        it('parses an empty string to undefined', () => {
-            expect(schema.parse('')).toBeUndefined();
+        it('parses a missing key inside an object to null', () => {
+            const schema = z.object({ KEY: RequestOptionalEnvSchema });
+
+            expect(schema.parse({})).toEqual({ KEY: null });
         });
 
-        it('parses a value that satisfies the wrapped schema', () => {
-            expect(schema.parse('a@b.co')).toBe('a@b.co');
-        });
-
-        it('rejects a value the wrapped schema rejects', () => {
-            expect(schema.safeParse('not-an-email').success).toBe(false);
-        });
-
-        it('rejects a whitespace-only value', () => {
-            expect(schema.safeParse(' ').success).toBe(false);
+        it('rejects a value that is not a string', () => {
+            expect(RequestOptionalEnvSchema.safeParse(1).success).toBe(false);
         });
     });
 
     describe('RequestOptionalEnvStringSchema', () => {
-        it('parses an absent value to undefined', () => {
-            expect(
-                RequestOptionalEnvStringSchema.parse(undefined)
-            ).toBeUndefined();
+        it('parses an absent value to null', () => {
+            expect(RequestOptionalEnvStringSchema.parse(undefined)).toBeNull();
         });
 
-        it('parses an empty string to undefined', () => {
-            expect(RequestOptionalEnvStringSchema.parse('')).toBeUndefined();
+        it('parses an empty string to null', () => {
+            expect(RequestOptionalEnvStringSchema.parse('')).toBeNull();
         });
 
         it('parses a non-empty string', () => {
@@ -68,8 +54,8 @@ describe('request.optional-env.validation', () => {
     });
 
     describe('RequestOptionalEnvEmailSchema', () => {
-        it('parses an empty string to undefined', () => {
-            expect(RequestOptionalEnvEmailSchema.parse('')).toBeUndefined();
+        it('parses an empty string to null', () => {
+            expect(RequestOptionalEnvEmailSchema.parse('')).toBeNull();
         });
 
         it('parses a valid email address', () => {
@@ -78,25 +64,28 @@ describe('request.optional-env.validation', () => {
             ).toBe('noreply@mail.com');
         });
 
-        it('rejects an email address the custom validator refuses with its message path', () => {
+        it('rejects an invalid email address with one issue carrying the message path', () => {
             const result =
                 RequestOptionalEnvEmailSchema.safeParse('not-an-email');
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
+            expect(result.error?.issues).toEqual([
                 expect.objectContaining({
                     code: 'custom',
                     message: 'request.error.email.invalid',
-                })
-            );
+                }),
+            ]);
+        });
+
+        it('keeps the case of a valid email address', () => {
+            expect(
+                RequestOptionalEnvEmailSchema.parse('NoReply@Mail.com')
+            ).toBe('NoReply@Mail.com');
         });
     });
 
     describe('RequestOptionalEnvSesIdentityArnSchema', () => {
-        it('parses an empty string to undefined', () => {
-            expect(
-                RequestOptionalEnvSesIdentityArnSchema.parse('')
-            ).toBeUndefined();
+        it('parses an empty string to null', () => {
+            expect(RequestOptionalEnvSesIdentityArnSchema.parse('')).toBeNull();
         });
 
         it('parses an SES identity ARN', () => {
@@ -115,10 +104,10 @@ describe('request.optional-env.validation', () => {
     });
 
     describe('RequestOptionalEnvUrlNoTrailingSlashSchema', () => {
-        it('parses an empty string to undefined', () => {
+        it('parses an empty string to null', () => {
             expect(
                 RequestOptionalEnvUrlNoTrailingSlashSchema.parse('')
-            ).toBeUndefined();
+            ).toBeNull();
         });
 
         it('parses a URL without a trailing slash', () => {
@@ -134,6 +123,28 @@ describe('request.optional-env.validation', () => {
                 RequestOptionalEnvUrlNoTrailingSlashSchema.safeParse(
                     'http://localhost:4566/'
                 ).success
+            ).toBe(false);
+        });
+    });
+
+    describe('RequestOptionalEnvUrlSchema', () => {
+        it('parses an absent value to null', () => {
+            expect(RequestOptionalEnvUrlSchema.parse(undefined)).toBeNull();
+        });
+
+        it('parses an empty string to null', () => {
+            expect(RequestOptionalEnvUrlSchema.parse('')).toBeNull();
+        });
+
+        it('parses a valid URL', () => {
+            const dsn = 'https://key@o0.ingest.sentry.io/1';
+
+            expect(RequestOptionalEnvUrlSchema.parse(dsn)).toBe(dsn);
+        });
+
+        it('rejects a value that is not a URL', () => {
+            expect(
+                RequestOptionalEnvUrlSchema.safeParse('not-a-url').success
             ).toBe(false);
         });
     });

@@ -226,6 +226,48 @@ export class MigrationWorkspaceSeed
 
             await this.databaseService.withTransaction(
                 async tx => {
+                    const seededProjects = await tx.project.findMany({
+                        where: {
+                            workspaceId: {
+                                in: workspaceIds,
+                            },
+                        },
+                        select: {
+                            id: true,
+                        },
+                    });
+                    const projectIds = seededProjects.map(
+                        project => project.id
+                    );
+
+                    await tx.projectMember.deleteMany({
+                        where: {
+                            projectId: {
+                                in: projectIds,
+                            },
+                        },
+                    });
+                    await tx.workspaceInvite.deleteMany({
+                        where: {
+                            workspaceId: {
+                                in: workspaceIds,
+                            },
+                        },
+                    });
+                    await tx.workspaceJoinRequest.deleteMany({
+                        where: {
+                            workspaceId: {
+                                in: workspaceIds,
+                            },
+                        },
+                    });
+                    await tx.project.deleteMany({
+                        where: {
+                            workspaceId: {
+                                in: workspaceIds,
+                            },
+                        },
+                    });
                     await tx.activityLog.deleteMany({
                         where: {
                             workspaceId: {

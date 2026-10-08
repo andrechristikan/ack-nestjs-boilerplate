@@ -24,18 +24,14 @@ export async function createFirebaseService(
     doubles: IFirebaseServiceDoubles,
     rawPrivateKey: string | null = 'raw-private-key'
 ): Promise<FirebaseService> {
-    const servicePromise = import('@common/firebase/services/firebase.service');
-    const utilPromise = import('@common/firebase/utils/firebase.util');
-    const helperArrayServicePromise =
-        import('@common/helper/services/helper.array.service');
     const [
         { FirebaseService: FirebaseServiceClass },
         { FirebaseUtil: FirebaseUtilClass },
         { HelperArrayService: HelperArrayServiceClass },
     ] = await Promise.all([
-        servicePromise,
-        utilPromise,
-        helperArrayServicePromise,
+        import('@common/firebase/services/firebase.service'),
+        import('@common/firebase/utils/firebase.util'),
+        import('@common/helper/services/helper.array.service'),
     ]);
     const configService = buildConfigService({
         'firebase.projectId': credentials.projectId,
@@ -66,13 +62,10 @@ export async function createInitializedFirebaseService(
     doubles: IFirebaseServiceDoubles,
     messaging: MockProxy<Messaging>
 ): Promise<FirebaseService> {
-    const firebaseAdminPromise = import('firebase-admin');
-    const messagingModulePromise = import('firebase-admin/messaging');
-    const servicePromise = createFirebaseService(credentials, doubles);
     const [firebaseAdmin, { getMessaging }, initialized] = await Promise.all([
-        firebaseAdminPromise,
-        messagingModulePromise,
-        servicePromise,
+        import('firebase-admin'),
+        import('firebase-admin/messaging'),
+        createFirebaseService(credentials, doubles),
     ]);
     const app = {} as FirebaseApp;
     vi.mocked(firebaseAdmin.cert).mockReturnValue('credential' as never);

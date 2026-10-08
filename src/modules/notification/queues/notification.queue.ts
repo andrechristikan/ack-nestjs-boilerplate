@@ -3,7 +3,7 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import {
     NotificationPayloadEncryptionPurpose,
     NotificationReferenceJobIdPattern,
-    NotificationTermPolicyJobIdPattern,
+    NotificationTermPolicyPublishJobIdPattern,
     NotificationUserJobIdPattern,
     NotificationUserTermPolicyJobIdPattern,
     NotificationWorkspaceUserJobIdPattern,
@@ -450,12 +450,11 @@ export class NotificationQueue {
                 data: payload,
             };
 
-        const deduplicationId = this.helperStringService.fillPattern(
-            NotificationTermPolicyJobIdPattern,
+        const jobId = this.helperStringService.fillPattern(
+            NotificationTermPolicyPublishJobIdPattern,
             {
                 process: EnumNotificationProcess.publishTermPolicy,
-                type: payload.type,
-                version: String(payload.version),
+                termPolicyId: payload.termPolicyId,
             }
         );
 
@@ -464,10 +463,7 @@ export class NotificationQueue {
             queuePayload,
             {
                 priority: EnumQueuePriority.medium,
-                deduplication: {
-                    id: deduplicationId,
-                    ttl: this.dedupTtlInMs,
-                },
+                jobId,
             }
         );
     }

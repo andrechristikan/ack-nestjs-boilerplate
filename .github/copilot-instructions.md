@@ -1,7 +1,6 @@
 # GitHub Copilot instructions
 
-`AGENTS.md` at the repository root is the shared digest; this file adds what an inline
-suggestion needs beyond it. When this file and a rule in `.claude/rules/` disagree, the rule wins.
+`AGENTS.md` at the repository root is the shared digest; this file adds what an inline suggestion needs beyond it. When this file and a rule in `.claude/rules/` disagree, the rule wins.
 
 ## Route decorator order
 
@@ -28,21 +27,15 @@ The decorator nearest the method runs first. Keep this order; omit what a route 
 @Get('/endpoint')                      // 18. HTTP method, always last
 ```
 
-`@RequestThrottle` takes `{ user: true, route? }` on a JWT route and `{ route }` only on `public` and `system`.
-A creating `@Post` keeps 201. An admin-scope controller carries no `Workspace*` or `Project*` guard.
-An endpoint body is `return this.<module>HttpService.<method>(...);`: the HTTP service builds every envelope, `{}` included.
+`@RequestThrottle` takes `{ user: true, route? }` on a JWT route and `{ route }` only on `public` and `system`. A creating `@Post` keeps 201. An admin-scope controller carries no `Workspace*` or `Project*` guard. An endpoint body is `return this.<module>HttpService.<method>(...);`: the HTTP service builds every envelope, `{}` included.
 
 ## DTOs are zod
 
-A `*.dto.ts` file exports one schema const and its type: `export const XRequestSchema = z.strictObject({ ... })`,
-`export type XRequestDto = z.infer<typeof XRequestSchema>`. A response schema is `z.object`. No hand-written interface
-beside a schema, no class DTO. Folders: `dtos/request/`, `dtos/response/`. Rule: `.claude/rules/dto.md`.
+A `*.dto.ts` file exports one schema const and its type: `export const XRequestSchema = z.strictObject({ ... })`, `export type XRequestDto = z.infer<typeof XRequestSchema>`. A response schema is `z.object`. No hand-written interface beside a schema, no class DTO. Folders: `dtos/request/`, `dtos/response/`. Rule: `.claude/rules/dto.md`.
 
 ## Concurrency
 
-Async-first: independent operations always run concurrently. Start each into a `const`, then `await Promise.all([...])`
-when one failure fails the whole, `await Promise.allSettled([...])` when each outcome is handled on its own. A sequential
-`await` of independent work is a defect outside the commented cases in `.claude/rules/code-style.md`.
+Async-first: independent operations run concurrently, each call written directly as an element of `Promise.all([...])` (one failure fails the whole) or `Promise.allSettled([...])` (each outcome handled on its own). A `const` holds a promise, and a sequential `await` runs independent work, only in the cases `.claude/rules/code-style.md` lists.
 
 ## Imports
 
@@ -50,10 +43,7 @@ Aliases: `tsconfig.json` `paths`. A class Nest injects is a value import, not `i
 
 ## Tests
 
-A spec mirrors its subject's `src/` path under `test/unit/`, `test/integration/`, or `test/e2e/`; an e2e flow
-across several routes is `test/e2e/flows/<module>.<flow>.spec.ts`. `pnpm test user` filters unit specs, and
-`pnpm test:integration` and `pnpm test:e2e` need Docker. Functions and arrows in a spec: the `ts/test-spec` block
-in `eslint.config.mjs`; reused logic is a helper. Rule: `.claude/rules/testing.md`.
+A spec mirrors its subject's `src/` path under `test/unit/`, `test/integration/`, or `test/e2e/`; an e2e flow across several routes is `test/e2e/flows/<module>.<flow>.spec.ts`. `pnpm test user` filters unit specs, and `pnpm test:integration` and `pnpm test:e2e` need Docker. Functions and arrows in a spec: the `ts/test-spec` block in `eslint.config.mjs`; reused logic is a helper. Rule: `.claude/rules/testing.md`.
 
 ## Prisma schema
 

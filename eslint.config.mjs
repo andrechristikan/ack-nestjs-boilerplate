@@ -149,7 +149,7 @@ const newDateRestriction = {
 };
 
 const orderDirectionRestriction = {
-    selector: 'Literal[value=/^(asc|desc)$/]',
+    selector: 'Literal[value=/^(asc|desc)$/]:not(TSEnumMember > Literal)',
     message: 'Use EnumPaginationOrderDirectionType.',
 };
 
@@ -270,7 +270,6 @@ const codeQualityRules = {
     ],
     'prefer-const': 'error',
     'no-var': 'error',
-    'no-await-in-loop': 'error',
     'no-console': 'warn',
     eqeqeq: ['error', 'always', { null: 'ignore' }],
     'no-multiple-empty-lines': ['error', { max: 1, maxEOF: 1 }],
@@ -358,7 +357,7 @@ export default [
         },
         linterOptions: {
             noInlineConfig: true,
-            reportUnusedDisableDirectives: true,
+            reportUnusedDisableDirectives: 'error',
         },
         plugins: {
             '@typescript-eslint': tsEsLintPlugin,
@@ -373,85 +372,11 @@ export default [
         },
     },
     {
-        name: 'code-style/zod-preprocess-undefined-allowed',
-        files: [
-            'src/common/request/validations/request.optional-env.validation.ts',
-        ],
-        rules: {
-            'no-restricted-syntax': [
-                'error',
-                ...baseSyntaxRestrictions,
-                newDateRestriction,
-                orderDirectionRestriction,
-            ],
-        },
-    },
-    {
-        name: 'ts/database-inferred-client',
-        files: [
-            'src/common/database/utils/database.extension.util.ts',
-            'src/common/database/factories/database.client.factory.ts',
-        ],
-        languageOptions: {
-            ecmaVersion: 'latest',
-            sourceType: 'module',
-            parser: tsParser,
-            parserOptions: {
-                project: 'tsconfig.json',
-                tsconfigRootDir: import.meta.dirname,
-            },
-        },
-        linterOptions: {
-            noInlineConfig: true,
-            reportUnusedDisableDirectives: true,
-        },
-        plugins: {
-            '@typescript-eslint': tsEsLintPlugin,
-            security,
-        },
-        rules: {
-            ...rules,
-            ...codeQualityRules,
-            ...securityRules,
-            ...importOrderRules,
-            ...codeStyleRules,
-            '@typescript-eslint/explicit-function-return-type': 'off',
-            '@typescript-eslint/explicit-module-boundary-types': 'off',
-        },
-    },
-    {
-        name: 'code-style/await-in-loop-allowed',
-        files: [
-            'src/migration/seeds/**/*.ts',
-            'src/modules/notification/repositories/notification.repository.ts',
-            'src/modules/term-policy/domains/term-policy.acceptance.domain.ts',
-            'src/modules/workspace/domains/workspace.domain.ts',
-            'src/modules/project/repositories/project.repository.ts',
-            'src/common/aws/services/aws.s3.service.ts',
-            'src/modules/analytic/domains/analytic.fraud.domain.ts',
-            'src/modules/notification/domains/notification.email.term-policy.domain.ts',
-            'src/modules/notification/domains/notification.term-policy.domain.ts',
-            'src/common/file/pipes/file.csv-validation.pipe.ts',
-        ],
-        rules: { 'no-await-in-loop': 'off' },
-    },
-    {
-        name: 'code-style/new-date-allowed',
-        files: ['src/configs/**/*.ts'],
-        rules: {
-            'no-restricted-syntax': [
-                'error',
-                ...codeStyleSyntaxRestrictions,
-                orderDirectionRestriction,
-            ],
-        },
-    },
-    {
-        name: 'code-style/process-env-allowed',
+        name: 'ts/env-boundary',
         files: [
             'src/configs/**/*.ts',
-            'src/common/common.module.ts',
             'src/main.ts',
+            'src/instrument.ts',
             'src/queues/decorators/queue.decorator.ts',
         ],
         rules: {
@@ -459,19 +384,8 @@ export default [
         },
     },
     {
-        name: 'code-style/order-direction-allowed',
-        files: ['src/common/pagination/enums/pagination.enum.ts'],
-        rules: {
-            'no-restricted-syntax': [
-                'error',
-                ...codeStyleSyntaxRestrictions,
-                newDateRestriction,
-            ],
-        },
-    },
-    {
-        name: 'ts/scripts',
-        files: ['scripts/**/*.ts'],
+        name: 'ts/other',
+        files: ['scripts/**/*.ts', 'vitest.config.ts'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',
@@ -483,59 +397,13 @@ export default [
         },
         linterOptions: {
             noInlineConfig: true,
-            reportUnusedDisableDirectives: true,
+            reportUnusedDisableDirectives: 'error',
         },
         plugins: {
             '@typescript-eslint': tsEsLintPlugin,
-            security,
         },
         rules: {
             ...rules,
-            ...codeQualityRules,
-            ...securityRules,
-            ...importOrderRules,
-            'no-console': 'off',
-        },
-    },
-    {
-        name: 'ts/vitest-config',
-        files: ['vitest.config.ts'],
-        languageOptions: {
-            ecmaVersion: 'latest',
-            sourceType: 'module',
-            parser: tsParser,
-            parserOptions: {
-                project: 'tsconfig.json',
-                tsconfigRootDir: import.meta.dirname,
-            },
-        },
-        linterOptions: {
-            noInlineConfig: true,
-            reportUnusedDisableDirectives: true,
-        },
-        plugins: {
-            '@typescript-eslint': tsEsLintPlugin,
-            security,
-        },
-        rules: {
-            ...rules,
-            ...codeQualityRules,
-            ...securityRules,
-            ...importOrderRules,
-        },
-    },
-    {
-        name: 'security/non-literal-fs-allowed',
-        files: [
-            'src/modules/notification/domains/notification.template.*.domain.ts',
-            'src/modules/term-policy/domains/term-policy.template.domain.ts',
-            'scripts/**/*.ts',
-        ],
-        plugins: {
-            security,
-        },
-        rules: {
-            'security/detect-non-literal-fs-filename': 'off',
         },
     },
     {
@@ -551,8 +419,8 @@ export default [
             },
         },
         linterOptions: {
-            noInlineConfig: false,
-            reportUnusedDisableDirectives: true,
+            noInlineConfig: true,
+            reportUnusedDisableDirectives: 'error',
         },
         plugins: {
             '@typescript-eslint': tsEsLintPlugin,
@@ -575,11 +443,18 @@ export default [
             ],
             'no-restricted-imports': [
                 'error',
-                { patterns: [relativeImportPattern] },
+                {
+                    paths: restrictedImportPaths,
+                    patterns: [
+                        ...restrictedImportPatterns,
+                        relativeImportPattern,
+                    ],
+                },
             ],
             'no-restricted-syntax': ['error', ...testSyntaxRestrictions],
             'no-restricted-properties': [
                 'error',
+                mathRandomRestriction,
                 {
                     object: 'vi',
                     property: 'clearAllMocks',

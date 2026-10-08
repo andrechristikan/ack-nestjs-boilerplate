@@ -29,7 +29,19 @@ describe('ResponseMetadataSchema', () => {
     });
 
     it('rejects a missing required field', () => {
+        const { language: _language, ...incomplete } = payload;
+
+        expect(() => ResponseMetadataSchema.parse(incomplete)).toThrow();
+    });
+
+    it('rejects a missing requestId', () => {
         const { requestId: _requestId, ...incomplete } = payload;
+
+        expect(() => ResponseMetadataSchema.parse(incomplete)).toThrow();
+    });
+
+    it('rejects a missing correlationId', () => {
+        const { correlationId: _correlationId, ...incomplete } = payload;
 
         expect(() => ResponseMetadataSchema.parse(incomplete)).toThrow();
     });

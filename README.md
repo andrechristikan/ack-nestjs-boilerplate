@@ -1,17 +1,6 @@
-[![Contributors][ack-contributors-shield]][ref-ack-contributors]
-[![Forks][ack-forks-shield]][ref-ack-forks]
-[![Stargazers][ack-stars-shield]][ref-ack-stars]
-[![Issues][ack-issues-shield]][ref-ack-issues]
-[![MIT License][ack-license-shield]][ref-ack-license]
+[![Contributors][ack-contributors-shield]][ref-ack-contributors] [![Forks][ack-forks-shield]][ref-ack-forks] [![Stargazers][ack-stars-shield]][ref-ack-stars] [![Issues][ack-issues-shield]][ref-ack-issues] [![MIT License][ack-license-shield]][ref-ack-license]
 
-[![NestJs][nestjs-shield]][ref-nestjs]
-[![NodeJs][nodejs-shield]][ref-nodejs]
-[![Typescript][typescript-shield]][ref-typescript]
-[![MongoDB][mongodb-shield]][ref-mongodb]
-[![JWT][jwt-shield]][ref-jwt]
-[![Vitest][vitest-shield]][ref-vitest]
-[![PNPM][pnpm-shield]][ref-pnpm]
-[![Docker][docker-shield]][ref-docker]
+[![NestJs][nestjs-shield]][ref-nestjs] [![NodeJs][nodejs-shield]][ref-nodejs] [![Typescript][typescript-shield]][ref-typescript] [![MongoDB][mongodb-shield]][ref-mongodb] [![JWT][jwt-shield]][ref-jwt] [![Vitest][vitest-shield]][ref-vitest] [![PNPM][pnpm-shield]][ref-pnpm] [![Docker][docker-shield]][ref-docker]
 
 # ACK NestJs Boilerplate 🔥 🚀
 
@@ -29,35 +18,34 @@ A good fit when you are building:
 - 🌐 **Multi-tenant SaaS**: Every user belongs to a workspace. Projects stay workspace-scoped, with invites and join requests
 - 💼 **Startup MVPs**: Auth, workspaces, notifications, and file upload already wired
 
-
 ## Table of Contents
 
 - [ACK NestJs Boilerplate 🔥 🚀](#ack-nestjs-boilerplate--)
     - [Ideal For](#ideal-for)
-  - [Table of Contents](#table-of-contents)
-  - [Important](#important)
-  - [TODO](#todo)
-    - [Next Features](#next-features)
-  - [Prerequisites](#prerequisites)
-  - [Build with](#build-with)
-  - [Objective](#objective)
-  - [Features](#features)
-    - [🔐 Authentication \& Security](#-authentication--security)
-    - [🌐 Workspaces \& Projects](#-workspaces--projects)
-    - [📊 Database \& Storage](#-database--storage)
-    - [🔔 Notifications](#-notifications)
-    - [📈 Analytics](#-analytics)
-    - [🩺 Monitoring](#-monitoring)
-    - [🛠 Development](#-development)
-  - [Quick Start](#quick-start)
-  - [Database](#database)
-  - [Installation](#installation)
-  - [Release](#release)
-  - [License](#license)
-  - [Contribute](#contribute)
-  - [Contributors](#contributors)
-  - [Contact](#contact)
-    - [Support This Project](#support-this-project)
+    - [Table of Contents](#table-of-contents)
+    - [Important](#important)
+    - [TODO](#todo)
+        - [Next Features](#next-features)
+    - [Prerequisites](#prerequisites)
+    - [Build with](#build-with)
+    - [Objective](#objective)
+    - [Features](#features)
+        - [🔐 Authentication \& Security](#-authentication--security)
+        - [🌐 Workspaces \& Projects](#-workspaces--projects)
+        - [📊 Database \& Storage](#-database--storage)
+        - [🔔 Notifications](#-notifications)
+        - [📈 Analytics](#-analytics)
+        - [🩺 Monitoring](#-monitoring)
+        - [🛠 Development](#-development)
+    - [Quick Start](#quick-start)
+    - [Database](#database)
+    - [Installation](#installation)
+    - [Release](#release)
+    - [License](#license)
+    - [Contribute](#contribute)
+    - [Contributors](#contributors)
+    - [Contact](#contact)
+        - [Support This Project](#support-this-project)
 
 ## Important
 
@@ -73,6 +61,7 @@ A good fit when you are building:
     - Swagger is off.
     - Sentry Logs only get `warn`, `error`, and `fatal` (other environments send every level).
 - Protection decorators follow a fixed stack. A route carries only the ones it needs, in this relative order:
+
     ```typescript
     @Doc({ summary: '…' })
     @Response('example.get')          // or @ResponsePagination / @ResponseFile
@@ -89,6 +78,7 @@ A good fit when you are building:
     @ApiKeyProtected()
     @Get('/some-endpoint')
     ```
+
     Nest runs the stack bottom-up, so a decorator that needs state from another one sits above it:
 
     - `@FeatureFlagProtected()` sits above `@AuthJwtAccessProtected()` so the flag guard can see `request.user`
@@ -98,6 +88,7 @@ A good fit when you are building:
         - rollout keys off the anonymous-ID header instead
 
     Full detail: [Authorization Documentation][ref-doc-authorization].
+
 - Activity logging is separate from the stack: domains stage events, and a global interceptor writes them.
 
 ## TODO
@@ -131,17 +122,17 @@ You will get more out of this project if you already know:
 
 Versions this project expects:
 
-| Name           | Version  |
-| -------------- | -------- |
-| NestJs         | v12.x    |
-| NodeJs         | >= 24.15.0 |
-| PNPM           | >= 10.25.0 (pin `pnpm@12.5.1`) |
-| TypeScript     | v6.0.x   |
-| Prisma         | v6.19.x  |
+| Name           | Version                                     |
+| -------------- | ------------------------------------------- |
+| NestJs         | v12.x                                       |
+| NodeJs         | >= 24.15.0                                  |
+| PNPM           | >= 10.25.0 (pin `pnpm@12.5.1`)              |
+| TypeScript     | v6.0.x                                      |
+| Prisma         | v6.19.x                                     |
 | MongoDB        | v8.0+ replica set (compose: `mongo:latest`) |
-| Redis          | v6.0+ (compose: `redis:latest`) |
-| Docker         | v28.5.x+ |
-| Docker Compose | v2.40.x+ |
+| Redis          | v6.0+ (compose: `redis:latest`)             |
+| Docker         | v28.5.x+                                    |
+| Docker Compose | v2.40.x+                                    |
 
 See [package.json][ref-package-json] for the full list.
 
@@ -283,19 +274,18 @@ Contributions are welcome. Start with [CONTRIBUTING.md][ref-doc-contributing].
 ## Contributors
 
 - [Gzerox][ref-contributor-gzerox]
-  - [Workspace][ref-doc-workspace]: main contributor
-  - [Project][ref-doc-project]: main contributor
+    - [Workspace][ref-doc-workspace]: main contributor
+    - [Project][ref-doc-project]: main contributor
 - [ak2g][ref-contributor-ak2g]
-  - [Two-Factor Authentication][ref-doc-two-factor]
-  - [Notification][ref-doc-notification]
+    - [Two-Factor Authentication][ref-doc-two-factor]
+    - [Notification][ref-doc-notification]
 
 ## Contact
 
 **Andre Christi Kan**  
 📧 [andrechristikan@gmail.com][ref-author-email]
 
-[![Github][github-shield]][ref-author-github]
-[![LinkedIn][linkedin-shield]][ref-author-linkedin]
+[![Github][github-shield]][ref-author-github] [![LinkedIn][linkedin-shield]][ref-author-linkedin]
 
 ### Support This Project
 
@@ -314,7 +304,6 @@ If this boilerplate helped you, buy me a coffee to keep this project alive.
     <img src='https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg' alt='Donate with PayPal' />
   </a>
 </div>
-
 
 <!-- REFERENCES -->
 

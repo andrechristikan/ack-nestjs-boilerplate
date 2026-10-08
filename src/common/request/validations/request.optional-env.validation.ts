@@ -1,51 +1,52 @@
 import { z } from 'zod';
-import { validateEmail } from '@common/request/validations/request.custom-email.validation';
+import { RequestEmailSchema } from '@common/request/validations/request.email.validation';
 import { RequestRequiredStringSchema } from '@common/request/validations/request.required-string.validation';
 import { RequestSesIdentityArnSchema } from '@common/request/validations/request.ses-identity-arn.validation';
 import { RequestUrlNoTrailingSlashSchema } from '@common/request/validations/request.url-no-trailing-slash.validation';
 
-const isBlankEnv = (value: unknown): boolean => value === '';
-
 /**
- * Reads an optional env value for config: an absent value and an empty string
- * (a blank `.env` line) both read as `null`.
- */
-export const readOptionalEnv = (value: string | undefined): string | null =>
-    isBlankEnv(value) ? null : (value ?? null);
-
-/**
- * Wraps an env schema so a third-party key is optional: an absent value and an
- * empty string (a blank `.env` line) both parse to `undefined`; any other
- * value must satisfy `schema`.
+ * Optional env value: an absent value and an empty string (a blank `.env` line) both parse to `null`.
  * @public
  */
-export const RequestOptionalEnvSchema = <T extends z.ZodType>(
-    schema: T
-): z.ZodPipe<z.core.$ZodTransform<unknown, unknown>, z.ZodOptional<T>> =>
-    z.preprocess(
-        value => (isBlankEnv(value) ? undefined : value),
-        schema.optional()
-    );
-
-export const RequestOptionalEnvStringSchema = RequestOptionalEnvSchema(
-    RequestRequiredStringSchema
+export const RequestOptionalEnvSchema = z.preprocess(
+    value => (value === '' ? null : (value ?? null)),
+    z.string().nullable()
 );
 
-export const RequestOptionalEnvEmailSchema = RequestOptionalEnvSchema(
-    z.string().superRefine((value, ctx) => {
-        const validation = validateEmail(value);
-        if (!validation.validated) {
-            ctx.addIssue({
-                code: 'custom',
-                message: validation.messagePath,
-            });
-        }
-    })
+/**
+ * Optional env string: blank or absent parses to `null`, a set value must be non-empty.
+ * @public
+ */
+export const RequestOptionalEnvStringSchema = RequestOptionalEnvSchema.pipe(
+    RequestRequiredStringSchema.nullable()
 );
 
-export const RequestOptionalEnvSesIdentityArnSchema = RequestOptionalEnvSchema(
-    RequestSesIdentityArnSchema
+/**
+ * Optional env email: blank or absent parses to `null`, a set value must be a valid email.
+ * @public
+ */
+export const RequestOptionalEnvEmailSchema = RequestOptionalEnvSchema.pipe(
+    RequestEmailSchema.nullable()
 );
 
+/**
+ * Optional env SES identity ARN: blank or absent parses to `null`, a set value must be an ARN.
+ * @public
+ */
+export const RequestOptionalEnvSesIdentityArnSchema =
+    RequestOptionalEnvSchema.pipe(RequestSesIdentityArnSchema.nullable());
+
+/**
+ * Optional env URL without a trailing slash: blank or absent parses to `null`.
+ * @public
+ */
 export const RequestOptionalEnvUrlNoTrailingSlashSchema =
-    RequestOptionalEnvSchema(RequestUrlNoTrailingSlashSchema);
+    RequestOptionalEnvSchema.pipe(RequestUrlNoTrailingSlashSchema.nullable());
+
+/**
+ * Optional env URL: blank or absent parses to `null`, a set value must be an absolute URL.
+ * @public
+ */
+export const RequestOptionalEnvUrlSchema = RequestOptionalEnvSchema.pipe(
+    z.url().nullable()
+);

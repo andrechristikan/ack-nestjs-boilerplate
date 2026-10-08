@@ -7,10 +7,10 @@ import { RequestBooleanStringSchema } from '@common/request/validations/request.
 import { RequestEncryptionSecretSchema } from '@common/request/validations/request.encryption-secret.validation';
 import {
     RequestOptionalEnvEmailSchema,
-    RequestOptionalEnvSchema,
     RequestOptionalEnvSesIdentityArnSchema,
     RequestOptionalEnvStringSchema,
     RequestOptionalEnvUrlNoTrailingSlashSchema,
+    RequestOptionalEnvUrlSchema,
 } from '@common/request/validations/request.optional-env.validation';
 
 /**
@@ -33,7 +33,7 @@ export const AppEnvSchema = z
 
         HTTP_HOST: z.string().min(1),
         HTTP_PORT: z.coerce.number().int(),
-        HTTP_TRUSTED_PROXY: z.string().optional(),
+        HTTP_TRUSTED_PROXY: RequestOptionalEnvStringSchema,
 
         LOGGER_ENABLE: RequestBooleanStringSchema,
         LOGGER_LEVEL: z.enum(EnumLoggerLevel),
@@ -55,18 +55,12 @@ export const AppEnvSchema = z
         AUTH_JWT_ACCESS_TOKEN_KID: z.string().min(1),
         AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY: z.string().min(1),
         AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY: z.string().min(1),
-        AUTH_JWT_ACCESS_TOKEN_EXPIRED: z
-            .string()
-            .min(1)
-            .regex(/^\d+[smhd]$/),
+        AUTH_JWT_ACCESS_TOKEN_EXPIRED: z.string().regex(/^\d+[smhd]$/),
         AUTH_JWT_REFRESH_TOKEN_JWKS_URI: z.string().min(1),
         AUTH_JWT_REFRESH_TOKEN_KID: z.string().min(1),
         AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY: z.string().min(1),
         AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY: z.string().min(1),
-        AUTH_JWT_REFRESH_TOKEN_EXPIRED: z
-            .string()
-            .min(1)
-            .regex(/^\d+[smhd]$/),
+        AUTH_JWT_REFRESH_TOKEN_EXPIRED: z.string().regex(/^\d+[smhd]$/),
 
         AUTH_TWO_FACTOR_ISSUER: z.string().min(1),
         AUTH_TWO_FACTOR_ENCRYPTION_KEY: RequestEncryptionSecretSchema,
@@ -94,7 +88,7 @@ export const AppEnvSchema = z
         CACHE_REDIS_URL: z.string().min(1),
         QUEUE_REDIS_URL: z.string().min(1),
 
-        SENTRY_DSN: RequestOptionalEnvSchema(z.url()),
+        SENTRY_DSN: RequestOptionalEnvUrlSchema,
 
         FIREBASE_PROJECT_ID: RequestOptionalEnvStringSchema,
         FIREBASE_CLIENT_EMAIL: RequestOptionalEnvEmailSchema,
@@ -122,8 +116,8 @@ export const AppEnvSchema = z
         };
 
         requireAll(
-            env.AWS_S3_IAM_CREDENTIAL_KEY !== undefined ||
-                env.AWS_S3_IAM_CREDENTIAL_SECRET !== undefined,
+            env.AWS_S3_IAM_CREDENTIAL_KEY !== null ||
+                env.AWS_S3_IAM_CREDENTIAL_SECRET !== null,
             [
                 'AWS_S3_IAM_CREDENTIAL_KEY',
                 'AWS_S3_IAM_CREDENTIAL_SECRET',
@@ -135,8 +129,8 @@ export const AppEnvSchema = z
         );
 
         requireAll(
-            env.AWS_SES_IAM_CREDENTIAL_KEY !== undefined ||
-                env.AWS_SES_IAM_CREDENTIAL_SECRET !== undefined,
+            env.AWS_SES_IAM_CREDENTIAL_KEY !== null ||
+                env.AWS_SES_IAM_CREDENTIAL_SECRET !== null,
             [
                 'AWS_SES_IAM_CREDENTIAL_KEY',
                 'AWS_SES_IAM_CREDENTIAL_SECRET',
@@ -148,9 +142,9 @@ export const AppEnvSchema = z
         );
 
         requireAll(
-            env.FIREBASE_PROJECT_ID !== undefined ||
-                env.FIREBASE_CLIENT_EMAIL !== undefined ||
-                env.FIREBASE_PRIVATE_KEY !== undefined,
+            env.FIREBASE_PROJECT_ID !== null ||
+                env.FIREBASE_CLIENT_EMAIL !== null ||
+                env.FIREBASE_PRIVATE_KEY !== null,
             [
                 'FIREBASE_PROJECT_ID',
                 'FIREBASE_CLIENT_EMAIL',

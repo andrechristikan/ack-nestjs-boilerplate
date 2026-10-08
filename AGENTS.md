@@ -1,8 +1,7 @@
 # ack-nestjs-boilerplate
 
-An opinionated, production-shaped NestJS starter. It is a boilerplate: no external client depends on it, so build
-the correct shape and change every call site. No compat flag, no `v1`/`v2` pair, no deprecated-but-kept field.
-Four domain groups:
+An opinionated, production-shaped NestJS starter. It is a boilerplate: no external client depends on it, so build the correct shape and change every call site. No compat flag, no `v1`/`v2` pair, no deprecated-but-kept field. Four domain groups:
+
 - identity and auth: JWT with JWKS, social sign-in, API keys, sessions, devices, two-factor
 - access control: roles, CASL policy abilities, term-policy gating, feature flags
 - workspace and project: mandatory multi-workspace, invites, join requests, workspace-scoped projects
@@ -10,20 +9,13 @@ Four domain groups:
 
 ## Stack
 
-NestJS, TypeScript strict, native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`), SWC
-build, Vitest with Testcontainers. Node and pnpm versions are `engines` and `packageManager` in `package.json`;
-pnpm only, `npm` and `yarn` are rejected by `engines` and by the `preinstall` guard. Prisma with a MongoDB replica
-set (transactions need one) and no migration files: `prisma db push` applies the schema. Redis `db:0` for cache
-(`CACHE_REDIS_URL`) and `db:1` for BullMQ (`QUEUE_REDIS_URL`). Every transport shape is a zod schema, validated
-by `RequestSchemaValidationPipe` on the way in and `ResponseInterceptor` on the way out; Swagger through
-`zod-openapi`; nestjs-i18n from `src/languages/`; Pino logging; Sentry (`src/instrument.ts`); nest-commander
-seeds (`src/migration.ts`); Vault for secrets.
+NestJS, TypeScript strict, native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`), SWC build, Vitest with Testcontainers. Node and pnpm versions are `engines` and `packageManager` in `package.json`; pnpm only, `npm` and `yarn` are rejected by `engines` and by the `preinstall` guard. Prisma with a MongoDB replica set (transactions need one) and no migration files: `prisma db push` applies the schema. Redis `db:0` for cache (`CACHE_REDIS_URL`) and `db:1` for BullMQ (`QUEUE_REDIS_URL`). Every transport shape is a zod schema, validated by `RequestSchemaValidationPipe` on the way in and `ResponseInterceptor` on the way out; Swagger through `zod-openapi`; nestjs-i18n from `src/languages/`; Pino logging; Sentry (`src/instrument.ts`); nest-commander seeds (`src/migration.ts`); Vault for secrets.
 
 ## Layout
 
 ```
-src/main.ts             HTTP bootstrap: Sentry, shutdown hooks, Swagger, listen
-src/configure.ts        NestFactory options and configure(app): logger, prefix, trusted proxy, versioning
+src/main.ts             HTTP bootstrap: Sentry, NestFactory with ConfigureOptions, NODE_ENV and TZ from config, shutdown hooks, configure(app), Swagger, listen
+src/configure.ts        ConfigureOptions (NestFactory options); configure(app): logger, prefix, trusted proxy, x-powered-by off, versioning
 src/migration.ts        nest-commander entrypoint, runs seeders
 src/instrument.ts       Sentry init and event scrubbing
 src/swagger.ts          OpenAPI document builder
@@ -51,29 +43,20 @@ generated/              swagger, vault init, agent reports under docs/, gitignor
 
 ## Layering
 
-Every feature module carries one shape: `Controller → HTTP Service → Domain → Repository`, with `Processor →
-Processor Service` joining at the domain (`.claude/rules/layering.md`). Only a repository queries
-`databaseService.client`, seeds and health indicators excepted (`.claude/rules/database.md`).
-`src/app/app.module.ts` registers the `APP_FILTER` providers general → base-exception → http → validation →
-validation-import; NestJS evaluates them in reverse, so the most specific runs first.
+Every feature module carries one shape: `Controller → HTTP Service → Domain → Repository`, with `Processor → Processor Service` joining at the domain (`.claude/rules/layering.md`). Only a repository queries `databaseService.client`, seeds and health indicators excepted (`.claude/rules/database.md`). `src/app/app.module.ts` registers the `APP_FILTER` providers general → base-exception → http → validation → validation-import; NestJS evaluates them in reverse, so the most specific runs first.
 
 ## Commands
 
 - `pnpm install` · `pnpm start:dev` · `pnpm build`
-- `pnpm generate`: `db:generate` (`prisma generate`) then `generate:package`. Run after a fresh checkout
-  and after a `package.json` version bump. `db:generate`, `db:format` and `prisma validate` touch files only.
+- `pnpm generate`: `db:generate` (`prisma generate`) then `generate:package`. Run after a fresh checkout and after a `package.json` version bump. `db:generate`, `db:format` and `prisma validate` touch files only.
 - `pnpm typecheck` · `pnpm test` (unit) · `pnpm test <path-filter>` · `pnpm test:cov` (unit coverage)
 - `pnpm test:integration` · `pnpm test:e2e`: need a running Docker daemon; they start throwaway containers.
 - `pnpm lint` · `pnpm lint:fix` · `pnpm format` · `pnpm deadcode` (knip) · `pnpm spell`
-- `docker-compose up -d`: MongoDB replica set, Redis, BullBoard, JWKS server. `docker-compose --profile vault up -d`
-  adds Vault, `--profile apis` the app container. Ports are in `docker-compose.yml`.
+- `docker-compose up -d`: MongoDB replica set, Redis, BullBoard, JWKS server. `docker-compose --profile vault up -d` adds Vault, `--profile apis` the app container. Ports are in `docker-compose.yml`.
 
 ## Prisma schema
 
-`prisma/schema.prisma` is editable. Applying it is the owner's: `pnpm db:migrate`, `pnpm db:studio`, `pnpm migration`,
-`pnpm migration:seed`, `pnpm migration:remove`, `pnpm migration:fresh`, `node dist/migration.js`, `prisma db *`,
-`prisma migrate *`, `prisma studio` (bare, `npx`, `pnpm exec`, `pnpm dlx`), `mongosh`, `redis-cli`. Edit the
-schema, then hand back the commands the owner runs. One exception: the integration and e2e global-setup runs `prisma db push --skip-generate` on its throwaway Mongo.
+`prisma/schema.prisma` is editable. Applying it is the owner's: `pnpm db:migrate`, `pnpm db:studio`, `pnpm migration`, `pnpm migration:seed`, `pnpm migration:remove`, `pnpm migration:fresh`, `node dist/migration.js`, `prisma db *`, `prisma migrate *`, `prisma studio` (bare, `npx`, `pnpm exec`, `pnpm dlx`), `mongosh`, `redis-cli`. Edit the schema, then hand back the commands the owner runs. One exception: the integration and e2e global-setup runs `prisma db push --skip-generate` on its throwaway Mongo.
 
 ## Commit gates
 

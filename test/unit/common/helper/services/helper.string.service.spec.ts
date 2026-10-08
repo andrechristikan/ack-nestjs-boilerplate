@@ -108,21 +108,6 @@ describe('HelperStringService', () => {
         });
     });
 
-    describe('checkEmail', () => {
-        it('validates a well-formed email', () => {
-            expect(service.checkEmail('user@example.com')).toEqual({
-                validated: true,
-            });
-        });
-
-        it('rejects a malformed email', () => {
-            expect(service.checkEmail('not-an-email')).toEqual({
-                validated: false,
-                messagePath: 'request.error.email.invalid',
-            });
-        });
-    });
-
     describe('checkUrlMatchesPatterns', () => {
         it('returns false when the url is empty', () => {
             expect(service.checkUrlMatchesPatterns('', ['/a'])).toBe(false);

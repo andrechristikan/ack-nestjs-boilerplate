@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { validateEmail } from '@common/request/validations/request.custom-email.validation';
+import { RequestEmailSchema } from '@common/request/validations/request.email.validation';
 import { EnumUserLoginFrom } from '@generated/prisma-client/client';
 import { DeviceRequestSchema } from '@modules/device/dtos/request/device.request.dto';
 
@@ -13,15 +13,8 @@ export const UserLoginRequestSchema = z.strictObject({
         .string()
         .trim()
         .toLowerCase()
-        .superRefine((value, ctx) => {
-            const validation = validateEmail(value);
-            if (!validation.validated) {
-                ctx.addIssue({
-                    code: 'custom',
-                    message: validation.messagePath,
-                });
-            }
-        })
+        .max(100)
+        .pipe(RequestEmailSchema)
         .meta({
             description: 'Email address used to log in',
             example: faker.internet.email(),

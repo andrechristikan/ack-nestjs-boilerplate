@@ -42,6 +42,10 @@ export interface ITermPolicyRepository {
         }: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>>;
     findOneById(termPolicyId: string): Promise<TermPolicy | null>;
+    findOneByIdInTx(
+        tx: IDatabaseTransactionClient,
+        termPolicyId: string
+    ): Promise<TermPolicy | null>;
     findLatestPublishedByType(type: EnumTermPolicyType): Promise<{
         id: string;
         type: EnumTermPolicyType;
@@ -94,5 +98,5 @@ export interface ITermPolicyRepository {
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
         contents: ITermPolicyContent[]
-    ): Promise<TermPolicy>;
+    ): Promise<boolean>;
 }

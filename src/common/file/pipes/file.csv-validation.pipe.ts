@@ -54,10 +54,9 @@ export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
             let offset = 0;
             // Sequential by design: bounded chunks, concurrent within a chunk
             for (const batch of batches) {
-                const resultPromises = batch.map(row =>
-                    schema['~standard'].validate(row)
+                const results = await Promise.all(
+                    batch.map(row => schema['~standard'].validate(row))
                 );
-                const results = await Promise.all(resultPromises);
 
                 results.forEach((result, index) => {
                     if (result.issues) {

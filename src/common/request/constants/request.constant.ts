@@ -1,4 +1,10 @@
 /**
+ * Accepted shape of an inbound `x-request-id` or `x-correlation-id`; anything else is replaced by a server UUID v7.
+ * @public
+ */
+export const RequestIdRegex = /^[A-Za-z0-9._-]{1,128}$/;
+
+/**
  * Asserts at least one uppercase letter, one lowercase letter, and one digit. Length is checked separately.
  * @public
  */

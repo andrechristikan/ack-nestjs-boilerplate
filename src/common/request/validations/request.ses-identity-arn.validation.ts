@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 /**
  * SES identity ARN: `arn:aws[-partition]:ses:<region>:<12-digit account>:identity/<domain or address>`.
+ * @public
  */
 export const RequestSesIdentityArnSchema = z
     .string()

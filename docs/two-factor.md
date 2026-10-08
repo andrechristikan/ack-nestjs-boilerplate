@@ -55,6 +55,7 @@ Login can require a TOTP (RFC 6238) from an authenticator app, plus one-time bac
 ## Configuration
 
 ### Environment Variables
+
 ```env
 AUTH_TWO_FACTOR_ISSUER=
 AUTH_TWO_FACTOR_ENCRYPTION_KEY=
@@ -65,7 +66,7 @@ AUTH_TWO_FACTOR_ENCRYPTION_KEY=
 Located in `src/configs/auth.config.ts`:
 
 | Setting | Value | Description |
-|---------|-------|-------------|
+| --- | --- | --- |
 | `strategy` | `totp` | OTP strategy passed to `otplib` |
 | `algorithm` | `sha1` | HMAC algorithm passed to `otplib` |
 | `issuer` | from `AUTH_TWO_FACTOR_ISSUER`, no code default | Displayed in authenticator apps |
@@ -105,12 +106,14 @@ A code checked against a missing secret, or a secret that fails to decrypt, rais
 ### Failed Attempts Protection
 
 Failed 2FA verification is counted to block brute-force guessing:
+
 - Each failed TOTP code or backup code verification increments the attempt counter
 - Counter is stored in the `TwoFactor.attempt` field
 - Counter resets to 0 when user successfully verifies with valid code or backup code
 - Both TOTP codes and backup codes share the same counter (combined limit)
 
 **Counter tracking:**
+
 ```
 Attempt 1 (TOTP failed) → attempt = 1
 Attempt 2 (Backup code failed) → attempt = 2
@@ -126,10 +129,10 @@ When a user reaches the maximum allowed attempts (5 failed verifications), 2FA v
 2. If locked, return an error (HTTP 429) whose message carries the remaining lock time as `retryAfterSeconds`, in whole seconds rounded up
 3. If not locked, proceed with verification
 4. If verification fails:
-   - Increment attempt counter first
-   - **After increment**, check if counter reached max (5)
-   - If reached max, set lock in cache with exponential TTL
-   - Return invalid code error (HTTP 401)
+    - Increment attempt counter first
+    - **After increment**, check if counter reached max (5)
+    - If reached max, set lock in cache with exponential TTL
+    - Return invalid code error (HTTP 401)
 5. Lock is stored in Redis cache with automatic expiration
 6. Lock duration increases exponentially based on attempt count
 
@@ -142,15 +145,18 @@ Redis failures:
 Details: [Cache][ref-doc-cache].
 
 **Lock timing:**
+
 - Lock is set **after** the 5th failed attempt
 - Lock prevents **next** verification attempt
 - User receives HTTP 429 on **next** attempt (not the 5th)
 
 **Lock duration calculation:**
+
 - Formula: `TTL = 2^(attempt / maxAttempt) × lockAttemptDurationInMs`
 - Base lock duration: 2 minutes (configurable via `lockAttemptDurationInMs`)
 
 **Lock duration examples:**
+
 ```
 After 5th failed attempt (attempt=5):
   TTL = 2^(5/5) × 2 minutes = 2^1 × 2 = 4 minutes
@@ -163,6 +169,7 @@ After 7th failed attempt (attempt=7):
 ```
 
 **User experience flow:**
+
 1. User enters wrong code 5 times → gets HTTP 401 (invalid code)
 2. Lock is set in background
 3. User tries again (6th attempt) → gets HTTP 429 with a message naming the remaining time (`retryAfterSeconds`, up to 240, 4 minutes)
@@ -172,6 +179,7 @@ After 7th failed attempt (attempt=7):
 7. If fails again, new lock with longer duration (exponential backoff)
 
 **Recovery process:**
+
 - Lock automatically expires after TTL duration (no admin intervention needed)
 - Attempt counter persists in database until successful verification
 - Each subsequent lock (after retry) increases duration exponentially
@@ -181,7 +189,9 @@ After 7th failed attempt (attempt=7):
 ## Where 2FA is Used
 
 ### Shared Endpoints (User Operations)
+
 **2FA Management:**
+
 - `GET /shared/user/2fa/status/get`: Check current 2FA status
 - `POST /shared/user/2fa/setup`: Get TOTP secret and otpauthUrl (**requires an unused backup code while 2FA is enabled**)
 - `POST /shared/user/2fa/enable`: Enable 2FA with code verification
@@ -203,10 +213,13 @@ After 7th failed attempt (attempt=7):
 - The account keeps its confirmed `secret` and remaining backup codes until `enable` confirms the new authenticator. This is the recovery path when the confirmed secret is unreadable (`409 twoFactorSecretUnavailable`).
 
 **Password Operations (require 2FA if enabled):**
+
 - `PATCH /shared/user/password/change`: **Change password (requires 2FA verification if enabled)**
 
 ### Public Endpoints
+
 **Login Flow:**
+
 - `POST /public/user/login/credential`: Login with email/password
 - `POST /public/user/login/social/google`: Login with Google OAuth
 - `POST /public/user/login/social/apple`: Login with Apple Sign In
@@ -214,9 +227,11 @@ After 7th failed attempt (attempt=7):
 - `POST /public/user/login/2fa/enable`: Complete forced 2FA setup during login
 
 **Password Recovery (require 2FA if enabled):**
+
 - `PATCH /public/user/password/reset`: **Reset password (requires 2FA verification if enabled)**
 
 ### Admin Endpoints
+
 - `PATCH /admin/user/2fa/:userId/reset`: Force reset user's 2FA (clears lock and resets attempts)
 
 Request and response schemas for each route are in the Swagger document.
@@ -226,6 +241,7 @@ Request and response schemas for each route are in the Swagger document.
 ### Setup Flow
 
 User enables 2FA for their account:
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -261,6 +277,7 @@ sequenceDiagram
 ### Login Flow (2FA Enabled)
 
 User logs in with 2FA enabled:
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -327,7 +344,7 @@ sequenceDiagram
     API->>API: Purge every session key of the user from the session cache
     API->>API: Stage the admin and user activity rows
     API->>User: Send reset notification email
-    
+
     Note over User: User Next Login
     User->>API: POST /public/user/login/credential
     API->>API: Generate TOTP secret
@@ -346,6 +363,7 @@ sequenceDiagram
 ### Backup Code Usage Flow
 
 User uses backup code when authenticator app is unavailable:
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -388,6 +406,7 @@ sequenceDiagram
 ### Temporary Lock Flow
 
 System behavior when user reaches maximum attempts:
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -397,7 +416,7 @@ sequenceDiagram
 
     User->>API: PATCH /public/user/login/2fa/verify {challengeToken, method: code, code}
     API->>Cache: Check if user is locked
-    
+
     alt User Already Locked
         API->>Cache: Get TTL (remaining lock time)
         API->>User: Error: Temporarily locked (429)<br/>retryAfterSeconds: X
@@ -409,17 +428,17 @@ sequenceDiagram
         else Code Invalid
             API->>Database: Increment attempt (attempt++)
             API->>Database: Get updated attempt count
-            
+
             alt Updated Attempt >= 5
                 Note over API: Calculate exponential TTL<br/>TTL = 2^(attempt/5) × 2 minutes
                 API->>Cache: Set lock with TTL
                 Note over Cache: Lock will be checked<br/>on next verification attempt
             end
-            
+
             API->>User: Error: Invalid code (401)
         end
     end
-    
+
     Note over User,Cache: Lock expires after TTL
     Note over User: User can retry after lock expires
 ```
@@ -427,6 +446,7 @@ sequenceDiagram
 ### Admin Reset 2FA Flow
 
 Admin can force reset user's 2FA if needed (optional, user can also wait for lock to expire):
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -437,7 +457,7 @@ sequenceDiagram
 
     Note over User: User locked out or lost access
     User->>Admin: Request 2FA reset
-    
+
     Admin->>API: PATCH /admin/user/2fa/:userId/reset
     par
         API->>Database: One transaction: reset 2FA (set requiredSetup=true),<br/>clear attempt counter, revoke all sessions
@@ -448,9 +468,9 @@ sequenceDiagram
     API->>API: Stage adminUserResetTwoFactor and userResetTwoFactorByAdmin
     API->>User: Send reset notification email
     API->>Admin: Success confirmation
-    
+
     Admin->>User: 2FA has been reset
-    
+
     Note over User: User must setup 2FA again on next login
     User->>API: POST /public/user/login/credential
     API->>User: Return secret + otpauthUrl + challengeToken
@@ -465,6 +485,7 @@ sequenceDiagram
 When user has 2FA enabled, password operations require additional verification:
 
 **Change Password:**
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -521,6 +542,7 @@ sequenceDiagram
 - A user with no password set (a social sign-up) skips the attempt-limit, old-password, and history checks and goes straight to the 2FA step.
 
 **Reset Password (Forgot Password):**
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -570,6 +592,7 @@ sequenceDiagram
 ```
 
 **Disable 2FA:**
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -605,7 +628,7 @@ sequenceDiagram
 ### HTTP Status Codes
 
 | Status | Error Code | Description |
-|--------|------------|-------------|
+| --- | --- | --- |
 | 400 | `twoFactorNotEnabled` | 2FA not enabled for this user |
 | 400 | `twoFactorAlreadyEnabled` | 2FA already active |
 | 400 | `twoFactorRequiredSetup` | Setup is required before continuing |

@@ -37,38 +37,38 @@ NestJS applies each layer on the route handler.
 - [Related Documents](#related-documents)
 - [Decorator Order](#decorator-order)
 - [User Protected](#user-protected)
-  - [Decorators](#decorators)
-    - [UserProtected() Decorator](#userprotected-decorator)
-    - [UserCurrent() Parameter Decorator](#usercurrent-parameter-decorator)
-  - [Guards](#guards)
-    - [UserGuard](#userguard)
-  - [Important Notes](#important-notes)
+    - [Decorators](#decorators)
+        - [UserProtected() Decorator](#userprotected-decorator)
+        - [UserCurrent() Parameter Decorator](#usercurrent-parameter-decorator)
+    - [Guards](#guards)
+        - [UserGuard](#userguard)
+    - [Important Notes](#important-notes)
 - [Role Protected](#role-protected)
-  - [Decorators](#decorators-1)
-    - [RoleProtected() Decorator](#roleprotected-decorator)
-  - [Getting Current Role](#getting-current-role)
-  - [Guards](#guards-1)
-    - [RoleGuard](#roleguard)
-  - [Important Notes](#important-notes-1)
+    - [Decorators](#decorators-1)
+        - [RoleProtected() Decorator](#roleprotected-decorator)
+    - [Getting Current Role](#getting-current-role)
+    - [Guards](#guards-1)
+        - [RoleGuard](#roleguard)
+    - [Important Notes](#important-notes-1)
 - [Policy Protected](#policy-protected)
-  - [Decorators](#decorators-2)
-    - [PolicyProtected() Decorator](#policyprotected-decorator)
-  - [Guards](#guards-2)
-    - [PolicyGuard](#policyguard)
-  - [CASL Integration](#casl-integration)
-  - [Important Notes](#important-notes-2)
+    - [Decorators](#decorators-2)
+        - [PolicyProtected() Decorator](#policyprotected-decorator)
+    - [Guards](#guards-2)
+        - [PolicyGuard](#policyguard)
+    - [CASL Integration](#casl-integration)
+    - [Important Notes](#important-notes-2)
 - [Term Policy Acceptance Protected](#term-policy-acceptance-protected)
-  - [Decorators](#decorators-3)
-    - [TermPolicyAcceptanceProtected() Decorator](#termpolicyacceptanceprotected-decorator)
-  - [Guards](#guards-3)
-    - [TermPolicyGuard](#termpolicyguard)
-  - [Important Notes](#important-notes-3)
+    - [Decorators](#decorators-3)
+        - [TermPolicyAcceptanceProtected() Decorator](#termpolicyacceptanceprotected-decorator)
+    - [Guards](#guards-3)
+        - [TermPolicyGuard](#termpolicyguard)
+    - [Important Notes](#important-notes-3)
 - [Workspace and Project Protected](#workspace-and-project-protected)
 - [Creating Custom Roles](#creating-custom-roles)
-  - [How to Create a New Role](#how-to-create-a-new-role)
-  - [Role Configuration](#role-configuration)
-  - [Assigning Roles to Users](#assigning-roles-to-users)
-  - [Important Notes](#important-notes-4)
+    - [How to Create a New Role](#how-to-create-a-new-role)
+    - [Role Configuration](#role-configuration)
+    - [Assigning Roles to Users](#assigning-roles-to-users)
+    - [Important Notes](#important-notes-4)
 
 ## Decorator Order
 
@@ -138,6 +138,7 @@ Placement rules:
 **Method decorator** that applies `UserGuard` to route handlers.
 
 **Parameters:**
+
 - `isVerified` (boolean, optional): Whether to require email verification. Default: `true`
 
 **Usage:**
@@ -212,25 +213,25 @@ flowchart TD
     JwtGuard --> CheckAuth{request.user.userId present?}
     CheckAuth -->|No| ErrorAuth[Throw UserNotAuthenticatedException<br/>401 Unauthorized]
     CheckAuth -->|Yes| LookupUser[Retrieve user from database<br/>with role information]
-    
+
     LookupUser --> UserExists{User exists<br/>in database?}
     UserExists -->|No| ErrorNotFound[Throw UserNotFoundForbiddenException<br/>403 Forbidden]
     UserExists -->|Yes| CheckBlocked{User status<br/>is blocked?}
-    
+
     CheckBlocked -->|Yes| ErrorBlocked[Throw UserBlockedForbiddenException<br/>403 Forbidden]
     CheckBlocked -->|No| CheckStatus{User status<br/>is active?}
-    
+
     CheckStatus -->|No| ErrorInactive[Throw UserInactiveForbiddenException<br/>403 Forbidden]
     CheckStatus -->|Yes| CheckPassword{Password<br/>expired?}
-    
+
     CheckPassword -->|Yes| ErrorPassword[Throw UserPasswordExpiredException<br/>403 Forbidden]
     CheckPassword -->|No| CheckVerified{isVerified required<br/>AND user not verified?}
-    
+
     CheckVerified -->|Yes| ErrorVerified[Throw UserEmailNotVerifiedException<br/>403 Forbidden]
     CheckVerified -->|No| SetUser[Store user via<br/>RequestStoreService.set UserStoreKey, user]
-    
+
     SetUser --> Success([Access Granted])
-    
+
     ErrorAuth --> End([Request Rejected])
     ErrorNotFound --> End
     ErrorBlocked --> End
@@ -256,9 +257,11 @@ flowchart TD
 **Method decorator** that applies `RoleGuard` to route handlers.
 
 **Parameters:**
+
 - `...requiredRoles` (EnumRoleType[]): One or more role types required to access the route
 
 **Available Role Types:**
+
 - `EnumRoleType.superAdmin`: Super administrator with unrestricted access
 - `EnumRoleType.admin`: Administrator role
 - `EnumRoleType.user`: Standard user role
@@ -322,22 +325,22 @@ flowchart TD
     Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT token]
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
     UserGuard --> CheckUser{Stored user UserStoreKey<br/>exists?}
-    
+
     CheckUser -->|No| ErrorUser[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
     CheckUser -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
-    
+
     CheckSuperAdmin -->|Yes| GrantSuperAdmin[Grant access with<br/>empty policy array]
     CheckSuperAdmin -->|No| CheckRequired{Required roles<br/>defined?}
-    
+
     CheckRequired -->|No| ErrorPredefined[Throw RolePredefinedNotFoundException<br/>500 Internal Server Error]
     CheckRequired -->|Yes| CheckRoleMatch{User role matches<br/>required roles?}
-    
+
     CheckRoleMatch -->|No| ErrorForbidden[Throw RoleForbiddenException<br/>403 Forbidden]
     CheckRoleMatch -->|Yes| SetAbilities[Store policies via<br/>RequestStoreService.set PolicyStoreKey, policies]
-    
+
     GrantSuperAdmin --> Success([Access Granted])
     SetAbilities --> Success
-    
+
     ErrorUser --> End([Request Rejected])
     ErrorPredefined --> End
     ErrorForbidden --> End
@@ -351,7 +354,6 @@ flowchart TD
 - Without a stored user the guard throws `AuthJwtAccessTokenInvalidException` (401)
 - Users with `superAdmin` role type have unrestricted access to all `@RoleProtected` routes, regardless of the specified required roles. The guard returns an empty policy array for super admins, as they bypass the policy check.
 
-
 ## Policy Protected
 
 - `PolicyProtected` is CASL.
@@ -364,9 +366,11 @@ flowchart TD
 **Method decorator** that applies `PolicyGuard` to route handlers.
 
 **Parameters:**
+
 - `...requiredPolicies` (PolicyRequestDto[]): One or more `{ subject, action[] }` objects naming the required permissions
 
 **Available Policy Actions:**
+
 - `EnumPolicyAction.manage`: Full control over a subject
 - `EnumPolicyAction.read`: Read/view permission
 - `EnumPolicyAction.create`: Create new resources
@@ -374,6 +378,7 @@ flowchart TD
 - `EnumPolicyAction.delete`: Remove resources
 
 **Available Policy Subjects:**
+
 - `EnumPolicySubject.all`: All resources
 - `EnumPolicySubject.apiKey`: API key management
 - `EnumPolicySubject.role`: Role management
@@ -480,24 +485,24 @@ flowchart TD
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
     UserGuard --> RoleGuard[ @RoleProtected<br/>Validate role and load abilities]
     RoleGuard --> CheckUser{Stored user UserStoreKey<br/>exists?}
-    
+
     CheckUser -->|No| ErrorUser[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
     CheckUser -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
-    
+
     CheckSuperAdmin -->|Yes| GrantSuperAdmin[Grant immediate access]
     CheckSuperAdmin -->|No| CheckRequired{Required abilities<br/>defined?}
-    
+
     CheckRequired -->|No| ErrorPredefined[Throw PolicyPredefinedNotFoundException<br/>500 Internal Server Error]
     CheckRequired -->|Yes| CreateAbilities[Create CASL ability rules<br/>from RequestStoreService.get PolicyStoreKey]
-    
+
     CreateAbilities --> ValidateAbilities{All required abilities<br/>present in user abilities?}
-    
+
     ValidateAbilities -->|No| ErrorForbidden[Throw PolicyForbiddenException<br/>403 Forbidden]
     ValidateAbilities -->|Yes| GrantAccess[Grant access]
-    
+
     GrantSuperAdmin --> Success([Access Granted])
     GrantAccess --> Success
-    
+
     ErrorUser --> End([Request Rejected])
     ErrorPredefined --> End
     ErrorForbidden --> End
@@ -533,9 +538,11 @@ Details: [Term Policy Documentation][ref-doc-term-policy].
 **Method decorator** that applies `TermPolicyGuard` to route handlers.
 
 **Parameters:**
+
 - `...requiredTermPolicies` (EnumTermPolicyType[], optional): One or more term policy types the guard checks for acceptance. Defaults to `termsOfService` and `privacy`
 
 **Available Term Policy Types:**
+
 - `EnumTermPolicyType.termsOfService`: Terms of Service acceptance
 - `EnumTermPolicyType.privacy`: Privacy Policy acceptance
 - `EnumTermPolicyType.cookies`: Cookies Policy acceptance
@@ -587,23 +594,23 @@ flowchart TD
     Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT token]
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
     UserGuard --> CheckUser{Stored user UserStoreKey<br/>exists?}
-    
+
     CheckUser -->|No| ErrorUser[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
     CheckUser -->|Yes| CheckRequired{Required term policies<br/>specified?}
-    
+
     CheckRequired -->|No| SetDefault[Set default policies:<br/>termsOfService and privacy]
     CheckRequired -->|Yes| UseSpecified[Use specified policies]
-    
+
     SetDefault --> GetTermPolicy[Get user.termPolicy<br/>acceptance status]
     UseSpecified --> GetTermPolicy
-    
+
     GetTermPolicy --> CheckAcceptance{All required policies<br/>accepted by user?}
-    
+
     CheckAcceptance -->|No| ErrorRequired[Throw TermPolicyRequiredInvalidException<br/>403 Forbidden]
     CheckAcceptance -->|Yes| GrantAccess[Grant access]
-    
+
     GrantAccess --> Success([Access Granted])
-    
+
     ErrorUser --> End([Request Rejected])
     ErrorRequired --> End
 ```
@@ -623,7 +630,7 @@ flowchart TD
 - They occupy slots 6-9 of the stack above and are documented in full by the modules that own them.
 
 | Decorator | Guards it binds | Selects the resource from |
-|---|---|---|
+| --- | --- | --- |
 | `@WorkspaceProtected()` | `WorkspaceGuard` | The `x-workspace-id` header |
 | `@WorkspaceMemberProtected(...roles)` | `WorkspaceMemberGuard`, plus `WorkspaceRoleGuard` when roles are given | The membership of the resolved workspace |
 | `@ProjectProtected()` | `ProjectGuard` | The `:projectId` route param, constrained to the resolved workspace |
@@ -662,9 +669,9 @@ For the guard bodies, the exceptions and status codes each one throws, the store
 
 ```json
 {
-  "name": "contentmoderator",
-  "description": "Role for moderating user-generated content",
-  "type": "admin"
+    "name": "contentmoderator",
+    "description": "Role for moderating user-generated content",
+    "type": "admin"
 }
 ```
 
@@ -672,8 +679,8 @@ For the guard bodies, the exceptions and status codes each one throws, the store
 
 ```json
 {
-  "subject": "user",
-  "action": ["read", "update"]
+    "subject": "user",
+    "action": ["read", "update"]
 }
 ```
 
@@ -688,12 +695,14 @@ For the guard bodies, the exceptions and status codes each one throws, the store
 **Policy Structure:**
 
 Each policy row consists of:
+
 - **subject**: The resource type (e.g., user, role, apiKey, session, termPolicy, activityLog, analytic)
 - **action**: Array of allowed actions (manage, read, create, update, delete)
 
 A role holds at most one policy per subject: creating a second policy for a subject already covered is rejected.
 
 **Available subjects and actions are defined in:**
+
 - `EnumPolicySubject`: all, apiKey, role, user, session, activityLog, passwordHistory, termPolicy, featureFlag, device, workspace, project, analytic
 - `EnumPolicyAction`: manage, read, create, update, delete
 
@@ -728,11 +737,9 @@ flowchart LR
 - **Role names are unique**: creating a second role with an existing name is rejected
 - **A role in use cannot be deleted**: deletion is rejected (`RoleUsedException`) while any user holds the role
 
-
 <!-- REFERENCES -->
 
 [casl]: https://casl.js.org/
-
 [ref-doc-authentication]: authentication.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
 [ref-doc-activity-log]: activity-log.md

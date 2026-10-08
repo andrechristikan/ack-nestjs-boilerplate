@@ -51,6 +51,7 @@ describe('NotificationEmailQueue', () => {
                 'verification.resendInMs': 120_000,
                 'forgotPassword.resendInMs': 300_000,
                 'app.encryptionSecretKey': 'secret-key',
+                'email.batchDelayInMs': 1000,
             };
 
             return values[key];
@@ -370,25 +371,44 @@ describe('NotificationEmailQueue', () => {
         });
     });
 
-    describe('sendPublishTermPolicy', () => {
-        it('enqueues one bulk publishTermPolicy job deduplicated by type and version, medium priority', async () => {
-            const data: INotificationPublishTermPolicyPayload = {
-                type: EnumTermPolicyType.privacy,
-                version: 3,
-            };
+    describe('sendPublishTermPolicyBatch', () => {
+        const data: INotificationPublishTermPolicyPayload = {
+            termPolicyId: 'term-policy-id',
+            type: EnumTermPolicyType.privacy,
+            version: 3,
+        };
 
-            await queue.sendPublishTermPolicy([send], data);
+        it('enqueues one recipient-less batch job keyed by term policy and batch, medium priority, no delay at index 0', async () => {
+            await queue.sendPublishTermPolicyBatch(
+                data,
+                'batch-id',
+                'admin-id',
+                0
+            );
 
             expect(emailQueue.add).toHaveBeenCalledWith(
                 EnumNotificationProcess.publishTermPolicy,
-                { send: [send], data },
+                { data, batchId: 'batch-id', proceedBy: 'admin-id' },
                 {
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'publishTermPolicy-privacy-3',
-                        ttl: 60_000,
-                    },
+                    jobId: 'publishTermPolicy-term-policy-id-batch-id',
+                    delay: 0,
                 }
+            );
+        });
+
+        it('delays the job by index times the email batch delay', async () => {
+            await queue.sendPublishTermPolicyBatch(
+                data,
+                'batch-id',
+                'admin-id',
+                2
+            );
+
+            expect(emailQueue.add).toHaveBeenCalledWith(
+                EnumNotificationProcess.publishTermPolicy,
+                { data, batchId: 'batch-id', proceedBy: 'admin-id' },
+                expect.objectContaining({ delay: 2000 })
             );
         });
     });

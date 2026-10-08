@@ -48,14 +48,14 @@ One exception: a workspace `owner` reaches every project in the workspace withou
 ### `Project` (`Projects`)
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `id` | `String` | ObjectId |
 | `workspaceId` | `String` | ObjectId, relation to `Workspace` |
-| `name` | `String` | |
+| `name` | `String` |  |
 | `slug` | `String` | Unique per workspace |
-| `description` | `String?` | |
-| `createdAt` / `createdBy` | `DateTime` / `String?` | |
-| `updatedAt` / `updatedBy` | `DateTime` / `String?` | |
+| `description` | `String?` |  |
+| `createdAt` / `createdBy` | `DateTime` / `String?` |  |
+| `updatedAt` / `updatedBy` | `DateTime` / `String?` |  |
 | `deletedAt` / `deletedBy` | `DateTime?` / `String?` | Soft-delete marker and the id of the user who deleted the project |
 
 - `@@unique([workspaceId, slug])`
@@ -68,15 +68,15 @@ One exception: a workspace `owner` reaches every project in the workspace withou
 
 ### `ProjectMember` (`ProjectMembers`)
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | `String` | ObjectId |
-| `projectId` | `String` | ObjectId |
-| `userId` | `String` | ObjectId |
-| `role` | `EnumProjectMemberRole` | Required, no default |
-| `joinedAt` | `DateTime` | Defaults to now |
-| `createdAt` / `createdBy` | `DateTime` / `String?` | |
-| `updatedAt` / `updatedBy` | `DateTime` / `String?` | |
+| Field                     | Type                    | Notes                |
+| ------------------------- | ----------------------- | -------------------- |
+| `id`                      | `String`                | ObjectId             |
+| `projectId`               | `String`                | ObjectId             |
+| `userId`                  | `String`                | ObjectId             |
+| `role`                    | `EnumProjectMemberRole` | Required, no default |
+| `joinedAt`                | `DateTime`              | Defaults to now      |
+| `createdAt` / `createdBy` | `DateTime` / `String?`  |                      |
+| `updatedAt` / `updatedBy` | `DateTime` / `String?`  |                      |
 
 - `@@unique([projectId, userId])`
 - `@@index([userId])`
@@ -103,7 +103,7 @@ One exception: a workspace `owner` reaches every project in the workspace withou
 - **Every route below requires the `x-workspace-id` header** and carries `@FeatureFlagProtected('workspace')`.
 
 | Method | Path | Who may call it |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/user/project/list` | Any workspace member. The workspace owner sees every project; everyone else sees only projects they belong to |
 | `POST` | `/user/project/create` | Workspace `admin` (and `owner`) |
 | `GET` | `/user/project/get/:projectId` | Project `admin`, `member`, or `viewer` (or workspace `owner`) |
@@ -126,13 +126,12 @@ One exception: a workspace `owner` reaches every project in the workspace withou
 
 These routes are:
 
-
 - **not** feature-flagged
 - read-only
 - blind to `x-workspace-id`
 
 | Method | Path | Description |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/project/list` | Cross-workspace paginated list. Optional `workspaceId` query param narrows it. Includes soft-deleted projects |
 | `GET` | `/admin/project/get/:projectId` | Any project by id, with no workspace scope and no active filter, so a soft-deleted project is still returned |
 
@@ -245,7 +244,7 @@ Every project member is already a workspace member.
 - That check runs at assign time only.
 
 | Operation | Rules |
-|---|---|
+| --- | --- |
 | Assign | Peer rule on the requested role. Throws `ProjectMemberAlreadyAssignedException` (400, `51705`) when the user already belongs |
 | Update role | Peer rule on **both** the target's current role and the new role. Unknown member throws `ProjectMemberNotFoundException` (404, `51704`) |
 | Remove | Peer rule on the target's role. Removing yourself throws `ProjectMemberPeerForbiddenException` (403, `51703`); use leave instead. The row is hard-deleted |
@@ -270,12 +269,12 @@ Its activity rows are prepared before the write and staged after it.
 - Assign, update role, and remove write an actor row for the caller carrying `targetUserId`.
 - They also write a target row for the affected member carrying `actorUserId`, with `createdBy` set to the caller.
 
-| Operation | Actor row | Target row |
-|---|---|---|
-| Assign | `projectMemberAssigned` | `projectMemberAssignedByAdmin` |
+| Operation   | Actor row                  | Target row                        |
+| ----------- | -------------------------- | --------------------------------- |
+| Assign      | `projectMemberAssigned`    | `projectMemberAssignedByAdmin`    |
 | Update role | `projectMemberRoleUpdated` | `projectMemberRoleUpdatedByAdmin` |
-| Remove | `projectMemberRemoved` | `projectMemberRemovedByAdmin` |
-| Leave | `projectMemberLeft` | none |
+| Remove      | `projectMemberRemoved`     | `projectMemberRemovedByAdmin`     |
+| Leave       | `projectMemberLeft`        | none                              |
 
 - A caller who assigns themselves or updates their own role gets the actor row only.
 - Both rows of a pair carry the project's `workspaceId`.
@@ -326,7 +325,7 @@ Deleting the **workspace** soft-deletes its still-active projects in the same tr
 ## Status Codes
 
 | Member | statusCode | httpStatus | Meaning |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `notFound` | `51700` | 404 | Unknown, soft-deleted, or out-of-workspace project |
 | `memberForbidden` | `51701` | 403 | Caller holds no `ProjectMember` row |
 | `roleForbidden` | `51702` | 403 | Caller's project role is not allowed here |
@@ -337,7 +336,6 @@ Deleting the **workspace** soft-deletes its still-active projects in the same tr
 | `slugInvalid` | `51707` | 400 | Slug fails the pattern or the length cap |
 
 Full catalog: [Status Codes][ref-doc-status-codes].
-
 
 <!-- REFERENCES -->
 

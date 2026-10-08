@@ -19,25 +19,6 @@ export class NotificationUserSettingRepository implements INotificationUserSetti
         });
     }
 
-    async findActiveUserSettingByType(
-        userIds: string[],
-        type: EnumNotificationType,
-        channels: EnumNotificationChannel[]
-    ): Promise<NotificationUserSetting[]> {
-        return this.databaseService.client.notificationUserSetting.findMany({
-            where: {
-                userId: {
-                    in: userIds,
-                },
-                type,
-                channel: {
-                    in: channels,
-                },
-                isActive: true,
-            },
-        });
-    }
-
     async createDefaultsInTx(
         tx: IDatabaseTransactionClient,
         userId: string

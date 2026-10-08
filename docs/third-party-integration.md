@@ -9,7 +9,7 @@
 
 AWS S3, AWS SES, Firebase, Sentry, Google, and Apple are optional. `AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) validates every key at boot:
 
-- A blank `.env` line (`KEY=`) and an absent key both parse as unset.
+- A blank `.env` line (`KEY=`) and an absent key both parse to `null`.
 - What turns an integration on:
     - S3 and SES turn on when `*_IAM_CREDENTIAL_KEY` or `*_IAM_CREDENTIAL_SECRET` is set.
     - Firebase turns on when any `FIREBASE_*` key is set.
@@ -46,20 +46,20 @@ AWS S3, AWS SES, Firebase, Sentry, Google, and Apple are optional. `AppEnvSchema
 ## Table of Contents
 
 - [Overview](#overview)
-  - [Optional integrations](#optional-integrations)
+    - [Optional integrations](#optional-integrations)
 - [Related Documents](#related-documents)
 - [AWS Services](#aws-services)
-  - [S3 Storage](#s3-storage)
-    - [Bucket setup](#bucket-setup)
-  - [SES Email](#ses-email)
-  - [Error Codes](#error-codes)
+    - [S3 Storage](#s3-storage)
+        - [Bucket setup](#bucket-setup)
+    - [SES Email](#ses-email)
+    - [Error Codes](#error-codes)
 - [Firebase](#firebase)
 - [Sentry](#sentry)
 - [Redis](#redis)
 - [MongoDB](#mongodb)
 - [Social Authentication](#social-authentication)
-  - [Google OAuth](#google-oauth)
-  - [Apple Sign In](#apple-sign-in)
+    - [Google OAuth](#google-oauth)
+    - [Apple Sign In](#apple-sign-in)
 - [HashiCorp Vault](#hashicorp-vault)
 
 ## AWS Services
@@ -69,10 +69,12 @@ AWS S3, AWS SES, Firebase, Sentry, Google, and Apple are optional. `AppEnvSchema
 [AWS S3][ref-aws-s3] is used for file storage with support for both public and private buckets.
 
 **Packages:**
+
 - `@aws-sdk/client-s3`
 - `@aws-sdk/s3-request-presigner`
 
 **Environment Variables:**
+
 ```dotenv
 AWS_S3_IAM_CREDENTIAL_KEY=<your_aws_s3_access_key>
 AWS_S3_IAM_CREDENTIAL_SECRET=<your_aws_s3_secret_key>
@@ -86,6 +88,7 @@ AWS_S3_PRIVATE_CDN=<your_aws_s3_private_cdn>
 ```
 
 **Use Cases:**
+
 - Public file uploads (user avatars, public documents)
 - Private file storage (sensitive documents)
 - Presigned URL generation for secure access
@@ -167,9 +170,11 @@ The bucket ARNs derive from the bucket names.
 [AWS SES][ref-aws-ses] handles transactional email delivery.
 
 **Packages:**
+
 - `@aws-sdk/client-ses`
 
 **Environment Variables:**
+
 ```dotenv
 AWS_SES_IAM_CREDENTIAL_KEY=<your_aws_ses_access_key>
 AWS_SES_IAM_CREDENTIAL_SECRET=<your_aws_ses_secret_key>
@@ -182,6 +187,7 @@ EMAIL_SUPPORT=<support_address>
 ```
 
 **Use Cases:**
+
 - Welcome emails
 - Password reset emails
 - Email verification
@@ -216,7 +222,7 @@ Queue wiring: [Notification][ref-doc-notification] and [Queue][ref-doc-queue].
 AWS service errors use `EnumAwsStatusCodeError` located at `src/common/aws/enums/aws.status-code.enum.ts`:
 
 | Enum | Code | i18n Key | Description |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `EnumAwsStatusCodeError.s3KeyInvalid` | `51400` | `aws.error.s3KeyInvalid` | A key, path, source, or destination starts with `/`, or a `putItem` key contains `..` or `//` |
 | `EnumAwsStatusCodeError.s3FileRequired` | `51401` | `aws.error.s3FileRequired` | `putItem` received no file content |
 | `EnumAwsStatusCodeError.s3ObjectExist` | `51402` | `aws.error.s3ObjectExist` | The target key already holds an object and `forceUpdate` is off (HTTP 409) |
@@ -232,9 +238,11 @@ Every code except `51402` (409) and `51406` (404) answers HTTP 500.
 [Firebase Admin SDK][ref-firebase] is used for sending push notifications to mobile devices.
 
 **Packages:**
+
 - `firebase-admin`
 
 **Environment Variables:**
+
 ```dotenv
 FIREBASE_PROJECT_ID=<your_firebase_project_id>
 FIREBASE_CLIENT_EMAIL=<your_firebase_client_email>
@@ -242,6 +250,7 @@ FIREBASE_PRIVATE_KEY=<your_firebase_private_key>
 ```
 
 **Features:**
+
 - Push notification delivery via FCM
 - Batch send support
 - Invalid token detection and cleanup
@@ -265,24 +274,27 @@ For notification details, see [Notification Documentation][ref-doc-notification]
 [Sentry][ref-sentry] tracks errors and performance.
 
 **Packages:**
+
 - `@sentry/nestjs`
 - `@sentry/profiling-node`
 
 **Environment Variables:**
+
 ```dotenv
 SENTRY_DSN=<your_sentry_dsn>
 ```
 
 `src/instrument.ts` initializes Sentry only when `SENTRY_DSN` is set, and `AppEnvSchema` validates it as a URL. The sample rates are logger config keys, chosen by `APP_ENV`:
 
-| Config key | Value | Applies |
-|---|---|---|
-| `logger.sentry.tracesSampleRate` | `1` | outside production |
-| `logger.sentry.tracesSampleRateProduction` | `0.3` | production |
-| `logger.sentry.profilesSampleRate` | `0.5` | outside production |
-| `logger.sentry.profilesSampleRateProduction` | `0.1` | production |
+| Config key                                   | Value | Applies            |
+| -------------------------------------------- | ----- | ------------------ |
+| `logger.sentry.tracesSampleRate`             | `1`   | outside production |
+| `logger.sentry.tracesSampleRateProduction`   | `0.3` | production         |
+| `logger.sentry.profilesSampleRate`           | `0.5` | outside production |
+| `logger.sentry.profilesSampleRateProduction` | `0.1` | production         |
 
 **Features:**
+
 - Automatic error tracking through `SentryService` (`src/common/sentry`), used by the exception filters and `QueueProcessorBase`
 - Performance monitoring and profiling
 - Queue job failure tracking (integrated in `QueueProcessorBase`)
@@ -297,18 +309,21 @@ With `SENTRY_DSN` blank, Sentry stays uninitialized and `SentryService` calls se
 [Redis][ref-redis] is the cache store and the queue backend.
 
 **Packages:**
+
 - `@keyv/redis`
 - `keyv`
 - `bullmq`
 - `cache-manager`
 
 **Environment Variables:**
+
 ```dotenv
 CACHE_REDIS_URL=redis://localhost:6379/0
 QUEUE_REDIS_URL=redis://localhost:6379/1
 ```
 
 **Use Cases:**
+
 - Application caching (DB 0)
 - Background job queues (DB 1)
 - Rate limiting data
@@ -322,16 +337,19 @@ For queue details, see [Queue][ref-doc-queue].
 [MongoDB][ref-mongodb] with [Prisma][ref-prisma] as the primary database.
 
 **Packages:**
+
 - `@prisma/client` (runtime of the generated client)
 - `prisma` (CLI and the `prisma-client` generator, which writes the client into `src/generated/prisma-client`)
 
 **Environment Variables:**
+
 ```dotenv
 DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
 DATABASE_DEBUG=true
 ```
 
 **Features:**
+
 - Replica set support
 - Transaction support
 - Type-safe queries via Prisma
@@ -345,9 +363,11 @@ For database setup and usage, see [Database][ref-doc-database].
 [Google OAuth][ref-google-oauth] for social login integration.
 
 **Packages:**
+
 - `google-auth-library`
 
 **Environment Variables:**
+
 ```dotenv
 AUTH_SOCIAL_GOOGLE_CLIENT_ID=<your_google_client_id>
 ```
@@ -369,9 +389,11 @@ For authentication flow details, see [Authentication][ref-doc-authentication].
 [Apple Sign In][ref-apple-signin] for iOS authentication.
 
 **Packages:**
+
 - `verify-apple-id-token`
 
 **Environment Variables:**
+
 ```dotenv
 AUTH_SOCIAL_APPLE_CLIENT_ID=<your_apple_client_id>
 AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=<your_apple_sign_in_client_id>
@@ -398,14 +420,11 @@ For authentication flow details, see [Authentication][ref-doc-authentication].
 - The `vault` Docker Compose profile gates it, so it never starts unless you opt in.
 
 **How it differs from the other integrations on this page:**
-- It is **not** consumed by the application at runtime. The app still reads `.env`, and Vault only *produces* that file.
+
+- It is **not** consumed by the application at runtime. The app still reads `.env`, and Vault only _produces_ that file.
 - It runs with a persistent file backend, auto-unsealed by the container entrypoint, with secrets laid out per environment and read through a per-environment read-only AppRole.
 
-> [!NOTE]
-> For the full architecture, KV layout, usage flow, configuration reference, and scope/limitations, see the [Vault Documentation][ref-doc-vault].
-
-
-
+> [!NOTE] For the full architecture, KV layout, usage flow, configuration reference, and scope/limitations, see the [Vault Documentation][ref-doc-vault].
 
 <!-- REFERENCES -->
 
@@ -419,7 +438,6 @@ For authentication flow details, see [Authentication][ref-doc-authentication].
 [ref-google-oauth]: https://developers.google.com/identity/protocols/oauth2
 [ref-apple-signin]: https://developer.apple.com/sign-in-with-apple/
 [ref-vault]: https://developer.hashicorp.com/vault
-
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
 [ref-doc-authentication]: authentication.md

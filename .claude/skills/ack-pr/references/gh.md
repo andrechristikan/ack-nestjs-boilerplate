@@ -1,9 +1,6 @@
 # gh pr command sequence
 
-Every write runs in the session, after `writer` has returned the document and `reviewer` has checked it. Show the exact
-command to the owner first and run it only on a yes. Merge is not in this list:
-`gh pr merge` stays under `ask` in `.claude/settings.json` and this skill does not propose
-it.
+Every write runs in the session, after `writer` has returned the document and the session has read it against the diff. Show the exact command to the owner first and run it only on a yes. Merge is not in this list: `gh pr merge` stays under `ask` in `.claude/settings.json` and this skill does not propose it.
 
 ## Preconditions
 
@@ -18,13 +15,11 @@ git push -u origin <branch>        # under ask; only when the branch is not on o
 gh pr create --base <base> --head <branch> --title "<title>" --body-file generated/docs/pr-<slug>.md
 ```
 
-Draft when the owner says so: add `--draft`. The title is the branch's conventional subject
-or the one the owner gave. Report the URL `gh` prints.
+Draft when the owner says so: add `--draft`. The title is the branch's conventional subject or the one the owner gave. Report the URL `gh` prints.
 
 ## Update an existing description
 
-Mode `description` checks for an open PR on the branch first; `state` `OPEN` gives the
-number, and a "no pull requests found" error means there is none to edit.
+Mode `description` checks for an open PR on the branch first; `state` `OPEN` gives the number, and a "no pull requests found" error means there is none to edit.
 
 ```bash
 gh pr view <branch> --json number,state
@@ -54,5 +49,4 @@ A review verdict on the owner's behalf is not written here; the owner submits re
 gh pr view <number> --json url,title,state,isDraft
 ```
 
-Quote the URL and the state in the hand-back. Leave `ack-pr/*` local refs in place; the
-owner deletes them.
+Quote the URL and the state in the hand-back. Leave `ack-pr/*` local refs in place; the owner deletes them.

@@ -3,7 +3,7 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import {
     NotificationPayloadEncryptionPurpose,
     NotificationReferenceJobIdPattern,
-    NotificationTermPolicyJobIdPattern,
+    NotificationTermPolicyBatchJobIdPattern,
     NotificationUserJobIdPattern,
     NotificationWorkspaceUserJobIdPattern,
 } from '@modules/notification/constants/notification.constant';
@@ -40,6 +40,7 @@ import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 @Injectable()
 export class NotificationEmailQueue {
     private readonly dedupTtlInMs: number;
+    private readonly batchDelayInMs: number;
     private readonly verificationExpiredInMs: number;
     private readonly verificationResendInMs: number;
     private readonly forgotPasswordResendInMs: number;
@@ -54,6 +55,9 @@ export class NotificationEmailQueue {
     ) {
         this.dedupTtlInMs = this.configService.get<number>(
             'notification.dedupTtlInMs'
+        )!;
+        this.batchDelayInMs = this.configService.get<number>(
+            'email.batchDelayInMs'
         )!;
         this.verificationExpiredInMs = this.configService.get<number>(
             'verification.expiredInMs'
@@ -624,22 +628,21 @@ export class NotificationEmailQueue {
         );
     }
 
-    async sendPublishTermPolicy(
-        sendPayload: INotificationEmailSendPayload[],
-        publishTermPolicy: INotificationPublishTermPolicyPayload
+    async sendPublishTermPolicyBatch(
+        data: INotificationPublishTermPolicyPayload,
+        batchId: string,
+        proceedBy: string,
+        index: number
     ): Promise<void> {
         const payload: INotificationEmailBulkQueuePayload<INotificationPublishTermPolicyPayload> =
-            {
-                send: sendPayload,
-                data: publishTermPolicy,
-            };
+            { data, batchId, proceedBy };
 
-        const deduplicationId = this.helperStringService.fillPattern(
-            NotificationTermPolicyJobIdPattern,
+        const jobId = this.helperStringService.fillPattern(
+            NotificationTermPolicyBatchJobIdPattern,
             {
                 process: EnumNotificationProcess.publishTermPolicy,
-                type: publishTermPolicy.type,
-                version: String(publishTermPolicy.version),
+                termPolicyId: data.termPolicyId,
+                batchId,
             }
         );
 
@@ -648,10 +651,8 @@ export class NotificationEmailQueue {
             payload,
             {
                 priority: EnumQueuePriority.medium,
-                deduplication: {
-                    id: deduplicationId,
-                    ttl: this.dedupTtlInMs,
-                },
+                jobId,
+                delay: index * this.batchDelayInMs,
             }
         );
     }

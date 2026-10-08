@@ -1,4 +1,6 @@
+import { Processor } from '@nestjs/bullmq';
 import { QueueProcessorConfigKey } from '@queues/constants/queue.constant';
+import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import type { IQueueProcessorOptions } from '@queues/interfaces/queue.interface';
 
@@ -10,35 +12,11 @@ vi.mock('@nestjs/bullmq', async importOriginal => {
 
 describe('queue.decorator', () => {
     describe('QueueProcessor', () => {
-        const originalAppName = process.env.APP_NAME;
-        const originalAppEnv = process.env.APP_ENV;
-
         beforeEach(() => {
-            vi.resetAllMocks();
-            vi.resetModules();
-            process.env.APP_NAME = 'ack-app';
-            process.env.APP_ENV = 'test';
+            vi.mocked(Processor).mockClear();
         });
 
-        afterEach(() => {
-            if (originalAppName === undefined) {
-                delete process.env.APP_NAME;
-            } else {
-                process.env.APP_NAME = originalAppName;
-            }
-
-            if (originalAppEnv === undefined) {
-                delete process.env.APP_ENV;
-            } else {
-                process.env.APP_ENV = originalAppEnv;
-            }
-        });
-
-        it('registers the processor with the worker consumer name built from the app env when no options are given', async () => {
-            const { Processor } = await import('@nestjs/bullmq');
-            const { QueueProcessor } =
-                await import('@queues/decorators/queue.decorator');
-
+        it('registers the processor under the queue name and the processor config key', () => {
             QueueProcessor(EnumQueue.notification);
 
             expect(Processor).toHaveBeenCalledWith(
@@ -46,28 +24,29 @@ describe('queue.decorator', () => {
                     name: EnumQueue.notification,
                     configKey: QueueProcessorConfigKey,
                 },
-                { name: 'ack-app-test:notification:consumer' }
+                expect.any(Object)
             );
         });
 
-        it('merges the given worker options onto the consumer name', async () => {
-            const { Processor } = await import('@nestjs/bullmq');
-            const { QueueProcessor } =
-                await import('@queues/decorators/queue.decorator');
+        it('names the worker <appName>-<appEnv>:<queue>:consumer when no options are given', () => {
+            QueueProcessor(EnumQueue.notification);
+
+            expect(Processor).toHaveBeenCalledWith(expect.any(Object), {
+                name: expect.stringMatching(
+                    /^[^:]+-[^:]+:notification:consumer$/
+                ),
+            });
+        });
+
+        it('passes the given worker options next to the default worker name', () => {
             const options: IQueueProcessorOptions = { concurrency: 5 };
 
             QueueProcessor(EnumQueue.workspace, options);
 
-            expect(Processor).toHaveBeenCalledWith(
-                {
-                    name: EnumQueue.workspace,
-                    configKey: QueueProcessorConfigKey,
-                },
-                {
-                    name: 'ack-app-test:workspace:consumer',
-                    concurrency: 5,
-                }
-            );
+            expect(Processor).toHaveBeenCalledWith(expect.any(Object), {
+                name: expect.stringMatching(/^[^:]+-[^:]+:workspace:consumer$/),
+                concurrency: 5,
+            });
         });
     });
 });

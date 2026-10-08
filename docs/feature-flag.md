@@ -20,8 +20,8 @@ Feature Flag lives in `src/modules/feature-flag`.
 - [Features](#features)
 - [Flow](#flow)
 - [Usage](#usage)
-  - [With Decorators](#with-decorators)
-  - [With FeatureFlagCache](#with-featureflagcache)
+    - [With Decorators](#with-decorators)
+    - [With FeatureFlagCache](#with-featureflagcache)
 - [Metadata](#metadata)
 - [Targeting](#targeting)
 - [Rollout Percentage](#rollout-percentage)
@@ -33,7 +33,7 @@ Feature Flag lives in `src/modules/feature-flag`.
 Feature flags provided in `src/migration/data/migration.feature-flag.data.ts`:
 
 | Key | Description | Rollout | Metadata |
-|-----|-------------|---------|----------|
+| --- | --- | --- | --- |
 | `loginWithGoogle` | Enable login with Google | 100% | `signUpAllowed: true` |
 | `loginWithApple` | Enable login with Apple | 100% | `signUpAllowed: true` |
 | `loginWithCredential` | Enable login with Credential | 100% | - |
@@ -139,7 +139,7 @@ async forgotPassword(
 `@FeatureFlagProtected()` sits **above** `@AuthJwtAccessProtected()` in the decorator stack.
 
 - NestJS evaluates stacked decorators bottom-up, so the decorator nearest the HTTP method runs first.
-- Sitting above the JWT decorator is what makes the flag guard run *after* the JWT strategy has populated `request.user`.
+- Sitting above the JWT decorator is what makes the flag guard run _after_ the JWT strategy has populated `request.user`.
 - Without that ordering the guard never sees a user and always takes the anonymous branch, making `targetUserIds` and any rollout below 100% inert.
 
 See [Authorization Documentation][ref-doc-authorization] for the full stack.
@@ -149,14 +149,13 @@ See [Authorization Documentation][ref-doc-authorization] for the full stack.
 `FeatureFlagCache` is the cache-through reader, exported by `FeatureFlagDomainModule`. `UserAuthDomain` reads social sign-up metadata through it:
 
 ```typescript
-const featureFlag =
-  await this.featureFlagCache.getMetadataByKeyAndCache<{
+const featureFlag = await this.featureFlagCache.getMetadataByKeyAndCache<{
     signUpAllowed: boolean;
-  }>(
+}>(
     loginWith === EnumUserLoginWith.socialGoogle
-      ? 'loginWithGoogle'
-      : 'loginWithApple'
-  );
+        ? 'loginWithGoogle'
+        : 'loginWithApple'
+);
 ```
 
 - `FeatureFlagDomain` reads through the same cache: `getByKeyAndCache` on evaluation, `deleteCacheByKey` after an admin update.
@@ -178,6 +177,7 @@ Metadata on a single flag:
 ```
 
 **Constraints:**
+
 - No nested objects
 - Supported value types: `boolean`, `number`, `string`, and homogeneous `string[]` or `number[]`
 - Arrays are homogeneous. A mixed array (`[1, 'a']`), a nested array, and `boolean[]` are rejected
@@ -193,19 +193,19 @@ A metadata sub-key is asserted in the owning domain, not by the route decorator.
 
 ```typescript
 await this.featureFlagDomain.validateFeatureFlagMetadata(
-  'changePassword',
-  'forgotAllowed'
+    'changePassword',
+    'forgotAllowed'
 );
 ```
 
 It throws:
 
-| Condition | statusCode | HTTP |
-|---|---|---|
-| flag row is missing | `predefinedKeyNotFound` | 500 |
-| flag is disabled | `disabled` | 404 |
-| metadata value is not a boolean | `predefinedKeyTypeInvalid` | 500 |
-| boolean is `false` | `disabled` | 404 |
+| Condition                       | statusCode                 | HTTP |
+| ------------------------------- | -------------------------- | ---- |
+| flag row is missing             | `predefinedKeyNotFound`    | 500  |
+| flag is disabled                | `disabled`                 | 404  |
+| metadata value is not a boolean | `predefinedKeyTypeInvalid` | 500  |
+| boolean is `false`              | `disabled`                 | 404  |
 
 - Metadata is per-feature config (small on/off and typed values).
 - For per-user targeting use `targetUserIds` (see [Targeting](#targeting)), not metadata.
@@ -234,6 +234,7 @@ It throws:
 ## Rollout Percentage
 
 Controls gradual feature deployment using deterministic hashing:
+
 ```typescript
 {
   key: 'newFeature',
@@ -266,6 +267,7 @@ Properties:
 ## Caching
 
 Feature flags are cached. Configuration in `src/configs/feature-flag.config.ts`:
+
 ```typescript
 {
   keyPattern: 'FeatureFlag:{key}',
@@ -278,6 +280,7 @@ Feature flags are cached. Configuration in `src/configs/feature-flag.config.ts`:
 ```
 
 **Cache operations:**
+
 - Cache on first read
 - Cache invalidation on updates
 - Key format: `FeatureFlag:{key}`
@@ -294,7 +297,6 @@ See [Cache Documentation][ref-doc-cache] for cache system details.
 - Feature flags cannot be deleted
 - Metadata keys cannot be modified (add/remove)
 - Only values can be updated: `isEnable`, `rolloutPercent`, `targetUserIds`, metadata values
-
 
 <!-- REFERENCES -->
 

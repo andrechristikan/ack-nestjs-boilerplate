@@ -3,7 +3,6 @@ import appConfigFunction from '@configs/app.config';
 import docConfigFunction from '@configs/doc.config';
 import ms from 'ms';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
-import { readOptionalEnv } from '@common/request/validations/request.optional-env.validation';
 
 export interface IConfigLogger {
     enable: boolean;
@@ -47,7 +46,10 @@ export default registerAs('logger', (): IConfigLogger => {
         ],
         prettier: process.env.LOGGER_PRETTIER === 'true',
         sentry: {
-            dsn: readOptionalEnv(process.env.SENTRY_DSN),
+            dsn:
+                process.env.SENTRY_DSN === ''
+                    ? null
+                    : (process.env.SENTRY_DSN ?? null),
             timeoutInMs: ms('10s'),
             tracesSampleRate: 1,
             tracesSampleRateProduction: 0.3,

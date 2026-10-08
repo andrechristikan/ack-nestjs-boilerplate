@@ -32,10 +32,45 @@ describe('UserLoginRequestSchema', () => {
         expect(result).toEqual(payload);
     });
 
-    it('rejects an email failing the custom email validation', () => {
-        expect(() =>
-            UserLoginRequestSchema.parse({ ...payload, email: 'not-an-email' })
-        ).toThrow();
+    it('rejects an email failing the custom email validation with its message path', () => {
+        const result = UserLoginRequestSchema.safeParse({
+            ...payload,
+            email: 'not-an-email',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                code: 'custom',
+                path: ['email'],
+                message: 'request.error.email.invalid',
+            }),
+        ]);
+    });
+
+    it('accepts an email of 100 characters', () => {
+        const email = `${'a'.repeat(64)}@${'b'.repeat(31)}.com`;
+
+        const result = UserLoginRequestSchema.safeParse({
+            ...payload,
+            email,
+        });
+
+        expect(email).toHaveLength(100);
+        expect(result.success).toBe(true);
+    });
+
+    it('rejects an email of 101 characters with a too_big issue', () => {
+        const email = `${'a'.repeat(64)}@${'b'.repeat(32)}.com`;
+
+        const result = UserLoginRequestSchema.safeParse({
+            ...payload,
+            email,
+        });
+
+        expect(email).toHaveLength(101);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ code: 'too_big', path: ['email'] }),
+        ]);
     });
 
     it('rejects a device missing the fingerprint', () => {

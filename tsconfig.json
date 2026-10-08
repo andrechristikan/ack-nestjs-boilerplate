@@ -44,6 +44,7 @@
             "@instrument": ["./src/instrument.ts"],
             "@swagger": ["./src/swagger.ts"],
             "@main": ["./src/main.ts"],
+            "@configure": ["./src/configure.ts"],
             "@migration": ["./src/migration.ts"]
         }
     },

@@ -73,7 +73,7 @@ The i18n key is `activityLog.userReachMaxPasswordAttempt` ("Maximum password att
 ## Architecture
 
 | Component | Responsibility |
-|---|---|
+| --- | --- |
 | `ActivityLogDomain.prepare` | Validates contract and metadata, returns an `IActivityLogStagedEvent`; stages nothing |
 | `ActivityLogDomain.stagePrepared` | Pushes prepared events onto the request-store stage list |
 | `ActivityLogInterceptor` | After the handler settles, calls `ActivityLogDomain.flushStaged` (all staged on success; `onError: true` only on error) |
@@ -88,7 +88,7 @@ The i18n key is `activityLog.userReachMaxPasswordAttempt` ("Maximum password att
 ## List Endpoints
 
 | Method | Path | Scope |
-|--------|------|-------|
+| --- | --- | --- |
 | `GET` | `/shared/user/activity-log/list` | Authenticated user lists own logs (cursor) |
 | `GET` | `/shared/user/activity-log/workspace/list` | Workspace member lists own logs in the workspace from `x-workspace-id`, behind the `workspace` feature flag (cursor) |
 | `GET` | `/admin/activity-log/user/:userId/list` | Admin lists a user's logs (offset) |
@@ -203,7 +203,7 @@ Events prepared inside a transaction callback, after a write whose returned row 
 The contract's `user` value decides which user fields `prepare` accepts:
 
 | `user` | Row owner (`userId`) | `createdBy` | What `prepare` carries |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `payload` | The JWT user (`request.user.userId`), read by `ActivityLogInterceptor` and resolved at flush | The row owner | Neither `userId` nor `createdBy` |
 | `target` | The `userId` passed to `prepare` | The `createdBy` passed to `prepare`: the acting user, or the row's own user on a self or public path | Both `userId` and `createdBy` |
 
@@ -243,7 +243,7 @@ flowchart TD
 ```
 
 | Actor action (row of the actor) | Target action (row of the affected user) | Affected user |
-|---|---|---|
+| --- | --- | --- |
 | `adminUserCreate` | `userCreatedByAdmin` | The new user |
 | `adminUserImport` | `userCreatedByAdmin`, one row per imported user | Each new user |
 | `adminUserUpdateStatus` | `userBlocked` (status `blocked`), `userUpdateStatus` (any other status) | The updated user |
@@ -339,7 +339,7 @@ type IActivityLogMetadata = Record<string, string | number | boolean | Date>;
 - Every id in the schemas below is required.
 
 | Actions | Keys |
-|---|---|
+| --- | --- |
 | `workspaceMemberRoleUpdated`, `workspaceMemberRemoved`, `workspaceOwnershipTransferred`, `workspaceInviteAccepted`, `workspaceJoinAccepted`, `workspaceJoinRejected`, `projectMemberAssigned`, `projectMemberRoleUpdated`, `projectMemberRemoved` | `targetUserId` |
 | `workspaceInviteCreated`, `workspaceInviteRevoked` | `workspaceInviteId`, plus `targetUserId` when the email belongs to an active account |
 | The eleven workspace and project target actions, `workspaceCreatedByAdmin` | `actorUserId` |
@@ -372,7 +372,6 @@ The response returns `metadata` through `ActivityLogMetadataResponseSchema` (`dt
 - Strings live in `src/languages/<lang>/activityLog.json`.
 - Target rows use fixed text with no placeholder ("Your workspace role has been updated").
 - The admin actor rows that carry `targetUsername` interpolate it ("Status of user {targetUsername} has been updated").
-
 
 <!-- REFERENCES -->
 

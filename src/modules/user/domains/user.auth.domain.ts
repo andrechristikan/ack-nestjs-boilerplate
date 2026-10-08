@@ -140,41 +140,31 @@ export class UserAuthDomain {
         }: IUserLoginSocial,
         workspaceContext: IUserSignUpWorkspaceContext
     ): Promise<IUserCreateWithWorkspaceInput | null> {
-        const featureFlagPromise =
+        const [featureFlag, user] = await Promise.all([
             this.featureFlagCache.getMetadataByKeyAndCache<{
                 signUpAllowed: boolean;
             }>(
                 loginWith === EnumUserLoginWith.socialGoogle
                     ? 'loginWithGoogle'
                     : 'loginWithApple'
-            );
-        const userPromise = this.userRepository.findOneWithRoleByEmail(email);
-        const [featureFlag, user] = await Promise.all([
-            featureFlagPromise,
-            userPromise,
+            ),
+            this.userRepository.findOneWithRoleByEmail(email),
         ]);
         // Sequential by design: gate before the work it guards
         if (user || !featureFlag?.signUpAllowed) {
             return null;
         }
 
-        const rolePromise = this.roleDomain.getByName(this.userRoleName);
-        const checkUsernamePatternPromise =
-            this.userUtil.checkUsernamePattern(username);
-        const checkUsernameBadWordPromise =
-            this.userUtil.checkBadWord(username);
-        const usernameExistPromise =
-            this.userRepository.existsByUsername(username);
         const [
             role,
             checkUsernamePattern,
             checkUsernameBadWord,
             usernameExist,
         ] = await Promise.all([
-            rolePromise,
-            checkUsernamePatternPromise,
-            checkUsernameBadWordPromise,
-            usernameExistPromise,
+            this.roleDomain.getByName(this.userRoleName),
+            this.userUtil.checkUsernamePattern(username),
+            this.userUtil.checkBadWord(username),
+            this.userRepository.existsByUsername(username),
         ]);
         if (!role) {
             throw new RoleNotFoundException();
@@ -269,15 +259,6 @@ export class UserAuthDomain {
         input: IUserCreateWithWorkspaceInput;
         emailVerification: IUserVerificationEmailCreate;
     }> {
-        const rolePromise = this.roleDomain.getByName(this.userRoleName);
-        const emailExistPromise = this.userRepository.existsByEmail(email);
-        const checkCountryPromise = this.countryDomain.existsById(countryId);
-        const checkUsernamePatternPromise =
-            this.userUtil.checkUsernamePattern(username);
-        const checkUsernameBadWordPromise =
-            this.userUtil.checkBadWord(username);
-        const usernameExistPromise =
-            this.userRepository.existsByUsername(username);
         const [
             role,
             emailExist,
@@ -286,12 +267,12 @@ export class UserAuthDomain {
             checkUsernameBadWord,
             usernameExist,
         ] = await Promise.all([
-            rolePromise,
-            emailExistPromise,
-            checkCountryPromise,
-            checkUsernamePatternPromise,
-            checkUsernameBadWordPromise,
-            usernameExistPromise,
+            this.roleDomain.getByName(this.userRoleName),
+            this.userRepository.existsByEmail(email),
+            this.countryDomain.existsById(countryId),
+            this.userUtil.checkUsernamePattern(username),
+            this.userUtil.checkBadWord(username),
+            this.userRepository.existsByUsername(username),
         ]);
         if (!role) {
             throw new RoleNotFoundException();

@@ -1,18 +1,12 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperArrayService } from '@common/helper/services/helper.array.service';
-import {
-    EnumNotificationChannel,
-    EnumNotificationType,
-} from '@generated/prisma-client/client';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationAcceptTermPolicyPayload,
     INotificationCreateEntry,
-    INotificationEmailSendPayload,
     INotificationPublishTermPolicyPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
-import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
@@ -26,10 +20,9 @@ export class NotificationTermPolicyDomain {
 
     constructor(
         private readonly notificationRepository: NotificationRepository,
-        private readonly notificationUserSettingRepository: NotificationUserSettingRepository,
         private readonly userDomain: UserDomain,
         private readonly configService: ConfigService,
-        private readonly helperArrayService: HelperArrayService,
+        private readonly helperDateService: HelperDateService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly notificationEmailQueue: NotificationEmailQueue
     ) {
@@ -37,83 +30,136 @@ export class NotificationTermPolicyDomain {
             this.configService.get<number>('email.batchSize')!;
     }
 
+    private async createAndEnqueueTermPolicyBatch(
+        proceedBy: string,
+        data: INotificationPublishTermPolicyPayload,
+        batchId: string,
+        userIds: string[],
+        index: number
+    ): Promise<void> {
+        const recipients = userIds.map(userId => {
+            const notificationId = this.databaseUtil.createId();
+
+            return { userId, notificationId };
+        });
+        const entries: INotificationCreateEntry[] = recipients.map(
+            ({ userId, notificationId }) => ({
+                kind: EnumNotificationKind.publishTermPolicy,
+                payload: {
+                    id: notificationId,
+                    userId,
+                    metadata: { type: data.type, version: data.version },
+                    createdBy: proceedBy,
+                },
+            })
+        );
+
+        await this.notificationRepository.createTermPolicyRecipients(
+            proceedBy,
+            data.termPolicyId,
+            batchId,
+            entries,
+            recipients
+        );
+        // Sequential by design: write must not run if an earlier step throws
+        await this.notificationEmailQueue.sendPublishTermPolicyBatch(
+            data,
+            batchId,
+            proceedBy,
+            index
+        );
+    }
+
     async processPublishTermPolicy(
         proceedBy: string,
         data: INotificationPublishTermPolicyPayload
     ): Promise<IQueueResponse> {
-        const users = await this.userDomain.getListActive();
-        const activeSettings =
-            await this.notificationUserSettingRepository.findActiveUserSettingByType(
-                users.map(u => u.id),
-                EnumNotificationType.transactional,
-                [EnumNotificationChannel.email]
+        let cursor: string | null = null;
+        let index = 0;
+        let candidateCounts = 0;
+        let createdCounts = 0;
+        let hasNextPage = true;
+
+        while (hasNextPage) {
+            // Sequential by design: bounded chunks, the chunks in turn
+            const pageUserIds = await this.userDomain.getListIdCursor(
+                cursor,
+                this.emailBatchSize
             );
-        const filteredSettings = new Set(activeSettings.map(s => s.userId));
+            const lastUserId = pageUserIds.at(-1) ?? null;
+            if (lastUserId === null) {
+                break;
+            }
 
-        const filteredUsers = users.filter(user =>
-            filteredSettings.has(user.id)
-        );
-
-        if (filteredUsers.length === 0) {
-            return {
-                message: 'No users to send publish term policy notification',
-                userCounts: users.length,
-                filteredUserCounts: 0,
-                batches: 0,
-            };
-        }
-
-        const chunks = this.helperArrayService.chunk(
-            filteredUsers,
-            this.emailBatchSize
-        );
-
-        for (const chunk of chunks) {
-            const emailPayload: INotificationEmailSendPayload[] = chunk.map(
-                user => {
-                    const notificationId = this.databaseUtil.createId();
-
-                    return {
-                        userId: user.id,
-                        email: user.email,
-                        username: user.username,
-                        notificationId,
-                        cc: [],
-                        bcc: [],
-                    };
-                }
+            const markers =
+                await this.notificationRepository.findTermPolicyRecipients(
+                    data.termPolicyId,
+                    pageUserIds
+                );
+            const markedUserIds = new Set(markers.map(m => m.userId));
+            const freshUserIds = pageUserIds.filter(
+                userId => !markedUserIds.has(userId)
             );
-
-            const entries: INotificationCreateEntry[] = emailPayload.map(
-                payload => ({
-                    kind: EnumNotificationKind.publishTermPolicy,
-                    payload: {
-                        id: payload.notificationId,
-                        userId: payload.userId,
-                        metadata: {
-                            type: data.type,
-                            version: data.version,
-                        },
-                        createdBy: proceedBy,
-                    },
-                })
-            );
-
-            // Sequential by design: bounded chunks, concurrent within a chunk
-            await Promise.all([
-                this.notificationRepository.createMany(entries),
-                this.notificationEmailQueue.sendPublishTermPolicy(
-                    emailPayload,
-                    data
+            const pendingBatchIds = [
+                ...new Set(
+                    markers
+                        .filter(m => m.enqueuedAt === null)
+                        .map(m => m.batchId)
                 ),
-            ]);
+            ];
+            const newBatchId = this.databaseUtil.createId();
+            const now = this.helperDateService.create();
+            const batchIds =
+                freshUserIds.length > 0
+                    ? [...pendingBatchIds, newBatchId]
+                    : pendingBatchIds;
+
+            const work = [
+                ...pendingBatchIds.map((batchId, i) =>
+                    this.notificationEmailQueue.sendPublishTermPolicyBatch(
+                        data,
+                        batchId,
+                        proceedBy,
+                        index + i
+                    )
+                ),
+                ...(freshUserIds.length > 0
+                    ? [
+                          this.createAndEnqueueTermPolicyBatch(
+                              proceedBy,
+                              data,
+                              newBatchId,
+                              freshUserIds,
+                              index + pendingBatchIds.length
+                          ),
+                      ]
+                    : []),
+            ];
+
+            if (work.length > 0) {
+                await Promise.all(work);
+
+                // Sequential by design: write must not run if an earlier step throws
+                await this.notificationRepository.markTermPolicyRecipientsEnqueued(
+                    data.termPolicyId,
+                    batchIds,
+                    now,
+                    proceedBy
+                );
+                index += batchIds.length;
+            }
+
+            candidateCounts += pageUserIds.length;
+            createdCounts += freshUserIds.length;
+            cursor = lastUserId;
+            hasNextPage = pageUserIds.length === this.emailBatchSize;
         }
 
         return {
             message: 'Publish term policy notification processed',
-            userCounts: users.length,
-            filteredUserCounts: filteredUsers.length,
-            batches: chunks.length,
+            candidateCounts,
+            createdCounts,
+            batches: index,
         };
     }
 

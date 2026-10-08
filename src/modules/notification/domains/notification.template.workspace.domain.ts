@@ -11,17 +11,14 @@ export class NotificationTemplateWorkspaceDomain {
     private readonly logger = new Logger(
         NotificationTemplateWorkspaceDomain.name
     );
-    private readonly templatesDir = join(
-        process.cwd(),
-        'src/modules/notification/templates'
-    );
 
     constructor(private readonly awsSESService: AwsSESService) {}
 
     async emailImportWorkspaceInvite(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.workspace-invite.template.hbs'
             );
 
@@ -75,7 +72,8 @@ export class NotificationTemplateWorkspaceDomain {
     async emailImportWorkspaceJoinRequest(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.workspace-join-request.template.hbs'
             );
 
@@ -132,7 +130,8 @@ export class NotificationTemplateWorkspaceDomain {
     async emailImportWorkspaceJoinAccepted(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.workspace-join-accepted.template.hbs'
             );
 
@@ -189,7 +188,8 @@ export class NotificationTemplateWorkspaceDomain {
     async emailImportWorkspaceJoinRejected(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.workspace-join-rejected.template.hbs'
             );
 

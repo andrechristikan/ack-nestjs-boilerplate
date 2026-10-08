@@ -47,10 +47,6 @@ export class AnalyticWorkspaceUserDomain {
             return cached;
         }
 
-        const memberCountPromise =
-            this.workspaceMemberAnalyticDomain.getCountByWorkspace(workspaceId);
-        const projectCountPromise =
-            this.projectAnalyticDomain.getCountByWorkspace(workspaceId);
         let activityCountPromise: Promise<number> = Promise.resolve(0);
         if (startDate && endDate) {
             activityCountPromise =
@@ -61,8 +57,8 @@ export class AnalyticWorkspaceUserDomain {
                 );
         }
         const [memberCount, projectCount, activityCount] = await Promise.all([
-            memberCountPromise,
-            projectCountPromise,
+            this.workspaceMemberAnalyticDomain.getCountByWorkspace(workspaceId),
+            this.projectAnalyticDomain.getCountByWorkspace(workspaceId),
             activityCountPromise,
         ]);
 

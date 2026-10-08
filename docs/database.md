@@ -23,29 +23,28 @@ Prisma + MongoDB replica set, transactions, seeds, and the Database Module.
 - [Migration](#migration)
 - [Generate Database Client](#generate-database-client)
 - [Seeding](#seeding)
-	- [Database Seeds](#database-seeds)
+    - [Database Seeds](#database-seeds)
 - [Initial Seeded Data](#initial-seeded-data)
-	- [API Keys](#api-keys)
-	- [Roles](#roles)
-	- [Users](#users)
-	- [Feature Flags](#feature-flags)
-	- [Term Policies](#term-policies)
+    - [API Keys](#api-keys)
+    - [Roles](#roles)
+    - [Users](#users)
+    - [Feature Flags](#feature-flags)
+    - [Term Policies](#term-policies)
 - [Models](#models)
 - [Composite Types](#composite-types)
-	- [GeoLocation](#geolocation)
-	- [UserAgent](#useragent)
-	- [UserTermPolicy](#usertermpolicy)
-	- [UserPhoto](#userphoto)
-	- [TermPolicyContent](#termpolicycontent)
+    - [GeoLocation](#geolocation)
+    - [UserAgent](#useragent)
+    - [UserTermPolicy](#usertermpolicy)
+    - [UserPhoto](#userphoto)
+    - [TermPolicyContent](#termpolicycontent)
 - [Audit Fields and Soft Delete](#audit-fields-and-soft-delete)
-	- [Client Access Surface](#client-access-surface)
-	- [Automatic Actor Stamping](#automatic-actor-stamping)
-	- [Soft Delete and Restore](#soft-delete-and-restore)
+    - [Client Access Surface](#client-access-surface)
+    - [Automatic Actor Stamping](#automatic-actor-stamping)
+    - [Soft Delete and Restore](#soft-delete-and-restore)
 - [Generated Unique Values](#generated-unique-values)
 - [Database Tools](#database-tools)
-	- [Prisma ORM](#prisma-orm)
-	- [Database provider](#database-provider)
-
+    - [Prisma ORM](#prisma-orm)
+    - [Database provider](#database-provider)
 
 ## Prerequisites
 
@@ -78,7 +77,6 @@ pnpm db:migrate
 
 Official reference: [Prisma for MongoDB][ref-prisma-mongodb]
 
-
 ## Generate Database Client
 
 After you edit `prisma/schema.prisma`:
@@ -91,7 +89,6 @@ pnpm db:generate
 - App code imports `@generated/prisma-client/client`.
 - `pnpm generate` also runs `generate:package`.
 - First-time setup: [Installation][ref-doc-installation].
-
 
 ## Seeding
 
@@ -106,9 +103,10 @@ Commands that are **not** database seeds run separately and are not part of `mig
 ### Database Seeds
 
 **Run all database seeds:**
+
 - `pnpm migration:seed` runs every database seed command
 - `pnpm migration:remove` runs every seed's removal
-    - It deletes more than the seeded rows: see the warning under [Users](#users)
+    - It deletes more than the seeded rows: see the list under Seed transactions and the warning under [Users](#users)
 - `pnpm migration:fresh` force-resets the schema (`prisma db push --force-reset`), then re-seeds. It gives a clean local slate
 
 **Order in `package.json`:**
@@ -130,6 +128,17 @@ Transaction scope:
 - The same timeout applies to the transactions the `user` and `workspace` seeds open in `remove()`.
 - Every other `remove()` that deletes rows runs its delete on `client` with no transaction.
 
+What each `remove()` deletes:
+
+1. `apiKey`: every `ApiKey` row, seeded or not, then the cache entries of the seeded keys.
+2. `featureFlag`: every `FeatureFlag` row, seeded or not.
+3. `country`: every `Country` row, seeded or not.
+4. `role`: every `Role` row, seeded or not.
+5. `termPolicy`: every `TermPolicy` row, seeded or not.
+6. `policy`: every `Policy` row of the roles the policy data names (`superadmin`, `admin`, `user`), seeded or not. Policy rows of any other role stay.
+7. `user`: see [Users](#users). It empties the models listed there entirely.
+8. `workspace`: only the seeded workspaces and their dependents (see the `workspace` entry under Database modules).
+
 Work that does not touch the database runs before the transaction:
 
 - key and hash derivation in the `apiKey` seed
@@ -146,6 +155,7 @@ Work that does not touch the database runs before the transaction:
     - The `workspace` seed's `remove()` finds its rows by the name `<username>'s Workspace` together with an owner membership of that user.
 
 **One module at a time:**
+
 - Seed: `pnpm migration {module} --type seed`
 - Remove: `pnpm migration {module} --type remove`
 
@@ -164,7 +174,10 @@ Work that does not touch the database runs before the transaction:
     - One default personal workspace per seeded user as owner.
     - Needs `user` first.
     - Skips users who already own a workspace.
-
+    - Its `remove()` deletes, in one transaction and for the seeded workspaces only, their project members, invites, join requests, projects, activity logs, and members, then the workspaces.
+    - A seeded workspace is one named `<username>'s Workspace` where that user holds an owner membership.
+    - An activity log belongs to a workspace through `ActivityLog.workspaceId`. The `workspace` seed deletes the logs whose `workspaceId` is one of the seeded workspaces.
+    - Workspaces and projects the seed did not create stay after `workspace` removal.
 
 ## Initial Seeded Data
 
@@ -172,15 +185,14 @@ Work that does not touch the database runs before the transaction:
 
 ### API Keys
 
-> [!WARNING]
-> These keys and their secret are published in this repository. They are seeded in `local` only.
+> [!WARNING] These keys and their secret are published in this repository. They are seeded in `local` only.
 
 Two API keys are created for authentication and service access.
 
 The seed creates them in the `local` environment only, so `development`, `staging`, and `production` seed no api key.
 
 | Name | Type | Key | Secret | Usage |
-|------|------|-----|--------|-------|
+| --- | --- | --- | --- | --- |
 | Api Key Default | `default` | `local_fyFGb7ywyM37TqDY8nuhAmGW5` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For general API access |
 | Api Key System | `system` | `local_UTDH0fuDMAbd1ZVnwnyrQJd8Q` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For system-level operations |
 
@@ -197,6 +209,7 @@ All generated API keys automatically include an environment prefix to help ident
 ```
 
 **Examples:**
+
 - `local_abc123xyz`: API key for local/development environment
 - `development_def456uvw`: API key for development environment
 - `staging_ghi789rst`: API key for staging environment
@@ -209,7 +222,7 @@ This prefix is added from `APP_ENV` when a new API key is created, so a key from
 Three user roles are created with different permission levels:
 
 | Role | Type | Description | Seeded policies |
-|------|------|-------------|-----------------|
+| --- | --- | --- | --- |
 | superadmin | `superAdmin` | Super Admin Role | None: `superAdmin` bypasses the policy check entirely |
 | admin | `admin` | Admin Role | Every policy action on every policy subject |
 | user | `user` | User Role | None |
@@ -221,22 +234,21 @@ Three user roles are created with different permission levels:
 
 ### Users
 
-> [!WARNING]
-> These accounts use a password published in this repository, and the superadmin and admin accounts are seeded in every environment.
+> [!WARNING] These accounts use a password published in this repository, and the superadmin and admin accounts are seeded in every environment.
 
 The seeded users differ per environment. This is controlled by `MigrationUserData` in `src/migration/data/migration.user.data.ts`:
 
-| Environment | Seeded Users |
-|---|---|
-| `local` | superadmin + admin + user |
-| `development` | superadmin + admin only |
-| `staging` | superadmin + admin only |
-| `production` | superadmin + admin only |
+| Environment   | Seeded Users              |
+| ------------- | ------------------------- |
+| `local`       | superadmin + admin + user |
+| `development` | superadmin + admin only   |
+| `staging`     | superadmin + admin only   |
+| `production`  | superadmin + admin only   |
 
 **User accounts:**
 
 | Email | Username | Name | Role | Password | Country | Environments |
-|-------|----------|------|------|----------|---------|-------------|
+| --- | --- | --- | --- | --- | --- | --- |
 | superadmin@mail.com | superadmin | Super Admin | superadmin | `aaAA@123` | ID (Indonesia) | all |
 | admin@mail.com | admin | Admin | admin | `aaAA@123` | ID (Indonesia) | all |
 | user@mail.com | user | User | user | `aaAA@123` | ID (Indonesia) | `local` only |
@@ -250,7 +262,7 @@ Row ids and actor:
 Each created user also gets its activity rows in the same transaction:
 
 | Row | Belongs to | `createdBy` | Metadata |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `userCreated` | The superadmin | The superadmin | Empty |
 | `userCreatedByAdmin` | The admin and the user | The superadmin | `actorUserId`, `timestamp` |
 | `adminUserCreate`, one per admin or user row the run creates | The superadmin | The superadmin | `targetUserId`, `targetUsername`, `timestamp` |
@@ -259,20 +271,48 @@ Each created user also gets its activity rows in the same transaction:
 
 A user whose email already exists is left as it is apart from `updatedBy`, and gets no new nested or activity row.
 
-> [!WARNING]
-> The `user` seed checks the superadmin email before writing.
+> [!WARNING] The `user` seed checks the superadmin email before writing.
 >
 > - When that email already exists under an id other than `MigrationUserSuperAdminId`, the seed logs an error naming the email, the id found, and the id expected, and returns without writing anything.
 > - The bundled `migration:seed` script carries on with the next command.
 > - Realigning such a database means running `pnpm migration:remove`, then `pnpm migration:seed` (or `pnpm migration:fresh`).
-> - **Both paths are destructive:** the `user` seed's `remove()` deletes every user, session, activity log, and related row in the database, seeded or not, so neither belongs on an environment holding real data.
+> - **Both paths are destructive:** the `user` seed's `remove()` deletes every user and every user-linked row in the database, seeded or not, so neither belongs on an environment holding real data.
+
+The `user` seed's `remove()` runs one transaction and empties these models in order:
+
+1. `NotificationDelivery`
+2. `Notification`
+3. `TermPolicyRecipient`
+4. `NotificationUserSetting`
+5. `ProjectMember`
+6. `WorkspaceJoinRequest`
+7. `WorkspaceInvite`
+8. `WorkspaceMember`
+9. `TwoFactor`
+10. `Session`
+11. `DeviceOwnership`
+12. `Verification`
+13. `UserMobileNumber`
+14. `PasswordHistory`
+15. `ForgotPassword`
+16. `ActivityLog`
+17. `TermPolicyUserAcceptance`
+18. `User`
+
+Notes on the removal:
+
+- `TermPolicyRecipient.notificationId` is a plain ObjectId with no Prisma relation to `Notification`, so the order of steps 2 and 3 is not constrained by a reference.
+- Steps 5 to 8 delete every `ProjectMember`, `WorkspaceJoinRequest`, `WorkspaceInvite`, and `WorkspaceMember` row, including those of workspaces the `workspace` seed did not create.
+- `ActivityLog` is emptied entirely, including logs with a `workspaceId` and logs with none.
+- `Workspace` and `Project` rows that the `workspace` seed did not create stay. Their members, invites, join requests, and project members are deleted.
+- `Device` rows stay. Only `DeviceOwnership`, the link between a user and a device, is deleted.
 
 ### Feature Flags
 
 Six feature flags are created to control authentication, user, and workspace features:
 
 | Key | Description | Enabled | Rollout | Metadata |
-|-----|-------------|---------|---------|----------|
+| --- | --- | --- | --- | --- |
 | `loginWithGoogle` | Enable login with Google | ✅ Yes | 100% | `signUpAllowed: true` |
 | `loginWithApple` | Enable login with Apple | ✅ Yes | 100% | `signUpAllowed: true` |
 | `loginWithCredential` | Enable login with Credential | ✅ Yes | 100% | - |
@@ -286,17 +326,16 @@ All features are enabled by default with 100% rollout for development convenienc
 
 Four term policy documents are created:
 
-| Type | Version | Language | Description |
-|------|---------|----------|-------------|
-| `cookies` | 1 | EN | Cookie policy document |
-| `marketing` | 1 | EN | Marketing terms document |
-| `privacy` | 1 | EN | Privacy policy document |
-| `termsOfService` | 1 | EN | Terms of Service document |
+| Type             | Version | Language | Description               |
+| ---------------- | ------- | -------- | ------------------------- |
+| `cookies`        | 1       | EN       | Cookie policy document    |
+| `marketing`      | 1       | EN       | Marketing terms document  |
+| `privacy`        | 1       | EN       | Privacy policy document   |
+| `termsOfService` | 1       | EN       | Terms of Service document |
 
 - The `termPolicy` seed creates each record with an empty `contents` array and `status: published`.
 - The document bodies are Handlebars templates in `src/modules/term-policy/templates/*.hbs`, one per type.
 - `templateTermPolicy` links them onto S3: [Term Policy][ref-doc-term-policy].
-
 
 ## Models
 
@@ -306,7 +345,7 @@ Every model in `prisma/schema.prisma` maps to a MongoDB collection through `@@ma
 - The collection name is what you see in MongoDB.
 
 | Model | Collection | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `ApiKey` | `ApiKeys` | API key credentials for machine access |
 | `Role` | `Roles` | Roles |
 | `Policy` | `Policies` | The `(subject, action[])` rows a role grants, evaluated through CASL |
@@ -321,6 +360,7 @@ Every model in `prisma/schema.prisma` maps to a MongoDB collection through `@@ma
 | `DeviceOwnership` | `DeviceOwnerships` | Link between a user and a device |
 | `TwoFactor` | `TwoFactors` | Two-factor secret, attempt counter, and backup codes |
 | `TermPolicy` | `TermPolicies` | Term policy documents and versions |
+| `TermPolicyRecipient` | `TermPolicyRecipients` | One marker per user and term policy for the publication email |
 | `TermPolicyUserAcceptance` | `TermPolicyUserAcceptances` | A user's acceptance of one policy version |
 | `FeatureFlag` | `FeatureFlags` | Feature toggles with rollout percent and metadata |
 | `ForgotPassword` | `ForgotPasswords` | Password reset tokens |
@@ -333,6 +373,31 @@ Every model in `prisma/schema.prisma` maps to a MongoDB collection through `@@ma
 | `WorkspaceJoinRequest` | `WorkspaceJoinRequests` | Requests to join a public workspace |
 | `Project` | `Projects` | Projects inside a workspace |
 | `ProjectMember` | `ProjectMembers` | Project membership and role |
+
+**`TermPolicyRecipient`** (`TermPolicyRecipients`):
+
+- `NotificationRepository` owns the model.
+- Fields:
+    - `id`, `termPolicyId`, `userId`, `notificationId`, and `batchId` are ObjectIds.
+    - `enqueuedAt` and `sentAt` are optional `DateTime` values.
+    - `enqueuedAt` is `null` until the batch email job is added.
+    - `sentAt` is `null` until SES reports `Success`.
+    - `createdAt`, `createdBy`, `updatedAt`, and `updatedBy` are the audit fields.
+- `@@unique([termPolicyId, userId])` allows one marker per user and term policy.
+- `@@index([termPolicyId, batchId])` serves the reads of one batch.
+- `user` relates the row to `User` through `userId`.
+- `User.termPolicyRecipients` is the back relation.
+- The publication flow that reads and writes the markers: [Notification Documentation][ref-doc-notification].
+
+**`User` indexes** besides the unique `username` and `email`:
+
+- `[id, deletedAt]`
+- `[email, deletedAt]`
+- `[status, deletedAt, createdAt desc]`
+- `[roleId, status, deletedAt]`
+- `[countryId, status, signUpAt desc]`
+- `[signUpAt desc]`
+- `[deletedAt, signUpAt desc]`
 
 ## Composite Types
 
@@ -354,15 +419,16 @@ type GeoLocation {
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `latitude` | `Float` | Latitude coordinate |
-| `longitude` | `Float` | Longitude coordinate |
-| `country` | `String` | ISO country code (e.g. `"ID"`) |
-| `region` | `String` | Region/state code (e.g. `"JK"`) |
-| `city` | `String` | City name (e.g. `"Jakarta"`) |
+| Field       | Type     | Description                     |
+| ----------- | -------- | ------------------------------- |
+| `latitude`  | `Float`  | Latitude coordinate             |
+| `longitude` | `Float`  | Longitude coordinate            |
+| `country`   | `String` | ISO country code (e.g. `"ID"`)  |
+| `region`    | `String` | Region/state code (e.g. `"JK"`) |
+| `city`      | `String` | City name (e.g. `"Jakarta"`)    |
 
 **Used in:**
+
 - `Session.geoLocation`: location at login time
 - `ActivityLog.geoLocation`: location when the action was performed
 
@@ -421,16 +487,17 @@ type UserAgentOs {
 
 **`UserAgent` fields:**
 
-| Field | Type | Description |
-|---|---|---|
-| `ua` | `String?` | Raw user-agent string |
-| `browser` | `UserAgentBrowser?` | Browser details |
-| `cpu` | `UserAgentCpu?` | CPU architecture |
-| `device` | `UserAgentDevice?` | Device details |
-| `engine` | `UserAgentEngine?` | Rendering engine details |
-| `os` | `UserAgentOs?` | Operating system details |
+| Field     | Type                | Description              |
+| --------- | ------------------- | ------------------------ |
+| `ua`      | `String?`           | Raw user-agent string    |
+| `browser` | `UserAgentBrowser?` | Browser details          |
+| `cpu`     | `UserAgentCpu?`     | CPU architecture         |
+| `device`  | `UserAgentDevice?`  | Device details           |
+| `engine`  | `UserAgentEngine?`  | Rendering engine details |
+| `os`      | `UserAgentOs?`      | Operating system details |
 
 **Used in:**
+
 - `Session.userAgent`: client info at login time
 - `ActivityLog.userAgent`: client info when the action was performed
 
@@ -463,15 +530,24 @@ type UserTermPolicy {
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
+| Field            | Type      | Description                   |
+| ---------------- | --------- | ----------------------------- |
 | `termsOfService` | `Boolean` | Has accepted Terms of Service |
-| `privacy` | `Boolean` | Has accepted Privacy Policy |
-| `marketing` | `Boolean` | Has accepted Marketing terms |
-| `cookies` | `Boolean` | Has accepted Cookie policy |
+| `privacy`        | `Boolean` | Has accepted Privacy Policy   |
+| `marketing`      | `Boolean` | Has accepted Marketing terms  |
+| `cookies`        | `Boolean` | Has accepted Cookie policy    |
 
 **Used in:**
+
 - `User.termPolicy`
+
+**Written by:**
+
+- Accepting a policy writes `termPolicy: { update: { [type]: true } }` on that user.
+- Publishing a policy writes `termPolicy: { update: { [type]: false } }` on every user with `deletedAt: null`.
+    - Any status matches: active, inactive, and blocked users are included.
+    - Publishing leaves every `TermPolicyUserAcceptance` row untouched.
+- Each write changes only the flag of that type.
 
 ---
 
@@ -492,7 +568,7 @@ type UserPhoto {
 ```
 
 | Field | Type | Description |
-|---|---|---|
+| --- | --- | --- |
 | `bucket` | `String` | S3 bucket name |
 | `key` | `String` | S3 object key |
 | `cdnUrl` | `String?` | Full CDN URL of the object, `null` for a bucket with no CDN configured |
@@ -502,6 +578,7 @@ type UserPhoto {
 | `access` | `String` | Access level (`public` or `private`) |
 
 **Used in:**
+
 - `User.photo`
 
 ---
@@ -525,7 +602,7 @@ type TermPolicyContent {
 ```
 
 | Field | Type | Description |
-|---|---|---|
+| --- | --- | --- |
 | `language` | `String` | Language code (e.g. `"en"`) |
 | `bucket` | `String` | S3 bucket name |
 | `key` | `String` | S3 object key |
@@ -537,8 +614,8 @@ type TermPolicyContent {
 | `size` | `Int` | File size in bytes |
 
 **Used in:**
-- `TermPolicy.contents`
 
+- `TermPolicy.contents`
 
 ## Audit Fields and Soft Delete
 
@@ -556,12 +633,12 @@ Three roles, wired together in `src/common/database/database.module.ts`:
 - **`DatabaseClientFactory`** (`factories/database.client.factory.ts`):
     - extends `PrismaClient<IDatabaseClientOptions, ...>`
     - holds the connection options (event-emitting `log` levels and `errorFormat`)
-    - returns the extended client from `create()`
+    - returns the extended client from `create()`, typed `IDatabaseClient`
     - `IDatabaseClientOptions` (`interfaces/database.client.interface.ts`) is `Prisma.PrismaClientOptions` with a required `log: Prisma.LogDefinition[]`
 - **`DatabaseExtensionUtil`** (`utils/database.extension.util.ts`):
     - holds the per-model audit field set (built from `Prisma.ModelName` and `Prisma.<Model>ScalarFieldEnum`)
     - holds the stamping methods
-    - builds the extension in `build()`
+    - builds the extension in `build()`, typed `IDatabaseExtension`
     - walks nested writes through `DatabaseModelRelations` (`constants/database.constant.ts`), a relation-field to related-model map per model
     - types that map with `IDatabaseModelRelations` against `Prisma.TypeMap`, so a schema change that adds, removes, or retargets a relation fails `pnpm typecheck` until the map matches
 - **`DatabaseService`** (`services/database.service.ts`):
@@ -574,7 +651,12 @@ The extension carries these hooks and methods, all registered against `$allModel
 - query hooks: `create`, `createMany`, `update`, `updateMany`, `upsert`
 - model methods: `softDelete`, `restore`
 
-`IDatabaseClient` (`interfaces/database.client.interface.ts`) is the `ReturnType` of `DatabaseClientFactory['create']`, so the client type follows the extension automatically. Leaf types the extension needs live in `interfaces/database.extension.interface.ts`:
+`IDatabaseClient` (`interfaces/database.client.interface.ts`) is a declared type, Prisma's `DynamicClientExtensionThis` over `Prisma.TypeMap` merged with the extension's `softDelete` and `restore` model methods.
+
+- `DatabaseClientFactory.create()` returns `IDatabaseClient`.
+- `DatabaseExtensionUtil.build()` returns `IDatabaseExtension`, the extension's own declared type (`interfaces/database.client.interface.ts`).
+
+Leaf types the extension needs live in `interfaces/database.extension.interface.ts`:
 
 - `IDatabaseData`
 - `IDatabaseModelContext`
@@ -622,15 +704,15 @@ What that means for callers:
     - They stage them with `ActivityLogDomain.stagePrepared` after the audited write.
     - `ActivityLogInterceptor` flushes them after the handler settles.
 - Who opens the transaction depends on how many statements and repositories the write spans:
-  - A single-statement write against one document runs on `databaseService.client` with no transaction. MongoDB applies a single-document write atomically.
-  - More than one statement, or a multi-document write, on one repository's own models: the repository method calls `this.databaseService.withTransaction` itself and takes no `tx`.
-    - `SessionRepository.revokeActiveByUser` and `NotificationRepository.createMany` are examples.
-    - `ActivityLogRepository.createMany` is one `createMany` statement and runs on `client` with no transaction.
-  - A write that spans more than one repository: the domain calls `this.databaseService.withTransaction` and each collaborator is an `*InTx(tx, ...)` method with required `tx: IDatabaseTransactionClient`.
-    - A method that does not join a caller-owned transaction takes no `tx`.
-    - `DeviceDomain.refresh` opens the transaction around `DeviceOwnershipRepository.touchInTx` and `DeviceRepository.refreshInTx`.
-    - `WorkspaceDomain.commitOnboarding` opens the onboarding `withTransaction`.
-    - `UserHttpModule` imports `WorkspaceDomainModule`, and `UserDomainModule` does not.
+    - A single-statement write against one document runs on `databaseService.client` with no transaction. MongoDB applies a single-document write atomically.
+    - More than one statement, or a multi-document write, on one repository's own models: the repository method calls `this.databaseService.withTransaction` itself and takes no `tx`.
+        - `SessionRepository.revokeActiveByUser` and `NotificationRepository.createMany` are examples.
+        - `ActivityLogRepository.createMany` is one `createMany` statement and runs on `client` with no transaction.
+    - A write that spans more than one repository: the domain calls `this.databaseService.withTransaction` and each collaborator is an `*InTx(tx, ...)` method with required `tx: IDatabaseTransactionClient`.
+        - A method that does not join a caller-owned transaction takes no `tx`.
+        - `DeviceDomain.refresh` opens the transaction around `DeviceOwnershipRepository.touchInTx` and `DeviceRepository.refreshInTx`.
+        - `WorkspaceDomain.commitOnboarding` opens the onboarding `withTransaction`.
+        - `UserHttpModule` imports `WorkspaceDomainModule`, and `UserDomainModule` does not.
 - `withTransaction(fn, options?)` takes `IDatabaseTransactionOptions` (`interfaces/database.client.interface.ts`), Prisma's `transactionOptions` shape.
     - Omitted options keep Prisma's defaults (`maxWait` 2 s, `timeout` 5 s).
     - A caller passes options only from its own `*TimeoutInMs` config key.
@@ -718,7 +800,7 @@ The shape is the same in all three places:
 The collision is recognised by `DatabaseUtil.isUniqueCollision(error, field)`: true for a `Prisma.PrismaClientKnownRequestError` with code `P2002` whose `meta.target` names `field`, case-insensitively.
 
 | Candidate source | Consumer | Retry unit |
-|---|---|---|
+| --- | --- | --- |
 | `WorkspaceDomain.drawSlugCandidates()` | `WorkspaceDomain.createWorkspace` | the `withTransaction`: `createInTx` (workspace plus owner membership) |
 | `ProjectDomain.drawSlugCandidates()` | `ProjectRepository.create` | one `client.project.create` per candidate, with no transaction |
 | `UserOnboardingDomain.buildPersonalWorkspaceContexts()` | `WorkspaceDomain.commitOnboarding` | the whole onboarding `withTransaction` |
@@ -760,7 +842,6 @@ Setup and seeding for MongoDB are in the sections above.
 - [Prisma MongoDB Documentation][ref-prisma-mongodb]: Prisma's MongoDB connector reference
 - [nest-commander][ref-nest-commander]: The CLI framework behind the seed commands
 
-
 <!-- REFERENCES -->
 
 [ref-prisma]: https://www.prisma.io
@@ -768,7 +849,6 @@ Setup and seeding for MongoDB are in the sections above.
 [ref-nest-commander]: https://nest-commander.jaymcdoniel.dev
 [ref-mongodb-atlas]: https://www.mongodb.com/products/platform/atlas-database
 [ref-elasticache]: https://aws.amazon.com/elasticache/
-
 [ref-doc-installation]: installation.md
 [ref-doc-environment]: environment.md
 [ref-doc-configuration]: configuration.md
@@ -777,3 +857,4 @@ Setup and seeding for MongoDB are in the sections above.
 [ref-doc-email]: email.md
 [ref-doc-third-party-s3]: third-party-integration.md#bucket-setup
 [ref-doc-term-policy]: term-policy.md#migration--seeding
+[ref-doc-notification]: notification.md#term-policy-publication-email

@@ -23,10 +23,19 @@ describe('UserCreateRequestSchema', () => {
         expect(result).toEqual(rest);
     });
 
-    it('rejects an email failing the custom email validation', () => {
-        expect(() =>
-            UserCreateRequestSchema.parse({ ...payload, email: 'not-an-email' })
-        ).toThrow();
+    it('rejects an email failing the custom email validation with its message path', () => {
+        const result = UserCreateRequestSchema.safeParse({
+            ...payload,
+            email: 'not-an-email',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                code: 'custom',
+                path: ['email'],
+                message: 'request.error.email.invalid',
+            }),
+        ]);
     });
 
     it('rejects a roleId that is not a Mongo id', () => {

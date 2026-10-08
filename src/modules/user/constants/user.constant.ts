@@ -1,4 +1,7 @@
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    Prisma,
+} from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -64,6 +67,22 @@ export const UserRefSelect = {
     updatedBy: true,
     deletedAt: true,
     deletedBy: true,
+} satisfies Prisma.UserSelect;
+
+/**
+ * Prisma where matching a user that is not deleted, whatever its status.
+ * @public
+ */
+export const UserNotDeletedWhere = {
+    deletedAt: null,
+} satisfies Prisma.UserWhereInput;
+
+/**
+ * Columns an id-only user read returns.
+ * @public
+ */
+export const UserIdSelect = {
+    id: true,
 } satisfies Prisma.UserSelect;
 
 /**

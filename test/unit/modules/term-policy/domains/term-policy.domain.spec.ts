@@ -658,7 +658,7 @@ describe('TermPolicyDomain', () => {
             expect(awsS3Service.copyItems).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
-                userDomain.resetTermPolicyForActiveUsersInTx
+                userDomain.resetTermPolicyInTx
             ).not.toHaveBeenCalled();
             expect(
                 notificationQueue.sendPublishTermPolicy
@@ -685,8 +685,11 @@ describe('TermPolicyDomain', () => {
             databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
             );
-            termPolicyRepository.publishInTx.mockResolvedValue(publishedRow);
-            userDomain.resetTermPolicyForActiveUsersInTx.mockResolvedValue(
+            termPolicyRepository.publishInTx.mockResolvedValue(true);
+            termPolicyRepository.findOneByIdInTx.mockResolvedValue(
+                publishedRow
+            );
+            userDomain.resetTermPolicyInTx.mockResolvedValue(
                 undefined
             );
             notificationQueue.sendPublishTermPolicy.mockResolvedValue(
@@ -705,8 +708,12 @@ describe('TermPolicyDomain', () => {
                 'term-policy-1',
                 [{ ...publicItem, language: contentEn.language }]
             );
+            expect(termPolicyRepository.findOneByIdInTx).toHaveBeenCalledWith(
+                tx,
+                'term-policy-1'
+            );
             expect(
-                userDomain.resetTermPolicyForActiveUsersInTx
+                userDomain.resetTermPolicyInTx
             ).toHaveBeenCalledWith(tx, EnumTermPolicyType.privacy);
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
                 preparedEvent,
@@ -714,9 +721,86 @@ describe('TermPolicyDomain', () => {
             expect(
                 notificationQueue.sendPublishTermPolicy
             ).toHaveBeenCalledWith(
-                { type: EnumTermPolicyType.privacy, version: 1 },
+                {
+                    termPolicyId: 'term-policy-1',
+                    type: EnumTermPolicyType.privacy,
+                    version: 1,
+                },
                 'user-1'
             );
+        });
+
+        it('throws TermPolicyStatusInvalidException and queues nothing when the guarded publish matches no draft row', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getContentPublicPath.mockReturnValue(
+                'public/term-policies/privacy/1'
+            );
+            const publicItem: IAwsS3 = {
+                ...contentEn,
+                access: EnumAwsS3Accessibility.public,
+            };
+            awsS3Service.copyItems.mockResolvedValue([publicItem]);
+            fileService.extractFilenameFromPath.mockImplementation(
+                (path: string) => path.split('/').pop() ?? ''
+            );
+            databaseService.withTransaction.mockImplementation(async fn =>
+                fn(tx)
+            );
+            termPolicyRepository.publishInTx.mockResolvedValue(false);
+
+            await expect(
+                domain.publishByAdmin('term-policy-1', 'user-1')
+            ).rejects.toMatchObject({
+                constructor: TermPolicyStatusInvalidException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.statusInvalid
+                    ],
+                messagePath: 'termPolicy.error.statusInvalid',
+            });
+            expect(
+                userDomain.resetTermPolicyInTx
+            ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendPublishTermPolicy
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws TermPolicyNotFoundException and queues nothing when the published row cannot be read back', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getContentPublicPath.mockReturnValue(
+                'public/term-policies/privacy/1'
+            );
+            awsS3Service.copyItems.mockResolvedValue([]);
+            fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
+            databaseService.withTransaction.mockImplementation(async fn =>
+                fn(tx)
+            );
+            termPolicyRepository.publishInTx.mockResolvedValue(true);
+            termPolicyRepository.findOneByIdInTx.mockResolvedValue(null);
+
+            await expect(
+                domain.publishByAdmin('term-policy-1', 'user-1')
+            ).rejects.toMatchObject({
+                constructor: TermPolicyNotFoundException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumTermPolicyStatusCodeError[
+                        EnumTermPolicyStatusCodeError.notFound
+                    ],
+                messagePath: 'termPolicy.error.notFound',
+            });
+            expect(
+                userDomain.resetTermPolicyInTx
+            ).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendPublishTermPolicy
+            ).not.toHaveBeenCalled();
         });
 
         it('rethrows an AppBaseException raised while publishing', async () => {

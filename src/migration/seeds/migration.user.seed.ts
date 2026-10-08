@@ -378,15 +378,23 @@ export class MigrationUserSeed
         try {
             await this.databaseService.withTransaction(
                 async tx => {
+                    await tx.notificationDelivery.deleteMany({});
+                    await tx.notification.deleteMany({});
+                    await tx.termPolicyRecipient.deleteMany({});
+                    await tx.notificationUserSetting.deleteMany({});
+                    await tx.projectMember.deleteMany({});
+                    await tx.workspaceJoinRequest.deleteMany({});
+                    await tx.workspaceInvite.deleteMany({});
+                    await tx.workspaceMember.deleteMany({});
                     await tx.twoFactor.deleteMany({});
                     await tx.session.deleteMany({});
-                    await tx.userMobileNumber.deleteMany({});
+                    await tx.deviceOwnership.deleteMany({});
                     await tx.verification.deleteMany({});
+                    await tx.userMobileNumber.deleteMany({});
                     await tx.passwordHistory.deleteMany({});
                     await tx.forgotPassword.deleteMany({});
                     await tx.activityLog.deleteMany({});
                     await tx.termPolicyUserAcceptance.deleteMany({});
-                    await tx.notificationUserSetting.deleteMany({});
                     await tx.user.deleteMany({});
                 },
                 { timeout: this.seedTransactionTimeoutInMs }

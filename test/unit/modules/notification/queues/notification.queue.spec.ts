@@ -400,8 +400,12 @@ describe('NotificationQueue', () => {
     });
 
     describe('sendPublishTermPolicy', () => {
-        it('enqueues the publishTermPolicy job deduplicated by type and version, medium priority', async () => {
-            const payload = { type: EnumTermPolicyType.privacy, version: 3 };
+        it('enqueues the publishTermPolicy job under a job id built from the term policy id, medium priority, without deduplication', async () => {
+            const payload = {
+                termPolicyId: 'term-policy-id',
+                type: EnumTermPolicyType.privacy,
+                version: 3,
+            };
 
             await queue.sendPublishTermPolicy(payload, 'admin-id');
 
@@ -410,10 +414,7 @@ describe('NotificationQueue', () => {
                 { proceedBy: 'admin-id', data: payload },
                 {
                     priority: EnumQueuePriority.medium,
-                    deduplication: {
-                        id: 'publishTermPolicy-privacy-3',
-                        ttl: 60_000,
-                    },
+                    jobId: 'publishTermPolicy-term-policy-id',
                 }
             );
         });

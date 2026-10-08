@@ -363,8 +363,9 @@ describe('NotificationEmailProcessorService', () => {
     });
 
     describe('processPublishTermPolicy', () => {
-        it('forwards data to the term-policy domain', async () => {
+        it('forwards data, batchId and proceedBy to the term-policy domain', async () => {
             const data: INotificationPublishTermPolicyPayload = {
+                termPolicyId: 'term-policy-id',
                 type: EnumTermPolicyType.privacy,
                 version: 2,
             };
@@ -375,13 +376,13 @@ describe('NotificationEmailProcessorService', () => {
                 INotificationEmailBulkQueuePayload<typeof data>,
                 IQueueResponse,
                 EnumNotificationProcess
-            >({ send: [send], data });
+            >({ data, batchId: 'batch-id', proceedBy: 'admin-id' });
 
             const result = await service.processPublishTermPolicy(job);
 
             expect(
                 notificationEmailTermPolicyDomain.processPublishTermPolicy
-            ).toHaveBeenCalledWith(data);
+            ).toHaveBeenCalledWith(data, 'batch-id', 'admin-id');
             expect(result).toBe(response);
         });
     });

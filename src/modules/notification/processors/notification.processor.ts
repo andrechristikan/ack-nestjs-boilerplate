@@ -1,6 +1,7 @@
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationAcceptTermPolicyPayload,
+    INotificationBulkQueuePayload,
     INotificationForgotPasswordEncryptedPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
@@ -91,7 +92,7 @@ export class NotificationProcessor extends QueueProcessorBase {
             case EnumNotificationProcess.publishTermPolicy:
                 return await this.notificationProcessorService.processPublishTermPolicy(
                     job as Job<
-                        INotificationQueuePayload<INotificationPublishTermPolicyPayload>,
+                        INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>,
                         IQueueResponse,
                         EnumNotificationProcess
                     >

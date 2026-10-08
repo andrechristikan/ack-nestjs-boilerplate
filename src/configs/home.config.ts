@@ -5,7 +5,9 @@ export interface IConfigHome {
     url: string;
 }
 
-export default registerAs('home', (): IConfigHome => ({
-    name: process.env.HOME_NAME!,
-    url: process.env.HOME_URL!,
-}));
+export default registerAs('home', (): IConfigHome => {
+    return {
+        name: process.env.HOME_NAME!,
+        url: process.env.HOME_URL!,
+    };
+});

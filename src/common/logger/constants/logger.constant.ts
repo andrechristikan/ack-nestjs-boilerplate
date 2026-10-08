@@ -1,22 +1,8 @@
-import {
-    RequestCorrelationIdHeaderName,
-    RequestIdHeaderName,
-} from '@common/request/constants/request.constant';
-
 /**
  * Default context tag for log entries with no explicit context.
  * @public
  */
 export const LoggerAutoContext = 'LoggerAutoContext';
-
-/**
- * Request-ID headers checked in order for cross-service correlation.
- * @public
- */
-export const LoggerRequestIdHeaders = [
-    RequestCorrelationIdHeaderName,
-    RequestIdHeaderName,
-] as const;
 
 /**
  * Request and response object paths whose `LoggerSensitiveFields` are redacted from logs.

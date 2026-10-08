@@ -1,8 +1,4 @@
-import type {
-    IHelperEmailValidation,
-    IHelperPasswordOptions,
-} from '@common/helper/interfaces/helper.interface';
-import { validateEmail } from '@common/request/validations/request.custom-email.validation';
+import type { IHelperPasswordOptions } from '@common/helper/interfaces/helper.interface';
 import { RequestPasswordStrengthRegex } from '@common/request/constants/request.constant';
 import {
     HelperStringAlphanumericCharacters,
@@ -104,10 +100,6 @@ export class HelperStringService {
             password.length >= (options?.length ?? 8) &&
             RequestPasswordStrengthRegex.test(password)
         );
-    }
-
-    checkEmail(value: string): IHelperEmailValidation {
-        return validateEmail(value);
     }
 
     checkUrlMatchesPatterns(url: string, patterns: string[]): boolean {

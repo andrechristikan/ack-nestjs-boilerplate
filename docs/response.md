@@ -15,18 +15,18 @@ Response decorators wrap the handler result with metadata, a status code, and a 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Response Decorators](#response-decorators)
-  - [@Response](#response)
-  - [@ResponsePagination](#responsepagination)
-  - [@ResponseFile](#responsefile)
+    - [@Response](#response)
+    - [@ResponsePagination](#responsepagination)
+    - [@ResponseFile](#responsefile)
 - [Serialization](#serialization)
-  - [Declaring the Schema](#declaring-the-schema)
-  - [A Route That Returns No Data](#a-route-that-returns-no-data)
-  - [Nested Schemas](#nested-schemas)
-  - [Hiding Fields](#hiding-fields)
-  - [Serialization Flow](#serialization-flow)
+    - [Declaring the Schema](#declaring-the-schema)
+    - [A Route That Returns No Data](#a-route-that-returns-no-data)
+    - [Nested Schemas](#nested-schemas)
+    - [Hiding Fields](#hiding-fields)
+    - [Serialization Flow](#serialization-flow)
 - [Response Structure](#response-structure)
-  - [Standard](#standard)
-  - [Paginated](#paginated)
+    - [Standard](#standard)
+    - [Paginated](#paginated)
 - [Caching](#caching)
 - [Custom Headers](#custom-headers)
 
@@ -45,10 +45,11 @@ Response decorators wrap the handler result with metadata, a status code, and a 
 Standard API response decorator with optional caching.
 
 **Parameters:**
+
 - `messagePath` (string): Path to response message for localization
 - `options` (optional): `IResponseOptions`
-  - `schema` (zod schema): The payload shape. Its absence declares a route that returns no data
-  - `cache` (boolean | object): Enable caching
+    - `schema` (zod schema): The payload shape. Its absence declares a route that returns no data
+    - `cache` (boolean | object): Enable caching
 
 - `IResponseOptions` carries only `schema` and `cache`.
 - Success HTTP status and body `statusCode` both follow `@HttpCode` when present, otherwise Nest method defaults (`POST` → 201, else 200).
@@ -56,6 +57,7 @@ Standard API response decorator with optional caching.
 - The decorator also documents the success envelope and `DocSerializationErrorResponses.serialization`.
 
 **Requirements:**
+
 - Handler returns `IResponseReturn<T>`
 - `ResponseInterceptor` reads `data` and `metadata` off that object, so a payload returned outside it reaches the envelope as no `data` at all
 
@@ -137,11 +139,12 @@ async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
 - Strategy comes from the handler return via `EnumPaginationType`, not from decorator options.
 
 **Parameters:**
+
 - `messagePath` (string): Path to response message for localization
 - `options`: Configuration options
-  - `schema` (zod schema, required): The shape of ONE item of the page
-    - The interceptor wraps the page around it
-  - `cache` (boolean | object): Enable caching
+    - `schema` (zod schema, required): The shape of ONE item of the page
+        - The interceptor wraps the page around it
+    - `cache` (boolean | object): Enable caching
 
 `IResponseOptions` / pagination options carry **schema and cache only**. They do not carry:
 
@@ -154,6 +157,7 @@ async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
 - The decorator also publishes shared pagination error kits plus both offset and cursor kits.
 
 **Requirements:**
+
 - Handler returns `IResponsePaginationReturn<T>`
 - List query DTO on `@Query({ schema })`
 - HTTP service derives params via `PaginationQueryUtil` (see [Pagination Documentation][ref-doc-pagination])
@@ -212,6 +216,7 @@ File download response decorator for CSV and PDF downloads, with proper headers 
 - `maxDataExportConfigKey`: the config key holding the CSV row cap for this route (default `file.maxDataExport`, 1000). The user export passes `user.maxDataExport` (500).
 
 **Requirements:**
+
 - Handler returns `IResponseFileReturn` (`IResponseCsvReturn` | `IResponsePdfReturn`)
 - `extension` is `EnumFileExtensionDocument.csv` or `EnumFileExtensionDocument.pdf`
 - CSV data is a non-empty string (already converted)
@@ -388,7 +393,7 @@ To drop a field a base declares, derive with `.omit()`:
 export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
-}).extend({ /* ... */ });
+}).extend({/* ... */});
 ```
 
 ### Serialization Flow
@@ -445,7 +450,7 @@ The shared `ResponseMetadataService` (`src/common/response/services/response.met
     repoVersion: string;
     requestId: string;
     correlationId: string;
-    
+
     // Pagination metadata
     type: 'offset' | 'cursor';
     search?: string;
@@ -457,13 +462,13 @@ The shared `ResponseMetadataService` (`src/common/response/services/response.met
     orderBy: string[];   // `field:direction` entries, e.g. ['createdAt:desc']
     availableSearch: string[];
     availableOrderBy: string[];
-    
+
     // Offset-specific fields (when type = 'offset')
     page?: number;
     totalPage?: number;
     nextPage?: number;
     previousPage?: number;
-    
+
     // Cursor-specific fields (when type = 'cursor')
     nextCursor?: string;
     previousCursor?: string;   // declared on the DTO, never populated
@@ -526,8 +531,8 @@ All responses automatically include these headers (set by interceptors):
 - `x-timezone`: Response timezone
 - `x-version`: API version (read from the request store `RequestVersionStoreKey`, fallback config `app.urlVersion.version`)
 - `x-repo-version`: Repository version
-- `x-request-id`: Unique request identifier (read from the request store `RequestIdStoreKey`)
-- `x-correlation-id`: Request correlation identifier (read from the request store `RequestCorrelationIdStoreKey`)
+- `x-request-id`: Request identifier, the inbound value when it matches `RequestIdRegex`, otherwise a server UUID v7 (read from the request store `RequestIdStoreKey`)
+- `x-correlation-id`: Request correlation identifier, resolved by the same rule (read from the request store `RequestCorrelationIdStoreKey`)
 
 `ResponseMetadataService.setHeaders` writes all seven, on the success interceptors and on every exception filter.
 
@@ -536,9 +541,8 @@ All responses automatically include these headers (set by interceptors):
     - `ResponseTimestampHeaderName`, `ResponseTimezoneHeaderName`, `ResponseVersionHeaderName`, and `ResponseRepoVersionHeaderName` in `src/common/response/constants/response.constant.ts`
 - All seven are in `request.cors.exposedHeader`, so a cross-origin browser client can read them.
 - The same store-sourced `language`, `version`, `requestId`, and `correlationId` feed the response `metadata`.
-- `request.id` / `request.correlationId` are kept only for pino logging.
-
-
+- `requestId` and `correlationId` are required metadata fields, present on every response.
+- `RequestRequestIdMiddleware` also sets `request.id` and `request.correlationId`. Nothing reads them: the response and the logger both read the request store.
 
 <!-- REFERENCES -->
 

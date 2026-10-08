@@ -39,6 +39,7 @@ export const DatabaseModelRelations = {
         workspaceMembers: 'WorkspaceMember',
         workspaceJoinRequests: 'WorkspaceJoinRequest',
         projectMembers: 'ProjectMember',
+        termPolicyRecipients: 'TermPolicyRecipient',
     },
     Verification: { user: 'User', mobileNumber: 'UserMobileNumber' },
     PasswordHistory: { user: 'User' },
@@ -62,6 +63,7 @@ export const DatabaseModelRelations = {
     ForgotPassword: { user: 'User' },
     Notification: { user: 'User', deliveries: 'NotificationDelivery' },
     NotificationDelivery: { notification: 'Notification' },
+    TermPolicyRecipient: { user: 'User' },
     NotificationUserSetting: { user: 'User' },
     Workspace: {
         members: 'WorkspaceMember',

@@ -16,11 +16,11 @@ The application ships as one image built from `ci/dockerfile.production`.
 Three release paths exist. Each one ends with the application running and answering `GET /api/public/hello`:
 
 - [Path 1: Existing dependencies](#path-1-existing-dependencies): MongoDB, Redis, and a JWKS host already exist.
-  - The section states what the application needs from them.
-  - It then builds and runs the image, or runs the application without a container.
+    - The section states what the application needs from them.
+    - It then builds and runs the image, or runs the application without a container.
 - [Path 2: Single instance with Docker Compose](#path-2-single-instance-with-docker-compose): one host runs the application, MongoDB, Redis, the JWKS server, and BullBoard from one Compose file.
 - [Path 3: CI/CD](#path-3-cicd): the workflows under `.github/workflows/` build the image, push it, and start it on a host or an ECS service.
-  - The section also lists the steps another pipeline needs.
+    - The section also lists the steps another pipeline needs.
 
 The sections under [Shared by every path](#shared-by-every-path) apply to all three paths.
 
@@ -40,27 +40,27 @@ The sections under [Shared by every path](#shared-by-every-path) apply to all th
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Shared by every path](#shared-by-every-path)
-  - [Generate keys and secrets](#generate-keys-and-secrets)
-  - [Variables set by hand](#variables-set-by-hand)
-  - [The application image](#the-application-image)
-  - [Schema push and seed data](#schema-push-and-seed-data)
-  - [Check the application](#check-the-application)
+    - [Generate keys and secrets](#generate-keys-and-secrets)
+    - [Variables set by hand](#variables-set-by-hand)
+    - [The application image](#the-application-image)
+    - [Schema push and seed data](#schema-push-and-seed-data)
+    - [Check the application](#check-the-application)
 - [Path 1: Existing dependencies](#path-1-existing-dependencies)
-  - [What the application needs](#what-the-application-needs)
-  - [Steps](#steps)
+    - [What the application needs](#what-the-application-needs)
+    - [Steps](#steps)
 - [Path 2: Single instance with Docker Compose](#path-2-single-instance-with-docker-compose)
-  - [Prerequisites](#prerequisites)
-  - [Stack on the host](#stack-on-the-host)
-  - [Steps](#steps-1)
-  - [Ports and access](#ports-and-access)
-  - [Vault profile](#vault-profile)
+    - [Prerequisites](#prerequisites)
+    - [Stack on the host](#stack-on-the-host)
+    - [Steps](#steps-1)
+    - [Ports and access](#ports-and-access)
+    - [Vault profile](#vault-profile)
 - [Path 3: CI/CD](#path-3-cicd)
-  - [Behaviour shared by the three release-with workflows](#behaviour-shared-by-the-three-release-with-workflows)
-  - [release-with-ssh.yml](#release-with-sshyml)
-  - [release-with-aws-sdk-ec2.yml](#release-with-aws-sdk-ec2yml)
-  - [release-with-aws-sdk-ecs.yml](#release-with-aws-sdk-ecsyml)
-  - [release-version.yml](#release-versionyml)
-  - [Another CI/CD system](#another-cicd-system)
+    - [Behaviour shared by the three release-with workflows](#behaviour-shared-by-the-three-release-with-workflows)
+    - [release-with-ssh.yml](#release-with-sshyml)
+    - [release-with-aws-sdk-ec2.yml](#release-with-aws-sdk-ec2yml)
+    - [release-with-aws-sdk-ecs.yml](#release-with-aws-sdk-ecsyml)
+    - [release-version.yml](#release-versionyml)
+    - [Another CI/CD system](#another-cicd-system)
 
 ## Shared by every path
 
@@ -71,18 +71,18 @@ The release needs these files:
 - `.env`, which carries the JWT key pairs, the KIDs, and both encryption secrets for the API
 - `keys/access-jwks.json` and `keys/refresh-jwks.json`, which a JWKS host serves
 - `keys/mongo-keyfile`, which only the Compose `mongo` service mounts (Path 2)
-  - The `mongo` entrypoint copies it only when `DOCKER_MONGO_ROOT_PASSWORD` is set.
+    - The `mongo` entrypoint copies it only when `DOCKER_MONGO_ROOT_PASSWORD` is set.
 
 One script writes all of it, and it runs in either place:
 
 - On a machine with Node.js and the repository dependencies:
-  ```bash
-  pnpm generate:secret --direct-insert
-  ```
+    ```bash
+    pnpm generate:secret --direct-insert
+    ```
 - On the host itself, with Node.js >= 24.15.0 and no `pnpm install`, because the script uses only built-in modules:
-  ```bash
-  node scripts/generate-secret.ts all --direct-insert
-  ```
+    ```bash
+    node scripts/generate-secret.ts all --direct-insert
+    ```
 
 The script writes into the `keys/` and `.env` of the checkout it runs in. After it runs:
 
@@ -117,9 +117,9 @@ The script leaves these variables for the operator. The other variables come fro
 
 Where the application reads its settings:
 
-- The application reads the process environment, `.env`, and `.env.<NODE_ENV>`, once at boot.
-- The process environment wins over both files.
-- `.env` wins over `.env.<NODE_ENV>`.
+- The application reads the process environment and `.env` once at boot.
+- The process environment wins over `.env`.
+- No `.env.<NODE_ENV>` file is loaded.
 - A variable set in the process environment satisfies validation without any file, so an ECS task definition's environment variables are enough.
 - A container with neither a mounted `.env` nor the variables in its environment fails `AppEnvSchema` validation at boot.
 
@@ -152,7 +152,7 @@ Facts about the image:
 `NODE_ENV` and `APP_ENV` are separate variables:
 
 - The application validates and reads `APP_ENV`.
-- `NODE_ENV` only selects the optional second env file, `.env.<NODE_ENV>`, that `ConfigModule` loads after `.env`.
+- `NODE_ENV` selects no env file: `ConfigModule` loads only `.env`.
 - `src/main.ts` overwrites `NODE_ENV` with the value of `APP_ENV` once the config is loaded.
 - The workflows pass the environment name as the `NODE_ENV` build argument.
 - The host-side `docker run` commands in the SSH and EC2 workflows pass it as `--env NODE_ENV`.
@@ -170,8 +170,8 @@ Facts about both commands:
 - They run from a checkout on a machine with Node.js >= 24.15.0, or in a one-off container (below).
 - They read `.env` from the checkout and the process environment.
 - The seed process builds the same `CommonModule` as the API.
-  - It validates the whole `.env`.
-  - It opens the same MongoDB, Redis cache, and BullMQ connections.
+    - It validates the whole `.env`.
+    - It opens the same MongoDB, Redis cache, and BullMQ connections.
 - Each path states where the commands run.
 
 A machine with Docker and no Node.js runs the commands in a one-off container with the checkout mounted:
@@ -194,15 +194,15 @@ Facts about the container:
 - `HOME=/tmp` gives that user a writable home.
 - `corepack enable --install-directory /tmp/bin` writes the pnpm shim to a directory that user can write, because `/usr/local/bin` needs root.
 - Without `--user`, the container runs as root.
-  - On a Linux host it then leaves root-owned `node_modules`, `dist`, and `src/generated` in the checkout.
-  - Git ignores all three.
+    - On a Linux host it then leaves root-owned `node_modules`, `dist`, and `src/generated` in the checkout.
+    - Git ignores all three.
 
 Facts about the seed data:
 
 - `src/migration/data/*.ts` holds the seed values. Edit them in the checkout, run the seed, then restore the files so the checkout stays clean:
-  ```bash
-  git checkout -- src/migration/data
-  ```
+    ```bash
+    git checkout -- src/migration/data
+    ```
 - The edited values carry the API key secret and the user passwords, so they are never committed.
 - Seed data depends on `APP_ENV`. The `apiKey` seed writes keys only for `local`, so `production` gets none.
 - Every public route except `GET /api/public/hello` sits behind `x-api-key`, so `MigrationApiKeyData` (`src/migration/data/migration.api-key.data.ts`) defines the keys for the environment before seeding.
@@ -238,7 +238,7 @@ flowchart LR
 ### What the application needs
 
 | Service | Variable | Expected form |
-|---|---|---|
+| --- | --- | --- |
 | MongoDB | `DATABASE_URL` | `mongodb://<host>:<port>/<database>?retryWrites=true&w=majority&replicaSet=<replica set name>`, or `mongodb+srv://<host>/<database>?retryWrites=true&w=majority` |
 | Redis cache | `CACHE_REDIS_URL` | `redis://<host>:<port>/<database number>`, or `rediss://` for TLS |
 | Redis queues | `QUEUE_REDIS_URL` | `redis://<host>:<port>/<database number>`, or `rediss://` for TLS |
@@ -249,7 +249,7 @@ Facts about these services:
 
 - MongoDB is a replica set, because Prisma transactions need one.
 - A MongoDB server that requires authentication takes `<user>:<password>@` before the host and `authSource=<auth database>` in the query.
-  - `authSource` names the database where the user is defined.
+    - `authSource` names the database where the user is defined.
 - A Redis server with a password takes `redis://:<password>@<host>:<port>/<database number>`.
 - The cache uses the Redis database in `CACHE_REDIS_URL`, and the queues use the one in `QUEUE_REDIS_URL`. `.env.example` sets 0 and 1.
 - The application passes each URL to its client unchanged: Prisma reads `DATABASE_URL`, and the cache and BullMQ clients read the two Redis URLs.
@@ -260,48 +260,51 @@ Facts about these services:
 ### Steps
 
 1. Get the repository, and stay in its root for every command below.
-   ```bash
-   git clone https://github.com/andrechristikan/ack-nestjs-boilerplate.git
-   cd ack-nestjs-boilerplate
-   ```
+    ```bash
+    git clone https://github.com/andrechristikan/ack-nestjs-boilerplate.git
+    cd ack-nestjs-boilerplate
+    ```
 2. Generate the keys and `.env` with the commands in [Generate keys and secrets](#generate-keys-and-secrets). The `keys/mongo-keyfile` it writes is unused in this path.
 3. Publish the content of `keys/access-jwks.json` and `keys/refresh-jwks.json` on the JWKS host, at the two URLs that go into `.env`.
 4. Set the variables in `.env`:
-   - `DATABASE_URL`, `CACHE_REDIS_URL`, and `QUEUE_REDIS_URL` in the forms above
-   - `AUTH_JWT_ACCESS_TOKEN_JWKS_URI` and `AUTH_JWT_REFRESH_TOKEN_JWKS_URI` with the URLs from step 3
-   - the variables in [Variables set by hand](#variables-set-by-hand)
+    - `DATABASE_URL`, `CACHE_REDIS_URL`, and `QUEUE_REDIS_URL` in the forms above
+    - `AUTH_JWT_ACCESS_TOKEN_JWKS_URI` and `AUTH_JWT_REFRESH_TOKEN_JWKS_URI` with the URLs from step 3
+    - the variables in [Variables set by hand](#variables-set-by-hand)
 5. Push the schema and seed the database from a checkout whose `.env` reaches the database and Redis, on a machine with Node.js >= 24.15.0:
-   ```bash
-   pnpm install --frozen-lockfile
-   pnpm generate
-   pnpm db:migrate
-   pnpm migration:seed
-   ```
-   - A machine with Docker and no Node.js uses the one-off container in [Schema push and seed data](#schema-push-and-seed-data).
-   - The seed values and their effects are in the same section.
+    ```bash
+    pnpm install --frozen-lockfile
+    pnpm generate
+    pnpm db:migrate
+    pnpm migration:seed
+    ```
+    - A machine with Docker and no Node.js uses the one-off container in [Schema push and seed data](#schema-push-and-seed-data).
+    - The seed values and their effects are in the same section.
 6. Start the application in one of two ways.
 
-   In a container:
-   ```bash
-   docker build -f ci/dockerfile.production -t ack-nestjs-boilerplate-api .
-   docker run -d --name ack-nestjs-boilerplate-api \
-     -p 3000:3000 \
-     -v "$PWD/.env":/app/.env:ro \
-     ack-nestjs-boilerplate-api
-   ```
-   - The `.env` mounts read-only at `/app/.env`, and its mode is `0644`.
-   - `.env` sets `HTTP_HOST=0.0.0.0` for the container.
+    In a container:
 
-   Without a container, on a machine with Node.js >= 24.15.0 and pnpm:
-   ```bash
-   pnpm install --frozen-lockfile
-   pnpm generate
-   pnpm build
-   pnpm start:prod
-   ```
-   - `pnpm build` runs `nest build application` and then `pnpm typecheck`.
-   - `pnpm start:prod` runs `node --import ./dist/instrument.js dist/main.js` and reads `.env` from the working directory.
-   - `HTTP_HOST` is the interface the application binds to. `0.0.0.0` binds every interface.
+    ```bash
+    docker build -f ci/dockerfile.production -t ack-nestjs-boilerplate-api .
+    docker run -d --name ack-nestjs-boilerplate-api \
+      -p 3000:3000 \
+      -v "$PWD/.env":/app/.env:ro \
+      ack-nestjs-boilerplate-api
+    ```
+    - The `.env` mounts read-only at `/app/.env`, and its mode is `0644`.
+    - `.env` sets `HTTP_HOST=0.0.0.0` for the container.
+
+    Without a container, on a machine with Node.js >= 24.15.0 and pnpm:
+
+    ```bash
+    pnpm install --frozen-lockfile
+    pnpm generate
+    pnpm build
+    pnpm start:prod
+    ```
+    - `pnpm build` runs `nest build application` and then `pnpm typecheck`.
+    - `pnpm start:prod` runs `node --import ./dist/instrument.js dist/main.js` and reads `.env` from the working directory.
+    - `HTTP_HOST` is the interface the application binds to. `0.0.0.0` binds every interface.
+
 7. Check the application as in [Check the application](#check-the-application).
 
 ## Path 2: Single instance with Docker Compose
@@ -342,49 +345,50 @@ flowchart LR
 ### Steps
 
 1. Get the repository, and stay in its root for every command below.
-   ```bash
-   git clone https://github.com/andrechristikan/ack-nestjs-boilerplate.git
-   cd ack-nestjs-boilerplate
-   ```
+    ```bash
+    git clone https://github.com/andrechristikan/ack-nestjs-boilerplate.git
+    cd ack-nestjs-boilerplate
+    ```
 2. Generate the keys and `.env` with the commands in [Generate keys and secrets](#generate-keys-and-secrets).
-   - Compose needs `keys/access-jwks.json`, `keys/refresh-jwks.json`, and `keys/mongo-keyfile` before it starts.
-   - A missing file fails the start, because the bind mounts are created with `create_host_path: false`.
+    - Compose needs `keys/access-jwks.json`, `keys/refresh-jwks.json`, and `keys/mongo-keyfile` before it starts.
+    - A missing file fails the start, because the bind mounts are created with `create_host_path: false`.
 3. Set the variables in `.env`:
-   - the variables in [Variables set by hand](#variables-set-by-hand). The published port is fixed at 3000, so `HTTP_PORT` stays 3000.
-   - `DATABASE_URL`, pointing at the Compose service:
-     ```bash
-     DATABASE_URL=mongodb://mongo:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
-     ```
-   - `CACHE_REDIS_URL=redis://redis:6379/0` and `QUEUE_REDIS_URL=redis://redis:6379/1`
-   - the JWKS addresses on the Compose network:
-     ```bash
-     AUTH_JWT_ACCESS_TOKEN_JWKS_URI=http://jwks-server/.well-known/access-jwks.json
-     AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://jwks-server/.well-known/refresh-jwks.json
-     ```
+    - the variables in [Variables set by hand](#variables-set-by-hand). The published port is fixed at 3000, so `HTTP_PORT` stays 3000.
+    - `DATABASE_URL`, pointing at the Compose service:
+        ```bash
+        DATABASE_URL=mongodb://mongo:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
+        ```
+    - `CACHE_REDIS_URL=redis://redis:6379/0` and `QUEUE_REDIS_URL=redis://redis:6379/1`
+    - the JWKS addresses on the Compose network:
+        ```bash
+        AUTH_JWT_ACCESS_TOKEN_JWKS_URI=http://jwks-server/.well-known/access-jwks.json
+        AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://jwks-server/.well-known/refresh-jwks.json
+        ```
 4. Optionally set the `DOCKER_*` variables (see the table below). Without them, MongoDB and Redis start without authentication.
 5. Start the stack from the repository root:
-   ```bash
-   docker compose --env-file .env -f ci/docker-compose.production.yml up -d
-   ```
-   - Compose builds the `apis` image on the first start.
-   - `--env-file .env` feeds the `DOCKER_*` values into Compose.
-   - The compose file sits in `ci/`, so Compose does not read the root `.env` on its own.
-   - The `apis` service mounts the root `.env` read-only at `/app/.env` whatever `--env-file` says.
 
-   > [!WARNING]
-   > Without `--env-file`, MongoDB and Redis start without authentication and BullBoard accepts the login `admin` / `admin123`.
+    ```bash
+    docker compose --env-file .env -f ci/docker-compose.production.yml up -d
+    ```
+    - Compose builds the `apis` image on the first start.
+    - `--env-file .env` feeds the `DOCKER_*` values into Compose.
+    - The compose file sits in `ci/`, so Compose does not read the root `.env` on its own.
+    - The `apis` service mounts the root `.env` read-only at `/app/.env` whatever `--env-file` says.
 
-   ```bash
-   docker compose --env-file .env -f ci/docker-compose.production.yml ps
-   docker compose --env-file .env -f ci/docker-compose.production.yml logs -f apis
-   ```
+    > [!WARNING] Without `--env-file`, MongoDB and Redis start without authentication and BullBoard accepts the login `admin` / `admin123`.
+
+    ```bash
+    docker compose --env-file .env -f ci/docker-compose.production.yml ps
+    docker compose --env-file .env -f ci/docker-compose.production.yml logs -f apis
+    ```
+
 6. Push the schema and seed the database.
-   - The production file publishes no MongoDB port, so the commands run in the one-off container from [Schema push and seed data](#schema-push-and-seed-data), attached to the Compose network. Add this flag after `--rm`:
-     ```bash
-     --network ack-nestjs-boilerplate-production_app-network
-     ```
-   - The container reads the same `.env`, and `mongo` resolves there.
-   - The seed values and their effects are in the same section.
+    - The production file publishes no MongoDB port, so the commands run in the one-off container from [Schema push and seed data](#schema-push-and-seed-data), attached to the Compose network. Add this flag after `--rm`:
+        ```bash
+        --network ack-nestjs-boilerplate-production_app-network
+        ```
+    - The container reads the same `.env`, and `mongo` resolves there.
+    - The seed values and their effects are in the same section.
 7. Check the application as in [Check the application](#check-the-application). `docker compose ... ps` shows `apis` as `healthy`.
 
 #### The `DOCKER_*` variables
@@ -392,7 +396,7 @@ flowchart LR
 All of them are optional and empty in `.env.example`:
 
 | Variable | Unset or empty | Set |
-|---|---|---|
+| --- | --- | --- |
 | `DOCKER_MONGO_ROOT_PASSWORD` | MongoDB starts plain | MongoDB starts with `--keyFile` and `--auth` and creates the root user (`DOCKER_MONGO_ROOT_USERNAME`, default `root`) when none exists |
 | `DOCKER_REDIS_PASSWORD` | Redis starts plain | Redis starts with `--requirepass`, and BullBoard uses it to connect to Redis |
 | `DOCKER_BULLBOARD_USER`, `DOCKER_BULLBOARD_PASSWORD` | BullBoard login `admin` / `admin123` | The values replace the BullBoard login |
@@ -414,7 +418,7 @@ A `$` in a `DOCKER_*` password makes the stored password and the one in the URL 
 ### Ports and access
 
 | Service | Published | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `apis` | `3000` on every interface | Plain HTTP; the files carry no TLS termination |
 | `redis-bullboard` | `127.0.0.1:3010` only | Not reachable from outside the host |
 | `mongo`, `redis`, `jwks-server` | none | Reachable on the Compose network only |
@@ -453,9 +457,9 @@ flowchart LR
 - They run only on `workflow_dispatch`. Their `push` triggers are commented out.
 - Each job has a matrix that pairs a branch with an environment (`production`, `development`, `staging`). Only the entry whose branch matches the branch the workflow was dispatched from builds and deploys.
 - `build_image` runs `docker build --build-arg NODE_ENV=<environment> -f ci/dockerfile.production .`, then tags and pushes:
-  - `:<environment>`
-  - `:sha-<short sha>`
-  - `:latest`, for `production` only
+    - `:<environment>`
+    - `:sha-<short sha>`
+    - `:latest`, for `production` only
 - The jobs run in the order `build_image`, `deploy`, then `clean` where the workflow has one.
 - None of them runs the schema push or the seeds.
 - None of them starts MongoDB, Redis, or a JWKS server.
@@ -466,7 +470,7 @@ flowchart LR
 Pushes to a Docker registry and replaces the container on a host over SSH.
 
 | Kind | Name | Used for |
-|---|---|---|
+| --- | --- | --- |
 | Variable | `DOCKER_REGISTRY_URL` | Registry host, and the image prefix |
 | Variable | `DOCKER_IMAGE_NAME` | Image name, `<registry>/<image>:<tag>` |
 | Variable | `DOCKER_CONTAINER_NAME` | Container name, hostname, and the host directory name |
@@ -501,7 +505,7 @@ The command mounts no `keys/` and no `logs/`.
 Pushes to Amazon ECR and replaces the container on an EC2 instance through AWS Systems Manager.
 
 | Kind | Name | Used for |
-|---|---|---|
+| --- | --- | --- |
 | Variable | `AWS_ECR_REPO_URL` | ECR repository URL, `<url>:<tag>` |
 | Variable | `DOCKER_CONTAINER_NAME` | Container name, hostname, and the host directory name |
 | Variable | `DOCKER_CONTAINER_PORT` | Host port published to container port 3000 |
@@ -514,9 +518,9 @@ The deploy job runs `aws ssm send-command` with the `AWS-RunShellScript` documen
 2. Stop and remove the container named in `DOCKER_CONTAINER_NAME`.
 3. Create the Docker network `app-network` when it is absent.
 4. Run the new container with `--env NODE_ENV=<environment>`, `--publish <port>:3000`, `--network app-network`, `--restart unless-stopped`, and three bind mounts:
-   - `/home/ec2-user/<container name>/.env` to `/app/.env`
-   - `/home/ec2-user/<container name>/keys/` to `/app/keys/`
-   - `/home/ec2-user/<container name>/logs/` to `/app/logs/`
+    - `/home/ec2-user/<container name>/.env` to `/app/.env`
+    - `/home/ec2-user/<container name>/keys/` to `/app/keys/`
+    - `/home/ec2-user/<container name>/logs/` to `/app/logs/`
 
 The `clean` job runs `docker image prune --force` and removes the images under `<AWS_ECR_REPO_URL>/**` on the instance.
 
@@ -532,7 +536,7 @@ What the workflow expects to exist already:
 Pushes to Amazon ECR and starts a new deployment of an ECS service.
 
 | Kind | Name | Used for |
-|---|---|---|
+| --- | --- | --- |
 | Variable | `AWS_ECR_REPO_URL` | ECR repository URL, `<url>:<tag>` |
 | Secret | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` | AWS credentials and region |
 | Secret | `PROD_ECS_CLUSTER_NAME`, `PROD_ECS_SERVICE_NAME` | Cluster and service for `production` |
@@ -575,15 +579,15 @@ Any pipeline that releases the application needs these steps:
 2. Build the image from the repository root: `docker build -f ci/dockerfile.production -t <registry>/<image>:<tag> .`. Add `--build-arg NODE_ENV=<environment>` when the pipeline mirrors the workflows.
 3. Push the image to a registry that the target can pull from.
 4. Push the schema and seed the database once, as in [Schema push and seed data](#schema-push-and-seed-data).
-   - The step runs from a checkout.
-   - The pipeline or the operator runs it.
+    - The step runs from a checkout.
+    - The pipeline or the operator runs it.
 5. Give the container its settings, in one of two ways:
-   - Place the `.env` file on the target with mode `0644`.
-   - Set the same variables in the container's environment.
+    - Place the `.env` file on the target with mode `0644`.
+    - Set the same variables in the container's environment.
 6. Run the image with container port 3000 published. With a mounted `.env`:
-   ```bash
-   docker run -d --name <name> -p <host port>:3000 -v <host path>/.env:/app/.env:ro <registry>/<image>:<tag>
-   ```
+    ```bash
+    docker run -d --name <name> -p <host port>:3000 -v <host path>/.env:/app/.env:ro <registry>/<image>:<tag>
+    ```
 7. Make MongoDB, Redis, and the JWKS host reachable from the container at the URLs in its settings.
 8. Check the application as in [Check the application](#check-the-application).
 
@@ -591,7 +595,6 @@ Any pipeline that releases the application needs these steps:
 
 [ref-docker-engine]: https://docs.docker.com/engine/install/
 [ref-aws-ecs]: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html
-
 [ref-doc-installation]: installation.md
 [ref-doc-environment]: environment.md
 [ref-doc-database]: database.md

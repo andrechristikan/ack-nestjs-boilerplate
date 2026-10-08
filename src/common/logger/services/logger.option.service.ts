@@ -5,6 +5,11 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import {
+    RequestCorrelationIdStoreKey,
+    RequestIdStoreKey,
+} from '@common/request/constants/request.constant';
 import {
     LoggerAutoContext,
     LoggerRedactedValue,
@@ -13,7 +18,10 @@ import {
 } from '@common/logger/constants/logger.constant';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import type { Response } from 'express';
-import type { ILoggerDebugInfo } from '@common/logger/interfaces/logger.interface';
+import type {
+    ILoggerDebugInfo,
+    ILoggerMixin,
+} from '@common/logger/interfaces/logger.interface';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 import { LoggerUtil } from '@common/logger/utils/logger.util';
 import type { Options } from 'pino-http';
@@ -40,6 +48,7 @@ export class LoggerOptionService {
         private readonly helperStringService: HelperStringService,
         private readonly helperDateService: HelperDateService,
         private readonly requestContextService: RequestContextService,
+        private readonly requestStoreService: RequestStoreService,
         private readonly loggerUtil: LoggerUtil
     ) {
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
@@ -120,6 +129,8 @@ export class LoggerOptionService {
                 time: _time,
                 responseTime: _responseTime,
                 level,
+                requestId,
+                correlationId,
                 req,
                 res,
                 err,
@@ -141,6 +152,8 @@ export class LoggerOptionService {
             const log: Record<string, unknown> = {
                 severity,
                 context: context ?? LoggerAutoContext,
+                requestId,
+                correlationId,
                 timestamp: today.valueOf(),
                 msg: sanitizedMessage,
                 service: {
@@ -240,10 +253,18 @@ export class LoggerOptionService {
     private createMixin(): (
         _: Record<string, unknown>,
         level: number
-    ) => Record<string, unknown> {
+    ) => ILoggerMixin {
         return (_: Record<string, unknown>, level: number) => {
+            const requestId =
+                this.requestStoreService.get<string>(RequestIdStoreKey);
+            const correlationId = this.requestStoreService.get<string>(
+                RequestCorrelationIdStoreKey
+            );
+
             return {
-                level: level,
+                level,
+                requestId,
+                correlationId,
             };
         };
     }
@@ -259,8 +280,6 @@ export class LoggerOptionService {
         return {
             forRoutes: [{ path: '{*wildcard}', method: RequestMethod.ALL }],
             pinoHttp: {
-                genReqId: (request: IRequestApp) =>
-                    this.loggerUtil.getRequestId(request),
                 formatters: {
                     log: logFormatter,
                 },

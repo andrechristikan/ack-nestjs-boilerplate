@@ -14,7 +14,7 @@ Specs, RFCs, and practices this codebase is built against:
 This project aligns with the [Twelve-Factor App][ref-12factor] methodology.
 
 | Factor | How it applies |
-|---|---|
+| --- | --- |
 | Codebase | Single repo, one codebase tracked in Git, multiple deploys via env |
 | Dependencies | All dependencies declared in `package.json`, enforced with PNPM lockfile |
 | Config | All configuration via environment variables, validated at startup via `AppEnvSchema` |
@@ -31,7 +31,7 @@ This project aligns with the [Twelve-Factor App][ref-12factor] methodology.
 ### Security Standards
 
 | Concern | Standard |
-|---|---|
+| --- | --- |
 | JWT Access Token | ES256; ECDSA + SHA-256 ([RFC 7518][ref-rfc-7518], [RFC 7519][ref-rfc-7519]) |
 | JWT Refresh Token | ES512; ECDSA + SHA-512 ([RFC 7518][ref-rfc-7518], [RFC 7519][ref-rfc-7519]) |
 | Two-Factor Auth | TOTP; SHA-1, 6 digits, 30s period ([RFC 6238][ref-rfc-6238]) |
@@ -84,10 +84,10 @@ Helmet sets:
     - the `instrument.ts` scrubbers
 - URL paths are masked.
 
-
 ## Table of Contents
 
 ### Getting Started
+
 Install and configure the project.
 
 1. [Installation][ref-doc-installation]: Set up the development environment step by step
@@ -129,11 +129,10 @@ Install and configure the project.
 31. [Vault][ref-doc-vault]: Optional secret management via HashiCorp Vault
 
 ### Operations
+
 Release the application.
 
 32. [Release][ref-doc-release]: Three release paths: existing MongoDB, Redis, and JWKS services; one Docker Compose host; the CI/CD workflows
-
-
 
 [ref-doc-installation]: installation.md
 [ref-doc-environment]: environment.md
@@ -167,7 +166,6 @@ Release the application.
 [ref-doc-doc]: doc.md
 [ref-doc-vault]: vault.md
 [ref-doc-release]: release.md
-
 [ref-12factor]: https://12factor.net
 [ref-rfc-7518]: https://datatracker.ietf.org/doc/html/rfc7518
 [ref-rfc-7519]: https://datatracker.ietf.org/doc/html/rfc7519

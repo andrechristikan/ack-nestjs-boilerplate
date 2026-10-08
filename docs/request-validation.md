@@ -23,9 +23,9 @@ Every request shape is a [zod][ref-zod] schema.
 - [Related Documents](#related-documents)
 - [Request Module](#request-module)
 - [Usage](#usage)
-  - [Request Body Validation](#request-body-validation)
-  - [Path Parameters Validation](#path-parameters-validation)
-  - [Query Parameters](#query-parameters)
+    - [Request Body Validation](#request-body-validation)
+    - [Path Parameters Validation](#path-parameters-validation)
+    - [Query Parameters](#query-parameters)
 - [Schema Shape](#schema-shape)
 - [Composing Schemas](#composing-schemas)
 - [Shared Validations](#shared-validations)
@@ -64,6 +64,7 @@ The subclass adds two rules on top of the framework pipe:
 The pipe also strips prototype-polluting keys from the value before validating.
 
 **Processing flow**:
+
 ```mermaid
 flowchart TD
     A[Request received] --> P[RequestSchemaValidationPipe validates the argument against its schema]
@@ -83,17 +84,17 @@ The schema is bound on `@Body()`, and the parameter is typed with the inferred D
 
 ```typescript
 @Controller({
-  version: '1',
-  path: '/user',
+    version: '1',
+    path: '/user',
 })
 export class UserAdminController {
-  @Post('/create')
-  create(
-    @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto,
-    @AuthJwtPayload('userId') createdBy: string
-  ) {
-    return this.userHttpService.createByAdmin(body, createdBy);
-  }
+    @Post('/create')
+    create(
+        @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto,
+        @AuthJwtPayload('userId') createdBy: string
+    ) {
+        return this.userHttpService.createByAdmin(body, createdBy);
+    }
 }
 ```
 
@@ -167,13 +168,12 @@ userId?: string
 An issue message can be a message path, which the i18n layer resolves later:
 
 ```typescript
-newPassword: z
-    .string()
+newPassword: z.string()
     .min(8)
     .max(50)
     .regex(RequestPasswordStrengthRegex, {
         error: () => 'request.error.isPassword.strong',
-    })
+    });
 ```
 
 `RequestPasswordStrengthRegex` (`src/common/request/constants/request.constant.ts`) asserts at least one uppercase letter, one lowercase letter, and one digit. `.min()` / `.max()` beside it check the length.
@@ -189,7 +189,7 @@ Zod's own combinators build one schema from another.
 
 ```typescript
 export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
-    email: z.string().trim().toLowerCase().max(100),
+    email: z.string().trim().toLowerCase().max(100).pipe(RequestEmailSchema),
     roleId: z.string().regex(/^[0-9a-fA-F]{24}$/),
     countryId: z.string().regex(/^[0-9a-fA-F]{24}$/),
 });
@@ -219,29 +219,20 @@ export const UserChangePasswordRequestSchema =
 
 ## Shared Validations
 
-Checks too detailed for a chained method live as plain functions or shared zod schemas in `src/common/request/validations/`. `.superRefine()` calls them, or they are bound on `@Param` / `@Query`.
+A check too detailed for a chained method is a zod schema const in `src/common/request/validations/`.
 
-**`validateEmail`** (`request.custom-email.validation.ts`):
+- A validation file exports zod schema consts only, no function and no module-level helper.
+- Custom logic sits inside the chain (`superRefine`, `transform`, `preprocess`, or a `pipe` callback).
+
+**`RequestEmailSchema`** (`request.email.validation.ts`):
 
 - It walks an address part by part (`@` count, domain length, domain labels, TLD, local part).
-- It returns the i18n path of the first rule it fails.
+- It reports the i18n path of the first rule it fails under `request.error.email.*`.
 - The client is therefore told which rule broke rather than that the address is invalid.
+- A DTO email field normalizes first, then pipes into it:
 
 ```typescript
-email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .max(100)
-    .superRefine((value, ctx) => {
-        const validation = validateEmail(value);
-        if (!validation.validated) {
-            ctx.addIssue({
-                code: 'custom',
-                message: validation.messagePath,
-            });
-        }
-    })
+email: z.string().trim().toLowerCase().max(100).pipe(RequestEmailSchema);
 ```
 
 A module-specific check goes in that module's `validations/` folder instead.
@@ -251,20 +242,20 @@ Shared schemas:
 - `RequestMongoIdSchema`: 24-character hex MongoDB ObjectId
 - `RequestRequiredStringSchema`: non-empty string
 - `RequestBooleanStringSchema`: `z.stringbool` accepting exactly `'true'` or `'false'`, case-sensitive
-  - Used by the boolean environment variables
+    - Used by the boolean environment variables
 - `RequestEncryptionSecretSchema`: exactly 64 base64url characters
-  - Used by `APP_ENCRYPTION_SECRET_KEY` and `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
+    - Used by `APP_ENCRYPTION_SECRET_KEY` and `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
+- `RequestEmailSchema` (`request.email.validation.ts`): an email address that reports the first failed check
 - `RequestSesIdentityArnSchema` (`request.ses-identity-arn.validation.ts`): an AWS SES identity ARN, `arn:aws[-partition]:ses:<region>:<12-digit account>:identity/<domain or address>`
 - `RequestUrlNoTrailingSlashSchema` (`request.url-no-trailing-slash.validation.ts`): an absolute URL that does not end with `/`
-- `RequestOptionalEnvSchema(schema)` (`request.optional-env.validation.ts`): wraps an environment schema so a third-party key is optional.
-  - An absent value and an empty string both parse to `undefined`.
-  - Any other value satisfies `schema`.
-  - The same file exports four named instances:
-  - `RequestOptionalEnvStringSchema` over `RequestRequiredStringSchema`
-  - `RequestOptionalEnvEmailSchema` over a string checked by the custom `validateEmail` validator (`request.custom-email.validation.ts`)
-  - `RequestOptionalEnvSesIdentityArnSchema` over `RequestSesIdentityArnSchema`
-  - `RequestOptionalEnvUrlNoTrailingSlashSchema` over `RequestUrlNoTrailingSlashSchema`
-- `readOptionalEnv(value)` (`request.optional-env.validation.ts`): the reader the config files call on an optional key. An absent value and an empty string both read as `null`
+- `RequestOptionalEnvSchema` (`request.optional-env.validation.ts`): a single `z.preprocess` const that parses an absent value or an empty string to `null`
+    - Any other value passes through as a string.
+    - The same file exports five named instances, each piping `RequestOptionalEnvSchema` into a nullable value schema:
+        - `RequestOptionalEnvStringSchema` over `RequestRequiredStringSchema`
+        - `RequestOptionalEnvEmailSchema` over `RequestEmailSchema`
+        - `RequestOptionalEnvSesIdentityArnSchema` over `RequestSesIdentityArnSchema`
+        - `RequestOptionalEnvUrlNoTrailingSlashSchema` over `RequestUrlNoTrailingSlashSchema`
+        - `RequestOptionalEnvUrlSchema` over `z.url()`
 - `RequestMessageLanguageSchema`: a member of `EnumMessageLanguage`, carrying its own `.meta()` for the OpenAPI document
 
 ## File Validation Pipes
@@ -319,7 +310,7 @@ See [File Upload][ref-doc-file-upload].
 - An env boolean is `RequestBooleanStringSchema`, exactly `'true'` or `'false'`
 - Every other spelling fails the boot
 - An encryption secret is `RequestEncryptionSecretSchema`, exactly 64 base64url characters
-- An optional third-party key (AWS, Firebase, Sentry, social sign-in) is `RequestOptionalEnvSchema(schema)` or one of its named instances, so a blank `.env` line counts as unset.
+- An optional third-party key (AWS, Firebase, Sentry, social sign-in, `EMAIL_*`, `HTTP_TRUSTED_PROXY`) is one of the `RequestOptionalEnv*Schema` instances, so a blank `.env` line parses to `null`.
 - A `superRefine` on `AppEnvSchema` then requires the rest of a group once one of its credentials is set.
 
 See [Environment][ref-doc-environment].
@@ -330,9 +321,9 @@ See [Environment][ref-doc-environment].
 
 ```typescript
 interface IMessageValidationError {
-  key: string;        // camelCase issue code, e.g. 'invalidFormat'
-  property: string;   // dotted property path, e.g. 'address.street'
-  message: string;    // localized message
+    key: string; // camelCase issue code, e.g. 'invalidFormat'
+    property: string; // dotted property path, e.g. 'address.street'
+    message: string; // localized message
 }
 ```
 
@@ -357,61 +348,61 @@ Messages are translated using [nestjs-i18n][ref-nestjs-i18n] through the [Messag
 
 ```json
 {
-  "error": {
-    "invalidType": "{property} is not of the expected type.",
-    "tooSmall": "{property} is shorter than the minimum allowed.",
-    "tooBig": "{property} is longer than the maximum allowed.",
-    "invalidFormat": "{property} does not match the expected format.",
-    "invalidValue": "{property} is not one of the allowed values.",
-    "notMultipleOf": "{property} is not a multiple of the required step.",
-    "unrecognizedKeys": "The request contains fields that are not allowed.",
-    "invalidUnion": "{property} does not match any of the allowed shapes.",
-    "invalidKey": "{property} contains a key that is not allowed.",
-    "invalidElement": "{property} contains an element that is not allowed.",
-    "custom": "{property} failed a validation rule.",
-    "isPassword": {
-      "strong": "{property} must contain at least one uppercase letter, one lowercase letter, and one number."
-    },
-    "email": {
-      "invalid": "{property} should be a valid email address."
+    "error": {
+        "invalidType": "{property} is not of the expected type.",
+        "tooSmall": "{property} is shorter than the minimum allowed.",
+        "tooBig": "{property} is longer than the maximum allowed.",
+        "invalidFormat": "{property} does not match the expected format.",
+        "invalidValue": "{property} is not one of the allowed values.",
+        "notMultipleOf": "{property} is not a multiple of the required step.",
+        "unrecognizedKeys": "The request contains fields that are not allowed.",
+        "invalidUnion": "{property} does not match any of the allowed shapes.",
+        "invalidKey": "{property} contains a key that is not allowed.",
+        "invalidElement": "{property} contains an element that is not allowed.",
+        "custom": "{property} failed a validation rule.",
+        "isPassword": {
+            "strong": "{property} must contain at least one uppercase letter, one lowercase letter, and one number."
+        },
+        "email": {
+            "invalid": "{property} should be a valid email address."
+        }
     }
-  }
 }
 ```
 
 **Final response** (built by `AppValidationFilter`):
+
 ```json
 {
-  "statusCode": 50300,
-  "statusCodeKey": "validation",
-  "module": "request",
-  "message": "There are validation errors.",
-  "errors": [
-    {
-      "key": "custom",
-      "property": "email",
-      "message": "email should be a valid email address."
-    },
-    {
-      "key": "tooSmall",
-      "property": "password",
-      "message": "password is shorter than the minimum allowed."
+    "statusCode": 50300,
+    "statusCodeKey": "validation",
+    "module": "request",
+    "message": "There are validation errors.",
+    "errors": [
+        {
+            "key": "custom",
+            "property": "email",
+            "message": "email should be a valid email address."
+        },
+        {
+            "key": "tooSmall",
+            "property": "password",
+            "message": "password is shorter than the minimum allowed."
+        }
+    ],
+    "metadata": {
+        "language": "en",
+        "timestamp": 1660190937231,
+        "timezone": "Asia/Jakarta",
+        "version": "1",
+        "repoVersion": "1.0.0",
+        "requestId": "550e8400-e29b-41d4-a716-446655440000",
+        "correlationId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
     }
-  ],
-  "metadata": {
-    "language": "en",
-    "timestamp": 1660190937231,
-    "timezone": "Asia/Jakarta",
-    "version": "1",
-    "repoVersion": "1.0.0",
-    "requestId": "550e8400-e29b-41d4-a716-446655440000",
-    "correlationId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
-  }
 }
 ```
 
 See [Handling Error][ref-doc-handling-error] for the complete error handling flow.
-
 
 <!-- REFERENCES -->
 
@@ -419,7 +410,6 @@ See [Handling Error][ref-doc-handling-error] for the complete error handling flo
 [ref-zod-openapi]: https://github.com/samchungy/zod-openapi
 [ref-standard-schema]: https://standardschema.dev
 [ref-nestjs-i18n]: https://nestjs-i18n.com
-
 [ref-doc-message]: language-message.md
 [ref-doc-handling-error]: handling-error.md
 [ref-doc-doc]: doc.md

@@ -6,6 +6,7 @@ Transactional email through AWS SES: Handlebars templates, the sync command, and
 
 - Templates live as `.hbs` files under `src/modules/notification/templates/`.
 - Four template domains import them into SES as named templates.
+- A template domain reads a file from the `templates/` folder beside `domains/`, resolved from `import.meta.dirname`, so the path holds under `src/` and under `dist/`.
 - Runtime sends go through the notification email queue and `AwsSESService`.
 
 ## Related Documents
@@ -41,7 +42,7 @@ Four domains own import / get / delete per template:
 Available templates (one per `EnumNotificationProcess` that uses email):
 
 | Template File | Process |
-|---------------|---------|
+| --- | --- |
 | `notification.welcome.template.hbs` | `welcome` |
 | `notification.welcome-social.template.hbs` | `welcomeSocial` |
 | `notification.welcome-by-admin.template.hbs` | `welcomeByAdmin` |
@@ -87,7 +88,6 @@ SES credentials and the unconfigured state: [Third Party Integration: SES][ref-d
 
 Send behavior:
 
-
 - A job carries `cc` and `bcc` as arrays, empty when there is no copy recipient.
 - The channel domain passes a non-empty list on to the send call.
 - When `AWS_SES_IDENTITY_ARN` is set, both calls pass it as `SourceArn`.
@@ -95,7 +95,6 @@ Send behavior:
 - The job then completes and no email leaves.
 
 Queue names, rate limits, dedup, and payload encryption: [Notification Documentation][ref-doc-notification].
-
 
 <!-- REFERENCES -->
 

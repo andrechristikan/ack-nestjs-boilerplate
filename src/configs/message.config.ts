@@ -6,7 +6,9 @@ export interface IConfigMessage {
     language: string;
 }
 
-export default registerAs('message', (): IConfigMessage => ({
-    availableLanguage: Object.values(EnumMessageLanguage),
-    language: process.env.APP_LANGUAGE!,
-}));
+export default registerAs('message', (): IConfigMessage => {
+    return {
+        availableLanguage: Object.values(EnumMessageLanguage),
+        language: process.env.APP_LANGUAGE!,
+    };
+});

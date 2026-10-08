@@ -5,7 +5,6 @@ import {
     LoggerRedactMaxArrayLength,
     LoggerRedactMaxDepth,
     LoggerRedactedValue,
-    LoggerRequestIdHeaders,
     LoggerSensitiveFields,
     LoggerUrlStaticSegmentRegex,
 } from '@common/logger/constants/logger.constant';
@@ -136,22 +135,6 @@ export class LoggerUtil {
         return (request.user as unknown as { userId: string })?.userId ?? null;
     }
 
-    getRequestId(request: IRequestApp): string {
-        const headers = request.headers;
-        if (!headers) {
-            return request.id as string;
-        }
-
-        for (const header of LoggerRequestIdHeaders) {
-            const value = headers[header];
-            if (value) {
-                return value as string;
-            }
-        }
-
-        return request.id as string;
-    }
-
     sanitizeMessage(message: unknown): unknown {
         if (typeof message === 'string') {
             return stripAnsi(message)
@@ -197,7 +180,6 @@ export class LoggerUtil {
         const headers = this.redactValue(request.headers);
 
         return {
-            id: request.id,
             method: request.method,
             route,
             userAgent: request.headers['user-agent'],

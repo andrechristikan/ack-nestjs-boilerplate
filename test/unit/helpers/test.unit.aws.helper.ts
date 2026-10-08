@@ -19,18 +19,14 @@ export async function createAwsS3Service(
     overrides: Record<string, unknown>,
     doubles: IAwsS3ServiceDoubles
 ): Promise<AwsS3Service> {
-    const servicePromise = import('@common/aws/services/aws.s3.service');
-    const fileServicePromise = import('@common/file/services/file.service');
-    const helperStringServicePromise =
-        import('@common/helper/services/helper.string.service');
     const [
         { AwsS3Service: AwsS3ServiceClass },
         { FileService: FileServiceClass },
         { HelperStringService: HelperStringServiceClass },
     ] = await Promise.all([
-        servicePromise,
-        fileServicePromise,
-        helperStringServicePromise,
+        import('@common/aws/services/aws.s3.service'),
+        import('@common/file/services/file.service'),
+        import('@common/helper/services/helper.string.service'),
     ]);
     const configService = buildConfigService({
         ...configValues,

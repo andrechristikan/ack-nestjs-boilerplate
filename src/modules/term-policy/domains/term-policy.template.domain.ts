@@ -12,10 +12,6 @@ import { join } from 'path';
 @Injectable()
 export class TermPolicyTemplateDomain {
     private readonly logger = new Logger(TermPolicyTemplateDomain.name);
-    private readonly templatesDir = join(
-        process.cwd(),
-        'src/modules/term-policy/templates'
-    );
     private readonly templateVersion = 1;
 
     constructor(
@@ -26,7 +22,8 @@ export class TermPolicyTemplateDomain {
     async importTermsOfService(): Promise<IAwsS3 | null> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'term-policy.term.en.hbs'
             );
             const templateContent = readFileSync(templatePath);
@@ -73,7 +70,8 @@ export class TermPolicyTemplateDomain {
     async importPrivacy(): Promise<IAwsS3 | null> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'term-policy.privacy.en.hbs'
             );
             const templateContent = readFileSync(templatePath);
@@ -120,7 +118,8 @@ export class TermPolicyTemplateDomain {
     async importCookie(): Promise<IAwsS3 | null> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'term-policy.cookies.en.hbs'
             );
             const templateContent = readFileSync(templatePath);
@@ -167,7 +166,8 @@ export class TermPolicyTemplateDomain {
     async importMarketing(): Promise<IAwsS3 | null> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'term-policy.marketing.en.hbs'
             );
             const templateContent = readFileSync(templatePath);

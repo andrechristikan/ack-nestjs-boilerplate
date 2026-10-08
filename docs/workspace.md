@@ -56,14 +56,14 @@ The module covers four things:
 ### `Workspace` (`Workspaces`)
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `id` | `String` | ObjectId |
-| `name` | `String` | |
+| `name` | `String` |  |
 | `slug` | `String` | Globally unique |
-| `description` | `String?` | |
+| `description` | `String?` |  |
 | `isPublic` | `Boolean` | Defaults to `false`. Only a public workspace accepts join requests |
-| `createdAt` / `createdBy` | `DateTime` / `String?` | |
-| `updatedAt` / `updatedBy` | `DateTime` / `String?` | |
+| `createdAt` / `createdBy` | `DateTime` / `String?` |  |
+| `updatedAt` / `updatedBy` | `DateTime` / `String?` |  |
 | `deletedAt` / `deletedBy` | `DateTime?` / `String?` | Soft-delete marker and the id of the user who deleted the workspace |
 
 - `@@unique([slug])`
@@ -116,7 +116,7 @@ Fields:
 ### Enums
 
 | Enum | Values |
-|---|---|
+| --- | --- |
 | `EnumWorkspaceMemberRole` | `owner`, `admin`, `member` |
 | `EnumWorkspaceInviteStatus` | `pending`, `accepted`, `revoked`, `expired` |
 | `EnumWorkspaceJoinRequestStatus` | `pending`, `accepted`, `rejected`, `cancelled` |
@@ -174,9 +174,9 @@ Five user-scope routes carry no workspace header, because they act across worksp
 
 - `WorkspaceMemberGuard` confirms the user loaded by `UserGuard` has a `WorkspaceMember` row in the resolved workspace, and stores it under `WorkspaceMemberStoreKey`. No membership throws `WorkspaceMemberForbiddenException` (403, `51601`).
 - `WorkspaceRoleGuard` enforces the declared roles against that stored membership. A mismatch throws `WorkspaceRoleForbiddenException` (403, `51602`).
-- - **The `owner` role always passes, whatever roles were declared.**
-    - Owner is never listed in a route's `allowedRoles`.
-    - Folding it in would make every `@WorkspaceMemberProtected(admin)` route reject the owner.
+-   - **The `owner` role always passes, whatever roles were declared.**
+        - Owner is never listed in a route's `allowedRoles`.
+        - Folding it in would make every `@WorkspaceMemberProtected(admin)` route reject the owner.
 
 ### `WorkspaceCurrent()` / `WorkspaceMemberCurrent()`
 
@@ -227,12 +227,12 @@ Callers:
 - Running out of candidates raises `DatabaseUniqueValueGenerationFailedException` (500, `51800`), so the caller never sees a leaked Prisma error.
 - Admin CSV import writes all its rows in one `withTransaction` through `WorkspaceDomain.commitOnboarding`. That call substitutes the same candidate index into every personal row of the batch and retries the whole batch, up to the smallest candidate count in it.
 
-| User-creation path | Personal workspace |
-|---|---|
-| Admin create | Always |
-| Admin CSV import | Always, one per row |
-| Self sign-up | Only when no `inviteToken` is supplied |
-| Social sign-up | Only when no `inviteToken` is supplied |
+| User-creation path | Personal workspace                     |
+| ------------------ | -------------------------------------- |
+| Admin create       | Always                                 |
+| Admin CSV import   | Always, one per row                    |
+| Self sign-up       | Only when no `inviteToken` is supplied |
+| Social sign-up     | Only when no `inviteToken` is supplied |
 
 - **A sign-up that carries a valid invite token joins the inviting workspace instead and gets no personal workspace.** The new user lands where they were invited.
 - All paths set `user.lastWorkspaceId` and `lastWorkspaceChangedAt` to the resolved workspace.
@@ -248,7 +248,7 @@ Callers:
 - Every route carries `@FeatureFlagProtected('workspace')`.
 
 | Method | Path | Header | Minimum role |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `GET` | `/user/workspace/list` | no | authenticated |
 | `POST` | `/user/workspace/create` | no | authenticated |
 | `GET` | `/user/workspace/get` | yes | `member` |
@@ -284,7 +284,7 @@ Callers:
 - Unauthenticated, but still behind `@ApiKeyProtected()` and `@FeatureFlagProtected('workspace')`.
 
 | Method | Path | Description |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/public/workspace/invite/:inviteToken/preview` | Shows workspace name, inviter name, offered role, and expiry for a pending invite. Nothing else |
 | `GET` | `/public/workspace/preview/:slug` | Shows a **public** workspace: `id`, `name`, `slug`, `description`, and the `createdAt` / `updatedAt` / `deletedAt` timestamps |
 
@@ -302,13 +302,12 @@ Neither preview answers `forbidden` for a resource that exists but is not eligib
 
 These routes are:
 
-
 - **not** feature-flagged
 - read-only
 - blind to `x-workspace-id`
 
 | Method | Path | Description |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/workspace/list` | All workspaces including soft-deleted. Optional `isPublic` filter |
 | `GET` | `/admin/workspace/get/:workspaceId` | Any workspace by id, with no active filter |
 | `GET` | `/admin/workspace/get/:workspaceId/members` | Members of any workspace |
@@ -316,7 +315,7 @@ These routes are:
 ## Roles and Ownership
 
 | Role | May |
-|---|---|
+| --- | --- |
 | `member` | Read the workspace, list members, leave |
 | `admin` | Everything a `member` may, plus update the workspace, manage members, and manage invites and join requests |
 | `owner` | Everything, plus transfer ownership and soft-delete the workspace |
@@ -488,7 +487,7 @@ After the commit, `workspaceDeleted` is staged and `ActivityLogInterceptor` writ
 - When the affected user is the caller, only the actor row is written.
 
 | Operation | Actor row (caller) | Target row | Target row owner |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Member role update | `workspaceMemberRoleUpdated` | `workspaceMemberRoleUpdatedByAdmin` | The target member |
 | Member removal | `workspaceMemberRemoved` | `workspaceMemberRemovedByAdmin` | The removed member |
 | Ownership transfer | `workspaceOwnershipTransferred` | `workspaceOwnershipTransferredByOwner` | The new owner |
@@ -537,7 +536,7 @@ Two layers, and they are not the same check.
 **Metadata level.** Two sub-keys on the same flag are asserted inside the owning domain, at the point where they govern behaviour:
 
 | Sub-key | Gates |
-|---|---|
+| --- | --- |
 | `invitationAllowed` | invite list, create, resend, revoke, claim, public preview, and a sign-up that carries `inviteToken` |
 | `joinRequestAllowed` | public workspace preview by slug, join request create, list, accept, reject |
 
@@ -577,32 +576,31 @@ Two layers, and they are not the same check.
 
 ## Status Codes
 
-| Member | statusCode | httpStatus |
-|---|---|---|
-| `notFound` | `51600` | 404 |
-| `memberForbidden` | `51601` | 403 |
-| `roleForbidden` | `51602` | 403 |
-| `inviteInvalid` | `51603` | 400 |
-| `capReached` | `51604` | 400 |
-| `slugAlreadyExists` | `51605` | 400 |
-| `memberNotFound` | `51606` | 404 |
-| `lastOwner` | `51607` | 400 |
-| `memberPeerForbidden` | `51608` | 403 |
-| `inviteDuplicate` | `51609` | 400 |
-| `inviteProjectMismatch` | `51610` | 400 |
-| `inviteRoleRequired` | `51611` | 400 |
-| `inviteNotFound` | `51612` | 404 |
-| `inviteAlreadyProcessed` | `51613` | 400 |
-| `notPublic` | `51614` | 400 |
-| `joinRequestAlreadyMember` | `51615` | 400 |
-| `joinRequestDuplicate` | `51616` | 400 |
-| `joinRequestNotFound` | `51617` | 404 |
-| `joinRequestAlreadyProcessed` | `51618` | 400 |
-| `selfTransfer` | `51619` | 400 |
-| `slugInvalid` | `51620` | 400 |
+| Member                        | statusCode | httpStatus |
+| ----------------------------- | ---------- | ---------- |
+| `notFound`                    | `51600`    | 404        |
+| `memberForbidden`             | `51601`    | 403        |
+| `roleForbidden`               | `51602`    | 403        |
+| `inviteInvalid`               | `51603`    | 400        |
+| `capReached`                  | `51604`    | 400        |
+| `slugAlreadyExists`           | `51605`    | 400        |
+| `memberNotFound`              | `51606`    | 404        |
+| `lastOwner`                   | `51607`    | 400        |
+| `memberPeerForbidden`         | `51608`    | 403        |
+| `inviteDuplicate`             | `51609`    | 400        |
+| `inviteProjectMismatch`       | `51610`    | 400        |
+| `inviteRoleRequired`          | `51611`    | 400        |
+| `inviteNotFound`              | `51612`    | 404        |
+| `inviteAlreadyProcessed`      | `51613`    | 400        |
+| `notPublic`                   | `51614`    | 400        |
+| `joinRequestAlreadyMember`    | `51615`    | 400        |
+| `joinRequestDuplicate`        | `51616`    | 400        |
+| `joinRequestNotFound`         | `51617`    | 404        |
+| `joinRequestAlreadyProcessed` | `51618`    | 400        |
+| `selfTransfer`                | `51619`    | 400        |
+| `slugInvalid`                 | `51620`    | 400        |
 
 Full catalog: [Status Codes][ref-doc-status-codes].
-
 
 <!-- REFERENCES -->
 

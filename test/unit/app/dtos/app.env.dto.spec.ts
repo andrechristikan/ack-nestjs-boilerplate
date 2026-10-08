@@ -116,6 +116,31 @@ describe('AppEnvSchema', () => {
 
                 CACHE_REDIS_URL: 'redis://localhost:6379/0',
                 QUEUE_REDIS_URL: 'redis://localhost:6379/1',
+
+                EMAIL_NO_REPLY: null,
+                EMAIL_SUPPORT: null,
+                HTTP_TRUSTED_PROXY: null,
+                AUTH_SOCIAL_GOOGLE_CLIENT_ID: null,
+                AUTH_SOCIAL_APPLE_CLIENT_ID: null,
+                AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID: null,
+                AWS_S3_IAM_CREDENTIAL_KEY: null,
+                AWS_S3_IAM_CREDENTIAL_SECRET: null,
+                AWS_S3_IAM_ARN: null,
+                AWS_S3_REGION: null,
+                AWS_S3_ENDPOINT: null,
+                AWS_S3_PUBLIC_BUCKET: null,
+                AWS_S3_PUBLIC_CDN: null,
+                AWS_S3_PRIVATE_BUCKET: null,
+                AWS_S3_PRIVATE_CDN: null,
+                AWS_SES_IAM_CREDENTIAL_KEY: null,
+                AWS_SES_IAM_CREDENTIAL_SECRET: null,
+                AWS_SES_IDENTITY_ARN: null,
+                AWS_SES_REGION: null,
+                AWS_SES_ENDPOINT: null,
+                SENTRY_DSN: null,
+                FIREBASE_PROJECT_ID: null,
+                FIREBASE_CLIENT_EMAIL: null,
+                FIREBASE_PRIVATE_KEY: null,
             });
         });
 
@@ -134,13 +159,13 @@ describe('AppEnvSchema', () => {
             expect(result.DATABASE_DEBUG).toBe(false);
         });
 
-        it('leaves the optional variables undefined when absent', () => {
+        it('leaves the optional variables null when absent', () => {
             const result = AppEnvSchema.parse(validEnv);
 
-            expect(result.EMAIL_NO_REPLY).toBeUndefined();
-            expect(result.HTTP_TRUSTED_PROXY).toBeUndefined();
-            expect(result.SENTRY_DSN).toBeUndefined();
-            expect(result.FIREBASE_PROJECT_ID).toBeUndefined();
+            expect(result.EMAIL_NO_REPLY).toBeNull();
+            expect(result.HTTP_TRUSTED_PROXY).toBeNull();
+            expect(result.SENTRY_DSN).toBeNull();
+            expect(result.FIREBASE_PROJECT_ID).toBeNull();
         });
 
         it('strips an undeclared variable', () => {
@@ -388,14 +413,14 @@ describe('AppEnvSchema', () => {
             'FIREBASE_PRIVATE_KEY',
         ];
 
-        it('parses every third-party key as empty to undefined', () => {
+        it('parses every third-party key as empty to null', () => {
             const result = AppEnvSchema.parse({
                 ...validEnv,
                 ...buildBlankEnv(thirdPartyKeys),
             });
 
             for (const key of thirdPartyKeys) {
-                expect(result).toHaveProperty(key, undefined);
+                expect(result).toHaveProperty(key, null);
             }
         });
 
@@ -727,7 +752,7 @@ describe('AppEnvSchema', () => {
             expect(result.success).toBe(true);
         });
 
-        it('parses the Google and Apple ids to undefined when empty', () => {
+        it('parses the Google and Apple ids to null when empty', () => {
             const result = AppEnvSchema.parse({
                 ...validEnv,
                 AUTH_SOCIAL_GOOGLE_CLIENT_ID: '',
@@ -735,9 +760,9 @@ describe('AppEnvSchema', () => {
                 AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID: '',
             });
 
-            expect(result.AUTH_SOCIAL_GOOGLE_CLIENT_ID).toBeUndefined();
-            expect(result.AUTH_SOCIAL_APPLE_CLIENT_ID).toBeUndefined();
-            expect(result.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID).toBeUndefined();
+            expect(result.AUTH_SOCIAL_GOOGLE_CLIENT_ID).toBeNull();
+            expect(result.AUTH_SOCIAL_APPLE_CLIENT_ID).toBeNull();
+            expect(result.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID).toBeNull();
         });
     });
 

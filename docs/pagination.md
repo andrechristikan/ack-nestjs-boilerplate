@@ -5,6 +5,7 @@ Pagination lives in `src/common/pagination`.
 ## Overview
 
 Offset and cursor list helpers, plus filter and order-by parsing:
+
 - **Offset-based pagination**: page number and limit (`/admin/**`)
 - **Cursor-based pagination**: cursor tokens (every other scope)
 - **Filtering**: enum, equality, date range helpers on `PaginationQueryUtil`
@@ -12,6 +13,7 @@ Offset and cursor list helpers, plus filter and order-by parsing:
 - **Error handling**: the same error body as the rest of the app
 
 Ordering support is split across three levels:
+
 - **HTTP query level**: `orderBy` uses `field:direction` format in a single query parameter (e.g., `name:asc`, `createdAt:desc`).
     - Multiple entries can be sent as repeated params.
 - **Service level**: `orderBy` is always an array of order objects (`IPaginationOrderBy[]`), which is the shape Prisma receives.
@@ -29,7 +31,6 @@ List query parsing is zod on `@Query({ schema })` plus `PaginationQueryUtil` in 
 - [Doc Documentation][ref-doc-doc]: OpenAPI for paginated routes
 
 ## Table of Contents
-
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
@@ -76,7 +77,7 @@ Core service that pages at the database.
 **Two tiers of parameter types.** The controller-facing types carry only what a client may influence, and the repository-facing types add what only server code may set:
 
 | Tier | Type | Fields |
-|---|---|---|
+| --- | --- | --- |
 | HTTP-service output of `PaginationQueryUtil` | `IPaginationQueryOffsetParams<TArgsWhere>` | `limit`, `orderBy`, `where?`, `skip` |
 | HTTP-service output of `PaginationQueryUtil` | `IPaginationQueryCursorParams<TArgsWhere>` | `limit`, `orderBy`, `where?`, `cursor?`, `cursorField?` |
 | Service args, produced by the repository | `IPaginationOffsetArgs<TArgsWhere>` | the offset params above, plus `include?` or `select?` |
@@ -131,21 +132,26 @@ async offset<TReturn, TArgsWhere = unknown>(
 ```
 
 **Type Parameters:**
+
 - `TReturn`: shape of each item in the returned `data` array
 - `TArgsWhere`: Prisma `where` type for the model (e.g. `Prisma.UserWhereInput`). Defaults to `unknown`
 
 **Parameters:**
+
 - `repository`: Repository instance implementing IPaginationRepository
 - `args`: the `IPaginationQueryOffsetParams<TArgsWhere>` the HTTP service derived, widened by the repository with `include` or `select`
 
 **`args.orderBy` Support:**
+
 - Always an array: `[{ createdAt: 'desc' }]`, `[{ createdAt: 'desc' }, { name: 'asc' }]`
 
 **Default Values:**
+
 - `orderBy`: `[{ createdAt: 'desc' }]` sorts by creation date descending
 - An empty array resolves to `PaginationDefaultOrderBy`
 
 **Returns:**
+
 ```typescript
 {
     type: 'offset',
@@ -196,17 +202,21 @@ async cursor<TReturn, TArgsWhere = unknown>(
 ```
 
 **Type Parameters:**
+
 - `TReturn`: shape of each item in the returned `data` array
 - `TArgsWhere`: Prisma `where` type for the model (e.g. `Prisma.UserWhereInput`). Defaults to `unknown`
 
 **Parameters:**
+
 - `repository`: Repository instance
 - `args`: the `IPaginationQueryCursorParams<TArgsWhere>` the HTTP service derived, widened by the repository with `include` or `select`, and with `includeCount`
 
 **`args.orderBy` Support:**
+
 - Always an array: `[{ createdAt: 'desc' }]`, `[{ createdAt: 'desc' }, { name: 'asc' }]`
 
 **Default Values:**
+
 - `orderBy`: `[{ createdAt: 'desc' }]` sorts by creation date descending
 - An empty array resolves to `PaginationDefaultOrderBy`
 - `cursorField`: `'id'` is the field used for cursor positioning
@@ -229,6 +239,7 @@ The encoded cursor is URL-safe base64 over exactly two fields, and nothing else:
     - The filter itself is never exposed to the client.
 
 **Cursor Validation:**
+
 - Each request recomputes the fingerprint from its own `where` and `orderBy`, then compares it to the `fingerprint` in the supplied cursor. A mismatch throws `PaginationInvalidCursorPaginationParamsException` (50203, 422).
 - Malformed cursors throw:
     - `PaginationInvalidCursorFormatException` (50205) for a cursor that is empty or not a string
@@ -238,6 +249,7 @@ The encoded cursor is URL-safe base64 over exactly two fields, and nothing else:
 - For multi-field ordering, the array order feeds the fingerprint, so the same sequence of `orderBy` entries produces a matching cursor and a different sequence does not.
 
 **Cursor Field Tiebreaker:**
+
 - Before it queries and before it fingerprints, `cursor()` appends `{ [cursorField]: <direction> }` to the resolved `orderBy`.
     - The direction is copied from the last ordering term, so the tiebreaker never fights the primary sort.
     - It is skipped when the client already sorts on `cursorField`.
@@ -247,6 +259,7 @@ The encoded cursor is URL-safe base64 over exactly two fields, and nothing else:
 - Because the tiebreaker is part of the `orderBy` that gets fingerprinted, it is also part of what a cursor is bound to.
 
 **Returns:**
+
 ```typescript
 {
     type: 'cursor',
@@ -330,7 +343,7 @@ export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
 **Two protections** guard what a list query reaches:
 
 | Protection | Defends against | Needs an allow-list? |
-|---|---|---|
+| --- | --- | --- |
 | the util / zod schema admit named keys only (strict list DTO) | client-invented query keys reaching Prisma (`?where=`, `?select=`, `?include=`, `?includeCount=`) | no (unconditional) |
 | the allow-lists | a client sorting or searching on a column the endpoint never sanctioned | yes |
 
@@ -395,7 +408,7 @@ this.requestStoreService.merge(PaginationStoreKey, {
 - That file holds a module's list-endpoint constants and nothing else.
 
 | List kind | Allow-list typing | Filter helper `field` argument |
-|---|---|---|
+| --- | --- | --- |
 | Prisma-backed model list | `Prisma.<Model>ScalarFieldEnum` members with `as const satisfies ReadonlyArray<Prisma.<Model>ScalarFieldEnum>` | `Prisma.<Model>ScalarFieldEnum.<field>` |
 | Computed / analytic list (row is a declared `I*` interface) | `(keyof I<Row>)[]` | N/A when there is no Prisma column |
 
@@ -411,7 +424,7 @@ export const AnalyticNearLockoutAvailableOrderBy: (keyof IAnalyticNearLockout)[]
 ```
 
 | Allow-list | Schema / OpenAPI | Parse behaviour |
-|---|---|---|
+| --- | --- | --- |
 | `undefined` or `[]` | module does not `.extend` `search` / `orderBy` | no search predicate; order falls to `PaginationDefaultOrderBy` |
 | non-empty | module `.extend`s optional field with `.meta` describing the allow-list | search → `contains` `OR`; bad `orderBy` → the order exceptions above |
 
@@ -425,10 +438,10 @@ export const AnalyticNearLockoutAvailableOrderBy: (keyof IAnalyticNearLockout)[]
 
 The route prefix decides the strategy, not the endpoint:
 
-| Prefix | Strategy |
-|---|---|
-| `/admin/**` | offset |
-| `/user`, `/shared`, `/system`, `/public` | cursor |
+| Prefix                                   | Strategy |
+| ---------------------------------------- | -------- |
+| `/admin/**`                              | offset   |
+| `/user`, `/shared`, `/system`, `/public` | cursor   |
 
 - There is no per-endpoint exception list.
 - The policy lists (`/admin/role/:roleId/policy/list` and `/system/role/:roleId/policy/list`) return the whole set under `@Response`, so they take no pagination at all.
@@ -449,12 +462,14 @@ Cursor routes also constrain what they will sort on:
 ### Offset-Based
 
 **Characteristics:**
+
 - Returns total count
 - Slower with large offsets
 - Predictable page numbers
 - Affected by inserts/deletes during pagination
 
 **Constraints:**
+
 - Max page: 20 (`PaginationDefaultMaxPage`); above it throws `PaginationPageExceedsMaximumException` (50208)
 - Max perPage: 100 (`PaginationDefaultMaxPerPage`); above it throws `PaginationPerPageExceedsMaximumException` (50210)
 - Min page: 1; below it throws `PaginationPageCannotBeLessThanOneException` (50209)
@@ -491,12 +506,14 @@ The pagination fields sit inside the `metadata` block of the standard response e
 ### Cursor-Based
 
 **How It Works:**
+
 1. The service resolves `orderBy`, appends the `cursorField` tiebreaker, and hashes the canonicalized `{ where, orderBy }` into a 16-hex-character fingerprint
 2. It reads `limit + 1` rows to decide `hasNext`, then encodes the last returned row's id and that fingerprint as `{ cursor, fingerprint }`
 3. On the next request it recomputes the fingerprint and compares it to the `fingerprint` in the supplied cursor
 4. A mismatch throws `PaginationInvalidCursorPaginationParamsException`, so a client cannot page on with a filter or an ordering that has since changed
 
 **Characteristics:**
+
 - Cursor-based navigation (no page numbers)
 - Consistent performance (indexed cursor field)
 - Optional count, fetched only when the repository sets `includeCount`
@@ -505,6 +522,7 @@ The pagination fields sit inside the `metadata` block of the standard response e
 - The appended `cursorField` tiebreaker keeps the position stable even when the sort key repeats
 
 **Constraints:**
+
 - Max cursor length: 256 characters (`PaginationMaxCursorLength`); longer throws `PaginationCursorTooLongException` (50204)
 - Cursor format: URL-safe base64 (A-Za-z0-9_-); any other character throws `PaginationInvalidCursorFormatException` (50205)
 - Fingerprint mismatch: throws `PaginationInvalidCursorPaginationParamsException` (50203)
@@ -517,7 +535,6 @@ The pagination fields sit inside the `metadata` block of the standard response e
 
 - The wire field for the encoded cursor is `nextCursor`, not `cursor`.
 - `hasPrevious` is always `false` for this strategy.
-
 
 ```json
 {
@@ -553,23 +570,25 @@ return this.userDomain.getListOffsetByAdmin(
 ### Enum Filters
 
 **In (inclusion):**
+
 ```typescript
 this.paginationQueryUtil.inEnum(
     Prisma.UserScalarFieldEnum.status,
     query.status,
     UserDefaultStatus
-)
+);
 // Query: ?status=active,inactive
 // Database: WHERE status IN ('active', 'inactive')
 ```
 
 **Nin (exclusion):**
+
 ```typescript
 this.paginationQueryUtil.ninEnum(
     Prisma.UserScalarFieldEnum.status,
     query.status,
     [EnumUserStatus.blocked]
-)
+);
 // Query: ?status=blocked
 // Database: WHERE status NOT IN ('blocked')
 ```
@@ -582,19 +601,19 @@ A value outside the enum throws `PaginationFilterInvalidValueEnumException` (422
 this.paginationQueryUtil.equalBoolean(
     Prisma.ApiKeyScalarFieldEnum.isActive,
     query.isActive
-)
+);
 // Query: ?isActive=true → WHERE isActive = true
 
 this.paginationQueryUtil.equalString(
     Prisma.UserScalarFieldEnum.roleId,
     query.roleId
-)
+);
 // Query: ?roleId=507f1f77bcf86cd799439011 → WHERE roleId = '…'
 
 this.paginationQueryUtil.notEqual(
     Prisma.UserScalarFieldEnum.countryId,
     query.countryId
-)
+);
 // Query: ?countryId=… → WHERE countryId != '…'
 ```
 
@@ -608,12 +627,12 @@ this.paginationQueryUtil.dateBetween(
     Prisma.UserScalarFieldEnum.createdAt,
     query.startDate,
     { type: EnumPaginationFilterDateBetweenType.start }
-)
+);
 this.paginationQueryUtil.dateBetween(
     Prisma.UserScalarFieldEnum.createdAt,
     query.endDate,
     { type: EnumPaginationFilterDateBetweenType.end }
-)
+);
 // Query: ?startDate=2024-01-01&endDate=2024-12-31
 // Database: WHERE createdAt >= '…' AND createdAt <= '…'
 ```
@@ -621,25 +640,26 @@ this.paginationQueryUtil.dateBetween(
 ## Ordering
 
 **Default Behavior:**
+
 - Field: `createdAt`
 - Direction: `desc` (descending)
 
 **HTTP Query Format:**
+
 - `orderBy` uses `field:direction` format in a single query parameter
 - Repeat the parameter to sort by multiple fields
 
 **Query Parameters:**
+
 ```
 ?orderBy=name:asc
 ?orderBy=name:asc&orderBy=createdAt:desc
 ```
 
 **Internal Service Format:**
+
 ```typescript
-orderBy: [
-    { createdAt: 'desc' },
-    { name: 'asc' }
-]
+orderBy: [{ createdAt: 'desc' }, { name: 'asc' }];
 ```
 
 - All `orderBy` values passed to the service are arrays.
@@ -647,6 +667,7 @@ orderBy: [
 - Cursors do not carry the `orderBy` itself, only a fingerprint of it.
 
 **Response Metadata Format:**
+
 ```json
 "orderBy": ["createdAt:desc", "name:asc"]
 ```
@@ -660,10 +681,11 @@ orderBy: [
 - `availableOrderBy` is optional, but a route that declares it accepts sorting on those fields and nothing else.
 - When present it lives as a `<Module>DefaultAvailableOrderBy` or `<Module>CursorAvailableOrderBy` constant.
 - The constant is passed into `PaginationQueryUtil` and mirrored in the list schema `.meta` description:
+
 ```typescript
 this.paginationQueryUtil.offset(query, {
     availableOrderBy: UserDefaultAvailableOrderBy,
-})
+});
 ```
 
 ## Usage Examples
@@ -677,6 +699,7 @@ A list route travels `Controller → HTTP Service → Domain → Repository`:
 - The item schema declared on `@ResponsePagination` shapes each row on the way out.
 
 **Controller:**
+
 ```typescript
 @Doc({ summary: 'get all users' })
 @ResponsePagination('user.list', { schema: UserListResponseSchema })
@@ -699,6 +722,7 @@ async list(
 ```
 
 **HTTP service:**
+
 ```typescript
 async getListOffsetByAdmin(
     query: UserListRequestDto
@@ -748,6 +772,7 @@ The page fields (`type`, `count`, `page`, `perPage`, `totalPage`, `hasNext`, `ha
 ### Cursor Pagination
 
 **Controller:**
+
 ```typescript
 @Doc({ summary: 'list workspaces the caller is a member of' })
 @ResponsePagination('workspace.list', { schema: WorkspaceResponseSchema })
@@ -786,7 +811,7 @@ OpenAPI for the query string comes from the zod schema, and pagination error kit
 OpenAPI for list endpoints is co-located on the runtime stack: `@Doc`, `@ResponsePagination`, `*Protected` / auth kits, and the list zod schema on `@Query({ schema })`.
 
 | Piece | OpenAPI source |
-|---|---|
+| --- | --- |
 | `page` / `cursor` / `perPage` / `search` / `orderBy` / filters | list zod schema on `@Query({ schema })` via `standardSchemaConverter` |
 | success page envelope | `@ResponsePagination` with `baseSchema: ResponsePaginationSchema` |
 | pagination error kits (shared + offset + cursor) | `@ResponsePagination` |
@@ -816,17 +841,17 @@ Key points:
 ### Performance Considerations
 
 **Offset Pagination:**
+
 - Suits small datasets (< 10,000 items)
 - Suits cases where the total count is important
 - Large offsets are slower, because the database skips rows
 
 **Cursor Pagination:**
+
 - Suits large datasets
 - Performance stays consistent (indexed lookup)
 - Suits infinite scroll
 - Avoids N+1 count queries
-
-
 
 <!-- REFERENCES -->
 

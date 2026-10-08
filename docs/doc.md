@@ -42,23 +42,22 @@ Coverage:
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Decorators](#decorators)
-  - [Doc](#doc)
-  - [DocErrors](#docerrors)
-  - [DocResponseError](#docresponseerror)
+    - [Doc](#doc)
+    - [DocErrors](#docerrors)
+    - [DocResponseError](#docresponseerror)
 - [Who documents what](#who-documents-what)
-  - [Request shape](#request-shape)
-  - [Success and response-kind errors](#success-and-response-kind-errors)
-  - [Auth and guard errors](#auth-and-guard-errors)
-  - [Published errors](#published-errors)
+    - [Request shape](#request-shape)
+    - [Success and response-kind errors](#success-and-response-kind-errors)
+    - [Auth and guard errors](#auth-and-guard-errors)
+    - [Published errors](#published-errors)
 - [Swagger JSON](#swagger-json)
 - [Schema Documentation](#schema-documentation)
-  - [.meta()](#meta)
+    - [.meta()](#meta)
 - [Usage](#usage)
-  - [Complete Admin Endpoint](#complete-admin-endpoint)
-  - [Complete Public Endpoint](#complete-public-endpoint)
-  - [Paginated List Endpoint](#paginated-list-endpoint)
-  - [File Upload Endpoint](#file-upload-endpoint)
-
+    - [Complete Admin Endpoint](#complete-admin-endpoint)
+    - [Complete Public Endpoint](#complete-public-endpoint)
+    - [Paginated List Endpoint](#paginated-list-endpoint)
+    - [File Upload Endpoint](#file-upload-endpoint)
 
 ## Decorators
 
@@ -70,25 +69,26 @@ Coverage:
 **Parameters:**
 
 - `options?: IDocOptions`
-  - `summary?: string`: Operation summary
-  - `operation?: string`: Operation ID
-  - `deprecated?: boolean`: Mark as deprecated
-  - `description?: string`: Detailed description
+    - `summary?: string`: Operation summary
+    - `operation?: string`: Operation ID
+    - `deprecated?: boolean`: Mark as deprecated
+    - `description?: string`: Detailed description
 
 **Auto-includes:**
 
 - Custom headers:
-  - `x-custom-lang`: Custom language header (default: EN)
-  - `x-correlation-id`: Correlation identifier for tracking requests across services
+    - `x-custom-lang`: Custom language header (default: EN)
+    - `x-request-id`: Request identifier; a valid value is kept, otherwise the server generates one
+    - `x-correlation-id`: Correlation identifier for tracking requests across services
 - Global kit error responses from `DocGlobalErrorResponses` in `src/common/doc/constants/doc.constant.ts`:
-  - Internal server error (500)
-  - Request timeout (408)
-  - Validation error (422)
-  - Too many requests (429)
-  - Helper decrypt / encryption-secret / pattern-token failures (500)
-  - Missing request schema or request context (500)
-  - Unique-value generation failure (500)
-  - S3 integration not configured (404)
+    - Internal server error (500)
+    - Request timeout (408)
+    - Validation error (422)
+    - Too many requests (429)
+    - Helper decrypt / encryption-secret / pattern-token failures (500)
+    - Missing request schema or request context (500)
+    - Unique-value generation failure (500)
+    - S3 integration not configured (404)
 
 **Usage:**
 
@@ -177,7 +177,7 @@ Module `*Protected` / auth kits:
 ### Request shape
 
 | Binding | OpenAPI source |
-|---|---|
+| --- | --- |
 | `@Param('…', { schema })` / `@Query({ schema })` / `@Query('…', { schema })` / `@Body({ schema })` | zod via `standardSchemaConverter` in `src/swagger.ts` (`.meta` for description, example, required) |
 | Path placeholder a **guard** reads; the handler has no `@Param` | the owning Protected decorator (for example `ProjectProtected` emits `ApiParam('projectId')`) |
 | Multipart upload | `FileUploadSingle` / `FileUploadMultiple` / `FileUploadMultipleFields`: `ApiConsumes('multipart/form-data')` plus binary `ApiBody` from field name(s) plus upload error kit |
@@ -190,7 +190,7 @@ Module `*Protected` / auth kits:
 ### Success and response-kind errors
 
 | Runtime decorator | Success OpenAPI | Error kits it publishes |
-|---|---|---|
+| --- | --- | --- |
 | `@Response(messagePath, { schema?, cache? })` | Success envelope; HTTP status and body `statusCode` from `@HttpCode` or Nest method defaults (`POST` → 201, else 200) | `DocSerializationErrorResponses.serialization` |
 | `@ResponsePagination(messagePath, { schema, cache? })` | 200 page envelope with `baseSchema: ResponsePaginationSchema`; item schema is the row | Shared pagination errors plus both offset and cursor kits, plus serialization / pagination-shape / pagination-type failures |
 | `@ResponseFile({ extension?, maxDataExportConfigKey? })` | Success response under the extension's media type (`text/csv` or `application/pdf`, from `ResponseFileMediaTypes`) with a binary string schema; error responses stay `application/json` | Export row cap (`50104`) and size cap (`50105`) from `DocFileErrorResponses` |
@@ -210,7 +210,7 @@ Each `*Protected` / auth decorator emits exactly the throw set of the guard clas
 OpenAPI security scheme names are the module constants below. `ApiBearerAuth`, `ApiSecurity`, `DocumentBuilder.addBearerAuth`, and `DocumentBuilder.addApiKey` take those consts:
 
 | Const | Scheme value | Registered in |
-|---|---|---|
+| --- | --- | --- |
 | `AuthJwtAccessDocSecurityName` | `accessToken` | `src/swagger.ts` + `AuthJwtAccessProtected` |
 | `AuthJwtRefreshDocSecurityName` | `refreshToken` | `src/swagger.ts` + `AuthJwtRefreshProtected` |
 | `AuthSocialGoogleDocSecurityName` | `google` | `src/swagger.ts` + `AuthSocialGoogleProtected` |
@@ -233,7 +233,7 @@ Two kits carry a 404 beside their other entries:
 One error has one source, from where the exception lives:
 
 | The exception lives in | Its entry belongs to |
-|---|---|
+| --- | --- |
 | `src/common/` or `src/app/`, and any request can reach it | `@Doc()` |
 | `src/common/`, behind one runtime primitive | that primitive: pagination kits on `@ResponsePagination`, upload kits on `FileUpload*`, download kits on `@ResponseFile` |
 | a module, raised by a guard or an auth strategy | the matching `*Protected` / auth decorator |
@@ -306,6 +306,7 @@ A DTO here is a zod schema plus the type inferred from it.
 Per-field OpenAPI metadata lives in `.meta()` on the field.
 
 **Common keys:**
+
 - `description?: string`: Property description
 - `example?: unknown`: Example value
 - `deprecated?: boolean`: Mark the property deprecated
@@ -367,10 +368,13 @@ export const UserForgotPasswordResetRequestSchema =
         method: UserLoginVerifyTwoFactorRequestSchema.shape.method.optional(),
         code: UserLoginVerifyTwoFactorRequestSchema.shape.code,
         backupCode: UserLoginVerifyTwoFactorRequestSchema.shape.backupCode,
-        token: z.string().min(1).meta({
-            description: 'Forgot password token',
-            example: faker.string.alphanumeric(20),
-        }),
+        token: z
+            .string()
+            .min(1)
+            .meta({
+                description: 'Forgot password token',
+                example: faker.string.alphanumeric(20),
+            }),
     });
 
 export type UserForgotPasswordResetRequestDto = z.infer<
@@ -495,12 +499,10 @@ async uploadPhotoProfile(
 
 See the [NestJS OpenAPI documentation][ref-nestjs-swagger].
 
-
 <!-- REFERENCES -->
 
 [ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
 [ref-zod-openapi]: https://github.com/samchungy/zod-openapi
-
 [ref-doc-request-validation]: request-validation.md
 [ref-doc-response]: response.md
 [ref-doc-authentication]: authentication.md

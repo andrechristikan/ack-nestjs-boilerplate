@@ -4,6 +4,9 @@ import { EnumNotificationKind } from '@modules/notification/enums/notification.e
 import type {
     INotificationCreate,
     INotificationCreateEntry,
+    INotificationTermPolicyRecipientCreate,
+    INotificationTermPolicyRecipientSend,
+    INotificationTermPolicyRecipientState,
 } from '@modules/notification/interfaces/notification.interface';
 import {
     EnumNotificationChannel,
@@ -28,6 +31,34 @@ export interface INotificationRepository {
         payload: INotificationCreate
     ): Promise<Notification>;
     createMany(entries: INotificationCreateEntry[]): Promise<Notification[]>;
+    findTermPolicyRecipients(
+        termPolicyId: string,
+        userIds: string[]
+    ): Promise<INotificationTermPolicyRecipientState[]>;
+    createTermPolicyRecipients(
+        proceedBy: string,
+        termPolicyId: string,
+        batchId: string,
+        entries: INotificationCreateEntry[],
+        recipients: INotificationTermPolicyRecipientCreate[]
+    ): Promise<void>;
+    markTermPolicyRecipientsEnqueued(
+        termPolicyId: string,
+        batchIds: string[],
+        enqueuedAt: Date,
+        updatedBy: string
+    ): Promise<void>;
+    findTermPolicyRecipientsUnsent(
+        termPolicyId: string,
+        batchId: string
+    ): Promise<INotificationTermPolicyRecipientSend[]>;
+    markTermPolicyRecipientsSent(
+        termPolicyId: string,
+        batchId: string,
+        userIds: string[],
+        sentAt: Date,
+        updatedBy: string
+    ): Promise<void>;
     markAsRead(userId: string, notificationId: string): Promise<Notification>;
     markAllAsRead(userId: string): Promise<Prisma.BatchPayload>;
     updateProcessAt(

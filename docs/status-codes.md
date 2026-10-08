@@ -25,32 +25,32 @@ This page is the human catalog.
 
 ## Block map
 
-| Base | Module | Range | Members |
-|---|---|---|---|
-| `50000` | `app` | `50000` | 1 |
-| `50100` | `file` | `50100`–`50109` | 10 |
-| `50200` | `pagination` | `50200`–`50215` | 16 |
-| `50300` | `request` | `50300`–`50304` | 5 |
-| `50400` | `session` | `50400`–`50401` | 2 |
-| `50500` | `role` | `50500`–`50504` | 5 |
-| `50600` | `feature-flag` | `50600`–`50606` | 7 |
-| `50700` | `api-key` | `50700`–`50708` | 9 |
-| `50800` | `auth` | `50800`–`50818` | 19 |
-| `50900` | `country` | `50900`–`50902` | 3 |
-| `51000` | `user` | `51000`–`51027` | 28 |
-| `51100` | `policy` | `51100`–`51103` | 4 |
-| `51200` | `notification` | `51200`–`51203` | 4 |
-| `51300` | `device` | `51300` | 1 |
-| `51400` | `aws` | `51400`–`51406` | 7 |
-| `51500` | `term-policy` | `51500`–`51508` | 9 |
-| `51600` | `workspace` | `51600`–`51620` | 21 |
-| `51700` | `project` | `51700`–`51707` | 8 |
-| `51800` | `database` | `51800` | 1 |
-| `51900` | `response` | `51900`–`51903` | 4 |
-| `52000` | `activity-log` | `52000` | 1 |
-| `52100` | `analytic` | `52100` | 1 |
-| `52200` | `helper` | `52200`–`52202` | 3 |
-| `52300` | `firebase` | `52300` | 1 |
+| Base    | Module         | Range           | Members |
+| ------- | -------------- | --------------- | ------- |
+| `50000` | `app`          | `50000`         | 1       |
+| `50100` | `file`         | `50100`–`50109` | 10      |
+| `50200` | `pagination`   | `50200`–`50215` | 16      |
+| `50300` | `request`      | `50300`–`50304` | 5       |
+| `50400` | `session`      | `50400`–`50401` | 2       |
+| `50500` | `role`         | `50500`–`50504` | 5       |
+| `50600` | `feature-flag` | `50600`–`50606` | 7       |
+| `50700` | `api-key`      | `50700`–`50708` | 9       |
+| `50800` | `auth`         | `50800`–`50818` | 19      |
+| `50900` | `country`      | `50900`–`50902` | 3       |
+| `51000` | `user`         | `51000`–`51027` | 28      |
+| `51100` | `policy`       | `51100`–`51103` | 4       |
+| `51200` | `notification` | `51200`–`51203` | 4       |
+| `51300` | `device`       | `51300`         | 1       |
+| `51400` | `aws`          | `51400`–`51406` | 7       |
+| `51500` | `term-policy`  | `51500`–`51508` | 9       |
+| `51600` | `workspace`    | `51600`–`51620` | 21      |
+| `51700` | `project`      | `51700`–`51707` | 8       |
+| `51800` | `database`     | `51800`         | 1       |
+| `51900` | `response`     | `51900`–`51903` | 4       |
+| `52000` | `activity-log` | `52000`         | 1       |
+| `52100` | `analytic`     | `52100`         | 1       |
+| `52200` | `helper`       | `52200`–`52202` | 3       |
+| `52300` | `firebase`     | `52300`         | 1       |
 
 - Next free hundred: `52400`.
 - The enum files are the source of this map.
@@ -58,13 +58,13 @@ This page is the human catalog.
 ## `app`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `unknown` | `50000` | `unknown` | 500 (`INTERNAL_SERVER_ERROR`) | `http.serverError.internalServerError` | Internal Server Error |
 
 ## `file`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `required` | `50100` | `required` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.required` | This field is required and cannot be left blank. |
 | `extensionInvalid` | `50101` | `extensionInvalid` | 415 (`UNSUPPORTED_MEDIA_TYPE`) | `file.error.extensionInvalid` | The file extension is invalid. |
 | `requiredExtractFirst` | `50102` | `requiredExtractFirst` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.requiredExtractFirst` | Please extract the data before proceeding. |
@@ -79,7 +79,7 @@ This page is the human catalog.
 ## `pagination`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `orderByNotAllowed` | `50200` | `orderByNotAllowed` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.orderByNotAllowed` | The 'orderBy' field '{field}' is not allowed. Allowed fields are: {allowedFields}. |
 | `filterInvalidValue` | `50201` | `filterInvalidValue` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.filterInvalidValue` or `pagination.error.filterInvalidValueEnum` | '{property}' value provided is invalid (enum variant uses the Enum messagePath). |
 | `invalidPerPage` | `50202` | `invalidPerPage` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidPerPage` | The 'perPage' parameter must be between 1 and {maxPerPage}. |
@@ -100,7 +100,7 @@ This page is the human catalog.
 ## `request`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `validation` | `50300` | `validation` | 422 (`UNPROCESSABLE_ENTITY`) | `request.error.validation` | There are validation errors. |
 | `timeout` | `50301` | `timeout` | 408 (`REQUEST_TIMEOUT`) | `http.clientError.requestTimeOut` | Request Timeout |
 | `envForbidden` | `50302` | `envForbidden` | 403 (`FORBIDDEN`) | `http.clientError.forbidden` | Forbidden |
@@ -113,7 +113,7 @@ This page is the human catalog.
 `50300` is the one code shared by more than one exception class, so it does not map to a single `httpStatus`, `messagePath`, or `module`:
 
 | exception | module | httpStatus | messagePath |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `RequestValidationException` | `request` | 422 (`UNPROCESSABLE_ENTITY`) | `request.error.validation` |
 | `FileImportException` | `file` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.validationDto` |
 
@@ -122,14 +122,14 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 ## `session`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `notFound` | `50400` | `notFound` | 404 (`NOT_FOUND`) | `session.error.notFound` | Sorry, we couldn't find the session. |
 | `revoked` | `50401` | `revoked` | 401 (`UNAUTHORIZED`) | `session.error.revoked` | Your session has expired or been revoked. Please sign in again. |
 
 ## `role`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `notFound` | `50500` | `notFound` | 404 (`NOT_FOUND`) | `role.error.notFound` | Sorry, we couldn't find the requested role. |
 | `exist` | `50501` | `exist` | 409 (`CONFLICT`) | `role.error.exist` | A role with this name already exists. |
 | `predefinedNotFound` | `50502` | `predefinedNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `role.error.predefinedNotFound` | Predefined roles not setted. |
@@ -139,7 +139,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 ## `feature-flag`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `notFound` | `50600` | `notFound` | 404 (`NOT_FOUND`) | `featureFlag.error.notFound` | Feature flag not found. |
 | `disabled` | `50601` | `disabled` | 404 (`NOT_FOUND`) | `featureFlag.error.disabled` | This feature is not available. |
 | `invalidMetadata` | `50602` | `invalidMetadata` | 400 (`BAD_REQUEST`) | `featureFlag.error.invalidMetadata` | Feature flag metadata is invalid. |
@@ -153,7 +153,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 ## `api-key`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `xApiKeyRequired` | `50700` | `xApiKeyRequired` | 401 (`UNAUTHORIZED`) | `apiKey.error.xApiKey.required` | Please provide your API key to continue. |
 | `xApiKeyNotFound` | `50701` | `xApiKeyNotFound` | 403 (`FORBIDDEN`) | `apiKey.error.xApiKey.notFound` | We couldn't find this API key in our system. |
 | `xApiKeyInvalid` | `50702` | `xApiKeyInvalid` | 401 (`UNAUTHORIZED`) | `apiKey.error.xApiKey.invalid` | Sorry, this API key appears to be invalid. |
@@ -167,7 +167,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 ## `auth`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `jwtAccessTokenInvalid` | `50800` | `jwtAccessTokenInvalid` | 401 (`UNAUTHORIZED`) | `auth.error.accessTokenUnauthorized` | The access token is unauthorized. |
 | `jwtRefreshTokenInvalid` | `50801` | `jwtRefreshTokenInvalid` | 401 (`UNAUTHORIZED`) | `auth.error.refreshTokenUnauthorized` | The refresh token is unauthorized. |
 | `socialGoogleRequired` | `50802` | `socialGoogleRequired` | 401 (`UNAUTHORIZED`) | `auth.error.socialGoogleRequired` | Google login is required for this action. |
@@ -194,7 +194,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 ## `country`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `notFound` | `50900` | `notFound` | 404 (`NOT_FOUND`) | `country.error.notFound` | Country not found. |
 | `inactive` | `50901` | `inactive` | none | none | Reserved enum member; no exception or i18n path. |
 | `exist` | `50902` | `exist` | none | none | Reserved enum member; no exception or i18n path. |
@@ -202,7 +202,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 ## `user`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `notFound` | `51000` | `notFound` | 404 (`NOT_FOUND`) | `user.error.notFound` | Sorry, we couldn't find the user you requested. |
 | `notSelf` | `51001` | `notSelf` | 400 (`BAD_REQUEST`) | `user.error.notSelf` | You cannot perform this action on your own account. |
 | `emailExist` | `51002` | `emailExist` | 409 (`CONFLICT`) | `user.error.emailExist` | This email already exists. |
@@ -235,7 +235,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 ## `policy`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `forbidden` | `51100` | `forbidden` | 403 (`FORBIDDEN`) | `policy.error.forbidden` | Sorry, you don't have the necessary permissions to perform this action. |
 | `predefinedNotFound` | `51101` | `predefinedNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `policy.error.predefinedNotFound` | Predefined policies not setted. |
 | `notFound` | `51102` | `notFound` | 404 (`NOT_FOUND`) | `policy.error.notFound` | Sorry, we couldn't find the requested policy. |
@@ -244,7 +244,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 ## `notification`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `notFound` | `51200` | `notFound` | 404 (`NOT_FOUND`) | `notification.error.notFound` | Notification not found. |
 | `alreadyRead` | `51201` | `alreadyRead` | 400 (`BAD_REQUEST`) | `notification.error.alreadyRead` | Notification is already marked as read. |
 | `invalidType` | `51202` | `invalidType` | 400 (`BAD_REQUEST`) | `notification.error.invalidType` | Invalid notification type. |
@@ -253,13 +253,13 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 ## `device`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `notFound` | `51300` | `notFound` | 404 (`NOT_FOUND`) | `device.error.notFound` | Device information not found |
 
 ## `aws`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `s3KeyInvalid` | `51400` | `s3KeyInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3KeyInvalid` | The storage key is invalid. |
 | `s3FileRequired` | `51401` | `s3FileRequired` | 500 (`INTERNAL_SERVER_ERROR`) | `aws.error.s3FileRequired` | A file is required for this storage operation. |
 | `s3ObjectExist` | `51402` | `s3ObjectExist` | 409 (`CONFLICT`) | `aws.error.s3ObjectExist` | A file already exists at this location. |
@@ -277,7 +277,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 ## `term-policy`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `notFound` | `51500` | `notFound` | 404 (`NOT_FOUND`) | `termPolicy.error.notFound` | Term policy not found. |
 | `exist` | `51501` | `exist` | 409 (`CONFLICT`) | `termPolicy.error.exist` | A term policy with this name already exists. |
 | `languageDuplicate` | `51502` | `languageDuplicate` | 400 (`BAD_REQUEST`) | `termPolicy.error.contentsLanguageMustBeUnique` | Each language can only be used once in term policy contents. |
@@ -291,7 +291,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 ## `workspace`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `notFound` | `51600` | `notFound` | 404 (`NOT_FOUND`) | `workspace.error.notFound` | Sorry, we couldn't find the workspace. |
 | `memberForbidden` | `51601` | `memberForbidden` | 403 (`FORBIDDEN`) | `workspace.error.memberForbidden` | You are not a member of this workspace. |
 | `roleForbidden` | `51602` | `roleForbidden` | 403 (`FORBIDDEN`) | `workspace.error.roleForbidden` | You do not have the required role in this workspace. |
@@ -317,7 +317,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 ## `project`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `notFound` | `51700` | `notFound` | 404 (`NOT_FOUND`) | `project.error.notFound` | Sorry, we couldn't find the project. |
 | `memberForbidden` | `51701` | `memberForbidden` | 403 (`FORBIDDEN`) | `project.error.memberForbidden` | You are not a member of this project. |
 | `roleForbidden` | `51702` | `roleForbidden` | 403 (`FORBIDDEN`) | `project.error.roleForbidden` | You do not have the required role in this project. |
@@ -330,13 +330,13 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 ## `database`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `uniqueValueGenerationFailed` | `51800` | `uniqueValueGenerationFailed` | 500 (`INTERNAL_SERVER_ERROR`) | `database.error.uniqueValueGenerationFailed` | We couldn't complete this action. Please try again. |
 
 ## `response`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `serialization` | `51900` | `serialization` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.serialization` | The server produced a response that does not match the schema it declares. |
 | `paginationShapeInvalid` | `51901` | `paginationShapeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.paginationShapeInvalid` | The server produced a paginated response with an invalid shape. |
 | `paginationTypeInvalid` | `51902` | `paginationTypeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.paginationTypeInvalid` | The server produced a paginated response with an unknown pagination type. |
@@ -347,19 +347,19 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 ## `activity-log`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `contractInvalid` | `52000` | `contractInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `activityLog.error.contractInvalid` | Activity log contract validation failed |
 
 ## `analytic`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `invalidDateRange` | `52100` | `invalidDateRange` | 400 (`BAD_REQUEST`) | `analytic.error.invalidDateRange` | The start date must be before the end date. |
 
 ## `helper`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `decryptFailed` | `52200` | `decryptFailed` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.decryptFailed` | We couldn't read protected data for this request. |
 | `encryptionSecretInvalid` | `52201` | `encryptionSecretInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.encryptionSecretInvalid` | We couldn't process protected data for this request. |
 | `patternTokenMissing` | `52202` | `patternTokenMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.patternTokenMissing` | We couldn't build a value for this request. Missing pattern token: {token} |
@@ -375,7 +375,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 ## `firebase`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `chunkSizeInvalid` | `52300` | `chunkSizeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `firebase.error.chunkSizeInvalid` | The push notification batch size is out of range. |
 
 `FirebaseChunkSizeInvalidException` is raised by `FirebaseService.sendMulticast` when the chunk size falls outside 1 to `FirebaseMaxSendPushBatchSize` (500).

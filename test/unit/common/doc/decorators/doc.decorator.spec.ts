@@ -10,6 +10,7 @@ import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import {
     RequestCorrelationIdHeaderName,
     RequestCustomLangHeaderName,
+    RequestIdHeaderName,
 } from '@common/request/constants/request.constant';
 import { getHeaderParameterNames } from '@test/unit/helpers/test.unit.decorator.helper';
 
@@ -257,6 +258,7 @@ describe('doc.decorator', () => {
             ) as { name: string; in: string }[];
             expect(getHeaderParameterNames(headers)).toEqual([
                 RequestCustomLangHeaderName,
+                RequestIdHeaderName,
                 RequestCorrelationIdHeaderName,
             ]);
 

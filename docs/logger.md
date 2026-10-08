@@ -29,53 +29,53 @@ Environment behavior:
 - [Configuration Documentation][ref-doc-configuration]: Logger config keys
 - [Environment Documentation][ref-doc-environment]: Logger env vars
 - [Handling Error Documentation][ref-doc-handling-error]: Filters that report to Sentry
-- [Security and Middleware Documentation][ref-doc-security-and-middleware]: Request ID and logger middleware 
+- [Security and Middleware Documentation][ref-doc-security-and-middleware]: Request ID and logger middleware
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Configuration](#configuration)
-  - [Environment Variables](#environment-variables)
-  - [Configuration Interface](#configuration-interface)
+    - [Environment Variables](#environment-variables)
+    - [Configuration Interface](#configuration-interface)
 - [Usage](#usage)
-  - [Log Levels](#log-levels)
-  - [Log Severity](#log-severity)
+    - [Log Levels](#log-levels)
+    - [Log Severity](#log-severity)
 - [Sensitive Data Redaction](#sensitive-data-redaction)
-  - [Sensitive Paths](#sensitive-paths)
-  - [Sensitive Fields](#sensitive-fields)
-  - [Redaction Examples](#redaction-examples)
-    - [Authentication Data](#authentication-data)
-    - [Array Truncation](#array-truncation)
-    - [Buffer Handling](#buffer-handling)
-    - [Object Depth Limitation](#object-depth-limitation)
+    - [Sensitive Paths](#sensitive-paths)
+    - [Sensitive Fields](#sensitive-fields)
+    - [Redaction Examples](#redaction-examples)
+        - [Authentication Data](#authentication-data)
+        - [Array Truncation](#array-truncation)
+        - [Buffer Handling](#buffer-handling)
+        - [Object Depth Limitation](#object-depth-limitation)
 - [File Logging](#file-logging)
-  - [Configuration](#configuration-1)
-  - [File Rotation Settings](#file-rotation-settings)
-  - [File Structure](#file-structure)
-  - [Log Format](#log-format)
-  - [Example Usage](#example-usage)
+    - [Configuration](#configuration-1)
+    - [File Rotation Settings](#file-rotation-settings)
+    - [File Structure](#file-structure)
+    - [Log Format](#log-format)
+    - [Example Usage](#example-usage)
 - [Auto Logging](#auto-logging)
-  - [Configuration](#configuration-2)
-  - [Logged Information](#logged-information)
-  - [Excluded Routes](#excluded-routes)
-  - [Pattern Matching Rules](#pattern-matching-rules)
-  - [Adding Custom Excluded Routes](#adding-custom-excluded-routes)
-  - [Auto-logging Context](#auto-logging-context)
+    - [Configuration](#configuration-2)
+    - [Logged Information](#logged-information)
+    - [Excluded Routes](#excluded-routes)
+    - [Pattern Matching Rules](#pattern-matching-rules)
+    - [Adding Custom Excluded Routes](#adding-custom-excluded-routes)
+    - [Auto-logging Context](#auto-logging-context)
 - [Console Output](#console-output)
-  - [Pretty Mode (LOGGER_PRETTIER=true)](#pretty-mode-logger_prettiertrue)
-  - [JSON Mode (LOGGER_PRETTIER=false)](#json-mode-logger_prettierfalse)
-  - [Debug Information (Non-Production)](#debug-information-non-production)
+    - [Pretty Mode (LOGGER_PRETTIER=true)](#pretty-mode-logger_prettiertrue)
+    - [JSON Mode (LOGGER_PRETTIER=false)](#json-mode-logger_prettierfalse)
+    - [Debug Information (Non-Production)](#debug-information-non-production)
 - [Request ID Tracking](#request-id-tracking)
-  - [Header Priority](#header-priority)
-  - [Fallback Behavior](#fallback-behavior)
-  - [Usage Example](#usage-example)
-  - [Request ID Header](#request-id-header)
-  - [Correlation ID Handling](#correlation-id-handling)
+    - [Id Source](#id-source)
+    - [Fallback Behavior](#fallback-behavior)
+    - [Usage Example](#usage-example)
+    - [Request ID Header](#request-id-header)
+    - [Correlation ID Handling](#correlation-id-handling)
 - [Sentry Integration](#sentry-integration)
-  - [Sentry Configuration](#sentry-configuration)
-  - [Configuration Details](#configuration-details)
-  - [Disabling Sentry](#disabling-sentry)
+    - [Sentry Configuration](#sentry-configuration)
+    - [Configuration Details](#configuration-details)
+    - [Disabling Sentry](#disabling-sentry)
 
 ## Configuration
 
@@ -96,7 +96,7 @@ SENTRY_DSN=<your_sentry_dsn>
 ```
 
 | Variable | Description | Type | Default | Required |
-|----------|-------------|------|---------|----------|
+| --- | --- | --- | --- | --- |
 | `LOGGER_ENABLE` | Enable/disable logging | `boolean` | `true` | Yes |
 | `LOGGER_LEVEL` | Minimum log level | `EnumLoggerLevel` | `debug` | Yes |
 | `LOGGER_INTO_FILE` | Write logs to files | `boolean` | `true` | Yes |
@@ -109,7 +109,7 @@ SENTRY_DSN=<your_sentry_dsn>
 `IConfigLogger` (`src/configs/logger.config.ts`), registered under the `logger` key:
 
 | Option | Description | Default |
-|--------|-------------|---------|
+| --- | --- | --- |
 | `enable` | Enable/disable logging | `false` |
 | `level` | Minimum log level, typed `EnumLoggerLevel` (`fatal`, `error`, `warn`, `info`, `debug`, `trace`) | `debug` |
 | `intoFile` | Write logs to files | `false` |
@@ -135,7 +135,7 @@ export class UserDomain {
 
     async createUser(data: UserCreateRequestDto) {
         this.logger.log('Creating new user');
-        
+
         try {
             const user = await this.userRepository.create(data);
             this.logger.log(`User created: ${user.id}`);
@@ -164,6 +164,7 @@ export class UserDomain {
 `EnumLoggerLevel` declares Pino's own level set. These six values are what `LOGGER_LEVEL` accepts:
 
 **Level Hierarchy (from highest to lowest priority):**
+
 1. `fatal`: Unrecoverable failures that end the process or the job
 2. `error`: Critical errors that need immediate attention
 3. `warn`: Warning conditions that call for review
@@ -174,12 +175,12 @@ export class UserDomain {
 The `Logger` from `@nestjs/common` is backed by `nestjs-pino`, so its method names do not all match the level they emit:
 
 ```typescript
-this.logger.fatal('Fatal message');      // fatal level
-this.logger.error('Error message');      // error level
-this.logger.warn('Warning message');     // warn level
-this.logger.log('Info message');         // info level  (method is log, not info)
-this.logger.debug('Debug message');      // debug level
-this.logger.verbose('Verbose message');  // trace level (method is verbose, not trace)
+this.logger.fatal('Fatal message'); // fatal level
+this.logger.error('Error message'); // error level
+this.logger.warn('Warning message'); // warn level
+this.logger.log('Info message'); // info level  (method is log, not info)
+this.logger.debug('Debug message'); // debug level
+this.logger.verbose('Verbose message'); // trace level (method is verbose, not trace)
 ```
 
 - `log()` and `verbose()` are the two that differ.
@@ -193,14 +194,14 @@ this.logger.verbose('Verbose message');  // trace level (method is verbose, not 
 
 `LoggerUtil.mapLevelToSeverity` maps numeric Pino levels to the `EnumLoggerSeverity` values, uppercased, and writes the result to the `severity` field:
 
-| Pino Level | Severity | Use Case |
-|------------|----------|----------|
-| ≥ 60 | `CRITICAL` | System-wide critical failures |
-| ≥ 50 | `ERROR` | Application errors |
-| ≥ 40 | `WARNING` | Warning conditions |
-| ≥ 30 | `INFO` | General information |
-| ≥ 20 | `DEBUG` | Debug information |
-| < 20 | `TRACE` | Trace-level debugging |
+| Pino Level | Severity   | Use Case                      |
+| ---------- | ---------- | ----------------------------- |
+| ≥ 60       | `CRITICAL` | System-wide critical failures |
+| ≥ 50       | `ERROR`    | Application errors            |
+| ≥ 40       | `WARNING`  | Warning conditions            |
+| ≥ 30       | `INFO`     | General information           |
+| ≥ 20       | `DEBUG`    | Debug information             |
+| < 20       | `TRACE`    | Trace-level debugging         |
 
 ## Sensitive Data Redaction
 
@@ -254,14 +255,14 @@ export const LoggerSensitiveFields: string[] = [
     'secretKey',
     'otp',
     'recoveryCode',
-    
+
     // Location & Personal Data
     'location',
     'gps',
     'coordinates',
     'latitude',
     'longitude',
-    
+
     // Session & Cookies
     'cookie',
     'cookies',
@@ -283,13 +284,14 @@ export const LoggerSensitiveFields: string[] = [
 ```
 
 **Redaction Rules:**
+
 - Three mechanisms redact, and they match differently:
-  - `LoggerUtil.redactValue` covers request `query` and `headers`, response `headers`, and a record's `additionalData`.
-    - It walks every key at every depth and compares it lowercased against the lowercased list.
-    - It is therefore **case-insensitive**: `Password`, `PASSWORD`, and `password` all match.
-  - Request `params` keep their names, and every value is replaced with `[REDACTED]`, whatever the name.
-  - Pino's `redact.paths` (built as `LoggerSensitivePaths` combined with `LoggerSensitiveFields`) matches each path segment literally.
-    - It is therefore **case-sensitive**: only the exact spelling listed in `LoggerSensitiveFields` matches.
+    - `LoggerUtil.redactValue` covers request `query` and `headers`, response `headers`, and a record's `additionalData`.
+        - It walks every key at every depth and compares it lowercased against the lowercased list.
+        - It is therefore **case-insensitive**: `Password`, `PASSWORD`, and `password` all match.
+    - Request `params` keep their names, and every value is replaced with `[REDACTED]`, whatever the name.
+    - Pino's `redact.paths` (built as `LoggerSensitivePaths` combined with `LoggerSensitiveFields`) matches each path segment literally.
+        - It is therefore **case-sensitive**: only the exact spelling listed in `LoggerSensitiveFields` matches.
 - Fields with hyphens are wrapped in brackets in the pino paths (e.g., `req.headers["x-api-key"]`)
 - All matching fields are replaced with `LoggerRedactedValue` (`[REDACTED]`)
 
@@ -301,10 +303,10 @@ export const LoggerSensitiveFields: string[] = [
 
 ```json
 {
-  "username": "john.doe",
-  "password": "secret123",
-  "apiKey": "abc-def-ghi-jkl",
-  "email": "john@example.com"
+    "username": "john.doe",
+    "password": "secret123",
+    "apiKey": "abc-def-ghi-jkl",
+    "email": "john@example.com"
 }
 ```
 
@@ -312,10 +314,10 @@ export const LoggerSensitiveFields: string[] = [
 
 ```json
 {
-  "username": "john.doe",
-  "password": "[REDACTED]",
-  "apiKey": "[REDACTED]",
-  "email": "john@example.com"
+    "username": "john.doe",
+    "password": "[REDACTED]",
+    "apiKey": "[REDACTED]",
+    "email": "john@example.com"
 }
 ```
 
@@ -325,19 +327,19 @@ Arrays longer than 10 items are automatically truncated to prevent excessive log
 
 ```json
 {
-  "items": [
-    "item1",
-    "item2",
-    "item3",
-    "item4",
-    "item5",
-    "item6",
-    "item7",
-    "item8",
-    "item9",
-    "item10",
-    { "truncated": "...[TRUNCATED] - total length 50" }
-  ]
+    "items": [
+        "item1",
+        "item2",
+        "item3",
+        "item4",
+        "item5",
+        "item6",
+        "item7",
+        "item8",
+        "item9",
+        "item10",
+        { "truncated": "...[TRUNCATED] - total length 50" }
+    ]
 }
 ```
 
@@ -347,7 +349,7 @@ Binary data (Buffers) are replaced with a placeholder:
 
 ```json
 {
-  "file": { "buffer": "[BUFFER]" }
+    "file": { "buffer": "[BUFFER]" }
 }
 ```
 
@@ -358,6 +360,7 @@ Binary data (Buffers) are replaced with a placeholder:
 A value nested deeper is replaced whole with `[REDACTED]`, so nothing past the cap is written unredacted.
 
 The cap also bounds:
+
 - Performance cost on deeply nested objects
 - Circular references
 - Log size
@@ -394,7 +397,20 @@ logs/
 When `LOGGER_PRETTIER=false`, logs are written in JSON format:
 
 ```json
-{"severity":"INFO","context":"UserDomain","timestamp":1764577182750,"msg":"User created: user-123","service":{"name":"ACKNestJs","environment":"production","version":"9.0.0"},"level":30}
+{
+    "severity": "INFO",
+    "context": "UserDomain",
+    "requestId": "0192f3c4-7a1e-7b52-9c3d-5e6f7a8b9c0d",
+    "correlationId": "req-abc-123",
+    "timestamp": 1764577182750,
+    "msg": "User created: user-123",
+    "service": {
+        "name": "ACKNestJs",
+        "environment": "production",
+        "version": "9.0.0"
+    },
+    "level": 30
+}
 ```
 
 ### Example Usage
@@ -402,11 +418,11 @@ When `LOGGER_PRETTIER=false`, logs are written in JSON format:
 ```typescript
 // Enable file logging in production
 // .env.production
-LOGGER_ENABLE=true
-LOGGER_LEVEL=info
-LOGGER_INTO_FILE=true
-LOGGER_PRETTIER=false
-LOGGER_AUTO=true
+LOGGER_ENABLE = true;
+LOGGER_LEVEL = info;
+LOGGER_INTO_FILE = true;
+LOGGER_PRETTIER = false;
+LOGGER_AUTO = true;
 ```
 
 ## Auto Logging
@@ -425,7 +441,7 @@ LOGGER_AUTO=true
 When auto-logging is enabled, the following information is automatically captured:
 
 **Request** (`LoggerUtil.serializeRequest`):
-- Request ID
+
 - HTTP method
 - `route`:
     - the matched route pattern (`baseUrl` plus the route path, such as `/api/v1/admin/user/:userId/device/list`)
@@ -452,10 +468,13 @@ When auto-logging is enabled, the following information is automatically capture
 An ID or token in the path never reaches a log line.
 
 **Response:**
+
 - HTTP status code
 - Response time
 - Content-Length
 - Response headers (sanitized)
+
+The request id and the correlation id are not part of the `req` record. Every entry carries them as top-level fields. See [Request ID Tracking](#request-id-tracking).
 
 ### Excluded Routes
 
@@ -527,6 +546,8 @@ All auto-logged entries use the context `LoggerAutoContext` to distinguish them 
 {
   "severity": "INFO",
   "context": "LoggerAutoContext",
+  "requestId": "0192f3c4-7a1e-7b52-9c3d-5e6f7a8b9c0d",
+  "correlationId": "req-abc-123",
   "msg": "request completed",
   "req": { ... },
   "res": { ... }
@@ -543,6 +564,8 @@ Development-friendly colored output with structured formatting using `pino-prett
 
 ```
 INFO [2025-12-29 15:18:54.496 +0700]: [UserDomain] Creating new user
+    requestId: "0192f3c4-7a1e-7b52-9c3d-5e6f7a8b9c0d"
+    correlationId: "req-abc-123"
     service: {
       "name": "ACKNestJs",
       "environment": "local",
@@ -564,6 +587,7 @@ INFO [2025-12-29 15:18:54.496 +0700]: [UserDomain] Creating new user
 ```
 
 **Features:**
+
 - Color-coded log levels (ERROR = red, WARN = yellow, INFO = green, DEBUG = blue)
 - Timestamp in system timezone
 - Context displayed in square brackets
@@ -581,10 +605,25 @@ LOGGER_LEVEL=debug
 Production-optimized structured JSON for log aggregation and analysis tools:
 
 ```json
-{"severity":"INFO","context":"UserDomain","timestamp":1735461534496,"msg":"Creating new user","service":{"name":"ACKNestJs","environment":"production","version":"9.0.0"},"additionalData":{"userId":"user-123","action":"create"},"level":30}
+{
+    "severity": "INFO",
+    "context": "UserDomain",
+    "requestId": "0192f3c4-7a1e-7b52-9c3d-5e6f7a8b9c0d",
+    "correlationId": "req-abc-123",
+    "timestamp": 1735461534496,
+    "msg": "Creating new user",
+    "service": {
+        "name": "ACKNestJs",
+        "environment": "production",
+        "version": "9.0.0"
+    },
+    "additionalData": { "userId": "user-123", "action": "create" },
+    "level": 30
+}
 ```
 
 **Features:**
+
 - Machine-readable single-line JSON format
 - Consistent structure for parsing
 - Compatible with log aggregation tools (ELK, Datadog, CloudWatch)
@@ -603,29 +642,30 @@ In non-production environments (`app.env !== 'production'`), additional debug in
 
 ```json
 {
-  "debug": {
-    "memory": {
-      "rss": 413,
-      "heapUsed": 181
-    },
-    "uptime": 1,
-    "pid": 12345,
-    "hostname": "dev-server"
-  }
+    "debug": {
+        "memory": {
+            "rss": 413,
+            "heapUsed": 181
+        },
+        "uptime": 1,
+        "pid": 12345,
+        "hostname": "dev-server"
+    }
 }
 ```
 
 **Debug Fields:**
 
-| Field | Description | Unit |
-|-------|-------------|------|
-| `memory.rss` | Resident Set Size: total memory allocated | MB |
-| `memory.heapUsed` | Heap memory currently in use | MB |
-| `uptime` | Process uptime since startup | seconds |
-| `pid` | Process ID | number |
-| `hostname` | Server hostname | string |
+| Field             | Description                               | Unit    |
+| ----------------- | ----------------------------------------- | ------- |
+| `memory.rss`      | Resident Set Size: total memory allocated | MB      |
+| `memory.heapUsed` | Heap memory currently in use              | MB      |
+| `uptime`          | Process uptime since startup              | seconds |
+| `pid`             | Process ID                                | number  |
+| `hostname`        | Server hostname                           | string  |
 
 **Use Cases:**
+
 - Memory leak detection
 - Performance monitoring
 - Process identification in multi-instance deployments
@@ -634,29 +674,30 @@ In non-production environments (`app.env !== 'production'`), additional debug in
 
 ## Request ID Tracking
 
-Every log entry of a request carries a request ID. The logger reads it from the inbound `x-correlation-id` or `x-request-id` header, and a request with neither gets a generated UUID v7.
+Every log entry carries the request id and the correlation id as top-level fields.
 
-### Header Priority
+- The logger generates no id and reads no id header.
+- `RequestRequestIdMiddleware` assigns both ids and writes them to the request store. See [Security and Middleware Documentation][ref-doc-security-and-middleware].
+- The pino `mixin` in `LoggerOptionService` reads `RequestIdStoreKey` and `RequestCorrelationIdStoreKey` from `RequestStoreService` each time an entry is written.
+- The log formatter writes `requestId` and `correlationId` at the top level of the entry.
+- Both fields are `null` for an entry written outside a request.
+- The `req` serializer (`LoggerUtil.serializeRequest`) writes no id. pino-http's own numeric `req.id` is never logged.
+- `LoggerUtil.serializeRequest` reads the `user-agent`, `content-type`, and `referer` headers into the request record.
+- `LoggerUtil.serializeRequest` logs the full request headers redacted.
 
-Request IDs are extracted from these headers in order of priority:
+### Id Source
 
-```typescript
-export const LoggerRequestIdHeaders = [
-    RequestCorrelationIdHeaderName, // 'x-correlation-id', first priority
-    RequestIdHeaderName,            // 'x-request-id', second priority
-] as const;
-```
-
-Both names are the header constants in `src/common/request/constants/request.constant.ts`, the same ones `RequestRequestIdMiddleware` reads and writes.
+- `requestId` is the inbound `x-request-id` when it matches `RequestIdRegex` (`^[A-Za-z0-9._-]{1,128}$`).
+- `requestId` is a new UUID v7 otherwise.
+- `correlationId` is the inbound `x-correlation-id` when it matches `RequestIdRegex`.
+- `correlationId` is a new UUID v7 otherwise.
+- The same values sit in the request store under `RequestIdStoreKey` and `RequestCorrelationIdStoreKey`.
 
 ### Fallback Behavior
 
-If no request ID header is found, `genReqId` falls back to `request.id`, the UUID v7 assigned by `RequestRequestIdMiddleware`.
+An absent, non-string, or non-matching `x-request-id` or `x-correlation-id` is replaced with a new UUID v7.
 
-> - The logger's `genReqId` reads `request.id` (and the correlation headers) directly from the raw request, unchanged.
-> - `request.id` and `request.correlationId` are also mirrored into the request store (`RequestIdStoreKey` / `RequestCorrelationIdStoreKey`) for ambient access elsewhere. The logger does not read the store.
->
-> See [Security and Middleware Documentation][ref-doc-security-and-middleware].
+The request is never rejected for it.
 
 ### Usage Example
 
@@ -670,11 +711,12 @@ curl -H "x-correlation-id: req-abc-123" http://localhost:3000/api/v1/shared/user
 
 ```json
 {
-  "req": {
-    "id": "req-abc-123",
-    "method": "GET",
-    "route": "/api/v1/shared/user/profile/get"
-  }
+    "requestId": "0192f3c4-7a1e-7b52-9c3d-5e6f7a8b9c0d",
+    "correlationId": "req-abc-123",
+    "req": {
+        "method": "GET",
+        "route": "/api/v1/shared/user/profile/get"
+    }
 }
 ```
 
@@ -682,17 +724,17 @@ curl -H "x-correlation-id: req-abc-123" http://localhost:3000/api/v1/shared/user
 
 What the code does with the `x-request-id` header:
 
-- The logger reads an inbound `x-request-id` when no `x-correlation-id` is present, and logs it as `req.id`.
-- `RequestRequestIdMiddleware` assigns every request a new UUID v7 as `request.id` and writes it to the `x-request-id` header, replacing an inbound value.
-- The response carries that new UUID v7, so a client-sent `x-request-id` appears in the log and not in the response.
+- `RequestRequestIdMiddleware` validates it against `RequestIdRegex`.
+- The response carries the resulting value in `x-request-id` and in the response metadata `requestId`.
+- The logger binds it to each entry as the top-level `requestId` field.
 
 ### Correlation ID Handling
 
 What the code does with the `x-correlation-id` header:
 
-- `RequestRequestIdMiddleware` reads it from the inbound request, and generates a UUID v7 when it is absent or not a string.
-- The response echoes it in the `x-correlation-id` header and in the response metadata `correlationId`.
-- The logger binds it to each request log entry as `req.id`.
+- `RequestRequestIdMiddleware` validates it against `RequestIdRegex`.
+- The response echoes the resulting value in the `x-correlation-id` header and in the response metadata `correlationId`.
+- The logger binds it to each entry as the top-level `correlationId` field.
 
 ## Sentry Integration
 
@@ -792,11 +834,11 @@ The Sentry configuration is defined in `src/configs/logger.config.ts`:
 
 ```typescript
 sentry: {
-    dsn: string | null;                   // Sentry Data Source Name, null when SENTRY_DSN is unset
-    timeoutInMs: number;                  // ms('10s')
-    tracesSampleRate: number;             // 1
-    tracesSampleRateProduction: number;   // 0.3
-    profilesSampleRate: number;           // 0.5
+    dsn: string | null; // Sentry Data Source Name, null when SENTRY_DSN is unset
+    timeoutInMs: number; // ms('10s')
+    tracesSampleRate: number; // 1
+    tracesSampleRateProduction: number; // 0.3
+    profilesSampleRate: number; // 0.5
     profilesSampleRateProduction: number; // 0.1
 }
 ```

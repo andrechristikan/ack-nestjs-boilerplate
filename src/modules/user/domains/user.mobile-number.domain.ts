@@ -40,20 +40,13 @@ export class UserMobileNumberDomain {
         userId: string,
         { number, countryId, phoneCode }: IUserMobileNumberInput
     ): Promise<IUserMobileNumber> {
-        const checkValidMobileNumberPromise = this.checkPhoneCode(
-            countryId,
-            phoneCode
-        );
-        const checkExistPromise =
+        const [checkValidMobileNumber, checkExist] = await Promise.all([
+            this.checkPhoneCode(countryId, phoneCode),
             this.userMobileNumberRepository.existsMobileNumber(userId, {
                 number,
                 countryId,
                 phoneCode,
-            });
-        // Sequential by design: gate before the work it guards
-        const [checkValidMobileNumber, checkExist] = await Promise.all([
-            checkValidMobileNumberPromise,
-            checkExistPromise,
+            }),
         ]);
         if (!checkValidMobileNumber) {
             throw new UserMobileNumberInvalidException();
@@ -106,16 +99,13 @@ export class UserMobileNumberDomain {
             throw new UserMobileNumberNotFoundException();
         }
 
-        const countryPromise = this.countryDomain.getOne(countryId);
-        const checkExistPromise =
+        const [country, checkExist] = await Promise.all([
+            this.countryDomain.getOne(countryId),
             this.userMobileNumberRepository.existsMobileNumber(
                 userId,
                 { number, countryId, phoneCode },
                 mobileNumberId
-            );
-        const [country, checkExist] = await Promise.all([
-            countryPromise,
-            checkExistPromise,
+            ),
         ]);
         if (checkExist) {
             throw new UserMobileNumberExistException();

@@ -50,10 +50,10 @@ Status codes for this module live in the `52100` block ([Status Codes](status-co
 
 Global prefix `/api` and URI version `v1`. Controllers mount through the HTTP router:
 
-| Scope | Router path | Controller | Controller path |
-|---|---|---|---|
-| Admin | `/admin` | `AnalyticAdminController` | `/analytic` |
-| User | `/user` | `AnalyticUserController` | `/analytic` |
+| Scope | Router path | Controller                | Controller path |
+| ----- | ----------- | ------------------------- | --------------- |
+| Admin | `/admin`    | `AnalyticAdminController` | `/analytic`     |
+| User  | `/user`     | `AnalyticUserController`  | `/analytic`     |
 
 - Full paths below are under `/api/v1`.
 - Every Analytic route is `GET`.
@@ -106,7 +106,7 @@ The workspace comes from `x-workspace-id` only, so these routes do not use `Poli
 #### Users
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/users/registrations` | Registration count for a required date range |
 | `GET` | `/admin/analytic/users/churn` | Churn rate for a required date range |
 | `GET` | `/admin/analytic/users/blocked` | Blocked-user counts for a required date range |
@@ -124,7 +124,7 @@ The workspace comes from `x-workspace-id` only, so these routes do not use `Poli
 #### Auth and sessions
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/auth/login-frequency` | Login count for a required date range |
 | `GET` | `/admin/analytic/auth/login-method` | Login method distribution (optional date range) |
 | `GET` | `/admin/analytic/auth/login-source` | Login source distribution (optional date range) |
@@ -149,7 +149,7 @@ The workspace comes from `x-workspace-id` only, so these routes do not use `Poli
 #### Devices
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/devices/registration` | Device registration count for a required date range |
 | `GET` | `/admin/analytic/devices/platform` | Device platform distribution |
 | `GET` | `/admin/analytic/devices/push-token` | Push-token coverage rate |
@@ -161,7 +161,7 @@ The workspace comes from `x-workspace-id` only, so these routes do not use `Poli
 #### API keys
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/api-keys/lifecycle` | API-key lifecycle counts for a required date range |
 | `GET` | `/admin/analytic/api-keys/active-expired` | Active and expired API-key counts |
 | `GET` | `/admin/analytic/api-keys/type-mix` | API-key type distribution |
@@ -169,14 +169,14 @@ The workspace comes from `x-workspace-id` only, so these routes do not use `Poli
 #### Term policies
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/term-policies/acceptance-rate` | Term-policy acceptance rate (optional date range) |
 | `GET` | `/admin/analytic/term-policies/time-to-accept` | Term-policy time-to-accept (optional date range) |
 
 #### Workspaces and projects
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/workspaces/creation` | Workspace creation count for a required date range |
 | `GET` | `/admin/analytic/workspaces/visibility` | Workspace visibility distribution |
 | `GET` | `/admin/analytic/workspaces/invite-funnel` | Invite status counts for a required date range (`{ statuses: [...] }`) |
@@ -198,7 +198,7 @@ Workspace and project counts cover live rows only:
 - Risk score is the exception: it is per-user or a paginated roster.
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/fraud/credential-stuffing` | Credential-stuffing summary (`windowMs`) |
 | `GET` | `/admin/analytic/fraud/credential-stuffing/list` | Offset-paginated credential-stuffing rows |
 | `GET` | `/admin/analytic/fraud/account-takeover` | Account-takeover summary (required date range) |
@@ -228,7 +228,7 @@ Workspace and project counts cover live rows only:
 - Each signal exposes a summary and a matching `/list`.
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/anomaly/impossible-travel` | Impossible-travel summary (optional date range) |
 | `GET` | `/admin/analytic/anomaly/impossible-travel/list` | Offset-paginated impossible-travel rows |
 | `GET` | `/admin/analytic/anomaly/login-spike-ip` | Login-spike-by-IP summary (`windowMs`) |
@@ -246,7 +246,7 @@ Workspace and project counts cover live rows only:
 - One controller: `AnalyticUserController` (`analytic.user.controller.ts`).
 
 | Method | Path | Who | Returns |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `GET` | `/user/analytic/workspace/summary` | Any workspace member | Workspace summary (optional date range) |
 | `GET` | `/user/analytic/workspace/invite-funnel` | Workspace `admin` (owner satisfies every role check) | Invite status counts for a required date range (`{ statuses: [...] }`) |
 | `GET` | `/user/analytic/workspace/join-outcomes` | Workspace `admin` (owner satisfies every role check) | Join-request status counts for a required date range (`{ statuses: [...] }`) |
@@ -310,11 +310,11 @@ OpenAPI:
 
 Default TTLs in `analytic.config.ts`:
 
-| Concern | TTL |
-|---|---|
-| Dashboard metric | 1h |
-| Anomaly summary | 5m |
-| Fraud summary | 5m |
+| Concern          | TTL |
+| ---------------- | --- |
+| Dashboard metric | 1h  |
+| Anomaly summary  | 5m  |
+| Fraud summary    | 5m  |
 | Fraud risk score | 10m |
 
 The same config file holds anomaly and fraud detection thresholds:
@@ -344,7 +344,7 @@ Date range validation lives in `AnalyticDateDomain` (`requireRange`, `optionalRa
 ## Status codes
 
 | member | statusCode | httpStatus | messagePath |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `invalidDateRange` | `52100` | 400 (`BAD_REQUEST`) | `analytic.error.invalidDateRange` |
 
 Exception class: `AnalyticInvalidDateRangeException`.
@@ -374,7 +374,7 @@ How Analytic reads them:
 An action one user takes on another writes an actor row and a target row ([Activity Log](activity-log.md#actor-and-target-rows)). The metrics that read those actions count one side of each pair:
 
 | Metric | Actions counted | Route |
-|---|---|---|
+| --- | --- | --- |
 | `authSessionRevoke` | `userRevokeSession`, `userRevokeAllSessions`, `userRevokeSessionByAdmin`, `userRevokeAllSessionsByAdmin` | `GET /admin/analytic/auth/session-revoke` |
 | Session after admin revoke (`computeSessionAfterAdmin`) | `userRevokeSessionByAdmin`, `userRevokeAllSessionsByAdmin` | `GET /admin/analytic/fraud/session-after-admin` and `/list` |
 | Workspace activity volume | Every action in the workspace except the ones listed in `ActivityLogWorkspaceVolumeContract` | `GET /admin/analytic/workspaces/activity-volume`, `GET /user/analytic/workspace/summary`, `GET /user/analytic/workspace/activity` |

@@ -5,7 +5,7 @@
 Only the latest minor release line receives security updates. Please upgrade before reporting an issue on an older version.
 
 | Version | Supported |
-|---------|-----------|
+| ------- | --------- |
 | 9.1.x   | ✅        |
 | < 9.1   | ❌        |
 

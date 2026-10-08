@@ -2,8 +2,7 @@
 
 ## Overview
 
-> [!IMPORTANT]
-> Local-development setup only.
+> [!IMPORTANT] Local-development setup only.
 >
 > - The unseal key and root token are written to `generated/vault/init.json`, so the stack unseals itself unattended.
 > - It is a dev convenience, not a production pattern. See [Scope](#scope).
@@ -39,18 +38,18 @@ Optional [HashiCorp Vault][ref-vault] setup for **local development secret manag
 - [Scope](#scope)
 - [Architecture](#architecture)
 - [Components](#components)
-  - [`vault` service](#vault-service)
-  - [`vault-bootstrap` service](#vault-bootstrap-service)
-  - [`vault:pull` script](#vaultpull-script)
+    - [`vault` service](#vault-service)
+    - [`vault-bootstrap` service](#vault-bootstrap-service)
+    - [`vault:pull` script](#vaultpull-script)
 - [KV Layout](#kv-layout)
 - [Installation & Usage](#installation--usage)
-  - [Prerequisites](#prerequisites)
-  - [Step 1: Start Vault](#step-1-start-vault)
-  - [Step 2: Pull Secrets into `.env`](#step-2-pull-secrets-into-env)
-  - [Step 3: Run the App](#step-3-run-the-app)
-  - [Reading the Root Token](#reading-the-root-token)
-  - [Updating a Secret](#updating-a-secret)
-  - [Resetting Vault](#resetting-vault)
+    - [Prerequisites](#prerequisites)
+    - [Step 1: Start Vault](#step-1-start-vault)
+    - [Step 2: Pull Secrets into `.env`](#step-2-pull-secrets-into-env)
+    - [Step 3: Run the App](#step-3-run-the-app)
+    - [Reading the Root Token](#reading-the-root-token)
+    - [Updating a Secret](#updating-a-secret)
+    - [Resetting Vault](#resetting-vault)
 - [How It Works](#how-it-works)
 - [Configuration Reference](#configuration-reference)
 
@@ -61,11 +60,13 @@ Optional [HashiCorp Vault][ref-vault] setup for **local development secret manag
 - The local flow resembles a real "authenticate, fetch, inject" pattern without the production machinery.
 
 **Covered here:**
+
 - File-backed Vault server (persistent), auto-init + auto-unseal via the entrypoint.
 - One-shot bootstrap: kv-v2 mount, AppRole auth, per-env read-only policies, seeds `development` from `.env.example`.
 - `pnpm vault:pull`: fetches an env's secret into a local env file via a scoped AppRole token.
 
 **Not covered (yours to build for production):**
+
 - **Deploy**: clustering, Raft HA, managed Vault.
 - **Unseal**: Shamir split across operators, or KMS / Transit auto-unseal. Never the key on disk.
 - **Auth**: OIDC / JWT with bound claims, Kubernetes auth, short-lived tokens. No root.
@@ -74,7 +75,7 @@ Optional [HashiCorp Vault][ref-vault] setup for **local development secret manag
 Development vs production. Informational, not a migration checklist:
 
 | Concern | Development (this boilerplate) | Production (your responsibility) |
-|---|---|---|
+| --- | --- | --- |
 | Storage | File backend, persisted to a Docker volume | Raft HA or managed Vault |
 | Unseal | Auto-unsealed by the entrypoint, key on disk | KMS / Transit auto-unseal, key never on disk |
 | Auth | Per-env AppRole; root token only mints AppRole creds | OIDC / JWT with bound claims, root revoked after setup |
@@ -130,7 +131,7 @@ Two containers (gated by the `vault` profile) plus one local script:
 - Runs `ci/vault/entrypoint.sh` instead of `-dev` mode so data persists.
 
 | Property | Value |
-|---|---|
+| --- | --- |
 | Image | `hashicorp/vault:latest` |
 | Mode | `vault server -config=/vault/config.hcl`, file backend, auto-init + auto-unseal via `entrypoint.sh` |
 | Storage | `vault_data` volume mounted at `/vault/file` (owned by the image's `vault` user, so it is writable without root) |
@@ -154,12 +155,12 @@ Two containers (gated by the `vault` profile) plus one local script:
 2. Enable a **kv-v2** engine at mount `ack-nestjs-boilerplate/` if missing.
 3. Enable **AppRole** auth if missing (local stand-in for production's OIDC/JWT).
 4. Per environment (`production`, `staging`, `development`):
-   - Apply a read-only policy from `ci/vault/policies/<env>-ro.hcl` (one env path, no write, no cross-env access).
-   - Create AppRole `ack-nestjs-boilerplate-<env>` with only that policy and a short token TTL.
-   - Mint `role_id` + `secret_id`, persist to `generated/vault/<env>.approle`, so `vault:pull` authenticates without root.
+    - Apply a read-only policy from `ci/vault/policies/<env>-ro.hcl` (one env path, no write, no cross-env access).
+    - Create AppRole `ack-nestjs-boilerplate-<env>` with only that policy and a short token TTL.
+    - Mint `role_id` + `secret_id`, persist to `generated/vault/<env>.approle`, so `vault:pull` authenticates without root.
 5. Seed `development` from `.env.example`, first run only (empty path):
-   - `production` and `staging` stay empty.
-   - A dev box never holds real production secrets.
+    - `production` and `staging` stay empty.
+    - A dev box never holds real production secrets.
 
 Roles:
 
@@ -191,16 +192,15 @@ sh ci/vault/pull.sh [ENV] [OUT]
 
 ## KV Layout
 
-> [!TIP]
-> `project/env` scales to multiple projects: each project gets its own kv-v2 mount, isolating policies, audit, and access. For a second project, give it its own `KV_MOUNT` and policy files.
+> [!TIP] `project/env` scales to multiple projects: each project gets its own kv-v2 mount, isolating policies, audit, and access. For a second project, give it its own `KV_MOUNT` and policy files.
 
 **kv-v2** engine, structured **project then environment**: mount is the project, each environment is a path under it.
 
-| Part | Default | Env var |
-|---|---|---|
-| Mount (project) | `ack-nestjs-boilerplate` | `KV_MOUNT` |
-| Environments | `production staging development` | `KV_ENVS` |
-| Seeded environment | `development` | `KV_SEED_ENV` |
+| Part               | Default                          | Env var       |
+| ------------------ | -------------------------------- | ------------- |
+| Mount (project)    | `ack-nestjs-boilerplate`         | `KV_MOUNT`    |
+| Environments       | `production staging development` | `KV_ENVS`     |
+| Seeded environment | `development`                    | `KV_SEED_ENV` |
 
 Full paths: **`ack-nestjs-boilerplate/{production,staging,development}`**
 
@@ -273,8 +273,7 @@ sh ci/vault/pull.sh staging .env.staging
 
 ### Step 3: Run the App
 
-> [!NOTE]
-> Vault only **produces** an env file. The app never talks to Vault at runtime. It reads the generated `.env`.
+> [!NOTE] Vault only **produces** an env file. The app never talks to Vault at runtime. It reads the generated `.env`.
 
 Unchanged from here. The app reads `.env` as usual:
 
@@ -317,8 +316,7 @@ Use the root token for the UI at `http://localhost:8200` (token auth) or the CLI
 
 ### Updating a Secret
 
-> [!NOTE]
-> Storage is persistent.
+> [!NOTE] Storage is persistent.
 >
 > - The change survives restarts.
 > - Re-seeding happens only when `development` is empty (a fresh volume), so the next boot does not overwrite the change.
@@ -340,8 +338,7 @@ pnpm vault:pull
 
 ### Resetting Vault
 
-> [!WARNING]
-> Keep the data volume and `generated/vault/init.json` in sync.
+> [!WARNING] Keep the data volume and `generated/vault/init.json` in sync.
 >
 > - Deleting the volume makes the entrypoint re-init and overwrite `init.json`.
 > - Deleting `init.json` while the volume persists makes auto-unseal fail, because the key is gone.
@@ -397,7 +394,7 @@ sequenceDiagram
 - Override with environment variables when needed.
 
 | Variable | Used by | Default | Purpose |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `VAULT_CONFIG` | `entrypoint.sh` | `/vault/config.hcl` | Server config file path |
 | `INIT_FILE` | `entrypoint.sh` / `bootstrap.sh` | `/vault/init/init.json` | Init output (unseal key + root token) |
 | `VAULT_ADDR` | `bootstrap.sh` / `entrypoint.sh` | `http://vault:8200` (bootstrap), `http://127.0.0.1:8200` (entrypoint) | Vault API address (network alias from bootstrap, in-container loopback from the entrypoint) |
@@ -409,7 +406,7 @@ sequenceDiagram
 Relevant files:
 
 | File | Role |
-|---|---|
+| --- | --- |
 | `ci/vault/config.hcl` | Server config: file storage at `/vault/file`, TCP listener, UI |
 | `ci/vault/entrypoint.sh` | Auto-init + auto-unseal wrapper around `vault server` |
 | `ci/vault/bootstrap.sh` | Provisions mount, AppRole, policies, and seeds `development` |
@@ -420,7 +417,6 @@ Relevant files:
 
 [ref-vault]: https://developer.hashicorp.com/vault
 [ref-approle]: https://developer.hashicorp.com/vault/docs/auth/approle
-
 [ref-doc-installation]: installation.md
 [ref-doc-environment]: environment.md
 [ref-doc-configuration]: configuration.md

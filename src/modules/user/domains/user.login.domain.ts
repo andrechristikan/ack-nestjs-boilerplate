@@ -5,6 +5,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
@@ -123,8 +124,11 @@ export class UserLoginDomain {
         loginWith: EnumUserLoginWith,
         loginAt: Date
     ): Promise<IAuthToken> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey);
+        if (requestLog === null) {
+            throw new RequestContextMissingException(RequestLogStoreKey);
+        }
 
         const { sessionId, jti } = this.authJwtDomain.createLoginIdentifiers();
         const expiredAt = this.helperDateService.forward(
@@ -289,14 +293,13 @@ export class UserLoginDomain {
             loginWith,
         });
         if (user.twoFactor?.requiredSetup) {
-            const setupPromise = this.authTwoFactorDomain.setupTwoFactor(
-                user.id,
-                user.email
-            );
             const [
                 { challengeToken, expiresInMs },
                 { encryptedSecret, otpauthUrl, secret },
-            ] = await Promise.all([challengePromise, setupPromise]);
+            ] = await Promise.all([
+                challengePromise,
+                this.authTwoFactorDomain.setupTwoFactor(user.id, user.email),
+            ]);
             const events = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userSetupTwoFactor,
@@ -429,8 +432,11 @@ export class UserLoginDomain {
         user: IUser,
         refreshToken: string
     ): Promise<IAuthToken> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey);
+        if (requestLog === null) {
+            throw new RequestContextMissingException(RequestLogStoreKey);
+        }
 
         const {
             sessionId,

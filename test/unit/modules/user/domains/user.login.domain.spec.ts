@@ -19,6 +19,8 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -667,6 +669,33 @@ describe('UserLoginDomain', () => {
                 loginAt,
                 requestLog
             );
+        });
+
+        it('throws RequestContextMissingException before any write when the store has no request log', async () => {
+            requestStoreService.get.mockReturnValue(null);
+
+            const call = domain.createTokenAndSession(
+                baseUser,
+                device,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                loginAt
+            );
+
+            await expect(call).rejects.toBeInstanceOf(
+                RequestContextMissingException
+            );
+            await expect(call).rejects.toMatchObject({
+                module: 'request',
+                statusCode: EnumRequestStatusCodeError.contextMissing,
+                statusCodeKey:
+                    EnumRequestStatusCodeError[
+                        EnumRequestStatusCodeError.contextMissing
+                    ],
+                messagePath: 'request.error.contextMissing',
+            });
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(authJwtDomain.createTokens).not.toHaveBeenCalled();
         });
 
         it('signs nothing and writes no cache key when the transaction fails', async () => {
@@ -1322,6 +1351,27 @@ describe('UserLoginDomain', () => {
                 'updateLogin',
                 'stagePrepared',
             ]);
+        });
+
+        it('throws RequestContextMissingException before reading the token when the store has no request log', async () => {
+            requestStoreService.get.mockReturnValue(null);
+
+            const call = domain.refreshSession(baseUser, 'refresh-token');
+
+            await expect(call).rejects.toBeInstanceOf(
+                RequestContextMissingException
+            );
+            await expect(call).rejects.toMatchObject({
+                module: 'request',
+                statusCode: EnumRequestStatusCodeError.contextMissing,
+                statusCodeKey:
+                    EnumRequestStatusCodeError[
+                        EnumRequestStatusCodeError.contextMissing
+                    ],
+                messagePath: 'request.error.contextMissing',
+            });
+            expect(authJwtDomain.payloadToken).not.toHaveBeenCalled();
+            expect(sessionCache.getLogin).not.toHaveBeenCalled();
         });
 
         it('throws AuthJwtRefreshTokenInvalidException when there is no cached session', async () => {
