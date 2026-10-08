@@ -1,6 +1,4 @@
-import { Processor } from '@nestjs/bullmq';
 import { QueueProcessorConfigKey } from '@queues/constants/queue.constant';
-import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import type { IQueueProcessorOptions } from '@queues/interfaces/queue.interface';
 
@@ -13,10 +11,15 @@ vi.mock('@nestjs/bullmq', async importOriginal => {
 describe('queue.decorator', () => {
     describe('QueueProcessor', () => {
         beforeEach(() => {
-            vi.mocked(Processor).mockClear();
+            vi.resetAllMocks();
+            vi.resetModules();
         });
 
-        it('registers the processor under the queue name and the processor config key', () => {
+        it('registers the processor under the queue name and the processor config key', async () => {
+            const { Processor } = await import('@nestjs/bullmq');
+            const { QueueProcessor } =
+                await import('@queues/decorators/queue.decorator');
+
             QueueProcessor(EnumQueue.notification);
 
             expect(Processor).toHaveBeenCalledWith(
@@ -28,7 +31,11 @@ describe('queue.decorator', () => {
             );
         });
 
-        it('names the worker <appName>-<appEnv>:<queue>:consumer when no options are given', () => {
+        it('names the worker <appName>-<appEnv>:<queue>:consumer when no options are given', async () => {
+            const { Processor } = await import('@nestjs/bullmq');
+            const { QueueProcessor } =
+                await import('@queues/decorators/queue.decorator');
+
             QueueProcessor(EnumQueue.notification);
 
             expect(Processor).toHaveBeenCalledWith(expect.any(Object), {
@@ -38,7 +45,10 @@ describe('queue.decorator', () => {
             });
         });
 
-        it('passes the given worker options next to the default worker name', () => {
+        it('passes the given worker options next to the default worker name', async () => {
+            const { Processor } = await import('@nestjs/bullmq');
+            const { QueueProcessor } =
+                await import('@queues/decorators/queue.decorator');
             const options: IQueueProcessorOptions = { concurrency: 5 };
 
             QueueProcessor(EnumQueue.workspace, options);
