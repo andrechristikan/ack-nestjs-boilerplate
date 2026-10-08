@@ -11,6 +11,7 @@ import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import type {
     IEffectivePermission,
+    IPolicyRequired,
     PolicyAbility,
     PolicyAbilitySubject,
 } from '@modules/policy/interfaces/policy.interface';
@@ -42,7 +43,9 @@ export class PolicyAbilityDomain {
     ): TWhere {
         const ability = this.getAbility();
         if (ability.rulesFor(action, subjectName).length === 0) {
-            throw new PolicyForbiddenException();
+            throw new PolicyForbiddenException({
+                missing: [{ subject: subjectName, actions: [action] }],
+            });
         }
 
         return accessibleBy(ability, action).ofType(subjectName) as TWhere;
@@ -50,7 +53,8 @@ export class PolicyAbilityDomain {
 
     /**
      * Throws `PolicyForbiddenException` when the stored ability denies `action` on the
-     * subject, carrying the matched rule's `reason` when one is present.
+     * subject, carrying the matched rule's `reason` when one is present and the missing
+     * permission.
      */
     assertCan(action: EnumPolicyAction, target: PolicyAbilitySubject): void {
         const ability = this.getAbility();
@@ -65,7 +69,52 @@ export class PolicyAbilityDomain {
             const reason = matchedRule?.inverted
                 ? matchedRule.reason
                 : undefined;
-            throw new PolicyForbiddenException(reason);
+            const subjectName = (
+                typeof target === 'string' ? target : target.__caslSubjectType__
+            ) as EnumPolicySubject;
+            throw new PolicyForbiddenException({
+                reason,
+                missing: [{ subject: subjectName, actions: [action] }],
+            });
+        }
+    }
+
+    /**
+     * Throws one `PolicyForbiddenException` listing every required action the stored ability
+     * denies, grouped by subject, carrying the `reason` of the first denying inverted rule.
+     */
+    assertCanEvery(required: IPolicyRequired[]): void {
+        const ability = this.getAbility();
+        const missing = new Map<EnumPolicySubject, EnumPolicyAction[]>();
+        let reason: string | undefined;
+
+        for (const { subject: subjectName, action } of required) {
+            for (const one of action) {
+                if (ability.can(one, subjectName)) {
+                    continue;
+                }
+
+                const actions = missing.get(subjectName) ?? [];
+                if (!actions.includes(one)) {
+                    actions.push(one);
+                }
+                missing.set(subjectName, actions);
+
+                const matchedRule = ability.relevantRuleFor(one, subjectName);
+                if (reason === undefined && matchedRule?.inverted) {
+                    reason = matchedRule.reason;
+                }
+            }
+        }
+
+        if (missing.size > 0) {
+            throw new PolicyForbiddenException({
+                reason,
+                missing: [...missing].map(([subject, actions]) => ({
+                    subject,
+                    actions,
+                })),
+            });
         }
     }
 

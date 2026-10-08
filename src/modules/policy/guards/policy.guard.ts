@@ -22,11 +22,7 @@ export class PolicyGuard implements CanActivate {
             throw new PolicyPredefinedNotFoundException();
         }
 
-        for (const { subject, action } of required) {
-            for (const one of action) {
-                this.policyAbilityDomain.assertCan(one, subject);
-            }
-        }
+        this.policyAbilityDomain.assertCanEvery(required);
 
         return true;
     }

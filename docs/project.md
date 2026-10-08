@@ -89,7 +89,7 @@ Mounted under `/user`. **Every route below requires the `x-workspace-id` header*
 
 | Method | Path | Gate |
 |---|---|---|
-| `GET` | `/user/project/list` | Any workspace member (the route builds the workspace ability and enforces no policy). A caller whose ability holds `project:[read]` (the `owner`) sees every project the policy predicate reaches; everyone else sees only projects they belong to |
+| `GET` | `/user/project/list` | Any workspace member whose ability holds `project:[read]` (the route builds the workspace ability and enforces no policy decorator). The policy predicate alone decides the result: the `owner` and `admin` see every project in the workspace, a `member` sees only the projects they are assigned to, and a caller with no `project:[read]` rule receives `403` |
 | `GET` | `/user/project/permissions/:projectId` | Any project member. Returns the caller's effective actions on `project` and `projectMember` |
 | `POST` | `/user/project/create` | `project:[create]`, a subject-type check (workspace `admin` and `owner`) |
 | `GET` | `/user/project/get/:projectId` | `project:[read]` from the project role or the workspace role |
