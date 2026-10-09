@@ -238,8 +238,8 @@ It throws:
 4. Anonymous requests (no user) skip targeting and go straight to the anonymous rollout branch (see [Rollout Percentage](#rollout-percentage)).
 
 - `targetUserIds` is admin-editable via `PATCH /admin/feature-flag/update/:featureFlagId/status` and defaults to empty.
-- Omit the field to keep the current list.
-- Send `[]` to clear it.
+- The same body carries `isEnable`, `rolloutPercent` (integer 0 to 100), and `targetUserIds`. All three are required, and each replaces the stored value.
+- `targetUserIds` holds 24-character hexadecimal user ids. Send `[]` to clear the list.
 
 ## Rollout Percentage
 

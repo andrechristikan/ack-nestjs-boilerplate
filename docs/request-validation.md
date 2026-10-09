@@ -166,6 +166,11 @@ userId?: string
 - **Normalization runs at the boundary**: `.trim()`, `.toLowerCase()`, and `.transform()` on the schema mean every caller downstream sees one canonical value.
 - **`.meta({ description, example })`** on every field is what the OpenAPI document is generated from. See [Doc][ref-doc-doc].
 - **`.optional()`** marks an optional field. Request DTOs are the one layer where `undefined` is legal.
+- **An update body is a full replace.** Every update route follows it:
+    - Every editable field is required in the body.
+    - A field that can be empty is `.nullable()`, and `null` clears it.
+    - A list field takes `[]` to clear it.
+    - A field left out answers a validation error (422, `50300`).
 
 An issue message can be a message path, which the i18n layer resolves later:
 

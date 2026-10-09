@@ -117,7 +117,9 @@ One exception: a workspace `owner` reaches every project in the workspace withou
 | `POST` | `/user/project/member/:projectId/leave` | Any project member. A real `ProjectMember` row is required, so the workspace-owner bypass does not apply |
 
 - On the member routes, `:projectId` leads the target segment, because the target is an attribute of that project.
-- `PUT /user/project/update/:projectId` takes `name` and `description` as optional fields. A field left out keeps its stored value.
+- `PUT /user/project/update/:projectId` replaces the project. The body carries both fields:
+    - `name` is required, 1 to 150 characters.
+    - `description` is required and nullable, up to 500 characters. `null` clears it.
 - The list routes take `search` and `orderBy` query params. `orderBy` is `field:direction`, repeatable, and each route's request schema validates it against that route's allow-list, so an unlisted field answers a validation error (422, `50300`). The allow-list also rides in the response metadata as `availableOrderBy`.
 
 ### Admin Scope
