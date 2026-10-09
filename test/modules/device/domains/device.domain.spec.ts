@@ -534,7 +534,7 @@ describe('DeviceDomain', () => {
     });
 
     describe('getOneActive', () => {
-        it('returns the active ownership of the user without judging it', async () => {
+        it('returns the active ownership without judging it', async () => {
             deviceOwnershipRepository.findOneActive.mockResolvedValue(
                 ownership
             );

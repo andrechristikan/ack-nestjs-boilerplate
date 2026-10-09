@@ -11,7 +11,7 @@ import { RequestContextMissingException } from '@common/request/exceptions/reque
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { subject } from '@casl/ability';
 import type { RawRuleOf } from '@casl/ability';
-import { createPrismaAbility } from '@casl/prisma';
+import { createPrismaAbility } from '@casl/prisma/runtime';
 import { EnumPolicyAction, EnumPolicySubject } from '@generated/prisma-client';
 
 describe('PolicyAbilityDomain', () => {
@@ -160,7 +160,7 @@ describe('PolicyAbilityDomain', () => {
                         action: EnumPolicyAction.read,
                         subject: 'Project',
                         inverted: true,
-                        conditions: { archived: true },
+                        conditions: { name: 'Locked' },
                     },
                 ])
             );
@@ -171,7 +171,7 @@ describe('PolicyAbilityDomain', () => {
                     EnumPolicySubject.Project
                 )
             ).toEqual({
-                OR: [{ AND: [{}, { NOT: { archived: true } }] }],
+                OR: [{ AND: [{}, { NOT: { name: 'Locked' } }] }],
             });
         });
 

@@ -2,8 +2,6 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { detectSubjectType } from '@casl/ability';
-
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -14,7 +12,6 @@ import {
     EnumPolicySubject,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { DeviceOwnership } from '@generated/prisma-client/client';
 import {
     DeviceCursorAvailableOrderBy,
     DeviceDefaultAvailableOrderBy,
@@ -39,23 +36,6 @@ describe('DeviceHttpService', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const accessibleWhere = { userId: 'user-id' };
-    const storedOwnership = {
-        id: 'ownership-id',
-        deviceId: 'device-id',
-        userId: 'user-id',
-        revokedAt: null,
-        isRevoked: false,
-        revokedById: null,
-        lastActiveAt: new Date('2026-01-01T00:00:00.000Z'),
-        biometricEnabled: false,
-        biometricToken: null,
-        biometricType: null,
-        biometricEnabledAt: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-    } satisfies DeviceOwnership;
     const ownership = mock<IDeviceOwnership>({ _count: { sessions: 2 } });
     const ownershipWithSession = mock<IDeviceOwnershipWithSession>({
         _count: { sessions: 3 },
@@ -125,7 +105,7 @@ describe('DeviceHttpService', () => {
     });
 
     describe('getListOffsetByAdmin', () => {
-        it('passes the revoke filter and the read predicate of Device to the domain and counts active sessions', async () => {
+        it('passes the revoke filter and the read predicate of DeviceOwnership to the domain and counts active sessions', async () => {
             const query = { isRevoked: true };
             const isRevokedWhere = { isRevoked: true };
             paginationQueryUtil.offset.mockReturnValue({
@@ -142,7 +122,7 @@ describe('DeviceHttpService', () => {
 
             expect(policyAbilityDomain.accessibleWhere).toHaveBeenCalledWith(
                 EnumPolicyAction.read,
-                EnumPolicySubject.Device
+                EnumPolicySubject.DeviceOwnership
             );
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
                 availableOrderBy: DeviceDefaultAvailableOrderBy,
@@ -299,7 +279,7 @@ describe('DeviceHttpService', () => {
 
     describe('removeByAdmin', () => {
         it('checks delete on the active ownership of the route user, delegates to the domain and answers an empty envelope', async () => {
-            deviceDomain.getOneActive.mockResolvedValue(storedOwnership);
+            deviceDomain.getOneActive.mockResolvedValue(ownership);
             deviceDomain.removeByAdmin.mockResolvedValue(undefined);
 
             await expect(
@@ -309,13 +289,9 @@ describe('DeviceHttpService', () => {
                 'user-id',
                 'ownership-id'
             );
-            expect(policyAbilityDomain.assertCan).toHaveBeenCalledTimes(1);
-            const [action, record] =
-                policyAbilityDomain.assertCan.mock.calls[0];
-            expect(action).toBe(EnumPolicyAction.delete);
-            expect(record).toBe(storedOwnership);
-            expect(detectSubjectType(record as never)).toBe(
-                EnumPolicySubject.Device
+            expect(policyAbilityDomain.assertCan).toHaveBeenCalledWith(
+                EnumPolicyAction.delete,
+                ownership
             );
             expect(deviceDomain.removeByAdmin).toHaveBeenCalledWith(
                 'user-id',
@@ -325,7 +301,7 @@ describe('DeviceHttpService', () => {
         });
 
         it('throws PolicyForbiddenException and never removes when the record is denied', async () => {
-            deviceDomain.getOneActive.mockResolvedValue(storedOwnership);
+            deviceDomain.getOneActive.mockResolvedValue(ownership);
             policyAbilityDomain.assertCan.mockImplementation(() => {
                 throw new PolicyForbiddenException();
             });
@@ -337,6 +313,7 @@ describe('DeviceHttpService', () => {
         });
 
         it('throws RequestContextMissingException and writes nothing when no ability is stored', async () => {
+            deviceDomain.getOneActive.mockResolvedValue(ownership);
             policyAbilityDomain.assertCan.mockImplementation(() => {
                 throw new RequestContextMissingException(PolicyAbilityStoreKey);
             });
