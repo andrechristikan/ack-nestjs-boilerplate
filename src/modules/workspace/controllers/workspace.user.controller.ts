@@ -69,8 +69,8 @@ import type { WorkspaceInviteResponseDto } from '@modules/workspace/dtos/respons
 import { WorkspaceJoinRequestResponseSchema } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspacePermissionResponseSchema } from '@modules/workspace/dtos/response/workspace.permission.response.dto';
+import type { WorkspacePermissionResponseDto } from '@modules/workspace/dtos/response/workspace.permission.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
-import type { IEffectivePermission } from '@modules/policy/interfaces/policy.interface';
 import type {
     IWorkspaceInviteList,
     IWorkspaceMember,
@@ -193,10 +193,10 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
     @Get('/permissions')
-    async permissions(): Promise<
-        IResponseReturn<{ permissions: IEffectivePermission[] }>
-    > {
-        return this.workspaceHttpService.getEffectivePermissions();
+    async permissions(
+        @WorkspaceCurrent() workspace: Workspace
+    ): Promise<IResponseReturn<WorkspacePermissionResponseDto>> {
+        return this.workspaceHttpService.getEffectivePermissions(workspace);
     }
 
     @Doc({ summary: 'update the current workspace name/description' })

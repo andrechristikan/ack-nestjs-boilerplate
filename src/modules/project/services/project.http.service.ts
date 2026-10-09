@@ -14,7 +14,6 @@ import {
 import type { Project } from '@generated/prisma-client/client';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import type { IEffectivePermission } from '@modules/policy/interfaces/policy.interface';
-import { ProjectPermissionSubjects } from '@modules/project/constants/project.constant';
 import {
     ProjectCursorAvailableOrderBy,
     ProjectDefaultAvailableOrderBy,
@@ -180,12 +179,15 @@ export class ProjectHttpService {
         return { data: project };
     }
 
-    getEffectivePermissions(): IResponseReturn<{
+    getEffectivePermissions(project: Project): IResponseReturn<{
         permissions: IEffectivePermission[];
     }> {
-        const permissions = this.policyAbilityDomain.getEffectivePermissions(
-            ProjectPermissionSubjects
-        );
+        const permissions = this.policyAbilityDomain.getEffectivePermissions([
+            subject(EnumPolicySubject.Project, project),
+            subject(EnumPolicySubject.ProjectMember, {
+                projectId: project.id,
+            }),
+        ]);
 
         return { data: { permissions } };
     }

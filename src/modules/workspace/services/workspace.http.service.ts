@@ -13,8 +13,6 @@ import {
 } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
-import type { IEffectivePermission } from '@modules/policy/interfaces/policy.interface';
-import { WorkspacePermissionSubjects } from '@modules/workspace/constants/workspace.constant';
 import {
     WorkspaceCursorAvailableOrderBy,
     WorkspaceDefaultAvailableOrderBy,
@@ -27,6 +25,7 @@ import type { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/
 import type { WorkspaceUpdateIsPublicRequestDto } from '@modules/workspace/dtos/request/workspace.update-is-public.request.dto';
 import type { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/request/workspace.update-slug.request.dto';
 import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
+import type { WorkspacePermissionResponseDto } from '@modules/workspace/dtos/response/workspace.permission.response.dto';
 import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { Injectable } from '@nestjs/common';
 
@@ -212,12 +211,12 @@ export class WorkspaceHttpService {
         return { data: workspace };
     }
 
-    getEffectivePermissions(): IResponseReturn<{
-        permissions: IEffectivePermission[];
-    }> {
-        const permissions = this.policyAbilityDomain.getEffectivePermissions(
-            WorkspacePermissionSubjects
-        );
+    getEffectivePermissions(
+        workspace: Workspace
+    ): IResponseReturn<WorkspacePermissionResponseDto> {
+        const permissions = this.policyAbilityDomain.getEffectivePermissions([
+            subject(EnumPolicySubject.Workspace, workspace),
+        ]);
 
         return { data: { permissions } };
     }

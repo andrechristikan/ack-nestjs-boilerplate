@@ -27,13 +27,16 @@ export interface IPolicyRequired<
  * ability grants on it.
  * @public
  */
-export interface IEffectivePermission {
-    subject: EnumPolicySubject;
+export interface IEffectivePermission<
+    TSubject extends EnumPolicySubject = EnumPolicySubject,
+> {
+    subject: TSubject;
     actions: EnumPolicyAction[];
 }
 
-export type PolicyAbilitySubject =
-    EnumPolicySubject | ForcedSubject<EnumPolicySubject>;
+export type PolicyAbilitySubject<
+    TSubject extends EnumPolicySubject = EnumPolicySubject,
+> = TSubject | ForcedSubject<TSubject>;
 
 export type PolicyAbility = Ability<
     [EnumPolicyAction, PolicyAbilitySubject],

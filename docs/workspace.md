@@ -231,7 +231,7 @@ Mounted under `/user`. Every route carries `@FeatureFlagProtected('workspace')`.
 | `POST` | `/user/workspace/join-request/:workspaceJoinRequestId/accept` | yes | `workspaceJoinRequest:[update]` |
 | `POST` | `/user/workspace/join-request/:workspaceJoinRequestId/reject` | yes | `workspaceJoinRequest:[update]` |
 
-`GET /user/workspace/permissions` (header required) carries `@PolicyAbilityProtected(workspace)` and `@WorkspaceMemberProtected()` and returns the caller's effective actions per workspace-level subject. It enforces no policy.
+`GET /user/workspace/permissions` (header required) carries `@PolicyAbilityProtected(workspace)` and `@WorkspaceMemberProtected()` and returns the caller's effective actions per workspace-level subject, evaluated against the loaded workspace and representative records carrying its `workspaceId`. It enforces no policy.
 
 "Any member" means the route carries `@WorkspaceMemberProtected()` and no policy decorator. Every other gate is a CASL policy the caller's workspace role must grant. `workspaceInvite:[manage]` held by the seeded `owner` and `admin` covers create, resend, and revoke. The seeded `owner` holds every gate, and the seeded `admin` holds every one except `workspace:[delete]` and the `owner` check of the ownership transfer.
 

@@ -17,7 +17,6 @@ import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forb
 import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { WorkspacePermissionSubjects } from '@modules/workspace/constants/workspace.constant';
 import type { WorkspaceAdminListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
 import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import type { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/workspace.switch.request.dto';
@@ -460,11 +459,13 @@ describe('WorkspaceHttpService', () => {
                 permissions
             );
 
-            const result = service.getEffectivePermissions();
+            const result = service.getEffectivePermissions(workspace);
 
             expect(
                 policyAbilityDomain.getEffectivePermissions
-            ).toHaveBeenCalledWith(WorkspacePermissionSubjects);
+            ).toHaveBeenCalledWith([
+                subject(EnumPolicySubject.Workspace, workspace),
+            ]);
             expect(result).toEqual({ data: { permissions } });
         });
 
@@ -477,7 +478,7 @@ describe('WorkspaceHttpService', () => {
                 }
             );
 
-            expect(() => service.getEffectivePermissions()).toThrow(
+            expect(() => service.getEffectivePermissions(workspace)).toThrow(
                 RequestContextMissingException
             );
         });

@@ -1,4 +1,4 @@
-import { EnumPolicySubject, Prisma } from '@generated/prisma-client/client';
+import { Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
 import { RoleSelect } from '@modules/role/constants/role.constant';
@@ -15,20 +15,6 @@ export const WorkspaceStoreKey = 'WorkspaceStore';
  * @public
  */
 export const WorkspaceMemberStoreKey = 'WorkspaceMemberStore';
-
-/**
- * Subjects the workspace `/permissions` endpoint reports on: the workspace family. `ProjectMember`
- * is excluded: it needs a project in context.
- * @public
- */
-export const WorkspacePermissionSubjects: EnumPolicySubject[] = [
-    EnumPolicySubject.Workspace,
-    EnumPolicySubject.WorkspaceMember,
-    EnumPolicySubject.WorkspaceInvite,
-    EnumPolicySubject.WorkspaceJoinRequest,
-    EnumPolicySubject.Project,
-    EnumPolicySubject.WorkspaceAnalytic,
-];
 
 /**
  * Workspace guard error kits for `@WorkspaceProtected` and the workspace policy decorators.

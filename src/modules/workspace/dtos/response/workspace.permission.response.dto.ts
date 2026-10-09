@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EnumPolicySubject } from '@generated/prisma-client/client';
 import { EffectivePermissionSchema } from '@modules/policy/dtos/response/policy.effective-permission.response.dto';
 
 /**
@@ -6,9 +7,15 @@ import { EffectivePermissionSchema } from '@modules/policy/dtos/response/policy.
  * @public
  */
 export const WorkspacePermissionResponseSchema = z.object({
-    permissions: z.array(EffectivePermissionSchema).meta({
-        description: 'Effective permissions for the current workspace',
-    }),
+    permissions: z
+        .array(
+            EffectivePermissionSchema.extend({
+                subject: z.literal(EnumPolicySubject.Workspace),
+            })
+        )
+        .meta({
+            description: 'Effective permissions for the current workspace',
+        }),
 });
 
 /**

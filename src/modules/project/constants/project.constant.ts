@@ -1,4 +1,4 @@
-import { EnumPolicySubject, Prisma } from '@generated/prisma-client/client';
+import { Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
 import { RoleSelect } from '@modules/role/constants/role.constant';
@@ -16,15 +16,6 @@ export const ProjectStoreKey = 'ProjectStore';
  * @public
  */
 export const ProjectMemberStoreKey = 'ProjectMemberStore';
-
-/**
- * Subjects the project `/permissions/:projectId` endpoint reports on.
- * @public
- */
-export const ProjectPermissionSubjects: EnumPolicySubject[] = [
-    EnumPolicySubject.Project,
-    EnumPolicySubject.ProjectMember,
-];
 
 /**
  * Route metadata key holding whether `@ProjectMemberProtected` requires a `ProjectMember` row (`true`, the default) or only loads its policies when one exists (`false`).

@@ -258,12 +258,13 @@ describe('Workspace user routes', () => {
             const workspacePermission = permissions.find(
                 permission => permission.subject === 'Workspace'
             );
+            expect(permissions).toHaveLength(1);
             expect(workspacePermission?.actions).toEqual(
                 expect.arrayContaining(['read', 'update', 'delete'])
             );
         });
 
-        it('reports only workspace:read for a plain member', async () => {
+        it('reports only workspace read for a plain member', async () => {
             const member = await createActiveUser(app);
             await addWorkspaceMember(
                 app,

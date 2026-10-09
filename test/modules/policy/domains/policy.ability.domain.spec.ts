@@ -494,39 +494,59 @@ describe('PolicyAbilityDomain', () => {
     });
 
     describe('getEffectivePermissions', () => {
-        beforeEach(() => {
-            requestStoreService.get.mockReturnValue(ability);
-        });
-
-        it('returns only the concrete actions granted for each subject', () => {
-            ability.can.mockImplementation(
-                (action, subjectName) =>
-                    subjectName === EnumPolicySubject.User &&
-                    action === EnumPolicyAction.read
+        it('returns only actions granted on each concrete record', () => {
+            requestStoreService.get.mockReturnValue(
+                buildRealAbility([
+                    {
+                        action: EnumPolicyAction.read,
+                        subject: 'Project',
+                        conditions: { id: 'project-1' },
+                    },
+                    {
+                        action: EnumPolicyAction.update,
+                        subject: 'ProjectMember',
+                        conditions: { projectId: 'project-1' },
+                    },
+                ])
             );
 
             expect(
                 domain.getEffectivePermissions([
-                    EnumPolicySubject.User,
-                    EnumPolicySubject.Project,
+                    subject(EnumPolicySubject.Project, { id: 'project-1' }),
+                    subject(EnumPolicySubject.ProjectMember, {
+                        projectId: 'project-2',
+                    }),
                 ])
             ).toEqual([
                 {
-                    subject: EnumPolicySubject.User,
+                    subject: EnumPolicySubject.Project,
                     actions: [EnumPolicyAction.read],
                 },
             ]);
         });
 
         it('omits a subject when an inverse rule denies every action', () => {
-            ability.can.mockReturnValue(false);
+            requestStoreService.get.mockReturnValue(
+                buildRealAbility([
+                    {
+                        action: EnumPolicyAction.read,
+                        subject: 'Workspace',
+                        conditions: { id: 'workspace-1' },
+                    },
+                    {
+                        action: EnumPolicyAction.read,
+                        subject: 'Workspace',
+                        conditions: { id: 'workspace-1' },
+                        inverted: true,
+                    },
+                ])
+            );
 
             expect(
-                domain.getEffectivePermissions([EnumPolicySubject.Workspace])
+                domain.getEffectivePermissions([
+                    subject(EnumPolicySubject.Workspace, { id: 'workspace-1' }),
+                ])
             ).toEqual([]);
-            expect(ability.can).toHaveBeenCalledTimes(
-                Object.values(EnumPolicyAction).length
-            );
         });
     });
 });

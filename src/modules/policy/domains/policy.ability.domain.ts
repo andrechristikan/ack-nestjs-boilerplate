@@ -69,12 +69,14 @@ export class PolicyAbilityDomain {
             const reason = matchedRule?.inverted
                 ? matchedRule.reason
                 : undefined;
-            const subjectName = (
-                typeof target === 'string' ? target : target.__caslSubjectType__
-            ) as EnumPolicySubject;
             throw new PolicyForbiddenException({
                 reason,
-                missing: [{ subject: subjectName, actions: [action] }],
+                missing: [
+                    {
+                        subject: this.toSubjectName(target),
+                        actions: [action],
+                    },
+                ],
             });
         }
     }
@@ -119,21 +121,30 @@ export class PolicyAbilityDomain {
     }
 
     /**
-     * Reports the concrete `EnumPolicyAction` members the stored ability grants for each subject; a
-     * subject the ability grants nothing on is omitted.
+     * Reports the concrete `EnumPolicyAction` members the stored ability grants on each target,
+     * a subject name or a record tagged with `subject(...)`; a subject the ability grants nothing
+     * on is omitted.
      */
-    getEffectivePermissions(
-        subjects: EnumPolicySubject[]
-    ): IEffectivePermission[] {
+    getEffectivePermissions<TSubject extends EnumPolicySubject>(
+        targets: PolicyAbilitySubject<TSubject>[]
+    ): IEffectivePermission<TSubject>[] {
         const ability = this.getAbility();
 
-        return subjects
-            .map(subjectName => ({
-                subject: subjectName,
+        return targets
+            .map(target => ({
+                subject: this.toSubjectName(target),
                 actions: Object.values(EnumPolicyAction).filter(action =>
-                    ability.can(action, subjectName)
+                    ability.can(action, target)
                 ),
             }))
             .filter(permission => permission.actions.length > 0);
+    }
+
+    private toSubjectName<TSubject extends EnumPolicySubject>(
+        target: PolicyAbilitySubject<TSubject>
+    ): TSubject {
+        return (
+            typeof target === 'string' ? target : target.__caslSubjectType__
+        ) as TSubject;
     }
 }

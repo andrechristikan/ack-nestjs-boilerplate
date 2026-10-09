@@ -24,7 +24,6 @@ import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import type { IEffectivePermission } from '@modules/policy/interfaces/policy.interface';
-import { ProjectPermissionSubjects } from '@modules/project/constants/project.constant';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/project.admin-list.request.dto';
@@ -330,11 +329,21 @@ describe('ProjectHttpService', () => {
                 permissions
             );
 
-            const result = service.getEffectivePermissions();
+            const result = service.getEffectivePermissions(project);
 
+            const [targets] =
+                policyAbilityDomain.getEffectivePermissions.mock.calls[0];
             expect(
-                policyAbilityDomain.getEffectivePermissions
-            ).toHaveBeenCalledWith(ProjectPermissionSubjects);
+                targets.map(target =>
+                    typeof target === 'string'
+                        ? target
+                        : target.__caslSubjectType__
+                )
+            ).toEqual([
+                EnumPolicySubject.Project,
+                EnumPolicySubject.ProjectMember,
+            ]);
+            expect(targets).toEqual([project, { projectId: project.id }]);
             expect(result).toEqual({ data: { permissions } });
         });
 
@@ -347,7 +356,7 @@ describe('ProjectHttpService', () => {
                 }
             );
 
-            expect(() => service.getEffectivePermissions()).toThrow(
+            expect(() => service.getEffectivePermissions(project)).toThrow(
                 RequestContextMissingException
             );
         });

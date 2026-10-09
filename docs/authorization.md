@@ -435,7 +435,7 @@ The HTTP service passes the predicate to the domain as an optional `where`. The 
 
 ### Effective Permissions
 
-`PolicyAbilityDomain.getEffectivePermissions(subjects)` evaluates every concrete `EnumPolicyAction` for each requested subject and returns only subjects with at least one granted action:
+`PolicyAbilityDomain.getEffectivePermissions(targets)` evaluates every concrete `EnumPolicyAction` against each tagged scope record and returns only subjects with at least one granted action:
 
 ```typescript
 {
@@ -444,7 +444,9 @@ The HTTP service passes the predicate to the domain as an optional `where`. The 
 }
 ```
 
-`GET /user/workspace/permissions` evaluates `Workspace`, `WorkspaceMember`, `WorkspaceInvite`, `WorkspaceJoinRequest`, `Project`, and `WorkspaceAnalytic`. `GET /user/project/permissions/:projectId` evaluates `Project` and `ProjectMember`. Both routes use `@PolicyAbilityProtected()` and the single stored request ability. The project route permits a missing project membership, so platform and workspace policies can still grant project permissions.
+`GET /user/workspace/permissions` evaluates the loaded `Workspace` record plus representative `WorkspaceMember`, `WorkspaceInvite`, `WorkspaceJoinRequest`, `Project`, and `WorkspaceAnalytic` records carrying its `workspaceId`. A conditional rule is reported only when that representative record satisfies the rule. For example, the seeded assigned-project rule depends on a project membership relation, so it is not inferred from the workspace-level `Project` target alone.
+
+`GET /user/project/:projectId/permissions` evaluates the loaded `Project` record and a representative `ProjectMember` record carrying its `projectId`. Both routes use `@PolicyAbilityProtected()` and the single stored request ability. The project route permits a missing project membership, so platform and workspace policies can still grant permissions on that project. A caller with no matching grant receives `200` with an empty permission list.
 
 ### CASL Integration
 
@@ -471,7 +473,7 @@ A role holds any number of rules for one subject. A policy write stores the rule
 - `requireStored(key)`: Reads a request-store value, throwing `RequestContextMissingException` when it is empty
 - `assertCan(action, target)`: Throws `PolicyForbiddenException` when the stored ability denies the action on the subject name or tagged record
 - `accessibleWhere(action, subject)`: The Prisma where-input of the records the stored ability reaches for that subject, throwing `PolicyForbiddenException` when the ability holds no rule for it, so a query never runs without its predicate and never with an unrestricted one
-- `getEffectivePermissions(subjects)`: The concrete actions the stored ability grants per subject, omitting a subject with none
+- `getEffectivePermissions(targets)`: The concrete actions the stored ability grants on tagged scope records, omitting a subject with none
 
 **PolicyDomain:**
 

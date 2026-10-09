@@ -191,11 +191,11 @@ export class ProjectUserController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
-    @Get('/permissions/:projectId')
-    async permissions(): Promise<
-        IResponseReturn<{ permissions: IEffectivePermission[] }>
-    > {
-        return this.projectHttpService.getEffectivePermissions();
+    @Get('/:projectId/permissions')
+    async permissions(
+        @ProjectCurrent() project: Project
+    ): Promise<IResponseReturn<{ permissions: IEffectivePermission[] }>> {
+        return this.projectHttpService.getEffectivePermissions(project);
     }
 
     @Doc({
