@@ -1,3 +1,7 @@
+import { HttpStatus } from '@nestjs/common';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import type { ExecutionContext, Type } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
@@ -24,30 +28,18 @@ import { UserGuard } from '@modules/user/guards/user.guard';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
-import {
-    expectRequestContextMissingWithKey,
-    expectRequestGuardMissingWithKey,
-} from '@test/unit/helpers/test.unit.request.helper';
-import {
-    AuthJwtAccessProtected,
-    AuthJwtRefreshProtected,
-} from '@modules/auth/decorators/auth.jwt.decorator';
-import { AuthJwtAccessGuard } from '@modules/auth/guards/jwt/auth.jwt.access.guard';
-import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.guard';
-import { RequestProtectedGuardMissingException } from '@common/request/exceptions/request.protected-guard-missing.exception';
+import { expectRequestContextMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('user.decorator', () => {
     describe('UserProtected', () => {
         it('mounts UserGuard and sets the verified flag to true by default', () => {
             const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
-            AuthJwtAccessProtected()(target, 'method', descriptor);
-
             UserProtected()(target, 'method', descriptor);
 
             expect(
                 Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
-            ).toEqual([AuthJwtAccessGuard, UserGuard]);
+            ).toEqual([UserGuard]);
             expect(
                 Reflect.getMetadata(
                     UserGuardIsVerifiedMetaKey,
@@ -56,37 +48,9 @@ describe('user.decorator', () => {
             ).toBe(true);
         });
 
-        it('accepts the JWT refresh guard below it', () => {
-            const target = {} as Type<unknown>;
-            const descriptor: PropertyDescriptor = { value: vi.fn() };
-            AuthJwtRefreshProtected()(target, 'method', descriptor);
-
-            UserProtected()(target, 'method', descriptor);
-
-            expect(
-                Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
-            ).toEqual([AuthJwtRefreshGuard, UserGuard]);
-        });
-
-        it('throws at decoration when no JWT guard is below it', () => {
-            const target = {} as Type<unknown>;
-            const descriptor: PropertyDescriptor = { value: vi.fn() };
-
-            expect(() => {
-                UserProtected()(target, 'method', descriptor);
-            }).toThrow(RequestProtectedGuardMissingException);
-            expect(() => {
-                UserProtected()(target, 'method', descriptor);
-            }).toThrow(
-                'UserProtected needs AuthJwtAccessGuard or AuthJwtRefreshGuard applied below it'
-            );
-        });
-
         it('sets the verified flag to false when passed false', () => {
             const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
-            AuthJwtAccessProtected()(target, 'method', descriptor);
-
             UserProtected(false)(target, 'method', descriptor);
 
             expect(
@@ -95,6 +59,26 @@ describe('user.decorator', () => {
                     descriptor.value
                 )
             ).toBe(false);
+        });
+
+        it('documents the missing jwt payload at 401', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+
+            UserProtected()(target, 'method', descriptor);
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.UNAUTHORIZED,
+                        messagePath: 'auth.error.jwtGuardMissing',
+                    }),
+                ])
+            );
         });
     });
 
@@ -184,7 +168,7 @@ describe('user.decorator', () => {
             vi.restoreAllMocks();
         });
 
-        it('throws RequestGuardMissingException when the stored user is undefined', () => {
+        it('throws UserGuardMissingException when the stored user is undefined', () => {
             const target = {} as Type<unknown>;
             UserCurrent()(target, 'undefinedUser', 0);
             const factory = getParamDecoratorFactory(target, 'undefinedUser');
@@ -197,10 +181,19 @@ describe('user.decorator', () => {
                 thrown = error;
             }
 
-            expectRequestGuardMissingWithKey(thrown, UserStoreKey);
+            expect(thrown).toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.guardMissing
+                    ],
+                messagePath: 'user.error.guardMissing',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+            });
         });
 
-        it('throws RequestGuardMissingException when the stored user is null', () => {
+        it('throws UserGuardMissingException when the stored user is null', () => {
             const target = {} as Type<unknown>;
             UserCurrent()(target, 'nullUser', 0);
             const factory = getParamDecoratorFactory(target, 'nullUser');
@@ -213,7 +206,16 @@ describe('user.decorator', () => {
                 thrown = error;
             }
 
-            expectRequestGuardMissingWithKey(thrown, UserStoreKey);
+            expect(thrown).toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.guardMissing
+                    ],
+                messagePath: 'user.error.guardMissing',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+            });
         });
 
         it('returns the whole user when no field is requested', () => {

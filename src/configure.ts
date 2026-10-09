@@ -8,6 +8,7 @@ import { Logger as PinoLogger } from 'nestjs-pino';
 export const ConfigureOptions: NestApplicationOptions = {
     abortOnError: false,
     bufferLogs: true,
+    logger: ['fatal'],
     bodyParser: false,
     routeConflictPolicy: { duplicate: 'error', shadow: 'error' },
     routeResolutionStrategy: 'specificity',

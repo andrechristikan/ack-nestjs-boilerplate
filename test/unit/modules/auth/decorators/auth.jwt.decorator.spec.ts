@@ -1,3 +1,5 @@
+import { HttpStatus } from '@nestjs/common';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import type { ExecutionContext, Type } from '@nestjs/common';
 import type { HttpArgumentsHost } from '@nestjs/common/interfaces/index';
@@ -18,10 +20,7 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
-import {
-    expectRequestContextMissingWithKey,
-    expectRequestGuardMissingWithKey,
-} from '@test/unit/helpers/test.unit.request.helper';
+import { expectRequestContextMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('auth.jwt.decorator', () => {
     describe('AuthJwtAccessProtected', () => {
@@ -79,7 +78,7 @@ describe('auth.jwt.decorator', () => {
             roleId: 'role-1',
         };
 
-        it('throws RequestGuardMissingException when the request user is undefined', () => {
+        it('throws AuthJwtGuardMissingException when the request user is undefined', () => {
             const request: Pick<
                 IRequestApp<IAuthJwtAccessTokenPayload>,
                 'user'
@@ -96,10 +95,19 @@ describe('auth.jwt.decorator', () => {
                 thrown = error;
             }
 
-            expectRequestGuardMissingWithKey(thrown, 'request.user');
+            expect(thrown).toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.jwtGuardMissing,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.jwtGuardMissing
+                    ],
+                messagePath: 'auth.error.jwtGuardMissing',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+            });
         });
 
-        it('throws RequestGuardMissingException when the request user is null', () => {
+        it('throws AuthJwtGuardMissingException when the request user is null', () => {
             const request: MockProxy<IRequestApp<IAuthJwtAccessTokenPayload>> =
                 mock<IRequestApp<IAuthJwtAccessTokenPayload>>();
             request.user = null as unknown as IAuthJwtAccessTokenPayload;
@@ -115,7 +123,16 @@ describe('auth.jwt.decorator', () => {
                 thrown = error;
             }
 
-            expectRequestGuardMissingWithKey(thrown, 'request.user');
+            expect(thrown).toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.jwtGuardMissing,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.jwtGuardMissing
+                    ],
+                messagePath: 'auth.error.jwtGuardMissing',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+            });
         });
 
         it('returns the whole payload when no field is given', () => {

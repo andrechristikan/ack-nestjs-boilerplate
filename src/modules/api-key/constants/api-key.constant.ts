@@ -43,6 +43,10 @@ export const DocApiKeyErrorResponses = {
         statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
         messagePath: 'apiKey.error.xApiKey.forbidden',
     }),
+    guardMissing: DocResponseError(HttpStatus.UNAUTHORIZED, {
+        statusCode: EnumApiKeyStatusCodeError.guardMissing,
+        messagePath: 'apiKey.error.guardMissing',
+    }),
 } as const;
 
 /**

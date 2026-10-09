@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 
@@ -9,7 +9,27 @@ import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/consta
  */
 export const ActivityLogAdminListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true }).extend({
-        orderBy: PaginationOrderBySchema(ActivityLogDefaultAvailableOrderBy),
+        orderBy: z
+            .union([
+                z.templateLiteral([
+                    z.enum(ActivityLogDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ]),
+                z.array(
+                    z.templateLiteral([
+                        z.enum(ActivityLogDefaultAvailableOrderBy),
+                        ':',
+                        z.enum(EnumPaginationOrderDirectionType),
+                    ])
+                ),
+                z.literal(''),
+            ])
+            .optional()
+            .meta({
+                description: `Order by field in \`field:direction\` format (e.g. \`${ActivityLogDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${ActivityLogDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                example: `${ActivityLogDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            }),
     });
 
 /**

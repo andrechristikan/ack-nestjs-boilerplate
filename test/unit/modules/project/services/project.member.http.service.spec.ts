@@ -25,6 +25,7 @@ import { ProjectMemberDomain } from '@modules/project/domains/project.member.dom
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberHttpService } from '@modules/project/services/project.member.http.service';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
 
 describe('ProjectMemberHttpService', () => {
     const projectMemberDomain: MockProxy<ProjectMemberDomain> =
@@ -129,7 +130,9 @@ describe('ProjectMemberHttpService', () => {
             const result = await service.getMembersList(project, query);
 
             expect(result).toEqual(page);
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query);
+            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                availableOrderBy: ProjectMemberDefaultAvailableOrderBy,
+            });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 { cursor: 'next' }

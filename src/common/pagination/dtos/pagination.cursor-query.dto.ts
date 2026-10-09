@@ -6,7 +6,7 @@ import {
 } from '@common/pagination/constants/pagination.constant';
 
 /**
- * Cursor list query: cursor, perPage, and search; a module list schema extends it and declares its own `orderBy` with `PaginationOrderBySchema`.
+ * Cursor list query: cursor, perPage, and search; a module list schema extends it and declares its own `orderBy` inline over its allow-list.
  * @public
  */
 export const PaginationCursorQuerySchema = z.strictObject({

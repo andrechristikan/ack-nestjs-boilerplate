@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import {
     RoleDefaultAvailableOrderBy,
@@ -15,7 +15,27 @@ export const RoleAdminListRequestSchema = PaginationOffsetQuerySchema.extend({
         description: `Search query, available fields: ${RoleDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
         example: '',
     }),
-    orderBy: PaginationOrderBySchema(RoleDefaultAvailableOrderBy),
+    orderBy: z
+        .union([
+            z.templateLiteral([
+                z.enum(RoleDefaultAvailableOrderBy),
+                ':',
+                z.enum(EnumPaginationOrderDirectionType),
+            ]),
+            z.array(
+                z.templateLiteral([
+                    z.enum(RoleDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ])
+            ),
+            z.literal(''),
+        ])
+        .optional()
+        .meta({
+            description: `Order by field in \`field:direction\` format (e.g. \`${RoleDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${RoleDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            example: `${RoleDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+        }),
     type: z.string().optional().meta({
         description: 'Filter by type, comma-delimited',
         example: '',

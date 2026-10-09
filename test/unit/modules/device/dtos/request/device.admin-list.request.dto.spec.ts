@@ -56,6 +56,12 @@ describe('DeviceAdminListRequestSchema', () => {
         ).toContain(DeviceDefaultAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            DeviceAdminListRequestSchema.safeParse({ orderBy: '' }).success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = DeviceDefaultAvailableOrderBy[0];
         const last =

@@ -4,7 +4,10 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Country } from '@generated/prisma-client/client';
-import { CountryDefaultAvailableSearch } from '@modules/country/constants/country.list.constant';
+import {
+    CountryDefaultAvailableOrderBy,
+    CountryDefaultAvailableSearch,
+} from '@modules/country/constants/country.list.constant';
 import type { CountryListRequestDto } from '@modules/country/dtos/request/country.list.request.dto';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { Injectable } from '@nestjs/common';
@@ -23,6 +26,7 @@ export class CountryHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.CountryWhereInput>(query, {
                 availableSearch: CountryDefaultAvailableSearch,
+                availableOrderBy: CountryDefaultAvailableOrderBy,
             });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

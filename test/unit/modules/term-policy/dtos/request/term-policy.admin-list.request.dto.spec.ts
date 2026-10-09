@@ -43,6 +43,12 @@ describe('TermPolicyAdminListRequestSchema', () => {
         ).toContain(TermPolicyDefaultAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            TermPolicyAdminListRequestSchema.safeParse({ orderBy: '' }).success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = TermPolicyDefaultAvailableOrderBy[0];
         const last =

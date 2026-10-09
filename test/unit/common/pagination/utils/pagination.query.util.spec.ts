@@ -6,7 +6,6 @@ import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
-import type { PaginationOrderByQuery } from '@common/pagination/utils/pagination.order-by.util';
 import {
     PaginationDefaultMaxPage,
     PaginationDefaultMaxPerPage,
@@ -19,6 +18,7 @@ import {
     EnumPaginationOrderDirectionType,
 } from '@common/pagination/enums/pagination.enum';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
+import type { IPaginationOrderByQuery } from '@common/pagination/interfaces/pagination.interface';
 import { Prisma } from '@generated/prisma-client/client';
 
 describe('PaginationQueryUtil', () => {
@@ -53,8 +53,11 @@ describe('PaginationQueryUtil', () => {
     });
 
     describe('offset', () => {
-        it('defaults page, perPage and order by when the dto and options are empty', () => {
-            const { params, storePatch } = util.offset({});
+        it('defaults page, perPage and order by when the dto is empty and the options carry only an empty order by allow-list', () => {
+            const { params, storePatch } = util.offset(
+                {},
+                { availableOrderBy: [] }
+            );
 
             expect(params).toEqual({
                 where: undefined,
@@ -67,13 +70,14 @@ describe('PaginationQueryUtil', () => {
                 perPage: PaginationDefaultPerPage,
                 orderBy: [...PaginationDefaultOrderBy],
                 availableSearch: [],
+                availableOrderBy: [],
             });
         });
 
         it('builds a search where clause and carries search in the store patch when available', () => {
             const { params, storePatch } = util.offset(
                 { search: ' widget ' },
-                { availableSearch: ['name'] }
+                { availableSearch: ['name'], availableOrderBy: [] }
             );
 
             expect(params.where).toEqual({
@@ -82,17 +86,33 @@ describe('PaginationQueryUtil', () => {
             expect(storePatch.search).toBe('widget');
         });
 
+        it('stores the passed order by allow-list without validating a sent order by', () => {
+            const { params, storePatch } = util.offset(
+                { orderBy: 'anything:asc' },
+                { availableOrderBy: ['name', 'createdAt'] }
+            );
+
+            expect(storePatch.availableOrderBy).toEqual(['name', 'createdAt']);
+            expect(params.orderBy).toEqual([
+                { anything: EnumPaginationOrderDirectionType.asc },
+            ]);
+        });
+
         it('ignores search when no field is searchable', () => {
-            const { params, storePatch } = util.offset({ search: 'widget' });
+            const { params, storePatch } = util.offset(
+                { search: 'widget' },
+                { availableOrderBy: [] }
+            );
 
             expect(params.where).toBeUndefined();
             expect(storePatch.search).toBeUndefined();
         });
 
         it('parses a sent order by into the params and the store patch', () => {
-            const { params, storePatch } = util.offset({
-                orderBy: 'name:asc',
-            });
+            const { params, storePatch } = util.offset(
+                { orderBy: 'name:asc' },
+                { availableOrderBy: [] }
+            );
 
             expect(params.orderBy).toEqual([
                 { name: EnumPaginationOrderDirectionType.asc },
@@ -103,10 +123,10 @@ describe('PaginationQueryUtil', () => {
         });
 
         it('validates and applies an explicit page and perPage', () => {
-            const { params, storePatch } = util.offset({
-                page: 2,
-                perPage: 10,
-            });
+            const { params, storePatch } = util.offset(
+                { page: 2, perPage: 10 },
+                { availableOrderBy: [] }
+            );
 
             expect(params).toMatchObject({ limit: 10, skip: 10 });
             expect(storePatch).toMatchObject({ page: 2, perPage: 10 });
@@ -115,7 +135,7 @@ describe('PaginationQueryUtil', () => {
         it('rethrows the typed exception a nested validator raised', () => {
             let error: unknown;
             try {
-                util.offset({ page: 0 });
+                util.offset({ page: 0 }, { availableOrderBy: [] });
             } catch (caught) {
                 error = caught;
             }
@@ -136,11 +156,11 @@ describe('PaginationQueryUtil', () => {
         it('wraps a non-typed error raised while parsing into the typed pagination exception', () => {
             const orderBy = Object.create(
                 null
-            ) as unknown as PaginationOrderByQuery;
+            ) as unknown as IPaginationOrderByQuery;
 
             let error: unknown;
             try {
-                util.offset({ orderBy });
+                util.offset({ orderBy }, { availableOrderBy: [] });
             } catch (caught) {
                 error = caught;
             }
@@ -160,8 +180,11 @@ describe('PaginationQueryUtil', () => {
     });
 
     describe('cursor', () => {
-        it('defaults perPage, cursor field and order by when the dto and options are empty', () => {
-            const { params, storePatch } = util.cursor({});
+        it('defaults perPage, cursor field and order by when the dto is empty and the options carry only an empty order by allow-list', () => {
+            const { params, storePatch } = util.cursor(
+                {},
+                { availableOrderBy: [] }
+            );
 
             expect(params).toEqual({
                 where: undefined,
@@ -175,13 +198,15 @@ describe('PaginationQueryUtil', () => {
                 cursor: undefined,
                 orderBy: [...PaginationDefaultOrderBy],
                 availableSearch: [],
+                availableOrderBy: [],
             });
         });
 
         it('parses a sent order by into the params and the store patch', () => {
-            const { params, storePatch } = util.cursor({
-                orderBy: ['name:asc', 'createdAt:desc'],
-            });
+            const { params, storePatch } = util.cursor(
+                { orderBy: ['name:asc', 'createdAt:desc'] },
+                { availableOrderBy: [] }
+            );
 
             const expected = [
                 { name: EnumPaginationOrderDirectionType.asc },
@@ -191,14 +216,32 @@ describe('PaginationQueryUtil', () => {
             expect(storePatch.orderBy).toEqual(expected);
         });
 
+        it('stores the passed order by allow-list without validating a sent order by', () => {
+            const { params, storePatch } = util.cursor(
+                { orderBy: 'anything:asc' },
+                { availableOrderBy: ['name', 'createdAt'] }
+            );
+
+            expect(storePatch.availableOrderBy).toEqual(['name', 'createdAt']);
+            expect(params.orderBy).toEqual([
+                { anything: EnumPaginationOrderDirectionType.asc },
+            ]);
+        });
+
         it('uses a named cursor field', () => {
-            const { params } = util.cursor({}, { cursorField: 'slug' });
+            const { params } = util.cursor(
+                {},
+                { cursorField: 'slug', availableOrderBy: [] }
+            );
 
             expect(params.cursorField).toBe('slug');
         });
 
         it('sanitizes a sent cursor', () => {
-            const { params, storePatch } = util.cursor({ cursor: 'Ab-_1' });
+            const { params, storePatch } = util.cursor(
+                { cursor: 'Ab-_1' },
+                { availableOrderBy: [] }
+            );
 
             expect(params.cursor).toBe('Ab-_1');
             expect(storePatch.cursor).toBe('Ab-_1');
@@ -207,7 +250,7 @@ describe('PaginationQueryUtil', () => {
         it('builds a search where clause and carries search in the store patch when available', () => {
             const { params, storePatch } = util.cursor(
                 { search: ' widget ' },
-                { availableSearch: ['name'] }
+                { availableSearch: ['name'], availableOrderBy: [] }
             );
 
             expect(params.where).toEqual({
@@ -219,7 +262,7 @@ describe('PaginationQueryUtil', () => {
         it('rethrows the typed exception a nested validator raised', () => {
             let error: unknown;
             try {
-                util.cursor({ perPage: 0 });
+                util.cursor({ perPage: 0 }, { availableOrderBy: [] });
             } catch (caught) {
                 error = caught;
             }
@@ -240,7 +283,10 @@ describe('PaginationQueryUtil', () => {
         it('rejects a cursor exceeding the maximum length', () => {
             let error: unknown;
             try {
-                util.cursor({ cursor: 'a'.repeat(300) });
+                util.cursor(
+                    { cursor: 'a'.repeat(300) },
+                    { availableOrderBy: [] }
+                );
             } catch (caught) {
                 error = caught;
             }
@@ -262,11 +308,11 @@ describe('PaginationQueryUtil', () => {
         it('wraps a non-typed error raised while parsing into the typed pagination exception', () => {
             const orderBy = Object.create(
                 null
-            ) as unknown as PaginationOrderByQuery;
+            ) as unknown as IPaginationOrderByQuery;
 
             let error: unknown;
             try {
-                util.cursor({ orderBy });
+                util.cursor({ orderBy }, { availableOrderBy: [] });
             } catch (caught) {
                 error = caught;
             }

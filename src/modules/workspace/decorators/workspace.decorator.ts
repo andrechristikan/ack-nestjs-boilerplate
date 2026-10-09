@@ -20,38 +20,26 @@ import {
     createParamDecorator,
 } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
-import { hasRequestGuard } from '@common/request/decorators/request.decorator';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
-import { RequestProtectedGuardMissingException } from '@common/request/exceptions/request.protected-guard-missing.exception';
-import { UserGuard } from '@modules/user/guards/user.guard';
+import { WorkspaceGuardMissingException } from '@modules/workspace/exceptions/workspace.guard-missing.exception';
+import { WorkspaceMemberGuardMissingException } from '@modules/workspace/exceptions/workspace.member-guard-missing.exception';
+import { DocUserErrorResponses } from '@modules/user/constants/user.constant';
 
 /**
- * Requires `x-workspace-id` to resolve to an existing, non-deleted workspace; throws at decoration when UserGuard is not applied below it. Place directly above `@UserProtected()`.
+ * Requires `x-workspace-id` to resolve to an existing, non-deleted workspace. Place directly above `@UserProtected()`.
  * @public
  */
 export function WorkspaceProtected(): MethodDecorator {
-    const decorators = applyDecorators(
+    return applyDecorators(
         UseGuards(WorkspaceGuard),
         DocWorkspaceErrorResponses.badRequest,
         DocWorkspaceErrorResponses.notFound,
         DocWorkspaceErrorResponses.forbidden
     );
-
-    return (target, propertyKey, descriptor): void => {
-        if (!hasRequestGuard(descriptor, UserGuard)) {
-            throw new RequestProtectedGuardMissingException(
-                'WorkspaceProtected',
-                UserGuard.name
-            );
-        }
-
-        decorators(target, propertyKey, descriptor);
-    };
 }
 
 /**
- * Reads the current workspace, or one of its fields, that `WorkspaceGuard` stored. Throws `RequestGuardMissingException` when the workspace is absent and `RequestContextMissingException` when the requested field is null.
+ * Reads the current workspace, or one of its fields, that `WorkspaceGuard` stored. Throws `WorkspaceGuardMissingException` when the workspace is absent and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const WorkspaceCurrent = createParamDecorator<
@@ -66,7 +54,7 @@ export const WorkspaceCurrent = createParamDecorator<
                 WorkspaceStoreKey
             ) ?? null;
         if (workspace === null) {
-            throw new RequestGuardMissingException(WorkspaceStoreKey);
+            throw new WorkspaceGuardMissingException();
         }
 
         const fieldKey = field ?? null;
@@ -87,44 +75,33 @@ export const WorkspaceCurrent = createParamDecorator<
 
 /**
  * Requires the caller to be a member of the workspace resolved by `@WorkspaceProtected()`. Stack
- * above it; throws at decoration when UserGuard or WorkspaceGuard is not applied below it. Pass
- * `roles` to additionally require the caller's workspace membership role to be one of them; omit
+ * above it. Pass `roles` to additionally require the caller's workspace membership role to be one of them; omit
  * `roles` to only require membership.
  * @public
  */
 export function WorkspaceMemberProtected(
     ...roles: EnumWorkspaceMemberRole[]
 ): MethodDecorator {
-    const decorators =
-        roles.length === 0
-            ? applyDecorators(UseGuards(WorkspaceMemberGuard))
-            : applyDecorators(
-                  UseGuards(WorkspaceMemberGuard, WorkspaceRoleGuard),
-                  SetMetadata(WorkspaceRoleMetaKey, roles),
-                  DocWorkspaceRoleErrorResponses.forbidden
-              );
+    if (roles.length === 0) {
+        return applyDecorators(
+            UseGuards(WorkspaceMemberGuard),
+            DocUserErrorResponses.guardMissing,
+            DocWorkspaceErrorResponses.guardMissing
+        );
+    }
 
-    return (target, propertyKey, descriptor): void => {
-        if (!hasRequestGuard(descriptor, UserGuard)) {
-            throw new RequestProtectedGuardMissingException(
-                'WorkspaceMemberProtected',
-                UserGuard.name
-            );
-        }
-
-        if (!hasRequestGuard(descriptor, WorkspaceGuard)) {
-            throw new RequestProtectedGuardMissingException(
-                'WorkspaceMemberProtected',
-                WorkspaceGuard.name
-            );
-        }
-
-        decorators(target, propertyKey, descriptor);
-    };
+    return applyDecorators(
+        UseGuards(WorkspaceMemberGuard, WorkspaceRoleGuard),
+        SetMetadata(WorkspaceRoleMetaKey, roles),
+        DocUserErrorResponses.guardMissing,
+        DocWorkspaceErrorResponses.guardMissing,
+        DocWorkspaceErrorResponses.memberGuardMissing,
+        DocWorkspaceRoleErrorResponses.forbidden
+    );
 }
 
 /**
- * Reads the caller's workspace member row, or one of its fields, that `WorkspaceMemberGuard` stored. Throws `RequestGuardMissingException` when the member is absent and `RequestContextMissingException` when the requested field is null.
+ * Reads the caller's workspace member row, or one of its fields, that `WorkspaceMemberGuard` stored. Throws `WorkspaceMemberGuardMissingException` when the member is absent and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const WorkspaceMemberCurrent = createParamDecorator<
@@ -144,7 +121,7 @@ export const WorkspaceMemberCurrent = createParamDecorator<
                 WorkspaceMemberStoreKey
             ) ?? null;
         if (workspaceMember === null) {
-            throw new RequestGuardMissingException(WorkspaceMemberStoreKey);
+            throw new WorkspaceMemberGuardMissingException();
         }
 
         const fieldKey = field ?? null;

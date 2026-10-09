@@ -1,5 +1,4 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
@@ -16,7 +15,6 @@ import {
 import type { ApiKey } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ApiKeyStoreKey } from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
 import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
 import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
@@ -358,13 +356,9 @@ export class ApiKeyDomain {
     }
 
     validateXApiKeyTypeGuard(
-        apiKey: ApiKey | null,
+        apiKey: ApiKey,
         apiKeyTypes: EnumApiKeyType[]
     ): boolean {
-        if (!apiKey) {
-            throw new RequestGuardMissingException(ApiKeyStoreKey);
-        }
-
         const isTypeAllowed = this.apiKeyUtil.validateType(apiKey, apiKeyTypes);
         if (!isTypeAllowed) {
             throw new ApiKeyXApiKeyForbiddenException();

@@ -9,6 +9,10 @@ import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { Injectable } from '@nestjs/common';
+import {
+    SessionCursorAvailableOrderBy,
+    SessionDefaultAvailableOrderBy,
+} from '@modules/session/constants/session.list.constant';
 
 @Injectable()
 export class SessionHttpService {
@@ -23,7 +27,9 @@ export class SessionHttpService {
         query: SessionAdminListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.SessionWhereInput>(query);
+            this.paginationQueryUtil.offset<Prisma.SessionWhereInput>(query, {
+                availableOrderBy: SessionDefaultAvailableOrderBy,
+            });
         const isRevoked = this.paginationQueryUtil.equalBoolean(
             Prisma.SessionScalarFieldEnum.isRevoked,
             query.isRevoked
@@ -53,7 +59,9 @@ export class SessionHttpService {
         query: SessionSharedListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.SessionWhereInput>(query);
+            this.paginationQueryUtil.cursor<Prisma.SessionWhereInput>(query, {
+                availableOrderBy: SessionCursorAvailableOrderBy,
+            });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } = await this.sessionDomain.getListCursor(

@@ -197,6 +197,9 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                         availableSearch: [
                             ...(pagination.availableSearch ?? []),
                         ],
+                        availableOrderBy: [
+                            ...(pagination.availableOrderBy ?? []),
+                        ],
                     };
 
                     const message: string = this.messageService.setMessage(

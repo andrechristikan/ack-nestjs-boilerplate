@@ -28,6 +28,13 @@ import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.doma
 import type { AnalyticOptionalDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
 import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import { Injectable } from '@nestjs/common';
+import {
+    AnalyticDeviceProliferationAvailableOrderBy,
+    AnalyticImpossibleTravelAvailableOrderBy,
+    AnalyticLoginSpikeIpAvailableOrderBy,
+    AnalyticLoginTimeAnomalyAvailableOrderBy,
+    AnalyticNearLockoutAvailableOrderBy,
+} from '@modules/analytic/constants/analytic.list.constant';
 
 @Injectable()
 export class AnalyticAnomalyHttpService {
@@ -57,7 +64,9 @@ export class AnalyticAnomalyHttpService {
         query: AnalyticImpossibleTravelListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticImpossibleTravel>> {
         const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.SessionWhereInput>(query);
+            this.paginationQueryUtil.offset<Prisma.SessionWhereInput>(query, {
+                availableOrderBy: AnalyticImpossibleTravelAvailableOrderBy,
+            });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.optionalRange(
             query.startDate ?? null,
@@ -85,7 +94,8 @@ export class AnalyticAnomalyHttpService {
     ): Promise<IResponsePaginationReturn<IAnalyticLoginSpikeIp>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query
+                query,
+                { availableOrderBy: AnalyticLoginSpikeIpAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -107,7 +117,9 @@ export class AnalyticAnomalyHttpService {
         query: AnalyticNearLockoutListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
         const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query);
+            this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query, {
+                availableOrderBy: AnalyticNearLockoutAvailableOrderBy,
+            });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticAnomalyDomain.failedLoginSpikeList(params);
@@ -127,7 +139,11 @@ export class AnalyticAnomalyHttpService {
     ): Promise<IResponsePaginationReturn<IAnalyticDeviceProliferation>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.DeviceOwnershipWhereInput>(
-                query
+                query,
+                {
+                    availableOrderBy:
+                        AnalyticDeviceProliferationAvailableOrderBy,
+                }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -154,7 +170,8 @@ export class AnalyticAnomalyHttpService {
     ): Promise<IResponsePaginationReturn<IAnalyticLoginTimeAnomaly>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query
+                query,
+                { availableOrderBy: AnalyticLoginTimeAnomalyAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.optionalRange(

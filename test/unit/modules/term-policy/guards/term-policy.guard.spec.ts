@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -16,6 +17,7 @@ import { TermPolicyRequiredGuardMetaKey } from '@modules/term-policy/constants/t
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import { TermPolicyGuard } from '@modules/term-policy/guards/term-policy.guard';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
@@ -125,9 +127,30 @@ describe('TermPolicyGuard', () => {
             ).toHaveBeenCalledWith(user, requiredTermPolicies);
         });
 
-        it('propagates the exception the domain throws for a missing acceptance', async () => {
+        it('throws UserGuardMissingException before the domain call when the user store is empty', async () => {
             reflector.get.mockReturnValue([]);
             requestStoreService.get.mockReturnValue(null);
+
+            await expect(
+                guard.canActivate(executionContext)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.guardMissing
+                    ],
+                messagePath: 'user.error.guardMissing',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+            });
+            expect(
+                termPolicyAcceptanceDomain.validateTermPolicyGuard
+            ).not.toHaveBeenCalled();
+        });
+
+        it('propagates the exception the domain throws for a missing acceptance', async () => {
+            reflector.get.mockReturnValue([]);
+            requestStoreService.get.mockReturnValue(user);
             const rejection = new Error('required-invalid');
             termPolicyAcceptanceDomain.validateTermPolicyGuard.mockRejectedValue(
                 rejection

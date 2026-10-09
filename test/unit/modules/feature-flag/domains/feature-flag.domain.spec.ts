@@ -16,7 +16,7 @@ import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cach
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
-import { FeatureFlagUnseededException } from '@modules/feature-flag/exceptions/feature-flag.unseeded.exception';
+import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import type {
     IFeatureFlagUpdateMetadata,
     IFeatureFlagUpdateStatus,
@@ -98,24 +98,24 @@ describe('FeatureFlagDomain', () => {
     });
 
     describe('validateFeatureFlag', () => {
-        it('throws FeatureFlagUnseededException (500) when the flag is unregistered', async () => {
+        it('throws FeatureFlagNotConfiguredException (500) when the flag is unregistered', async () => {
             featureFlagCache.getByKeyAndCache.mockResolvedValue(null);
 
             await expect(
                 domain.validateFeatureFlag('unknownFlag', null, null)
             ).rejects.toMatchObject({
-                constructor: FeatureFlagUnseededException,
+                constructor: FeatureFlagNotConfiguredException,
                 module: 'featureFlag',
                 httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                statusCode: EnumFeatureFlagStatusCodeError.unseeded,
+                statusCode: EnumFeatureFlagStatusCodeError.notConfigured,
                 statusCodeKey:
                     EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.unseeded
+                        EnumFeatureFlagStatusCodeError.notConfigured
                     ],
-                messagePath: 'featureFlag.error.unseeded',
+                messagePath: 'featureFlag.error.notConfigured',
                 rawError: expect.objectContaining({
                     message:
-                        'FeatureFlagUnseededException: no feature flag row for "unknownFlag"',
+                        'FeatureFlagNotConfiguredException: no feature flag row for "unknownFlag"',
                 }),
             });
             expect(featureFlagCache.getByKeyAndCache).toHaveBeenCalledWith(
@@ -264,24 +264,24 @@ describe('FeatureFlagDomain', () => {
     });
 
     describe('validateFeatureFlagMetadata', () => {
-        it('throws FeatureFlagUnseededException (500) when the flag is unregistered', async () => {
+        it('throws FeatureFlagNotConfiguredException (500) when the flag is unregistered', async () => {
             featureFlagCache.getByKeyAndCache.mockResolvedValue(null);
 
             await expect(
                 domain.validateFeatureFlagMetadata('unknownFlag', 'enabled')
             ).rejects.toMatchObject({
-                constructor: FeatureFlagUnseededException,
+                constructor: FeatureFlagNotConfiguredException,
                 module: 'featureFlag',
                 httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                statusCode: EnumFeatureFlagStatusCodeError.unseeded,
+                statusCode: EnumFeatureFlagStatusCodeError.notConfigured,
                 statusCodeKey:
                     EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.unseeded
+                        EnumFeatureFlagStatusCodeError.notConfigured
                     ],
-                messagePath: 'featureFlag.error.unseeded',
+                messagePath: 'featureFlag.error.notConfigured',
                 rawError: expect.objectContaining({
                     message:
-                        'FeatureFlagUnseededException: no feature flag row for "unknownFlag"',
+                        'FeatureFlagNotConfiguredException: no feature flag row for "unknownFlag"',
                 }),
             });
         });

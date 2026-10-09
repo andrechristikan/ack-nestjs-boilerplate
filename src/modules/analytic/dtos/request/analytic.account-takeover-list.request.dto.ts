@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { AnalyticAccountTakeoverAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
@@ -11,9 +11,27 @@ import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/a
 export const AnalyticAccountTakeoverListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true })
         .extend({
-            orderBy: PaginationOrderBySchema(
-                AnalyticAccountTakeoverAvailableOrderBy
-            ),
+            orderBy: z
+                .union([
+                    z.templateLiteral([
+                        z.enum(AnalyticAccountTakeoverAvailableOrderBy),
+                        ':',
+                        z.enum(EnumPaginationOrderDirectionType),
+                    ]),
+                    z.array(
+                        z.templateLiteral([
+                            z.enum(AnalyticAccountTakeoverAvailableOrderBy),
+                            ':',
+                            z.enum(EnumPaginationOrderDirectionType),
+                        ])
+                    ),
+                    z.literal(''),
+                ])
+                .optional()
+                .meta({
+                    description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticAccountTakeoverAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticAccountTakeoverAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                    example: `${AnalyticAccountTakeoverAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+                }),
         })
         .extend(AnalyticDateRangeRequestSchema.shape);
 

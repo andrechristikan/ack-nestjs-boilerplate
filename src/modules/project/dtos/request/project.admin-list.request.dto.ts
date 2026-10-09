@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
@@ -18,7 +18,27 @@ export const ProjectAdminListRequestSchema = PaginationOffsetQuerySchema.extend(
             description: `Search query, available fields: ${ProjectDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
             example: '',
         }),
-        orderBy: PaginationOrderBySchema(ProjectDefaultAvailableOrderBy),
+        orderBy: z
+            .union([
+                z.templateLiteral([
+                    z.enum(ProjectDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ]),
+                z.array(
+                    z.templateLiteral([
+                        z.enum(ProjectDefaultAvailableOrderBy),
+                        ':',
+                        z.enum(EnumPaginationOrderDirectionType),
+                    ])
+                ),
+                z.literal(''),
+            ])
+            .optional()
+            .meta({
+                description: `Order by field in \`field:direction\` format (e.g. \`${ProjectDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${ProjectDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                example: `${ProjectDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            }),
         workspaceId: RequestMongoIdSchema.optional().meta({
             description: 'Filter by workspaceId',
             example: faker.database.mongodbObjectId(),

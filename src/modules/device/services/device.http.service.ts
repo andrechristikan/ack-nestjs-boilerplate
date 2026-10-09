@@ -10,6 +10,10 @@ import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/devic
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { Injectable } from '@nestjs/common';
+import {
+    DeviceCursorAvailableOrderBy,
+    DeviceDefaultAvailableOrderBy,
+} from '@modules/device/constants/device.list.constant';
 
 @Injectable()
 export class DeviceHttpService {
@@ -25,7 +29,8 @@ export class DeviceHttpService {
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.DeviceOwnershipWhereInput>(
-                query
+                query,
+                { availableOrderBy: DeviceDefaultAvailableOrderBy }
             );
         const isRevoked = this.paginationQueryUtil.equalBoolean(
             Prisma.DeviceOwnershipScalarFieldEnum.isRevoked,
@@ -66,7 +71,8 @@ export class DeviceHttpService {
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.DeviceOwnershipWhereInput>(
-                query
+                query,
+                { availableOrderBy: DeviceCursorAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

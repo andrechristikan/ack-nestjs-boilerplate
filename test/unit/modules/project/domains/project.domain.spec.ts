@@ -28,11 +28,7 @@ import type {
 } from '@modules/project/interfaces/project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
-import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
-import {
-    expectRequestContextMissingWithKey,
-    expectRequestGuardMissingWithKey,
-} from '@test/unit/helpers/test.unit.request.helper';
+import { expectRequestContextMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectDomain', () => {
     const projectRepository: MockProxy<ProjectRepository> =
@@ -117,23 +113,6 @@ describe('ProjectDomain', () => {
     });
 
     describe('validateProjectGuard', () => {
-        it('throws RequestGuardMissingException when workspaceId is null', async () => {
-            let thrown: unknown;
-            try {
-                await domain.validateProjectGuard(
-                    null,
-                    '507f1f77bcf86cd799439011'
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expectRequestGuardMissingWithKey(thrown, WorkspaceStoreKey);
-            expect(
-                projectRepository.findActiveByIdAndWorkspace
-            ).not.toHaveBeenCalled();
-        });
-
         it('throws RequestContextMissingException when projectId is null', async () => {
             let thrown: unknown;
             try {

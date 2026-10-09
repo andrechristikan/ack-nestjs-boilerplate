@@ -20,12 +20,6 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
-import {
-    WorkspaceMemberStoreKey,
-    WorkspaceStoreKey,
-} from '@modules/workspace/constants/workspace.constant';
-import { expectRequestGuardMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
@@ -90,28 +84,6 @@ describe('WorkspaceMemberDomain', () => {
     });
 
     describe('validateWorkspaceMemberGuard', () => {
-        it('throws RequestGuardMissingException when userId is null', async () => {
-            let thrown: unknown;
-            try {
-                await domain.validateWorkspaceMemberGuard('workspace-1', null);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expectRequestGuardMissingWithKey(thrown, UserStoreKey);
-        });
-
-        it('throws RequestGuardMissingException when workspaceId is null', async () => {
-            let thrown: unknown;
-            try {
-                await domain.validateWorkspaceMemberGuard(null, 'user-1');
-            } catch (error) {
-                thrown = error;
-            }
-
-            expectRequestGuardMissingWithKey(thrown, WorkspaceStoreKey);
-        });
-
         it('throws WorkspaceMemberForbiddenException when no membership is found', async () => {
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 null
@@ -150,19 +122,6 @@ describe('WorkspaceMemberDomain', () => {
     });
 
     describe('validateWorkspaceRoleGuard', () => {
-        it('throws RequestGuardMissingException when no member is given', () => {
-            let thrown: unknown;
-            try {
-                domain.validateWorkspaceRoleGuard(null, [
-                    EnumWorkspaceMemberRole.admin,
-                ]);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expectRequestGuardMissingWithKey(thrown, WorkspaceMemberStoreKey);
-        });
-
         it('returns the member unchecked when the role is owner', () => {
             const owner = {
                 ...baseMember,

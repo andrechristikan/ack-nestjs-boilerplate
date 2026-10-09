@@ -62,6 +62,13 @@ describe('AnalyticImpossibleTravelListRequestSchema', () => {
         ).toContain(AnalyticImpossibleTravelAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            AnalyticImpossibleTravelListRequestSchema.safeParse({ orderBy: '' })
+                .success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = AnalyticImpossibleTravelAvailableOrderBy[0];
         const last =

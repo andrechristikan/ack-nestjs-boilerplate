@@ -10,6 +10,7 @@ import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
+import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 
 @Injectable()
 export class TermPolicyAcceptanceHttpService {
@@ -25,7 +26,11 @@ export class TermPolicyAcceptanceHttpService {
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.TermPolicyUserAcceptanceWhereInput>(
-                query
+                query,
+                {
+                    availableOrderBy:
+                        TermPolicyAcceptanceDefaultAvailableOrderBy,
+                }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

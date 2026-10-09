@@ -56,6 +56,14 @@ describe('AnalyticForgotPasswordAbuseListRequestSchema', () => {
         ).toContain(AnalyticForgotPasswordAbuseAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            AnalyticForgotPasswordAbuseListRequestSchema.safeParse({
+                orderBy: '',
+            }).success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = AnalyticForgotPasswordAbuseAvailableOrderBy[0];
         const last =

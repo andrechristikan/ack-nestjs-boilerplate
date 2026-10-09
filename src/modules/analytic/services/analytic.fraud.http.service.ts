@@ -37,6 +37,17 @@ import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.doma
 import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
 import { Injectable } from '@nestjs/common';
+import {
+    AnalyticAccountTakeoverAvailableOrderBy,
+    AnalyticBackupCodeNewDeviceAvailableOrderBy,
+    AnalyticCredentialStuffingAvailableOrderBy,
+    AnalyticForgotPasswordAbuseAvailableOrderBy,
+    AnalyticFraudRiskScoreAvailableOrderBy,
+    AnalyticKeyCountAvailableOrderBy,
+    AnalyticSessionAfterAdminAvailableOrderBy,
+    AnalyticSharedFingerprintAvailableOrderBy,
+    AnalyticUserCountAvailableOrderBy,
+} from '@modules/analytic/constants/analytic.list.constant';
 
 @Injectable()
 export class AnalyticFraudHttpService {
@@ -62,7 +73,8 @@ export class AnalyticFraudHttpService {
     ): Promise<IResponsePaginationReturn<IAnalyticCredentialStuffing>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query
+                query,
+                { availableOrderBy: AnalyticCredentialStuffingAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -92,7 +104,8 @@ export class AnalyticFraudHttpService {
     ): Promise<IResponsePaginationReturn<IAnalyticAccountTakeover>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.PasswordHistoryWhereInput>(
-                query
+                query,
+                { availableOrderBy: AnalyticAccountTakeoverAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.requireRange(
@@ -120,7 +133,9 @@ export class AnalyticFraudHttpService {
         query: AnalyticMassRegistrationListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticMassRegistration>> {
         const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query);
+            this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query, {
+                availableOrderBy: AnalyticKeyCountAvailableOrderBy,
+            });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticFraudDomain.massRegistrationList(
@@ -145,7 +160,8 @@ export class AnalyticFraudHttpService {
     ): Promise<IResponsePaginationReturn<IAnalyticPasswordResetEnumeration>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ForgotPasswordWhereInput>(
-                query
+                query,
+                { availableOrderBy: AnalyticKeyCountAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -168,7 +184,8 @@ export class AnalyticFraudHttpService {
     ): Promise<IResponsePaginationReturn<IAnalyticSharedFingerprint>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.DeviceOwnershipWhereInput>(
-                query
+                query,
+                { availableOrderBy: AnalyticSharedFingerprintAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -195,7 +212,8 @@ export class AnalyticFraudHttpService {
     ): Promise<IResponsePaginationReturn<IAnalyticSessionAfterAdmin>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query
+                query,
+                { availableOrderBy: AnalyticSessionAfterAdminAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.requireRange(
@@ -225,7 +243,11 @@ export class AnalyticFraudHttpService {
     ): Promise<IResponsePaginationReturn<IAnalyticForgotPasswordAbuse>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ForgotPasswordWhereInput>(
-                query
+                query,
+                {
+                    availableOrderBy:
+                        AnalyticForgotPasswordAbuseAvailableOrderBy,
+                }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -250,7 +272,8 @@ export class AnalyticFraudHttpService {
     ): Promise<IResponsePaginationReturn<IAnalyticRefreshSpike>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query
+                query,
+                { availableOrderBy: AnalyticUserCountAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -275,7 +298,11 @@ export class AnalyticFraudHttpService {
     ): Promise<IResponsePaginationReturn<IAnalyticBackupCodeNewDevice>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query
+                query,
+                {
+                    availableOrderBy:
+                        AnalyticBackupCodeNewDeviceAvailableOrderBy,
+                }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -300,7 +327,8 @@ export class AnalyticFraudHttpService {
     ): Promise<IResponsePaginationReturn<IAnalyticApiKeyBurst>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query
+                query,
+                { availableOrderBy: AnalyticUserCountAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -322,7 +350,9 @@ export class AnalyticFraudHttpService {
         query: AnalyticFraudRiskScoresListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
         const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query);
+            this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query, {
+                availableOrderBy: AnalyticFraudRiskScoreAvailableOrderBy,
+            });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticFraudDomain.riskScores(

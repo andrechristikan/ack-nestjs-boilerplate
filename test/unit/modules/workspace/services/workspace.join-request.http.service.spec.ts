@@ -17,7 +17,10 @@ import type {
     Workspace,
     WorkspaceJoinRequest,
 } from '@generated/prisma-client/client';
-import { WorkspaceJoinRequestDefaultStatus } from '@modules/workspace/constants/workspace.list.constant';
+import {
+    WorkspaceJoinRequestDefaultAvailableOrderBy,
+    WorkspaceJoinRequestDefaultStatus,
+} from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
 import type { WorkspaceJoinRequestListRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-list.request.dto';
 import type { WorkspaceJoinRequestRejectRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
@@ -159,7 +162,9 @@ describe('WorkspaceJoinRequestHttpService', () => {
 
             await service.getJoinRequestsList('workspace-1', query);
 
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query);
+            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                availableOrderBy: WorkspaceJoinRequestDefaultAvailableOrderBy,
+            });
             expect(paginationQueryUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.WorkspaceJoinRequestScalarFieldEnum.status,
                 'pending',

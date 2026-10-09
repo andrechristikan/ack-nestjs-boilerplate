@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -17,6 +18,7 @@ import { RoleDomain } from '@modules/role/domains/role.domain';
 import { RoleGuard } from '@modules/role/guards/role.guard';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
@@ -127,17 +129,37 @@ describe('RoleGuard', () => {
 
         it('defaults required roles to an empty array when no metadata is set', async () => {
             reflector.get.mockReturnValue(undefined);
-            requestStoreService.get.mockReturnValue(null);
+            requestStoreService.get.mockReturnValue(user);
             roleDomain.validateRoleGuard.mockResolvedValue([]);
 
             await guard.canActivate(executionContext);
 
-            expect(roleDomain.validateRoleGuard).toHaveBeenCalledWith(null, []);
+            expect(roleDomain.validateRoleGuard).toHaveBeenCalledWith(user, []);
+        });
+
+        it('throws UserGuardMissingException before the domain call when the user store is empty', async () => {
+            reflector.get.mockReturnValue([EnumRoleType.user]);
+            requestStoreService.get.mockReturnValue(null);
+
+            await expect(
+                guard.canActivate(executionContext)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.guardMissing
+                    ],
+                messagePath: 'user.error.guardMissing',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+            });
+            expect(roleDomain.validateRoleGuard).not.toHaveBeenCalled();
+            expect(requestStoreService.set).not.toHaveBeenCalled();
         });
 
         it('propagates a thrown exception from the domain', async () => {
             reflector.get.mockReturnValue([]);
-            requestStoreService.get.mockReturnValue(null);
+            requestStoreService.get.mockReturnValue(user);
             const error = new Error('forbidden');
             roleDomain.validateRoleGuard.mockRejectedValue(error);
 

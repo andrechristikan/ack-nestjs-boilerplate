@@ -51,6 +51,13 @@ describe('TermPolicyAcceptedListRequestSchema', () => {
         ).toContain(TermPolicyAcceptanceDefaultAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            TermPolicyAcceptedListRequestSchema.safeParse({ orderBy: '' })
+                .success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = TermPolicyAcceptanceDefaultAvailableOrderBy[0];
         const last =

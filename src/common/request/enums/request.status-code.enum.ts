@@ -8,5 +8,4 @@ export enum EnumRequestStatusCodeError {
     envNotAllowed = 50302,
     schemaMissing = 50303,
     contextMissing = 50304,
-    guardMissing = 50305,
 }

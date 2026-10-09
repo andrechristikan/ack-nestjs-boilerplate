@@ -7,7 +7,11 @@ import type {
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
-import { WorkspaceDefaultAvailableSearch } from '@modules/workspace/constants/workspace.list.constant';
+import {
+    WorkspaceCursorAvailableOrderBy,
+    WorkspaceDefaultAvailableOrderBy,
+    WorkspaceDefaultAvailableSearch,
+} from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceAdminListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
 import type { WorkspaceUserListRequestDto } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
 import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
@@ -33,6 +37,7 @@ export class WorkspaceHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.WorkspaceWhereInput>(query, {
                 availableSearch: WorkspaceDefaultAvailableSearch,
+                availableOrderBy: WorkspaceCursorAvailableOrderBy,
             });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -130,6 +135,7 @@ export class WorkspaceHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.WorkspaceWhereInput>(query, {
                 availableSearch: WorkspaceDefaultAvailableSearch,
+                availableOrderBy: WorkspaceDefaultAvailableOrderBy,
             });
         const isPublic = this.paginationQueryUtil.equalBoolean(
             Prisma.WorkspaceScalarFieldEnum.isPublic,

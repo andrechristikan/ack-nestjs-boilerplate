@@ -17,6 +17,7 @@ import { NotificationDomain } from '@modules/notification/domains/notification.d
 import type { NotificationListRequestDto } from '@modules/notification/dtos/request/notification.list.request.dto';
 import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationHttpService } from '@modules/notification/services/notification.http.service';
+import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
 
 describe('NotificationHttpService', () => {
     const notificationDomain: MockProxy<NotificationDomain> =
@@ -66,7 +67,9 @@ describe('NotificationHttpService', () => {
 
             const result = await service.getListCursor('user-id', query);
 
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query);
+            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                availableOrderBy: NotificationDefaultAvailableOrderBy,
+            });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 { filters: { existing: true } }

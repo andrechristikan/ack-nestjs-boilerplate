@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { AnalyticDeviceProliferationAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 
@@ -9,9 +9,27 @@ import { AnalyticDeviceProliferationAvailableOrderBy } from '@modules/analytic/c
  */
 export const AnalyticDeviceProliferationListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true }).extend({
-        orderBy: PaginationOrderBySchema(
-            AnalyticDeviceProliferationAvailableOrderBy
-        ),
+        orderBy: z
+            .union([
+                z.templateLiteral([
+                    z.enum(AnalyticDeviceProliferationAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ]),
+                z.array(
+                    z.templateLiteral([
+                        z.enum(AnalyticDeviceProliferationAvailableOrderBy),
+                        ':',
+                        z.enum(EnumPaginationOrderDirectionType),
+                    ])
+                ),
+                z.literal(''),
+            ])
+            .optional()
+            .meta({
+                description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticDeviceProliferationAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticDeviceProliferationAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                example: `${AnalyticDeviceProliferationAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            }),
     });
 
 /**

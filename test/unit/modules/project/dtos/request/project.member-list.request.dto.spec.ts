@@ -56,6 +56,12 @@ describe('ProjectMemberListRequestSchema', () => {
         ).toContain(ProjectMemberDefaultAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            ProjectMemberListRequestSchema.safeParse({ orderBy: '' }).success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = ProjectMemberDefaultAvailableOrderBy[0];
         const last =

@@ -8,7 +8,10 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { FeatureFlag } from '@generated/prisma-client/client';
-import { FeatureFlagDefaultAvailableSearch } from '@modules/feature-flag/constants/feature-flag.list.constant';
+import {
+    FeatureFlagDefaultAvailableOrderBy,
+    FeatureFlagDefaultAvailableSearch,
+} from '@modules/feature-flag/constants/feature-flag.list.constant';
 import type { FeatureFlagAdminListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.admin-list.request.dto';
 import type { FeatureFlagSystemListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.system-list.request.dto';
 import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
@@ -94,6 +97,7 @@ describe('FeatureFlagHttpService', () => {
             expect(result).toEqual(page);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
                 availableSearch: FeatureFlagDefaultAvailableSearch,
+                availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
@@ -127,6 +131,7 @@ describe('FeatureFlagHttpService', () => {
             expect(result).toEqual(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 availableSearch: FeatureFlagDefaultAvailableSearch,
+                availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

@@ -17,9 +17,9 @@ export const DocFeatureFlagErrorResponses = {
         statusCode: EnumFeatureFlagStatusCodeError.disabled,
         messagePath: 'featureFlag.error.disabled',
     }),
-    unseeded: DocResponseError(HttpStatus.INTERNAL_SERVER_ERROR, {
-        statusCode: EnumFeatureFlagStatusCodeError.unseeded,
-        messagePath: 'featureFlag.error.unseeded',
+    notConfigured: DocResponseError(HttpStatus.INTERNAL_SERVER_ERROR, {
+        statusCode: EnumFeatureFlagStatusCodeError.notConfigured,
+        messagePath: 'featureFlag.error.notConfigured',
     }),
 } as const;
 

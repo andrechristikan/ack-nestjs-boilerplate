@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ApiSecurity } from '@nestjs/swagger';
 import { ClsServiceManager } from 'nestjs-cls';
-import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
+import { ApiKeyGuardMissingException } from '@modules/api-key/exceptions/api-key.guard-missing.exception';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import {
     ApiKeyDocSecurityName,
@@ -20,7 +20,7 @@ import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 
 /**
- * Reads the authenticated `ApiKey`, or one of its fields, that `@ApiKeyProtected()` or `@ApiKeySystemProtected()` stored. Throws `RequestGuardMissingException` when the request carries no key and `RequestContextMissingException` when the requested field is null.
+ * Reads the authenticated `ApiKey`, or one of its fields, that `@ApiKeyProtected()` or `@ApiKeySystemProtected()` stored. Throws `ApiKeyGuardMissingException` when the request carries no key and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const ApiKeyPayload = createParamDecorator<
@@ -35,7 +35,7 @@ export const ApiKeyPayload = createParamDecorator<
                 ApiKeyStoreKey
             ) ?? null;
         if (current === null) {
-            throw new RequestGuardMissingException(ApiKeyStoreKey);
+            throw new ApiKeyGuardMissingException();
         }
 
         const fieldKey = field ?? null;
@@ -64,7 +64,8 @@ export function ApiKeySystemProtected(): MethodDecorator {
         SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.system]),
         ApiSecurity(ApiKeyDocSecurityName),
         DocApiKeyErrorResponses.unauthorized,
-        DocApiKeyErrorResponses.forbidden
+        DocApiKeyErrorResponses.forbidden,
+        DocApiKeyErrorResponses.guardMissing
     );
 }
 
@@ -78,6 +79,7 @@ export function ApiKeyProtected(): MethodDecorator {
         SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.default]),
         ApiSecurity(ApiKeyDocSecurityName),
         DocApiKeyErrorResponses.unauthorized,
-        DocApiKeyErrorResponses.forbidden
+        DocApiKeyErrorResponses.forbidden,
+        DocApiKeyErrorResponses.guardMissing
     );
 }

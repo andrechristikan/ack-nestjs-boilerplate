@@ -9,6 +9,13 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticAnomalyDomain } from '@modules/analytic/domains/analytic.anomaly.domain';
 import { AnalyticAnomalyHttpService } from '@modules/analytic/services/analytic.anomaly.http.service';
 import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
+import {
+    AnalyticDeviceProliferationAvailableOrderBy,
+    AnalyticImpossibleTravelAvailableOrderBy,
+    AnalyticLoginSpikeIpAvailableOrderBy,
+    AnalyticLoginTimeAnomalyAvailableOrderBy,
+    AnalyticNearLockoutAvailableOrderBy,
+} from '@modules/analytic/constants/analytic.list.constant';
 
 describe('AnalyticAnomalyHttpService', () => {
     const analyticAnomalyDomain: MockProxy<AnalyticAnomalyDomain> =
@@ -158,6 +165,10 @@ describe('AnalyticAnomalyHttpService', () => {
             expect(
                 analyticAnomalyDomain.impossibleTravelList
             ).toHaveBeenCalledWith(startDate, endDate, pagination);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                { availableOrderBy: AnalyticImpossibleTravelAvailableOrderBy }
+            );
         });
 
         it('passes null dates when the optional range is empty', async () => {
@@ -249,6 +260,10 @@ describe('AnalyticAnomalyHttpService', () => {
                 windowMs,
                 pagination
             );
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                { availableOrderBy: AnalyticLoginSpikeIpAvailableOrderBy }
+            );
         });
 
         it('passes null when windowMs is omitted', async () => {
@@ -321,6 +336,10 @@ describe('AnalyticAnomalyHttpService', () => {
             expect(
                 analyticAnomalyDomain.failedLoginSpikeList
             ).toHaveBeenCalledWith(pagination);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                { availableOrderBy: AnalyticNearLockoutAvailableOrderBy }
+            );
         });
     });
 
@@ -372,6 +391,13 @@ describe('AnalyticAnomalyHttpService', () => {
             expect(
                 analyticAnomalyDomain.deviceProliferationList
             ).toHaveBeenCalledWith(pagination);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                {
+                    availableOrderBy:
+                        AnalyticDeviceProliferationAvailableOrderBy,
+                }
+            );
         });
     });
 
@@ -459,6 +485,10 @@ describe('AnalyticAnomalyHttpService', () => {
                 startDate,
                 endDate,
                 pagination
+            );
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                { availableOrderBy: AnalyticLoginTimeAnomalyAvailableOrderBy }
             );
         });
 

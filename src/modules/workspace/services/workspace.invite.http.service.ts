@@ -11,6 +11,7 @@ import type {
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
 import {
+    WorkspaceInviteDefaultAvailableOrderBy,
     WorkspaceInviteDefaultAvailableSearch,
     WorkspaceInviteDefaultStatus,
 } from '@modules/workspace/constants/workspace.list.constant';
@@ -42,6 +43,7 @@ export class WorkspaceInviteHttpService {
                 query,
                 {
                     availableSearch: WorkspaceInviteDefaultAvailableSearch,
+                    availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
                 }
             );
         const status = this.paginationQueryUtil.inEnum(

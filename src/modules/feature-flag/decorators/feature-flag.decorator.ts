@@ -23,6 +23,6 @@ export function FeatureFlagProtected(keyPath: string): MethodDecorator {
         UseGuards(FeatureFlagGuard),
         SetMetadata(FeatureFlagKeyPathMetaKey, keyPath),
         DocFeatureFlagErrorResponses.disabled,
-        DocFeatureFlagErrorResponses.unseeded
+        DocFeatureFlagErrorResponses.notConfigured
     );
 }

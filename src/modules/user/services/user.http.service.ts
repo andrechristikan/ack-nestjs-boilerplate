@@ -3,6 +3,7 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
+    UserDefaultAvailableOrderBy,
     UserDefaultAvailableSearch,
     UserDefaultStatus,
 } from '@modules/user/constants/user.list.constant';
@@ -41,6 +42,7 @@ export class UserHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query, {
                 availableSearch: UserDefaultAvailableSearch,
+                availableOrderBy: UserDefaultAvailableOrderBy,
             });
         const status = this.paginationQueryUtil.inEnum(
             Prisma.UserScalarFieldEnum.status,

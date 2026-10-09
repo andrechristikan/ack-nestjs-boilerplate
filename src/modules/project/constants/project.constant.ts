@@ -32,7 +32,7 @@ export const ProjectWorkspaceOwnerStoreKey = 'ProjectWorkspaceOwnerStoreKey';
 export const ProjectRoleMetaKey = 'ProjectRoleMetaKey';
 
 /**
- * Project guard error kit for `@ProjectProtected`.
+ * Project guard error kit for `@ProjectProtected`; `guardMissing` and `memberGuardMissing` document a guard or param decorator that reads the project or project member store.
  * @public
  */
 export const DocProjectErrorResponses = {
@@ -47,6 +47,14 @@ export const DocProjectErrorResponses = {
             messagePath: 'project.error.notFound',
         }
     ),
+    guardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
+        statusCode: EnumProjectStatusCodeError.guardMissing,
+        messagePath: 'project.error.guardMissing',
+    }),
+    memberGuardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
+        statusCode: EnumProjectStatusCodeError.memberGuardMissing,
+        messagePath: 'project.error.memberGuardMissing',
+    }),
 } as const;
 
 /**

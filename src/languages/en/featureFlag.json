@@ -6,6 +6,6 @@
         "notFound": "Feature flag not found.",
         "invalidMetadata": "Feature flag metadata is invalid.",
         "disabled": "This feature is not available.",
-        "unseeded": "This feature could not be checked. Please try again later."
+        "notConfigured": "This feature is not configured."
     }
 }

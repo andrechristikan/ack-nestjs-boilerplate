@@ -32,7 +32,7 @@ describe('feature-flag.decorator', () => {
             ).toBe('changePassword');
         });
 
-        it('documents the disabled error at 404 and the unseeded error at 500', () => {
+        it('documents the disabled error at 404 and the notConfigured error at 500', () => {
             const entries = Reflect.getMetadata(
                 DocResponseEntryMetaKey,
                 handler
@@ -46,8 +46,8 @@ describe('feature-flag.decorator', () => {
                 }),
                 expect.objectContaining({
                     httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                    statusCode: EnumFeatureFlagStatusCodeError.unseeded,
-                    messagePath: 'featureFlag.error.unseeded',
+                    statusCode: EnumFeatureFlagStatusCodeError.notConfigured,
+                    messagePath: 'featureFlag.error.notConfigured',
                 }),
             ]);
         });

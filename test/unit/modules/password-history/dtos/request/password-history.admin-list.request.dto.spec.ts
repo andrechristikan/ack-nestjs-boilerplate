@@ -53,6 +53,13 @@ describe('PasswordHistoryAdminListRequestSchema', () => {
         ).toContain(PasswordHistoryDefaultAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            PasswordHistoryAdminListRequestSchema.safeParse({ orderBy: '' })
+                .success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = PasswordHistoryDefaultAvailableOrderBy[0];
         const last =

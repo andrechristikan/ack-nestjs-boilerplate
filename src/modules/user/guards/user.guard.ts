@@ -7,6 +7,7 @@ import {
     UserGuardIsVerifiedMetaKey,
     UserStoreKey,
 } from '@modules/user/constants/user.constant';
+import { AuthJwtGuardMissingException } from '@modules/auth/exceptions/auth.jwt-guard-missing.exception';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 /** Validates the authenticated user and stores it in the request context for `UserCurrent`. */
@@ -27,8 +28,13 @@ export class UserGuard implements CanActivate {
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
 
+        const payload = request.user ?? null;
+        if (!payload) {
+            throw new AuthJwtGuardMissingException();
+        }
+
         const user = await this.userDomain.validateUserGuard(
-            request.user ?? null,
+            payload,
             isVerified
         );
 

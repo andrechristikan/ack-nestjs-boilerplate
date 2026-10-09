@@ -15,7 +15,6 @@ import {
 } from '@common/pagination/enums/pagination.enum';
 import type { PaginationCursorQueryDto } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import type { PaginationOffsetQueryDto } from '@common/pagination/dtos/pagination.offset-query.dto';
-import type { PaginationOrderByQuery } from '@common/pagination/utils/pagination.order-by.util';
 import { PaginationCursorTooLongException } from '@common/pagination/exceptions/pagination.cursor-too-long.exception';
 import { PaginationFilterInvalidValueEnumException } from '@common/pagination/exceptions/pagination.filter-invalid-value-enum.exception';
 import { PaginationFilterInvalidValueException } from '@common/pagination/exceptions/pagination.filter-invalid-value.exception';
@@ -35,6 +34,7 @@ import type {
     IPaginationNin,
     IPaginationNotEqual,
     IPaginationOrderBy,
+    IPaginationOrderByQuery,
     IPaginationQuery,
     IPaginationQueryCursorOptions,
     IPaginationQueryCursorParams,
@@ -309,14 +309,15 @@ export class PaginationQueryUtil {
     }
 
     offset<TArgsWhere = unknown>(
-        dto: PaginationOffsetQueryDto & { orderBy?: PaginationOrderByQuery },
-        options: IPaginationQueryOffsetOptions = {}
+        dto: PaginationOffsetQueryDto & { orderBy?: IPaginationOrderByQuery },
+        options: IPaginationQueryOffsetOptions
     ): {
         params: IPaginationQueryOffsetParams<TArgsWhere>;
         storePatch: Partial<IPaginationQuery>;
     } {
         try {
             const availableSearch = options.availableSearch ?? [];
+            const availableOrderBy = options.availableOrderBy;
             const page = this.validateAndParsePage(dto.page);
             const perPage = this.validateAndParsePerPage(
                 dto.perPage,
@@ -341,6 +342,7 @@ export class PaginationQueryUtil {
                     perPage,
                     orderBy,
                     availableSearch,
+                    availableOrderBy,
                     ...(search && availableSearch.length > 0 ? { search } : {}),
                 },
             };
@@ -354,14 +356,15 @@ export class PaginationQueryUtil {
     }
 
     cursor<TArgsWhere = unknown>(
-        dto: PaginationCursorQueryDto & { orderBy?: PaginationOrderByQuery },
-        options: IPaginationQueryCursorOptions = {}
+        dto: PaginationCursorQueryDto & { orderBy?: IPaginationOrderByQuery },
+        options: IPaginationQueryCursorOptions
     ): {
         params: IPaginationQueryCursorParams<TArgsWhere>;
         storePatch: Partial<IPaginationQuery>;
     } {
         try {
             const availableSearch = options.availableSearch ?? [];
+            const availableOrderBy = options.availableOrderBy;
             const perPage = this.validateAndParsePerPage(
                 dto.perPage,
                 options.defaultPerPage
@@ -389,6 +392,7 @@ export class PaginationQueryUtil {
                     ...(cursor && { cursor }),
                     orderBy,
                     availableSearch,
+                    availableOrderBy,
                     ...(search && availableSearch.length > 0 ? { search } : {}),
                 },
             };

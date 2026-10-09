@@ -55,6 +55,13 @@ describe('AnalyticFraudRiskScoresListRequestSchema', () => {
         ).toContain(AnalyticFraudRiskScoreAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            AnalyticFraudRiskScoresListRequestSchema.safeParse({ orderBy: '' })
+                .success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = AnalyticFraudRiskScoreAvailableOrderBy[0];
         const last =

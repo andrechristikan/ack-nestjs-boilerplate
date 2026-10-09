@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { mock } from 'vitest-mock-extended';
@@ -11,6 +12,7 @@ import {
     WorkspaceMemberStoreKey,
     WorkspaceRoleMetaKey,
 } from '@modules/workspace/constants/workspace.constant';
+import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { WorkspaceRoleGuard } from '@modules/workspace/guards/workspace.role.guard';
 
@@ -86,6 +88,32 @@ describe('WorkspaceRoleGuard', () => {
             expect(
                 workspaceMemberDomain.validateWorkspaceRoleGuard
             ).toHaveBeenCalledWith(member, []);
+        });
+
+        it('throws WorkspaceMemberGuardMissingException before the domain call when the member store is empty', () => {
+            reflector.get.mockReturnValue([EnumWorkspaceMemberRole.admin]);
+            requestStoreService.get.mockReturnValue(null);
+
+            let thrown: unknown;
+            try {
+                guard.canActivate(executionContext);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.memberGuardMissing
+                    ],
+                messagePath: 'workspace.error.memberGuardMissing',
+                httpStatus: HttpStatus.FORBIDDEN,
+            });
+            expect(
+                workspaceMemberDomain.validateWorkspaceRoleGuard
+            ).not.toHaveBeenCalled();
         });
 
         it('propagates the exception the domain throws for a forbidden role', () => {

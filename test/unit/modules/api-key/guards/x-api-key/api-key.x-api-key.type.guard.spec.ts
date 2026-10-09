@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext, Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -9,6 +10,7 @@ import {
     ApiKeyStoreKey,
     ApiKeyXTypeMetaKey,
 } from '@modules/api-key/constants/api-key.constant';
+import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 import { ApiKeyXApiKeyTypeGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.type.guard';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
@@ -85,9 +87,32 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
             );
         });
 
+        it('throws ApiKeyGuardMissingException before the domain call when the api key store is empty', async () => {
+            reflector.getAllAndOverride.mockReturnValue([
+                EnumApiKeyType.default,
+            ]);
+            requestStoreService.get.mockReturnValue(null);
+
+            await expect(
+                guard.canActivate(executionContext)
+            ).rejects.toMatchObject({
+                module: 'apiKey',
+                statusCode: EnumApiKeyStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumApiKeyStatusCodeError[
+                        EnumApiKeyStatusCodeError.guardMissing
+                    ],
+                messagePath: 'apiKey.error.guardMissing',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+            });
+            expect(
+                apiKeyDomain.validateXApiKeyTypeGuard
+            ).not.toHaveBeenCalled();
+        });
+
         it('propagates a thrown exception from the domain', async () => {
             reflector.getAllAndOverride.mockReturnValue([]);
-            requestStoreService.get.mockReturnValue(null);
+            requestStoreService.get.mockReturnValue(apiKey);
             const error = new Error('predefined not found');
             apiKeyDomain.validateXApiKeyTypeGuard.mockImplementation(() => {
                 throw error;

@@ -55,7 +55,6 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { expectRequestGuardMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
@@ -203,17 +202,6 @@ describe('UserDomain', () => {
     });
 
     describe('validateUserGuard', () => {
-        it('throws RequestGuardMissingException when the request carries no authenticated user id', async () => {
-            let thrown: unknown;
-            try {
-                await domain.validateUserGuard(null, false);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expectRequestGuardMissingWithKey(thrown, 'request.user');
-        });
-
         it('throws RequestContextMissingException when the authenticated user carries no user id', async () => {
             let thrown: unknown;
             try {

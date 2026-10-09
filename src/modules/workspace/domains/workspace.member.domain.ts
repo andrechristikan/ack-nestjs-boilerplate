@@ -1,4 +1,3 @@
-import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
     IPaginationIn,
@@ -13,11 +12,6 @@ import {
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
-import {
-    WorkspaceMemberStoreKey,
-    WorkspaceStoreKey,
-} from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
 import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
@@ -55,15 +49,9 @@ export class WorkspaceMemberDomain {
     }
 
     async validateWorkspaceMemberGuard(
-        workspaceId: string | null,
-        userId: string | null
+        workspaceId: string,
+        userId: string
     ): Promise<WorkspaceMember> {
-        if (!userId) {
-            throw new RequestGuardMissingException(UserStoreKey);
-        } else if (!workspaceId) {
-            throw new RequestGuardMissingException(WorkspaceStoreKey);
-        }
-
         const member =
             await this.workspaceMemberRepository.findOneByWorkspaceAndUser(
                 workspaceId,
@@ -78,13 +66,9 @@ export class WorkspaceMemberDomain {
 
     /** Enforces `allowedRoles` against the caller's membership. An `owner` satisfies every role check structurally and is therefore never listed in a route's `allowedRoles`. */
     validateWorkspaceRoleGuard(
-        member: WorkspaceMember | null,
+        member: WorkspaceMember,
         allowedRoles: EnumWorkspaceMemberRole[]
     ): WorkspaceMember {
-        if (!member) {
-            throw new RequestGuardMissingException(WorkspaceMemberStoreKey);
-        }
-
         if (member.role === EnumWorkspaceMemberRole.owner) {
             return member;
         }

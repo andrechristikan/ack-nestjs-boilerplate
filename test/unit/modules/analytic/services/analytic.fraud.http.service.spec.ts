@@ -13,6 +13,17 @@ import {
 import { AnalyticFraudDomain } from '@modules/analytic/domains/analytic.fraud.domain';
 import { AnalyticFraudHttpService } from '@modules/analytic/services/analytic.fraud.http.service';
 import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
+import {
+    AnalyticAccountTakeoverAvailableOrderBy,
+    AnalyticBackupCodeNewDeviceAvailableOrderBy,
+    AnalyticCredentialStuffingAvailableOrderBy,
+    AnalyticForgotPasswordAbuseAvailableOrderBy,
+    AnalyticFraudRiskScoreAvailableOrderBy,
+    AnalyticKeyCountAvailableOrderBy,
+    AnalyticSessionAfterAdminAvailableOrderBy,
+    AnalyticSharedFingerprintAvailableOrderBy,
+    AnalyticUserCountAvailableOrderBy,
+} from '@modules/analytic/constants/analytic.list.constant';
 
 describe('AnalyticFraudHttpService', () => {
     const analyticFraudDomain: MockProxy<AnalyticFraudDomain> =
@@ -133,6 +144,10 @@ describe('AnalyticFraudHttpService', () => {
             expect(
                 analyticFraudDomain.credentialStuffingList
             ).toHaveBeenCalledWith(windowMs, pagination);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                { availableOrderBy: AnalyticCredentialStuffingAvailableOrderBy }
+            );
         });
 
         it('passes null when windowMs is omitted', async () => {
@@ -222,6 +237,10 @@ describe('AnalyticFraudHttpService', () => {
             expect(
                 analyticFraudDomain.accountTakeoverList
             ).toHaveBeenCalledWith(startDate, endDate, pagination);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                { availableOrderBy: AnalyticAccountTakeoverAvailableOrderBy }
+            );
         });
     });
 
@@ -277,6 +296,10 @@ describe('AnalyticFraudHttpService', () => {
             expect(
                 analyticFraudDomain.massRegistrationList
             ).toHaveBeenCalledWith(windowMs, pagination);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                { availableOrderBy: AnalyticKeyCountAvailableOrderBy }
+            );
         });
 
         it('passes null when windowMs is omitted', async () => {
@@ -345,6 +368,10 @@ describe('AnalyticFraudHttpService', () => {
             expect(
                 analyticFraudDomain.passwordResetEnumerationList
             ).toHaveBeenCalledWith(windowMs, pagination);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                { availableOrderBy: AnalyticKeyCountAvailableOrderBy }
+            );
         });
 
         it('passes null when windowMs is omitted', async () => {
@@ -408,6 +435,10 @@ describe('AnalyticFraudHttpService', () => {
             expect(
                 analyticFraudDomain.sharedFingerprintList
             ).toHaveBeenCalledWith(pagination);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                { availableOrderBy: AnalyticSharedFingerprintAvailableOrderBy }
+            );
         });
     });
 
@@ -486,6 +517,10 @@ describe('AnalyticFraudHttpService', () => {
             expect(
                 analyticFraudDomain.sessionAfterAdminList
             ).toHaveBeenCalledWith(startDate, endDate, pagination);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                { availableOrderBy: AnalyticSessionAfterAdminAvailableOrderBy }
+            );
         });
     });
 
@@ -543,6 +578,13 @@ describe('AnalyticFraudHttpService', () => {
             expect(
                 analyticFraudDomain.forgotPasswordTokenAbuseList
             ).toHaveBeenCalledWith(windowMs, pagination);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                {
+                    availableOrderBy:
+                        AnalyticForgotPasswordAbuseAvailableOrderBy,
+                }
+            );
         });
 
         it('passes null when windowMs is omitted', async () => {
@@ -615,6 +657,10 @@ describe('AnalyticFraudHttpService', () => {
                 windowMs,
                 pagination
             );
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                { availableOrderBy: AnalyticUserCountAvailableOrderBy }
+            );
         });
 
         it('passes null when windowMs is omitted', async () => {
@@ -684,6 +730,13 @@ describe('AnalyticFraudHttpService', () => {
             expect(
                 analyticFraudDomain.backupCodeNewDeviceList
             ).toHaveBeenCalledWith(windowMs, pagination);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                {
+                    availableOrderBy:
+                        AnalyticBackupCodeNewDeviceAvailableOrderBy,
+                }
+            );
         });
 
         it('passes null when windowMs is omitted', async () => {
@@ -750,6 +803,10 @@ describe('AnalyticFraudHttpService', () => {
             expect(analyticFraudDomain.apiKeyBurstList).toHaveBeenCalledWith(
                 windowMs,
                 pagination
+            );
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                { availableOrderBy: AnalyticUserCountAvailableOrderBy }
             );
         });
 
@@ -822,6 +879,10 @@ describe('AnalyticFraudHttpService', () => {
             expect(analyticFraudDomain.riskScores).toHaveBeenCalledWith(
                 30,
                 pagination
+            );
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                expect.anything(),
+                { availableOrderBy: AnalyticFraudRiskScoreAvailableOrderBy }
             );
         });
 

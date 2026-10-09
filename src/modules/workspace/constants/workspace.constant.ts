@@ -22,7 +22,7 @@ export const WorkspaceMemberStoreKey = 'WorkspaceMemberStoreKey';
 export const WorkspaceRoleMetaKey = 'WorkspaceRoleMetaKey';
 
 /**
- * Workspace guard error kit for `@WorkspaceProtected`.
+ * Workspace guard error kit for `@WorkspaceProtected`; `guardMissing` and `memberGuardMissing` document a guard or param decorator that reads the workspace or workspace member store.
  * @public
  */
 export const DocWorkspaceErrorResponses = {
@@ -37,6 +37,14 @@ export const DocWorkspaceErrorResponses = {
     forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
         statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
         messagePath: 'workspace.error.memberForbidden',
+    }),
+    guardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
+        statusCode: EnumWorkspaceStatusCodeError.guardMissing,
+        messagePath: 'workspace.error.guardMissing',
+    }),
+    memberGuardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
+        statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
+        messagePath: 'workspace.error.memberGuardMissing',
     }),
 } as const;
 

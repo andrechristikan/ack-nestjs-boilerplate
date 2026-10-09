@@ -56,6 +56,14 @@ describe('AnalyticCredentialStuffingListRequestSchema', () => {
         ).toContain(AnalyticCredentialStuffingAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            AnalyticCredentialStuffingListRequestSchema.safeParse({
+                orderBy: '',
+            }).success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = AnalyticCredentialStuffingAvailableOrderBy[0];
         const last =

@@ -8,6 +8,7 @@ import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
+import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
 
 /**
  * Validates the request user's role against the route's required roles
@@ -29,6 +30,10 @@ export class RoleGuard implements CanActivate {
         const requiredRoles = roleMetadata ?? [];
 
         const user = this.requestStoreService.get<IUser>(UserStoreKey);
+        if (!user) {
+            throw new UserGuardMissingException();
+        }
+
         const policies = await this.roleDomain.validateRoleGuard(
             user,
             requiredRoles

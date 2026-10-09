@@ -8,6 +8,7 @@ import type {
 import { Prisma } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import {
+    TermPolicyDefaultAvailableOrderBy,
     TermPolicyDefaultStatus,
     TermPolicyDefaultType,
 } from '@modules/term-policy/constants/term-policy.list.constant';
@@ -29,7 +30,10 @@ export class TermPolicyHttpService {
         query: TermPolicyAdminListRequestDto
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
         const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.TermPolicyWhereInput>(query);
+            this.paginationQueryUtil.offset<Prisma.TermPolicyWhereInput>(
+                query,
+                { availableOrderBy: TermPolicyDefaultAvailableOrderBy }
+            );
         const type = this.paginationQueryUtil.inEnum(
             Prisma.TermPolicyScalarFieldEnum.type,
             query.type,
@@ -64,7 +68,10 @@ export class TermPolicyHttpService {
         query: TermPolicyPublicListRequestDto
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
         const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.TermPolicyWhereInput>(query);
+            this.paginationQueryUtil.cursor<Prisma.TermPolicyWhereInput>(
+                query,
+                { availableOrderBy: TermPolicyDefaultAvailableOrderBy }
+            );
         const type = this.paginationQueryUtil.inEnum(
             Prisma.TermPolicyScalarFieldEnum.type,
             query.type,

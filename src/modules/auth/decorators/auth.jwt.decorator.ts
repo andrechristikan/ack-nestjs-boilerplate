@@ -4,7 +4,7 @@ import { createParamDecorator } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
+import { AuthJwtGuardMissingException } from '@modules/auth/exceptions/auth.jwt-guard-missing.exception';
 import {
     AuthJwtAccessDocSecurityName,
     AuthJwtRefreshDocSecurityName,
@@ -16,7 +16,7 @@ import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.g
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 
 /**
- * Reads the JWT payload, or one of its fields, that the authenticating guard wrote to the request; throws `RequestGuardMissingException` when the request carries no payload and `RequestContextMissingException` when the requested field is null.
+ * Reads the JWT payload, or one of its fields, that the authenticating guard wrote to the request; throws `AuthJwtGuardMissingException` when the request carries no payload and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const AuthJwtPayload: <T = IAuthJwtAccessTokenPayload>(
@@ -29,7 +29,7 @@ export const AuthJwtPayload: <T = IAuthJwtAccessTokenPayload>(
                 .getRequest<IRequestApp<Record<string, unknown>>>().user ??
             null;
         if (user === null) {
-            throw new RequestGuardMissingException('request.user');
+            throw new AuthJwtGuardMissingException();
         }
 
         const fieldKey = field ?? null;

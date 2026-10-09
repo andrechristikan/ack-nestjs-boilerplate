@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { AnalyticSessionAfterAdminAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
@@ -11,9 +11,27 @@ import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/a
 export const AnalyticSessionAfterAdminListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true })
         .extend({
-            orderBy: PaginationOrderBySchema(
-                AnalyticSessionAfterAdminAvailableOrderBy
-            ),
+            orderBy: z
+                .union([
+                    z.templateLiteral([
+                        z.enum(AnalyticSessionAfterAdminAvailableOrderBy),
+                        ':',
+                        z.enum(EnumPaginationOrderDirectionType),
+                    ]),
+                    z.array(
+                        z.templateLiteral([
+                            z.enum(AnalyticSessionAfterAdminAvailableOrderBy),
+                            ':',
+                            z.enum(EnumPaginationOrderDirectionType),
+                        ])
+                    ),
+                    z.literal(''),
+                ])
+                .optional()
+                .meta({
+                    description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticSessionAfterAdminAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticSessionAfterAdminAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                    example: `${AnalyticSessionAfterAdminAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+                }),
         })
         .extend(AnalyticDateRangeRequestSchema.shape);
 

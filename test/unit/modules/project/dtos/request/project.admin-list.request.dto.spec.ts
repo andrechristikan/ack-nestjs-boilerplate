@@ -58,6 +58,12 @@ describe('ProjectAdminListRequestSchema', () => {
         ).toContain(ProjectDefaultAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            ProjectAdminListRequestSchema.safeParse({ orderBy: '' }).success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = ProjectDefaultAvailableOrderBy[0];
         const last =

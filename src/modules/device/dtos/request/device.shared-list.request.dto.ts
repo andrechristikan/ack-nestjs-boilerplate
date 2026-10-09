@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import { DeviceCursorAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 
@@ -10,7 +10,27 @@ import { DeviceCursorAvailableOrderBy } from '@modules/device/constants/device.l
 export const DeviceSharedListRequestSchema = PaginationCursorQuerySchema.omit({
     search: true,
 }).extend({
-    orderBy: PaginationOrderBySchema(DeviceCursorAvailableOrderBy),
+    orderBy: z
+        .union([
+            z.templateLiteral([
+                z.enum(DeviceCursorAvailableOrderBy),
+                ':',
+                z.enum(EnumPaginationOrderDirectionType),
+            ]),
+            z.array(
+                z.templateLiteral([
+                    z.enum(DeviceCursorAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ])
+            ),
+            z.literal(''),
+        ])
+        .optional()
+        .meta({
+            description: `Order by field in \`field:direction\` format (e.g. \`${DeviceCursorAvailableOrderBy[0]}:desc\`). Available fields: ${DeviceCursorAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            example: `${DeviceCursorAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+        }),
 });
 
 /**

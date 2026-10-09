@@ -2,7 +2,7 @@ import { getQueueToken } from '@nestjs/bullmq';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { ErrorCode } from 'bullmq';
-import type { Job, JobState, Queue } from 'bullmq';
+import type { Job, Queue } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
@@ -33,7 +33,11 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyPublishInProgressException } from '@modules/term-policy/exceptions/term-policy.publish-in-progress.exception';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import {
+    EnumQueue,
+    EnumQueueJobState,
+    EnumQueuePriority,
+} from '@queues/enums/queue.enum';
 
 describe('NotificationQueue', () => {
     const notificationQueue: MockProxy<Queue> = mock<Queue>();
@@ -494,19 +498,22 @@ describe('NotificationQueue', () => {
             });
 
             it('retries a failed job with attempts reset and neither removes nor adds', async () => {
-                job.getState.mockResolvedValue('failed');
+                job.getState.mockResolvedValue(EnumQueueJobState.failed);
 
                 await queue.sendPublishTermPolicy(payload, 'admin-id');
 
-                expect(job.retry).toHaveBeenCalledWith('failed', {
-                    resetAttemptsMade: true,
-                });
+                expect(job.retry).toHaveBeenCalledWith(
+                    EnumQueueJobState.failed,
+                    {
+                        resetAttemptsMade: true,
+                    }
+                );
                 expect(job.remove).not.toHaveBeenCalled();
                 expect(notificationQueue.add).not.toHaveBeenCalled();
             });
 
             it('throws TermPolicyPublishInProgressException when a concurrent retry already moved the failed job', async () => {
-                job.getState.mockResolvedValue('failed');
+                job.getState.mockResolvedValue(EnumQueueJobState.failed);
                 const raced = Object.assign(
                     new Error(
                         'Job publishTermPolicy is not in the failed state'
@@ -526,7 +533,7 @@ describe('NotificationQueue', () => {
             });
 
             it('wraps any other retry failure in AppUnknownException with the raw error', async () => {
-                job.getState.mockResolvedValue('failed');
+                job.getState.mockResolvedValue(EnumQueueJobState.failed);
                 const failure = new Error('redis down');
                 job.retry.mockRejectedValue(failure);
 
@@ -540,12 +547,12 @@ describe('NotificationQueue', () => {
                 });
             });
 
-            it.each<JobState>([
-                'waiting',
-                'prioritized',
-                'delayed',
-                'active',
-                'waiting-children',
+            it.each([
+                EnumQueueJobState.waiting,
+                EnumQueueJobState.prioritized,
+                EnumQueueJobState.delayed,
+                EnumQueueJobState.active,
+                EnumQueueJobState.waitingChildren,
             ])(
                 'throws TermPolicyPublishInProgressException and never removes, retries, or adds while the job is %s',
                 async state => {
@@ -565,7 +572,7 @@ describe('NotificationQueue', () => {
                 }
             );
 
-            it.each<JobState | 'unknown'>(['completed', 'unknown'])(
+            it.each([EnumQueueJobState.completed, EnumQueueJobState.unknown])(
                 'removes a %s job then adds a fresh one',
                 async state => {
                     job.getState.mockResolvedValue(state);

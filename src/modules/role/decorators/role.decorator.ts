@@ -11,18 +11,18 @@ import {
 } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
 import { EnumRoleType } from '@generated/prisma-client/client';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
-import { hasRequestGuard } from '@common/request/decorators/request.decorator';
+import {
+    DocUserErrorResponses,
+    UserStoreKey,
+} from '@modules/user/constants/user.constant';
+import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
-import { RequestProtectedGuardMissingException } from '@common/request/exceptions/request.protected-guard-missing.exception';
-import { UserGuard } from '@modules/user/guards/user.guard';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { RoleProtectedEmptyException } from '@modules/role/exceptions/role.protected-empty.exception';
 
 /**
- * Restricts a route to the given role types via RoleGuard and documents role kits; throws at decoration when UserGuard is not applied below it.
+ * Restricts a route to the given role types via RoleGuard and documents role kits and the missing user store.
  * @public
  */
 export function RoleProtected(
@@ -32,26 +32,16 @@ export function RoleProtected(
         throw new RoleProtectedEmptyException();
     }
 
-    const decorators = applyDecorators(
+    return applyDecorators(
         UseGuards(RoleGuard),
         SetMetadata(RoleRequiredMetaKey, requiredRoles),
-        DocRoleErrorResponses.forbidden
+        DocRoleErrorResponses.forbidden,
+        DocUserErrorResponses.guardMissing
     );
-
-    return (target, propertyKey, descriptor): void => {
-        if (!hasRequestGuard(descriptor, UserGuard)) {
-            throw new RequestProtectedGuardMissingException(
-                'RoleProtected',
-                UserGuard.name
-            );
-        }
-
-        decorators(target, propertyKey, descriptor);
-    };
 }
 
 /**
- * Reads the current user's role with its policies, or one of its fields, that `UserGuard` stored; throws `RequestGuardMissingException` when the user is absent and `RequestContextMissingException` when the requested field is null.
+ * Reads the current user's role with its policies, or one of its fields, that `UserGuard` stored; throws `UserGuardMissingException` when the user is absent and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const RoleCurrent = createParamDecorator<
@@ -70,7 +60,7 @@ export const RoleCurrent = createParamDecorator<
             ClsServiceManager.getClsService().get<IUser | null>(UserStoreKey) ??
             null;
         if (user === null) {
-            throw new RequestGuardMissingException(UserStoreKey);
+            throw new UserGuardMissingException();
         }
 
         const { role } = user;

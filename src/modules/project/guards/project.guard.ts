@@ -4,6 +4,7 @@ import type { Workspace } from '@generated/prisma-client/client';
 import { ProjectStoreKey } from '@modules/project/constants/project.constant';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
+import { WorkspaceGuardMissingException } from '@modules/workspace/exceptions/workspace.guard-missing.exception';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
@@ -25,9 +26,12 @@ export class ProjectGuard implements CanActivate {
 
         const workspace =
             this.requestStoreService.get<Workspace>(WorkspaceStoreKey);
+        if (!workspace) {
+            throw new WorkspaceGuardMissingException();
+        }
 
         const project = await this.projectDomain.validateProjectGuard(
-            workspace?.id ?? null,
+            workspace.id,
             projectId ?? null
         );
 

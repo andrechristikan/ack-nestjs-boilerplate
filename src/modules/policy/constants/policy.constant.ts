@@ -23,4 +23,8 @@ export const DocPolicyErrorResponses = {
         statusCode: EnumPolicyStatusCodeError.forbidden,
         messagePath: 'policy.error.forbidden',
     }),
+    guardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
+        statusCode: EnumPolicyStatusCodeError.guardMissing,
+        messagePath: 'policy.error.guardMissing',
+    }),
 } as const;

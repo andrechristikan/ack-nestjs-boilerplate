@@ -7,7 +7,11 @@ import type {
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
-import { ProjectDefaultAvailableSearch } from '@modules/project/constants/project.list.constant';
+import {
+    ProjectCursorAvailableOrderBy,
+    ProjectDefaultAvailableOrderBy,
+    ProjectDefaultAvailableSearch,
+} from '@modules/project/constants/project.list.constant';
 import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/project.admin-list.request.dto';
 import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/project.user-list.request.dto';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
@@ -32,6 +36,7 @@ export class ProjectHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ProjectWhereInput>(query, {
                 availableSearch: ProjectDefaultAvailableSearch,
+                availableOrderBy: ProjectCursorAvailableOrderBy,
             });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -111,6 +116,7 @@ export class ProjectHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ProjectWhereInput>(query, {
                 availableSearch: ProjectDefaultAvailableSearch,
+                availableOrderBy: ProjectDefaultAvailableOrderBy,
             });
         const workspaceId = query.workspaceId ?? null;
         this.requestStoreService.merge(PaginationStoreKey, {

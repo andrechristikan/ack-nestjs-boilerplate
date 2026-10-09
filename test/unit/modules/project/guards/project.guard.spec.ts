@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -8,6 +9,7 @@ import type { Project, Workspace } from '@generated/prisma-client/client';
 import { ProjectStoreKey } from '@modules/project/constants/project.constant';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { ProjectGuard } from '@modules/project/guards/project.guard';
+import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
 
@@ -83,19 +85,25 @@ describe('ProjectGuard', () => {
             );
         });
 
-        it('validates with a null workspaceId when no workspace is stored', async () => {
+        it('throws WorkspaceGuardMissingException before the domain call when no workspace is stored', async () => {
             const request: MockProxy<IRequestApp> = mock<IRequestApp>();
             request.params = { projectId: '507f1f77bcf86cd799439012' };
             requestStoreService.get.mockReturnValue(null);
-            projectDomain.validateProjectGuard.mockResolvedValue(project);
             const executionContext = buildHttpExecutionContext(request);
 
-            await guard.canActivate(executionContext);
-
-            expect(projectDomain.validateProjectGuard).toHaveBeenCalledWith(
-                null,
-                '507f1f77bcf86cd799439012'
-            );
+            await expect(
+                guard.canActivate(executionContext)
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.guardMissing
+                    ],
+                messagePath: 'workspace.error.guardMissing',
+                httpStatus: HttpStatus.FORBIDDEN,
+            });
+            expect(projectDomain.validateProjectGuard).not.toHaveBeenCalled();
         });
 
         it('validates with a null projectId when the route carries none', async () => {

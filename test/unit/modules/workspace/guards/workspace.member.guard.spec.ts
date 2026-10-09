@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -24,6 +25,8 @@ import {
     WorkspaceMemberStoreKey,
     WorkspaceStoreKey,
 } from '@modules/workspace/constants/workspace.constant';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
 
@@ -156,17 +159,54 @@ describe('WorkspaceMemberGuard', () => {
             );
         });
 
-        it('validates with null ids when the workspace and user are absent from the store', async () => {
-            requestStoreService.get.mockReturnValue(null);
-            workspaceMemberDomain.validateWorkspaceMemberGuard.mockResolvedValue(
-                member
+        it('throws UserGuardMissingException before the domain call when the user store is empty', async () => {
+            requestStoreService.get.mockImplementation(
+                (key: string): unknown => {
+                    if (key === WorkspaceStoreKey) return workspace;
+                    return null;
+                }
             );
 
-            await guard.canActivate(executionContext);
-
+            await expect(
+                guard.canActivate(executionContext)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.guardMissing
+                    ],
+                messagePath: 'user.error.guardMissing',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+            });
             expect(
                 workspaceMemberDomain.validateWorkspaceMemberGuard
-            ).toHaveBeenCalledWith(null, null);
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws WorkspaceGuardMissingException before the domain call when the workspace store is empty', async () => {
+            requestStoreService.get.mockImplementation(
+                (key: string): unknown => {
+                    if (key === UserStoreKey) return user;
+                    return null;
+                }
+            );
+
+            await expect(
+                guard.canActivate(executionContext)
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.guardMissing
+                    ],
+                messagePath: 'workspace.error.guardMissing',
+                httpStatus: HttpStatus.FORBIDDEN,
+            });
+            expect(
+                workspaceMemberDomain.validateWorkspaceMemberGuard
+            ).not.toHaveBeenCalled();
         });
     });
 });

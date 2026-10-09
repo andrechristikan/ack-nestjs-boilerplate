@@ -1,5 +1,8 @@
+import { HttpStatus } from '@nestjs/common';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
-import { UseGuards } from '@nestjs/common';
 import type { ExecutionContext, Type } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
 import { mock } from 'vitest-mock-extended';
@@ -20,12 +23,7 @@ import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface'
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
-import {
-    expectRequestContextMissingWithKey,
-    expectRequestGuardMissingWithKey,
-} from '@test/unit/helpers/test.unit.request.helper';
-import { UserGuard } from '@modules/user/guards/user.guard';
-import { RequestProtectedGuardMissingException } from '@common/request/exceptions/request.protected-guard-missing.exception';
+import { expectRequestContextMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 import { RoleProtectedEmptyException } from '@modules/role/exceptions/role.protected-empty.exception';
 
 describe('role.decorator', () => {
@@ -33,7 +31,6 @@ describe('role.decorator', () => {
         it('mounts RoleGuard and the required role types on the handler', () => {
             const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
-            UseGuards(UserGuard)(target, 'method', descriptor);
 
             RoleProtected(EnumRoleType.admin, EnumRoleType.user)(
                 target,
@@ -43,22 +40,30 @@ describe('role.decorator', () => {
 
             expect(
                 Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
-            ).toEqual([UserGuard, RoleGuard]);
+            ).toEqual([RoleGuard]);
             expect(
                 Reflect.getMetadata(RoleRequiredMetaKey, descriptor.value)
             ).toEqual([EnumRoleType.admin, EnumRoleType.user]);
         });
 
-        it('throws at decoration when UserGuard is not below it', () => {
+        it('documents the missing user store at 401', () => {
             const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
 
-            expect(() => {
-                RoleProtected(EnumRoleType.admin)(target, 'method', descriptor);
-            }).toThrow(RequestProtectedGuardMissingException);
-            expect(() => {
-                RoleProtected(EnumRoleType.admin)(target, 'method', descriptor);
-            }).toThrow('RoleProtected needs UserGuard applied below it');
+            RoleProtected(EnumRoleType.admin)(target, 'method', descriptor);
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.UNAUTHORIZED,
+                        messagePath: 'user.error.guardMissing',
+                    }),
+                ])
+            );
         });
 
         it('throws at evaluation when no role is given', () => {
@@ -139,7 +144,7 @@ describe('role.decorator', () => {
             vi.restoreAllMocks();
         });
 
-        it('throws RequestGuardMissingException when the user store is undefined', () => {
+        it('throws UserGuardMissingException when the user store is undefined', () => {
             clsService.get.mockReturnValue(undefined);
             const target = {} as Type<unknown>;
             RoleCurrent()(target, 'roleCurrent', 0);
@@ -152,10 +157,19 @@ describe('role.decorator', () => {
                 thrown = error;
             }
 
-            expectRequestGuardMissingWithKey(thrown, UserStoreKey);
+            expect(thrown).toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.guardMissing
+                    ],
+                messagePath: 'user.error.guardMissing',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+            });
         });
 
-        it('throws RequestGuardMissingException when the user store is null', () => {
+        it('throws UserGuardMissingException when the user store is null', () => {
             clsService.get.mockReturnValue(null);
             const target = {} as Type<unknown>;
             RoleCurrent()(target, 'roleCurrent', 0);
@@ -168,7 +182,16 @@ describe('role.decorator', () => {
                 thrown = error;
             }
 
-            expectRequestGuardMissingWithKey(thrown, UserStoreKey);
+            expect(thrown).toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.guardMissing
+                    ],
+                messagePath: 'user.error.guardMissing',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+            });
         });
 
         it('returns the whole role when no field is requested', () => {

@@ -682,7 +682,7 @@ export class AnalyticDashboardHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.WorkspaceMemberWhereInput>(
                 query,
-                {}
+                { availableOrderBy: [] }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -695,7 +695,7 @@ export class AnalyticDashboardHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
                 query,
-                {}
+                { availableOrderBy: [] }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.requireRange(
@@ -731,7 +731,7 @@ export class AnalyticDashboardHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ProjectMemberWhereInput>(
                 query,
-                {}
+                { availableOrderBy: [] }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

@@ -7,6 +7,7 @@ import type {
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import {
+    ApiKeyDefaultAvailableOrderBy,
     ApiKeyDefaultAvailableSearch,
     ApiKeyDefaultType,
 } from '@modules/api-key/constants/api-key.list.constant';
@@ -36,6 +37,7 @@ export class ApiKeyHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ApiKeyWhereInput>(query, {
                 availableSearch: ApiKeyDefaultAvailableSearch,
+                availableOrderBy: ApiKeyDefaultAvailableOrderBy,
             });
         const isActive = this.paginationQueryUtil.equalBoolean(
             Prisma.ApiKeyScalarFieldEnum.isActive,

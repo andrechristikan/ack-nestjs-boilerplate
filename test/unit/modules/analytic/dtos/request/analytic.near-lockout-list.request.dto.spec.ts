@@ -50,6 +50,13 @@ describe('AnalyticNearLockoutListRequestSchema', () => {
         ).toContain(AnalyticNearLockoutAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            AnalyticNearLockoutListRequestSchema.safeParse({ orderBy: '' })
+                .success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = AnalyticNearLockoutAvailableOrderBy[0];
         const last =

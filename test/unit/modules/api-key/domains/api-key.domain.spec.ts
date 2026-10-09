@@ -20,8 +20,6 @@ import type { ApiKey, Prisma } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
-import { ApiKeyStoreKey } from '@modules/api-key/constants/api-key.constant';
-import { expectRequestGuardMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import type {
@@ -840,17 +838,6 @@ describe('ApiKeyDomain', () => {
     });
 
     describe('validateXApiKeyTypeGuard', () => {
-        it('throws RequestGuardMissingException when no api key is resolved', () => {
-            let thrown: unknown;
-            try {
-                domain.validateXApiKeyTypeGuard(null, [EnumApiKeyType.default]);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expectRequestGuardMissingWithKey(thrown, ApiKeyStoreKey);
-        });
-
         it('throws ApiKeyXApiKeyForbiddenException when the api key type is not allowed', () => {
             apiKeyUtil.validateType.mockReturnValue(false);
 

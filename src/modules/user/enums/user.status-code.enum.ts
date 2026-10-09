@@ -30,4 +30,5 @@ export enum EnumUserStatusCodeError {
     accountNotFound = 51024,
     importEmailExist = 51025,
     importUsernameExist = 51026,
+    guardMissing = 51027,
 }

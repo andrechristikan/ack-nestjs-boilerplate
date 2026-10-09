@@ -19,6 +19,7 @@ import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/t
 import type { TermPolicyAcceptedListRequestDto } from '@modules/term-policy/dtos/request/term-policy.accepted-list.request.dto';
 import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
+import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 
 describe('TermPolicyAcceptanceHttpService', () => {
     const termPolicyAcceptanceDomain: MockProxy<TermPolicyAcceptanceDomain> =
@@ -128,7 +129,9 @@ describe('TermPolicyAcceptanceHttpService', () => {
             const result = await service.getListUserAccepted('user-1', query);
 
             expect(result).toEqual(cursorPage);
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query);
+            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                availableOrderBy: TermPolicyAcceptanceDefaultAvailableOrderBy,
+            });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 { filters: {} }

@@ -16,7 +16,11 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { ProjectDefaultAvailableSearch } from '@modules/project/constants/project.list.constant';
+import {
+    ProjectCursorAvailableOrderBy,
+    ProjectDefaultAvailableOrderBy,
+    ProjectDefaultAvailableSearch,
+} from '@modules/project/constants/project.list.constant';
 import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/project.admin-list.request.dto';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
@@ -119,6 +123,7 @@ describe('ProjectHttpService', () => {
             expect(result).toEqual(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 availableSearch: ProjectDefaultAvailableSearch,
+                availableOrderBy: ProjectCursorAvailableOrderBy,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
@@ -292,6 +297,7 @@ describe('ProjectHttpService', () => {
             expect(result).toEqual(page);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
                 availableSearch: ProjectDefaultAvailableSearch,
+                availableOrderBy: ProjectDefaultAvailableOrderBy,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

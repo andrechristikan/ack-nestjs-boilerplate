@@ -12,6 +12,7 @@ import type { NotificationUserSettingRequestDto } from '@modules/notification/dt
 import type { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { Injectable } from '@nestjs/common';
+import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
 
 @Injectable()
 export class NotificationHttpService {
@@ -27,7 +28,8 @@ export class NotificationHttpService {
     ): Promise<IResponsePaginationReturn<Notification>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.NotificationWhereInput>(
-                query
+                query,
+                { availableOrderBy: NotificationDefaultAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

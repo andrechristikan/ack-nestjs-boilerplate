@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { RequestBooleanStringSchema } from '@common/request/validations/request.boolean-string.validation';
 import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
@@ -11,7 +11,27 @@ import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.
 export const DeviceAdminListRequestSchema = PaginationOffsetQuerySchema.omit({
     search: true,
 }).extend({
-    orderBy: PaginationOrderBySchema(DeviceDefaultAvailableOrderBy),
+    orderBy: z
+        .union([
+            z.templateLiteral([
+                z.enum(DeviceDefaultAvailableOrderBy),
+                ':',
+                z.enum(EnumPaginationOrderDirectionType),
+            ]),
+            z.array(
+                z.templateLiteral([
+                    z.enum(DeviceDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ])
+            ),
+            z.literal(''),
+        ])
+        .optional()
+        .meta({
+            description: `Order by field in \`field:direction\` format (e.g. \`${DeviceDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${DeviceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            example: `${DeviceDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+        }),
     isRevoked: RequestBooleanStringSchema.optional().meta({
         description: "Filter by revoked ownership: 'true' or 'false'",
         example: 'true',

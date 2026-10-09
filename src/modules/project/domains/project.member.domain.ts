@@ -1,6 +1,5 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -14,12 +13,7 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
-import {
-    ProjectStoreKey,
-    ProjectWorkspaceOwnerStoreKey,
-} from '@modules/project/constants/project.constant';
-import { WorkspaceMemberStoreKey } from '@modules/workspace/constants/workspace.constant';
+import { ProjectWorkspaceOwnerStoreKey } from '@modules/project/constants/project.constant';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
 import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
@@ -61,15 +55,9 @@ export class ProjectMemberDomain {
     }
 
     async validateProjectMemberGuard(
-        projectId: string | null,
-        userId: string | null
+        projectId: string,
+        userId: string
     ): Promise<ProjectMember> {
-        if (!userId) {
-            throw new RequestGuardMissingException(UserStoreKey);
-        } else if (!projectId) {
-            throw new RequestGuardMissingException(ProjectStoreKey);
-        }
-
         const member =
             await this.projectMemberRepository.findOneByProjectAndUser(
                 projectId,
@@ -83,16 +71,10 @@ export class ProjectMemberDomain {
     }
 
     async validateProjectRoleGuard(
-        projectId: string | null,
-        workspaceMember: WorkspaceMember | null,
+        projectId: string,
+        workspaceMember: WorkspaceMember,
         allowedProjectRoles: EnumProjectMemberRole[]
     ): Promise<boolean> {
-        if (!projectId) {
-            throw new RequestGuardMissingException(ProjectStoreKey);
-        } else if (!workspaceMember) {
-            throw new RequestGuardMissingException(WorkspaceMemberStoreKey);
-        }
-
         const isWorkspaceOwner =
             this.projectUtil.isWorkspaceOwner(workspaceMember);
         if (isWorkspaceOwner) {

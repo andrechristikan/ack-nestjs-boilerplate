@@ -23,8 +23,6 @@ import {
 import type { Prisma, Role } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
-import { expectRequestGuardMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type {
@@ -421,17 +419,6 @@ describe('RoleDomain', () => {
             role: roleWithPolicies,
             twoFactor: null,
         };
-
-        it('throws RequestGuardMissingException when the user store is empty', async () => {
-            let thrown: unknown;
-            try {
-                await domain.validateRoleGuard(null, [EnumRoleType.admin]);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expectRequestGuardMissingWithKey(thrown, UserStoreKey);
-        });
 
         it('returns an empty policy list for a superAdmin, bypassing the required roles', async () => {
             const user = {

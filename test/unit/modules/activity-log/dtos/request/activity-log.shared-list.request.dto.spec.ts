@@ -51,6 +51,13 @@ describe('ActivityLogSharedListRequestSchema', () => {
         ).toContain(ActivityLogDefaultAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            ActivityLogSharedListRequestSchema.safeParse({ orderBy: '' })
+                .success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = ActivityLogDefaultAvailableOrderBy[0];
         const last =

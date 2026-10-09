@@ -16,7 +16,7 @@ export const UserGuardIsVerifiedMetaKey = 'UserGuardIsVerifiedMetaKey';
 export const UserStoreKey = 'UserStoreKey';
 
 /**
- * User guard error kit for `@UserProtected` (no `auth.error.accessTokenUnauthorized`).
+ * User guard error kit for `@UserProtected` (no `auth.error.accessTokenUnauthorized`); `guardMissing` documents a guard or param decorator that reads the user store.
  * @public
  */
 export const DocUserErrorResponses = {
@@ -43,6 +43,10 @@ export const DocUserErrorResponses = {
             messagePath: 'user.error.emailNotVerified',
         }
     ),
+    guardMissing: DocResponseError(HttpStatus.UNAUTHORIZED, {
+        statusCode: EnumUserStatusCodeError.guardMissing,
+        messagePath: 'user.error.guardMissing',
+    }),
 } as const;
 
 /**

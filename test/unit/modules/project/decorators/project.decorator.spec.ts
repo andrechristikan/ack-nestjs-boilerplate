@@ -1,4 +1,5 @@
-import { HttpStatus, UseGuards } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { DECORATORS } from '@nestjs/swagger';
 import type { Project, ProjectMember } from '@generated/prisma-client/client';
@@ -26,14 +27,7 @@ import {
     buildDecoratorTarget,
     getParamDecoratorFactory,
 } from '@test/unit/helpers/test.unit.decorator.helper';
-import {
-    expectRequestContextMissingWithKey,
-    expectRequestGuardMissingWithKey,
-} from '@test/unit/helpers/test.unit.request.helper';
-import { RequestProtectedGuardMissingException } from '@common/request/exceptions/request.protected-guard-missing.exception';
-import { UserGuard } from '@modules/user/guards/user.guard';
-import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
-import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
+import { expectRequestContextMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('project.decorator', () => {
     describe('ProjectProtected', () => {
@@ -41,12 +35,10 @@ describe('project.decorator', () => {
             const handler = vi.fn();
             const { target, propertyKey, descriptor } =
                 buildDecoratorTarget(handler);
-            UseGuards(WorkspaceGuard)(target, propertyKey, descriptor);
 
             ProjectProtected()(target, propertyKey, descriptor);
 
             expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
-                WorkspaceGuard,
                 ProjectGuard,
             ]);
             expect(
@@ -60,23 +52,10 @@ describe('project.decorator', () => {
             ]);
         });
 
-        it('throws at decoration when WorkspaceGuard is not below it', () => {
-            const { target, propertyKey, descriptor } = buildDecoratorTarget(
-                vi.fn()
-            );
-            expect(() =>
-                ProjectProtected()(target, propertyKey, descriptor)
-            ).toThrow(RequestProtectedGuardMissingException);
-            expect(() =>
-                ProjectProtected()(target, propertyKey, descriptor)
-            ).toThrow('ProjectProtected needs WorkspaceGuard applied below it');
-        });
-
         it('documents the workspace and project not-found errors at 404', () => {
             const handler = vi.fn();
             const { target, propertyKey, descriptor } =
                 buildDecoratorTarget(handler);
-            UseGuards(WorkspaceGuard)(target, propertyKey, descriptor);
 
             ProjectProtected()(target, propertyKey, descriptor);
 
@@ -96,6 +75,11 @@ describe('project.decorator', () => {
                         httpStatus: HttpStatus.NOT_FOUND,
                         statusCode: EnumProjectStatusCodeError.notFound,
                         messagePath: 'project.error.notFound',
+                    }),
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.FORBIDDEN,
+                        statusCode: EnumWorkspaceStatusCodeError.guardMissing,
+                        messagePath: 'workspace.error.guardMissing',
                     }),
                 ])
             );
@@ -152,7 +136,7 @@ describe('project.decorator', () => {
             expect(result).toBe('website-revamp');
         });
 
-        it('throws RequestGuardMissingException when no project is stored', () => {
+        it('throws ProjectGuardMissingException when no project is stored', () => {
             vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue({
                 get: vi.fn().mockReturnValue(undefined),
             } as never);
@@ -170,7 +154,16 @@ describe('project.decorator', () => {
                 thrown = error;
             }
 
-            expectRequestGuardMissingWithKey(thrown, ProjectStoreKey);
+            expect(thrown).toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumProjectStatusCodeError[
+                        EnumProjectStatusCodeError.guardMissing
+                    ],
+                messagePath: 'project.error.guardMissing',
+                httpStatus: HttpStatus.FORBIDDEN,
+            });
         });
 
         it('throws RequestContextMissingException when the requested field is absent', () => {
@@ -203,14 +196,10 @@ describe('project.decorator', () => {
             const handler = vi.fn();
             const { target, propertyKey, descriptor } =
                 buildDecoratorTarget(handler);
-            UseGuards(UserGuard)(target, propertyKey, descriptor);
-            UseGuards(ProjectGuard)(target, propertyKey, descriptor);
 
             ProjectMemberProtected()(target, propertyKey, descriptor);
 
             expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
-                UserGuard,
-                ProjectGuard,
                 ProjectMemberGuard,
             ]);
             expect(
@@ -234,83 +223,25 @@ describe('project.decorator', () => {
                         statusCode: EnumProjectStatusCodeError.memberForbidden,
                         messagePath: 'project.error.memberForbidden',
                     }),
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.UNAUTHORIZED,
+                        statusCode: EnumUserStatusCodeError.guardMissing,
+                        messagePath: 'user.error.guardMissing',
+                    }),
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.FORBIDDEN,
+                        statusCode: EnumProjectStatusCodeError.guardMissing,
+                        messagePath: 'project.error.guardMissing',
+                    }),
                 ])
             );
-        });
-
-        it('throws at decoration when ProjectGuard is not below the role-less form', () => {
-            const { target, propertyKey, descriptor } = buildDecoratorTarget(
-                vi.fn()
-            );
-            UseGuards(UserGuard)(target, propertyKey, descriptor);
-            expect(() =>
-                ProjectMemberProtected()(target, propertyKey, descriptor)
-            ).toThrow(RequestProtectedGuardMissingException);
-            expect(() =>
-                ProjectMemberProtected()(target, propertyKey, descriptor)
-            ).toThrow(
-                'ProjectMemberProtected needs ProjectGuard applied below it'
-            );
-        });
-
-        it('throws at decoration when UserGuard is not below the role-less form', () => {
-            const { target, propertyKey, descriptor } = buildDecoratorTarget(
-                vi.fn()
-            );
-            UseGuards(ProjectGuard)(target, propertyKey, descriptor);
-            expect(() =>
-                ProjectMemberProtected()(target, propertyKey, descriptor)
-            ).toThrow(RequestProtectedGuardMissingException);
-            expect(() =>
-                ProjectMemberProtected()(target, propertyKey, descriptor)
-            ).toThrow(
-                'ProjectMemberProtected needs UserGuard applied below it'
-            );
-        });
-
-        it('throws at decoration when ProjectGuard is not below the role form', () => {
-            const { target, propertyKey, descriptor } = buildDecoratorTarget(
-                vi.fn()
-            );
-            UseGuards(WorkspaceMemberGuard)(target, propertyKey, descriptor);
-            expect(() =>
-                ProjectMemberProtected(EnumProjectMemberRole.admin)(
-                    target,
-                    propertyKey,
-                    descriptor
-                )
-            ).toThrow(RequestProtectedGuardMissingException);
-            expect(() =>
-                ProjectMemberProtected(EnumProjectMemberRole.admin)(
-                    target,
-                    propertyKey,
-                    descriptor
-                )
-            ).toThrow(
-                'ProjectMemberProtected needs ProjectGuard applied below it'
-            );
-        });
-
-        it('throws at decoration when WorkspaceMemberGuard is not below the role form', () => {
-            const { target, propertyKey, descriptor } = buildDecoratorTarget(
-                vi.fn()
-            );
-            UseGuards(ProjectGuard)(target, propertyKey, descriptor);
-            expect(() =>
-                ProjectMemberProtected(EnumProjectMemberRole.admin)(
-                    target,
-                    propertyKey,
-                    descriptor
-                )
-            ).toThrow(RequestProtectedGuardMissingException);
-            expect(() =>
-                ProjectMemberProtected(EnumProjectMemberRole.admin)(
-                    target,
-                    propertyKey,
-                    descriptor
-                )
-            ).toThrow(
-                'ProjectMemberProtected needs WorkspaceMemberGuard applied below it'
+            expect(entries).not.toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        statusCode:
+                            EnumProjectStatusCodeError.memberGuardMissing,
+                    }),
+                ])
             );
         });
 
@@ -318,8 +249,6 @@ describe('project.decorator', () => {
             const handler = vi.fn();
             const { target, propertyKey, descriptor } =
                 buildDecoratorTarget(handler);
-            UseGuards(WorkspaceMemberGuard)(target, propertyKey, descriptor);
-            UseGuards(ProjectGuard)(target, propertyKey, descriptor);
 
             ProjectMemberProtected(EnumProjectMemberRole.admin)(
                 target,
@@ -328,8 +257,6 @@ describe('project.decorator', () => {
             );
 
             expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
-                WorkspaceMemberGuard,
-                ProjectGuard,
                 ProjectRoleGuard,
             ]);
             expect(Reflect.getMetadata(ProjectRoleMetaKey, handler)).toEqual([
@@ -352,6 +279,17 @@ describe('project.decorator', () => {
                         httpStatus: HttpStatus.FORBIDDEN,
                         statusCode: EnumProjectStatusCodeError.roleForbidden,
                         messagePath: 'project.error.roleForbidden',
+                    }),
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.FORBIDDEN,
+                        statusCode: EnumProjectStatusCodeError.guardMissing,
+                        messagePath: 'project.error.guardMissing',
+                    }),
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.FORBIDDEN,
+                        statusCode:
+                            EnumWorkspaceStatusCodeError.memberGuardMissing,
+                        messagePath: 'workspace.error.memberGuardMissing',
                     }),
                 ])
             );
@@ -409,7 +347,7 @@ describe('project.decorator', () => {
             expect(result).toBe(EnumProjectMemberRole.member);
         });
 
-        it('throws RequestGuardMissingException when no project member is stored', () => {
+        it('throws ProjectMemberGuardMissingException when no project member is stored', () => {
             vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue({
                 get: vi.fn().mockReturnValue(undefined),
             } as never);
@@ -427,7 +365,16 @@ describe('project.decorator', () => {
                 thrown = error;
             }
 
-            expectRequestGuardMissingWithKey(thrown, ProjectMemberStoreKey);
+            expect(thrown).toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.memberGuardMissing,
+                statusCodeKey:
+                    EnumProjectStatusCodeError[
+                        EnumProjectStatusCodeError.memberGuardMissing
+                    ],
+                messagePath: 'project.error.memberGuardMissing',
+                httpStatus: HttpStatus.FORBIDDEN,
+            });
         });
 
         it('throws RequestContextMissingException when the requested field is absent', () => {

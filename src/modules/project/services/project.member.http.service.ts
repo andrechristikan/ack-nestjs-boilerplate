@@ -14,6 +14,7 @@ import type { IProjectMember } from '@modules/project/interfaces/project.interfa
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';
+import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
 
 @Injectable()
 export class ProjectMemberHttpService {
@@ -30,7 +31,8 @@ export class ProjectMemberHttpService {
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ProjectMemberWhereInput>(
-                query
+                query,
+                { availableOrderBy: ProjectMemberDefaultAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

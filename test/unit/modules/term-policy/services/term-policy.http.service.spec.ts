@@ -13,6 +13,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import {
+    TermPolicyDefaultAvailableOrderBy,
     TermPolicyDefaultStatus,
     TermPolicyDefaultType,
 } from '@modules/term-policy/constants/term-policy.list.constant';
@@ -107,7 +108,9 @@ describe('TermPolicyHttpService', () => {
             const result = await service.getListByAdmin(query);
 
             expect(result).toEqual(offsetPage);
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
+                availableOrderBy: TermPolicyDefaultAvailableOrderBy,
+            });
             expect(paginationQueryUtil.inEnum).toHaveBeenNthCalledWith(
                 1,
                 Prisma.TermPolicyScalarFieldEnum.type,
@@ -176,7 +179,9 @@ describe('TermPolicyHttpService', () => {
             const result = await service.getListPublished(query);
 
             expect(result).toEqual(cursorPage);
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query);
+            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                availableOrderBy: TermPolicyDefaultAvailableOrderBy,
+            });
             expect(paginationQueryUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.TermPolicyScalarFieldEnum.type,
                 query.type,

@@ -40,7 +40,11 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ErrorCode, Queue } from 'bullmq';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import {
+    EnumQueue,
+    EnumQueueJobState,
+    EnumQueuePriority,
+} from '@queues/enums/queue.enum';
 
 /**
  * Enqueues jobs onto the main notification queue.
@@ -502,9 +506,9 @@ export class NotificationQueue {
         if (existing) {
             const state = await existing.getState();
             switch (state) {
-                case 'failed':
+                case EnumQueueJobState.failed:
                     try {
-                        await existing.retry('failed', {
+                        await existing.retry(EnumQueueJobState.failed, {
                             resetAttemptsMade: true,
                         });
                     } catch (err: unknown) {
@@ -523,14 +527,14 @@ export class NotificationQueue {
                     }
 
                     return;
-                case 'waiting':
-                case 'prioritized':
-                case 'delayed':
-                case 'active':
-                case 'waiting-children':
+                case EnumQueueJobState.waiting:
+                case EnumQueueJobState.prioritized:
+                case EnumQueueJobState.delayed:
+                case EnumQueueJobState.active:
+                case EnumQueueJobState.waitingChildren:
                     throw new TermPolicyPublishInProgressException();
-                case 'completed':
-                case 'unknown':
+                case EnumQueueJobState.completed:
+                case EnumQueueJobState.unknown:
                     await existing.remove();
                     break;
             }

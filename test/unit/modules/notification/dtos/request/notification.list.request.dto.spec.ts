@@ -48,6 +48,12 @@ describe('NotificationListRequestSchema', () => {
         ).toContain(NotificationDefaultAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            NotificationListRequestSchema.safeParse({ orderBy: '' }).success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = NotificationDefaultAvailableOrderBy[0];
         const last =

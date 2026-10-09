@@ -14,8 +14,6 @@ import {
 import type { Policy, Role } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
@@ -172,13 +170,9 @@ export class RoleDomain {
     }
 
     async validateRoleGuard(
-        user: IUser | null,
+        user: IUser,
         requiredRoles: EnumRoleType[]
     ): Promise<Policy[]> {
-        if (!user) {
-            throw new RequestGuardMissingException(UserStoreKey);
-        }
-
         const { role } = user;
 
         if (role.type === EnumRoleType.superAdmin) {

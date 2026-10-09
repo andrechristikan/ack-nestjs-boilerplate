@@ -7,6 +7,7 @@ import type {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import {
+    RoleDefaultAvailableOrderBy,
     RoleDefaultAvailableSearch,
     RoleDefaultType,
 } from '@modules/role/constants/role.list.constant';
@@ -33,6 +34,7 @@ export class RoleHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.RoleWhereInput>(query, {
                 availableSearch: RoleDefaultAvailableSearch,
+                availableOrderBy: RoleDefaultAvailableOrderBy,
             });
         const type = this.paginationQueryUtil.inEnum(
             Prisma.RoleScalarFieldEnum.type,
@@ -70,6 +72,7 @@ export class RoleHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.RoleWhereInput>(query, {
                 availableSearch: RoleDefaultAvailableSearch,
+                availableOrderBy: RoleDefaultAvailableOrderBy,
             });
         const type = this.paginationQueryUtil.inEnum(
             Prisma.RoleScalarFieldEnum.type,

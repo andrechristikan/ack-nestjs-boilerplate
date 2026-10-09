@@ -8,7 +8,10 @@ import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { CountryDefaultAvailableSearch } from '@modules/country/constants/country.list.constant';
+import {
+    CountryDefaultAvailableOrderBy,
+    CountryDefaultAvailableSearch,
+} from '@modules/country/constants/country.list.constant';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { CountryHttpService } from '@modules/country/services/country.http.service';
 
@@ -82,6 +85,7 @@ describe('CountryHttpService', () => {
             expect(result).toBe(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 availableSearch: CountryDefaultAvailableSearch,
+                availableOrderBy: CountryDefaultAvailableOrderBy,
             });
             expect(countryDomain.getListCursor).toHaveBeenCalledWith(
                 pagination

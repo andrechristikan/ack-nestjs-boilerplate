@@ -9,6 +9,7 @@ import type { ActivityLogSharedListRequestDto } from '@modules/activity-log/dtos
 import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { Injectable } from '@nestjs/common';
+import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 
 @Injectable()
 export class ActivityLogHttpService {
@@ -24,7 +25,8 @@ export class ActivityLogHttpService {
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query
+                query,
+                { availableOrderBy: ActivityLogDefaultAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -43,7 +45,8 @@ export class ActivityLogHttpService {
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ActivityLogWhereInput>(
-                query
+                query,
+                { availableOrderBy: ActivityLogDefaultAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -62,7 +65,8 @@ export class ActivityLogHttpService {
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query
+                query,
+                { availableOrderBy: ActivityLogDefaultAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -86,7 +90,8 @@ export class ActivityLogHttpService {
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ActivityLogWhereInput>(
-                query
+                query,
+                { availableOrderBy: ActivityLogDefaultAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

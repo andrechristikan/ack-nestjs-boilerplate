@@ -16,9 +16,6 @@ import {
 import type { Policy } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
-import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
-import { expectRequestGuardMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
@@ -122,33 +119,6 @@ describe('PolicyDomain', () => {
     });
 
     describe('validatePolicyGuard', () => {
-        it('throws RequestGuardMissingException when the user store is empty', () => {
-            let thrown: unknown;
-            try {
-                domain.validatePolicyGuard(null, [], []);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expectRequestGuardMissingWithKey(thrown, UserStoreKey);
-        });
-
-        it('throws RequestGuardMissingException when the policy store is empty, even for a superAdmin', () => {
-            const user = {
-                ...baseUser,
-                role: { ...baseUser.role, type: EnumRoleType.superAdmin },
-            };
-
-            let thrown: unknown;
-            try {
-                domain.validatePolicyGuard(user, null, []);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expectRequestGuardMissingWithKey(thrown, PolicyStoreKey);
-        });
-
         it('returns true for a superAdmin without checking required policies', () => {
             const user = {
                 ...baseUser,

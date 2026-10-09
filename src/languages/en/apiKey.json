@@ -15,6 +15,7 @@
             "required": "Please provide your API key to continue.",
             "invalid": "Sorry, this API key appears to be invalid.",
             "forbidden": "You don't have permission to use this API key."
-        }
+        },
+        "guardMissing": "The API key could not be verified for this request."
     }
 }

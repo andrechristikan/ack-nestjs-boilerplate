@@ -16,6 +16,10 @@ import type {
     IDeviceOwnershipWithSession,
 } from '@modules/device/interfaces/device.interface';
 import { DeviceHttpService } from '@modules/device/services/device.http.service';
+import {
+    DeviceCursorAvailableOrderBy,
+    DeviceDefaultAvailableOrderBy,
+} from '@modules/device/constants/device.list.constant';
 
 describe('DeviceHttpService', () => {
     const deviceDomain: MockProxy<DeviceDomain> = mock<DeviceDomain>();
@@ -123,7 +127,9 @@ describe('DeviceHttpService', () => {
                     isCurrentDevice: false,
                 },
             ]);
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
+                availableOrderBy: DeviceDefaultAvailableOrderBy,
+            });
             expect(paginationQueryUtil.equalBoolean).toHaveBeenCalledWith(
                 Prisma.DeviceOwnershipScalarFieldEnum.isRevoked,
                 true
@@ -196,7 +202,9 @@ describe('DeviceHttpService', () => {
                     isCurrentDevice: true,
                 },
             ]);
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query);
+            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                availableOrderBy: DeviceCursorAvailableOrderBy,
+            });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 storePatch

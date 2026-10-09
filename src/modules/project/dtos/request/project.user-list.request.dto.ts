@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import {
     ProjectCursorAvailableOrderBy,
@@ -15,7 +15,27 @@ export const ProjectUserListRequestSchema = PaginationCursorQuerySchema.extend({
         description: `Search query, available fields: ${ProjectDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
         example: '',
     }),
-    orderBy: PaginationOrderBySchema(ProjectCursorAvailableOrderBy),
+    orderBy: z
+        .union([
+            z.templateLiteral([
+                z.enum(ProjectCursorAvailableOrderBy),
+                ':',
+                z.enum(EnumPaginationOrderDirectionType),
+            ]),
+            z.array(
+                z.templateLiteral([
+                    z.enum(ProjectCursorAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ])
+            ),
+            z.literal(''),
+        ])
+        .optional()
+        .meta({
+            description: `Order by field in \`field:direction\` format (e.g. \`${ProjectCursorAvailableOrderBy[0]}:desc\`). Available fields: ${ProjectCursorAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            example: `${ProjectCursorAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+        }),
 });
 
 /**

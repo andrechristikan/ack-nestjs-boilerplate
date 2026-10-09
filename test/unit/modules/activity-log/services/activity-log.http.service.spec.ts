@@ -11,6 +11,7 @@ import type { ActivityLogAdminWorkspaceListRequestDto } from '@modules/activity-
 import type { ActivityLogSharedListRequestDto } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
+import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 
 describe('ActivityLogHttpService', () => {
     const activityLogDomain: MockProxy<ActivityLogDomain> =
@@ -81,7 +82,10 @@ describe('ActivityLogHttpService', () => {
 
             expect(result).toEqual(offsetPage);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
-                offsetQuery
+                offsetQuery,
+                {
+                    availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+                }
             );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
@@ -106,7 +110,10 @@ describe('ActivityLogHttpService', () => {
 
             expect(result).toEqual(cursorPage);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(
-                cursorQuery
+                cursorQuery,
+                {
+                    availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+                }
             );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
@@ -132,6 +139,10 @@ describe('ActivityLogHttpService', () => {
             );
 
             expect(result).toEqual(offsetPage);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
+                workspaceQuery,
+                { availableOrderBy: ActivityLogDefaultAvailableOrderBy }
+            );
             expect(
                 activityLogDomain.getListOffsetByWorkspace
             ).toHaveBeenCalledWith('workspace-1', 'user-1', params);
@@ -168,6 +179,10 @@ describe('ActivityLogHttpService', () => {
             );
 
             expect(result).toEqual(cursorPage);
+            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(
+                cursorQuery,
+                { availableOrderBy: ActivityLogDefaultAvailableOrderBy }
+            );
             expect(
                 activityLogDomain.getListCursorByWorkspace
             ).toHaveBeenCalledWith('workspace-1', null, params);

@@ -22,6 +22,10 @@ import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.creat
 import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type { IUser, IUserList } from '@modules/user/interfaces/user.interface';
+import {
+    UserDefaultAvailableOrderBy,
+    UserDefaultAvailableSearch,
+} from '@modules/user/constants/user.list.constant';
 
 describe('UserHttpService', () => {
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
@@ -153,6 +157,10 @@ describe('UserHttpService', () => {
                     }),
                 })
             );
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
+                availableSearch: UserDefaultAvailableSearch,
+                availableOrderBy: UserDefaultAvailableOrderBy,
+            });
             expect(userDomain.getListOffsetByAdmin).toHaveBeenCalledWith(
                 params,
                 { status: { in: [EnumUserStatus.active] } },

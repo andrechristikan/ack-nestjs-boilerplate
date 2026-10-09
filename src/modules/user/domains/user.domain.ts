@@ -45,7 +45,6 @@ import { UserEmailExistException } from '@modules/user/exceptions/user.email-exi
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserAccountNotFoundException } from '@modules/user/exceptions/user.account-not-found.exception';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
@@ -116,12 +115,9 @@ export class UserDomain {
     }
 
     async validateUserGuard(
-        payload: Pick<IAuthJwtAccessTokenPayload, 'userId'> | null,
+        payload: Pick<IAuthJwtAccessTokenPayload, 'userId'>,
         requiredVerified: boolean
     ): Promise<IUser> {
-        if (!payload) {
-            throw new RequestGuardMissingException('request.user');
-        }
         if (!payload.userId) {
             throw new RequestContextMissingException('request.user.userId');
         }

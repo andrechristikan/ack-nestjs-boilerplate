@@ -2,7 +2,6 @@ import {
     GUARDS_METADATA,
     INTERCEPTORS_METADATA,
 } from '@nestjs/common/constants';
-import { UseGuards, applyDecorators } from '@nestjs/common';
 import type { ExecutionContext, Type } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
 import { mock } from 'vitest-mock-extended';
@@ -21,10 +20,8 @@ import {
     RequestThrottle,
     RequestTimeout,
     RequestUserAgent,
-    hasRequestGuard,
 } from '@common/request/decorators/request.decorator';
 import { RequestEnvGuard } from '@common/request/guards/request.env.guard';
-import { RequestThrottleRouteGuard } from '@common/request/guards/request.throttle-route.guard';
 import { RequestThrottleUserInterceptor } from '@common/request/interceptors/request.throttle-user.interceptor';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
@@ -82,67 +79,6 @@ describe('request.decorator', () => {
             );
             expect(() => RequestEnvProtected()).toThrow(
                 'RequestEnvProtected needs at least one environment'
-            );
-        });
-    });
-
-    describe('hasRequestGuard', () => {
-        it('returns true when UseGuards mounted the guard on the method before', () => {
-            const target = {} as Type<unknown>;
-            const descriptor: PropertyDescriptor = { value: vi.fn() };
-
-            UseGuards(RequestEnvGuard)(target, 'method', descriptor);
-
-            expect(hasRequestGuard(descriptor, RequestEnvGuard)).toBe(true);
-        });
-
-        it('returns false when the method carries no guard', () => {
-            const descriptor: PropertyDescriptor = { value: vi.fn() };
-
-            expect(hasRequestGuard(descriptor, RequestEnvGuard)).toBe(false);
-        });
-
-        it('returns false when only another guard is mounted', () => {
-            const target = {} as Type<unknown>;
-            const descriptor: PropertyDescriptor = { value: vi.fn() };
-
-            UseGuards(RequestThrottleRouteGuard)(target, 'method', descriptor);
-
-            expect(hasRequestGuard(descriptor, RequestEnvGuard)).toBe(false);
-        });
-
-        it('sees inside a decorator only the guards applied below it', () => {
-            const target = {} as Type<unknown>;
-            const descriptor: PropertyDescriptor = { value: vi.fn() };
-            const seen: boolean[] = [];
-            const probe = vi
-                .fn()
-                .mockImplementation((probed: PropertyDescriptor) => {
-                    seen.push(
-                        hasRequestGuard(probed, RequestEnvGuard),
-                        hasRequestGuard(probed, RequestThrottleRouteGuard)
-                    );
-                });
-
-            // legacy decorators apply bottom-up: the env guard, then the probe, then the throttle guard
-            UseGuards(RequestEnvGuard)(target, 'method', descriptor);
-            probe(descriptor);
-            UseGuards(RequestThrottleRouteGuard)(target, 'method', descriptor);
-
-            expect(seen).toEqual([true, false]);
-        });
-
-        it('reads the stack an applyDecorators decorator mounts', () => {
-            const target = {} as Type<unknown>;
-            const descriptor: PropertyDescriptor = { value: vi.fn() };
-
-            applyDecorators(
-                UseGuards(RequestEnvGuard, RequestThrottleRouteGuard)
-            )(target, 'method', descriptor);
-
-            expect(hasRequestGuard(descriptor, RequestEnvGuard)).toBe(true);
-            expect(hasRequestGuard(descriptor, RequestThrottleRouteGuard)).toBe(
-                true
             );
         });
     });

@@ -57,6 +57,12 @@ describe('CountryListRequestSchema', () => {
         ).toContain(CountryDefaultAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            CountryListRequestSchema.safeParse({ orderBy: '' }).success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = CountryDefaultAvailableOrderBy[0];
         const last =

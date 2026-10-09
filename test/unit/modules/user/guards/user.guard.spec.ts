@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
@@ -11,6 +12,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     UserGuardIsVerifiedMetaKey,
@@ -159,13 +161,21 @@ describe('UserGuard', () => {
         );
     });
 
-    it('passes null when the request carries no authenticated user', async () => {
+    it('throws AuthJwtGuardMissingException before the domain call when the request carries no authenticated user', async () => {
         reflector.get.mockReturnValue(true);
-        userDomain.validateUserGuard.mockResolvedValue(user);
         const context = buildHttpExecutionContext({ user: undefined });
 
-        await guard.canActivate(context);
-
-        expect(userDomain.validateUserGuard).toHaveBeenCalledWith(null, true);
+        await expect(guard.canActivate(context)).rejects.toMatchObject({
+            module: 'auth',
+            statusCode: EnumAuthStatusCodeError.jwtGuardMissing,
+            statusCodeKey:
+                EnumAuthStatusCodeError[
+                    EnumAuthStatusCodeError.jwtGuardMissing
+                ],
+            messagePath: 'auth.error.jwtGuardMissing',
+            httpStatus: HttpStatus.UNAUTHORIZED,
+        });
+        expect(userDomain.validateUserGuard).not.toHaveBeenCalled();
+        expect(requestStoreService.set).not.toHaveBeenCalled();
     });
 });

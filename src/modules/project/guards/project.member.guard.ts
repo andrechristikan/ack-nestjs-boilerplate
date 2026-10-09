@@ -2,10 +2,12 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { Project } from '@generated/prisma-client/client';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
+import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
 import {
     ProjectMemberStoreKey,
     ProjectStoreKey,
 } from '@modules/project/constants/project.constant';
+import { ProjectGuardMissingException } from '@modules/project/exceptions/project.guard-missing.exception';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
@@ -22,13 +24,20 @@ export class ProjectMemberGuard implements CanActivate {
     ) {}
 
     async canActivate(_context: ExecutionContext): Promise<boolean> {
-        const project = this.requestStoreService.get<Project>(ProjectStoreKey);
         const user = this.requestStoreService.get<IUser>(UserStoreKey);
+        if (!user) {
+            throw new UserGuardMissingException();
+        }
+
+        const project = this.requestStoreService.get<Project>(ProjectStoreKey);
+        if (!project) {
+            throw new ProjectGuardMissingException();
+        }
 
         const member =
             await this.projectMemberDomain.validateProjectMemberGuard(
-                project?.id ?? null,
-                user?.id ?? null
+                project.id,
+                user.id
             );
 
         this.requestStoreService.set(ProjectMemberStoreKey, member);

@@ -10,7 +10,10 @@ import type {
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { Prisma } from '@generated/prisma-client/client';
-import {} from '@modules/password-history/constants/password-history.list.constant';
+import {
+    PasswordHistoryCursorAvailableOrderBy,
+    PasswordHistoryDefaultAvailableOrderBy,
+} from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
 import type { PasswordHistoryAdminListRequestDto } from '@modules/password-history/dtos/request/password-history.admin-list.request.dto';
 import type { PasswordHistorySharedListRequestDto } from '@modules/password-history/dtos/request/password-history.shared-list.request.dto';
@@ -85,7 +88,9 @@ describe('PasswordHistoryHttpService', () => {
 
             const result = await service.getListOffsetByAdmin('user-id', query);
 
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
+                availableOrderBy: PasswordHistoryDefaultAvailableOrderBy,
+            });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 { filters: { existing: true } }
@@ -109,7 +114,9 @@ describe('PasswordHistoryHttpService', () => {
 
             const result = await service.getListCursor('user-id', query);
 
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query);
+            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                availableOrderBy: PasswordHistoryCursorAvailableOrderBy,
+            });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 { filters: { existing: true } }

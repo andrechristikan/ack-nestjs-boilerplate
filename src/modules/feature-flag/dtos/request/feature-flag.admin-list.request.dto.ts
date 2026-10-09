@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import {
     FeatureFlagDefaultAvailableOrderBy,
@@ -16,7 +16,27 @@ export const FeatureFlagAdminListRequestSchema =
             description: `Search query, available fields: ${FeatureFlagDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
             example: '',
         }),
-        orderBy: PaginationOrderBySchema(FeatureFlagDefaultAvailableOrderBy),
+        orderBy: z
+            .union([
+                z.templateLiteral([
+                    z.enum(FeatureFlagDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ]),
+                z.array(
+                    z.templateLiteral([
+                        z.enum(FeatureFlagDefaultAvailableOrderBy),
+                        ':',
+                        z.enum(EnumPaginationOrderDirectionType),
+                    ])
+                ),
+                z.literal(''),
+            ])
+            .optional()
+            .meta({
+                description: `Order by field in \`field:direction\` format (e.g. \`${FeatureFlagDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${FeatureFlagDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                example: `${FeatureFlagDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            }),
     });
 
 /**

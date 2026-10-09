@@ -6,6 +6,7 @@ import {
     WorkspaceRoleMetaKey,
 } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import { WorkspaceMemberGuardMissingException } from '@modules/workspace/exceptions/workspace.member-guard-missing.exception';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -32,6 +33,9 @@ export class WorkspaceRoleGuard implements CanActivate {
         const member = this.requestStoreService.get<WorkspaceMember>(
             WorkspaceMemberStoreKey
         );
+        if (!member) {
+            throw new WorkspaceMemberGuardMissingException();
+        }
 
         this.workspaceMemberDomain.validateWorkspaceRoleGuard(
             member,

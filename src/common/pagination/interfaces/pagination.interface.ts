@@ -16,6 +16,9 @@ export type IPaginationOrderBy = Record<
     EnumPaginationOrderDirectionType
 >;
 
+/** The `orderBy` value a list DTO parses (zod output of an optional field): one `field:direction` string, an array of them, an empty string, or absent. */
+export type IPaginationOrderByQuery = string | string[] | undefined;
+
 export interface IPaginationQuery {
     search?: string;
     filters?: IPaginationQueryFilter;
@@ -24,14 +27,17 @@ export interface IPaginationQuery {
     cursor?: string;
     orderBy: IPaginationOrderBy[];
     availableSearch: readonly string[];
+    availableOrderBy: readonly string[];
 }
 
 export interface IPaginationQueryOffsetOptions {
+    availableOrderBy: readonly string[];
     availableSearch?: readonly string[];
     defaultPerPage?: number;
 }
 
 export interface IPaginationQueryCursorOptions {
+    availableOrderBy: readonly string[];
     availableSearch?: readonly string[];
     defaultPerPage?: number;
     cursorField?: string;

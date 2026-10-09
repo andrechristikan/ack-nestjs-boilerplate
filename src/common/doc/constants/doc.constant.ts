@@ -65,10 +65,6 @@ export const DocGlobalErrorResponses = {
         statusCode: EnumRequestStatusCodeError.contextMissing,
         messagePath: 'request.error.contextMissing',
     }),
-    guardMissing: DocResponseError(HttpStatus.INTERNAL_SERVER_ERROR, {
-        statusCode: EnumRequestStatusCodeError.guardMissing,
-        messagePath: 'request.error.guardMissing',
-    }),
     uniqueValueGenerationFailed: DocResponseError(HttpStatus.CONFLICT, {
         statusCode: EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
         messagePath: 'database.error.uniqueValueGenerationFailed',

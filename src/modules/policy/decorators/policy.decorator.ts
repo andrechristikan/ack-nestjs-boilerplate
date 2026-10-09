@@ -13,16 +13,13 @@ import {
 import { PolicyGuard } from '@modules/policy/guards/policy.guard';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import type { Policy } from '@generated/prisma-client/client';
-import { hasRequestGuard } from '@common/request/decorators/request.decorator';
-import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
-import { RequestProtectedGuardMissingException } from '@common/request/exceptions/request.protected-guard-missing.exception';
-import { RoleGuard } from '@modules/role/guards/role.guard';
-import { UserGuard } from '@modules/user/guards/user.guard';
+import { DocUserErrorResponses } from '@modules/user/constants/user.constant';
+import { PolicyGuardMissingException } from '@modules/policy/exceptions/policy.guard-missing.exception';
 import { PolicyProtectedActionEmptyException } from '@modules/policy/exceptions/policy.protected-action-empty.exception';
 import { PolicyProtectedEmptyException } from '@modules/policy/exceptions/policy.protected-empty.exception';
 
 /**
- * Protects a route, requiring the caller to hold the given policies, and documents policy kits; throws at decoration when RoleGuard or UserGuard is not applied below it.
+ * Protects a route, requiring the caller to hold the given policies, and documents policy kits and the missing user and policy stores.
  * @public
  */
 export function PolicyProtected(
@@ -36,33 +33,17 @@ export function PolicyProtected(
         throw new PolicyProtectedActionEmptyException();
     }
 
-    const decorators = applyDecorators(
+    return applyDecorators(
         UseGuards(PolicyGuard),
         SetMetadata(PolicyRequiredMetaKey, requiredPolicies),
-        DocPolicyErrorResponses.forbidden
+        DocPolicyErrorResponses.forbidden,
+        DocUserErrorResponses.guardMissing,
+        DocPolicyErrorResponses.guardMissing
     );
-
-    return (target, propertyKey, descriptor): void => {
-        if (!hasRequestGuard(descriptor, RoleGuard)) {
-            throw new RequestProtectedGuardMissingException(
-                'PolicyProtected',
-                RoleGuard.name
-            );
-        }
-
-        if (!hasRequestGuard(descriptor, UserGuard)) {
-            throw new RequestProtectedGuardMissingException(
-                'PolicyProtected',
-                UserGuard.name
-            );
-        }
-
-        decorators(target, propertyKey, descriptor);
-    };
 }
 
 /**
- * Reads the caller's role policies that `RoleGuard` stored; an empty list is a valid value, and a missing store entry throws `RequestGuardMissingException`.
+ * Reads the caller's role policies that `RoleGuard` stored; an empty list is a valid value, and a missing store entry throws `PolicyGuardMissingException`.
  * @public
  */
 export const PolicyCurrent = createParamDecorator((): Policy[] => {
@@ -71,7 +52,7 @@ export const PolicyCurrent = createParamDecorator((): Policy[] => {
             PolicyStoreKey
         ) ?? null;
     if (policies === null) {
-        throw new RequestGuardMissingException(PolicyStoreKey);
+        throw new PolicyGuardMissingException();
     }
 
     return policies;

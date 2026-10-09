@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 
@@ -9,9 +9,27 @@ import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-polic
  */
 export const TermPolicyAcceptedListRequestSchema =
     PaginationCursorQuerySchema.omit({ search: true }).extend({
-        orderBy: PaginationOrderBySchema(
-            TermPolicyAcceptanceDefaultAvailableOrderBy
-        ),
+        orderBy: z
+            .union([
+                z.templateLiteral([
+                    z.enum(TermPolicyAcceptanceDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ]),
+                z.array(
+                    z.templateLiteral([
+                        z.enum(TermPolicyAcceptanceDefaultAvailableOrderBy),
+                        ':',
+                        z.enum(EnumPaginationOrderDirectionType),
+                    ])
+                ),
+                z.literal(''),
+            ])
+            .optional()
+            .meta({
+                description: `Order by field in \`field:direction\` format (e.g. \`${TermPolicyAcceptanceDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${TermPolicyAcceptanceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                example: `${TermPolicyAcceptanceDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            }),
     });
 
 /**

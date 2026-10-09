@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
@@ -18,7 +18,27 @@ export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
         description: `Search query, available fields: ${UserDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
         example: '',
     }),
-    orderBy: PaginationOrderBySchema(UserDefaultAvailableOrderBy),
+    orderBy: z
+        .union([
+            z.templateLiteral([
+                z.enum(UserDefaultAvailableOrderBy),
+                ':',
+                z.enum(EnumPaginationOrderDirectionType),
+            ]),
+            z.array(
+                z.templateLiteral([
+                    z.enum(UserDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ])
+            ),
+            z.literal(''),
+        ])
+        .optional()
+        .meta({
+            description: `Order by field in \`field:direction\` format (e.g. \`${UserDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${UserDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            example: `${UserDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+        }),
     status: z
         .string()
         .optional()

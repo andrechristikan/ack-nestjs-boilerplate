@@ -23,4 +23,5 @@ export enum EnumAuthStatusCodeError {
     socialGoogleNotConfigured = 50817,
     socialAppleNotConfigured = 50818,
     providerUnavailable = 50819,
+    jwtGuardMissing = 50820,
 }

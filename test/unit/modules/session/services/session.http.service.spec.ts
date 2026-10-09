@@ -9,7 +9,10 @@ import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.u
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IPaginationQueryFilterResult } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {} from '@modules/session/constants/session.list.constant';
+import {
+    SessionCursorAvailableOrderBy,
+    SessionDefaultAvailableOrderBy,
+} from '@modules/session/constants/session.list.constant';
 import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
@@ -81,7 +84,9 @@ describe('SessionHttpService', () => {
                 page: 1,
                 totalPage: 0,
             });
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query);
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
+                availableOrderBy: SessionDefaultAvailableOrderBy,
+            });
             expect(paginationQueryUtil.equalBoolean).toHaveBeenCalledWith(
                 Prisma.SessionScalarFieldEnum.isRevoked,
                 undefined
@@ -156,7 +161,9 @@ describe('SessionHttpService', () => {
                 perPage: 20,
                 hasNext: false,
             });
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query);
+            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
+                availableOrderBy: SessionCursorAvailableOrderBy,
+            });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 storePatch

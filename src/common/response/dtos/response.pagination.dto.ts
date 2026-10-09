@@ -38,6 +38,7 @@ export const ResponsePaginationSchema = ResponseSchema.extend({
             hasPrevious: false,
             orderBy: [`createdAt:${EnumPaginationOrderDirectionType.desc}`],
             availableSearch: ['name'],
+            availableOrderBy: ['createdAt', 'updatedAt'],
             type: EnumPaginationType.offset,
         },
     }),

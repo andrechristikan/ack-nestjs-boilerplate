@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -20,6 +21,8 @@ import {
     ProjectMemberStoreKey,
     ProjectStoreKey,
 } from '@modules/project/constants/project.constant';
+import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard';
 
@@ -156,17 +159,50 @@ describe('ProjectMemberGuard', () => {
             );
         });
 
-        it('validates with a null projectId and userId when neither is stored', async () => {
+        it('throws UserGuardMissingException before the domain call when the user store is empty', async () => {
             requestStoreService.get.mockReturnValue(null);
-            projectMemberDomain.validateProjectMemberGuard.mockResolvedValue(
-                member
-            );
 
-            await guard.canActivate(executionContext);
-
+            await expect(
+                guard.canActivate(executionContext)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.guardMissing
+                    ],
+                messagePath: 'user.error.guardMissing',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+            });
             expect(
                 projectMemberDomain.validateProjectMemberGuard
-            ).toHaveBeenCalledWith(null, null);
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws ProjectGuardMissingException before the domain call when the project store is empty', async () => {
+            requestStoreService.get.mockImplementation(key => {
+                if (key === UserStoreKey) {
+                    return user;
+                }
+
+                return null;
+            });
+
+            await expect(
+                guard.canActivate(executionContext)
+            ).rejects.toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumProjectStatusCodeError[
+                        EnumProjectStatusCodeError.guardMissing
+                    ],
+                messagePath: 'project.error.guardMissing',
+                httpStatus: HttpStatus.FORBIDDEN,
+            });
+            expect(
+                projectMemberDomain.validateProjectMemberGuard
+            ).not.toHaveBeenCalled();
         });
     });
 });

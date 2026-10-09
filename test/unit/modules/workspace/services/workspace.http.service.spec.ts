@@ -13,7 +13,11 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
-import { WorkspaceDefaultAvailableSearch } from '@modules/workspace/constants/workspace.list.constant';
+import {
+    WorkspaceCursorAvailableOrderBy,
+    WorkspaceDefaultAvailableOrderBy,
+    WorkspaceDefaultAvailableSearch,
+} from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceAdminListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
 import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import type { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/workspace.switch.request.dto';
@@ -93,6 +97,7 @@ describe('WorkspaceHttpService', () => {
             expect(result).toEqual(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 availableSearch: WorkspaceDefaultAvailableSearch,
+                availableOrderBy: WorkspaceCursorAvailableOrderBy,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
@@ -281,6 +286,7 @@ describe('WorkspaceHttpService', () => {
             expect(result).toEqual(page);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
                 availableSearch: WorkspaceDefaultAvailableSearch,
+                availableOrderBy: WorkspaceDefaultAvailableOrderBy,
             });
             expect(paginationQueryUtil.equalBoolean).toHaveBeenCalledWith(
                 Prisma.WorkspaceScalarFieldEnum.isPublic,

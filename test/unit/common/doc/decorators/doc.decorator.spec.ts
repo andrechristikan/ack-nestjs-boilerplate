@@ -325,11 +325,6 @@ describe('doc.decorator', () => {
                         statusCode: EnumRequestStatusCodeError.contextMissing,
                         messagePath: 'request.error.contextMissing',
                     }),
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                        statusCode: EnumRequestStatusCodeError.guardMissing,
-                        messagePath: 'request.error.guardMissing',
-                    }),
                 ])
             );
         });

@@ -55,6 +55,13 @@ describe('AnalyticLoginSpikeIpListRequestSchema', () => {
         ).toContain(AnalyticLoginSpikeIpAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            AnalyticLoginSpikeIpListRequestSchema.safeParse({ orderBy: '' })
+                .success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = AnalyticLoginSpikeIpAvailableOrderBy[0];
         const last =

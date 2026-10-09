@@ -52,7 +52,7 @@ export const AuthPayloadStoreKey = 'AuthPayloadStoreKey';
 export const AuthTwoFactorSecretEncryptionPurpose = 'auth.twoFactor.secret';
 
 /**
- * JWT access-token guard error kit for `@AuthJwtAccessProtected`.
+ * JWT access-token guard error kit for `@AuthJwtAccessProtected`; `guardMissing` documents a route that reads the JWT payload without the guard.
  * @public
  */
 export const DocAuthJwtAccessErrorResponses = {
@@ -70,6 +70,10 @@ export const DocAuthJwtAccessErrorResponses = {
     unavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
         messagePath: 'auth.error.providerUnavailable',
         statusCode: EnumAuthStatusCodeError.providerUnavailable,
+    }),
+    guardMissing: DocResponseError(HttpStatus.UNAUTHORIZED, {
+        messagePath: 'auth.error.jwtGuardMissing',
+        statusCode: EnumAuthStatusCodeError.jwtGuardMissing,
     }),
 } as const;
 

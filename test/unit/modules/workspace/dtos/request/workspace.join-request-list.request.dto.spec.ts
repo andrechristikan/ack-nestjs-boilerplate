@@ -44,6 +44,13 @@ describe('WorkspaceJoinRequestListRequestSchema', () => {
         ).toContain(WorkspaceJoinRequestDefaultAvailableOrderBy.join(', '));
     });
 
+    it('accepts an empty orderBy so the module default order applies', () => {
+        expect(
+            WorkspaceJoinRequestListRequestSchema.safeParse({ orderBy: '' })
+                .success
+        ).toBe(true);
+    });
+
     it('accepts a single and a repeated orderBy built from the allow-list', () => {
         const first = WorkspaceJoinRequestDefaultAvailableOrderBy[0];
         const last =

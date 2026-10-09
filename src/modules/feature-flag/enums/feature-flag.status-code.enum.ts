@@ -6,5 +6,5 @@ export enum EnumFeatureFlagStatusCodeError {
     notFound = 50600,
     disabled = 50601,
     invalidMetadata = 50602,
-    unseeded = 50603,
+    notConfigured = 50603,
 }

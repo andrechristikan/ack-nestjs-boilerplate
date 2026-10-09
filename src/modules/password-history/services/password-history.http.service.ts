@@ -8,6 +8,10 @@ import type { PasswordHistorySharedListRequestDto } from '@modules/password-hist
 import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
 import { Injectable } from '@nestjs/common';
+import {
+    PasswordHistoryCursorAvailableOrderBy,
+    PasswordHistoryDefaultAvailableOrderBy,
+} from '@modules/password-history/constants/password-history.list.constant';
 
 @Injectable()
 export class PasswordHistoryHttpService {
@@ -23,7 +27,8 @@ export class PasswordHistoryHttpService {
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.PasswordHistoryWhereInput>(
-                query
+                query,
+                { availableOrderBy: PasswordHistoryDefaultAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -45,7 +50,8 @@ export class PasswordHistoryHttpService {
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.PasswordHistoryWhereInput>(
-                query
+                query,
+                { availableOrderBy: PasswordHistoryCursorAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

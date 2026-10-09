@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -19,6 +20,8 @@ import {
     PolicyRequiredMetaKey,
     PolicyStoreKey,
 } from '@modules/policy/constants/policy.constant';
+import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { PolicyGuard } from '@modules/policy/guards/policy.guard';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
@@ -141,22 +144,76 @@ describe('PolicyGuard', () => {
         });
 
         it('defaults required policies to an empty array when no metadata is set', async () => {
+            const policies: Policy[] = [];
             reflector.get.mockReturnValue(undefined);
-            requestStoreService.get.mockReturnValue(null);
+            requestStoreService.get.mockImplementation((key: string) => {
+                if (key === UserStoreKey) {
+                    return user;
+                }
+                return policies;
+            });
             policyDomain.validatePolicyGuard.mockReturnValue(true);
 
             await guard.canActivate(executionContext);
 
             expect(policyDomain.validatePolicyGuard).toHaveBeenCalledWith(
-                null,
-                null,
+                user,
+                policies,
                 []
             );
         });
 
-        it('propagates a false result from the domain', async () => {
+        it('throws UserGuardMissingException before the domain call when the user store is empty', async () => {
             reflector.get.mockReturnValue([]);
             requestStoreService.get.mockReturnValue(null);
+
+            await expect(
+                guard.canActivate(executionContext)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.guardMissing
+                    ],
+                messagePath: 'user.error.guardMissing',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+            });
+            expect(policyDomain.validatePolicyGuard).not.toHaveBeenCalled();
+        });
+
+        it('throws PolicyGuardMissingException before the domain call when the policy store is empty', async () => {
+            reflector.get.mockReturnValue([]);
+            requestStoreService.get.mockImplementation((key: string) => {
+                if (key === UserStoreKey) {
+                    return user;
+                }
+                return null;
+            });
+
+            await expect(
+                guard.canActivate(executionContext)
+            ).rejects.toMatchObject({
+                module: 'policy',
+                statusCode: EnumPolicyStatusCodeError.guardMissing,
+                statusCodeKey:
+                    EnumPolicyStatusCodeError[
+                        EnumPolicyStatusCodeError.guardMissing
+                    ],
+                messagePath: 'policy.error.guardMissing',
+                httpStatus: HttpStatus.FORBIDDEN,
+            });
+            expect(policyDomain.validatePolicyGuard).not.toHaveBeenCalled();
+        });
+
+        it('propagates a false result from the domain', async () => {
+            reflector.get.mockReturnValue([]);
+            requestStoreService.get.mockImplementation((key: string) => {
+                if (key === UserStoreKey) {
+                    return user;
+                }
+                return [];
+            });
             policyDomain.validatePolicyGuard.mockReturnValue(false);
 
             await expect(guard.canActivate(executionContext)).resolves.toBe(

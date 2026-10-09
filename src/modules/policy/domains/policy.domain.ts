@@ -1,6 +1,3 @@
-import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
-import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
 import { PolicyExistException } from '@modules/policy/exceptions/policy.exist.exception';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
@@ -38,18 +35,10 @@ export class PolicyDomain {
     }
 
     validatePolicyGuard(
-        user: IUser | null,
-        policies: Policy[] | null,
+        user: IUser,
+        policies: Policy[],
         requiredPolicies: PolicyRequestDto[]
     ): boolean {
-        if (!user) {
-            throw new RequestGuardMissingException(UserStoreKey);
-        }
-
-        if (!policies) {
-            throw new RequestGuardMissingException(PolicyStoreKey);
-        }
-
         const { role } = user;
 
         if (role.type === EnumRoleType.superAdmin) {
