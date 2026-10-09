@@ -44,7 +44,7 @@ A sequential `await` whose dependency is visible in the code carries no comment:
 
 Import a shape that already has a name; a hand-written copy or structural subset is a mirror that drifts. Zero copy-paste logic (the `config.md` optional-env ternary excepted), one source per config value, connection, and constant; duplication still beats the wrong abstraction. No helper taking a function parameter to share a loop: share the predicate, repeat the loop.
 
-Default zero comments; the one marker is `// Sequential by design: <case>`. A comment states what the symbol is or does, present tense, no history. JSDoc: optional one line on a class whose name does not say what it is; method JSDoc is the exception; none on interfaces except the kit surface. `TODO` and `FIXME` are work markers. Re-test every comment a change touched. Kit surface carries `@public` (a knip directive): every export of `*.dto.ts`, `*.decorator.ts`, `*.enum.ts` (on the enum), `*.exception.ts`, `*.constant.ts`, `*.contract.ts`, `*.validation.ts`, and `src/common/doc/interfaces/doc.interface.ts` has a JSDoc whose first line states what it is, then `@public` (`@alias` for an intentional alias). No other export carries it; the tag keeps an unused export out of the knip report, and an unimported file still prints.
+Default zero comments; the one marker is `// Sequential by design: <case>`. A comment states what the symbol is or does, present tense, no history. JSDoc: optional one line on a class whose name does not say what it is; method JSDoc is the exception; none on interfaces except the kit surface. `TODO` and `FIXME` are work markers. Re-test every comment a change touched. Kit surface carries `@public` (a knip directive): every export of `*.dto.ts`, `*.decorator.ts`, `*.enum.ts` (on the enum), `*.exception.ts`, `*.constant.ts`, `*.contract.ts`, `*.validation.ts`, and `src/common/doc/interfaces/doc.interface.ts` has a JSDoc whose first line states what it is, then `@public` (`@alias` for an intentional alias). No other export carries it.
 
 ## ESLint
 
@@ -54,7 +54,7 @@ Default zero comments; the one marker is `// Sequential by design: <case>`. A co
 - A lint-clean env read outside the boundary (`Reflect.get(process, 'env')`) is a defect.
 - No other `files:` block narrows a rule. Every file a `files:` block matches runs under `noInlineConfig: true`, so `pnpm lint` (`--max-warnings 0`) fails on an inline directive.
 - A rule that fires is fixed in code; one that cannot hold everywhere is the owner's to remove, for every file.
-- Two `ts/default` throw selectors: `throwNewErrorRestriction` (`throw new Error(...)`) and `throwIdentifierRestriction` (`throw <identifier>` outside an `instanceof` `if`); `exceptions.md` says what to throw.
+- `ts/default` throw selectors: `throwNewErrorRestriction` (`throw new Error(...)`) and `throwIdentifierRestriction` (`eslint.config.mjs:166`: `throw <identifier>` outside an `if` branch testing `instanceof` a name ending `Exception` or `UnrecoverableError`, alone or `||`-joined up to three, so `HttpException` passes); `exceptions.md` says what to throw.
 
 ## Move to ESLint
 
