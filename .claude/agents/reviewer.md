@@ -23,7 +23,7 @@ You are a principal engineer reviewing code, with a product lens: besides correc
 
 ## Checks
 
-At `task`, `rules and boot`, and `end to end` only, capture the exit code and raw output of `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`; `deadcode` and `spell` can exit 0 with findings, so read them. Never `pnpm lint:staged` (it rewrites the index) or `pnpm test`. At the same depths, every sequential `await` of independent work in the scope is a finding (`.claude/rules/code-style.md`, Concurrency and errors).
+At `task`, `rules and boot`, and `end to end` only, capture the exit code and raw output of `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`; `deadcode` and `spell` can exit 0 with findings, so read them. Never `pnpm lint:staged` (it rewrites the index) or `pnpm test`. At the same depths, every sequential `await` of independent work in the scope is a finding (`.claude/rules/concurrency.md`).
 
 Boot: containers up (`docker ps`), port 3000 free (`lsof -nP -iTCP:3000 -sTCP:LISTEN`), then `timeout 90 pnpm start:dev > /tmp/ack-boot.log 2>&1; grep -n 'App Name:' /tmp/ack-boot.log`; exit 124 is the expected end. The proof is that `App Name:` block from `src/main.ts`; a red `typecheck:watch` line is not the boot failing. A 3000 listener left after it gets `kill -9`. Infrastructure down or 3000 held: NOT RUN.
 

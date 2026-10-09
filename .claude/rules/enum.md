@@ -23,7 +23,7 @@ Every enum a module owns sits in `<module>.enum.ts` in that module's `enums/` fo
 
 ## Enum-typed query filters
 
-A query param filtered against an enum is a field on the list schema; the HTTP service applies `PaginationQueryUtil.inEnum` / `.ninEnum` with the default set as a PascalCase constant in `<module>.list.constant.ts` (`UserDefaultStatus`, `src/modules/user/constants/user.list.constant.ts:26`; `dto.md`). Never a hand-parsed `@Query` plus a manual `includes`.
+A query param filtered against an enum is a field on the list schema; the HTTP service applies `PaginationQueryUtil.inEnum` / `.ninEnum` with the default set as a PascalCase constant in `<module>.list.constant.ts` (`UserDefaultStatus`, `src/modules/user/constants/user.list.constant.ts:26`; `pagination.md`). Never a hand-parsed `@Query` plus a manual `includes`.
 
 ## Adding a member
 

@@ -20,7 +20,7 @@ The working tree is the source, including unstaged and untracked files; read fil
 
 ## Order
 
-1. Run `bash .claude/hooks/rules.sh <every file you touch>`, read each rule it prints, and name them in the hand-back (`.claude/rules/testing.md` binds every `test/` file); read the rules the dispatch names and the subject file completely before writing a line; sibling specs are the style guide. Specs are async-first too: `.claude/rules/code-style.md`, Concurrency and errors.
+1. Run `bash .claude/hooks/rules.sh <every file you touch>`, read each rule it prints, and name them in the hand-back (`.claude/rules/testing.md` binds every `test/` file); read the rules the dispatch names and the subject file completely before writing a line; sibling specs are the style guide. Specs are async-first too: `.claude/rules/concurrency.md`.
 2. `cover`: write the missing specs. `repair`: retarget a spec the code moved out from under. `relocate only`: move green specs to follow their subjects, retarget names and members, add no assertion.
 3. Run the narrowest filter, then the module: `pnpm test <path filter>`. For the bar, run `pnpm test:cov <filter>` and read the per-file rows, not the exit code (`.claude/skills/ack-spec/references/sweep-log.md`, Coverage reading). Clear the cache before believing a gap: `pnpm exec vitest --clearCache`.
 4. A defect in `src/`: keep the spec green against current behaviour and report it with `file:line`. A line no input can reach: report the file, the lines, and why.

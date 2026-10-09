@@ -4,14 +4,12 @@ paths:
     - '.env.example'
     - 'src/app/dtos/app.env.dto.ts'
     - 'src/main.ts'
-    - 'src/migration.ts'
     - 'src/configure.ts'
     - 'src/swagger.ts'
     - 'src/instrument.ts'
     - 'src/common/common.module.ts'
     - 'src/queues/decorators/queue.decorator.ts'
     - 'src/common/logger/**'
-    - 'src/common/sentry/**'
     - 'src/common/cache/**'
     - 'src/common/redis/**'
     - 'src/common/aws/**'
@@ -20,7 +18,7 @@ paths:
     - 'src/modules/*/caches/**'
 ---
 
-# Config, logging, cache
+# Config
 
 - `src/configs/<kebab>.config.ts` exports `IConfig<Namespace>` and default-exports `registerAs('<camelNamespace>', ...)`, barrelled by `src/configs/index.ts` as `<Namespace>Config` for `ConfigModule.forRoot` (`common.module.ts`, `envFilePath: ['.env']`).
 - `AppEnvSchema` (`dto.md`) declares every key a config reads. A new env var is the config file and interface, that key, and `.env.example`.
@@ -34,21 +32,3 @@ paths:
 - A header name, CLS store key, metadata key, or wire label is a constant or enum, never config; a header is `<Module>[<Concern>]HeaderName`, in `src/common/` when the kit reads it. `request.config.ts` builds the CORS header lists from those constants, the one config importing from `@modules`.
 - A credential comes from the environment (deployed: `pnpm vault:pull`) with no literal default: empty in `.env.example`, where a non-secret, non-`DOCKER_` key may carry one (`APP_NAME`, `HTTP_PORT`); only a `DOCKER_` key has a compose fallback (`docker.md`). A config interface holds no `Buffer`.
 - An optional adapter (`AwsS3Service`, `AwsSESService`, `FirebaseService`) with unset credentials logs one `warn` in `onModuleInit` and stays uninitialised (`isInitialized()`): each method warns and returns an empty result. Firebase set but broken fails boot. A third-party health indicator reports `down` with `'<Name> is not configured'` when unset; health routes answer 200.
-
-## Logging
-
-- Pino behind `Logger` via `LoggerModule.forRoot()`.
-- The pino `mixin` logs `RequestIdStoreKey` and `RequestCorrelationIdStoreKey` top-level from `RequestStoreService` (`null` outside a request), never a header or `req.id`. Each id is its inbound header (`x-request-id`, `x-correlation-id`) when it matches `RequestIdRegex`, else a new UUID v7.
-- One `private readonly logger = new Logger(ClassName.name)` per class, never module-level; `error` is object-first (`this.logger.error(error, 'context')`, the reverse drops the stack), the rest message-first.
-- `EnumLoggerLevel` is the Pino level (`logger.level`), `EnumLoggerSeverity` the `severity` field (`logger.util.ts:236`). By who must act: `fatal` process cannot continue, `error` someone must look, `warn` degraded but handled, `info` a lifecycle fact, `debug`/`trace` detail.
-- `LoggerSensitiveFields` (`logger.constant.ts:30`) is the one list of sensitive keys, new credential keys included; `LoggerUtil.redactValue` (`logger.util.ts:155`) masks them at any depth, a request log carries a masked `route` and never a body, and the `src/instrument.ts` hooks from `beforeSend` (`:315`) on scrub Sentry from the same constants.
-- `SentryService` is the one way to report outside `bootstrap().catch`. Callers: the `APP_FILTER` chain at 5xx, `QueueProcessorBase.onFailed` once when fatal, and a domain reporting an operator fault the client receives as a non-5xx (`AuthTwoFactorDomain`). Only `QueueProcessorBase.process` logs-and-rethrows: BullMQ needs the throw, no filter sees a job.
-- `bootstrap().catch` (`src/main.ts:77`, `src/migration.ts:36`) logs one `fatal` line, calls `Sentry.captureException` and `Sentry.flush` directly, and exits 1. `src/migration.ts:15` sets nest-commander's `serviceErrorHandler`, whose default exits 0 on a seed failure.
-- `ConfigureOptions` (`src/configure.ts:8`) and `src/migration.ts:11` set `abortOnError: false`, `bufferLogs: true`, `logger: ['fatal']`, until Pino takes over at `LOGGER_LEVEL`.
-
-## Cache
-
-- `RedisCacheModule.forRoot()` provides the shared Keyv client on Redis `db:0` (`throwOnErrors: true`, `src/common/redis/redis.module.ts:29`), `CacheMainModule.forRoot()` wires `@nestjs/cache-manager` on it, and a module's `caches/` class holds the cache manager and its config `keyPattern` for every read and write.
-- A cache uses the cache manager; a command it lacks (conditional `SET ... XX`, key-pattern `SCAN`) runs on the `RedisClientCachedProvider` store client (`SessionCache.updateLogin`, `deleteLoginsByUser`).
-- A cached route is `@Response(path, { cache: true | { key, ttl } })`: the raw return is stored, so the schema declares only JSON-safe shapes (no `z.date()`, `Map`, `Set`). The default TTL is `redis.cache.ttlInMs`; a per-route `ttl` is its own `InMs` key. Never cache a caller-varying response without the caller in the key.
-- A failed read falls through to the database, the JWT session read excepted (`exceptions.md`); a cache entry is never an invariant, and the two-factor lock is the one lock. A write fails the request when the entry is the authority (session write on login and refresh rotation, two-factor challenge and lock) or a stale entry keeps a revoked credential working (API key delete after the database write); it is caught and logged where the entry expires on its own (session purges, challenge and lock clears, read-through writes). A write that makes a cached read stale invalidates it in the same operation.

@@ -1,6 +1,6 @@
 # Add a module
 
-Invariants: `.claude/rules/layering.md` (roles, tiers, module files, boot-only defects), `.claude/rules/http.md` (decorator order, scopes, route paths), `.claude/rules/naming.md`. Reference implementation: `src/modules/device/` (no queue) and `src/modules/workspace/` (with a queue and a processor).
+Invariants: `.claude/rules/layering.md` (roles, tiers, module files, boot-only defects), `.claude/rules/http.md` (scopes, route paths), `.claude/rules/guards.md` (decorator order), `.claude/rules/naming.md`. Reference implementation: `src/modules/device/` (no queue) and `src/modules/workspace/` (with a queue and a processor).
 
 ## 1. Claim the status-code block
 
@@ -21,7 +21,7 @@ Add the model to `prisma/schema.prisma` and run `pnpm db:generate`. Applying it 
 | domain | `domains/<module>.domain.ts` | `src/modules/device/domains/device.domain.ts:34` |
 | util (optional) | `utils/<module>.util.ts` | `src/modules/device/utils/device.util.ts:10` |
 | exceptions | `exceptions/<module>.<descriptor>.exception.ts`, one class per file | `src/modules/device/exceptions/device.not-found.exception.ts:9-18` |
-| request DTO | `dtos/request/<module>.<action>.request.dto.ts`: a zod schema plus `z.infer` type | `src/modules/device/dtos/request/device.refresh.request.dto.ts` |
+| request DTO | `dtos/request/<module>.<action>.request.dto.ts`: a zod schema plus `z.infer` type; an update DTO requires every editable field (`.claude/rules/null-safety.md`, Update and create) | `src/modules/device/dtos/request/device.refresh.request.dto.ts` |
 | response DTO | `dtos/response/<module>.response.dto.ts`: `DatabaseResponseSchema` extended, `.meta()` on every field | `src/modules/device/dtos/response/device.response.dto.ts:13-36` |
 | HTTP service | `services/<module>.http.service.ts` | `src/modules/device/services/device.http.service.ts:19` |
 | controller | `controllers/<module>.<scope>.controller.ts`, one per scope | `src/modules/device/controllers/device.shared.controller.ts:39-64` |

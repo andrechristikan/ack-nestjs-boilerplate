@@ -36,7 +36,7 @@ Password change or reset, logout, device removal, account self-deletion, the loc
 
 ## Sign-in and authorization
 
-A guard reads transport inputs and delegates to a domain; the stack is `http.md`. `AuthSocialDomain` verifies Google with `audience` set to its client id and Apple against the set client ids; an unset provider throws its not-configured exception first, rethrown unwrapped by `AuthDomain`. CASL abilities come from the `Policy` rows on the caller's role; `@PolicyProtected` names subject and actions. A feature flag is never an authorization boundary (`feature-flag.md`).
+The guard stack and what a guard reads: `guards.md`. `AuthSocialDomain` verifies Google with `audience` set to its client id and Apple against the set client ids; an unset provider throws its not-configured exception first, rethrown unwrapped by `AuthDomain`. CASL abilities come from the `Policy` rows on the caller's role; `@PolicyProtected` names subject and actions. A feature flag is never an authorization boundary (`feature-flag.md`).
 
 ## Activity log
 
@@ -44,4 +44,4 @@ A guard reads transport inputs and delegates to a domain; the stack is `http.md`
 
 ## Request store
 
-Per-request state lives in `RequestStoreService`, keyed by `*StoreKey` constants; add a key rather than a second store. A class injects `RequestStoreService`; a param decorator reads CLS, and what it throws on a missing key or field is `exceptions.md` (Who throws); `@AuthJwtPayload` reads `request.user` instead. `RequestRequestIdMiddleware`, first in the `RequestMiddlewareModule` chain, is the one first-party writer of `req.id` (over pino-http's numeric default), `req.correlationId`, and both id store keys (via `RequestStoreService`); `config.md` (Logging) states the id values. `RequestLogStoreKey` holds the client IP, user agent, and geo-location resolved once per request (`request.request-log.middleware.ts`); a reader takes the stored value, never re-resolving it.
+Per-request state lives in `RequestStoreService`, keyed by `*StoreKey` constants; add a key rather than a second store. A class injects `RequestStoreService`; a param decorator: `guards.md`. `RequestRequestIdMiddleware`, first in the `RequestMiddlewareModule` chain, is the one first-party writer of `req.id` (over pino-http's numeric default), `req.correlationId`, and both id store keys (via `RequestStoreService`); `logging.md` states the id values. `RequestLogStoreKey` holds the client IP, user agent, and geo-location resolved once per request (`request.request-log.middleware.ts`); a reader takes the stored value, never re-resolving it.

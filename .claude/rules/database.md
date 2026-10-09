@@ -22,6 +22,7 @@ paths:
 - Prisma builder only; no `$queryRaw` / `$executeRaw` in a feature repository.
 - `select` shapes are PascalCase constants in `<module>.constant.ts`.
 - The repository owns `null → {}` normalization of filter params.
+- An update writes every field as given: `null-safety.md`, Update and create.
 - A check-then-act is a race unless a unique index enforces it; where no index backs the invariant, say so.
 
 ## Generated unique values
@@ -34,7 +35,7 @@ Every transaction opens through `DatabaseService.withTransaction(fn, options?)`,
 
 ## Dates
 
-`HelperDateService` (`src/common/helper/services/helper.date.service.ts`) owns the clock. Persisted timestamps are Prisma `DateTime`; a date on the wire is serialized by the response schema; compare `Date` objects, not strings. A duration is a config key in the consumer's unit (`config.md`). `updatedAt`, `lastActiveAt`, and a resent `expiredAt` are mutable sort keys and illegal on a cursor route (`dto.md`).
+`HelperDateService` (`src/common/helper/services/helper.date.service.ts`) owns the clock. Persisted timestamps are Prisma `DateTime`; a date on the wire is serialized by the response schema; compare `Date` objects, not strings. A duration is a config key in the consumer's unit (`config.md`). `updatedAt`, `lastActiveAt`, and a resent `expiredAt` are mutable sort keys and illegal on a cursor route (`pagination.md`).
 
 ## Schema
 

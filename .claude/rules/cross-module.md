@@ -47,4 +47,4 @@ A controller file lives in its feature module; `src/router/http/router.http.<sco
 
 ## Workspace scoping follows the surface
 
-A workspace-scoped route in any module resolves its subject from the `x-workspace-id` header through the workspace guards and carries `@FeatureFlagProtected('workspace')` (`http.md`).
+A workspace-scoped route in any module resolves its subject from the `x-workspace-id` header through the workspace guards and carries `@FeatureFlagProtected('workspace')` (`guards.md`).

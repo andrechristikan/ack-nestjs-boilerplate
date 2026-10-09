@@ -5,13 +5,13 @@ Ask only what the owner has not named and the code cannot answer. Each line name
 ## Surface
 
 - Route scope: `/public`, `/system`, `/admin`, `/user`, or `/shared` (`src/router/http/router.http.<scope>.module.ts`; `.claude/rules/http.md`, `.claude/rules/layering.md`).
-- Workspace scoping: does the route resolve its subject from the `x-workspace-id` header through `@WorkspaceProtected()` or `@WorkspaceMemberProtected(...roles)` and carry `@FeatureFlagProtected('workspace')` (`.claude/rules/cross-module.md`, `.claude/rules/feature-flag.md`, `.claude/rules/http.md`).
-- Who may call it: role (`@RoleProtected`), CASL policy ability (`@PolicyProtected`), term-policy gating (`@TermPolicyAcceptanceProtected`), API key (`@ApiKeyProtected`, `@ApiKeySystemProtected`) (`.claude/rules/security.md`, `.claude/rules/http.md`).
+- Workspace scoping: does the route resolve its subject from the `x-workspace-id` header through `@WorkspaceProtected()` or `@WorkspaceMemberProtected(...roles)` and carry `@FeatureFlagProtected('workspace')` (`.claude/rules/cross-module.md`, `.claude/rules/feature-flag.md`, `.claude/rules/guards.md`).
+- Who may call it: role (`@RoleProtected`), CASL policy ability (`@PolicyProtected`), term-policy gating (`@TermPolicyAcceptanceProtected`), API key (`@ApiKeyProtected`, `@ApiKeySystemProtected`) (`.claude/rules/security.md`, `.claude/rules/guards.md`).
 
 ## Shape
 
 - Request and response: the zod DTO fields, which are optional, which are nullable (`.claude/rules/dto.md`, `.claude/rules/null-safety.md`).
-- A list endpoint: pagination type, the `search` and `orderBy` allow-lists, filter defaults (`.claude/rules/dto.md` Pagination).
+- A list endpoint: pagination type, the `search` and `orderBy` allow-lists, filter defaults (`.claude/rules/pagination.md`).
 - Status codes and exceptions: which failures are new, which module owns each subject (`.claude/skills/ack-build/references/add-status-code.md`, `.claude/rules/exceptions.md`).
 - i18n: every new message key, in every language directory under `src/languages/` (`.claude/rules/i18n.md`).
 
@@ -26,7 +26,7 @@ Ask only what the owner has not named and the code cannot answer. Each line name
 - Activity log row: which action, which subject (`.claude/rules/security.md` Activity log).
 - Notification kind and channel (`.claude/skills/ack-build/references/add-notification.md`, `.claude/rules/queue.md`).
 - Queue job: name, payload, retry (`.claude/skills/ack-build/references/add-queue.md`, `.claude/rules/queue.md`).
-- Cache key: what it caches and what invalidates it (`.claude/rules/config.md` Cache).
+- Cache key: what it caches and what invalidates it (`.claude/rules/cache.md`).
 
 ## Failure
 

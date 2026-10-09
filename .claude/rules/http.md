@@ -3,40 +3,10 @@ paths:
     - 'src/modules/**/controllers/**'
     - 'src/router/**'
     - 'src/app/**'
+    - '**/decorators/**'
 ---
 
 # HTTP layer
-
-## Decorator order
-
-Nest runs guards bottom-up: the decorator nearest the method executes first, so a guard that reads state another guard sets sits above it. A misordered stack boots and answers the reading guard's `*GuardMissingException` on every request (`exceptions.md`).
-
-```typescript
-@Doc({ summary: '…' })                 // 1.  OpenAPI operation + global error kit
-@Response('example.action')            // 2.  @Response / @ResponsePagination / @ResponseFile
-@Header(name, value)                   // 3.  Static response header, when set
-@TermPolicyAcceptanceProtected(...)    // 4.  Term policy
-@PolicyProtected({...})                // 5.  CASL policy, admin routes
-@RoleProtected(...)                    // 6.  Role, admin routes
-@ProjectMemberProtected()              // 7.  Project membership
-@ProjectProtected()                    // 8.  Project exists
-@WorkspaceMemberProtected(...)         // 9.  Workspace membership; pass roles to also gate by role
-@WorkspaceProtected()                  // 10. Workspace exists
-@UserProtected()                       // 11. User status
-@FeatureFlagProtected(...)             // 12. Feature flag; reads request.user, so above JWT
-@AuthJwtAccessProtected()              // 13. JWT; a social login guard sits above 12, so the flag runs first
-@ApiKeyProtected()                     // 14. API key; @ApiKeySystemProtected() on every system route
-@FileUploadSingle() @RequestTimeout('1m') // 15. Upload routes: multipart interceptor, then timeout
-@RequestThrottle({ user: true })       // 16. Throttle interceptor
-@HttpCode(HttpStatus.OK)               // 17. @Post only
-@Get('/endpoint')                      // 18. HTTP method, always last
-```
-
-- `@RequestThrottle` (`request.decorator.ts:60`) sits directly above `@HttpCode` or the method decorator. It takes `{ user: true, route? }` when JWT-protected and `{ route }` only on `public` and `system` (`EnumRequestThrottleRoute`).
-- A `@Post` whose action creates the row its path names (`/create`, `/sign-up`, `/mobile-number/add`) keeps the default 201; every other `@Post` carries `@HttpCode(HttpStatus.OK)`.
-- `@WorkspaceMemberProtected(...roles)` adds `WorkspaceRoleGuard` with roles (`workspace.decorator.ts:94`). `@ProjectMemberProtected(...roles)` uses `ProjectMemberGuard` with no roles and `ProjectRoleGuard` alone with roles (`project.decorator.ts:90`); `@ProjectMemberCurrent()` is valid only on the role-less form.
-- Admin scope carries no `Workspace*` or `Project*` guard (they resolve `x-workspace-id` from CLS; an admin reads across workspaces): it scopes through `@RoleProtected` plus `@PolicyProtected` and a validated `:workspaceId` / `:projectId` param. `@RoleProtected` never lists `superAdmin`; `role.domain.ts:178` and `policy.domain.ts:44` pass it.
-- Every workspace-scoped and project-scoped route in `user`, `shared`, and `public` carries `@FeatureFlagProtected('workspace')`, bare key; a metadata sub-key is asserted in the domain.
 
 ## Controllers
 

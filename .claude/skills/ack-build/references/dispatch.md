@@ -94,8 +94,8 @@ Depth: task | plan | docs | harness | rules and boot | end to end through guards
 Scope: <files and modules from git status --short, a plan path, docs files, or harness files, as the depth needs>
 Requirement: <the task brief, the plan path, or the settled paragraph>
 Checks: at task, rules and boot, and end to end: every rule file that binds a changed path,
-  named in the report; every sequential await of independent work (.claude/rules/code-style.md,
-  Concurrency and errors); boot (timeout 90 pnpm start:dev, the 'App Name:' block in its
+  named in the report; every sequential await of independent work
+  (.claude/rules/concurrency.md); boot (timeout 90 pnpm start:dev, the 'App Name:' block in its
   log) when the depth includes it; pnpm typecheck, pnpm lint, pnpm deadcode, pnpm spell. At
   plan, docs, and harness: only what the depth names in .claude/agents/reviewer.md. Never
   pnpm test at any scope.

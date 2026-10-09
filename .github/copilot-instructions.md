@@ -4,7 +4,7 @@
 
 ## Route decorator order
 
-The decorator nearest the method runs first. Keep this order; omit what a route does not need. Rule: `.claude/rules/http.md`.
+The decorator nearest the method runs first. Keep this order; omit what a route does not need. Rule: `.claude/rules/guards.md`.
 
 ```typescript
 @Doc({ summary: '…' })                 // 1.  OpenAPI operation + global error kit
@@ -35,7 +35,7 @@ A `*.dto.ts` file exports one schema const and its type: `export const XRequestS
 
 ## Concurrency
 
-Async-first: independent calls run concurrently, each an element of `Promise.all([...])` (one failure fails the whole) or `Promise.allSettled([...])` (each outcome handled on its own). A `const` holds a promise, and a sequential `await` runs independent work, only in the cases `.claude/rules/code-style.md` lists.
+Async-first: independent calls run concurrently, each an element of `Promise.all([...])` (one failure fails the whole) or `Promise.allSettled([...])` (each outcome handled on its own). A `const` holds a promise, and a sequential `await` runs independent work, only in the cases `.claude/rules/concurrency.md` lists.
 
 ## Imports
 

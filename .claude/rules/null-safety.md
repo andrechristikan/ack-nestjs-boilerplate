@@ -9,10 +9,10 @@
 
 | Layer | Convention |
 | --- | --- |
-| request or query DTO | `field?: Type` |
+| request or query DTO | `field?: Type`, except an update request DTO (Update and create) |
 | response schema | `.optional()` when genuinely absent; `.nullable()` when present-or-null |
 | module `I*` data shape | `field: Type \| null` |
-| patch shape (`I<Module>Update`) | `field: Type \| null`, `null` meaning unchanged |
+| update shape (`I<Module>Update`) | `field: Type` for a required column; `field: Type \| null` for a nullable one, `null` clearing it |
 | `I*` for a request lifecycle or an external spec (JWT, Prisma) | `field?: Type` |
 | exception options, option bag | `field?: Type` |
 | config interface (`src/configs/`) | `field: Type \| null` |
@@ -24,9 +24,15 @@
 
 Pass the whole request DTO into the HTTP service. Normalize `undefined → null` only when a domain or HTTP method takes a discrete `T | null` param and the DTO field is optional: `const field = dto.field ?? null`. A domain or HTTP signature accepting `bio?: string` pushes the ambiguity one layer deeper.
 
-## Patch and create
+## Update and create
 
-A patch shape leaves a field unchanged when it is `null`; the repository applies it with a conditional spread, `...(name !== null && { name })` (`src/modules/workspace/repositories/workspace.repository.ts:138`). A create shape (`I<Module>Create`) stores `null` as given.
+An update is a full replace; no field has an unchanged state.
+
+- The update request DTO requires every editable field; a nullable column takes `null` to clear it.
+- `I<Module>Update` declares `field: Type` for a required column and `field: Type | null` for a nullable one.
+- The repository writes the values as given, `data: { name, description }` (`src/modules/workspace/repositories/workspace.repository.ts`), with no conditional spread on an update field.
+- A create shape (`I<Module>Create`) stores `null` as given.
+- A conditional spread, `...(x !== null && { x })`, fills a Prisma `where` filter (`...(cursor !== null && { id: { gt: cursor } })`) and an internal write whose input is genuinely optional.
 
 ## Consequences
 

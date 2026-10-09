@@ -35,7 +35,7 @@ Follow `superpowers:subagent-driven-development` with the project's agents: one 
 
 ## 3. Final review, through `reviewer`
 
-After the last task is complete, dispatch one `reviewer` at the review depth from step 1 over the whole scope: every file the ledger's `implemented` lines name (`references/dispatch.md`, Reviewer). The requirement is the plan header's `**Requirement:**` line, or the pin. The review checks concurrency: `.claude/rules/code-style.md`, Concurrency and errors.
+After the last task is complete, dispatch one `reviewer` at the review depth from step 1 over the whole scope: every file the ledger's `implemented` lines name (`references/dispatch.md`, Reviewer). The requirement is the plan header's `**Requirement:**` line, or the pin. The review checks concurrency: `.claude/rules/concurrency.md`.
 
 Every finding passes `superpowers:receiving-code-review` here, in this orchestration:
 

@@ -6,12 +6,12 @@ paths:
 
 # Feature flags
 
-Decorator position is `http.md`. This file is key shape, metadata, gating, and rollout.
+Decorator position is `guards.md`. This file is key shape, metadata, gating, and rollout.
 
 ## Keys
 
 - A flag key is camelCase (`loginWithGoogle`). A metadata key is camelCase and validated: `FeatureFlagUpdateMetadataRequestSchema` (`src/modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto.ts:10`) rejects any key failing `/^[a-z][a-zA-Z0-9]*$/`. The regex is the single source of the rule.
-- A gate reference is the bare key: `@FeatureFlagProtected('changePassword')`. `FeatureFlagProtected` checks the key when the route is decorated (`src/modules/feature-flag/decorators/feature-flag.decorator.ts:15-20`): an empty segment throws `FeatureFlagKeyEmptyException` and a dotted `key.metadataKey` `FeatureFlagKeyNestedException`, so the app does not boot (`exceptions.md`).
+- A gate reference is the bare key: `@FeatureFlagProtected('changePassword')`. `FeatureFlagProtected` checks the key when the route is decorated (`src/modules/feature-flag/decorators/feature-flag.decorator.ts:15-20`): an empty segment throws `FeatureFlagKeyEmptyException` and a dotted `key.metadataKey` `FeatureFlagKeyNestedException`, so the app does not boot (`guards.md`).
 
 ## Metadata
 

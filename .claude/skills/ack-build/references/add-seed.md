@@ -29,7 +29,7 @@ Static rows live in `src/migration/data/migration.<concern>.data.ts` as a Pascal
 - `seed()` opens `this.databaseService.withTransaction(async tx => { … }, { timeout })` and holds statements only; hashing, key drawing, and row building happen before the callback (`:48-71`). Every write is an upsert, an existence check, or `createMany({ skipDuplicates: true })`, never a blind `create`.
 - Every row carries `createdBy` and `updatedBy` set to `MigrationUserSuperAdminId` (`src/migration/data/migration.user.data.ts:4`), on the `create` branch, the `update` branch, and every nested row (`:56-63`).
 - `remove()` resets the collections `seed()` owns with `deleteMany` (`:78-92`).
-- A failed write is wrapped and thrown with no log before it, `throw new AppUnknownException(error)` (`:70`; `.claude/rules/exceptions.md`, `.claude/rules/config.md`); `throw new Error(...)` and a bare rethrow fail `pnpm lint`.
+- A failed write is wrapped and thrown with no log before it, `throw new AppUnknownException(error)` (`:70`; `.claude/rules/exceptions.md`, `.claude/rules/logging.md`); `throw new Error(...)` and a bare rethrow fail `pnpm lint`.
 
 A seed whose fixed id may already belong to another row checks first and stops with a message naming the email and both ids (`src/migration/seeds/migration.user.seed.ts`).
 

@@ -37,7 +37,7 @@ Boot runs only at `rules and boot`, or at `end to end` when the owner asked for 
 
 ## 3. Checks
 
-At `task`, `rules and boot`, and `end to end`, `reviewer` runs `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, and `pnpm spell` and quotes each exit code and decisive line; read that output (`deadcode` and `spell`: `.claude/CLAUDE.md` Gotchas). At the same depths, every sequential `await` of independent work in the scope is a finding (`.claude/rules/code-style.md`, Concurrency and errors). Run no command here. `/ack-review` runs no tests; `pnpm test <path>` belongs to the skill that changes code (`/ack-build`, `/ack-spec`) and `pnpm test:cov` to `/ack-spec` alone.
+At `task`, `rules and boot`, and `end to end`, `reviewer` runs `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, and `pnpm spell` and quotes each exit code and decisive line; read that output (`deadcode` and `spell`: `.claude/CLAUDE.md` Gotchas). At the same depths, every sequential `await` of independent work in the scope is a finding (`.claude/rules/concurrency.md`). Run no command here. `/ack-review` runs no tests; `pnpm test <path>` belongs to the skill that changes code (`/ack-build`, `/ack-spec`) and `pnpm test:cov` to `/ack-spec` alone.
 
 ## 4. Filter
 
