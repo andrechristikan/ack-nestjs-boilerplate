@@ -4,10 +4,6 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    SessionCursorAvailableOrderBy,
-    SessionDefaultAvailableOrderBy,
-} from '@modules/session/constants/session.list.constant';
 import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
@@ -27,9 +23,7 @@ export class SessionHttpService {
         query: SessionAdminListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.SessionWhereInput>(query, {
-                availableOrderBy: SessionDefaultAvailableOrderBy,
-            });
+            this.paginationQueryUtil.offset<Prisma.SessionWhereInput>(query);
         const isRevoked = this.paginationQueryUtil.equalBoolean(
             Prisma.SessionScalarFieldEnum.isRevoked,
             query.isRevoked
@@ -59,9 +53,7 @@ export class SessionHttpService {
         query: SessionSharedListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.SessionWhereInput>(query, {
-                availableOrderBy: SessionCursorAvailableOrderBy,
-            });
+            this.paginationQueryUtil.cursor<Prisma.SessionWhereInput>(query);
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } = await this.sessionDomain.getListCursor(

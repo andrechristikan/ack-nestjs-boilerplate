@@ -1,5 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -13,18 +14,20 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
-import { ProjectWorkspaceOwnerStoreKey } from '@modules/project/constants/project.constant';
+import { UserStoreKey } from '@modules/user/constants/user.constant';
+import {
+    ProjectStoreKey,
+    ProjectWorkspaceOwnerStoreKey,
+} from '@modules/project/constants/project.constant';
+import { WorkspaceMemberStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
 import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
 import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
-import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectRoleForbiddenException } from '@modules/project/exceptions/project.role-forbidden.exception';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
-import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
 import { Injectable } from '@nestjs/common';
 
@@ -62,9 +65,9 @@ export class ProjectMemberDomain {
         userId: string | null
     ): Promise<ProjectMember> {
         if (!userId) {
-            throw new UserNotAuthenticatedException();
+            throw new RequestGuardMissingException(UserStoreKey);
         } else if (!projectId) {
-            throw new ProjectNotFoundException();
+            throw new RequestGuardMissingException(ProjectStoreKey);
         }
 
         const member =
@@ -85,9 +88,9 @@ export class ProjectMemberDomain {
         allowedProjectRoles: EnumProjectMemberRole[]
     ): Promise<boolean> {
         if (!projectId) {
-            throw new ProjectNotFoundException();
+            throw new RequestGuardMissingException(ProjectStoreKey);
         } else if (!workspaceMember) {
-            throw new WorkspaceMemberForbiddenException();
+            throw new RequestGuardMissingException(WorkspaceMemberStoreKey);
         }
 
         const isWorkspaceOwner =

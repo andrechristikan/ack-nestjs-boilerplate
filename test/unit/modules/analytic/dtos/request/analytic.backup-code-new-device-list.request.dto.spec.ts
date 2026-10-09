@@ -6,14 +6,14 @@ describe('AnalyticBackupCodeNewDeviceListRequestSchema', () => {
         const result = AnalyticBackupCodeNewDeviceListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticBackupCodeNewDeviceAvailableOrderBy[0]}:desc`,
             windowMs: 3600000,
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticBackupCodeNewDeviceAvailableOrderBy[0]}:desc`,
             windowMs: 3600000,
         });
     });
@@ -54,5 +54,36 @@ describe('AnalyticBackupCodeNewDeviceListRequestSchema', () => {
             AnalyticBackupCodeNewDeviceListRequestSchema.shape.orderBy.meta()
                 ?.description
         ).toContain(AnalyticBackupCodeNewDeviceAvailableOrderBy.join(', '));
+    });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = AnalyticBackupCodeNewDeviceAvailableOrderBy[0];
+        const last =
+            AnalyticBackupCodeNewDeviceAvailableOrderBy[
+                AnalyticBackupCodeNewDeviceAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            AnalyticBackupCodeNewDeviceListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            AnalyticBackupCodeNewDeviceListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${AnalyticBackupCodeNewDeviceAvailableOrderBy[0]}:`,
+        `${AnalyticBackupCodeNewDeviceAvailableOrderBy[0]}:DESC`,
+        `${AnalyticBackupCodeNewDeviceAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            AnalyticBackupCodeNewDeviceListRequestSchema.safeParse({ orderBy })
+                .success
+        ).toBe(false);
     });
 });

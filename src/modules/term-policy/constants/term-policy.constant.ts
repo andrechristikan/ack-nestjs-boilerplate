@@ -9,7 +9,7 @@ import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-p
 export const TermPolicyRequiredGuardMetaKey = 'TermPolicyRequiredGuardMetaKey';
 
 /**
- * Term-policy acceptance guard error kit for `@TermPolicyAcceptanceProtected`.
+ * Term-policy error kit: `forbidden` for `@TermPolicyAcceptanceProtected`.
  * @public
  */
 export const DocTermPolicyErrorResponses = {

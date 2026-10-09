@@ -1,6 +1,6 @@
 import type { TermPolicyAdminListRequestDto } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
 import { TermPolicyAdminListRequestSchema } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
-import { Doc } from '@common/doc/decorators/doc.decorator';
+import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
 import { AwsS3PresignResponseSchema } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -22,6 +22,7 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { TermPolicyContentPresignRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
 import type { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
@@ -264,6 +265,10 @@ export class TermPolicyAdminController {
 
     @Doc({ summary: 'publish a term or policy by ID' })
     @Response('termPolicy.publish')
+    @DocErrors(HttpStatus.CONFLICT, {
+        statusCode: EnumTermPolicyStatusCodeError.publishInProgress,
+        messagePath: 'termPolicy.error.publishInProgress',
+    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.termPolicy,

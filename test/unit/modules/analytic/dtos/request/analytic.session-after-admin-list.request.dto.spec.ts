@@ -9,7 +9,7 @@ describe('AnalyticSessionAfterAdminListRequestSchema', () => {
         const result = AnalyticSessionAfterAdminListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticSessionAfterAdminAvailableOrderBy[0]}:desc`,
             startDate,
             endDate,
         });
@@ -17,7 +17,7 @@ describe('AnalyticSessionAfterAdminListRequestSchema', () => {
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticSessionAfterAdminAvailableOrderBy[0]}:desc`,
             startDate,
             endDate,
         });
@@ -57,5 +57,43 @@ describe('AnalyticSessionAfterAdminListRequestSchema', () => {
             AnalyticSessionAfterAdminListRequestSchema.shape.orderBy.meta()
                 ?.description
         ).toContain(AnalyticSessionAfterAdminAvailableOrderBy.join(', '));
+    });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = AnalyticSessionAfterAdminAvailableOrderBy[0];
+        const last =
+            AnalyticSessionAfterAdminAvailableOrderBy[
+                AnalyticSessionAfterAdminAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            AnalyticSessionAfterAdminListRequestSchema.safeParse({
+                startDate,
+                endDate,
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            AnalyticSessionAfterAdminListRequestSchema.safeParse({
+                startDate,
+                endDate,
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${AnalyticSessionAfterAdminAvailableOrderBy[0]}:`,
+        `${AnalyticSessionAfterAdminAvailableOrderBy[0]}:DESC`,
+        `${AnalyticSessionAfterAdminAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            AnalyticSessionAfterAdminListRequestSchema.safeParse({
+                startDate,
+                endDate,
+                orderBy,
+            }).success
+        ).toBe(false);
     });
 });

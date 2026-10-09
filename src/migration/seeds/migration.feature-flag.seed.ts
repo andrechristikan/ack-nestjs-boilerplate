@@ -69,7 +69,10 @@ export class MigrationFeatureFlagSeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(
+                error,
+                'Seeding feature flags failed'
+            );
         }
 
         this.logger.log('Feature Flags seeded successfully.');
@@ -83,7 +86,10 @@ export class MigrationFeatureFlagSeed
         try {
             await this.databaseService.client.featureFlag.deleteMany({});
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(
+                error,
+                'Removing feature flags failed'
+            );
         }
 
         this.logger.log('Feature Flags removed successfully.');

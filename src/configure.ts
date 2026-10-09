@@ -6,7 +6,7 @@ import type { Express } from 'express';
 import { Logger as PinoLogger } from 'nestjs-pino';
 
 export const ConfigureOptions: NestApplicationOptions = {
-    abortOnError: true,
+    abortOnError: false,
     bufferLogs: true,
     bodyParser: false,
     routeConflictPolicy: { duplicate: 'error', shadow: 'error' },

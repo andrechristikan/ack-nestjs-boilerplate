@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -57,6 +58,7 @@ import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domai
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
+import { WorkspaceHeaderMissingException } from '@modules/workspace/exceptions/workspace.header-missing.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceSlugInvalidException } from '@modules/workspace/exceptions/workspace.slug-invalid.exception';
@@ -279,18 +281,19 @@ describe('WorkspaceDomain', () => {
     });
 
     describe('validateWorkspaceGuard', () => {
-        it('throws WorkspaceNotFoundException when the id is null', async () => {
+        it('throws WorkspaceHeaderMissingException when the id is null', async () => {
             await expect(
                 domain.validateWorkspaceGuard(null)
             ).rejects.toMatchObject({
-                constructor: WorkspaceNotFoundException,
+                constructor: WorkspaceHeaderMissingException,
                 module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.notFound,
+                statusCode: EnumWorkspaceStatusCodeError.headerMissing,
                 statusCodeKey:
                     EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.notFound
+                        EnumWorkspaceStatusCodeError.headerMissing
                     ],
-                messagePath: 'workspace.error.notFound',
+                httpStatus: HttpStatus.BAD_REQUEST,
+                messagePath: 'workspace.error.headerMissing',
             });
             expect(workspaceRepository.findActiveById).not.toHaveBeenCalled();
         });

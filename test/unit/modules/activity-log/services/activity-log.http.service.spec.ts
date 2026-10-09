@@ -9,7 +9,6 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { ActivityLogAdminListRequestDto } from '@modules/activity-log/dtos/request/activity-log.admin-list.request.dto';
 import type { ActivityLogAdminWorkspaceListRequestDto } from '@modules/activity-log/dtos/request/activity-log.admin-workspace-list.request.dto';
 import type { ActivityLogSharedListRequestDto } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
-import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
 
@@ -22,7 +21,7 @@ describe('ActivityLogHttpService', () => {
         mock<RequestStoreService>();
 
     const params = { skip: 0, limit: 20, orderBy: [] };
-    const storePatch = { availableOrderBy: ActivityLogDefaultAvailableOrderBy };
+    const storePatch = { perPage: 20 };
     const offsetQuery: ActivityLogAdminListRequestDto = {};
     const workspaceQuery: ActivityLogAdminWorkspaceListRequestDto = {
         userId: 'user-1',
@@ -82,8 +81,7 @@ describe('ActivityLogHttpService', () => {
 
             expect(result).toEqual(offsetPage);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
-                offsetQuery,
-                { availableOrderBy: ActivityLogDefaultAvailableOrderBy }
+                offsetQuery
             );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
@@ -108,8 +106,7 @@ describe('ActivityLogHttpService', () => {
 
             expect(result).toEqual(cursorPage);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(
-                cursorQuery,
-                { availableOrderBy: ActivityLogDefaultAvailableOrderBy }
+                cursorQuery
             );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

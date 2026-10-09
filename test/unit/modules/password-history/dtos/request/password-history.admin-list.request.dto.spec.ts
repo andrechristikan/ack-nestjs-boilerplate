@@ -52,4 +52,34 @@ describe('PasswordHistoryAdminListRequestSchema', () => {
                 ?.description
         ).toContain(PasswordHistoryDefaultAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = PasswordHistoryDefaultAvailableOrderBy[0];
+        const last =
+            PasswordHistoryDefaultAvailableOrderBy[
+                PasswordHistoryDefaultAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            PasswordHistoryAdminListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            PasswordHistoryAdminListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${PasswordHistoryDefaultAvailableOrderBy[0]}:`,
+        `${PasswordHistoryDefaultAvailableOrderBy[0]}:DESC`,
+        `${PasswordHistoryDefaultAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            PasswordHistoryAdminListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
 });

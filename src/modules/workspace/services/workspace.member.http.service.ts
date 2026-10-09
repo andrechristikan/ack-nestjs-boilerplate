@@ -5,10 +5,7 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
-import {
-    WorkspaceMemberDefaultAvailableOrderBy,
-    WorkspaceMemberDefaultRole,
-} from '@modules/workspace/constants/workspace.list.constant';
+import { WorkspaceMemberDefaultRole } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceAdminMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-member-list.request.dto';
 import type { WorkspaceMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.member-list.request.dto';
 import type { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
@@ -54,10 +51,7 @@ export class WorkspaceMemberHttpService {
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.WorkspaceMemberWhereInput>(
-                query,
-                {
-                    availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
-                }
+                query
             );
         const role = this.paginationQueryUtil.inEnum(
             Prisma.WorkspaceMemberScalarFieldEnum.role,
@@ -121,10 +115,7 @@ export class WorkspaceMemberHttpService {
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.WorkspaceMemberWhereInput>(
-                query,
-                {
-                    availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
-                }
+                query
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

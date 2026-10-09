@@ -24,17 +24,14 @@ export interface IPaginationQuery {
     cursor?: string;
     orderBy: IPaginationOrderBy[];
     availableSearch: readonly string[];
-    availableOrderBy: readonly string[];
 }
 
 export interface IPaginationQueryOffsetOptions {
-    availableOrderBy?: readonly string[];
     availableSearch?: readonly string[];
     defaultPerPage?: number;
 }
 
 export interface IPaginationQueryCursorOptions {
-    availableOrderBy?: readonly string[];
     availableSearch?: readonly string[];
     defaultPerPage?: number;
     cursorField?: string;

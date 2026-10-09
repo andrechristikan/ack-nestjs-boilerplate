@@ -1,3 +1,4 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -34,10 +35,11 @@ import type {
     INotificationWorkspaceJoinRequestEncryptedPayload,
     INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
+import { TermPolicyPublishInProgressException } from '@modules/term-policy/exceptions/term-policy.publish-in-progress.exception';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Queue } from 'bullmq';
+import { ErrorCode, Queue } from 'bullmq';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
 /**
@@ -495,6 +497,44 @@ export class NotificationQueue {
                 termPolicyId: payload.termPolicyId,
             }
         );
+
+        const existing = await this.notificationQueue.getJob(jobId);
+        if (existing) {
+            const state = await existing.getState();
+            switch (state) {
+                case 'failed':
+                    try {
+                        await existing.retry('failed', {
+                            resetAttemptsMade: true,
+                        });
+                    } catch (err: unknown) {
+                        if (
+                            err instanceof Error &&
+                            'code' in err &&
+                            err.code === ErrorCode.JobNotInState
+                        ) {
+                            throw new TermPolicyPublishInProgressException();
+                        }
+
+                        throw new AppUnknownException(
+                            err,
+                            'Retrying the failed term policy publish job failed'
+                        );
+                    }
+
+                    return;
+                case 'waiting':
+                case 'prioritized':
+                case 'delayed':
+                case 'active':
+                case 'waiting-children':
+                    throw new TermPolicyPublishInProgressException();
+                case 'completed':
+                case 'unknown':
+                    await existing.remove();
+                    break;
+            }
+        }
 
         await this.notificationQueue.add(
             EnumNotificationProcess.publishTermPolicy,

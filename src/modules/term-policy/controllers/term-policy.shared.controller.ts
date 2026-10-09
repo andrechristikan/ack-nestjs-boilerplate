@@ -70,7 +70,6 @@ export class TermPolicySharedController {
 
     @Doc({ summary: 'user accepts term or policy' })
     @Response('termPolicy.accept')
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

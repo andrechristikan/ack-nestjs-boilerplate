@@ -20,6 +20,8 @@ import type { ApiKey, Prisma } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
+import { ApiKeyStoreKey } from '@modules/api-key/constants/api-key.constant';
+import { expectRequestGuardMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import type {
@@ -765,7 +767,7 @@ describe('ApiKeyDomain', () => {
             });
         });
 
-        it('throws ApiKeyXApiKeyNotFoundException when no api key matches the key half', async () => {
+        it('throws ApiKeyXApiKeyInvalidException when no api key matches the key half', async () => {
             apiKeyCache.getCacheByKey.mockResolvedValue(null);
             apiKeyRepository.findOneByKey.mockResolvedValue(null);
 
@@ -773,13 +775,13 @@ describe('ApiKeyDomain', () => {
                 domain.validateXApiKey('local_abc123:secret-1')
             ).rejects.toMatchObject({
                 module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyNotFound,
+                statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
                 statusCodeKey:
                     EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyNotFound
+                        EnumApiKeyStatusCodeError.xApiKeyInvalid
                     ],
                 httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'apiKey.error.xApiKey.notFound',
+                messagePath: 'apiKey.error.xApiKey.invalid',
             });
         });
 
@@ -838,7 +840,7 @@ describe('ApiKeyDomain', () => {
     });
 
     describe('validateXApiKeyTypeGuard', () => {
-        it('throws ApiKeyXApiKeyRequiredException when no api key is resolved', () => {
+        it('throws RequestGuardMissingException when no api key is resolved', () => {
             let thrown: unknown;
             try {
                 domain.validateXApiKeyTypeGuard(null, [EnumApiKeyType.default]);
@@ -846,16 +848,7 @@ describe('ApiKeyDomain', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyRequired
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'apiKey.error.xApiKey.required',
-            });
+            expectRequestGuardMissingWithKey(thrown, ApiKeyStoreKey);
         });
 
         it('throws ApiKeyXApiKeyForbiddenException when the api key type is not allowed', () => {

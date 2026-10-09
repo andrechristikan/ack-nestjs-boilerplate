@@ -4,7 +4,6 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 import type { TermPolicyAcceptedListRequestDto } from '@modules/term-policy/dtos/request/term-policy.accepted-list.request.dto';
 import type { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
@@ -26,11 +25,7 @@ export class TermPolicyAcceptanceHttpService {
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.TermPolicyUserAcceptanceWhereInput>(
-                query,
-                {
-                    availableOrderBy:
-                        TermPolicyAcceptanceDefaultAvailableOrderBy,
-                }
+                query
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

@@ -37,10 +37,6 @@ export const DocApiKeyErrorResponses = {
         {
             statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
             messagePath: 'apiKey.error.xApiKey.invalid',
-        },
-        {
-            statusCode: EnumApiKeyStatusCodeError.xApiKeyNotFound,
-            messagePath: 'apiKey.error.xApiKey.notFound',
         }
     ),
     forbidden: DocResponseError(HttpStatus.FORBIDDEN, {

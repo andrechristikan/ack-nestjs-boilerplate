@@ -36,7 +36,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             await this.client.$connect();
             this.logger.log('Successfully connected to the database');
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(
+                error,
+                'Connecting to the database failed'
+            );
         }
     }
 
@@ -143,7 +146,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
                 throw error;
             }
 
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(
+                error,
+                'Initializing the database service failed'
+            );
         }
     }
 

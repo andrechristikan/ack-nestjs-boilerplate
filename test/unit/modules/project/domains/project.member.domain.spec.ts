@@ -24,13 +24,18 @@ import type {
     IActivityLogStaged,
     IActivityLogStageInput,
 } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ProjectWorkspaceOwnerStoreKey } from '@modules/project/constants/project.constant';
+import {
+    ProjectStoreKey,
+    ProjectWorkspaceOwnerStoreKey,
+} from '@modules/project/constants/project.constant';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { UserStoreKey } from '@modules/user/constants/user.constant';
+import { WorkspaceMemberStoreKey } from '@modules/workspace/constants/workspace.constant';
+import { expectRequestGuardMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 describe('ProjectMemberDomain', () => {
@@ -131,39 +136,32 @@ describe('ProjectMemberDomain', () => {
     });
 
     describe('validateProjectMemberGuard', () => {
-        it('throws UserNotAuthenticatedException when userId is null', async () => {
-            await expect(
-                domain.validateProjectMemberGuard(
+        it('throws RequestGuardMissingException when userId is null', async () => {
+            let thrown: unknown;
+            try {
+                await domain.validateProjectMemberGuard(
                     '507f1f77bcf86cd799439011',
                     null
-                )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notAuthenticated,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.notAuthenticated
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'user.error.notAuthenticated',
-            });
+                );
+            } catch (error) {
+                thrown = error;
+            }
+
+            expectRequestGuardMissingWithKey(thrown, UserStoreKey);
         });
 
-        it('throws ProjectNotFoundException when projectId is null', async () => {
-            const rejection = domain.validateProjectMemberGuard(
-                null,
-                '507f1f77bcf86cd799439022'
-            );
+        it('throws RequestGuardMissingException when projectId is null', async () => {
+            let thrown: unknown;
+            try {
+                await domain.validateProjectMemberGuard(
+                    null,
+                    '507f1f77bcf86cd799439022'
+                );
+            } catch (error) {
+                thrown = error;
+            }
 
-            await expect(rejection).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.notFound
-                    ],
-                messagePath: 'project.error.notFound',
-            });
+            expectRequestGuardMissingWithKey(thrown, ProjectStoreKey);
         });
 
         it('throws ProjectMemberForbiddenException when the caller has no member row', async () => {
@@ -209,41 +207,34 @@ describe('ProjectMemberDomain', () => {
     });
 
     describe('validateProjectRoleGuard', () => {
-        it('throws ProjectNotFoundException when projectId is null', async () => {
-            const rejection = domain.validateProjectRoleGuard(
-                null,
-                baseWorkspaceMember,
-                [EnumProjectMemberRole.admin]
-            );
+        it('throws RequestGuardMissingException when projectId is null', async () => {
+            let thrown: unknown;
+            try {
+                await domain.validateProjectRoleGuard(
+                    null,
+                    baseWorkspaceMember,
+                    [EnumProjectMemberRole.admin]
+                );
+            } catch (error) {
+                thrown = error;
+            }
 
-            await expect(rejection).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.notFound
-                    ],
-                messagePath: 'project.error.notFound',
-            });
+            expectRequestGuardMissingWithKey(thrown, ProjectStoreKey);
         });
 
-        it('throws WorkspaceMemberForbiddenException when workspaceMember is null', async () => {
-            await expect(
-                domain.validateProjectRoleGuard(
+        it('throws RequestGuardMissingException when workspaceMember is null', async () => {
+            let thrown: unknown;
+            try {
+                await domain.validateProjectRoleGuard(
                     '507f1f77bcf86cd799439011',
                     null,
                     [EnumProjectMemberRole.admin]
-                )
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberForbidden
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'workspace.error.memberForbidden',
-            });
+                );
+            } catch (error) {
+                thrown = error;
+            }
+
+            expectRequestGuardMissingWithKey(thrown, WorkspaceMemberStoreKey);
         });
 
         it('returns true with no repository lookup when the caller is the workspace owner', async () => {

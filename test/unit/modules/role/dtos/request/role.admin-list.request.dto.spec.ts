@@ -44,4 +44,31 @@ describe('RoleAdminListRequestSchema', () => {
             RoleAdminListRequestSchema.shape.orderBy.meta()?.description
         ).toContain(RoleDefaultAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = RoleDefaultAvailableOrderBy[0];
+        const last =
+            RoleDefaultAvailableOrderBy[RoleDefaultAvailableOrderBy.length - 1];
+
+        expect(
+            RoleAdminListRequestSchema.safeParse({ orderBy: `${first}:asc` })
+                .success
+        ).toBe(true);
+        expect(
+            RoleAdminListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${RoleDefaultAvailableOrderBy[0]}:`,
+        `${RoleDefaultAvailableOrderBy[0]}:DESC`,
+        `${RoleDefaultAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(RoleAdminListRequestSchema.safeParse({ orderBy }).success).toBe(
+            false
+        );
+    });
 });

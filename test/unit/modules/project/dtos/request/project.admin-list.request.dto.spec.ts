@@ -57,4 +57,33 @@ describe('ProjectAdminListRequestSchema', () => {
             ProjectAdminListRequestSchema.shape.orderBy.meta()?.description
         ).toContain(ProjectDefaultAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = ProjectDefaultAvailableOrderBy[0];
+        const last =
+            ProjectDefaultAvailableOrderBy[
+                ProjectDefaultAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            ProjectAdminListRequestSchema.safeParse({ orderBy: `${first}:asc` })
+                .success
+        ).toBe(true);
+        expect(
+            ProjectAdminListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${ProjectDefaultAvailableOrderBy[0]}:`,
+        `${ProjectDefaultAvailableOrderBy[0]}:DESC`,
+        `${ProjectDefaultAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            ProjectAdminListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
 });

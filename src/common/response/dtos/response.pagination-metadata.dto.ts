@@ -93,10 +93,6 @@ export const ResponsePaginationMetadataSchema = ResponseMetadataSchema.extend({
         description: 'Fields available for search.',
         example: ['name'],
     }),
-    availableOrderBy: z.array(z.string()).meta({
-        description: 'Fields available for ordering.',
-        example: ['createdAt', 'updatedAt'],
-    }),
     type: z.enum(EnumPaginationType).meta({
         description: 'Pagination strategy used for this response.',
         example: EnumPaginationType.offset,

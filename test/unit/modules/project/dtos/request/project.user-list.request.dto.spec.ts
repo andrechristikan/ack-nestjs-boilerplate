@@ -10,23 +10,31 @@ describe('ProjectUserListRequestSchema', () => {
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
             search: 'revamp',
-            orderBy: 'name:asc',
+            orderBy: `${ProjectCursorAvailableOrderBy[0]}:asc`,
         });
 
         expect(result).toEqual({
             cursor: 'eyJpZCI6IjE2In0',
             perPage: 20,
             search: 'revamp',
-            orderBy: 'name:asc',
+            orderBy: `${ProjectCursorAvailableOrderBy[0]}:asc`,
         });
     });
 
     it('parses an array orderBy', () => {
         const result = ProjectUserListRequestSchema.parse({
-            orderBy: ['createdAt:desc', 'name:asc'],
+            orderBy: [
+                `${ProjectCursorAvailableOrderBy[0]}:desc`,
+                `${ProjectCursorAvailableOrderBy[0]}:asc`,
+            ],
         });
 
-        expect(result).toEqual({ orderBy: ['createdAt:desc', 'name:asc'] });
+        expect(result).toEqual({
+            orderBy: [
+                `${ProjectCursorAvailableOrderBy[0]}:desc`,
+                `${ProjectCursorAvailableOrderBy[0]}:asc`,
+            ],
+        });
     });
 
     it('parses an empty query', () => {
@@ -48,5 +56,34 @@ describe('ProjectUserListRequestSchema', () => {
         expect(
             ProjectUserListRequestSchema.shape.orderBy.meta()?.description
         ).toContain(ProjectCursorAvailableOrderBy.join(', '));
+    });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = ProjectCursorAvailableOrderBy[0];
+        const last =
+            ProjectCursorAvailableOrderBy[
+                ProjectCursorAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            ProjectUserListRequestSchema.safeParse({ orderBy: `${first}:asc` })
+                .success
+        ).toBe(true);
+        expect(
+            ProjectUserListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${ProjectCursorAvailableOrderBy[0]}:`,
+        `${ProjectCursorAvailableOrderBy[0]}:DESC`,
+        `${ProjectCursorAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            ProjectUserListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
     });
 });

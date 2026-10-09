@@ -67,6 +67,10 @@ export const DocAuthJwtAccessErrorResponses = {
             statusCode: EnumSessionStatusCodeError.revoked,
         }
     ),
+    unavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
+        messagePath: 'auth.error.providerUnavailable',
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+    }),
 } as const;
 
 /**
@@ -85,6 +89,10 @@ export const DocAuthJwtRefreshErrorResponses = {
             statusCode: EnumSessionStatusCodeError.revoked,
         }
     ),
+    unavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
+        messagePath: 'auth.error.providerUnavailable',
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+    }),
 } as const;
 
 /**
@@ -106,6 +114,10 @@ export const DocAuthSocialGoogleErrorResponses = {
     notConfigured: DocResponseError(HttpStatus.NOT_FOUND, {
         messagePath: 'auth.error.socialGoogleNotConfigured',
         statusCode: EnumAuthStatusCodeError.socialGoogleNotConfigured,
+    }),
+    unavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
+        messagePath: 'auth.error.providerUnavailable',
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
     }),
 } as const;
 
@@ -129,7 +141,38 @@ export const DocAuthSocialAppleErrorResponses = {
         messagePath: 'auth.error.socialAppleNotConfigured',
         statusCode: EnumAuthStatusCodeError.socialAppleNotConfigured,
     }),
+    unavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
+        messagePath: 'auth.error.providerUnavailable',
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+    }),
 } as const;
+
+/**
+ * Node network error codes that mark an unreachable key or identity provider endpoint.
+ * @public
+ */
+export const AuthProviderNetworkErrorCodes: readonly string[] = [
+    'ECONNREFUSED',
+    'ECONNRESET',
+    'ENOTFOUND',
+    'ETIMEDOUT',
+    'EAI_AGAIN',
+    'EHOSTUNREACH',
+    'ENETUNREACH',
+];
+
+/**
+ * Error name `jwks-rsa` gives a JWKS endpoint that answers an HTTP error or no usable key.
+ * @public
+ */
+export const AuthJwksErrorName = 'JwksError';
+
+/**
+ * Message prefix `google-auth-library` puts on a failed certificate fetch.
+ * @public
+ */
+export const AuthGoogleCertificateErrorPrefix =
+    'Failed to retrieve verification certificates';
 
 /**
  * Request header carrying the JWT or social ID token.

@@ -81,7 +81,10 @@ export class MigrationTermPolicySeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(
+                error,
+                'Seeding term policies failed'
+            );
         }
 
         this.logger.log('TermPolicies seeded successfully.');

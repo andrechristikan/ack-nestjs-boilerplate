@@ -7,10 +7,7 @@ import type {
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
-import {
-    FeatureFlagDefaultAvailableOrderBy,
-    FeatureFlagDefaultAvailableSearch,
-} from '@modules/feature-flag/constants/feature-flag.list.constant';
+import { FeatureFlagDefaultAvailableSearch } from '@modules/feature-flag/constants/feature-flag.list.constant';
 import type { FeatureFlagAdminListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.admin-list.request.dto';
 import type { FeatureFlagSystemListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.system-list.request.dto';
 import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
@@ -34,7 +31,6 @@ export class FeatureFlagHttpService {
                 query,
                 {
                     availableSearch: FeatureFlagDefaultAvailableSearch,
-                    availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
                 }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
@@ -56,7 +52,6 @@ export class FeatureFlagHttpService {
                 query,
                 {
                     availableSearch: FeatureFlagDefaultAvailableSearch,
-                    availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
                 }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);

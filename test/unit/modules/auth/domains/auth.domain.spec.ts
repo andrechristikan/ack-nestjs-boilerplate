@@ -6,6 +6,10 @@ import type { TokenPayload } from 'google-auth-library';
 import type { VerifyAppleIdTokenResponse } from 'verify-apple-id-token';
 import { AuthDomain } from '@modules/auth/domains/auth.domain';
 import { AuthSocialDomain } from '@modules/auth/domains/auth.social.domain';
+import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { AuthProviderUnavailableException } from '@modules/auth/exceptions/auth.provider-unavailable.exception';
+import { RedisErrorMessages } from '@keyv/redis';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
@@ -16,6 +20,8 @@ import { SessionRevokedException } from '@modules/session/exceptions/session.rev
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type { ISessionCache } from '@modules/session/interfaces/session.interface';
+import { HttpStatus } from '@nestjs/common';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import {
@@ -26,6 +32,7 @@ import {
 describe('AuthDomain', () => {
     const authSocialDomain: MockProxy<AuthSocialDomain> =
         mock<AuthSocialDomain>();
+    const authUtil: MockProxy<AuthUtil> = mock<AuthUtil>();
     const sessionCache: MockProxy<SessionCache> = mock<SessionCache>();
     const helperHashService: MockProxy<HelperHashService> =
         mock<HelperHashService>();
@@ -61,6 +68,7 @@ describe('AuthDomain', () => {
             providers: [
                 AuthDomain,
                 { provide: AuthSocialDomain, useValue: authSocialDomain },
+                { provide: AuthUtil, useValue: authUtil },
                 { provide: SessionCache, useValue: sessionCache },
                 { provide: HelperHashService, useValue: helperHashService },
             ],
@@ -153,6 +161,17 @@ describe('AuthDomain', () => {
                     ],
                 messagePath: 'auth.error.accessTokenUnauthorized',
             });
+        });
+
+        it('propagates a session cache failure instead of revoking the session', async () => {
+            const failure = new Error(
+                RedisErrorMessages.RedisClientNotConnectedThrown
+            );
+            sessionCache.getLogin.mockRejectedValue(failure);
+
+            await expect(
+                domain.validateJwtAccessStrategy(accessPayload)
+            ).rejects.toBe(failure);
         });
 
         it('throws SessionRevokedException when no session is cached', async () => {
@@ -263,8 +282,10 @@ describe('AuthDomain', () => {
             });
         });
 
-        it('throws AuthJwtAccessTokenInvalidException with the passport error when present', () => {
-            const err = new Error('passport error');
+        it('wraps an unknown strategy error in AppUnknownException with the raw error', () => {
+            const err = new Error(
+                RedisErrorMessages.RedisClientNotConnectedThrown
+            );
 
             let thrown: unknown;
             try {
@@ -277,20 +298,69 @@ describe('AuthDomain', () => {
                 thrown = error;
             }
 
+            expect(thrown).toBeInstanceOf(AppUnknownException);
+            expect(thrown).toMatchObject({
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: err,
+            });
+            expect(
+                authUtil.toProviderUnavailableException
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthProviderUnavailableException when passport info is a key endpoint outage', () => {
+            const info = new Error('jwks endpoint down');
+            const unavailable = new AuthProviderUnavailableException(info);
+            authUtil.toProviderUnavailableException.mockReturnValue(
+                unavailable
+            );
+
+            let thrown: unknown;
+            try {
+                domain.validateJwtAccessGuard(
+                    null as unknown as Error,
+                    undefined as unknown as IAuthJwtAccessTokenPayload,
+                    info
+                );
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toBe(unavailable);
+            expect(
+                authUtil.toProviderUnavailableException
+            ).toHaveBeenCalledWith(info);
+        });
+
+        it('keeps a signing key miss or a bad token as AuthJwtAccessTokenInvalidException', () => {
+            const info = Object.assign(new Error('no matching kid'), {
+                name: 'SigningKeyNotFoundError',
+            });
+            authUtil.toProviderUnavailableException.mockReturnValue(null);
+
+            let thrown: unknown;
+            try {
+                domain.validateJwtAccessGuard(
+                    null as unknown as Error,
+                    undefined as unknown as IAuthJwtAccessTokenPayload,
+                    info
+                );
+            } catch (error) {
+                thrown = error;
+            }
+
             expect(thrown).toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtAccessTokenInvalid
-                    ],
                 messagePath: 'auth.error.accessTokenUnauthorized',
-                rawError: err,
+                httpStatus: HttpStatus.UNAUTHORIZED,
+                rawError: info,
             });
         });
 
         it('throws AuthJwtAccessTokenInvalidException with the passport info when no user and no error', () => {
             const info = new Error('no auth header');
+            authUtil.toProviderUnavailableException.mockReturnValue(null);
 
             let thrown: unknown;
             try {
@@ -413,6 +483,17 @@ describe('AuthDomain', () => {
             });
         });
 
+        it('propagates a session cache failure instead of revoking the session', async () => {
+            const failure = new Error(
+                RedisErrorMessages.RedisClientNotConnectedThrown
+            );
+            sessionCache.getLogin.mockRejectedValue(failure);
+
+            await expect(
+                domain.validateJwtRefreshStrategy(refreshPayload)
+            ).rejects.toBe(failure);
+        });
+
         it('throws SessionRevokedException when no session is cached', async () => {
             sessionCache.getLogin.mockResolvedValue(null);
 
@@ -517,8 +598,10 @@ describe('AuthDomain', () => {
             });
         });
 
-        it('throws AuthJwtRefreshTokenInvalidException with the passport error when present', () => {
-            const err = new Error('passport error');
+        it('wraps an unknown strategy error in AppUnknownException with the raw error', () => {
+            const err = new Error(
+                RedisErrorMessages.RedisClientNotConnectedThrown
+            );
 
             let thrown: unknown;
             try {
@@ -531,20 +614,69 @@ describe('AuthDomain', () => {
                 thrown = error;
             }
 
+            expect(thrown).toBeInstanceOf(AppUnknownException);
+            expect(thrown).toMatchObject({
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: err,
+            });
+            expect(
+                authUtil.toProviderUnavailableException
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws AuthProviderUnavailableException when passport info is a key endpoint outage', () => {
+            const info = new Error('jwks endpoint down');
+            const unavailable = new AuthProviderUnavailableException(info);
+            authUtil.toProviderUnavailableException.mockReturnValue(
+                unavailable
+            );
+
+            let thrown: unknown;
+            try {
+                domain.validateJwtRefreshGuard(
+                    null as unknown as Error,
+                    undefined as unknown as IAuthJwtRefreshTokenPayload,
+                    info
+                );
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toBe(unavailable);
+            expect(
+                authUtil.toProviderUnavailableException
+            ).toHaveBeenCalledWith(info);
+        });
+
+        it('keeps a signing key miss or a bad token as AuthJwtRefreshTokenInvalidException', () => {
+            const info = Object.assign(new Error('no matching kid'), {
+                name: 'SigningKeyNotFoundError',
+            });
+            authUtil.toProviderUnavailableException.mockReturnValue(null);
+
+            let thrown: unknown;
+            try {
+                domain.validateJwtRefreshGuard(
+                    null as unknown as Error,
+                    undefined as unknown as IAuthJwtRefreshTokenPayload,
+                    info
+                );
+            } catch (error) {
+                thrown = error;
+            }
+
             expect(thrown).toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtRefreshTokenInvalid
-                    ],
                 messagePath: 'auth.error.refreshTokenUnauthorized',
-                rawError: err,
+                httpStatus: HttpStatus.UNAUTHORIZED,
+                rawError: info,
             });
         });
 
         it('throws AuthJwtRefreshTokenInvalidException with the passport info when no user and no error', () => {
             const info = new Error('no auth header');
+            authUtil.toProviderUnavailableException.mockReturnValue(null);
 
             let thrown: unknown;
             try {
@@ -608,9 +740,26 @@ describe('AuthDomain', () => {
             await expect(rejection).rejects.toBe(notConfigured);
         });
 
+        it('throws AuthProviderUnavailableException when the Apple endpoint is unreachable', async () => {
+            const cause = new Error('network down');
+            const unavailable = new AuthProviderUnavailableException(cause);
+            authSocialDomain.verifyApple.mockRejectedValue(cause);
+            authUtil.toProviderUnavailableException.mockReturnValue(
+                unavailable
+            );
+
+            const rejection = domain.validateOAuthApple('id-token');
+
+            await expect(rejection).rejects.toBe(unavailable);
+            expect(
+                authUtil.toProviderUnavailableException
+            ).toHaveBeenCalledWith(cause);
+        });
+
         it('wraps a verification failure in AuthSocialAppleInvalidException', async () => {
             const cause = new Error('apple verification failed');
             authSocialDomain.verifyApple.mockRejectedValue(cause);
+            authUtil.toProviderUnavailableException.mockReturnValue(null);
 
             const rejection = domain.validateOAuthApple('id-token');
 
@@ -661,9 +810,26 @@ describe('AuthDomain', () => {
             await expect(rejection).rejects.toBe(notConfigured);
         });
 
+        it('throws AuthProviderUnavailableException when the Google endpoint is unreachable', async () => {
+            const cause = new Error('network down');
+            const unavailable = new AuthProviderUnavailableException(cause);
+            authSocialDomain.verifyGoogle.mockRejectedValue(cause);
+            authUtil.toProviderUnavailableException.mockReturnValue(
+                unavailable
+            );
+
+            const rejection = domain.validateOAuthGoogle('id-token');
+
+            await expect(rejection).rejects.toBe(unavailable);
+            expect(
+                authUtil.toProviderUnavailableException
+            ).toHaveBeenCalledWith(cause);
+        });
+
         it('wraps a verification failure in AuthSocialGoogleInvalidException', async () => {
             const cause = new Error('google verification failed');
             authSocialDomain.verifyGoogle.mockRejectedValue(cause);
+            authUtil.toProviderUnavailableException.mockReturnValue(null);
 
             const rejection = domain.validateOAuthGoogle('id-token');
 

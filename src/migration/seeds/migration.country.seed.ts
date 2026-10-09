@@ -67,7 +67,7 @@ export class MigrationCountrySeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(error, 'Seeding countries failed');
         }
 
         this.logger.log('Countries seeded successfully.');
@@ -83,7 +83,7 @@ export class MigrationCountrySeed
                 where: {},
             });
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(error, 'Removing countries failed');
         }
 
         this.logger.log('Countries removed successfully.');

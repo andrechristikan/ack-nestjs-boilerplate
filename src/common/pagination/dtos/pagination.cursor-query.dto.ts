@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import {
     PaginationDefaultMaxPerPage,
+    PaginationDefaultMaxSearchLength,
     PaginationDefaultPerPage,
 } from '@common/pagination/constants/pagination.constant';
 
 /**
- * Cursor list query: cursor, perPage, search, and orderBy; a module list schema extends it and overrides the search and orderBy meta.
+ * Cursor list query: cursor, perPage, and search; a module list schema extends it and declares its own `orderBy` with `PaginationOrderBySchema`.
  * @public
  */
 export const PaginationCursorQuerySchema = z.strictObject({
@@ -21,17 +22,14 @@ export const PaginationCursorQuerySchema = z.strictObject({
             description: `Data per page, max ${PaginationDefaultMaxPerPage}`,
             example: PaginationDefaultPerPage,
         }),
-    search: z.string().optional().meta({
-        description: 'Search query, case-insensitive, partial match',
-        example: '',
-    }),
-    orderBy: z
-        .union([z.string(), z.array(z.string())])
+    search: z
+        .string()
+        .trim()
+        .max(PaginationDefaultMaxSearchLength)
         .optional()
         .meta({
-            description:
-                'Order by field in `field:direction` format (e.g. `createdAt:desc`). Repeat the parameter to sort by multiple fields.',
-            example: 'createdAt:desc',
+            description: `Search query, case-insensitive, partial match, max ${PaginationDefaultMaxSearchLength} characters`,
+            example: '',
         }),
 });
 

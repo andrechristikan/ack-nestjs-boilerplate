@@ -57,6 +57,23 @@ export function expectRequestContextMissingWithKey(
     });
 }
 
+export function expectRequestGuardMissingWithKey(
+    thrown: unknown,
+    storeKey: string
+): void {
+    expect(thrown).toMatchObject({
+        module: 'request',
+        statusCode: EnumRequestStatusCodeError.guardMissing,
+        statusCodeKey:
+            EnumRequestStatusCodeError[EnumRequestStatusCodeError.guardMissing],
+        httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+        messagePath: 'request.error.guardMissing',
+        rawError: expect.objectContaining({
+            message: expect.stringContaining(storeKey),
+        }),
+    });
+}
+
 export function buildRequestSchemaValidationPipe(
     transform: boolean
 ): RequestSchemaValidationPipe {

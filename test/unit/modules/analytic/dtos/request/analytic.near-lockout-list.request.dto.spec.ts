@@ -49,4 +49,34 @@ describe('AnalyticNearLockoutListRequestSchema', () => {
                 ?.description
         ).toContain(AnalyticNearLockoutAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = AnalyticNearLockoutAvailableOrderBy[0];
+        const last =
+            AnalyticNearLockoutAvailableOrderBy[
+                AnalyticNearLockoutAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            AnalyticNearLockoutListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            AnalyticNearLockoutListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${AnalyticNearLockoutAvailableOrderBy[0]}:`,
+        `${AnalyticNearLockoutAvailableOrderBy[0]}:DESC`,
+        `${AnalyticNearLockoutAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            AnalyticNearLockoutListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
 });

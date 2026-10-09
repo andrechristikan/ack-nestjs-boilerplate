@@ -4,10 +4,6 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    DeviceCursorAvailableOrderBy,
-    DeviceDefaultAvailableOrderBy,
-} from '@modules/device/constants/device.list.constant';
 import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import type { DeviceSharedListRequestDto } from '@modules/device/dtos/request/device.shared-list.request.dto';
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
@@ -29,10 +25,7 @@ export class DeviceHttpService {
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.DeviceOwnershipWhereInput>(
-                query,
-                {
-                    availableOrderBy: DeviceDefaultAvailableOrderBy,
-                }
+                query
             );
         const isRevoked = this.paginationQueryUtil.equalBoolean(
             Prisma.DeviceOwnershipScalarFieldEnum.isRevoked,
@@ -73,10 +66,7 @@ export class DeviceHttpService {
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.DeviceOwnershipWhereInput>(
-                query,
-                {
-                    availableOrderBy: DeviceCursorAvailableOrderBy,
-                }
+                query
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

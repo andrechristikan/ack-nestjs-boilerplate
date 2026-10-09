@@ -1,7 +1,9 @@
 import '@instrument';
 import { NestApplication, NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
+import * as Sentry from '@sentry/nestjs';
 import { AppModule } from '@app/app.module';
+import { AppBootstrapSentryFlushTimeoutInMs } from '@app/constants/app.constant';
 import { ConfigService } from '@nestjs/config';
 import { ConfigureOptions, configure } from '@configure';
 import swaggerInit from '@swagger';
@@ -72,15 +74,14 @@ async function bootstrap(): Promise<void> {
     return;
 }
 
-/**
- * Forces the exit on a failed boot. Shutdown hooks are already registered by then, so the signal
- * listeners keep the event loop alive and nothing else would terminate the process.
- */
-bootstrap().catch((error: unknown) => {
-    const detail =
-        error instanceof Error ? (error.stack ?? error.message) : String(error);
+bootstrap().catch(async (error: unknown) => {
+    const logger = new Logger('Bootstrap');
 
-    process.stderr.write(`[Bootstrap] Failed to start the application\n`);
-    process.stderr.write(`${detail}\n`);
+    logger.fatal(error);
+    Logger.flush();
+
+    Sentry.captureException(error);
+    await Sentry.flush(AppBootstrapSentryFlushTimeoutInMs);
+
     process.exit(1);
 });

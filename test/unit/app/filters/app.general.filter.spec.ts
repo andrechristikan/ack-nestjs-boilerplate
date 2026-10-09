@@ -194,7 +194,6 @@ describe('AppGeneralFilter', () => {
                 module: 'app',
                 message: 'Internal Server Error',
                 metadata,
-                data: undefined,
             });
         });
 
@@ -246,20 +245,26 @@ describe('AppGeneralFilter', () => {
             );
         });
 
-        it('spreads exception metadata under the response metadata and keeps data', async () => {
+        it('spreads exception metadata under the response metadata and carries no data', async () => {
             const exception = new ResponseSerializationException({
                 metadata: {
                     source: 'serialization',
                     language: 'id',
                 },
-                data: { issues: 2 },
+            });
+
+            let body: unknown = null;
+            response.json.mockImplementationOnce(sent => {
+                body = sent;
+
+                return response;
             });
 
             await filter.catch(exception, argumentsHost);
 
+            expect(body).not.toHaveProperty('data');
             expect(response.json).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    data: { issues: 2 },
                     metadata: {
                         ...metadata,
                         source: 'serialization',
@@ -356,6 +361,23 @@ describe('AppGeneralFilter', () => {
             );
         });
 
+        it('reports a described AppUnknownException itself with the cause chained, not the rawError', async () => {
+            const rawError = new Error('boom');
+            const exception = new AppUnknownException(
+                rawError,
+                'Seeding policies failed'
+            );
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                exception
+            );
+            expect(sentryService.captureException).not.toHaveBeenCalledWith(
+                rawError
+            );
+        });
+
         it('mirrors the metadata onto the response headers', async () => {
             await filter.catch(new Error('boom'), argumentsHost);
 
@@ -389,6 +411,19 @@ describe('AppGeneralFilter', () => {
 
             expect(sentryService.captureException).toHaveBeenCalledWith(
                 rawError
+            );
+        });
+
+        it('reports the exception itself when it carries a description', () => {
+            const exception = new AppUnknownException(
+                new Error('boom'),
+                'Seeding policies failed'
+            );
+
+            filter['sendToSentry'](exception, exception);
+
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                exception
             );
         });
 

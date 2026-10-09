@@ -19,17 +19,21 @@ import {
 } from '@nestjs/common';
 import { ApiParam } from '@nestjs/swagger';
 import { ClsServiceManager } from 'nestjs-cls';
+import { hasRequestGuard } from '@common/request/decorators/request.decorator';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
-import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
+import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
+import { RequestProtectedGuardMissingException } from '@common/request/exceptions/request.protected-guard-missing.exception';
+import { UserGuard } from '@modules/user/guards/user.guard';
+import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
+import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
 
 /**
- * Requires the `projectId` route param to resolve to an existing, non-deleted project in the current workspace.
+ * Requires the `projectId` route param to resolve to an existing, non-deleted project in the current workspace; throws at decoration when WorkspaceGuard is not applied below it. A route without a `:projectId` path param answers `RequestContextMissingException`, because the route path is not readable at decoration time.
  * Documents `projectId` and project kits.
  * @public
  */
 export function ProjectProtected(): MethodDecorator {
-    return applyDecorators(
+    const decorators = applyDecorators(
         UseGuards(ProjectGuard),
         ApiParam({
             name: 'projectId',
@@ -39,10 +43,21 @@ export function ProjectProtected(): MethodDecorator {
         }),
         DocProjectErrorResponses.notFound
     );
+
+    return (target, propertyKey, descriptor): void => {
+        if (!hasRequestGuard(descriptor, WorkspaceGuard)) {
+            throw new RequestProtectedGuardMissingException(
+                'ProjectProtected',
+                WorkspaceGuard.name
+            );
+        }
+
+        decorators(target, propertyKey, descriptor);
+    };
 }
 
 /**
- * Reads the current project, or one of its fields, that `ProjectGuard` stored. Throws `ProjectNotFoundException` when the project is absent and `RequestContextMissingException` when the requested field is null.
+ * Reads the current project, or one of its fields, that `ProjectGuard` stored. Throws `RequestGuardMissingException` when the project is absent and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const ProjectCurrent = createParamDecorator<
@@ -57,7 +72,7 @@ export const ProjectCurrent = createParamDecorator<
                 ProjectStoreKey
             ) ?? null;
         if (project === null) {
-            throw new ProjectNotFoundException();
+            throw new RequestGuardMissingException(ProjectStoreKey);
         }
 
         const fieldKey = field ?? null;
@@ -78,32 +93,52 @@ export const ProjectCurrent = createParamDecorator<
 
 /**
  * Requires the caller to be a member of the project resolved by `@ProjectProtected()`. Stack above
- * it. Pass `roles` to instead require the caller's project membership role to be one of them, which
- * a workspace owner satisfies without holding a `ProjectMember` row at all; omit `roles` to demand a
- * `ProjectMember` row of the caller with no bypass.
+ * it; throws at decoration when ProjectGuard is not applied below it, and also UserGuard without
+ * `roles` or WorkspaceMemberGuard with `roles`. Pass `roles` to instead require the caller's
+ * project membership role to be one of them, which a workspace owner satisfies without holding a
+ * `ProjectMember` row at all; omit `roles` to demand a `ProjectMember` row of the caller with no
+ * bypass.
  * @public
  */
 export function ProjectMemberProtected(
     ...roles: EnumProjectMemberRole[]
 ): MethodDecorator {
-    if (roles.length === 0) {
-        return applyDecorators(
-            UseGuards(ProjectMemberGuard),
-            DocProjectMemberErrorResponses.notFound,
-            DocProjectMemberErrorResponses.forbidden
-        );
-    }
+    const decorators =
+        roles.length === 0
+            ? applyDecorators(
+                  UseGuards(ProjectMemberGuard),
+                  DocProjectMemberErrorResponses.notFound,
+                  DocProjectMemberErrorResponses.forbidden
+              )
+            : applyDecorators(
+                  UseGuards(ProjectRoleGuard),
+                  SetMetadata(ProjectRoleMetaKey, roles),
+                  DocProjectRoleErrorResponses.notFound,
+                  DocProjectRoleErrorResponses.forbidden
+              );
+    const siblingGuard = roles.length === 0 ? UserGuard : WorkspaceMemberGuard;
 
-    return applyDecorators(
-        UseGuards(ProjectRoleGuard),
-        SetMetadata(ProjectRoleMetaKey, roles),
-        DocProjectRoleErrorResponses.notFound,
-        DocProjectRoleErrorResponses.forbidden
-    );
+    return (target, propertyKey, descriptor): void => {
+        if (!hasRequestGuard(descriptor, ProjectGuard)) {
+            throw new RequestProtectedGuardMissingException(
+                'ProjectMemberProtected',
+                ProjectGuard.name
+            );
+        }
+
+        if (!hasRequestGuard(descriptor, siblingGuard)) {
+            throw new RequestProtectedGuardMissingException(
+                'ProjectMemberProtected',
+                siblingGuard.name
+            );
+        }
+
+        decorators(target, propertyKey, descriptor);
+    };
 }
 
 /**
- * Reads the caller's project member row, or one of its fields, that the role-less `@ProjectMemberProtected()` stored. Valid only on a route using that role-less form: a role-gated route stores no row, and the read throws `ProjectMemberForbiddenException`; a requested field that is null throws `RequestContextMissingException`.
+ * Reads the caller's project member row, or one of its fields, that the role-less `@ProjectMemberProtected()` stored. Valid only on a route using that role-less form: a role-gated route stores no row, and the read throws `RequestGuardMissingException`; a requested field that is null throws `RequestContextMissingException`.
  * @public
  */
 export const ProjectMemberCurrent = createParamDecorator<
@@ -121,7 +156,7 @@ export const ProjectMemberCurrent = createParamDecorator<
                 ProjectMemberStoreKey
             ) ?? null;
         if (projectMember === null) {
-            throw new ProjectMemberForbiddenException();
+            throw new RequestGuardMissingException(ProjectMemberStoreKey);
         }
 
         const fieldKey = field ?? null;

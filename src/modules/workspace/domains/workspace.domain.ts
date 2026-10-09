@@ -36,6 +36,7 @@ import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domai
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
+import { WorkspaceHeaderMissingException } from '@modules/workspace/exceptions/workspace.header-missing.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceSlugInvalidException } from '@modules/workspace/exceptions/workspace.slug-invalid.exception';
@@ -195,7 +196,7 @@ export class WorkspaceDomain {
         workspaceId: string | null
     ): Promise<Workspace> {
         if (!workspaceId) {
-            throw new WorkspaceNotFoundException();
+            throw new WorkspaceHeaderMissingException();
         }
 
         const workspace =

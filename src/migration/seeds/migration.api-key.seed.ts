@@ -90,7 +90,7 @@ export class MigrationApiKeySeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(error, 'Seeding API keys failed');
         }
 
         this.logger.log('Api Keys seeded successfully.');
@@ -114,7 +114,7 @@ export class MigrationApiKeySeed
             });
             await Promise.all(deletions);
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(error, 'Removing API keys failed');
         }
 
         this.logger.log('Api Keys removed successfully.');

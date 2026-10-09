@@ -7,6 +7,7 @@ import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import { FeatureFlagInvalidMetadataException } from '@modules/feature-flag/exceptions/feature-flag.invalid-metadata.exception';
 import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
+import { FeatureFlagUnseededException } from '@modules/feature-flag/exceptions/feature-flag.unseeded.exception';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import type {
     IFeatureFlagMetadata,
@@ -63,7 +64,7 @@ export class FeatureFlagDomain {
     ): Promise<void> {
         const featureFlag = await this.featureFlagCache.getByKeyAndCache(key);
         if (!featureFlag) {
-            throw new FeatureFlagNotFoundException();
+            throw new FeatureFlagUnseededException(key);
         } else if (!featureFlag.isEnable) {
             throw new FeatureFlagDisabledException();
         }
@@ -95,7 +96,7 @@ export class FeatureFlagDomain {
     ): Promise<void> {
         const featureFlag = await this.featureFlagCache.getByKeyAndCache(key);
         if (!featureFlag) {
-            throw new FeatureFlagNotFoundException();
+            throw new FeatureFlagUnseededException(key);
         } else if (!featureFlag.isEnable) {
             throw new FeatureFlagDisabledException();
         }

@@ -50,4 +50,33 @@ describe('ApiKeyListRequestSchema', () => {
             ApiKeyListRequestSchema.shape.orderBy.meta()?.description
         ).toContain(ApiKeyDefaultAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = ApiKeyDefaultAvailableOrderBy[0];
+        const last =
+            ApiKeyDefaultAvailableOrderBy[
+                ApiKeyDefaultAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            ApiKeyListRequestSchema.safeParse({ orderBy: `${first}:asc` })
+                .success
+        ).toBe(true);
+        expect(
+            ApiKeyListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${ApiKeyDefaultAvailableOrderBy[0]}:`,
+        `${ApiKeyDefaultAvailableOrderBy[0]}:DESC`,
+        `${ApiKeyDefaultAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(ApiKeyListRequestSchema.safeParse({ orderBy }).success).toBe(
+            false
+        );
+    });
 });

@@ -112,7 +112,10 @@ export class MigrationWorkspaceSeed
                     'slug'
                 );
                 if (!isSlugCollision) {
-                    throw new AppUnknownException(error);
+                    throw new AppUnknownException(
+                        error,
+                        'Creating the default workspace failed'
+                    );
                 }
             }
         }
@@ -162,7 +165,7 @@ export class MigrationWorkspaceSeed
                 })
             );
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(error, 'Seeding workspaces failed');
         }
 
         this.logger.log('Workspaces seeded successfully.');
@@ -293,7 +296,7 @@ export class MigrationWorkspaceSeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(error, 'Removing workspaces failed');
         }
 
         this.logger.log('Workspaces removed completed.');

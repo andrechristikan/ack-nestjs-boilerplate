@@ -13,7 +13,6 @@
         "startAtNotFuture": "The start date must be in the future.",
         "xApiKey": {
             "required": "Please provide your API key to continue.",
-            "notFound": "We couldn't find this API key in our system.",
             "invalid": "Sorry, this API key appears to be invalid.",
             "forbidden": "You don't have permission to use this API key."
         }

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
+import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
 
@@ -10,10 +10,7 @@ import { NotificationDefaultAvailableOrderBy } from '@modules/notification/const
 export const NotificationListRequestSchema = PaginationCursorQuerySchema.omit({
     search: true,
 }).extend({
-    orderBy: PaginationCursorQuerySchema.shape.orderBy.meta({
-        description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${NotificationDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-        example: `${NotificationDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-    }),
+    orderBy: PaginationOrderBySchema(NotificationDefaultAvailableOrderBy),
 });
 
 /**

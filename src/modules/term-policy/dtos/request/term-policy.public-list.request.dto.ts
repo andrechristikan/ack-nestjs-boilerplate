@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
+import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import { TermPolicyDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 
@@ -9,10 +9,7 @@ import { TermPolicyDefaultAvailableOrderBy } from '@modules/term-policy/constant
  */
 export const TermPolicyPublicListRequestSchema =
     PaginationCursorQuerySchema.omit({ search: true }).extend({
-        orderBy: PaginationCursorQuerySchema.shape.orderBy.meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${TermPolicyDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-            example: `${TermPolicyDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-        }),
+        orderBy: PaginationOrderBySchema(TermPolicyDefaultAvailableOrderBy),
         type: z.string().optional().meta({
             description: 'Filter by type',
             example: '',

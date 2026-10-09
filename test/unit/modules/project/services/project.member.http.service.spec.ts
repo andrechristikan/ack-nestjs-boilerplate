@@ -18,7 +18,6 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
 import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
 import type { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
@@ -130,9 +129,7 @@ describe('ProjectMemberHttpService', () => {
             const result = await service.getMembersList(project, query);
 
             expect(result).toEqual(page);
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                availableOrderBy: ProjectMemberDefaultAvailableOrderBy,
-            });
+            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query);
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 { cursor: 'next' }

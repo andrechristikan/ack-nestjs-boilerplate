@@ -103,7 +103,6 @@ export class UserSharedController {
 
     @Doc({ summary: 'refresh token' })
     @Response('user.refresh', { schema: AuthTokenResponseSchema })
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtRefreshProtected()
     @ApiKeyProtected()

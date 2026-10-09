@@ -57,6 +57,7 @@
         "joinRequestNotFound": "Sorry, we couldn't find that workspace join request.",
         "joinRequestAlreadyProcessed": "This workspace join request is no longer pending.",
         "selfTransfer": "You cannot transfer ownership to yourself.",
-        "slugInvalid": "This workspace slug is not allowed; use letters, digits and hyphens only, within the allowed length."
+        "slugInvalid": "This workspace slug is not allowed; use letters, digits and hyphens only, within the allowed length.",
+        "headerMissing": "The x-workspace-id header is required."
     }
 }

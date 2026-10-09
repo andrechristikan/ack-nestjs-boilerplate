@@ -41,4 +41,34 @@ describe('WorkspaceUserListRequestSchema', () => {
             WorkspaceUserListRequestSchema.shape.orderBy.meta()?.description
         ).toContain(WorkspaceCursorAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = WorkspaceCursorAvailableOrderBy[0];
+        const last =
+            WorkspaceCursorAvailableOrderBy[
+                WorkspaceCursorAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            WorkspaceUserListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            WorkspaceUserListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${WorkspaceCursorAvailableOrderBy[0]}:`,
+        `${WorkspaceCursorAvailableOrderBy[0]}:DESC`,
+        `${WorkspaceCursorAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            WorkspaceUserListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
 });

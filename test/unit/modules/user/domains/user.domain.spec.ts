@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -52,6 +53,9 @@ import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { expectRequestGuardMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserDomain', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
@@ -199,33 +203,55 @@ describe('UserDomain', () => {
     });
 
     describe('validateUserGuard', () => {
-        it('throws UserNotAuthenticatedException when there is no user id', async () => {
-            await expect(
-                domain.validateUserGuard(null, false)
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notAuthenticated,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.notAuthenticated
-                    ],
-                messagePath: 'user.error.notAuthenticated',
+        it('throws RequestGuardMissingException when the request carries no authenticated user id', async () => {
+            let thrown: unknown;
+            try {
+                await domain.validateUserGuard(null, false);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expectRequestGuardMissingWithKey(thrown, 'request.user');
+        });
+
+        it('throws RequestContextMissingException when the authenticated user carries no user id', async () => {
+            let thrown: unknown;
+            try {
+                await domain.validateUserGuard({ userId: '' }, false);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toBeInstanceOf(RequestContextMissingException);
+            expect(thrown).toMatchObject({
+                module: 'request',
+                statusCode: EnumRequestStatusCodeError.contextMissing,
+                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+                messagePath: 'request.error.contextMissing',
+                rawError: expect.objectContaining({
+                    message:
+                        'RequestContextMissingException: no value for "request.user.userId"',
+                }),
             });
         });
 
-        it('throws UserNotFoundForbiddenException when the user does not exist', async () => {
+        it('throws UserAccountNotFoundException when the user row is gone', async () => {
             userRepository.findOneWithRoleById.mockResolvedValue(null);
 
-            const call = domain.validateUserGuard('user-cobalt', false);
+            const call = domain.validateUserGuard(
+                { userId: 'user-cobalt' },
+                false
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
-                statusCode: EnumUserStatusCodeError.notFoundForbidden,
+                statusCode: EnumUserStatusCodeError.accountNotFound,
                 statusCodeKey:
                     EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.notFoundForbidden
+                        EnumUserStatusCodeError.accountNotFound
                     ],
-                messagePath: 'user.error.notFound',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+                messagePath: 'user.error.accountNotFound',
             });
         });
 
@@ -235,7 +261,10 @@ describe('UserDomain', () => {
                 status: EnumUserStatus.blocked,
             });
 
-            const call = domain.validateUserGuard('user-cobalt', false);
+            const call = domain.validateUserGuard(
+                { userId: 'user-cobalt' },
+                false
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -254,7 +283,10 @@ describe('UserDomain', () => {
                 status: EnumUserStatus.inactive,
             });
 
-            const call = domain.validateUserGuard('user-cobalt', false);
+            const call = domain.validateUserGuard(
+                { userId: 'user-cobalt' },
+                false
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -271,7 +303,10 @@ describe('UserDomain', () => {
             userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
             authPasswordUtil.checkPasswordExpired.mockReturnValue(true);
 
-            const call = domain.validateUserGuard('user-cobalt', false);
+            const call = domain.validateUserGuard(
+                { userId: 'user-cobalt' },
+                false
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -291,7 +326,10 @@ describe('UserDomain', () => {
             });
             authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
 
-            const call = domain.validateUserGuard('user-cobalt', true);
+            const call = domain.validateUserGuard(
+                { userId: 'user-cobalt' },
+                true
+            );
 
             await expect(call).rejects.toMatchObject({
                 module: 'user',
@@ -310,7 +348,7 @@ describe('UserDomain', () => {
             authPasswordUtil.checkPasswordExpired.mockReturnValue(false);
 
             await expect(
-                domain.validateUserGuard('user-cobalt', true)
+                domain.validateUserGuard({ userId: 'user-cobalt' }, true)
             ).resolves.toBe(user);
         });
     });

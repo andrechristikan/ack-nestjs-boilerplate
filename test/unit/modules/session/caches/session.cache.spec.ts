@@ -36,7 +36,11 @@ interface IStubRedisClient {
 
 describe('SessionCache', () => {
     const cacheManager: MockProxy<Cache> = mock<Cache>();
-    const keyv: MockProxy<Keyv> = mock<Keyv>();
+    const keyvGet =
+        vi.fn<(key: string) => Promise<ISessionCache | undefined>>();
+    const keyv: MockProxy<Keyv> = mock<Keyv>({
+        get: keyvGet as unknown as Keyv['get'],
+    });
     const store: MockProxy<KeyvRedis<string>> = mock<KeyvRedis<string>>();
     const configGet = vi.fn<(key: string) => string | undefined>();
     const configService: MockProxy<ConfigService> = mock<ConfigService>({
@@ -84,27 +88,37 @@ describe('SessionCache', () => {
     });
 
     describe('getLogin', () => {
-        it('returns the cached login session', async () => {
+        it('returns the cached login session read through the keyv client', async () => {
             const session: ISessionCache = {
                 userId: 'user-1',
                 sessionId: 'session-1',
                 expiredAt: new Date('2026-02-01T00:00:00.000Z'),
                 jti: 'jti-value',
             };
-            cacheManager.get.mockResolvedValue(session);
+            keyvGet.mockResolvedValue(session);
 
             const result = await cache.getLogin('user-1', 'session-1');
 
             expect(result).toEqual(session);
-            expect(cacheManager.get).toHaveBeenCalledWith('user-1:session-1');
+            expect(keyvGet).toHaveBeenCalledWith('user-1:session-1');
+            expect(cacheManager.get).not.toHaveBeenCalled();
         });
 
         it('returns null when no login is cached', async () => {
-            cacheManager.get.mockResolvedValue(undefined);
+            keyvGet.mockResolvedValue(undefined);
 
             const result = await cache.getLogin('user-1', 'session-1');
 
             expect(result).toBeNull();
+        });
+
+        it('propagates a store failure instead of reporting a miss', async () => {
+            const failure = new Error('redis down');
+            keyvGet.mockRejectedValue(failure);
+
+            await expect(cache.getLogin('user-1', 'session-1')).rejects.toBe(
+                failure
+            );
         });
     });
 

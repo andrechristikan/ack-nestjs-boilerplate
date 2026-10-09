@@ -66,6 +66,6 @@
         "forgotPasswordRequestLimitExceeded": "You have exceeded the limit for password reset requests. Try again after {minutes} minutes.",
         "importEmailExist": "There are existing users with the provided email addresses. Email: {emails}",
         "importUsernameExist": "There are existing users with the provided usernames. Username: {usernames}",
-        "notAuthenticated": "This request does not carry an authenticated user."
+        "accountNotFound": "The account of this session no longer exists."
     }
 }

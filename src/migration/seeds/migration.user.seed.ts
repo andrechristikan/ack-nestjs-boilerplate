@@ -364,7 +364,7 @@ export class MigrationUserSeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(error, 'Seeding users failed');
         }
 
         this.logger.log('Users seeded successfully.');
@@ -400,7 +400,7 @@ export class MigrationUserSeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(error, 'Removing users failed');
         }
 
         this.logger.log('Users removed completed.');

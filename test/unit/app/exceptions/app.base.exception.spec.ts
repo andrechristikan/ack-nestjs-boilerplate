@@ -13,13 +13,13 @@ describe('AppBaseException', () => {
             expect(exception.messagePath).toBe('request.error.validation');
         });
 
-        it('sets messageProperties and metadata to null and leaves rawError and data undefined when no options are given', () => {
+        it('sets messageProperties, metadata and rawError to null when no options are given', () => {
             const exception = new RequestValidationException([]);
 
             expect(exception.messageProperties).toBeNull();
             expect(exception.metadata).toBeNull();
-            expect(exception.rawError).toBeUndefined();
-            expect(exception.data).toBeUndefined();
+            expect(exception.rawError).toBeNull();
+            expect(exception).not.toHaveProperty('data');
         });
 
         it('assigns rawError from the options', () => {
@@ -30,7 +30,7 @@ describe('AppBaseException', () => {
             expect(exception.rawError).toBe(rawError);
             expect(exception.messageProperties).toBeNull();
             expect(exception.metadata).toBeNull();
-            expect(exception.data).toBeUndefined();
+            expect(exception).not.toHaveProperty('data');
         });
 
         it('assigns messageProperties from the options', () => {
@@ -41,21 +41,18 @@ describe('AppBaseException', () => {
             expect(exception.messageProperties).toEqual({
                 retryAfterSeconds: 30,
             });
-            expect(exception.rawError).toBeUndefined();
+            expect(exception.rawError).toBeNull();
         });
 
-        it('assigns metadata and data from the options', () => {
+        it('assigns metadata from the options', () => {
             const metadata = { source: 'serialization' };
-            const data = { issues: 2 };
             const exception = new ResponseSerializationException({
                 metadata,
-                data,
             });
 
             expect(exception.metadata).toBe(metadata);
-            expect(exception.data).toBe(data);
             expect(exception.messageProperties).toBeNull();
-            expect(exception.rawError).toBeUndefined();
+            expect(exception.rawError).toBeNull();
         });
     });
 });

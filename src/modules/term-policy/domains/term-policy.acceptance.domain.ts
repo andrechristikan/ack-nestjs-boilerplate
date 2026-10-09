@@ -7,13 +7,14 @@ import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
+import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyRequiredInvalidException } from '@modules/term-policy/exceptions/term-policy.required-invalid.exception';
 import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
+import { UserStoreKey } from '@modules/user/constants/user.constant';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
@@ -35,7 +36,7 @@ export class TermPolicyAcceptanceDomain {
         requiredTermPolicies: EnumTermPolicyType[]
     ): Promise<void> {
         if (!user) {
-            throw new UserNotAuthenticatedException();
+            throw new RequestGuardMissingException(UserStoreKey);
         }
 
         const { termPolicy } = user;

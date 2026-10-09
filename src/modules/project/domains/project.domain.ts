@@ -1,4 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
@@ -18,7 +20,7 @@ import type {
 } from '@modules/project/interfaces/project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
-import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
+import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -68,9 +70,9 @@ export class ProjectDomain {
         projectId: string | null
     ): Promise<Project> {
         if (!workspaceId) {
-            throw new WorkspaceNotFoundException();
+            throw new RequestGuardMissingException(WorkspaceStoreKey);
         } else if (!projectId) {
-            throw new ProjectNotFoundException();
+            throw new RequestContextMissingException('params.projectId');
         }
 
         const project = await this.projectRepository.findActiveByIdAndWorkspace(

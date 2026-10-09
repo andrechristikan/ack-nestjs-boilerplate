@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
+import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { PasswordHistoryDefaultAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 
@@ -9,10 +9,9 @@ import { PasswordHistoryDefaultAvailableOrderBy } from '@modules/password-histor
  */
 export const PasswordHistoryAdminListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true }).extend({
-        orderBy: PaginationOffsetQuerySchema.shape.orderBy.meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${PasswordHistoryDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-            example: `${PasswordHistoryDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-        }),
+        orderBy: PaginationOrderBySchema(
+            PasswordHistoryDefaultAvailableOrderBy
+        ),
     });
 
 /**

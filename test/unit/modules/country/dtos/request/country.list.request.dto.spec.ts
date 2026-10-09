@@ -56,4 +56,33 @@ describe('CountryListRequestSchema', () => {
             CountryListRequestSchema.shape.orderBy.meta()?.description
         ).toContain(CountryDefaultAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = CountryDefaultAvailableOrderBy[0];
+        const last =
+            CountryDefaultAvailableOrderBy[
+                CountryDefaultAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            CountryListRequestSchema.safeParse({ orderBy: `${first}:asc` })
+                .success
+        ).toBe(true);
+        expect(
+            CountryListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${CountryDefaultAvailableOrderBy[0]}:`,
+        `${CountryDefaultAvailableOrderBy[0]}:DESC`,
+        `${CountryDefaultAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(CountryListRequestSchema.safeParse({ orderBy }).success).toBe(
+            false
+        );
+    });
 });

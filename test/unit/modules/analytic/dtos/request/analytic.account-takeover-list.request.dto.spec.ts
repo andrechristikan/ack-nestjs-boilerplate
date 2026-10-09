@@ -9,7 +9,7 @@ describe('AnalyticAccountTakeoverListRequestSchema', () => {
         const result = AnalyticAccountTakeoverListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticAccountTakeoverAvailableOrderBy[0]}:desc`,
             startDate,
             endDate,
         });
@@ -17,7 +17,7 @@ describe('AnalyticAccountTakeoverListRequestSchema', () => {
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticAccountTakeoverAvailableOrderBy[0]}:desc`,
             startDate,
             endDate,
         });
@@ -57,5 +57,43 @@ describe('AnalyticAccountTakeoverListRequestSchema', () => {
             AnalyticAccountTakeoverListRequestSchema.shape.orderBy.meta()
                 ?.description
         ).toContain(AnalyticAccountTakeoverAvailableOrderBy.join(', '));
+    });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = AnalyticAccountTakeoverAvailableOrderBy[0];
+        const last =
+            AnalyticAccountTakeoverAvailableOrderBy[
+                AnalyticAccountTakeoverAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            AnalyticAccountTakeoverListRequestSchema.safeParse({
+                startDate,
+                endDate,
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            AnalyticAccountTakeoverListRequestSchema.safeParse({
+                startDate,
+                endDate,
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${AnalyticAccountTakeoverAvailableOrderBy[0]}:`,
+        `${AnalyticAccountTakeoverAvailableOrderBy[0]}:DESC`,
+        `${AnalyticAccountTakeoverAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            AnalyticAccountTakeoverListRequestSchema.safeParse({
+                startDate,
+                endDate,
+                orderBy,
+            }).success
+        ).toBe(false);
     });
 });

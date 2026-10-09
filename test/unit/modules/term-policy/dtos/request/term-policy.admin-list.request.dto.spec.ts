@@ -42,4 +42,34 @@ describe('TermPolicyAdminListRequestSchema', () => {
             TermPolicyAdminListRequestSchema.shape.orderBy.meta()?.description
         ).toContain(TermPolicyDefaultAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = TermPolicyDefaultAvailableOrderBy[0];
+        const last =
+            TermPolicyDefaultAvailableOrderBy[
+                TermPolicyDefaultAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            TermPolicyAdminListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            TermPolicyAdminListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${TermPolicyDefaultAvailableOrderBy[0]}:`,
+        `${TermPolicyDefaultAvailableOrderBy[0]}:DESC`,
+        `${TermPolicyDefaultAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            TermPolicyAdminListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
 });

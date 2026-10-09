@@ -14,8 +14,7 @@ export abstract class AppBaseException extends Error {
 
     readonly messageProperties: IMessageProperties | null;
     readonly metadata: Record<string, unknown> | null;
-    readonly rawError?: unknown;
-    readonly data?: unknown;
+    readonly rawError: unknown;
 
     constructor(
         readonly messagePath: string,
@@ -25,7 +24,6 @@ export abstract class AppBaseException extends Error {
 
         this.messageProperties = options?.messageProperties ?? null;
         this.metadata = options?.metadata ?? null;
-        this.rawError = options?.rawError;
-        this.data = options?.data;
+        this.rawError = options?.rawError ?? null;
     }
 }

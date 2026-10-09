@@ -18,7 +18,6 @@ import type {
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
 import {
-    WorkspaceInviteDefaultAvailableOrderBy,
     WorkspaceInviteDefaultAvailableSearch,
     WorkspaceInviteDefaultStatus,
 } from '@modules/workspace/constants/workspace.list.constant';
@@ -127,7 +126,6 @@ describe('WorkspaceInviteHttpService', () => {
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 availableSearch: WorkspaceInviteDefaultAvailableSearch,
-                availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
             });
             expect(paginationQueryUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.WorkspaceInviteScalarFieldEnum.status,

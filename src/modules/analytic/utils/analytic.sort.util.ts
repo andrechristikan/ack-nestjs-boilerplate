@@ -26,7 +26,7 @@ export class AnalyticSortUtil {
     sortRows<T extends object>(
         rows: T[],
         orderBy: IPaginationOrderBy[],
-        sortableKeys: (keyof T)[]
+        sortableKeys: readonly (keyof T)[]
     ): T[] {
         const allowedFields: string[] = sortableKeys.map(key => String(key));
         const terms = orderBy

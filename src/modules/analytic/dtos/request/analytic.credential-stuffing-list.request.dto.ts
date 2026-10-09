@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
+import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { AnalyticCredentialStuffingAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
@@ -11,10 +11,9 @@ import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/anal
 export const AnalyticCredentialStuffingListRequestSchema =
     PaginationOffsetQuerySchema.omit({ search: true })
         .extend({
-            orderBy: PaginationOffsetQuerySchema.shape.orderBy.meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${AnalyticCredentialStuffingAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-                example: `${AnalyticCredentialStuffingAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-            }),
+            orderBy: PaginationOrderBySchema(
+                AnalyticCredentialStuffingAvailableOrderBy
+            ),
         })
         .extend(AnalyticWindowRequestSchema.shape);
 

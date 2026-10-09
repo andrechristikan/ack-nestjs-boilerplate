@@ -57,4 +57,34 @@ describe('WorkspaceAdminListRequestSchema', () => {
             WorkspaceAdminListRequestSchema.shape.orderBy.meta()?.description
         ).toContain(WorkspaceDefaultAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = WorkspaceDefaultAvailableOrderBy[0];
+        const last =
+            WorkspaceDefaultAvailableOrderBy[
+                WorkspaceDefaultAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            WorkspaceAdminListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            WorkspaceAdminListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${WorkspaceDefaultAvailableOrderBy[0]}:`,
+        `${WorkspaceDefaultAvailableOrderBy[0]}:DESC`,
+        `${WorkspaceDefaultAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            WorkspaceAdminListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
 });

@@ -1,3 +1,4 @@
+import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
     IPaginationIn,
@@ -12,7 +13,11 @@ import {
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
+import { UserStoreKey } from '@modules/user/constants/user.constant';
+import {
+    WorkspaceMemberStoreKey,
+    WorkspaceStoreKey,
+} from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
 import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
@@ -54,9 +59,9 @@ export class WorkspaceMemberDomain {
         userId: string | null
     ): Promise<WorkspaceMember> {
         if (!userId) {
-            throw new UserNotAuthenticatedException();
+            throw new RequestGuardMissingException(UserStoreKey);
         } else if (!workspaceId) {
-            throw new WorkspaceNotFoundException();
+            throw new RequestGuardMissingException(WorkspaceStoreKey);
         }
 
         const member =
@@ -77,7 +82,7 @@ export class WorkspaceMemberDomain {
         allowedRoles: EnumWorkspaceMemberRole[]
     ): WorkspaceMember {
         if (!member) {
-            throw new WorkspaceMemberForbiddenException();
+            throw new RequestGuardMissingException(WorkspaceMemberStoreKey);
         }
 
         if (member.role === EnumWorkspaceMemberRole.owner) {

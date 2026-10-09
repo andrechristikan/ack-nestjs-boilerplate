@@ -10,7 +10,8 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { UserStoreKey } from '@modules/user/constants/user.constant';
+import { expectRequestGuardMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import {
     EnumActivityLogAction,
@@ -138,19 +139,15 @@ describe('TermPolicyAcceptanceDomain', () => {
     });
 
     describe('validateTermPolicyGuard', () => {
-        it('throws UserNotAuthenticatedException when no user is present', async () => {
-            const promise = domain.validateTermPolicyGuard(null, []);
+        it('throws RequestGuardMissingException when the user store is empty', async () => {
+            let thrown: unknown;
+            try {
+                await domain.validateTermPolicyGuard(null, []);
+            } catch (error) {
+                thrown = error;
+            }
 
-            await expect(promise).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notAuthenticated,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.notAuthenticated
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'user.error.notAuthenticated',
-            });
+            expectRequestGuardMissingWithKey(thrown, UserStoreKey);
         });
 
         it('defaults to terms-of-service and privacy when no required types are given', async () => {

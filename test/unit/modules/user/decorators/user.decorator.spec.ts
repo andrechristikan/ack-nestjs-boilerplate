@@ -1,4 +1,3 @@
-import { HttpStatus } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import type { ExecutionContext, Type } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
@@ -17,7 +16,6 @@ import {
     UserGuardIsVerifiedMetaKey,
     UserStoreKey,
 } from '@modules/user/constants/user.constant';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import {
     UserCurrent,
     UserProtected,
@@ -26,19 +24,30 @@ import { UserGuard } from '@modules/user/guards/user.guard';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
-import { expectRequestContextMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    expectRequestContextMissingWithKey,
+    expectRequestGuardMissingWithKey,
+} from '@test/unit/helpers/test.unit.request.helper';
+import {
+    AuthJwtAccessProtected,
+    AuthJwtRefreshProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAccessGuard } from '@modules/auth/guards/jwt/auth.jwt.access.guard';
+import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.guard';
+import { RequestProtectedGuardMissingException } from '@common/request/exceptions/request.protected-guard-missing.exception';
 
 describe('user.decorator', () => {
     describe('UserProtected', () => {
         it('mounts UserGuard and sets the verified flag to true by default', () => {
             const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
+            AuthJwtAccessProtected()(target, 'method', descriptor);
 
             UserProtected()(target, 'method', descriptor);
 
             expect(
                 Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
-            ).toEqual([UserGuard]);
+            ).toEqual([AuthJwtAccessGuard, UserGuard]);
             expect(
                 Reflect.getMetadata(
                     UserGuardIsVerifiedMetaKey,
@@ -47,9 +56,36 @@ describe('user.decorator', () => {
             ).toBe(true);
         });
 
+        it('accepts the JWT refresh guard below it', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+            AuthJwtRefreshProtected()(target, 'method', descriptor);
+
+            UserProtected()(target, 'method', descriptor);
+
+            expect(
+                Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
+            ).toEqual([AuthJwtRefreshGuard, UserGuard]);
+        });
+
+        it('throws at decoration when no JWT guard is below it', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+
+            expect(() => {
+                UserProtected()(target, 'method', descriptor);
+            }).toThrow(RequestProtectedGuardMissingException);
+            expect(() => {
+                UserProtected()(target, 'method', descriptor);
+            }).toThrow(
+                'UserProtected needs AuthJwtAccessGuard or AuthJwtRefreshGuard applied below it'
+            );
+        });
+
         it('sets the verified flag to false when passed false', () => {
             const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
+            AuthJwtAccessProtected()(target, 'method', descriptor);
 
             UserProtected(false)(target, 'method', descriptor);
 
@@ -63,17 +99,6 @@ describe('user.decorator', () => {
     });
 
     describe('UserCurrent', () => {
-        const notAuthenticated = {
-            module: 'user',
-            statusCode: EnumUserStatusCodeError.notAuthenticated,
-            statusCodeKey:
-                EnumUserStatusCodeError[
-                    EnumUserStatusCodeError.notAuthenticated
-                ],
-            httpStatus: HttpStatus.UNAUTHORIZED,
-            messagePath: 'user.error.notAuthenticated',
-        };
-
         const clsService: MockProxy<
             ReturnType<typeof ClsServiceManager.getClsService>
         > = mock<ReturnType<typeof ClsServiceManager.getClsService>>();
@@ -159,7 +184,7 @@ describe('user.decorator', () => {
             vi.restoreAllMocks();
         });
 
-        it('throws UserNotAuthenticatedException when the stored user is undefined', () => {
+        it('throws RequestGuardMissingException when the stored user is undefined', () => {
             const target = {} as Type<unknown>;
             UserCurrent()(target, 'undefinedUser', 0);
             const factory = getParamDecoratorFactory(target, 'undefinedUser');
@@ -172,10 +197,10 @@ describe('user.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject(notAuthenticated);
+            expectRequestGuardMissingWithKey(thrown, UserStoreKey);
         });
 
-        it('throws UserNotAuthenticatedException when the stored user is null', () => {
+        it('throws RequestGuardMissingException when the stored user is null', () => {
             const target = {} as Type<unknown>;
             UserCurrent()(target, 'nullUser', 0);
             const factory = getParamDecoratorFactory(target, 'nullUser');
@@ -188,7 +213,7 @@ describe('user.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject(notAuthenticated);
+            expectRequestGuardMissingWithKey(thrown, UserStoreKey);
         });
 
         it('returns the whole user when no field is requested', () => {

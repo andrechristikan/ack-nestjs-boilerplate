@@ -13,6 +13,7 @@ import type { User } from '@generated/prisma-client/client';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import { AuthProviderUnavailableException } from '@modules/auth/exceptions/auth.provider-unavailable.exception';
 
 describe('AuthUtil', () => {
     const helperStringService: MockProxy<HelperStringService> =
@@ -134,6 +135,110 @@ describe('AuthUtil', () => {
 
             expect(result).toBe('random-jti-value');
             expect(helperStringService.random).toHaveBeenCalledWith(32);
+        });
+    });
+
+    describe('toProviderUnavailableException', () => {
+        it('maps a jwks-rsa fetch failure flagged isEndpointUnavailable', () => {
+            const error = Object.assign(new Error('getaddrinfo ENOTFOUND'), {
+                isEndpointUnavailable: true,
+            });
+
+            const result = util.toProviderUnavailableException(error);
+
+            expect(result).toBeInstanceOf(AuthProviderUnavailableException);
+            expect(result?.rawError).toBe(error);
+        });
+
+        it('maps a JwksError raised by an endpoint that answers no usable key', () => {
+            const error = Object.assign(new Error('Not Found'), {
+                name: 'JwksError',
+            });
+
+            const result = util.toProviderUnavailableException(error);
+
+            expect(result).toBeInstanceOf(AuthProviderUnavailableException);
+            expect(result?.rawError).toBe(error);
+        });
+
+        it('maps a Google certificate retrieval failure', () => {
+            const error = new Error(
+                'Failed to retrieve verification certificates: request to https://www.googleapis.com/oauth2/v1/certs failed'
+            );
+
+            const result = util.toProviderUnavailableException(error);
+
+            expect(result).toBeInstanceOf(AuthProviderUnavailableException);
+            expect(result?.rawError).toBe(error);
+        });
+
+        it.each([
+            'ECONNREFUSED',
+            'ECONNRESET',
+            'ENOTFOUND',
+            'ETIMEDOUT',
+            'EAI_AGAIN',
+            'EHOSTUNREACH',
+            'ENETUNREACH',
+        ])('maps a network error with code %s', code => {
+            const error = Object.assign(new Error('network'), { code });
+
+            const result = util.toProviderUnavailableException(error);
+
+            expect(result).toBeInstanceOf(AuthProviderUnavailableException);
+            expect(result?.rawError).toBe(error);
+        });
+
+        it('returns null for SigningKeyNotFoundError', () => {
+            const error = Object.assign(new Error('no matching kid'), {
+                name: 'SigningKeyNotFoundError',
+            });
+
+            const result = util.toProviderUnavailableException(error);
+
+            expect(result).toBeNull();
+        });
+
+        it('returns null for JwksRateLimitError', () => {
+            const error = Object.assign(new Error('Too many requests'), {
+                name: 'JwksRateLimitError',
+            });
+
+            const result = util.toProviderUnavailableException(error);
+
+            expect(result).toBeNull();
+        });
+
+        it('returns null for a token verification error', () => {
+            const error = Object.assign(new Error('invalid signature'), {
+                name: 'JsonWebTokenError',
+            });
+
+            const result = util.toProviderUnavailableException(error);
+
+            expect(result).toBeNull();
+        });
+
+        it('returns null for an error whose code is not a network code', () => {
+            const error = Object.assign(new Error('bad'), {
+                code: 'ERR_UNKNOWN_CODE',
+            });
+
+            const result = util.toProviderUnavailableException(error);
+
+            expect(result).toBeNull();
+        });
+
+        it('returns null for a value that is not an Error', () => {
+            const result = util.toProviderUnavailableException('boom');
+
+            expect(result).toBeNull();
+        });
+
+        it('returns null when passport hands no info', () => {
+            const result = util.toProviderUnavailableException(null);
+
+            expect(result).toBeNull();
         });
     });
 });

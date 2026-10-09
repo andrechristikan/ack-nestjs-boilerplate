@@ -25,7 +25,10 @@ import {
 import type { User } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import type {
+    IAuthJwtAccessTokenPayload,
+    IAuthPassword,
+} from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { CountryDomain } from '@modules/country/domains/country.domain';
@@ -41,9 +44,10 @@ import { UserBlockedInvalidException } from '@modules/user/exceptions/user.block
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
-import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
-import { UserNotFoundForbiddenException } from '@modules/user/exceptions/user.not-found-forbidden.exception';
+import { UserAccountNotFoundException } from '@modules/user/exceptions/user.account-not-found.exception';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
@@ -112,16 +116,21 @@ export class UserDomain {
     }
 
     async validateUserGuard(
-        userId: string | null,
+        payload: Pick<IAuthJwtAccessTokenPayload, 'userId'> | null,
         requiredVerified: boolean
     ): Promise<IUser> {
-        if (!userId) {
-            throw new UserNotAuthenticatedException();
+        if (!payload) {
+            throw new RequestGuardMissingException('request.user');
+        }
+        if (!payload.userId) {
+            throw new RequestContextMissingException('request.user.userId');
         }
 
-        const user = await this.userRepository.findOneWithRoleById(userId);
+        const user = await this.userRepository.findOneWithRoleById(
+            payload.userId
+        );
         if (!user) {
-            throw new UserNotFoundForbiddenException();
+            throw new UserAccountNotFoundException();
         } else if (user.status === EnumUserStatus.blocked) {
             throw new UserBlockedForbiddenException();
         } else if (user.status !== EnumUserStatus.active) {

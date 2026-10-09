@@ -26,6 +26,10 @@ export const WorkspaceRoleMetaKey = 'WorkspaceRoleMetaKey';
  * @public
  */
 export const DocWorkspaceErrorResponses = {
+    badRequest: DocResponseError(HttpStatus.BAD_REQUEST, {
+        statusCode: EnumWorkspaceStatusCodeError.headerMissing,
+        messagePath: 'workspace.error.headerMissing',
+    }),
     notFound: DocResponseError(HttpStatus.NOT_FOUND, {
         statusCode: EnumWorkspaceStatusCodeError.notFound,
         messagePath: 'workspace.error.notFound',

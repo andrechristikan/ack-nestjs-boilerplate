@@ -22,7 +22,6 @@ import { FileService } from '@common/file/services/file.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import {
     EnumActivityLogAction,
@@ -36,6 +35,7 @@ import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptio
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
 import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
+import { TermPolicyPublishInProgressException } from '@modules/term-policy/exceptions/term-policy.publish-in-progress.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
@@ -59,8 +59,6 @@ describe('TermPolicyDomain', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
     const userDomain: MockProxy<UserDomain> = mock<UserDomain>();
-    const notificationDomain: MockProxy<NotificationDomain> =
-        mock<NotificationDomain>();
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
     const tx = {} as IDatabaseTransactionClient;
@@ -99,6 +97,11 @@ describe('TermPolicyDomain', () => {
     const emptyDraftTermPolicy: TermPolicy = {
         ...draftTermPolicy,
         contents: [],
+    };
+
+    const publicEnItem: IAwsS3 = {
+        ...contentEn,
+        access: EnumAwsS3Accessibility.public,
     };
 
     const preparedActivityLog: IActivityLogStaged = {
@@ -142,10 +145,6 @@ describe('TermPolicyDomain', () => {
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: UserDomain, useValue: userDomain },
-                {
-                    provide: NotificationDomain,
-                    useValue: notificationDomain,
-                },
             ],
         }).compile();
 
@@ -169,7 +168,7 @@ describe('TermPolicyDomain', () => {
             ]);
         });
 
-        it('assigns an undefined language when no content matches the filename', () => {
+        it('throws AppUnknownException with a description when a copied item matches no content', () => {
             const newItem: IAwsS3 = {
                 ...contentEn,
                 key: 'term-policies/privacy/1/fr.hbs',
@@ -179,9 +178,29 @@ describe('TermPolicyDomain', () => {
                 (path: string) => path.split('/').pop() ?? ''
             );
 
-            const result = domain.mapPublicContent([newItem], [contentEn]);
+            expect(() =>
+                domain.mapPublicContent([newItem], [contentEn])
+            ).toThrow(
+                expect.objectContaining({
+                    constructor: AppUnknownException,
+                    statusCode: EnumAppStatusCodeError.unknown,
+                    description: `Term policy copy ${newItem.key} matches no content`,
+                })
+            );
+        });
 
-            expect(result).toEqual([{ ...newItem, language: undefined }]);
+        it('throws AppUnknownException with a description when a content has no copied item', () => {
+            fileService.extractFilenameFromPath.mockImplementation(
+                (path: string) => path.split('/').pop() ?? ''
+            );
+
+            expect(() => domain.mapPublicContent([], [contentEn])).toThrow(
+                expect.objectContaining({
+                    constructor: AppUnknownException,
+                    statusCode: EnumAppStatusCodeError.unknown,
+                    description: `Term policy copy failed for language ${EnumMessageLanguage.en}`,
+                })
+            );
         });
     });
 
@@ -610,40 +629,9 @@ describe('TermPolicyDomain', () => {
             });
         });
 
-        it('throws TermPolicyStatusInvalidException when already published and recipients exist', async () => {
+        it('re-adds the job when already published and recipients exist, leaving the decision to the job state', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(
                 publishedTermPolicy
-            );
-            notificationDomain.existsTermPolicyRecipient.mockResolvedValue(
-                true
-            );
-
-            await expect(
-                domain.publishByAdmin('term-policy-1', 'user-1')
-            ).rejects.toMatchObject({
-                constructor: TermPolicyStatusInvalidException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-                statusCodeKey:
-                    EnumTermPolicyStatusCodeError[
-                        EnumTermPolicyStatusCodeError.statusInvalid
-                    ],
-                messagePath: 'termPolicy.error.statusInvalid',
-            });
-            expect(
-                notificationDomain.existsTermPolicyRecipient
-            ).toHaveBeenCalledWith('term-policy-1');
-            expect(
-                notificationQueue.sendPublishTermPolicy
-            ).not.toHaveBeenCalled();
-        });
-
-        it('re-adds the job without copying, publishing, or logging when already published and no recipients exist', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(
-                publishedTermPolicy
-            );
-            notificationDomain.existsTermPolicyRecipient.mockResolvedValue(
-                false
             );
             notificationQueue.sendPublishTermPolicy.mockResolvedValue(
                 undefined
@@ -652,8 +640,27 @@ describe('TermPolicyDomain', () => {
             await domain.publishByAdmin('term-policy-1', 'user-1');
 
             expect(
-                notificationDomain.existsTermPolicyRecipient
-            ).toHaveBeenCalledWith('term-policy-1');
+                notificationQueue.sendPublishTermPolicy
+            ).toHaveBeenCalledWith(
+                {
+                    termPolicyId: 'term-policy-1',
+                    type: EnumTermPolicyType.privacy,
+                    version: 1,
+                },
+                'user-1'
+            );
+        });
+
+        it('re-adds the job without copying, publishing, or logging when already published and no recipients exist', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(
+                publishedTermPolicy
+            );
+            notificationQueue.sendPublishTermPolicy.mockResolvedValue(
+                undefined
+            );
+
+            await domain.publishByAdmin('term-policy-1', 'user-1');
+
             expect(awsS3Service.copyItems).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(userDomain.resetTermPolicyInTx).not.toHaveBeenCalled();
@@ -677,9 +684,6 @@ describe('TermPolicyDomain', () => {
             termPolicyRepository.findOneById.mockResolvedValue(
                 publishedTermPolicy
             );
-            notificationDomain.existsTermPolicyRecipient.mockResolvedValue(
-                false
-            );
             const cause = new Error('queue failed');
             notificationQueue.sendPublishTermPolicy.mockRejectedValue(cause);
 
@@ -693,6 +697,8 @@ describe('TermPolicyDomain', () => {
                     EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
                 messagePath: 'http.serverError.internalServerError',
                 rawError: cause,
+                description:
+                    'Enqueueing the term policy publish notification failed',
             });
         });
 
@@ -824,12 +830,73 @@ describe('TermPolicyDomain', () => {
             );
         });
 
-        it('wraps a job add failure after publishing in AppUnknownException', async () => {
+        it('throws AppUnknownException and commits nothing when a language copy failed', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
             );
             awsS3Service.copyItems.mockResolvedValue([]);
+            fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
+
+            await expect(
+                domain.publishByAdmin('term-policy-1', 'user-1')
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                statusCode: EnumAppStatusCodeError.unknown,
+                description: `Term policy copy failed for language ${EnumMessageLanguage.en}`,
+            });
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(termPolicyRepository.publishInTx).not.toHaveBeenCalled();
+            expect(userDomain.resetTermPolicyInTx).not.toHaveBeenCalled();
+            expect(activityLogDomain.stagePrepared).not.toHaveBeenCalled();
+            expect(
+                notificationQueue.sendPublishTermPolicy
+            ).not.toHaveBeenCalled();
+        });
+
+        it('throws AppUnknownException and commits nothing when a copied item matches no content', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getContentPublicPath.mockReturnValue(
+                'public/term-policies/privacy/1'
+            );
+            awsS3Service.copyItems.mockResolvedValue([
+                {
+                    ...publicEnItem,
+                    key: 'public/term-policies/privacy/1/fr.hbs',
+                },
+            ]);
+            fileService.extractFilenameFromPath.mockImplementation(
+                (path: string) => path.split('/').pop() ?? ''
+            );
+
+            await expect(
+                domain.publishByAdmin('term-policy-1', 'user-1')
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                description:
+                    'Term policy copy public/term-policies/privacy/1/fr.hbs matches no content',
+            });
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('rethrows the in-progress exception the queue raises without wrapping it', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(
+                publishedTermPolicy
+            );
+            const error = new TermPolicyPublishInProgressException();
+            notificationQueue.sendPublishTermPolicy.mockRejectedValue(error);
+
+            await expect(
+                domain.publishByAdmin('term-policy-1', 'user-1')
+            ).rejects.toBe(error);
+        });
+
+        it('wraps a job add failure after publishing in AppUnknownException', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+            termPolicyUtil.getContentPublicPath.mockReturnValue(
+                'public/term-policies/privacy/1'
+            );
+            awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
             fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
             databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
@@ -857,7 +924,7 @@ describe('TermPolicyDomain', () => {
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
             );
-            awsS3Service.copyItems.mockResolvedValue([]);
+            awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
             fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
             databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
@@ -929,7 +996,7 @@ describe('TermPolicyDomain', () => {
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
             );
-            awsS3Service.copyItems.mockResolvedValue([]);
+            awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
             fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
             databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
@@ -983,7 +1050,7 @@ describe('TermPolicyDomain', () => {
             termPolicyUtil.getContentPublicPath.mockReturnValue(
                 'public/term-policies/privacy/1'
             );
-            awsS3Service.copyItems.mockResolvedValue([]);
+            awsS3Service.copyItems.mockResolvedValue([publicEnItem]);
             fileService.extractFilenameFromPath.mockReturnValue('en.hbs');
             const cause = new Error('transaction failed');
             databaseService.withTransaction.mockRejectedValue(cause);

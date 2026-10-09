@@ -13,17 +13,14 @@ export const FeatureFlagKeyPathMetaKey = 'FeatureFlagKeyPathMetaKey';
  * @public
  */
 export const DocFeatureFlagErrorResponses = {
-    disabled: DocResponseError(
-        HttpStatus.NOT_FOUND,
-        {
-            statusCode: EnumFeatureFlagStatusCodeError.notFound,
-            messagePath: 'featureFlag.error.notFound',
-        },
-        {
-            statusCode: EnumFeatureFlagStatusCodeError.disabled,
-            messagePath: 'featureFlag.error.disabled',
-        }
-    ),
+    disabled: DocResponseError(HttpStatus.NOT_FOUND, {
+        statusCode: EnumFeatureFlagStatusCodeError.disabled,
+        messagePath: 'featureFlag.error.disabled',
+    }),
+    unseeded: DocResponseError(HttpStatus.INTERNAL_SERVER_ERROR, {
+        statusCode: EnumFeatureFlagStatusCodeError.unseeded,
+        messagePath: 'featureFlag.error.unseeded',
+    }),
 } as const;
 
 /**

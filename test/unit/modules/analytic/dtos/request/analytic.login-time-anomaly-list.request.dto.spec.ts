@@ -9,7 +9,7 @@ describe('AnalyticLoginTimeAnomalyListRequestSchema', () => {
         const result = AnalyticLoginTimeAnomalyListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticLoginTimeAnomalyAvailableOrderBy[0]}:desc`,
             startDate,
             endDate,
         });
@@ -17,7 +17,7 @@ describe('AnalyticLoginTimeAnomalyListRequestSchema', () => {
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticLoginTimeAnomalyAvailableOrderBy[0]}:desc`,
             startDate,
             endDate,
         });
@@ -60,5 +60,36 @@ describe('AnalyticLoginTimeAnomalyListRequestSchema', () => {
             AnalyticLoginTimeAnomalyListRequestSchema.shape.orderBy.meta()
                 ?.description
         ).toContain(AnalyticLoginTimeAnomalyAvailableOrderBy.join(', '));
+    });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = AnalyticLoginTimeAnomalyAvailableOrderBy[0];
+        const last =
+            AnalyticLoginTimeAnomalyAvailableOrderBy[
+                AnalyticLoginTimeAnomalyAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            AnalyticLoginTimeAnomalyListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            AnalyticLoginTimeAnomalyListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${AnalyticLoginTimeAnomalyAvailableOrderBy[0]}:`,
+        `${AnalyticLoginTimeAnomalyAvailableOrderBy[0]}:DESC`,
+        `${AnalyticLoginTimeAnomalyAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            AnalyticLoginTimeAnomalyListRequestSchema.safeParse({ orderBy })
+                .success
+        ).toBe(false);
     });
 });

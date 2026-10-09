@@ -6,14 +6,14 @@ describe('AnalyticApiKeyBurstListRequestSchema', () => {
         const result = AnalyticApiKeyBurstListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticUserCountAvailableOrderBy[0]}:desc`,
             windowMs: 3600000,
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticUserCountAvailableOrderBy[0]}:desc`,
             windowMs: 3600000,
         });
     });
@@ -50,5 +50,35 @@ describe('AnalyticApiKeyBurstListRequestSchema', () => {
             AnalyticApiKeyBurstListRequestSchema.shape.orderBy.meta()
                 ?.description
         ).toContain(AnalyticUserCountAvailableOrderBy.join(', '));
+    });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = AnalyticUserCountAvailableOrderBy[0];
+        const last =
+            AnalyticUserCountAvailableOrderBy[
+                AnalyticUserCountAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            AnalyticApiKeyBurstListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            AnalyticApiKeyBurstListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${AnalyticUserCountAvailableOrderBy[0]}:`,
+        `${AnalyticUserCountAvailableOrderBy[0]}:DESC`,
+        `${AnalyticUserCountAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            AnalyticApiKeyBurstListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
     });
 });

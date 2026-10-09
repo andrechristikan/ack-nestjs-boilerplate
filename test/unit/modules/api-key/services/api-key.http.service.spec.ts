@@ -13,7 +13,6 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import {
-    ApiKeyDefaultAvailableOrderBy,
     ApiKeyDefaultAvailableSearch,
     ApiKeyDefaultType,
 } from '@modules/api-key/constants/api-key.list.constant';
@@ -129,7 +128,6 @@ describe('ApiKeyHttpService', () => {
             expect(result).toEqual(page);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
                 availableSearch: ApiKeyDefaultAvailableSearch,
-                availableOrderBy: ApiKeyDefaultAvailableOrderBy,
             });
             expect(paginationQueryUtil.equalBoolean).toHaveBeenCalledWith(
                 Prisma.ApiKeyScalarFieldEnum.isActive,

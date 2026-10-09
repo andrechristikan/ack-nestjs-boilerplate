@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
-    PaginationAllowedOrderDirections,
     PaginationDefaultCursorField,
     PaginationDefaultMaxPage,
     PaginationDefaultMaxPerPage,
@@ -16,6 +15,7 @@ import {
 } from '@common/pagination/enums/pagination.enum';
 import type { PaginationCursorQueryDto } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import type { PaginationOffsetQueryDto } from '@common/pagination/dtos/pagination.offset-query.dto';
+import type { PaginationOrderByQuery } from '@common/pagination/utils/pagination.order-by.util';
 import { PaginationCursorTooLongException } from '@common/pagination/exceptions/pagination.cursor-too-long.exception';
 import { PaginationFilterInvalidValueEnumException } from '@common/pagination/exceptions/pagination.filter-invalid-value-enum.exception';
 import { PaginationFilterInvalidValueException } from '@common/pagination/exceptions/pagination.filter-invalid-value.exception';
@@ -24,8 +24,6 @@ import { PaginationInvalidCursorPaginationParamsException } from '@common/pagina
 import { PaginationInvalidOffsetPaginationParamsException } from '@common/pagination/exceptions/pagination.invalid-offset-pagination-params.exception';
 import { PaginationInvalidPageException } from '@common/pagination/exceptions/pagination.invalid-page.exception';
 import { PaginationInvalidPerPageException } from '@common/pagination/exceptions/pagination.invalid-per-page.exception';
-import { PaginationOrderByNotAllowedException } from '@common/pagination/exceptions/pagination.order-by-not-allowed.exception';
-import { PaginationOrderDirectionNotAllowedException } from '@common/pagination/exceptions/pagination.order-direction-not-allowed.exception';
 import { PaginationPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.page-cannot-be-less-than-one.exception';
 import { PaginationPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.page-exceeds-maximum.exception';
 import { PaginationPerPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.per-page-cannot-be-less-than-one.exception';
@@ -215,59 +213,16 @@ export class PaginationQueryUtil {
         return parsedOrderBy;
     }
 
-    private validateOrderBy(
-        orderByExtractFromRequest: Record<string, string>[],
-        availableOrderBy: readonly string[]
-    ): IPaginationOrderBy[] {
-        const flatOrderBy = orderByExtractFromRequest.reduce(
-            (acc, entry) => ({ ...acc, ...entry }),
-            {}
-        );
-
-        const fields = Object.keys(flatOrderBy);
-        const directions = Object.values(flatOrderBy);
-
-        const invalidField = fields.some(
-            field => !availableOrderBy.includes(field)
-        );
-        const invalidDirection = directions.some(
-            direction =>
-                direction !== EnumPaginationOrderDirectionType.asc &&
-                direction !== EnumPaginationOrderDirectionType.desc
-        );
-
-        if (invalidField) {
-            throw new PaginationOrderByNotAllowedException(
-                availableOrderBy.join(', ')
-            );
-        }
-
-        if (invalidDirection) {
-            throw new PaginationOrderDirectionNotAllowedException(
-                PaginationAllowedOrderDirections.join(', ')
-            );
-        }
-
-        return this.parseOrderBy(orderByExtractFromRequest);
-    }
-
     private resolveOrderBy(
-        orderBy: string | string[] | null,
-        availableOrderBy: readonly string[]
+        orderBy: string | string[] | null
     ): IPaginationOrderBy[] {
         const orderByExtractFromRequest = this.extractOrderByToArray(orderBy);
 
-        if (
-            orderByExtractFromRequest.length === 0 ||
-            availableOrderBy.length === 0
-        ) {
+        if (orderByExtractFromRequest.length === 0) {
             return [...PaginationDefaultOrderBy];
         }
 
-        return this.validateOrderBy(
-            orderByExtractFromRequest,
-            availableOrderBy
-        );
+        return this.parseOrderBy(orderByExtractFromRequest);
     }
 
     private validateAndParsePage(page?: number | string): number {
@@ -354,7 +309,7 @@ export class PaginationQueryUtil {
     }
 
     offset<TArgsWhere = unknown>(
-        dto: PaginationOffsetQueryDto,
+        dto: PaginationOffsetQueryDto & { orderBy?: PaginationOrderByQuery },
         options: IPaginationQueryOffsetOptions = {}
     ): {
         params: IPaginationQueryOffsetParams<TArgsWhere>;
@@ -362,7 +317,6 @@ export class PaginationQueryUtil {
     } {
         try {
             const availableSearch = options.availableSearch ?? [];
-            const availableOrderBy = options.availableOrderBy ?? [];
             const page = this.validateAndParsePage(dto.page);
             const perPage = this.validateAndParsePerPage(
                 dto.perPage,
@@ -373,10 +327,7 @@ export class PaginationQueryUtil {
             if (search && availableSearch.length > 0) {
                 where = this.buildSearchObject(search, availableSearch);
             }
-            const orderBy = this.resolveOrderBy(
-                dto.orderBy ?? null,
-                availableOrderBy
-            );
+            const orderBy = this.resolveOrderBy(dto.orderBy ?? null);
 
             return {
                 params: {
@@ -390,7 +341,6 @@ export class PaginationQueryUtil {
                     perPage,
                     orderBy,
                     availableSearch,
-                    availableOrderBy,
                     ...(search && availableSearch.length > 0 ? { search } : {}),
                 },
             };
@@ -404,7 +354,7 @@ export class PaginationQueryUtil {
     }
 
     cursor<TArgsWhere = unknown>(
-        dto: PaginationCursorQueryDto,
+        dto: PaginationCursorQueryDto & { orderBy?: PaginationOrderByQuery },
         options: IPaginationQueryCursorOptions = {}
     ): {
         params: IPaginationQueryCursorParams<TArgsWhere>;
@@ -412,7 +362,6 @@ export class PaginationQueryUtil {
     } {
         try {
             const availableSearch = options.availableSearch ?? [];
-            const availableOrderBy = options.availableOrderBy ?? [];
             const perPage = this.validateAndParsePerPage(
                 dto.perPage,
                 options.defaultPerPage
@@ -423,10 +372,7 @@ export class PaginationQueryUtil {
             if (search && availableSearch.length > 0) {
                 where = this.buildSearchObject(search, availableSearch);
             }
-            const orderBy = this.resolveOrderBy(
-                dto.orderBy ?? null,
-                availableOrderBy
-            );
+            const orderBy = this.resolveOrderBy(dto.orderBy ?? null);
             const cursorField =
                 options.cursorField ?? PaginationDefaultCursorField;
 
@@ -443,7 +389,6 @@ export class PaginationQueryUtil {
                     ...(cursor && { cursor }),
                     orderBy,
                     availableSearch,
-                    availableOrderBy,
                     ...(search && availableSearch.length > 0 ? { search } : {}),
                 },
             };

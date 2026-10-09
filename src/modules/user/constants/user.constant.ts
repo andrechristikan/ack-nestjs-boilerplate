@@ -1,7 +1,4 @@
-import {
-    EnumActivityLogAction,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import { DocResponseError } from '@common/doc/decorators/doc.decorator';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -24,15 +21,11 @@ export const UserStoreKey = 'UserStoreKey';
  */
 export const DocUserErrorResponses = {
     unauthorized: DocResponseError(HttpStatus.UNAUTHORIZED, {
-        statusCode: EnumUserStatusCodeError.notAuthenticated,
-        messagePath: 'user.error.notAuthenticated',
+        statusCode: EnumUserStatusCodeError.accountNotFound,
+        messagePath: 'user.error.accountNotFound',
     }),
     forbidden: DocResponseError(
         HttpStatus.FORBIDDEN,
-        {
-            statusCode: EnumUserStatusCodeError.notFoundForbidden,
-            messagePath: 'user.error.notFound',
-        },
         {
             statusCode: EnumUserStatusCodeError.blockedForbidden,
             messagePath: 'user.error.blocked',

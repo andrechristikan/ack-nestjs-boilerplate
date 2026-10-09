@@ -14,10 +14,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { Prisma } from '@generated/prisma-client/client';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
-import {
-    WorkspaceMemberDefaultAvailableOrderBy,
-    WorkspaceMemberDefaultRole,
-} from '@modules/workspace/constants/workspace.list.constant';
+import { WorkspaceMemberDefaultRole } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceAdminMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-member-list.request.dto';
 import type { WorkspaceMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.member-list.request.dto';
 import type { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
@@ -125,9 +122,7 @@ describe('WorkspaceMemberHttpService', () => {
 
             await service.getMembersList('workspace-1', query);
 
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
-            });
+            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query);
             expect(paginationQueryUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.WorkspaceMemberScalarFieldEnum.role,
                 'admin',
@@ -214,9 +209,7 @@ describe('WorkspaceMemberHttpService', () => {
 
             await service.getMembersListByAdmin('workspace-1', query);
 
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
-                availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
-            });
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query);
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 {}

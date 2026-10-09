@@ -49,15 +49,31 @@ export class AppGeneralFilter implements ExceptionFilter {
         return mapped ?? new AppUnknownException(exception);
     }
 
+    /**
+     * A described `AppUnknownException` is reported as itself so Sentry shows the description with
+     * the cause chained; any other `AppBaseException` reports its `rawError` when it has one.
+     */
+    private getReported(exception: unknown): unknown {
+        if (
+            exception instanceof AppUnknownException &&
+            exception.description !== null
+        ) {
+            return exception;
+        }
+
+        if (exception instanceof AppBaseException) {
+            return exception.rawError ?? exception;
+        }
+
+        return exception;
+    }
+
     private sendToSentry(exception: unknown, resolved: AppBaseException): void {
         if (resolved.httpStatus < 500) {
             return;
         }
 
-        const reported =
-            exception instanceof AppBaseException
-                ? (exception.rawError ?? exception)
-                : exception;
+        const reported = this.getReported(exception);
 
         this.logger.error(reported, 'An unhandled exception occurred');
         this.sentryService.captureException(reported);
@@ -93,7 +109,6 @@ export class AppGeneralFilter implements ExceptionFilter {
             module: resolved.module,
             message,
             metadata,
-            data: resolved.data,
         };
 
         this.responseMetadataService.setHeaders(response, metadata);

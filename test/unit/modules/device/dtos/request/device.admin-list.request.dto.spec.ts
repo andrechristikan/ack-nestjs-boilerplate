@@ -55,4 +55,33 @@ describe('DeviceAdminListRequestSchema', () => {
             DeviceAdminListRequestSchema.shape.orderBy.meta()?.description
         ).toContain(DeviceDefaultAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = DeviceDefaultAvailableOrderBy[0];
+        const last =
+            DeviceDefaultAvailableOrderBy[
+                DeviceDefaultAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            DeviceAdminListRequestSchema.safeParse({ orderBy: `${first}:asc` })
+                .success
+        ).toBe(true);
+        expect(
+            DeviceAdminListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${DeviceDefaultAvailableOrderBy[0]}:`,
+        `${DeviceDefaultAvailableOrderBy[0]}:DESC`,
+        `${DeviceDefaultAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            DeviceAdminListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
 });

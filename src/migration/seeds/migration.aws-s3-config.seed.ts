@@ -113,7 +113,10 @@ export class MigrationAwsS3ConfigSeed
                 this.setPrivateBucketPolicies(),
             ]);
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(
+                error,
+                'Seeding AWS S3 config failed'
+            );
         }
 
         this.logger.log('Finished seeding AWS S3 Policies.');

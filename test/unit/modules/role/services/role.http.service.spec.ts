@@ -9,7 +9,6 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import {
-    RoleDefaultAvailableOrderBy,
     RoleDefaultAvailableSearch,
     RoleDefaultType,
 } from '@modules/role/constants/role.list.constant';
@@ -119,7 +118,6 @@ describe('RoleHttpService', () => {
             });
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
                 availableSearch: RoleDefaultAvailableSearch,
-                availableOrderBy: RoleDefaultAvailableOrderBy,
             });
             expect(paginationQueryUtil.inEnum).toHaveBeenCalledWith(
                 Prisma.RoleScalarFieldEnum.type,
@@ -191,7 +189,6 @@ describe('RoleHttpService', () => {
             });
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 availableSearch: RoleDefaultAvailableSearch,
-                availableOrderBy: RoleDefaultAvailableOrderBy,
             });
             expect(roleDomain.getListCursorBySystem).toHaveBeenCalledWith(
                 cursorPagination,

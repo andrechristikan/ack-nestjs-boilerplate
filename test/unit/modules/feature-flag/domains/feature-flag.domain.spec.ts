@@ -16,7 +16,7 @@ import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cach
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
-import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
+import { FeatureFlagUnseededException } from '@modules/feature-flag/exceptions/feature-flag.unseeded.exception';
 import type {
     IFeatureFlagUpdateMetadata,
     IFeatureFlagUpdateStatus,
@@ -98,21 +98,25 @@ describe('FeatureFlagDomain', () => {
     });
 
     describe('validateFeatureFlag', () => {
-        it('throws FeatureFlagNotFoundException (404) when the flag is unregistered', async () => {
+        it('throws FeatureFlagUnseededException (500) when the flag is unregistered', async () => {
             featureFlagCache.getByKeyAndCache.mockResolvedValue(null);
 
             await expect(
                 domain.validateFeatureFlag('unknownFlag', null, null)
             ).rejects.toMatchObject({
-                constructor: FeatureFlagNotFoundException,
+                constructor: FeatureFlagUnseededException,
                 module: 'featureFlag',
-                httpStatus: HttpStatus.NOT_FOUND,
-                statusCode: EnumFeatureFlagStatusCodeError.notFound,
+                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+                statusCode: EnumFeatureFlagStatusCodeError.unseeded,
                 statusCodeKey:
                     EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.notFound
+                        EnumFeatureFlagStatusCodeError.unseeded
                     ],
-                messagePath: 'featureFlag.error.notFound',
+                messagePath: 'featureFlag.error.unseeded',
+                rawError: expect.objectContaining({
+                    message:
+                        'FeatureFlagUnseededException: no feature flag row for "unknownFlag"',
+                }),
             });
             expect(featureFlagCache.getByKeyAndCache).toHaveBeenCalledWith(
                 'unknownFlag'
@@ -260,21 +264,25 @@ describe('FeatureFlagDomain', () => {
     });
 
     describe('validateFeatureFlagMetadata', () => {
-        it('throws FeatureFlagNotFoundException (404) when the flag is unregistered', async () => {
+        it('throws FeatureFlagUnseededException (500) when the flag is unregistered', async () => {
             featureFlagCache.getByKeyAndCache.mockResolvedValue(null);
 
             await expect(
                 domain.validateFeatureFlagMetadata('unknownFlag', 'enabled')
             ).rejects.toMatchObject({
-                constructor: FeatureFlagNotFoundException,
+                constructor: FeatureFlagUnseededException,
                 module: 'featureFlag',
-                httpStatus: HttpStatus.NOT_FOUND,
-                statusCode: EnumFeatureFlagStatusCodeError.notFound,
+                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+                statusCode: EnumFeatureFlagStatusCodeError.unseeded,
                 statusCodeKey:
                     EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.notFound
+                        EnumFeatureFlagStatusCodeError.unseeded
                     ],
-                messagePath: 'featureFlag.error.notFound',
+                messagePath: 'featureFlag.error.unseeded',
+                rawError: expect.objectContaining({
+                    message:
+                        'FeatureFlagUnseededException: no feature flag row for "unknownFlag"',
+                }),
             });
         });
 
@@ -459,7 +467,7 @@ describe('FeatureFlagDomain', () => {
             targetUserIds: null,
         };
 
-        it('throws FeatureFlagNotFoundException when the flag does not exist', async () => {
+        it('throws the notFound feature flag error when the flag does not exist', async () => {
             featureFlagRepository.findOneById.mockResolvedValue(null);
 
             await expect(
@@ -506,7 +514,7 @@ describe('FeatureFlagDomain', () => {
             metadata: { enabled: true },
         };
 
-        it('throws FeatureFlagNotFoundException when the flag does not exist', async () => {
+        it('throws the notFound feature flag error when the flag does not exist', async () => {
             featureFlagRepository.findOneById.mockResolvedValue(null);
 
             await expect(

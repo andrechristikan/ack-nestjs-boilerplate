@@ -241,7 +241,10 @@ export class MigrationTemplateEmailNotificationSeed
             try {
                 await Promise.all(promises);
             } catch (error: unknown) {
-                throw new AppUnknownException(error);
+                throw new AppUnknownException(
+                    error,
+                    'Seeding email templates failed'
+                );
             }
         }
 
@@ -274,7 +277,10 @@ export class MigrationTemplateEmailNotificationSeed
                 this.notificationTemplateWorkspaceDomain.emailDeleteWorkspaceJoinRejected(),
             ]);
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(
+                error,
+                'Removing email templates failed'
+            );
         }
 
         this.logger.log('Emails removed successfully.');

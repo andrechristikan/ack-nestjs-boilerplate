@@ -54,4 +54,35 @@ describe('AnalyticFraudRiskScoresListRequestSchema', () => {
                 ?.description
         ).toContain(AnalyticFraudRiskScoreAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = AnalyticFraudRiskScoreAvailableOrderBy[0];
+        const last =
+            AnalyticFraudRiskScoreAvailableOrderBy[
+                AnalyticFraudRiskScoreAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            AnalyticFraudRiskScoresListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            AnalyticFraudRiskScoresListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${AnalyticFraudRiskScoreAvailableOrderBy[0]}:`,
+        `${AnalyticFraudRiskScoreAvailableOrderBy[0]}:DESC`,
+        `${AnalyticFraudRiskScoreAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            AnalyticFraudRiskScoresListRequestSchema.safeParse({ orderBy })
+                .success
+        ).toBe(false);
+    });
 });

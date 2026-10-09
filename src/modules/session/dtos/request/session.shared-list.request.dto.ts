@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
+import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import { SessionCursorAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 
@@ -10,10 +10,7 @@ import { SessionCursorAvailableOrderBy } from '@modules/session/constants/sessio
 export const SessionSharedListRequestSchema = PaginationCursorQuerySchema.omit({
     search: true,
 }).extend({
-    orderBy: PaginationCursorQuerySchema.shape.orderBy.meta({
-        description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${SessionCursorAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-        example: `${SessionCursorAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-    }),
+    orderBy: PaginationOrderBySchema(SessionCursorAvailableOrderBy),
 });
 
 /**

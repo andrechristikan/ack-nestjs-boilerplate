@@ -18,7 +18,8 @@ export function AuthSocialGoogleProtected(): MethodDecorator {
         UseGuards(AuthSocialGoogleGuard),
         ApiBearerAuth(AuthSocialGoogleDocSecurityName),
         DocAuthSocialGoogleErrorResponses.unauthorized,
-        DocAuthSocialGoogleErrorResponses.notConfigured
+        DocAuthSocialGoogleErrorResponses.notConfigured,
+        DocAuthSocialGoogleErrorResponses.unavailable
     );
 }
 
@@ -31,6 +32,7 @@ export function AuthSocialAppleProtected(): MethodDecorator {
         UseGuards(AuthSocialAppleGuard),
         ApiBearerAuth(AuthSocialAppleDocSecurityName),
         DocAuthSocialAppleErrorResponses.unauthorized,
-        DocAuthSocialAppleErrorResponses.notConfigured
+        DocAuthSocialAppleErrorResponses.notConfigured,
+        DocAuthSocialAppleErrorResponses.unavailable
     );
 }

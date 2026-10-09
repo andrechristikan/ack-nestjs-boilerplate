@@ -124,7 +124,7 @@ describe('UserGuard', () => {
             context.getHandler()
         );
         expect(userDomain.validateUserGuard).toHaveBeenCalledWith(
-            user.id,
+            jwtPayload,
             true
         );
         expect(requestStoreService.set).toHaveBeenCalledWith(
@@ -141,7 +141,7 @@ describe('UserGuard', () => {
         await guard.canActivate(context);
 
         expect(userDomain.validateUserGuard).toHaveBeenCalledWith(
-            user.id,
+            jwtPayload,
             false
         );
     });
@@ -154,7 +154,7 @@ describe('UserGuard', () => {
         await guard.canActivate(context);
 
         expect(userDomain.validateUserGuard).toHaveBeenCalledWith(
-            user.id,
+            jwtPayload,
             false
         );
     });

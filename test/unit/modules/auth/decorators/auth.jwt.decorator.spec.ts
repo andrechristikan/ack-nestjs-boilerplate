@@ -11,7 +11,6 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { AuthJwtAccessGuard } from '@modules/auth/guards/jwt/auth.jwt.access.guard';
 import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.guard';
-import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import {
@@ -19,6 +18,10 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
+import {
+    expectRequestContextMissingWithKey,
+    expectRequestGuardMissingWithKey,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('auth.jwt.decorator', () => {
     describe('AuthJwtAccessProtected', () => {
@@ -76,7 +79,7 @@ describe('auth.jwt.decorator', () => {
             roleId: 'role-1',
         };
 
-        it('throws RequestContextMissingException when the request user is undefined', () => {
+        it('throws RequestGuardMissingException when the request user is undefined', () => {
             const request: Pick<
                 IRequestApp<IAuthJwtAccessTokenPayload>,
                 'user'
@@ -93,21 +96,10 @@ describe('auth.jwt.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.contextMissing
-                    ],
-                messagePath: 'request.error.contextMissing',
-                rawError: expect.objectContaining({
-                    message: expect.stringContaining('request.user'),
-                }) as Error,
-            });
+            expectRequestGuardMissingWithKey(thrown, 'request.user');
         });
 
-        it('throws RequestContextMissingException when the request user is null', () => {
+        it('throws RequestGuardMissingException when the request user is null', () => {
             const request: MockProxy<IRequestApp<IAuthJwtAccessTokenPayload>> =
                 mock<IRequestApp<IAuthJwtAccessTokenPayload>>();
             request.user = null as unknown as IAuthJwtAccessTokenPayload;
@@ -123,18 +115,7 @@ describe('auth.jwt.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.contextMissing
-                    ],
-                messagePath: 'request.error.contextMissing',
-                rawError: expect.objectContaining({
-                    message: expect.stringContaining('request.user'),
-                }) as Error,
-            });
+            expectRequestGuardMissingWithKey(thrown, 'request.user');
         });
 
         it('returns the whole payload when no field is given', () => {
@@ -177,20 +158,10 @@ describe('auth.jwt.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.contextMissing
-                    ],
-                messagePath: 'request.error.contextMissing',
-                rawError: expect.objectContaining({
-                    message: expect.stringContaining(
-                        'request.user.missingField'
-                    ),
-                }) as Error,
-            });
+            expectRequestContextMissingWithKey(
+                thrown,
+                'request.user.missingField'
+            );
         });
 
         it('throws RequestContextMissingException when the named field is null', () => {
@@ -212,18 +183,7 @@ describe('auth.jwt.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.contextMissing
-                    ],
-                messagePath: 'request.error.contextMissing',
-                rawError: expect.objectContaining({
-                    message: expect.stringContaining('request.user.jti'),
-                }) as Error,
-            });
+            expectRequestContextMissingWithKey(thrown, 'request.user.jti');
         });
 
         it('returns the named field when present', () => {

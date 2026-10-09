@@ -229,7 +229,6 @@ describe('ResponsePaginationInterceptor', () => {
                     filters: undefined,
                     orderBy: [],
                     availableSearch: [],
-                    availableOrderBy: [],
                 },
                 data: [{ id: '1' }],
             });
@@ -246,7 +245,6 @@ describe('ResponsePaginationInterceptor', () => {
                 filters: { active: true },
                 orderBy: [{ createdAt: EnumPaginationOrderDirectionType.desc }],
                 availableSearch: ['name'],
-                availableOrderBy: ['createdAt'],
             };
             requestStoreService.get.mockReturnValue(storedPagination);
 
@@ -287,7 +285,6 @@ describe('ResponsePaginationInterceptor', () => {
                 filters: { active: true },
                 orderBy: [`createdAt:${EnumPaginationOrderDirectionType.desc}`],
                 availableSearch: ['name'],
-                availableOrderBy: ['createdAt'],
             });
             expect(result.metadata).not.toHaveProperty('httpStatus');
             expect(result.metadata).not.toHaveProperty('statusCode');

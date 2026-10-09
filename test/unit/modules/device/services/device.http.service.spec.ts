@@ -7,10 +7,6 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumDevicePlatform, Prisma } from '@generated/prisma-client/client';
-import {
-    DeviceCursorAvailableOrderBy,
-    DeviceDefaultAvailableOrderBy,
-} from '@modules/device/constants/device.list.constant';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
@@ -30,7 +26,7 @@ describe('DeviceHttpService', () => {
 
     const updatedAt: Date = new Date('2026-01-01T00:00:00.000Z');
     const params = { skip: 0, limit: 20, orderBy: [] };
-    const storePatch = { availableOrderBy: DeviceDefaultAvailableOrderBy };
+    const storePatch = { perPage: 20 };
     const deviceOwnership: IDeviceOwnership = {
         id: 'device-ownership-1',
         createdAt: updatedAt,
@@ -127,9 +123,7 @@ describe('DeviceHttpService', () => {
                     isCurrentDevice: false,
                 },
             ]);
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
-                availableOrderBy: DeviceDefaultAvailableOrderBy,
-            });
+            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query);
             expect(paginationQueryUtil.equalBoolean).toHaveBeenCalledWith(
                 Prisma.DeviceOwnershipScalarFieldEnum.isRevoked,
                 true
@@ -202,9 +196,7 @@ describe('DeviceHttpService', () => {
                     isCurrentDevice: true,
                 },
             ]);
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                availableOrderBy: DeviceCursorAvailableOrderBy,
-            });
+            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query);
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 storePatch

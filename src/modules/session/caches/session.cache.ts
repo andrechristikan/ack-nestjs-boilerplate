@@ -57,12 +57,13 @@ export class SessionCache {
         }
     }
 
+    /** Reads the login entry through the Keyv client so a store failure throws; the cache manager would report it as a miss. */
     async getLogin(
         userId: string,
         sessionId: string
     ): Promise<ISessionCache | null> {
         const key = this.buildKey(userId, sessionId);
-        const cached = await this.cacheManager.get<ISessionCache>(key);
+        const cached = await this.keyv.get<ISessionCache>(key);
 
         return cached ?? null;
     }

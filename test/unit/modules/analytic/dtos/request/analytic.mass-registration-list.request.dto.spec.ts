@@ -6,14 +6,14 @@ describe('AnalyticMassRegistrationListRequestSchema', () => {
         const result = AnalyticMassRegistrationListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticKeyCountAvailableOrderBy[0]}:desc`,
             windowMs: 3600000,
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticKeyCountAvailableOrderBy[0]}:desc`,
             windowMs: 3600000,
         });
     });
@@ -53,5 +53,36 @@ describe('AnalyticMassRegistrationListRequestSchema', () => {
             AnalyticMassRegistrationListRequestSchema.shape.orderBy.meta()
                 ?.description
         ).toContain(AnalyticKeyCountAvailableOrderBy.join(', '));
+    });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = AnalyticKeyCountAvailableOrderBy[0];
+        const last =
+            AnalyticKeyCountAvailableOrderBy[
+                AnalyticKeyCountAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            AnalyticMassRegistrationListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            AnalyticMassRegistrationListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${AnalyticKeyCountAvailableOrderBy[0]}:`,
+        `${AnalyticKeyCountAvailableOrderBy[0]}:DESC`,
+        `${AnalyticKeyCountAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            AnalyticMassRegistrationListRequestSchema.safeParse({ orderBy })
+                .success
+        ).toBe(false);
     });
 });

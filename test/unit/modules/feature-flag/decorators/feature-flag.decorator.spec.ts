@@ -32,26 +32,24 @@ describe('feature-flag.decorator', () => {
             ).toBe('changePassword');
         });
 
-        it('documents the notFound and disabled errors at 404', () => {
+        it('documents the disabled error at 404 and the unseeded error at 500', () => {
             const entries = Reflect.getMetadata(
                 DocResponseEntryMetaKey,
                 handler
             ) as IDocResponseEntry[];
 
-            expect(entries).toEqual(
-                expect.arrayContaining([
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.NOT_FOUND,
-                        statusCode: EnumFeatureFlagStatusCodeError.notFound,
-                        messagePath: 'featureFlag.error.notFound',
-                    }),
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.NOT_FOUND,
-                        statusCode: EnumFeatureFlagStatusCodeError.disabled,
-                        messagePath: 'featureFlag.error.disabled',
-                    }),
-                ])
-            );
+            expect(entries).toEqual([
+                expect.objectContaining({
+                    httpStatus: HttpStatus.NOT_FOUND,
+                    statusCode: EnumFeatureFlagStatusCodeError.disabled,
+                    messagePath: 'featureFlag.error.disabled',
+                }),
+                expect.objectContaining({
+                    httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+                    statusCode: EnumFeatureFlagStatusCodeError.unseeded,
+                    messagePath: 'featureFlag.error.unseeded',
+                }),
+            ]);
         });
 
         it('throws at evaluation on an empty key', () => {

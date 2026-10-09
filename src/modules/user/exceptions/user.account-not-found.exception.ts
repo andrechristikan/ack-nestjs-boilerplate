@@ -3,16 +3,16 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
 /**
- * Raised when the authenticated user no longer exists.
+ * Raised when a valid token belongs to a user that no longer exists.
  * @public
  */
-export class UserNotFoundForbiddenException extends AppBaseException {
+export class UserAccountNotFoundException extends AppBaseException {
     readonly module = 'user';
-    readonly statusCode = EnumUserStatusCodeError.notFoundForbidden;
+    readonly statusCode = EnumUserStatusCodeError.accountNotFound;
     readonly statusCodeKey = EnumUserStatusCodeError[this.statusCode];
-    readonly httpStatus = HttpStatus.FORBIDDEN;
+    readonly httpStatus = HttpStatus.UNAUTHORIZED;
 
     constructor() {
-        super('user.error.notFound');
+        super('user.error.accountNotFound');
     }
 }

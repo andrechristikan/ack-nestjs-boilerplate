@@ -20,6 +20,7 @@
         "contentInvalid": "Term policy content is invalid.",
         "contentsLanguageMustBeUnique": "Each language can only be used once in term policy contents.",
         "requiredInvalid": "Required field value is invalid.",
-        "statusInvalid": "Term policy status is invalid."
+        "statusInvalid": "Term policy status is invalid.",
+        "publishInProgress": "Term policy publish is already in progress."
     }
 }

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
+import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import { WorkspaceJoinRequestDefaultAvailableOrderBy } from '@modules/workspace/constants/workspace.list.constant';
 
@@ -9,10 +9,9 @@ import { WorkspaceJoinRequestDefaultAvailableOrderBy } from '@modules/workspace/
  */
 export const WorkspaceJoinRequestListRequestSchema =
     PaginationCursorQuerySchema.omit({ search: true }).extend({
-        orderBy: PaginationCursorQuerySchema.shape.orderBy.meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${WorkspaceJoinRequestDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-            example: `${WorkspaceJoinRequestDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-        }),
+        orderBy: PaginationOrderBySchema(
+            WorkspaceJoinRequestDefaultAvailableOrderBy
+        ),
         status: z.string().optional().meta({
             description: 'Filter by status, comma-delimited',
             example: '',

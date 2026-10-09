@@ -1,6 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 import { z } from 'zod';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
+import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
 import {
     Doc,
@@ -303,6 +304,31 @@ describe('doc.decorator', () => {
                         httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
                         statusCode: EnumRedisStatusCodeError.unavailable,
                         messagePath: 'redis.error.unavailable',
+                    }),
+                ])
+            );
+        });
+
+        it('documents the request guard and context missing errors as 500', () => {
+            const descriptor: IMethodDescriptor = { value: vi.fn() };
+
+            Doc()({}, 'exampleMethod', descriptor);
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+                        statusCode: EnumRequestStatusCodeError.contextMissing,
+                        messagePath: 'request.error.contextMissing',
+                    }),
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+                        statusCode: EnumRequestStatusCodeError.guardMissing,
+                        messagePath: 'request.error.guardMissing',
                     }),
                 ])
             );

@@ -1,4 +1,5 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
@@ -15,13 +16,13 @@ import {
 import type { ApiKey } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ApiKeyStoreKey } from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
 import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
 import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
 import { ApiKeyStartAtNotFutureException } from '@modules/api-key/exceptions/api-key.start-at-not-future.exception';
 import { ApiKeyXApiKeyForbiddenException } from '@modules/api-key/exceptions/api-key.x-api-key-forbidden.exception';
 import { ApiKeyXApiKeyInvalidException } from '@modules/api-key/exceptions/api-key.x-api-key-invalid.exception';
-import { ApiKeyXApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.x-api-key-not-found.exception';
 import { ApiKeyXApiKeyRequiredException } from '@modules/api-key/exceptions/api-key.x-api-key-required.exception';
 import type {
     IApiKey,
@@ -333,7 +334,7 @@ export class ApiKeyDomain {
         const apiKey = await this.getOneActiveByKeyAndCache(key);
 
         if (!apiKey) {
-            throw new ApiKeyXApiKeyNotFoundException();
+            throw new ApiKeyXApiKeyInvalidException();
         }
 
         const isCredentialValid = this.apiKeyCredentialUtil.validateCredential(
@@ -361,7 +362,7 @@ export class ApiKeyDomain {
         apiKeyTypes: EnumApiKeyType[]
     ): boolean {
         if (!apiKey) {
-            throw new ApiKeyXApiKeyRequiredException();
+            throw new RequestGuardMissingException(ApiKeyStoreKey);
         }
 
         const isTypeAllowed = this.apiKeyUtil.validateType(apiKey, apiKeyTypes);

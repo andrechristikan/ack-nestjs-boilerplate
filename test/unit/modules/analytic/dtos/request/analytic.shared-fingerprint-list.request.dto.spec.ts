@@ -6,22 +6,30 @@ describe('AnalyticSharedFingerprintListRequestSchema', () => {
         const result = AnalyticSharedFingerprintListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticSharedFingerprintAvailableOrderBy[0]}:desc`,
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticSharedFingerprintAvailableOrderBy[0]}:desc`,
         });
     });
 
     it('parses an orderBy array', () => {
         const result = AnalyticSharedFingerprintListRequestSchema.parse({
-            orderBy: ['createdAt:desc', 'id:asc'],
+            orderBy: [
+                `${AnalyticSharedFingerprintAvailableOrderBy[0]}:desc`,
+                `${AnalyticSharedFingerprintAvailableOrderBy[1]}:asc`,
+            ],
         });
 
-        expect(result).toEqual({ orderBy: ['createdAt:desc', 'id:asc'] });
+        expect(result).toEqual({
+            orderBy: [
+                `${AnalyticSharedFingerprintAvailableOrderBy[0]}:desc`,
+                `${AnalyticSharedFingerprintAvailableOrderBy[1]}:asc`,
+            ],
+        });
     });
 
     it('parses an empty object', () => {
@@ -52,5 +60,36 @@ describe('AnalyticSharedFingerprintListRequestSchema', () => {
             AnalyticSharedFingerprintListRequestSchema.shape.orderBy.meta()
                 ?.description
         ).toContain(AnalyticSharedFingerprintAvailableOrderBy.join(', '));
+    });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = AnalyticSharedFingerprintAvailableOrderBy[0];
+        const last =
+            AnalyticSharedFingerprintAvailableOrderBy[
+                AnalyticSharedFingerprintAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            AnalyticSharedFingerprintListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            AnalyticSharedFingerprintListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${AnalyticSharedFingerprintAvailableOrderBy[0]}:`,
+        `${AnalyticSharedFingerprintAvailableOrderBy[0]}:DESC`,
+        `${AnalyticSharedFingerprintAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            AnalyticSharedFingerprintListRequestSchema.safeParse({ orderBy })
+                .success
+        ).toBe(false);
     });
 });

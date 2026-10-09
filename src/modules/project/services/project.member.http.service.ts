@@ -7,7 +7,6 @@ import type {
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Project, ProjectMember } from '@generated/prisma-client/client';
-import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
 import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
 import type { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
@@ -31,10 +30,7 @@ export class ProjectMemberHttpService {
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ProjectMemberWhereInput>(
-                query,
-                {
-                    availableOrderBy: ProjectMemberDefaultAvailableOrderBy,
-                }
+                query
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

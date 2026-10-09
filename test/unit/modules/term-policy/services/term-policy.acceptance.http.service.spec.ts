@@ -14,7 +14,6 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/term-policy.acceptance.http.service';
 import type { TermPolicyAcceptedListRequestDto } from '@modules/term-policy/dtos/request/term-policy.accepted-list.request.dto';
@@ -129,9 +128,7 @@ describe('TermPolicyAcceptanceHttpService', () => {
             const result = await service.getListUserAccepted('user-1', query);
 
             expect(result).toEqual(cursorPage);
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                availableOrderBy: TermPolicyAcceptanceDefaultAvailableOrderBy,
-            });
+            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query);
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 { filters: {} }

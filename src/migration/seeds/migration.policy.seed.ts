@@ -101,7 +101,7 @@ export class MigrationPolicySeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(error, 'Seeding policies failed');
         }
 
         this.logger.log('Policies seeded successfully.');
@@ -133,7 +133,7 @@ export class MigrationPolicySeed
                 },
             });
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(error, 'Removing policies failed');
         }
 
         this.logger.log('Policies removed successfully.');

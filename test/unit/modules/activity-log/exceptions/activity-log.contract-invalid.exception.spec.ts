@@ -19,7 +19,7 @@ describe('ActivityLogContractInvalidException', () => {
                 httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
                 messagePath: 'activityLog.error.contractInvalid',
             });
-            expect(exception.rawError).toBeUndefined();
+            expect(exception.rawError).toBeNull();
         });
 
         it('carries the raw error when one is given', () => {

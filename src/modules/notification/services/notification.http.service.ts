@@ -7,7 +7,6 @@ import type {
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Notification } from '@generated/prisma-client/client';
-import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
 import type { NotificationListRequestDto } from '@modules/notification/dtos/request/notification.list.request.dto';
 import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import type { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
@@ -28,10 +27,7 @@ export class NotificationHttpService {
     ): Promise<IResponsePaginationReturn<Notification>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.NotificationWhereInput>(
-                query,
-                {
-                    availableOrderBy: NotificationDefaultAvailableOrderBy,
-                }
+                query
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

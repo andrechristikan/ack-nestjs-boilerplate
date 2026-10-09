@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import { ApiSecurity } from '@nestjs/swagger';
 import { ClsServiceManager } from 'nestjs-cls';
+import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
-import { ApiKeyXApiKeyRequiredException } from '@modules/api-key/exceptions/api-key.x-api-key-required.exception';
 import {
     ApiKeyDocSecurityName,
     ApiKeyStoreKey,
@@ -20,7 +20,7 @@ import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 
 /**
- * Reads the authenticated `ApiKey`, or one of its fields, that `@ApiKeyProtected()` or `@ApiKeySystemProtected()` stored. Throws `ApiKeyXApiKeyRequiredException` when the key is absent and `RequestContextMissingException` when the requested field is null.
+ * Reads the authenticated `ApiKey`, or one of its fields, that `@ApiKeyProtected()` or `@ApiKeySystemProtected()` stored. Throws `RequestGuardMissingException` when the request carries no key and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const ApiKeyPayload = createParamDecorator<
@@ -35,7 +35,7 @@ export const ApiKeyPayload = createParamDecorator<
                 ApiKeyStoreKey
             ) ?? null;
         if (current === null) {
-            throw new ApiKeyXApiKeyRequiredException();
+            throw new RequestGuardMissingException(ApiKeyStoreKey);
         }
 
         const fieldKey = field ?? null;

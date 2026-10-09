@@ -43,4 +43,34 @@ describe('WorkspaceJoinRequestListRequestSchema', () => {
                 ?.description
         ).toContain(WorkspaceJoinRequestDefaultAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = WorkspaceJoinRequestDefaultAvailableOrderBy[0];
+        const last =
+            WorkspaceJoinRequestDefaultAvailableOrderBy[
+                WorkspaceJoinRequestDefaultAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            WorkspaceJoinRequestListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            WorkspaceJoinRequestListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${WorkspaceJoinRequestDefaultAvailableOrderBy[0]}:`,
+        `${WorkspaceJoinRequestDefaultAvailableOrderBy[0]}:DESC`,
+        `${WorkspaceJoinRequestDefaultAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            WorkspaceJoinRequestListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
 });

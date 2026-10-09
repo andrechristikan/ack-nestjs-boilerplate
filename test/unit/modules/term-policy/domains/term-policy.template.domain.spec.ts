@@ -49,26 +49,31 @@ describe('TermPolicyTemplateDomain', () => {
 
     const cases: {
         method: ImportMethod;
+        description: string;
         type: EnumTermPolicyType;
         templateFile: string;
     }[] = [
         {
             method: 'importTermsOfService',
+            description: 'Importing the terms of service template failed',
             type: EnumTermPolicyType.termsOfService,
             templateFile: 'term-policy.term.en.hbs',
         },
         {
             method: 'importPrivacy',
+            description: 'Importing the privacy template failed',
             type: EnumTermPolicyType.privacy,
             templateFile: 'term-policy.privacy.en.hbs',
         },
         {
             method: 'importCookie',
+            description: 'Importing the cookie template failed',
             type: EnumTermPolicyType.cookies,
             templateFile: 'term-policy.cookies.en.hbs',
         },
         {
             method: 'importMarketing',
+            description: 'Importing the marketing template failed',
             type: EnumTermPolicyType.marketing,
             templateFile: 'term-policy.marketing.en.hbs',
         },
@@ -88,107 +93,111 @@ describe('TermPolicyTemplateDomain', () => {
         domain = module.get(TermPolicyTemplateDomain);
     });
 
-    describe.each(cases)('$method', ({ method, type, templateFile }) => {
-        it('uploads the template privately then copies it to the public path', async () => {
-            const templateContent = Buffer.from('<html></html>');
-            readFileSync.mockReturnValue(templateContent);
-            termPolicyUtil.createRandomFilenameContentWithPath.mockReturnValue(
-                'term-policies/type/1/en.hbs'
-            );
-            awsS3Service.putItem.mockResolvedValue(privateItem);
-            termPolicyUtil.getContentPublicPath.mockReturnValue(
-                'public/term-policies/type/1'
-            );
-            awsS3Service.copyItem.mockResolvedValue(publicItem);
+    describe.each(cases)(
+        '$method',
+        ({ method, type, templateFile, description }) => {
+            it('uploads the template privately then copies it to the public path', async () => {
+                const templateContent = Buffer.from('<html></html>');
+                readFileSync.mockReturnValue(templateContent);
+                termPolicyUtil.createRandomFilenameContentWithPath.mockReturnValue(
+                    'term-policies/type/1/en.hbs'
+                );
+                awsS3Service.putItem.mockResolvedValue(privateItem);
+                termPolicyUtil.getContentPublicPath.mockReturnValue(
+                    'public/term-policies/type/1'
+                );
+                awsS3Service.copyItem.mockResolvedValue(publicItem);
 
-            const result = await domain[method]();
+                const result = await domain[method]();
 
-            expect(result).toBe(publicItem);
-            expect(readFileSync).toHaveBeenCalledWith(
-                expect.stringContaining(templateFile)
-            );
-            expect(
-                termPolicyUtil.createRandomFilenameContentWithPath
-            ).toHaveBeenCalledWith(type, 1, EnumMessageLanguage.en, {
-                extension: 'hbs',
-            });
-            expect(awsS3Service.putItem).toHaveBeenCalledWith(
-                {
-                    file: templateContent,
-                    key: 'term-policies/type/1/en.hbs',
-                    size: templateContent.length,
-                },
-                {
-                    forceUpdate: true,
-                    access: EnumAwsS3Accessibility.private,
-                }
-            );
-            expect(termPolicyUtil.getContentPublicPath).toHaveBeenCalledWith(
-                type,
-                1
-            );
-            expect(awsS3Service.copyItem).toHaveBeenCalledWith(
-                privateItem,
-                'public/term-policies/type/1',
-                {
-                    accessFrom: EnumAwsS3Accessibility.private,
-                    accessTo: EnumAwsS3Accessibility.public,
-                }
-            );
-        });
-
-        it('returns null without copying when the private upload fails', async () => {
-            readFileSync.mockReturnValue(Buffer.from('<html></html>'));
-            termPolicyUtil.createRandomFilenameContentWithPath.mockReturnValue(
-                'term-policies/type/1/en.hbs'
-            );
-            awsS3Service.putItem.mockResolvedValue(null);
-
-            const result = await domain[method]();
-
-            expect(result).toBeNull();
-            expect(awsS3Service.copyItem).not.toHaveBeenCalled();
-        });
-
-        it('wraps a failure reading the template in AppUnknownException', async () => {
-            const readError = new Error('read failed');
-            readFileSync.mockImplementation(() => {
-                throw readError;
+                expect(result).toBe(publicItem);
+                expect(readFileSync).toHaveBeenCalledWith(
+                    expect.stringContaining(templateFile)
+                );
+                expect(
+                    termPolicyUtil.createRandomFilenameContentWithPath
+                ).toHaveBeenCalledWith(type, 1, EnumMessageLanguage.en, {
+                    extension: 'hbs',
+                });
+                expect(awsS3Service.putItem).toHaveBeenCalledWith(
+                    {
+                        file: templateContent,
+                        key: 'term-policies/type/1/en.hbs',
+                        size: templateContent.length,
+                    },
+                    {
+                        forceUpdate: true,
+                        access: EnumAwsS3Accessibility.private,
+                    }
+                );
+                expect(
+                    termPolicyUtil.getContentPublicPath
+                ).toHaveBeenCalledWith(type, 1);
+                expect(awsS3Service.copyItem).toHaveBeenCalledWith(
+                    privateItem,
+                    'public/term-policies/type/1',
+                    {
+                        accessFrom: EnumAwsS3Accessibility.private,
+                        accessTo: EnumAwsS3Accessibility.public,
+                    }
+                );
             });
 
-            await expect(domain[method]()).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: readError,
+            it('returns null without copying when the private upload fails', async () => {
+                readFileSync.mockReturnValue(Buffer.from('<html></html>'));
+                termPolicyUtil.createRandomFilenameContentWithPath.mockReturnValue(
+                    'term-policies/type/1/en.hbs'
+                );
+                awsS3Service.putItem.mockResolvedValue(null);
+
+                const result = await domain[method]();
+
+                expect(result).toBeNull();
+                expect(awsS3Service.copyItem).not.toHaveBeenCalled();
             });
-        });
 
-        it('wraps a rejected public copy in AppUnknownException', async () => {
-            readFileSync.mockReturnValue(Buffer.from('<html></html>'));
-            termPolicyUtil.createRandomFilenameContentWithPath.mockReturnValue(
-                'term-policies/type/1/en.hbs'
-            );
-            awsS3Service.putItem.mockResolvedValue(privateItem);
-            termPolicyUtil.getContentPublicPath.mockReturnValue(
-                'public/term-policies/type/1'
-            );
-            const copyError = new Error('copy failed');
-            awsS3Service.copyItem.mockRejectedValue(copyError);
+            it('wraps a failure reading the template in AppUnknownException', async () => {
+                const readError = new Error('read failed');
+                readFileSync.mockImplementation(() => {
+                    throw readError;
+                });
 
-            await expect(domain[method]()).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: copyError,
+                await expect(domain[method]()).rejects.toMatchObject({
+                    constructor: AppUnknownException,
+                    rawError: readError,
+                    message: description,
+                });
             });
-        });
 
-        it('rethrows an AppBaseException raised while importing', async () => {
-            readFileSync.mockReturnValue(Buffer.from('<html></html>'));
-            termPolicyUtil.createRandomFilenameContentWithPath.mockReturnValue(
-                'term-policies/type/1/en.hbs'
-            );
-            const typedError = new AwsS3NotConfiguredException();
-            awsS3Service.putItem.mockRejectedValue(typedError);
+            it('wraps a rejected public copy in AppUnknownException', async () => {
+                readFileSync.mockReturnValue(Buffer.from('<html></html>'));
+                termPolicyUtil.createRandomFilenameContentWithPath.mockReturnValue(
+                    'term-policies/type/1/en.hbs'
+                );
+                awsS3Service.putItem.mockResolvedValue(privateItem);
+                termPolicyUtil.getContentPublicPath.mockReturnValue(
+                    'public/term-policies/type/1'
+                );
+                const copyError = new Error('copy failed');
+                awsS3Service.copyItem.mockRejectedValue(copyError);
 
-            await expect(domain[method]()).rejects.toBe(typedError);
-        });
-    });
+                await expect(domain[method]()).rejects.toMatchObject({
+                    constructor: AppUnknownException,
+                    rawError: copyError,
+                    message: description,
+                });
+            });
+
+            it('rethrows an AppBaseException raised while importing', async () => {
+                readFileSync.mockReturnValue(Buffer.from('<html></html>'));
+                termPolicyUtil.createRandomFilenameContentWithPath.mockReturnValue(
+                    'term-policies/type/1/en.hbs'
+                );
+                const typedError = new AwsS3NotConfiguredException();
+                awsS3Service.putItem.mockRejectedValue(typedError);
+
+                await expect(domain[method]()).rejects.toBe(typedError);
+            });
+        }
+    );
 });

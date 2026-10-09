@@ -1,5 +1,5 @@
 import { GUARDS_METADATA } from '@nestjs/common/constants';
-import { HttpStatus } from '@nestjs/common';
+import { UseGuards } from '@nestjs/common';
 import type { ExecutionContext, Type } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
 import { mock } from 'vitest-mock-extended';
@@ -11,14 +11,20 @@ import {
 import type { Policy } from '@generated/prisma-client/client';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
-import { PolicyRequiredMetaKey } from '@modules/policy/constants/policy.constant';
+import {
+    PolicyRequiredMetaKey,
+    PolicyStoreKey,
+} from '@modules/policy/constants/policy.constant';
 import {
     PolicyCurrent,
     PolicyProtected,
 } from '@modules/policy/decorators/policy.decorator';
-import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyGuard } from '@modules/policy/guards/policy.guard';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
+import { expectRequestGuardMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
+import { RoleGuard } from '@modules/role/guards/role.guard';
+import { UserGuard } from '@modules/user/guards/user.guard';
+import { RequestProtectedGuardMissingException } from '@common/request/exceptions/request.protected-guard-missing.exception';
 import { PolicyProtectedActionEmptyException } from '@modules/policy/exceptions/policy.protected-action-empty.exception';
 import { PolicyProtectedEmptyException } from '@modules/policy/exceptions/policy.protected-empty.exception';
 
@@ -27,6 +33,8 @@ describe('policy.decorator', () => {
         it('mounts PolicyGuard, the required policies, and the policy error kit on the handler', () => {
             const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
+            UseGuards(UserGuard)(target, 'method', descriptor);
+            UseGuards(RoleGuard)(target, 'method', descriptor);
             const requiredPolicies = [
                 {
                     subject: EnumPolicySubject.user,
@@ -38,7 +46,7 @@ describe('policy.decorator', () => {
 
             expect(
                 Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
-            ).toEqual([PolicyGuard]);
+            ).toEqual([UserGuard, RoleGuard, PolicyGuard]);
             expect(
                 Reflect.getMetadata(PolicyRequiredMetaKey, descriptor.value)
             ).toEqual(requiredPolicies);
@@ -51,6 +59,44 @@ describe('policy.decorator', () => {
                     messagePath: 'policy.error.forbidden',
                 }),
             ]);
+        });
+
+        it('throws at decoration when RoleGuard is not below it', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+            UseGuards(UserGuard)(target, 'method', descriptor);
+
+            expect(() => {
+                PolicyProtected({
+                    subject: EnumPolicySubject.user,
+                    action: [EnumPolicyAction.manage],
+                })(target, 'method', descriptor);
+            }).toThrow(RequestProtectedGuardMissingException);
+            expect(() => {
+                PolicyProtected({
+                    subject: EnumPolicySubject.user,
+                    action: [EnumPolicyAction.manage],
+                })(target, 'method', descriptor);
+            }).toThrow('PolicyProtected needs RoleGuard applied below it');
+        });
+
+        it('throws at decoration when UserGuard is not below it', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+            UseGuards(RoleGuard)(target, 'method', descriptor);
+
+            expect(() => {
+                PolicyProtected({
+                    subject: EnumPolicySubject.user,
+                    action: [EnumPolicyAction.manage],
+                })(target, 'method', descriptor);
+            }).toThrow(RequestProtectedGuardMissingException);
+            expect(() => {
+                PolicyProtected({
+                    subject: EnumPolicySubject.user,
+                    action: [EnumPolicyAction.manage],
+                })(target, 'method', descriptor);
+            }).toThrow('PolicyProtected needs UserGuard applied below it');
         });
 
         it('throws at evaluation when no policy is given', () => {
@@ -75,15 +121,6 @@ describe('policy.decorator', () => {
         > = mock<ReturnType<typeof ClsServiceManager.getClsService>>();
         const executionContext: MockProxy<ExecutionContext> =
             mock<ExecutionContext>();
-        const forbidden = {
-            module: 'policy',
-            statusCode: EnumPolicyStatusCodeError.forbidden,
-            statusCodeKey:
-                EnumPolicyStatusCodeError[EnumPolicyStatusCodeError.forbidden],
-            httpStatus: HttpStatus.FORBIDDEN,
-            messagePath: 'policy.error.forbidden',
-        };
-
         beforeEach(() => {
             vi.resetAllMocks();
             vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue(
@@ -95,7 +132,7 @@ describe('policy.decorator', () => {
             vi.restoreAllMocks();
         });
 
-        it('throws PolicyForbiddenException when the policy store is undefined', () => {
+        it('throws RequestGuardMissingException when the policy store is undefined', () => {
             clsService.get.mockReturnValue(undefined);
             const target = {} as Type<unknown>;
             PolicyCurrent()(target, 'policies', 0);
@@ -108,10 +145,10 @@ describe('policy.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject(forbidden);
+            expectRequestGuardMissingWithKey(thrown, PolicyStoreKey);
         });
 
-        it('throws PolicyForbiddenException when the policy store is null', () => {
+        it('throws RequestGuardMissingException when the policy store is null', () => {
             clsService.get.mockReturnValue(null);
             const target = {} as Type<unknown>;
             PolicyCurrent()(target, 'policies', 0);
@@ -124,7 +161,7 @@ describe('policy.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject(forbidden);
+            expectRequestGuardMissingWithKey(thrown, PolicyStoreKey);
         });
 
         it('returns an empty policy list as a valid value', () => {

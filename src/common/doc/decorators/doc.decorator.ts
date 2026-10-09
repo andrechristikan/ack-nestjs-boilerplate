@@ -204,6 +204,7 @@ export function Doc(options?: IDocOptions): MethodDecorator {
         DocGlobalErrorResponses.patternTokenMissing,
         DocGlobalErrorResponses.schemaMissing,
         DocGlobalErrorResponses.contextMissing,
+        DocGlobalErrorResponses.guardMissing,
         DocGlobalErrorResponses.uniqueValueGenerationFailed,
         DocGlobalErrorResponses.databaseWriteConflict,
         DocGlobalErrorResponses.databaseUnavailable,

@@ -6,14 +6,14 @@ describe('AnalyticCredentialStuffingListRequestSchema', () => {
         const result = AnalyticCredentialStuffingListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticCredentialStuffingAvailableOrderBy[0]}:desc`,
             windowMs: 3600000,
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticCredentialStuffingAvailableOrderBy[0]}:desc`,
             windowMs: 3600000,
         });
     });
@@ -54,5 +54,36 @@ describe('AnalyticCredentialStuffingListRequestSchema', () => {
             AnalyticCredentialStuffingListRequestSchema.shape.orderBy.meta()
                 ?.description
         ).toContain(AnalyticCredentialStuffingAvailableOrderBy.join(', '));
+    });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = AnalyticCredentialStuffingAvailableOrderBy[0];
+        const last =
+            AnalyticCredentialStuffingAvailableOrderBy[
+                AnalyticCredentialStuffingAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            AnalyticCredentialStuffingListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            AnalyticCredentialStuffingListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${AnalyticCredentialStuffingAvailableOrderBy[0]}:`,
+        `${AnalyticCredentialStuffingAvailableOrderBy[0]}:DESC`,
+        `${AnalyticCredentialStuffingAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            AnalyticCredentialStuffingListRequestSchema.safeParse({ orderBy })
+                .success
+        ).toBe(false);
     });
 });

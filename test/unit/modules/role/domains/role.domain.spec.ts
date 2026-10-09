@@ -23,7 +23,8 @@ import {
 import type { Prisma, Role } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { UserStoreKey } from '@modules/user/constants/user.constant';
+import { expectRequestGuardMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type {
@@ -421,21 +422,15 @@ describe('RoleDomain', () => {
             twoFactor: null,
         };
 
-        it('throws UserNotAuthenticatedException when the user is null', async () => {
-            const rejection = domain.validateRoleGuard(null, [
-                EnumRoleType.admin,
-            ]);
+        it('throws RequestGuardMissingException when the user store is empty', async () => {
+            let thrown: unknown;
+            try {
+                await domain.validateRoleGuard(null, [EnumRoleType.admin]);
+            } catch (error) {
+                thrown = error;
+            }
 
-            await expect(rejection).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notAuthenticated,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.notAuthenticated
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'user.error.notAuthenticated',
-            });
+            expectRequestGuardMissingWithKey(thrown, UserStoreKey);
         });
 
         it('returns an empty policy list for a superAdmin, bypassing the required roles', async () => {

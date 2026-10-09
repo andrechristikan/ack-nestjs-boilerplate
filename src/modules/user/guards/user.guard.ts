@@ -28,7 +28,7 @@ export class UserGuard implements CanActivate {
         const request = context.switchToHttp().getRequest<IRequestApp>();
 
         const user = await this.userDomain.validateUserGuard(
-            request.user?.userId ?? null,
+            request.user ?? null,
             isVerified
         );
 

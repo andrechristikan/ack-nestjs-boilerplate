@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
+import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import {
     WorkspaceInviteDefaultAvailableOrderBy,
@@ -16,10 +16,9 @@ export const WorkspaceInviteListRequestSchema =
             description: `Search query, available fields: ${WorkspaceInviteDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
             example: '',
         }),
-        orderBy: PaginationCursorQuerySchema.shape.orderBy.meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${WorkspaceInviteDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-            example: `${WorkspaceInviteDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-        }),
+        orderBy: PaginationOrderBySchema(
+            WorkspaceInviteDefaultAvailableOrderBy
+        ),
         status: z.string().optional().meta({
             description: 'Filter by status, comma-delimited',
             example: '',

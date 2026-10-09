@@ -49,4 +49,34 @@ describe('FeatureFlagAdminListRequestSchema', () => {
             FeatureFlagAdminListRequestSchema.shape.orderBy.meta()?.description
         ).toContain(FeatureFlagDefaultAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = FeatureFlagDefaultAvailableOrderBy[0];
+        const last =
+            FeatureFlagDefaultAvailableOrderBy[
+                FeatureFlagDefaultAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            FeatureFlagAdminListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            FeatureFlagAdminListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${FeatureFlagDefaultAvailableOrderBy[0]}:`,
+        `${FeatureFlagDefaultAvailableOrderBy[0]}:DESC`,
+        `${FeatureFlagDefaultAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            FeatureFlagAdminListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
 });

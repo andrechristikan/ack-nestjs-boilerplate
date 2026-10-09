@@ -13,7 +13,6 @@ import {
     EnumNotificationChannel,
     EnumNotificationType,
 } from '@generated/prisma-client/client';
-import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import type { NotificationListRequestDto } from '@modules/notification/dtos/request/notification.list.request.dto';
 import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
@@ -67,9 +66,7 @@ describe('NotificationHttpService', () => {
 
             const result = await service.getListCursor('user-id', query);
 
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                availableOrderBy: NotificationDefaultAvailableOrderBy,
-            });
+            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query);
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 { filters: { existing: true } }

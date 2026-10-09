@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
+import { PaginationOrderBySchema } from '@common/pagination/utils/pagination.order-by.util';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { RequestBooleanStringSchema } from '@common/request/validations/request.boolean-string.validation';
 import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
@@ -11,10 +11,7 @@ import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/sessi
 export const SessionAdminListRequestSchema = PaginationOffsetQuerySchema.omit({
     search: true,
 }).extend({
-    orderBy: PaginationOffsetQuerySchema.shape.orderBy.meta({
-        description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${SessionDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-        example: `${SessionDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-    }),
+    orderBy: PaginationOrderBySchema(SessionDefaultAvailableOrderBy),
     isRevoked: RequestBooleanStringSchema.optional().meta({
         description: "Filter by revoked session: 'true' or 'false'",
         example: 'true',

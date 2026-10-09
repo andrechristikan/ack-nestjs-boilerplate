@@ -6,8 +6,8 @@ import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import type { PaginationOrderByQuery } from '@common/pagination/utils/pagination.order-by.util';
 import {
-    PaginationAllowedOrderDirections,
     PaginationDefaultMaxPage,
     PaginationDefaultMaxPerPage,
     PaginationDefaultOrderBy,
@@ -67,7 +67,6 @@ describe('PaginationQueryUtil', () => {
                 perPage: PaginationDefaultPerPage,
                 orderBy: [...PaginationDefaultOrderBy],
                 availableSearch: [],
-                availableOrderBy: [],
             });
         });
 
@@ -88,6 +87,19 @@ describe('PaginationQueryUtil', () => {
 
             expect(params.where).toBeUndefined();
             expect(storePatch.search).toBeUndefined();
+        });
+
+        it('parses a sent order by into the params and the store patch', () => {
+            const { params, storePatch } = util.offset({
+                orderBy: 'name:asc',
+            });
+
+            expect(params.orderBy).toEqual([
+                { name: EnumPaginationOrderDirectionType.asc },
+            ]);
+            expect(storePatch.orderBy).toEqual([
+                { name: EnumPaginationOrderDirectionType.asc },
+            ]);
         });
 
         it('validates and applies an explicit page and perPage', () => {
@@ -122,7 +134,9 @@ describe('PaginationQueryUtil', () => {
         });
 
         it('wraps a non-typed error raised while parsing into the typed pagination exception', () => {
-            const orderBy = Object.create(null) as unknown as string;
+            const orderBy = Object.create(
+                null
+            ) as unknown as PaginationOrderByQuery;
 
             let error: unknown;
             try {
@@ -161,8 +175,20 @@ describe('PaginationQueryUtil', () => {
                 cursor: undefined,
                 orderBy: [...PaginationDefaultOrderBy],
                 availableSearch: [],
-                availableOrderBy: [],
             });
+        });
+
+        it('parses a sent order by into the params and the store patch', () => {
+            const { params, storePatch } = util.cursor({
+                orderBy: ['name:asc', 'createdAt:desc'],
+            });
+
+            const expected = [
+                { name: EnumPaginationOrderDirectionType.asc },
+                { createdAt: EnumPaginationOrderDirectionType.desc },
+            ];
+            expect(params.orderBy).toEqual(expected);
+            expect(storePatch.orderBy).toEqual(expected);
         });
 
         it('uses a named cursor field', () => {
@@ -234,7 +260,9 @@ describe('PaginationQueryUtil', () => {
         });
 
         it('wraps a non-typed error raised while parsing into the typed pagination exception', () => {
-            const orderBy = Object.create(null) as unknown as string;
+            const orderBy = Object.create(
+                null
+            ) as unknown as PaginationOrderByQuery;
 
             let error: unknown;
             try {
@@ -664,74 +692,37 @@ describe('PaginationQueryUtil', () => {
         });
     });
 
-    describe('validateOrderBy', () => {
-        it('rejects a field the route does not allow', () => {
-            let error: unknown;
-            try {
-                util['validateOrderBy']([{ unknown: 'asc' }], ['name']);
-            } catch (caught) {
-                error = caught;
-            }
-
-            expect(error).toMatchObject({
-                module: 'pagination',
-                statusCode: EnumPaginationStatusCodeError.orderByNotAllowed,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.orderByNotAllowed
-                    ],
-                messagePath: 'pagination.error.orderByNotAllowed',
-                messageProperties: { allowedFields: 'name' },
-            });
-        });
-
-        it('rejects a direction the route does not allow', () => {
-            let error: unknown;
-            try {
-                util['validateOrderBy']([{ name: 'sideways' }], ['name']);
-            } catch (caught) {
-                error = caught;
-            }
-
-            expect(error).toMatchObject({
-                module: 'pagination',
-                statusCode:
-                    EnumPaginationStatusCodeError.orderDirectionNotAllowed,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.orderDirectionNotAllowed
-                    ],
-                messagePath: 'pagination.error.orderDirectionNotAllowed',
-                messageProperties: {
-                    allowedDirections:
-                        PaginationAllowedOrderDirections.join(', '),
-                },
-            });
-        });
-
-        it('parses every entry when field and direction are allowed', () => {
-            expect(
-                util['validateOrderBy']([{ name: 'asc' }], ['name'])
-            ).toEqual([{ name: EnumPaginationOrderDirectionType.asc }]);
-        });
-    });
-
     describe('resolveOrderBy', () => {
         it('falls back to the default order when orderBy is not sent', () => {
-            expect(util['resolveOrderBy'](null, ['name'])).toEqual([
+            expect(util['resolveOrderBy'](null)).toEqual([
                 ...PaginationDefaultOrderBy,
             ]);
         });
 
-        it('falls back to the default order when the allow-list is empty', () => {
-            expect(util['resolveOrderBy']('name:asc', [])).toEqual([
+        it('falls back to the default order when orderBy is an empty string', () => {
+            expect(util['resolveOrderBy']('')).toEqual([
                 ...PaginationDefaultOrderBy,
             ]);
         });
 
-        it('validates and parses an explicit order by', () => {
-            expect(util['resolveOrderBy']('name:asc', ['name'])).toEqual([
+        it('parses an explicit order by', () => {
+            expect(util['resolveOrderBy']('name:asc')).toEqual([
                 { name: EnumPaginationOrderDirectionType.asc },
+            ]);
+        });
+
+        it('parses a repeated order by in the sent order', () => {
+            expect(
+                util['resolveOrderBy'](['name:asc', 'createdAt:desc'])
+            ).toEqual([
+                { name: EnumPaginationOrderDirectionType.asc },
+                { createdAt: EnumPaginationOrderDirectionType.desc },
+            ]);
+        });
+
+        it('does not reject a field or direction outside an allow-list', () => {
+            expect(util['resolveOrderBy']('anything:desc')).toEqual([
+                { anything: EnumPaginationOrderDirectionType.desc },
             ]);
         });
     });

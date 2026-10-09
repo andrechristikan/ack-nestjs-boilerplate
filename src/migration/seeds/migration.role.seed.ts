@@ -70,7 +70,7 @@ export class MigrationRoleSeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(error, 'Seeding roles failed');
         }
 
         this.logger.log('Roles seeded successfully.');
@@ -84,7 +84,7 @@ export class MigrationRoleSeed
         try {
             await this.databaseService.client.role.deleteMany({});
         } catch (error: unknown) {
-            throw new AppUnknownException(error);
+            throw new AppUnknownException(error, 'Removing roles failed');
         }
 
         this.logger.log('Roles removed successfully.');

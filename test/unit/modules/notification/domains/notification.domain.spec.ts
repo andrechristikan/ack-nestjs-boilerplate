@@ -283,33 +283,6 @@ describe('NotificationDomain', () => {
         });
     });
 
-    describe('existsTermPolicyRecipient', () => {
-        it('returns true when the repository finds a recipient row', async () => {
-            notificationRepository.existsTermPolicyRecipient.mockResolvedValue(
-                true
-            );
-
-            const result =
-                await domain.existsTermPolicyRecipient('term-policy-1');
-
-            expect(result).toBe(true);
-            expect(
-                notificationRepository.existsTermPolicyRecipient
-            ).toHaveBeenCalledWith('term-policy-1');
-        });
-
-        it('returns false when the repository finds no recipient row', async () => {
-            notificationRepository.existsTermPolicyRecipient.mockResolvedValue(
-                false
-            );
-
-            const result =
-                await domain.existsTermPolicyRecipient('term-policy-1');
-
-            expect(result).toBe(false);
-        });
-    });
-
     describe('createDefaultsInTx', () => {
         it('creates the default settings for the user inside the transaction', async () => {
             const tx = {} as IDatabaseTransactionClient;

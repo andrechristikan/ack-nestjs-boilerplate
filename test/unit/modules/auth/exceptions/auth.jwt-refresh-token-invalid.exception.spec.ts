@@ -27,7 +27,7 @@ describe('AuthJwtRefreshTokenInvalidException', () => {
         it('accepts no raw error', () => {
             const exception = new AuthJwtRefreshTokenInvalidException();
 
-            expect(exception.rawError).toBeUndefined();
+            expect(exception.rawError).toBeNull();
         });
     });
 });

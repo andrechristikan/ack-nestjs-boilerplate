@@ -72,7 +72,10 @@ export class TermPolicyTemplateDomain {
                 throw err;
             }
 
-            throw new AppUnknownException(err);
+            throw new AppUnknownException(
+                err,
+                'Importing the terms of service template failed'
+            );
         }
     }
 
@@ -128,7 +131,10 @@ export class TermPolicyTemplateDomain {
                 throw err;
             }
 
-            throw new AppUnknownException(err);
+            throw new AppUnknownException(
+                err,
+                'Importing the privacy template failed'
+            );
         }
     }
 
@@ -184,7 +190,10 @@ export class TermPolicyTemplateDomain {
                 throw err;
             }
 
-            throw new AppUnknownException(err);
+            throw new AppUnknownException(
+                err,
+                'Importing the cookie template failed'
+            );
         }
     }
 
@@ -240,7 +249,10 @@ export class TermPolicyTemplateDomain {
                 throw err;
             }
 
-            throw new AppUnknownException(err);
+            throw new AppUnknownException(
+                err,
+                'Importing the marketing template failed'
+            );
         }
     }
 }

@@ -1,4 +1,4 @@
-import { HttpStatus } from '@nestjs/common';
+import { UseGuards } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import type { ExecutionContext, Type } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
@@ -22,28 +22,38 @@ import {
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
-import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
 import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
 import { WorkspaceRoleGuard } from '@modules/workspace/guards/workspace.role.guard';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
-import { expectRequestContextMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    expectRequestContextMissingWithKey,
+    expectRequestGuardMissingWithKey,
+} from '@test/unit/helpers/test.unit.request.helper';
+import { RequestProtectedGuardMissingException } from '@common/request/exceptions/request.protected-guard-missing.exception';
+import { UserGuard } from '@modules/user/guards/user.guard';
 
 describe('workspace.decorator', () => {
     describe('WorkspaceProtected', () => {
         it('mounts WorkspaceGuard and the workspace error kit on the handler', () => {
+            const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
+            UseGuards(UserGuard)(target, 'method', descriptor);
 
-            WorkspaceProtected()({} as Type<unknown>, 'method', descriptor);
+            WorkspaceProtected()(target, 'method', descriptor);
 
             expect(
                 Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
-            ).toEqual([WorkspaceGuard]);
+            ).toEqual([UserGuard, WorkspaceGuard]);
             const stored = Reflect.getMetadata(
                 DocResponseEntryMetaKey,
                 descriptor.value
             ) as IDocResponseEntry[];
             expect(stored).toEqual([
+                expect.objectContaining({
+                    httpStatus: 400,
+                    messagePath: 'workspace.error.headerMissing',
+                }),
                 expect.objectContaining({
                     messagePath: 'workspace.error.notFound',
                 }),
@@ -52,38 +62,83 @@ describe('workspace.decorator', () => {
                 }),
             ]);
         });
+
+        it('throws at decoration when UserGuard is not below it', () => {
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+            expect(() =>
+                WorkspaceProtected()({} as Type<unknown>, 'method', descriptor)
+            ).toThrow(RequestProtectedGuardMissingException);
+            expect(() =>
+                WorkspaceProtected()({} as Type<unknown>, 'method', descriptor)
+            ).toThrow('WorkspaceProtected needs UserGuard applied below it');
+        });
     });
 
     describe('WorkspaceMemberProtected', () => {
         it('mounts only WorkspaceMemberGuard when no role is given', () => {
+            const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
+            UseGuards(UserGuard)(target, 'method', descriptor);
+            UseGuards(WorkspaceGuard)(target, 'method', descriptor);
 
-            WorkspaceMemberProtected()(
-                {} as Type<unknown>,
-                'method',
-                descriptor
-            );
+            WorkspaceMemberProtected()(target, 'method', descriptor);
 
             expect(
                 Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
-            ).toEqual([WorkspaceMemberGuard]);
+            ).toEqual([UserGuard, WorkspaceGuard, WorkspaceMemberGuard]);
             expect(
                 Reflect.getMetadata(WorkspaceRoleMetaKey, descriptor.value)
             ).toBeUndefined();
         });
 
-        it('mounts WorkspaceMemberGuard, WorkspaceRoleGuard, the roles, and the role error kit', () => {
+        it('throws at decoration when UserGuard is not below it', () => {
+            const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
+            UseGuards(WorkspaceGuard)(target, 'method', descriptor);
+            expect(() =>
+                WorkspaceMemberProtected()(target, 'method', descriptor)
+            ).toThrow(RequestProtectedGuardMissingException);
+            expect(() =>
+                WorkspaceMemberProtected()(target, 'method', descriptor)
+            ).toThrow(
+                'WorkspaceMemberProtected needs UserGuard applied below it'
+            );
+        });
+
+        it('throws at decoration when WorkspaceGuard is not below it', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+            UseGuards(UserGuard)(target, 'method', descriptor);
+            expect(() =>
+                WorkspaceMemberProtected()(target, 'method', descriptor)
+            ).toThrow(RequestProtectedGuardMissingException);
+            expect(() =>
+                WorkspaceMemberProtected()(target, 'method', descriptor)
+            ).toThrow(
+                'WorkspaceMemberProtected needs WorkspaceGuard applied below it'
+            );
+        });
+
+        it('mounts WorkspaceMemberGuard, WorkspaceRoleGuard, the roles, and the role error kit', () => {
+            const target = {} as Type<unknown>;
+            const descriptor: PropertyDescriptor = { value: vi.fn() };
+            UseGuards(UserGuard)(target, 'method', descriptor);
+            UseGuards(WorkspaceGuard)(target, 'method', descriptor);
 
             WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)(
-                {} as Type<unknown>,
+                target,
                 'method',
                 descriptor
             );
 
             expect(
                 Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
-            ).toEqual([WorkspaceMemberGuard, WorkspaceRoleGuard]);
+            ).toEqual([
+                UserGuard,
+                WorkspaceGuard,
+                WorkspaceMemberGuard,
+                WorkspaceRoleGuard,
+            ]);
             expect(
                 Reflect.getMetadata(WorkspaceRoleMetaKey, descriptor.value)
             ).toEqual([EnumWorkspaceMemberRole.admin]);
@@ -103,17 +158,6 @@ describe('workspace.decorator', () => {
     });
 
     describe('WorkspaceCurrent', () => {
-        const workspaceNotFound = {
-            module: 'workspace',
-            statusCode: EnumWorkspaceStatusCodeError.notFound,
-            statusCodeKey:
-                EnumWorkspaceStatusCodeError[
-                    EnumWorkspaceStatusCodeError.notFound
-                ],
-            httpStatus: HttpStatus.NOT_FOUND,
-            messagePath: 'workspace.error.notFound',
-        };
-
         const clsService: MockProxy<
             ReturnType<typeof ClsServiceManager.getClsService>
         > = mock<ReturnType<typeof ClsServiceManager.getClsService>>();
@@ -163,7 +207,7 @@ describe('workspace.decorator', () => {
             expect(factory('slug', executionContext)).toBe('acme-team');
         });
 
-        it('throws WorkspaceNotFoundException when the workspace store is undefined', () => {
+        it('throws RequestGuardMissingException when the workspace store is undefined', () => {
             clsService.get.mockReturnValue(undefined);
             const target = {} as Type<unknown>;
             WorkspaceCurrent()(target, 'workspace', 0);
@@ -176,10 +220,10 @@ describe('workspace.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject(workspaceNotFound);
+            expectRequestGuardMissingWithKey(thrown, WorkspaceStoreKey);
         });
 
-        it('throws WorkspaceNotFoundException when the workspace store is null', () => {
+        it('throws RequestGuardMissingException when the workspace store is null', () => {
             clsService.get.mockReturnValue(null);
             const target = {} as Type<unknown>;
             WorkspaceCurrent()(target, 'workspace', 0);
@@ -192,7 +236,7 @@ describe('workspace.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject(workspaceNotFound);
+            expectRequestGuardMissingWithKey(thrown, WorkspaceStoreKey);
         });
 
         it('throws RequestContextMissingException when the requested field is absent', () => {
@@ -216,17 +260,6 @@ describe('workspace.decorator', () => {
     });
 
     describe('WorkspaceMemberCurrent', () => {
-        const memberForbidden = {
-            module: 'workspace',
-            statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
-            statusCodeKey:
-                EnumWorkspaceStatusCodeError[
-                    EnumWorkspaceStatusCodeError.memberForbidden
-                ],
-            httpStatus: HttpStatus.FORBIDDEN,
-            messagePath: 'workspace.error.memberForbidden',
-        };
-
         const clsService: MockProxy<
             ReturnType<typeof ClsServiceManager.getClsService>
         > = mock<ReturnType<typeof ClsServiceManager.getClsService>>();
@@ -276,7 +309,7 @@ describe('workspace.decorator', () => {
             );
         });
 
-        it('throws WorkspaceMemberForbiddenException when the member store is undefined', () => {
+        it('throws RequestGuardMissingException when the member store is undefined', () => {
             clsService.get.mockReturnValue(undefined);
             const target = {} as Type<unknown>;
             WorkspaceMemberCurrent()(target, 'member', 0);
@@ -289,10 +322,10 @@ describe('workspace.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject(memberForbidden);
+            expectRequestGuardMissingWithKey(thrown, WorkspaceMemberStoreKey);
         });
 
-        it('throws WorkspaceMemberForbiddenException when the member store is null', () => {
+        it('throws RequestGuardMissingException when the member store is null', () => {
             clsService.get.mockReturnValue(null);
             const target = {} as Type<unknown>;
             WorkspaceMemberCurrent()(target, 'member', 0);
@@ -305,7 +338,7 @@ describe('workspace.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject(memberForbidden);
+            expectRequestGuardMissingWithKey(thrown, WorkspaceMemberStoreKey);
         });
 
         it('throws RequestContextMissingException when the requested field is absent', () => {

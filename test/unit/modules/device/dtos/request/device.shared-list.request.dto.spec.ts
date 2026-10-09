@@ -49,4 +49,33 @@ describe('DeviceSharedListRequestSchema', () => {
             DeviceSharedListRequestSchema.shape.orderBy.meta()?.description
         ).toContain(DeviceCursorAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = DeviceCursorAvailableOrderBy[0];
+        const last =
+            DeviceCursorAvailableOrderBy[
+                DeviceCursorAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            DeviceSharedListRequestSchema.safeParse({ orderBy: `${first}:asc` })
+                .success
+        ).toBe(true);
+        expect(
+            DeviceSharedListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${DeviceCursorAvailableOrderBy[0]}:`,
+        `${DeviceCursorAvailableOrderBy[0]}:DESC`,
+        `${DeviceCursorAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            DeviceSharedListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
 });

@@ -61,7 +61,7 @@ export interface IActivityLogAnalyticActionCount {
     count: number;
 }
 
-export interface IActivityLogAnalytic {
+export interface IActivityLogAnalyticList {
     id: string;
     userId: string;
     action: EnumActivityLogAction;

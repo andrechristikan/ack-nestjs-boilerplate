@@ -4,6 +4,7 @@ import { createParamDecorator } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
 import {
     AuthJwtAccessDocSecurityName,
     AuthJwtRefreshDocSecurityName,
@@ -15,7 +16,7 @@ import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.g
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 
 /**
- * Reads the JWT payload, or one of its fields, that the authenticating guard wrote to the request; throws when either is absent.
+ * Reads the JWT payload, or one of its fields, that the authenticating guard wrote to the request; throws `RequestGuardMissingException` when the request carries no payload and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const AuthJwtPayload: <T = IAuthJwtAccessTokenPayload>(
@@ -28,7 +29,7 @@ export const AuthJwtPayload: <T = IAuthJwtAccessTokenPayload>(
                 .getRequest<IRequestApp<Record<string, unknown>>>().user ??
             null;
         if (user === null) {
-            throw new RequestContextMissingException('request.user');
+            throw new RequestGuardMissingException('request.user');
         }
 
         const fieldKey = field ?? null;
@@ -67,7 +68,8 @@ export function AuthJwtAccessProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(AuthJwtAccessGuard),
         ApiBearerAuth(AuthJwtAccessDocSecurityName),
-        DocAuthJwtAccessErrorResponses.unauthorized
+        DocAuthJwtAccessErrorResponses.unauthorized,
+        DocAuthJwtAccessErrorResponses.unavailable
     );
 }
 
@@ -79,6 +81,7 @@ export function AuthJwtRefreshProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(AuthJwtRefreshGuard),
         ApiBearerAuth(AuthJwtRefreshDocSecurityName),
-        DocAuthJwtRefreshErrorResponses.unauthorized
+        DocAuthJwtRefreshErrorResponses.unauthorized,
+        DocAuthJwtRefreshErrorResponses.unavailable
     );
 }

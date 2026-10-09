@@ -100,12 +100,6 @@ export class NotificationDomain {
         this.activityLogDomain.stagePrepared(activityLogs);
     }
 
-    async existsTermPolicyRecipient(termPolicyId: string): Promise<boolean> {
-        return this.notificationRepository.existsTermPolicyRecipient(
-            termPolicyId
-        );
-    }
-
     async createDefaultsInTx(
         tx: IDatabaseTransactionClient,
         userId: string

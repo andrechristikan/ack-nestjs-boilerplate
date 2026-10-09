@@ -13,11 +13,9 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { FileService } from '@common/file/services/file.service';
-import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
@@ -53,8 +51,7 @@ export class TermPolicyDomain {
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly userDomain: UserDomain,
-        private readonly notificationDomain: NotificationDomain
+        private readonly userDomain: UserDomain
     ) {}
 
     private prepareActivityLog(
@@ -89,7 +86,14 @@ export class TermPolicyDomain {
                 updatedBy
             );
         } catch (err: unknown) {
-            throw new AppUnknownException(err);
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            throw new AppUnknownException(
+                err,
+                'Enqueueing the term policy publish notification failed'
+            );
         }
     }
 
@@ -97,8 +101,8 @@ export class TermPolicyDomain {
         newItems: IAwsS3[],
         contents: ITermPolicyContent[]
     ): ITermPolicyContent[] {
-        return newItems.map(item => {
-            const language = contents.find(c => {
+        const mapped = newItems.map(item => {
+            const content = contents.find(c => {
                 const contentFilename =
                     this.fileService.extractFilenameFromPath(c.key);
                 const itemFilename = this.fileService.extractFilenameFromPath(
@@ -106,10 +110,28 @@ export class TermPolicyDomain {
                 );
 
                 return contentFilename === itemFilename;
-            })?.language as EnumMessageLanguage;
+            });
+            if (!content) {
+                throw new AppUnknownException(
+                    null,
+                    `Term policy copy ${item.key} matches no content`
+                );
+            }
 
-            return { ...item, language };
+            return { ...item, language: content.language };
         });
+
+        const missing = contents.find(
+            c => !mapped.some(m => m.language === c.language)
+        );
+        if (missing) {
+            throw new AppUnknownException(
+                null,
+                `Term policy copy failed for language ${missing.language}`
+            );
+        }
+
+        return mapped;
     }
 
     async getListByAdmin(
@@ -252,14 +274,6 @@ export class TermPolicyDomain {
             throw new TermPolicyNotFoundException();
         }
         if (termPolicy.status === EnumTermPolicyStatus.published) {
-            const hasRecipients =
-                await this.notificationDomain.existsTermPolicyRecipient(
-                    termPolicyId
-                );
-            if (hasRecipients) {
-                throw new TermPolicyStatusInvalidException();
-            }
-
             await this.enqueuePublishNotification(termPolicy, updatedBy);
 
             return;
@@ -330,6 +344,7 @@ export class TermPolicyDomain {
 
             this.activityLogDomain.stagePrepared(activityLogs);
 
+            // Sequential by design: the job must not be enqueued if an earlier step throws
             await this.enqueuePublishNotification(termPolicy, updatedBy);
 
             return;

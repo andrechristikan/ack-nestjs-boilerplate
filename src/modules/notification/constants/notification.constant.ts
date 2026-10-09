@@ -71,14 +71,6 @@ export const NotificationTermPolicyRecipientSendWhere = {
 } satisfies Prisma.TermPolicyRecipientWhereInput;
 
 /**
- * Column a term policy recipient existence check returns.
- * @public
- */
-export const NotificationTermPolicyRecipientIdSelect = {
-    id: true,
-} satisfies Prisma.TermPolicyRecipientSelect;
-
-/**
  * Columns a term policy recipient state read returns.
  * @public
  */

@@ -50,4 +50,34 @@ describe('TermPolicyAcceptedListRequestSchema', () => {
                 ?.description
         ).toContain(TermPolicyAcceptanceDefaultAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = TermPolicyAcceptanceDefaultAvailableOrderBy[0];
+        const last =
+            TermPolicyAcceptanceDefaultAvailableOrderBy[
+                TermPolicyAcceptanceDefaultAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            TermPolicyAcceptedListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            TermPolicyAcceptedListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${TermPolicyAcceptanceDefaultAvailableOrderBy[0]}:`,
+        `${TermPolicyAcceptanceDefaultAvailableOrderBy[0]}:DESC`,
+        `${TermPolicyAcceptanceDefaultAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            TermPolicyAcceptedListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
 });

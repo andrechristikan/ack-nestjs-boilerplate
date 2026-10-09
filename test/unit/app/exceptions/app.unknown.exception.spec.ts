@@ -27,6 +27,29 @@ describe('AppUnknownException', () => {
             expect(exception.rawError).toBe(rawError);
         });
 
+        it('chains the wrapped error as the standard cause', () => {
+            const rawError = new Error('boom');
+
+            const exception = new AppUnknownException(rawError, 'init failed');
+
+            expect(exception.cause).toBe(rawError);
+        });
+
+        it('chains the wrapped error as the cause when no description is given', () => {
+            const rawError = new Error('boom');
+
+            const exception = new AppUnknownException(rawError);
+
+            expect(exception.cause).toBe(rawError);
+        });
+
+        it('keeps the description on the exception and null when none is given', () => {
+            expect(
+                new AppUnknownException(null, 'init failed').description
+            ).toBe('init failed');
+            expect(new AppUnknownException(null).description).toBeNull();
+        });
+
         it('keeps a non-Error cause in rawError', () => {
             const exception = new AppUnknownException('database is gone');
 

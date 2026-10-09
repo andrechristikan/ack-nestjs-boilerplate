@@ -130,8 +130,6 @@ export function ResponsePagination(
                 example: [],
             }),
         }),
-        DocPaginationErrorResponses.orderByNotAllowed,
-        DocPaginationErrorResponses.orderDirectionNotAllowed,
         DocPaginationErrorResponses.filterInvalidValue,
         DocPaginationErrorResponses.invalidPerPage,
         DocPaginationErrorResponses.perPageExceedsMaximum,

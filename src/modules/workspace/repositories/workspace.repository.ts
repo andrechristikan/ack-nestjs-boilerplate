@@ -1,5 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationCursorReturn,
     IPaginationEqual,
@@ -22,10 +23,16 @@ import { Injectable } from '@nestjs/common';
 export class WorkspaceRepository implements IWorkspaceRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async findActiveById(workspaceId: string): Promise<Workspace | null> {
+        const isValidId = this.databaseUtil.checkIdIsValid(workspaceId);
+        if (!isValidId) {
+            return null;
+        }
+
         return this.databaseService.client.workspace.findFirst({
             where: {
                 id: workspaceId,

@@ -154,11 +154,19 @@ const throwNewErrorRestriction = {
         'Throw a typed exception: AppUnknownException (or a subclass) outside an HTTP request, AppBaseException for one that answers a request.',
 };
 
+const ownExceptionName = '/(Exception|^UnrecoverableError)$/';
+const instanceofOwnException = path =>
+    `[${path}.operator='instanceof'][${path}.right.name=${ownExceptionName}]`;
+const guardedByOwnException = [
+    `IfStatement${instanceofOwnException('test')}`,
+    `IfStatement[test.operator='||']${instanceofOwnException('test.left')}${instanceofOwnException('test.right')}`,
+    `IfStatement[test.operator='||'][test.left.operator='||']${instanceofOwnException('test.left.left')}${instanceofOwnException('test.left.right')}${instanceofOwnException('test.right')}`,
+].join(', ');
+
 const throwIdentifierRestriction = {
-    selector:
-        "ThrowStatement[argument.type='Identifier']:not(IfStatement:matches([test.operator='instanceof'], [test.type='LogicalExpression']:has(.test BinaryExpression[operator='instanceof'])) ThrowStatement)",
+    selector: `ThrowStatement[argument.type='Identifier']:not(:matches(${guardedByOwnException}) > .consequent ThrowStatement)`,
     message:
-        'Rethrow a caught value only inside an instanceof guard of our own exception (if (err instanceof AppBaseException) { throw err; }); otherwise throw new AppUnknownException(err).',
+        'Rethrow a caught value only inside the if branch of an instanceof guard of our own exception (if (err instanceof AppBaseException) { throw err; }); otherwise throw new AppUnknownException(err).',
 };
 
 const orderDirectionRestriction = {

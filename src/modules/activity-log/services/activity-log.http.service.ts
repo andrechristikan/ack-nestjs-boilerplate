@@ -3,7 +3,6 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 import type { ActivityLogAdminListRequestDto } from '@modules/activity-log/dtos/request/activity-log.admin-list.request.dto';
 import type { ActivityLogAdminWorkspaceListRequestDto } from '@modules/activity-log/dtos/request/activity-log.admin-workspace-list.request.dto';
 import type { ActivityLogSharedListRequestDto } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
@@ -25,10 +24,7 @@ export class ActivityLogHttpService {
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query,
-                {
-                    availableOrderBy: ActivityLogDefaultAvailableOrderBy,
-                }
+                query
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -47,10 +43,7 @@ export class ActivityLogHttpService {
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ActivityLogWhereInput>(
-                query,
-                {
-                    availableOrderBy: ActivityLogDefaultAvailableOrderBy,
-                }
+                query
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -69,10 +62,7 @@ export class ActivityLogHttpService {
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
-                query,
-                {
-                    availableOrderBy: ActivityLogDefaultAvailableOrderBy,
-                }
+                query
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -96,10 +86,7 @@ export class ActivityLogHttpService {
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ActivityLogWhereInput>(
-                query,
-                {
-                    availableOrderBy: ActivityLogDefaultAvailableOrderBy,
-                }
+                query
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

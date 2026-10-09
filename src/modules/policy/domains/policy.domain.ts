@@ -1,4 +1,6 @@
-import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
+import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
+import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
+import { UserStoreKey } from '@modules/user/constants/user.constant';
 import { PolicyExistException } from '@modules/policy/exceptions/policy.exist.exception';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
@@ -41,7 +43,11 @@ export class PolicyDomain {
         requiredPolicies: PolicyRequestDto[]
     ): boolean {
         if (!user) {
-            throw new UserNotAuthenticatedException();
+            throw new RequestGuardMissingException(UserStoreKey);
+        }
+
+        if (!policies) {
+            throw new RequestGuardMissingException(PolicyStoreKey);
         }
 
         const { role } = user;
@@ -50,9 +56,7 @@ export class PolicyDomain {
             return true;
         }
 
-        const userPolicies = this.policyAbilityFactory.createByUser(
-            policies ?? []
-        );
+        const userPolicies = this.policyAbilityFactory.createByUser(policies);
         const policyHandler = this.policyAbilityFactory.handlerPolicies(
             userPolicies,
             requiredPolicies

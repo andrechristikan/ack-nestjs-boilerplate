@@ -14,7 +14,8 @@ import {
 import type { Policy, Role } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
+import { RequestGuardMissingException } from '@common/request/exceptions/request.guard-missing.exception';
+import { UserStoreKey } from '@modules/user/constants/user.constant';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
@@ -175,7 +176,7 @@ export class RoleDomain {
         requiredRoles: EnumRoleType[]
     ): Promise<Policy[]> {
         if (!user) {
-            throw new UserNotAuthenticatedException();
+            throw new RequestGuardMissingException(UserStoreKey);
         }
 
         const { role } = user;

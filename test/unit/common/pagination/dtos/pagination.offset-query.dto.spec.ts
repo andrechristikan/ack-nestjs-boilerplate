@@ -1,3 +1,4 @@
+import { PaginationDefaultMaxSearchLength } from '@common/pagination/constants/pagination.constant';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 
 describe('PaginationOffsetQuerySchema', () => {
@@ -42,25 +43,43 @@ describe('PaginationOffsetQuerySchema', () => {
         ).toThrow();
     });
 
-    it('accepts search and a single orderBy string', () => {
+    it('accepts search', () => {
         const result = PaginationOffsetQuerySchema.safeParse({
             search: 'jane',
-            orderBy: 'createdAt:desc',
         });
 
         expect(result.success).toBe(true);
     });
 
-    it('accepts orderBy repeated as an array', () => {
-        const result = PaginationOffsetQuerySchema.safeParse({
-            orderBy: ['createdAt:desc', 'name:asc'],
+    it.each(['createdAt:desc', ['createdAt:desc', 'name:asc'], 1])(
+        'rejects an orderBy of %s because a list DTO declares its own allow-list',
+        orderBy => {
+            const result = PaginationOffsetQuerySchema.safeParse({ orderBy });
+
+            expect(result.success).toBe(false);
+        }
+    );
+
+    it('trims a padded search', () => {
+        const result = PaginationOffsetQuerySchema.parse({
+            search: '  jane  ',
         });
+
+        expect(result).toEqual({ search: 'jane' });
+    });
+
+    it('accepts a search of exactly the maximum length', () => {
+        const search = 'a'.repeat(PaginationDefaultMaxSearchLength);
+
+        const result = PaginationOffsetQuerySchema.safeParse({ search });
 
         expect(result.success).toBe(true);
     });
 
-    it('rejects a non-string orderBy', () => {
-        const result = PaginationOffsetQuerySchema.safeParse({ orderBy: 1 });
+    it('rejects a search longer than the maximum length', () => {
+        const search = 'a'.repeat(PaginationDefaultMaxSearchLength + 1);
+
+        const result = PaginationOffsetQuerySchema.safeParse({ search });
 
         expect(result.success).toBe(false);
     });

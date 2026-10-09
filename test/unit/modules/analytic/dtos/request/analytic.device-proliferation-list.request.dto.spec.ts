@@ -6,22 +6,30 @@ describe('AnalyticDeviceProliferationListRequestSchema', () => {
         const result = AnalyticDeviceProliferationListRequestSchema.parse({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticDeviceProliferationAvailableOrderBy[0]}:desc`,
         });
 
         expect(result).toEqual({
             page: 1,
             perPage: 20,
-            orderBy: 'createdAt:desc',
+            orderBy: `${AnalyticDeviceProliferationAvailableOrderBy[0]}:desc`,
         });
     });
 
     it('parses an orderBy array', () => {
         const result = AnalyticDeviceProliferationListRequestSchema.parse({
-            orderBy: ['createdAt:desc', 'id:asc'],
+            orderBy: [
+                `${AnalyticDeviceProliferationAvailableOrderBy[0]}:desc`,
+                `${AnalyticDeviceProliferationAvailableOrderBy[1]}:asc`,
+            ],
         });
 
-        expect(result).toEqual({ orderBy: ['createdAt:desc', 'id:asc'] });
+        expect(result).toEqual({
+            orderBy: [
+                `${AnalyticDeviceProliferationAvailableOrderBy[0]}:desc`,
+                `${AnalyticDeviceProliferationAvailableOrderBy[1]}:asc`,
+            ],
+        });
     });
 
     it('parses an empty object', () => {
@@ -52,5 +60,36 @@ describe('AnalyticDeviceProliferationListRequestSchema', () => {
             AnalyticDeviceProliferationListRequestSchema.shape.orderBy.meta()
                 ?.description
         ).toContain(AnalyticDeviceProliferationAvailableOrderBy.join(', '));
+    });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = AnalyticDeviceProliferationAvailableOrderBy[0];
+        const last =
+            AnalyticDeviceProliferationAvailableOrderBy[
+                AnalyticDeviceProliferationAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            AnalyticDeviceProliferationListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            AnalyticDeviceProliferationListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${AnalyticDeviceProliferationAvailableOrderBy[0]}:`,
+        `${AnalyticDeviceProliferationAvailableOrderBy[0]}:DESC`,
+        `${AnalyticDeviceProliferationAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            AnalyticDeviceProliferationListRequestSchema.safeParse({ orderBy })
+                .success
+        ).toBe(false);
     });
 });

@@ -31,6 +31,11 @@ export class ProjectRepository implements IProjectRepository {
         projectId: string,
         workspaceId: string
     ): Promise<Project | null> {
+        const isValidId = this.databaseUtil.checkIdIsValid(projectId);
+        if (!isValidId) {
+            return null;
+        }
+
         return this.databaseService.client.project.findFirst({
             where: {
                 id: projectId,

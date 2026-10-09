@@ -77,6 +77,7 @@ describe('DatabaseService', () => {
             await expect(service.onModuleInit()).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: error,
+                message: 'Initializing the database service failed',
             });
             expect(client.$connect).not.toHaveBeenCalled();
         });
@@ -88,6 +89,7 @@ describe('DatabaseService', () => {
             await expect(service.onModuleInit()).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: error,
+                message: 'Connecting to the database failed',
             });
         });
     });
@@ -161,6 +163,7 @@ describe('DatabaseService', () => {
             await expect(service['connect']()).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: error,
+                message: 'Connecting to the database failed',
             });
         });
     });

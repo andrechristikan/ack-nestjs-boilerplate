@@ -28,7 +28,11 @@ import type {
 } from '@modules/project/interfaces/project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
-import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
+import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
+import {
+    expectRequestContextMissingWithKey,
+    expectRequestGuardMissingWithKey,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectDomain', () => {
     const projectRepository: MockProxy<ProjectRepository> =
@@ -113,32 +117,38 @@ describe('ProjectDomain', () => {
     });
 
     describe('validateProjectGuard', () => {
-        it('throws WorkspaceNotFoundException when workspaceId is null', async () => {
-            await expect(
-                domain.validateProjectGuard(null, '507f1f77bcf86cd799439011')
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.notFound
-                    ],
-                messagePath: 'workspace.error.notFound',
-            });
+        it('throws RequestGuardMissingException when workspaceId is null', async () => {
+            let thrown: unknown;
+            try {
+                await domain.validateProjectGuard(
+                    null,
+                    '507f1f77bcf86cd799439011'
+                );
+            } catch (error) {
+                thrown = error;
+            }
+
+            expectRequestGuardMissingWithKey(thrown, WorkspaceStoreKey);
+            expect(
+                projectRepository.findActiveByIdAndWorkspace
+            ).not.toHaveBeenCalled();
         });
 
-        it('throws ProjectNotFoundException when projectId is null', async () => {
-            await expect(
-                domain.validateProjectGuard('507f1f77bcf86cd799439012', null)
-            ).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.notFound
-                    ],
-                messagePath: 'project.error.notFound',
-            });
+        it('throws RequestContextMissingException when projectId is null', async () => {
+            let thrown: unknown;
+            try {
+                await domain.validateProjectGuard(
+                    '507f1f77bcf86cd799439012',
+                    null
+                );
+            } catch (error) {
+                thrown = error;
+            }
+
+            expectRequestContextMissingWithKey(thrown, 'params.projectId');
+            expect(
+                projectRepository.findActiveByIdAndWorkspace
+            ).not.toHaveBeenCalled();
         });
 
         it('throws ProjectNotFoundException when the repository finds no active project', async () => {

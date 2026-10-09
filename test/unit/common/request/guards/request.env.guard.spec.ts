@@ -38,7 +38,7 @@ describe('RequestEnvGuard', () => {
             expect(configGet).toHaveBeenCalledWith('app.env');
         });
 
-        it('throws RequestEnvForbiddenException when the current environment is not allowed', async () => {
+        it('throws RequestEnvNotAllowedException when the current environment is not allowed', async () => {
             reflector.getAllAndOverride.mockReturnValue([
                 EnumAppEnvironment.production,
             ]);
@@ -47,12 +47,12 @@ describe('RequestEnvGuard', () => {
 
             await expect(promise).rejects.toMatchObject({
                 module: 'request',
-                statusCode: EnumRequestStatusCodeError.envForbidden,
+                statusCode: EnumRequestStatusCodeError.envNotAllowed,
                 statusCodeKey:
                     EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.envForbidden
+                        EnumRequestStatusCodeError.envNotAllowed
                     ],
-                messagePath: 'http.clientError.forbidden',
+                messagePath: 'http.clientError.notFound',
             });
             expect(reflector.getAllAndOverride).toHaveBeenCalledWith(
                 RequestEnvMetaKey,

@@ -37,4 +37,34 @@ describe('SessionSharedListRequestSchema', () => {
             SessionSharedListRequestSchema.shape.orderBy.meta()?.description
         ).toContain(SessionCursorAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = SessionCursorAvailableOrderBy[0];
+        const last =
+            SessionCursorAvailableOrderBy[
+                SessionCursorAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            SessionSharedListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            SessionSharedListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${SessionCursorAvailableOrderBy[0]}:`,
+        `${SessionCursorAvailableOrderBy[0]}:DESC`,
+        `${SessionCursorAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            SessionSharedListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
 });

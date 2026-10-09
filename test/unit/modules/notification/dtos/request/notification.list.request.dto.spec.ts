@@ -47,4 +47,33 @@ describe('NotificationListRequestSchema', () => {
             NotificationListRequestSchema.shape.orderBy.meta()?.description
         ).toContain(NotificationDefaultAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = NotificationDefaultAvailableOrderBy[0];
+        const last =
+            NotificationDefaultAvailableOrderBy[
+                NotificationDefaultAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            NotificationListRequestSchema.safeParse({ orderBy: `${first}:asc` })
+                .success
+        ).toBe(true);
+        expect(
+            NotificationListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${NotificationDefaultAvailableOrderBy[0]}:`,
+        `${NotificationDefaultAvailableOrderBy[0]}:DESC`,
+        `${NotificationDefaultAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            NotificationListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
 });

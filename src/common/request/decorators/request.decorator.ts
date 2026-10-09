@@ -5,6 +5,7 @@ import {
     applyDecorators,
     createParamDecorator,
 } from '@nestjs/common';
+import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { ClsServiceManager } from 'nestjs-cls';
 import {
     RequestCustomTimeoutMetaKey,
@@ -22,8 +23,23 @@ import type {
     IRequestLog,
     IRequestThrottleOptions,
 } from '@common/request/interfaces/request.interface';
+import type { CanActivate, Type } from '@nestjs/common';
 import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
 import { RequestEnvProtectedEmptyException } from '@common/request/exceptions/request.env-protected-empty.exception';
+
+/**
+ * Reports whether `UseGuards` already mounted the guard on the method; a `*Protected` decorator calls it inside its returned decorator, where the guards applied below it are visible.
+ * @public
+ */
+export function hasRequestGuard(
+    descriptor: PropertyDescriptor,
+    guard: Type<CanActivate>
+): boolean {
+    const guards: unknown[] =
+        Reflect.getMetadata(GUARDS_METADATA, descriptor.value) ?? [];
+
+    return guards.includes(guard);
+}
 
 /**
  * Overrides the global request timeout for a route.

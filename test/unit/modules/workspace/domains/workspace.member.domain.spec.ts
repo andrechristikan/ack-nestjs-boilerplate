@@ -1,4 +1,3 @@
-import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -21,8 +20,12 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
-import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
+import { UserStoreKey } from '@modules/user/constants/user.constant';
+import {
+    WorkspaceMemberStoreKey,
+    WorkspaceStoreKey,
+} from '@modules/workspace/constants/workspace.constant';
+import { expectRequestGuardMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
@@ -87,35 +90,26 @@ describe('WorkspaceMemberDomain', () => {
     });
 
     describe('validateWorkspaceMemberGuard', () => {
-        it('throws UserNotAuthenticatedException when userId is null', async () => {
-            await expect(
-                domain.validateWorkspaceMemberGuard('workspace-1', null)
-            ).rejects.toMatchObject({
-                constructor: UserNotAuthenticatedException,
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notAuthenticated,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.notAuthenticated
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'user.error.notAuthenticated',
-            });
+        it('throws RequestGuardMissingException when userId is null', async () => {
+            let thrown: unknown;
+            try {
+                await domain.validateWorkspaceMemberGuard('workspace-1', null);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expectRequestGuardMissingWithKey(thrown, UserStoreKey);
         });
 
-        it('throws WorkspaceNotFoundException when workspaceId is null', async () => {
-            await expect(
-                domain.validateWorkspaceMemberGuard(null, 'user-1')
-            ).rejects.toMatchObject({
-                constructor: WorkspaceNotFoundException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.notFound
-                    ],
-                messagePath: 'workspace.error.notFound',
-            });
+        it('throws RequestGuardMissingException when workspaceId is null', async () => {
+            let thrown: unknown;
+            try {
+                await domain.validateWorkspaceMemberGuard(null, 'user-1');
+            } catch (error) {
+                thrown = error;
+            }
+
+            expectRequestGuardMissingWithKey(thrown, WorkspaceStoreKey);
         });
 
         it('throws WorkspaceMemberForbiddenException when no membership is found', async () => {
@@ -156,7 +150,7 @@ describe('WorkspaceMemberDomain', () => {
     });
 
     describe('validateWorkspaceRoleGuard', () => {
-        it('throws WorkspaceMemberForbiddenException when no member is given', () => {
+        it('throws RequestGuardMissingException when no member is given', () => {
             let thrown: unknown;
             try {
                 domain.validateWorkspaceRoleGuard(null, [
@@ -166,17 +160,7 @@ describe('WorkspaceMemberDomain', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                constructor: WorkspaceMemberForbiddenException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberForbidden
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'workspace.error.memberForbidden',
-            });
+            expectRequestGuardMissingWithKey(thrown, WorkspaceMemberStoreKey);
         });
 
         it('returns the member unchecked when the role is owner', () => {

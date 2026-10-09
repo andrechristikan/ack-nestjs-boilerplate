@@ -43,4 +43,34 @@ describe('WorkspaceInviteListRequestSchema', () => {
             WorkspaceInviteListRequestSchema.shape.orderBy.meta()?.description
         ).toContain(WorkspaceInviteDefaultAvailableOrderBy.join(', '));
     });
+
+    it('accepts a single and a repeated orderBy built from the allow-list', () => {
+        const first = WorkspaceInviteDefaultAvailableOrderBy[0];
+        const last =
+            WorkspaceInviteDefaultAvailableOrderBy[
+                WorkspaceInviteDefaultAvailableOrderBy.length - 1
+            ];
+
+        expect(
+            WorkspaceInviteListRequestSchema.safeParse({
+                orderBy: `${first}:asc`,
+            }).success
+        ).toBe(true);
+        expect(
+            WorkspaceInviteListRequestSchema.safeParse({
+                orderBy: [`${first}:asc`, `${last}:desc`],
+            }).success
+        ).toBe(true);
+    });
+
+    it.each([
+        'unknownField:asc',
+        `${WorkspaceInviteDefaultAvailableOrderBy[0]}:`,
+        `${WorkspaceInviteDefaultAvailableOrderBy[0]}:DESC`,
+        `${WorkspaceInviteDefaultAvailableOrderBy[0]}:up`,
+    ])('rejects the orderBy %s', orderBy => {
+        expect(
+            WorkspaceInviteListRequestSchema.safeParse({ orderBy }).success
+        ).toBe(false);
+    });
 });

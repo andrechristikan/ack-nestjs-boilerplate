@@ -27,7 +27,7 @@ describe('AuthJwtAccessTokenInvalidException', () => {
         it('accepts no raw error', () => {
             const exception = new AuthJwtAccessTokenInvalidException();
 
-            expect(exception.rawError).toBeUndefined();
+            expect(exception.rawError).toBeNull();
         });
     });
 });

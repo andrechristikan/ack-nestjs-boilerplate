@@ -29,10 +29,10 @@ describe('HelperDecryptFailedException', () => {
             expect(exception.rawError).toBe(rawError);
         });
 
-        it('leaves rawError undefined when no cause is given', () => {
+        it('leaves rawError null when no cause is given', () => {
             const exception = new HelperDecryptFailedException();
 
-            expect(exception.rawError).toBeUndefined();
+            expect(exception.rawError).toBeNull();
         });
     });
 });

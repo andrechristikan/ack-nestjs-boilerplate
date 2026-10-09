@@ -65,6 +65,10 @@ export const DocGlobalErrorResponses = {
         statusCode: EnumRequestStatusCodeError.contextMissing,
         messagePath: 'request.error.contextMissing',
     }),
+    guardMissing: DocResponseError(HttpStatus.INTERNAL_SERVER_ERROR, {
+        statusCode: EnumRequestStatusCodeError.guardMissing,
+        messagePath: 'request.error.guardMissing',
+    }),
     uniqueValueGenerationFailed: DocResponseError(HttpStatus.CONFLICT, {
         statusCode: EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
         messagePath: 'database.error.uniqueValueGenerationFailed',
@@ -112,17 +116,6 @@ export const DocSerializationErrorResponses = {
  * @public
  */
 export const DocPaginationErrorResponses = {
-    orderByNotAllowed: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
-        statusCode: EnumPaginationStatusCodeError.orderByNotAllowed,
-        messagePath: 'pagination.error.orderByNotAllowed',
-    }),
-    orderDirectionNotAllowed: DocResponseError(
-        HttpStatus.UNPROCESSABLE_ENTITY,
-        {
-            statusCode: EnumPaginationStatusCodeError.orderDirectionNotAllowed,
-            messagePath: 'pagination.error.orderDirectionNotAllowed',
-        }
-    ),
     filterInvalidValue: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.filterInvalidValue,
         messagePath: 'pagination.error.filterInvalidValue',
