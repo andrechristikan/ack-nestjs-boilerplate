@@ -9,18 +9,15 @@ import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-
 import type { Workspace } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
@@ -28,14 +25,12 @@ import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
 import { WorkspaceMemberHttpService } from '@modules/workspace/services/workspace.member.http.service';
 import { Controller, Get, Param, Query } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.admin.workspace')
@@ -68,7 +63,7 @@ export class WorkspaceAdminController {
         @Query({ schema: WorkspaceAdminListRequestSchema })
         query: WorkspaceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Workspace>> {
-        return this.workspaceHttpService.getListForAdmin(query);
+        return this.workspaceHttpService.getListOffsetByAdmin(query);
     }
 
     @Doc({
@@ -93,7 +88,7 @@ export class WorkspaceAdminController {
         @Param('workspaceId', { schema: RequestMongoIdSchema })
         workspaceId: string
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.getByIdForAdmin(workspaceId);
+        return this.workspaceHttpService.getByIdByAdmin(workspaceId);
     }
 
     @Doc({ summary: 'admin list members of a workspace (read-only)' })
@@ -117,7 +112,7 @@ export class WorkspaceAdminController {
         @Param('workspaceId', { schema: RequestMongoIdSchema })
         workspaceId: string
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
-        return this.workspaceMemberHttpService.getMembersListForAdmin(
+        return this.workspaceMemberHttpService.getMembersListByAdmin(
             workspaceId,
             query
         );

@@ -7,15 +7,8 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class AnalyticDateDomain {
-    requireRange(
-        startDate: Date | null,
-        endDate: Date | null
-    ): IAnalyticDateRange {
-        if (
-            startDate === null ||
-            endDate === null ||
-            startDate.getTime() >= endDate.getTime()
-        ) {
+    requireRange(startDate: Date, endDate: Date): IAnalyticDateRange {
+        if (startDate.getTime() >= endDate.getTime()) {
             throw new AnalyticInvalidDateRangeException();
         }
         return { startDate, endDate };

@@ -32,6 +32,7 @@ import { Command } from 'nest-commander';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestUtil } from '@common/request/utils/request.util';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
 /**
  * Seeds default users with password, verification, acceptances, and activity logs. Requires roles, countries, and term policies to already be seeded, and aborts otherwise.
@@ -105,7 +106,7 @@ export class MigrationUserSeed
             ]);
 
         if (roles.length !== uniqueRoles.length) {
-            this.logger.warn('Roles not found for users, cannot seed.');
+            this.logger.error('Roles not found for users, cannot seed.');
             return;
         }
 
@@ -363,8 +364,7 @@ export class MigrationUserSeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error seeding users');
-            throw error;
+            throw new AppUnknownException(error, 'Seeding users failed');
         }
 
         this.logger.log('Users seeded successfully.');
@@ -378,22 +378,29 @@ export class MigrationUserSeed
         try {
             await this.databaseService.withTransaction(
                 async tx => {
+                    await tx.notificationDelivery.deleteMany({});
+                    await tx.notification.deleteMany({});
+                    await tx.termPolicyRecipient.deleteMany({});
+                    await tx.notificationUserSetting.deleteMany({});
+                    await tx.projectMember.deleteMany({});
+                    await tx.workspaceJoinRequest.deleteMany({});
+                    await tx.workspaceInvite.deleteMany({});
+                    await tx.workspaceMember.deleteMany({});
                     await tx.twoFactor.deleteMany({});
                     await tx.session.deleteMany({});
-                    await tx.userMobileNumber.deleteMany({});
+                    await tx.deviceOwnership.deleteMany({});
                     await tx.verification.deleteMany({});
+                    await tx.userMobileNumber.deleteMany({});
                     await tx.passwordHistory.deleteMany({});
                     await tx.forgotPassword.deleteMany({});
                     await tx.activityLog.deleteMany({});
                     await tx.termPolicyUserAcceptance.deleteMany({});
-                    await tx.notificationUserSetting.deleteMany({});
                     await tx.user.deleteMany({});
                 },
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing users');
-            throw error;
+            throw new AppUnknownException(error, 'Removing users failed');
         }
 
         this.logger.log('Users removed completed.');

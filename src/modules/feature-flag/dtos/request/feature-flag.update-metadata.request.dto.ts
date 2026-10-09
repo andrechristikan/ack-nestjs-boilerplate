@@ -12,11 +12,17 @@ export const FeatureFlagUpdateMetadataRequestSchema = z.strictObject({
             }),
             z.union(
                 [
-                    z.string(),
+                    z.string().min(1, {
+                        error: () => 'featureFlag.error.invalidMetadata',
+                    }),
                     z.number(),
                     z.boolean(),
-                    z.array(z.string()),
-                    z.array(z.number()),
+                    z.array(z.string()).min(1, {
+                        error: () => 'featureFlag.error.invalidMetadata',
+                    }),
+                    z.array(z.number()).min(1, {
+                        error: () => 'featureFlag.error.invalidMetadata',
+                    }),
                 ],
                 { error: () => 'featureFlag.error.invalidMetadata' }
             ),

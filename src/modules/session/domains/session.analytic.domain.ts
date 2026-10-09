@@ -12,9 +12,9 @@ export class SessionAnalyticDomain {
         private readonly sessionAnalyticRepository: SessionAnalyticRepository
     ) {}
 
-    findActiveWithGeoInRange(
-        startDate?: Date,
-        endDate?: Date
+    getActiveWithGeoInRange(
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<ISessionAnalyticSession[]> {
         return this.sessionAnalyticRepository.findActiveWithGeoInRange(
             startDate,
@@ -22,13 +22,13 @@ export class SessionAnalyticDomain {
         );
     }
 
-    countActiveByUser(): Promise<ISessionAnalyticUserCount[]> {
+    getCountActiveByUser(): Promise<ISessionAnalyticUserCount[]> {
         return this.sessionAnalyticRepository.countActiveByUser();
     }
 
-    groupByCountry(
-        startDate?: Date,
-        endDate?: Date
+    getGroupByCountry(
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IAnalyticCountBucket[]> {
         return this.sessionAnalyticRepository.groupByCountry(
             startDate,
@@ -36,11 +36,11 @@ export class SessionAnalyticDomain {
         );
     }
 
-    countAll(): Promise<number> {
+    getCountAll(): Promise<number> {
         return this.sessionAnalyticRepository.countAll();
     }
 
-    countActive(): Promise<number> {
+    getCountActive(): Promise<number> {
         return this.sessionAnalyticRepository.countActive();
     }
 }

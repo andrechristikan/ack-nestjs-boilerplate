@@ -20,9 +20,13 @@ import {
 import { ApiParam } from '@nestjs/swagger';
 import { ClsServiceManager } from 'nestjs-cls';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { ProjectGuardMissingException } from '@modules/project/exceptions/project.guard-missing.exception';
+import { ProjectMemberGuardMissingException } from '@modules/project/exceptions/project.member-guard-missing.exception';
+import { DocUserErrorResponses } from '@modules/user/constants/user.constant';
+import { DocWorkspaceErrorResponses } from '@modules/workspace/constants/workspace.constant';
 
 /**
- * Requires the `projectId` route param to resolve to an existing, non-deleted project in the current workspace.
+ * Requires the `projectId` route param to resolve to an existing, non-deleted project in the current workspace. A route without a `:projectId` path param answers `RequestContextMissingException`, because the route path is not readable at decoration time.
  * Documents `projectId` and project kits.
  * @public
  */
@@ -35,12 +39,13 @@ export function ProjectProtected(): MethodDecorator {
             type: 'string',
             description: 'Project identifier',
         }),
-        DocProjectErrorResponses.notFound
+        DocProjectErrorResponses.notFound,
+        DocWorkspaceErrorResponses.guardMissing
     );
 }
 
 /**
- * Reads the current project, or one of its fields, that `ProjectGuard` stored; throws when either is absent.
+ * Reads the current project, or one of its fields, that `ProjectGuard` stored. Throws `ProjectGuardMissingException` when the project is absent and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const ProjectCurrent = createParamDecorator<
@@ -50,19 +55,21 @@ export const ProjectCurrent = createParamDecorator<
     (
         field: Extract<keyof Project, string> | undefined
     ): Project | NonNullable<Project[Extract<keyof Project, string>]> => {
-        const project = ClsServiceManager.getClsService().get<
-            Project | undefined
-        >(ProjectStoreKey);
-        if (project === undefined || project === null) {
-            throw new RequestContextMissingException(ProjectStoreKey);
+        const project =
+            ClsServiceManager.getClsService().get<Project | null>(
+                ProjectStoreKey
+            ) ?? null;
+        if (project === null) {
+            throw new ProjectGuardMissingException();
         }
 
-        if (field === undefined || field === null) {
+        const fieldKey = field ?? null;
+        if (fieldKey === null) {
             return project;
         }
 
-        const value = project[field];
-        if (value === undefined || value === null) {
+        const value = project[fieldKey] ?? null;
+        if (value === null) {
             throw new RequestContextMissingException(
                 `${ProjectStoreKey}.${field}`
             );
@@ -74,9 +81,10 @@ export const ProjectCurrent = createParamDecorator<
 
 /**
  * Requires the caller to be a member of the project resolved by `@ProjectProtected()`. Stack above
- * it. Pass `roles` to instead require the caller's project membership role to be one of them, which
- * a workspace owner satisfies without holding a `ProjectMember` row at all; omit `roles` to demand a
- * `ProjectMember` row of the caller with no bypass.
+ * it. Pass `roles` to instead require the caller's
+ * project membership role to be one of them, which a workspace owner satisfies without holding a
+ * `ProjectMember` row at all; omit `roles` to demand a `ProjectMember` row of the caller with no
+ * bypass.
  * @public
  */
 export function ProjectMemberProtected(
@@ -86,7 +94,9 @@ export function ProjectMemberProtected(
         return applyDecorators(
             UseGuards(ProjectMemberGuard),
             DocProjectMemberErrorResponses.notFound,
-            DocProjectMemberErrorResponses.forbidden
+            DocProjectMemberErrorResponses.forbidden,
+            DocUserErrorResponses.guardMissing,
+            DocProjectErrorResponses.guardMissing
         );
     }
 
@@ -94,12 +104,14 @@ export function ProjectMemberProtected(
         UseGuards(ProjectRoleGuard),
         SetMetadata(ProjectRoleMetaKey, roles),
         DocProjectRoleErrorResponses.notFound,
-        DocProjectRoleErrorResponses.forbidden
+        DocProjectRoleErrorResponses.forbidden,
+        DocProjectErrorResponses.guardMissing,
+        DocWorkspaceErrorResponses.memberGuardMissing
     );
 }
 
 /**
- * Reads the caller's project member row, or one of its fields, that the role-less `@ProjectMemberProtected()` stored. Valid only on a route using that role-less form: a role-gated route stores no row, and the read throws `RequestContextMissingException`.
+ * Reads the caller's project member row, or one of its fields, that the role-less `@ProjectMemberProtected()` stored. Valid only on a route using that role-less form: a role-gated route stores no row, and the read throws `ProjectMemberGuardMissingException`; a requested field that is null throws `RequestContextMissingException`.
  * @public
  */
 export const ProjectMemberCurrent = createParamDecorator<
@@ -112,19 +124,21 @@ export const ProjectMemberCurrent = createParamDecorator<
     ):
         | ProjectMember
         | NonNullable<ProjectMember[Extract<keyof ProjectMember, string>]> => {
-        const projectMember = ClsServiceManager.getClsService().get<
-            ProjectMember | undefined
-        >(ProjectMemberStoreKey);
-        if (projectMember === undefined || projectMember === null) {
-            throw new RequestContextMissingException(ProjectMemberStoreKey);
+        const projectMember =
+            ClsServiceManager.getClsService().get<ProjectMember | null>(
+                ProjectMemberStoreKey
+            ) ?? null;
+        if (projectMember === null) {
+            throw new ProjectMemberGuardMissingException();
         }
 
-        if (field === undefined || field === null) {
+        const fieldKey = field ?? null;
+        if (fieldKey === null) {
             return projectMember;
         }
 
-        const value = projectMember[field];
-        if (value === undefined || value === null) {
+        const value = projectMember[fieldKey] ?? null;
+        if (value === null) {
             throw new RequestContextMissingException(
                 `${ProjectMemberStoreKey}.${field}`
             );

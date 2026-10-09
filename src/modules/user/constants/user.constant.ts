@@ -13,23 +13,19 @@ export const UserGuardIsVerifiedMetaKey = 'UserGuardIsVerifiedMetaKey';
  * Request-store key holding the loaded current user.
  * @public
  */
-export const UserStoreKey = 'UserStore';
+export const UserStoreKey = 'UserStoreKey';
 
 /**
- * User guard error kit for `@UserProtected` (no `auth.error.accessTokenUnauthorized`).
+ * User guard error kit for `@UserProtected` (no `auth.error.accessTokenUnauthorized`); `guardMissing` documents a guard or param decorator that reads the user store.
  * @public
  */
 export const DocUserErrorResponses = {
     unauthorized: DocResponseError(HttpStatus.UNAUTHORIZED, {
-        statusCode: EnumUserStatusCodeError.notAuthenticated,
-        messagePath: 'user.error.notAuthenticated',
+        statusCode: EnumUserStatusCodeError.accountNotFound,
+        messagePath: 'user.error.accountNotFound',
     }),
     forbidden: DocResponseError(
         HttpStatus.FORBIDDEN,
-        {
-            statusCode: EnumUserStatusCodeError.notFoundForbidden,
-            messagePath: 'user.error.notFound',
-        },
         {
             statusCode: EnumUserStatusCodeError.blockedForbidden,
             messagePath: 'user.error.blocked',
@@ -40,13 +36,17 @@ export const DocUserErrorResponses = {
         },
         {
             statusCode: EnumUserStatusCodeError.passwordExpired,
-            messagePath: 'auth.error.passwordExpired',
+            messagePath: 'user.error.passwordExpired',
         },
         {
             statusCode: EnumUserStatusCodeError.emailNotVerified,
             messagePath: 'user.error.emailNotVerified',
         }
     ),
+    guardMissing: DocResponseError(HttpStatus.UNAUTHORIZED, {
+        statusCode: EnumUserStatusCodeError.guardMissing,
+        messagePath: 'user.error.guardMissing',
+    }),
 } as const;
 
 /**
@@ -64,6 +64,22 @@ export const UserRefSelect = {
     updatedBy: true,
     deletedAt: true,
     deletedBy: true,
+} satisfies Prisma.UserSelect;
+
+/**
+ * Prisma where matching a user that is not deleted, whatever its status.
+ * @public
+ */
+export const UserNotDeletedWhere = {
+    deletedAt: null,
+} satisfies Prisma.UserWhereInput;
+
+/**
+ * Columns an id-only user read returns.
+ * @public
+ */
+export const UserIdSelect = {
+    id: true,
 } satisfies Prisma.UserSelect;
 
 /**

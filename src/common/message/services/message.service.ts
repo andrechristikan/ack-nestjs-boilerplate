@@ -30,7 +30,7 @@ export class MessageService {
     }
 
     private resolveIssueKey(issue: StandardSchemaV1.Issue): string {
-        const code: unknown = 'code' in issue ? issue.code : undefined;
+        const code: unknown = 'code' in issue ? issue.code : null;
 
         if (typeof code !== 'string') {
             return MessageValidationIssueFallbackKey;
@@ -62,8 +62,9 @@ export class MessageService {
         const key = this.resolveIssueKey(issue);
         const property = this.resolveIssueProperty(issue);
         const lastProperty = property.slice(property.lastIndexOf('.') + 1);
+        const customLanguage = options?.customLanguage ?? null;
         const properties: IMessageSetOptions = {
-            customLanguage: options?.customLanguage,
+            ...(customLanguage !== null && { customLanguage }),
             properties: { property: lastProperty },
         };
 
@@ -83,7 +84,9 @@ export class MessageService {
     }
 
     filterLanguage(customLanguage: string): string {
-        return this.availableLanguage.find(e => e === customLanguage)!;
+        const language = this.availableLanguage.find(e => e === customLanguage);
+
+        return language ?? this.defaultLanguage;
     }
 
     setMessage(path: string, options?: IMessageSetOptions): string {
@@ -94,9 +97,11 @@ export class MessageService {
             language = this.defaultLanguage;
         }
 
+        const args = options?.properties ?? null;
+
         return this.i18n.translate(path, {
             lang: language,
-            args: options?.properties,
+            ...(args !== null && { args }),
         }) as string;
     }
 

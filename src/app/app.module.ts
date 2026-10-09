@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { CommonModule } from '@common/common.module';
 import { RouterModule } from '@router/router.module';
 import { APP_FILTER } from '@nestjs/core';
-import { AppBaseExceptionFilter } from '@app/filters/app.base-exception.filter';
 import { AppGeneralFilter } from '@app/filters/app.general.filter';
 import { AppHttpFilter } from '@app/filters/app.http.filter';
 import { AppValidationFilter } from '@app/filters/app.validation.filter';
@@ -20,10 +19,6 @@ import { AppValidationImportFilter } from '@app/filters/app.validation-import.fi
         },
         {
             provide: APP_FILTER,
-            useClass: AppBaseExceptionFilter,
-        },
-        {
-            provide: APP_FILTER,
             useClass: AppHttpFilter,
         },
         {
@@ -35,6 +30,7 @@ import { AppValidationImportFilter } from '@app/filters/app.validation-import.fi
             useClass: AppValidationImportFilter,
         },
     ],
+    exports: [],
     imports: [CommonModule, RouterModule],
 })
 export class AppModule {}

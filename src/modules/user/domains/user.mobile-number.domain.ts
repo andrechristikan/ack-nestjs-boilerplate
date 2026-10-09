@@ -27,17 +27,24 @@ export class UserMobileNumberDomain {
         private readonly userUtil: UserUtil
     ) {}
 
+    private async checkPhoneCode(
+        countryId: string,
+        phoneCode: string
+    ): Promise<boolean> {
+        const country = await this.countryDomain.getOne(countryId);
+
+        return this.userUtil.checkMobileNumber(country.phoneCode, phoneCode);
+    }
+
     async addMobileNumber(
         userId: string,
         { number, countryId, phoneCode }: IUserMobileNumberInput
     ): Promise<IUserMobileNumber> {
-        const country = await this.countryDomain.getOne(countryId);
-
         const [checkValidMobileNumber, checkExist] = await Promise.all([
-            this.userUtil.checkMobileNumber(country.phoneCode, phoneCode),
+            this.checkPhoneCode(countryId, phoneCode),
             this.userMobileNumberRepository.existsMobileNumber(userId, {
                 number,
-                countryId: country.id,
+                countryId,
                 phoneCode,
             }),
         ]);
@@ -48,7 +55,7 @@ export class UserMobileNumberDomain {
         }
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userAddMobileNumber,
                 }),
@@ -65,7 +72,7 @@ export class UserMobileNumberDomain {
                 return mobileNumber;
             });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return row;
         } catch (err: unknown) {
@@ -82,23 +89,24 @@ export class UserMobileNumberDomain {
         mobileNumberId: string,
         { number, countryId, phoneCode }: IUserMobileNumberInput
     ): Promise<IUserMobileNumber> {
-        const [checkMobileNumberExist, country] = await Promise.all([
-            this.userMobileNumberRepository.findOneMobileNumber(
+        // Sequential by design: gate before the work it guards
+        const checkMobileNumberExist =
+            await this.userMobileNumberRepository.findOneMobileNumber(
                 userId,
                 mobileNumberId
-            ),
-            this.countryDomain.getOne(countryId),
-        ]);
+            );
         if (!checkMobileNumberExist) {
             throw new UserMobileNumberNotFoundException();
         }
 
-        const checkExist =
-            await this.userMobileNumberRepository.existsMobileNumber(
+        const [country, checkExist] = await Promise.all([
+            this.countryDomain.getOne(countryId),
+            this.userMobileNumberRepository.existsMobileNumber(
                 userId,
                 { number, countryId, phoneCode },
                 mobileNumberId
-            );
+            ),
+        ]);
         if (checkExist) {
             throw new UserMobileNumberExistException();
         }
@@ -118,7 +126,7 @@ export class UserMobileNumberDomain {
                 : false;
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userUpdateMobileNumber,
                 }),
@@ -140,7 +148,7 @@ export class UserMobileNumberDomain {
                 return mobileNumber;
             });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return row;
         } catch (err: unknown) {
@@ -156,6 +164,7 @@ export class UserMobileNumberDomain {
         userId: string,
         mobileNumberId: string
     ): Promise<IUserMobileNumber> {
+        // Sequential by design: gate before the work it guards
         const checkExist =
             await this.userMobileNumberRepository.findOneMobileNumber(
                 userId,
@@ -166,7 +175,7 @@ export class UserMobileNumberDomain {
         }
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userDeleteMobileNumber,
                 }),
@@ -182,7 +191,7 @@ export class UserMobileNumberDomain {
                 return mobileNumber;
             });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return row;
         } catch (err: unknown) {

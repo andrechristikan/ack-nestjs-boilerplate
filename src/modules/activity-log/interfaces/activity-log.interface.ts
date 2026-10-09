@@ -17,13 +17,13 @@ export type IActivityLogMetadata = Record<
     string | number | boolean | Date
 >;
 
-export interface IActivityLogStagedEvent {
+export interface IActivityLogStaged {
     action: EnumActivityLogAction;
     metadata: IActivityLogMetadata;
     onError: boolean;
-    userId?: string;
-    createdBy?: string;
-    workspaceId?: string | null;
+    userId: string | null;
+    createdBy: string | null;
+    workspaceId: string | null;
 }
 
 export interface IActivityLogActionContract {
@@ -43,7 +43,7 @@ export type IActivityLogStageInput<A extends EnumActivityLogAction> = {
     onError?: boolean;
     userId?: string;
     createdBy?: string;
-    workspaceId?: string | null;
+    workspaceId?: string;
 };
 
 export interface IActivityLogCreate {
@@ -61,12 +61,12 @@ export interface IActivityLogAnalyticActionCount {
     count: number;
 }
 
-export interface IActivityLogAnalyticEvent {
+export interface IActivityLogAnalyticList {
     id: string;
     userId: string;
     action: EnumActivityLogAction;
     ipAddress: string | null;
     createdAt: Date;
-    userAgent?: Prisma.JsonValue;
-    workspaceId?: string | null;
+    userAgent: Prisma.JsonValue | null;
+    workspaceId: string | null;
 }

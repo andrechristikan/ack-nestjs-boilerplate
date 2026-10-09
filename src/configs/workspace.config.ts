@@ -1,8 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
 export interface IConfigWorkspace {
-    headerName: string;
-    storeKey: string;
     maxWorkspacesPerUser: number;
     personalNamePattern: string;
     slugPrefix: string;
@@ -24,8 +22,6 @@ export interface IConfigWorkspace {
 }
 
 export default registerAs('workspace', (): IConfigWorkspace => ({
-    headerName: 'x-workspace-id',
-    storeKey: 'workspaceId',
     maxWorkspacesPerUser: 10,
     personalNamePattern: "{username}'s Workspace",
     slugPrefix: 'w-',

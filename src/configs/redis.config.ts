@@ -13,14 +13,16 @@ export interface IConfigRedis {
     };
 }
 
-export default registerAs('redis', (): IConfigRedis => ({
-    cache: {
-        url: process.env.CACHE_REDIS_URL!,
-        namespace: 'Cache',
-        ttlInMs: ms('5m'),
-    },
-    queue: {
-        url: process.env.QUEUE_REDIS_URL!,
-        namespace: 'Queue',
-    },
-}));
+export default registerAs('redis', (): IConfigRedis => {
+    return {
+        cache: {
+            url: process.env.CACHE_REDIS_URL!,
+            namespace: 'Cache',
+            ttlInMs: ms('5m'),
+        },
+        queue: {
+            url: process.env.QUEUE_REDIS_URL!,
+            namespace: 'Queue',
+        },
+    };
+});

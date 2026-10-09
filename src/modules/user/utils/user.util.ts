@@ -12,18 +12,17 @@ import { Profanity } from '@2toad/profanity';
 /** Username checks, two-factor mapping, and activity-log mapping. */
 @Injectable()
 export class UserUtil {
-    private readonly usernamePattern: RegExp;
+    private readonly usernameRegex: RegExp;
 
     private readonly profanity: Profanity;
 
     constructor(private readonly configService: ConfigService) {
-        this.usernamePattern = this.configService.get<RegExp>(
-            'user.usernamePattern'
-        )!;
+        this.usernameRegex =
+            this.configService.get<RegExp>('user.usernameRegex')!;
 
         const availableLanguages = this.configService.get<string[]>(
             'message.availableLanguage'
-        );
+        )!;
         this.profanity = new Profanity({
             languages: availableLanguages,
             wholeWord: false,
@@ -34,7 +33,7 @@ export class UserUtil {
 
     /** True when the username does NOT match the allowed pattern (i.e. should be rejected). */
     checkUsernamePattern(username: string): boolean {
-        return !!username.search(this.usernamePattern);
+        return !!username.search(this.usernameRegex);
     }
 
     async checkBadWord(str: string): Promise<boolean> {

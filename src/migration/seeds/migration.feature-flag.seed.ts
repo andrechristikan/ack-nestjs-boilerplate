@@ -8,6 +8,7 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@generated/prisma-client/client';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
 /**
  * Seeds feature flag toggles for the current environment.
@@ -68,8 +69,10 @@ export class MigrationFeatureFlagSeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error seeding feature flags');
-            throw error;
+            throw new AppUnknownException(
+                error,
+                'Seeding feature flags failed'
+            );
         }
 
         this.logger.log('Feature Flags seeded successfully.');
@@ -83,8 +86,10 @@ export class MigrationFeatureFlagSeed
         try {
             await this.databaseService.client.featureFlag.deleteMany({});
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing feature flags');
-            throw error;
+            throw new AppUnknownException(
+                error,
+                'Removing feature flags failed'
+            );
         }
 
         this.logger.log('Feature Flags removed successfully.');

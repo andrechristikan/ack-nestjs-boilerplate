@@ -28,7 +28,7 @@ export class ProjectHttpService {
         private readonly requestStoreService: RequestStoreService
     ) {}
 
-    async getListForMember(
+    async getListCursorByMember(
         workspaceId: string,
         workspaceMember: WorkspaceMember,
         query: ProjectUserListRequestDto
@@ -40,11 +40,12 @@ export class ProjectHttpService {
             });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        const { data, ...others } = await this.projectDomain.getListForMember(
-            workspaceId,
-            workspaceMember,
-            params
-        );
+        const { data, ...others } =
+            await this.projectDomain.getListCursorByMember(
+                workspaceId,
+                workspaceMember,
+                params
+            );
 
         return {
             data,
@@ -60,7 +61,7 @@ export class ProjectHttpService {
         const project = await this.projectDomain.createProject(
             workspaceId,
             actorId,
-            { name, description }
+            { name, description: description ?? null }
         );
 
         return { data: project };
@@ -100,11 +101,16 @@ export class ProjectHttpService {
         return { data: updated };
     }
 
-    async softDeleteProject(project: Project, actorId: string): Promise<void> {
+    async softDeleteProject(
+        project: Project,
+        actorId: string
+    ): Promise<IResponseReturn<void>> {
         await this.projectDomain.softDeleteProject(project, actorId);
+
+        return {};
     }
 
-    async getListForAdmin(
+    async getListOffsetByAdmin(
         query: ProjectAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
         const { params, storePatch } =
@@ -112,20 +118,17 @@ export class ProjectHttpService {
                 availableSearch: ProjectDefaultAvailableSearch,
                 availableOrderBy: ProjectDefaultAvailableOrderBy,
             });
+        const workspaceId = query.workspaceId ?? null;
         this.requestStoreService.merge(PaginationStoreKey, {
             ...storePatch,
             filters: {
                 ...storePatch.filters,
-                ...((query.workspaceId as string | undefined)
-                    ? { workspaceId: query.workspaceId as string | undefined }
-                    : {}),
+                ...(workspaceId ? { workspaceId } : {}),
             },
         });
 
-        const { data, ...others } = await this.projectDomain.getListForAdmin(
-            params,
-            query.workspaceId as string | undefined
-        );
+        const { data, ...others } =
+            await this.projectDomain.getListOffsetByAdmin(params, workspaceId);
 
         return {
             data,
@@ -133,10 +136,8 @@ export class ProjectHttpService {
         };
     }
 
-    async getByIdForAdmin(
-        projectId: string
-    ): Promise<IResponseReturn<Project>> {
-        const project = await this.projectDomain.getByIdForAdmin(projectId);
+    async getByIdByAdmin(projectId: string): Promise<IResponseReturn<Project>> {
+        const project = await this.projectDomain.getByIdByAdmin(projectId);
 
         return { data: project };
     }

@@ -24,8 +24,11 @@ import {
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import type {
+    IAuthJwtAccessTokenPayload,
+    IAuthPassword,
+} from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { CountryDomain } from '@modules/country/domains/country.domain';
@@ -41,9 +44,9 @@ import { UserBlockedInvalidException } from '@modules/user/exceptions/user.block
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
-import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
-import { UserNotFoundForbiddenException } from '@modules/user/exceptions/user.not-found-forbidden.exception';
+import { UserAccountNotFoundException } from '@modules/user/exceptions/user.account-not-found.exception';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
@@ -53,7 +56,6 @@ import type {
     IUser,
     IUserCheckEmail,
     IUserCheckUsername,
-    IUserContact,
     IUserCreateByAdmin,
     IUserCreateByAdminPrepared,
     IUserList,
@@ -113,16 +115,18 @@ export class UserDomain {
     }
 
     async validateUserGuard(
-        userId: string | null,
+        payload: Pick<IAuthJwtAccessTokenPayload, 'userId'>,
         requiredVerified: boolean
     ): Promise<IUser> {
-        if (!userId) {
-            throw new UserNotAuthenticatedException();
+        if (!payload.userId) {
+            throw new RequestContextMissingException('request.user.userId');
         }
 
-        const user = await this.userRepository.findOneWithRoleById(userId);
+        const user = await this.userRepository.findOneWithRoleById(
+            payload.userId
+        );
         if (!user) {
-            throw new UserNotFoundForbiddenException();
+            throw new UserAccountNotFoundException();
         } else if (user.status === EnumUserStatus.blocked) {
             throw new UserBlockedForbiddenException();
         } else if (user.status !== EnumUserStatus.active) {
@@ -150,10 +154,14 @@ export class UserDomain {
     ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.userRepository.findWithPaginationOffset(
             pagination,
-            status,
-            roleId,
-            countryId
+            status ?? null,
+            roleId ?? null,
+            countryId ?? null
         );
+    }
+
+    async getOneById(userId: string): Promise<User | null> {
+        return this.userRepository.findOneById(userId);
     }
 
     async getOneActive(userId: string): Promise<User | null> {
@@ -188,11 +196,11 @@ export class UserDomain {
         await this.userRepository.acceptTermPolicyInTx(tx, userId, type);
     }
 
-    async resetTermPolicyForActiveUsersInTx(
+    async resetTermPolicyInTx(
         tx: IDatabaseTransactionClient,
         type: EnumTermPolicyType
     ): Promise<void> {
-        await this.userRepository.resetTermPolicyForActiveUsersInTx(tx, type);
+        await this.userRepository.resetTermPolicyInTx(tx, type);
     }
 
     async increasePasswordAttempt(userId: string): Promise<User> {
@@ -252,8 +260,11 @@ export class UserDomain {
         await this.userRepository.touchUpdatedByInTx(tx, userId);
     }
 
-    async getListActive(): Promise<IUserContact[]> {
-        return this.userRepository.findActive();
+    async getListIdCursor(
+        cursor: string | null,
+        take: number
+    ): Promise<string[]> {
+        return this.userRepository.findIdsCursor(cursor, take);
     }
 
     async getOne(id: string): Promise<IUserProfile> {
@@ -269,10 +280,20 @@ export class UserDomain {
         { countryId, email, name, roleId, username }: IUserCreateByAdmin,
         createdBy: string
     ): Promise<IUserCreateByAdminPrepared> {
-        const [checkRole, emailExist, checkCountry] = await Promise.all([
+        const [
+            checkRole,
+            emailExist,
+            checkCountry,
+            checkUsernamePattern,
+            checkUsernameBadWord,
+            usernameExist,
+        ] = await Promise.all([
             this.roleDomain.getById(roleId),
             this.userRepository.existsByEmail(email),
             this.countryDomain.existsById(countryId),
+            this.userUtil.checkUsernamePattern(username),
+            this.userUtil.checkBadWord(username),
+            this.userRepository.existsByUsername(username),
         ]);
 
         if (!checkRole) {
@@ -283,12 +304,6 @@ export class UserDomain {
             throw new UserEmailExistException();
         }
 
-        const [checkUsernamePattern, checkUsernameBadWord, usernameExist] =
-            await Promise.all([
-                this.userUtil.checkUsernamePattern(username),
-                this.userUtil.checkBadWord(username),
-                this.userRepository.existsByUsername(username),
-            ]);
         if (checkUsernamePattern) {
             throw new UserUsernameNotAllowedException();
         } else if (checkUsernameBadWord) {
@@ -305,10 +320,11 @@ export class UserDomain {
                 temporary: true,
             }
         );
-        const [workspaceContext] =
+        const workspaceContexts =
             this.userOnboardingDomain.buildPersonalWorkspaceContexts([
                 username,
             ]);
+        const workspaceContext = workspaceContexts[0]!;
         const isVerified = checkRole.type !== EnumRoleType.user;
         let verification: IUserOnboardingVerification | null;
         if (isVerified) {
@@ -321,7 +337,7 @@ export class UserDomain {
             input: {
                 userId,
                 email,
-                name: name ?? null,
+                name,
                 username,
                 countryId,
                 roleId: checkRole.id,
@@ -375,6 +391,7 @@ export class UserDomain {
             throw new UserNotSelfException();
         }
 
+        // Sequential by design: gate before the work it guards
         const user = await this.userRepository.findOneById(userId);
         if (!user) {
             throw new UserNotFoundException();
@@ -390,7 +407,8 @@ export class UserDomain {
         const now = this.helperDateService.create();
 
         try {
-            const { statusEvents, revokeAllEvents } =
+            // Sequential by design: write must not run if an earlier step throws
+            const { statusActivityLogs, revokeAllActivityLogs } =
                 await this.databaseService.withTransaction(async tx => {
                     const row =
                         await this.userRepository.updateStatusByAdminInTx(
@@ -417,7 +435,7 @@ export class UserDomain {
                             metadata: targetMetadata,
                         }),
                     ];
-                    let revokeAll: IActivityLogStagedEvent[] = [];
+                    let revokeAll: IActivityLogStaged[] = [];
                     if (revokesAccess) {
                         const sessions =
                             await this.sessionDomain.revokeActiveByUserInTx(
@@ -434,18 +452,18 @@ export class UserDomain {
                     }
 
                     return {
-                        statusEvents: prepared,
-                        revokeAllEvents: revokeAll,
+                        statusActivityLogs: prepared,
+                        revokeAllActivityLogs: revokeAll,
                     };
                 });
             if (revokesAccess) {
                 await this.sessionDomain.finalizeRevokeAll(
                     userId,
-                    revokeAllEvents
+                    revokeAllActivityLogs
                 );
             }
 
-            this.activityLogDomain.stagePrepared(statusEvents);
+            this.activityLogDomain.stagePrepared(statusActivityLogs);
 
             return;
         } catch (err: unknown) {
@@ -485,16 +503,15 @@ export class UserDomain {
 
     async deleteSelf(userId: string): Promise<void> {
         try {
-            const revokeAllEvents = this.sessionDomain.prepareRevokeAllSelf(
-                userId,
-                false
-            );
-            const deleteSelfEvents = [
+            const revokeAllActivityLogs =
+                this.sessionDomain.prepareRevokeAllSelf(userId, false);
+            const deleteSelfActivityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userDeleteSelf,
                 }),
             ];
             const now = this.helperDateService.create();
+            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.withTransaction(async tx => {
                 await this.userRepository.deleteSelfInTx(tx, userId, now);
                 await this.sessionDomain.revokeActiveByUserInTx(
@@ -510,9 +527,12 @@ export class UserDomain {
                     now
                 );
             });
-            await this.sessionDomain.finalizeRevokeAll(userId, revokeAllEvents);
+            await this.sessionDomain.finalizeRevokeAll(
+                userId,
+                revokeAllActivityLogs
+            );
 
-            this.activityLogDomain.stagePrepared(deleteSelfEvents);
+            this.activityLogDomain.stagePrepared(deleteSelfActivityLogs);
 
             return;
         } catch (err: unknown) {

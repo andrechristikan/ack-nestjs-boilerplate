@@ -28,8 +28,8 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
 
     private buildWorkspaceScopedWhere(
         workspaceId: string,
-        where?: Prisma.WorkspaceMemberWhereInput,
-        role?: Record<string, IPaginationIn>
+        where: Prisma.WorkspaceMemberWhereInput | null,
+        role: Record<string, IPaginationIn> | null
     ): Prisma.WorkspaceMemberWhereInput {
         return {
             ...where,
@@ -106,11 +106,11 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>
+        role: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
-            where,
+            where ?? null,
             role
         );
 
@@ -134,11 +134,11 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>
+        role: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<IWorkspaceMember>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
-            where,
+            where ?? null,
             role
         );
 

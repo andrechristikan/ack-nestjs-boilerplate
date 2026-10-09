@@ -1,4 +1,5 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
@@ -18,7 +19,6 @@ import type {
 } from '@modules/project/interfaces/project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
-import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -64,13 +64,11 @@ export class ProjectDomain {
     }
 
     async validateProjectGuard(
-        workspaceId: string | null,
+        workspaceId: string,
         projectId: string | null
     ): Promise<Project> {
-        if (!workspaceId) {
-            throw new WorkspaceNotFoundException();
-        } else if (!projectId) {
-            throw new ProjectNotFoundException();
+        if (!projectId) {
+            throw new RequestContextMissingException('params.projectId');
         }
 
         const project = await this.projectRepository.findActiveByIdAndWorkspace(
@@ -95,7 +93,7 @@ export class ProjectDomain {
     }
 
     /** Lists projects in the workspace: a workspace `owner` sees every project, everyone else sees only the ones they hold a `ProjectMember` row for. */
-    async getListForMember(
+    async getListCursorByMember(
         workspaceId: string,
         workspaceMember: WorkspaceMember,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
@@ -116,7 +114,7 @@ export class ProjectDomain {
         actorId: string,
         create: IProjectCreate
     ): Promise<Project> {
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectCreated,
                 userId: actorId,
@@ -132,7 +130,7 @@ export class ProjectDomain {
             slugCandidates
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return project;
     }
@@ -146,7 +144,7 @@ export class ProjectDomain {
         actorId: string,
         update: IProjectUpdate
     ): Promise<Project> {
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectUpdated,
                 userId: actorId,
@@ -160,7 +158,7 @@ export class ProjectDomain {
             update
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return row;
     }
@@ -172,6 +170,7 @@ export class ProjectDomain {
     ): Promise<Project> {
         this.assertSlugAllowed(slug);
 
+        // Sequential by design: gate before the work it guards
         const slugTaken = await this.projectRepository.existsBySlugInWorkspace(
             project.workspaceId,
             slug,
@@ -181,7 +180,7 @@ export class ProjectDomain {
             throw new ProjectSlugAlreadyExistsException();
         }
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectUpdated,
                 userId: actorId,
@@ -192,13 +191,13 @@ export class ProjectDomain {
 
         const row = await this.projectRepository.updateSlug(project.id, slug);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return row;
     }
 
     async softDeleteProject(project: Project, actorId: string): Promise<void> {
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectDeleted,
                 userId: actorId,
@@ -210,7 +209,7 @@ export class ProjectDomain {
 
         await this.projectRepository.softDelete(project.id, deletedAt);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async softDeleteByWorkspaceInTx(
@@ -227,19 +226,18 @@ export class ProjectDomain {
         );
     }
 
-    async getListForAdmin(
+    async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string
+        workspaceId: string | null
     ): Promise<IResponsePaginationReturn<Project>> {
-        return this.projectRepository.findWithPaginationOffsetForAdmin(
+        return this.projectRepository.findWithPaginationOffsetByAdmin(
             pagination,
             workspaceId
         );
     }
 
-    async getByIdForAdmin(projectId: string): Promise<Project> {
-        const project =
-            await this.projectRepository.findByIdForAdmin(projectId);
+    async getByIdByAdmin(projectId: string): Promise<Project> {
+        const project = await this.projectRepository.findByIdByAdmin(projectId);
         if (!project) {
             throw new ProjectNotFoundException();
         }

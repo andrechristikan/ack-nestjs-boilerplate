@@ -3,7 +3,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { ActivityLogWorkspaceVolumeContract } from '@modules/activity-log/contracts/activity-log.workspace-volume.contract';
 import type {
     IActivityLogAnalyticActionCount,
-    IActivityLogAnalyticEvent,
+    IActivityLogAnalyticList,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogAnalyticRepository } from '@modules/activity-log/repositories/activity-log.analytic.repository';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
@@ -16,7 +16,7 @@ export class ActivityLogAnalyticDomain {
         private readonly activityLogAnalyticRepository: ActivityLogAnalyticRepository
     ) {}
 
-    countByActionsInRange(
+    getCountByActionsInRange(
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date,
@@ -30,10 +30,10 @@ export class ActivityLogAnalyticDomain {
         );
     }
 
-    groupByActionInRange(
+    getGroupByActionInRange(
         actions: EnumActivityLogAction[],
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IActivityLogAnalyticActionCount[]> {
         return this.activityLogAnalyticRepository.groupByActionInRange(
             actions,
@@ -42,11 +42,11 @@ export class ActivityLogAnalyticDomain {
         );
     }
 
-    findManyByActionsInRange(
+    getManyByActionsInRange(
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date
-    ): Promise<IActivityLogAnalyticEvent[]> {
+    ): Promise<IActivityLogAnalyticList[]> {
         return this.activityLogAnalyticRepository.findManyByActionsInRange(
             actions,
             startDate,
@@ -54,7 +54,7 @@ export class ActivityLogAnalyticDomain {
         );
     }
 
-    countByWorkspaceInRange(
+    getCountByWorkspaceInRange(
         workspaceId: string,
         startDate: Date,
         endDate: Date
@@ -67,7 +67,7 @@ export class ActivityLogAnalyticDomain {
         );
     }
 
-    groupActivityByWorkspaceOffset(
+    getGroupActivityByWorkspaceOffset(
         startDate: Date,
         endDate: Date,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>

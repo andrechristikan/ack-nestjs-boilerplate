@@ -11,28 +11,37 @@ import {
 } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
 import { EnumRoleType } from '@generated/prisma-client/client';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
+import {
+    DocUserErrorResponses,
+    UserStoreKey,
+} from '@modules/user/constants/user.constant';
+import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
+import { RoleProtectedEmptyException } from '@modules/role/exceptions/role.protected-empty.exception';
 
 /**
- * Restricts a route to the given role types via RoleGuard and documents role kits.
+ * Restricts a route to the given role types via RoleGuard and documents role kits and the missing user store.
  * @public
  */
 export function RoleProtected(
     ...requiredRoles: EnumRoleType[]
 ): MethodDecorator {
+    if (requiredRoles.length === 0) {
+        throw new RoleProtectedEmptyException();
+    }
+
     return applyDecorators(
         UseGuards(RoleGuard),
         SetMetadata(RoleRequiredMetaKey, requiredRoles),
         DocRoleErrorResponses.forbidden,
-        DocRoleErrorResponses.predefinedNotFound
+        DocUserErrorResponses.guardMissing
     );
 }
 
 /**
- * Reads the current user's role with its policies, or one of its fields, that `UserGuard` stored; throws when either is absent.
+ * Reads the current user's role with its policies, or one of its fields, that `UserGuard` stored; throws `UserGuardMissingException` when the user is absent and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const RoleCurrent = createParamDecorator<
@@ -47,24 +56,21 @@ export const RoleCurrent = createParamDecorator<
         | NonNullable<
               IRoleWithPolicies[Extract<keyof IRoleWithPolicies, string>]
           > => {
-        const user = ClsServiceManager.getClsService().get<IUser | undefined>(
-            UserStoreKey
-        );
-        if (user === undefined || user === null) {
-            throw new RequestContextMissingException(UserStoreKey);
+        const user =
+            ClsServiceManager.getClsService().get<IUser | null>(UserStoreKey) ??
+            null;
+        if (user === null) {
+            throw new UserGuardMissingException();
         }
 
         const { role } = user;
-        if (role === undefined || role === null) {
-            throw new RequestContextMissingException(`${UserStoreKey}.role`);
-        }
-
-        if (field === undefined || field === null) {
+        const fieldKey = field ?? null;
+        if (fieldKey === null) {
             return role;
         }
 
-        const value = role[field];
-        if (value === undefined || value === null) {
+        const value = role[fieldKey] ?? null;
+        if (value === null) {
             throw new RequestContextMissingException(
                 `${UserStoreKey}.role.${field}`
             );

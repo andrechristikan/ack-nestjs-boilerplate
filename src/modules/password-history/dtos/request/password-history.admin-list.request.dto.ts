@@ -8,12 +8,26 @@ import { PasswordHistoryDefaultAvailableOrderBy } from '@modules/password-histor
  * @public
  */
 export const PasswordHistoryAdminListRequestSchema =
-    PaginationOffsetQuerySchema.extend({
+    PaginationOffsetQuerySchema.omit({ search: true }).extend({
         orderBy: z
-            .union([z.string(), z.array(z.string())])
+            .union([
+                z.templateLiteral([
+                    z.enum(PasswordHistoryDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ]),
+                z.array(
+                    z.templateLiteral([
+                        z.enum(PasswordHistoryDefaultAvailableOrderBy),
+                        ':',
+                        z.enum(EnumPaginationOrderDirectionType),
+                    ])
+                ),
+                z.literal(''),
+            ])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${PasswordHistoryDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                description: `Order by field in \`field:direction\` format (e.g. \`${PasswordHistoryDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${PasswordHistoryDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
                 example: `${PasswordHistoryDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
     });

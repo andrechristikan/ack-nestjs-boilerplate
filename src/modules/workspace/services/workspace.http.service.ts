@@ -30,7 +30,7 @@ export class WorkspaceHttpService {
         private readonly requestStoreService: RequestStoreService
     ) {}
 
-    async getListForMember(
+    async getListCursorByMember(
         userId: string,
         query: WorkspaceUserListRequestDto
     ): Promise<IResponsePaginationReturn<Workspace>> {
@@ -41,10 +41,8 @@ export class WorkspaceHttpService {
             });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        const { data, ...others } = await this.workspaceDomain.getListForMember(
-            userId,
-            params
-        );
+        const { data, ...others } =
+            await this.workspaceDomain.getListCursorByMember(userId, params);
 
         return {
             data,
@@ -58,8 +56,8 @@ export class WorkspaceHttpService {
     ): Promise<IResponseReturn<Workspace>> {
         const workspace = await this.workspaceDomain.createWorkspace(userId, {
             name,
-            description,
-            isPublic,
+            description: description ?? null,
+            isPublic: isPublic ?? null,
         });
 
         return { data: workspace };
@@ -116,18 +114,22 @@ export class WorkspaceHttpService {
     async switchWorkspace(
         userId: string,
         { workspaceId }: WorkspaceSwitchRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceDomain.switchWorkspace(userId, workspaceId);
+
+        return {};
     }
 
     async softDeleteWorkspace(
         workspaceId: string,
         actorId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceDomain.softDeleteWorkspace(workspaceId, actorId);
+
+        return {};
     }
 
-    async getListForAdmin(
+    async getListOffsetByAdmin(
         query: WorkspaceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Workspace>> {
         const { params, storePatch } =
@@ -147,10 +149,11 @@ export class WorkspaceHttpService {
             },
         });
 
-        const { data, ...others } = await this.workspaceDomain.getListForAdmin(
-            params,
-            isPublic?.where
-        );
+        const { data, ...others } =
+            await this.workspaceDomain.getListOffsetByAdmin(
+                params,
+                isPublic?.where
+            );
 
         return {
             data,
@@ -158,11 +161,11 @@ export class WorkspaceHttpService {
         };
     }
 
-    async getByIdForAdmin(
+    async getByIdByAdmin(
         workspaceId: string
     ): Promise<IResponseReturn<Workspace>> {
         const workspace =
-            await this.workspaceDomain.getByIdForAdmin(workspaceId);
+            await this.workspaceDomain.getByIdByAdmin(workspaceId);
 
         return { data: workspace };
     }

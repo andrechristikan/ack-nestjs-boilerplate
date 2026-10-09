@@ -24,4 +24,7 @@ export enum EnumWorkspaceStatusCodeError {
     joinRequestAlreadyProcessed = 51618,
     selfTransfer = 51619,
     slugInvalid = 51620,
+    headerMissing = 51621,
+    guardMissing = 51622,
+    memberGuardMissing = 51623,
 }

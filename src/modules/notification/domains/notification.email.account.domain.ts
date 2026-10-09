@@ -33,6 +33,8 @@ export class NotificationEmailAccountDomain {
         private readonly helperDateService: HelperDateService,
         private readonly helperEncryptionService: HelperEncryptionService
     ) {
+        // AppEnvSchema requires both addresses once AWS SES credentials are set, and
+        // AwsSESService.send is a no-op while SES is uninitialized, so neither is read as null.
         this.noreplyEmail = this.configService.get<string>('email.noreply')!;
         this.supportEmail = this.configService.get<string>('email.support')!;
 
@@ -63,8 +65,8 @@ export class NotificationEmailAccountDomain {
                 ...this.defaultTemplateData,
                 username,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return { message: 'Welcome email processed', result };
@@ -84,8 +86,8 @@ export class NotificationEmailAccountDomain {
                 ...this.defaultTemplateData,
                 username,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return { message: 'Welcome social email processed', result };
@@ -124,8 +126,8 @@ export class NotificationEmailAccountDomain {
                 passwordExpiredAt: passwordExpiredAtFormatted,
                 passwordCreatedAt: passwordCreatedAtFormatted,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return { message: 'Create by admin email processed', result };
@@ -163,8 +165,8 @@ export class NotificationEmailAccountDomain {
                 expiredAt: expiredAtFormatted,
                 expiredInMinutes: expiredInMinutesFormatted,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return { message: 'Verification email processed', result };
@@ -183,8 +185,8 @@ export class NotificationEmailAccountDomain {
                 username,
                 reference,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return { message: 'Email verified email processed', result };
@@ -204,8 +206,8 @@ export class NotificationEmailAccountDomain {
                 reference,
                 mobileNumber,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return {

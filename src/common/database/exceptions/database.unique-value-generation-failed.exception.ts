@@ -11,7 +11,7 @@ export class DatabaseUniqueValueGenerationFailedException extends AppBaseExcepti
     readonly statusCode =
         EnumDatabaseStatusCodeError.uniqueValueGenerationFailed;
     readonly statusCodeKey = EnumDatabaseStatusCodeError[this.statusCode];
-    readonly httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+    readonly httpStatus = HttpStatus.CONFLICT;
 
     constructor() {
         super('database.error.uniqueValueGenerationFailed');

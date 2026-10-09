@@ -1,22 +1,22 @@
 import { z } from 'zod';
 
 /**
- * Validates the body for updating a project name and description.
+ * Validates the body replacing a project name and description.
  * @public
  */
 export const ProjectUpdateRequestSchema = z.strictObject({
-    name: z.string().max(150).optional().meta({
+    name: z.string().min(1).max(150).meta({
         description: 'Project name',
         example: 'Website Revamp',
     }),
-    description: z.string().max(500).optional().meta({
-        description: 'Project description',
+    description: z.string().max(500).nullable().meta({
+        description: 'Project description; null clears it',
         example: 'Marketing site redesign',
     }),
 });
 
 /**
- * Body for updating a project name and description.
+ * Body replacing a project name and description.
  * @public
  */
 export type ProjectUpdateRequestDto = z.infer<

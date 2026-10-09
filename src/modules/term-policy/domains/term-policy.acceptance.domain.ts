@@ -7,7 +7,6 @@ import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -31,13 +30,9 @@ export class TermPolicyAcceptanceDomain {
     ) {}
 
     async validateTermPolicyGuard(
-        user: IUser | null,
+        user: IUser,
         requiredTermPolicies: EnumTermPolicyType[]
     ): Promise<void> {
-        if (!user) {
-            throw new AuthJwtAccessTokenInvalidException();
-        }
-
         const { termPolicy } = user;
 
         const defaultTermPolicies = [
@@ -96,6 +91,7 @@ export class TermPolicyAcceptanceDomain {
             throw new TermPolicyNotFoundException();
         }
 
+        // Sequential by design: write must not run if an earlier step throws
         const exist =
             await this.termPolicyRepository.existsAcceptanceByPolicyAndUser(
                 user.id,
@@ -106,7 +102,7 @@ export class TermPolicyAcceptanceDomain {
         }
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userAcceptTermPolicy,
                 }),
@@ -123,7 +119,7 @@ export class TermPolicyAcceptanceDomain {
                 await this.userDomain.acceptTermPolicyInTx(tx, user.id, type);
             });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             await this.notificationQueue.sendUserAcceptTermPolicy(user.id, {
                 termPolicyId: policy.id,

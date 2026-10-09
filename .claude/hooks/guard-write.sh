@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# PreToolUse Write|Edit: deny secrets, generated trees, and skill output under docs/.
+# PreToolUse Write|Edit|MultiEdit|NotebookEdit: deny secrets, generated trees, and skill output under docs/.
 set -euo pipefail
 
-path=$(jq -r '.tool_input.file_path // empty')
+path=$(jq -r '.tool_input.file_path // .tool_input.notebook_path // empty')
 [ -n "$path" ] || exit 0
 
 root="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
@@ -27,7 +27,7 @@ case "$rel" in
         ;;
     generated/docs/*) ;;
     generated/*|*/generated/*)
-        deny "generated/ and src/generated/ are produced by pnpm generate. Reports go to generated/docs/."
+        deny "src/generated/ is produced by pnpm generate; generated/swagger.json by src/swagger.ts and generated/vault/ by the Vault containers. Reports go to generated/docs/."
         ;;
     docs/superpowers/*|*/docs/superpowers/*)
         deny "Skill output goes to .superpowers/ (gitignored). docs/ is tracked project documentation."

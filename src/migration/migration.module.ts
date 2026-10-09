@@ -19,12 +19,7 @@ import { WorkspaceRepositoryModule } from '@modules/workspace/workspace.reposito
  * Registers all `nest-commander` seed/remove commands for initial data migration.
  */
 @Module({
-    imports: [
-        CommonModule,
-        AwsModule,
-        UserDomainModule,
-        WorkspaceRepositoryModule,
-    ],
+    controllers: [],
     providers: [
         MigrationApiKeySeed,
         MigrationCountrySeed,
@@ -39,5 +34,11 @@ import { WorkspaceRepositoryModule } from '@modules/workspace/workspace.reposito
         MigrationAwsS3ConfigSeed,
     ],
     exports: [],
+    imports: [
+        CommonModule,
+        AwsModule,
+        UserDomainModule,
+        WorkspaceRepositoryModule,
+    ],
 })
 export class MigrationModule {}

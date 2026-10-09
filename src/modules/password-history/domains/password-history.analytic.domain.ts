@@ -9,7 +9,7 @@ export class PasswordHistoryAnalyticDomain {
         private readonly passwordHistoryAnalyticRepository: PasswordHistoryAnalyticRepository
     ) {}
 
-    countByTypeInRange(
+    getCountByTypeInRange(
         type: EnumPasswordHistoryType,
         startDate: Date,
         endDate: Date
@@ -21,7 +21,7 @@ export class PasswordHistoryAnalyticDomain {
         );
     }
 
-    findByTypeInRange(
+    getByTypeInRange(
         type: EnumPasswordHistoryType,
         startDate: Date,
         endDate: Date

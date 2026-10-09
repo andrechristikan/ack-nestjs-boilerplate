@@ -3,7 +3,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type {
     IActivityLogAnalyticActionCount,
-    IActivityLogAnalyticEvent,
+    IActivityLogAnalyticList,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 
@@ -16,14 +16,14 @@ export interface IActivityLogAnalyticRepository {
     ): Promise<number>;
     groupByActionInRange(
         actions: EnumActivityLogAction[],
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IActivityLogAnalyticActionCount[]>;
     findManyByActionsInRange(
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date
-    ): Promise<IActivityLogAnalyticEvent[]>;
+    ): Promise<IActivityLogAnalyticList[]>;
     countByWorkspaceInRange(
         excludedActions: EnumActivityLogAction[],
         workspaceId: string,

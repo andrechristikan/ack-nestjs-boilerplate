@@ -18,3 +18,18 @@ export enum EnumQueuePriority {
     medium = 5,
     low = 10,
 }
+
+/**
+ * BullMQ job states as `Job.getState()` reports them; the values equal BullMQ's own strings.
+ * @public
+ */
+export enum EnumQueueJobState {
+    completed = 'completed',
+    failed = 'failed',
+    active = 'active',
+    delayed = 'delayed',
+    prioritized = 'prioritized',
+    waiting = 'waiting',
+    waitingChildren = 'waiting-children',
+    unknown = 'unknown',
+}

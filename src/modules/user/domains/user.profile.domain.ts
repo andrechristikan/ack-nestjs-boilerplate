@@ -1,7 +1,7 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import { AwsServiceUnavailableException } from '@common/aws/exceptions/aws.service-unavailable.exception';
+import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import type {
     IAwsS3,
     IAwsS3Presign,
@@ -80,13 +80,14 @@ export class UserProfileDomain {
         userId: string,
         { countryId, ...data }: IUserUpdateProfile
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         const checkCountry = await this.countryDomain.existsById(countryId);
         if (!checkCountry) {
             throw new CountryNotFoundException();
         }
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userUpdateProfile,
                 }),
@@ -96,7 +97,7 @@ export class UserProfileDomain {
                 ...data,
             });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -132,7 +133,7 @@ export class UserProfileDomain {
             );
 
         if (!aws) {
-            throw new AwsServiceUnavailableException();
+            throw new AwsS3NotConfiguredException();
         }
 
         return aws;
@@ -142,6 +143,11 @@ export class UserProfileDomain {
         userId: string,
         { key, size }: IUserUpdatePhotoProfile
     ): Promise<void> {
+        const isS3Initialized = this.awsS3Service.isInitialized();
+        if (!isS3Initialized) {
+            throw new AwsS3NotConfiguredException();
+        }
+
         try {
             const aws: IAwsS3 = this.awsS3Service.mapPresign(
                 {
@@ -151,14 +157,14 @@ export class UserProfileDomain {
                 { access: EnumAwsS3Accessibility.public }
             );
 
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userUpdatePhotoProfile,
                 }),
             ];
             await this.userRepository.updatePhotoProfile(userId, aws);
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -193,26 +199,28 @@ export class UserProfileDomain {
                 { access: EnumAwsS3Accessibility.public }
             );
 
-            if (aws) {
-                this.logger.debug(
-                    {
-                        userId,
-                        fileSize: file.size,
-                        awsKey: aws.key,
-                        awsBucket: aws.bucket,
-                    },
-                    `Photo profile uploaded to S3 with key: ${key}`
-                );
-
-                const events = [
-                    this.activityLogDomain.prepare({
-                        action: EnumActivityLogAction.userUpdatePhotoProfile,
-                    }),
-                ];
-                await this.userRepository.updatePhotoProfile(userId, aws);
-
-                this.activityLogDomain.stagePrepared(events);
+            if (!aws) {
+                throw new AwsS3NotConfiguredException();
             }
+
+            this.logger.debug(
+                {
+                    userId,
+                    fileSize: file.size,
+                    awsKey: aws.key,
+                    awsBucket: aws.bucket,
+                },
+                `Photo profile uploaded to S3 with key: ${key}`
+            );
+
+            const activityLogs = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userUpdatePhotoProfile,
+                }),
+            ];
+            await this.userRepository.updatePhotoProfile(userId, aws);
+
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -228,6 +236,7 @@ export class UserProfileDomain {
         userId: string,
         username: Lowercase<string>
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         const [checkUsername, checkBadWord, exist] = await Promise.all([
             this.userUtil.checkUsernamePattern(username),
             this.userUtil.checkBadWord(username),
@@ -242,14 +251,14 @@ export class UserProfileDomain {
         }
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userClaimUsername,
                 }),
             ];
             await this.userRepository.claimUsername(userId, { username });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {

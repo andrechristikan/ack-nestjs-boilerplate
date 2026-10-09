@@ -4,17 +4,32 @@ services:
     apis:
         build:
             context: .
-            dockerfile: ci/dockerfile.local
+            dockerfile: dockerfile
         hostname: apis
         ports:
             - 3000:3000
         volumes:
-            - ./src:/app/src
-            - ./prisma:/app/prisma
-            - ./.env:/app/.env
+            - type: bind
+              source: ./src
+              target: /app/src
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ./prisma
+              target: /app/prisma
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ./.env
+              target: /app/.env
+              read_only: true
+              bind:
+                  create_host_path: false
         restart: on-failure
         networks:
             - app-network
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
         depends_on:
             redis:
                 condition: service_healthy
@@ -30,7 +45,7 @@ services:
                     '--no-verbose',
                     '--tries=1',
                     '--spider',
-                    'http://localhost:3000/api/public/hello',
+                    'http://127.0.0.1:3000/api/public/hello',
                 ]
             interval: 30s
             timeout: 10s
@@ -44,14 +59,29 @@ services:
                     memory: 2G
 
     jwks-server:
-        image: nginx:latest
+        image: nginx:alpine
         hostname: jwks-server
         ports:
             - '3011:80'
         volumes:
-            - ./keys/access-jwks.json:/usr/share/nginx/html/.well-known/access-jwks.json:ro
-            - ./keys/refresh-jwks.json:/usr/share/nginx/html/.well-known/refresh-jwks.json:ro
-            - ./ci/jwks-server/jwks.conf:/etc/nginx/conf.d/default.conf:ro
+            - type: bind
+              source: ./keys/access-jwks.json
+              target: /usr/share/nginx/html/.well-known/access-jwks.json
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ./keys/refresh-jwks.json
+              target: /usr/share/nginx/html/.well-known/refresh-jwks.json
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ./ci/jwks-server/jwks.conf
+              target: /etc/nginx/conf.d/default.conf
+              read_only: true
+              bind:
+                  create_host_path: false
         networks:
             - app-network
         deploy:
@@ -64,8 +94,7 @@ services:
                 [
                     'CMD',
                     'wget',
-                    '--no-verbose',
-                    '--tries=1',
+                    '-q',
                     '--spider',
                     'http://localhost:80/.well-known/access-jwks.json',
                 ]
@@ -84,10 +113,26 @@ services:
             - '8200:8200'
         entrypoint: ['/bin/sh', '/vault/entrypoint.sh']
         volumes:
-            - ./ci/vault/entrypoint.sh:/vault/entrypoint.sh:ro
-            - ./ci/vault/config.hcl:/vault/config.hcl:ro
-            - vault_data:/vault/file
-            - ./generated/vault:/vault/init
+            - type: bind
+              source: ./ci/vault/entrypoint.sh
+              target: /vault/entrypoint.sh
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ./ci/vault/config.hcl
+              target: /vault/config.hcl
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: volume
+              source: vault_data
+              target: /vault/file
+            - type: bind
+              source: ./generated/vault
+              target: /vault/init
+              bind:
+                  create_host_path: true
         networks:
             vault-network:
                 aliases:
@@ -111,10 +156,29 @@ services:
             VAULT_ADDR: http://vault:8200
             KV_MOUNT: ack-nestjs-boilerplate
         volumes:
-            - ./ci/vault/bootstrap.sh:/bootstrap.sh:ro
-            - ./ci/vault/policies:/policies:ro
-            - ./.env.example:/seed/.env.example:ro
-            - ./generated/vault:/vault/init
+            - type: bind
+              source: ./ci/vault/bootstrap.sh
+              target: /bootstrap.sh
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ./ci/vault/policies
+              target: /policies
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ./.env.example
+              target: /seed/.env.example
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ./generated/vault
+              target: /vault/init
+              bind:
+                  create_host_path: true
         networks:
             - vault-network
         depends_on:
@@ -124,10 +188,21 @@ services:
     redis:
         image: redis:latest
         hostname: redis
+        environment:
+            REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:-}
+        user: redis
+        command:
+            [
+                'sh',
+                '-c',
+                'if [ -n "$$REDIS_PASSWORD" ]; then exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"; fi; exec redis-server --appendonly yes',
+            ]
         ports:
             - '6379:6379'
         volumes:
-            - redis_data:/data
+            - type: volume
+              source: redis_data
+              target: /data
         networks:
             - app-network
         deploy:
@@ -136,7 +211,11 @@ services:
                     cpus: '0.5'
                     memory: 256M
         healthcheck:
-            test: ['CMD', 'redis-cli', 'ping']
+            test:
+                [
+                    'CMD-SHELL',
+                    'if [ -n "$$REDIS_PASSWORD" ]; then export REDISCLI_AUTH="$$REDIS_PASSWORD"; fi; redis-cli ping | grep -q PONG',
+                ]
             interval: 10s
             timeout: 30s
             retries: 5
@@ -151,13 +230,23 @@ services:
         environment:
             - REDIS_HOST=redis
             - REDIS_PORT=6379
+            - REDIS_PASSWORD=${DOCKER_REDIS_PASSWORD:-}
             - BULL_PREFIX=Queue
-            - USER_LOGIN=admin
-            - USER_PASSWORD=admin123
+            - USER_LOGIN=${DOCKER_BULLBOARD_USER:-admin}
+            - USER_PASSWORD=${DOCKER_BULLBOARD_PASSWORD:-admin123}
             - REDIS_DB=1
         depends_on:
             redis:
                 condition: service_healthy
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'wget -q --spider http://127.0.0.1:3000/login || exit 1',
+                ]
+            interval: 10s
+            timeout: 30s
+            retries: 5
         deploy:
             resources:
                 limits:
@@ -168,12 +257,30 @@ services:
         image: mongo:latest
         hostname: mongo
         ports:
-            - '27017:27017'
+            - '${DOCKER_MONGO_PORT:-27017}:27017'
+        environment:
+            HOME: /tmp
+            RS_HOST: host.docker.internal:${DOCKER_MONGO_PORT:-27017}
+            MONGO_INITDB_ROOT_USERNAME: ${DOCKER_MONGO_ROOT_USERNAME:-root}
+            MONGO_INITDB_ROOT_PASSWORD: ${DOCKER_MONGO_ROOT_PASSWORD:-}
         networks:
             - app-network
         volumes:
-            - mongo_data:/data/db
-            - ./ci/mongo/entrypoint.sh:/entrypoint.sh:ro
+            - type: volume
+              source: mongo_data
+              target: /data/db
+            - type: bind
+              source: ./keys/mongo-keyfile
+              target: /etc/mongo/keyfile
+              read_only: true
+              bind:
+                  create_host_path: false
+            - type: bind
+              source: ./ci/mongo/entrypoint.sh
+              target: /entrypoint.sh
+              read_only: true
+              bind:
+                  create_host_path: false
         entrypoint: ['/bin/bash', '/entrypoint.sh']
         extra_hosts:
             - 'host.docker.internal:host-gateway'
@@ -186,7 +293,7 @@ services:
             test:
                 [
                     'CMD-SHELL',
-                    'mongosh --quiet --eval "quit(db.hello().isWritablePrimary ? 0 : 1)"',
+                    'if [ -n "$$MONGO_INITDB_ROOT_PASSWORD" ]; then mongosh --quiet -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "quit(db.hello().isWritablePrimary ? 0 : 1)"; else mongosh --quiet --eval "quit(db.hello().isWritablePrimary ? 0 : 1)"; fi',
                 ]
             interval: 10s
             timeout: 5s

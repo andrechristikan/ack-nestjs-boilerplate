@@ -7,6 +7,7 @@ export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Omit<
     Request,
     'user'
 > {
+    id: string;
     correlationId: string;
     user?: T;
 }

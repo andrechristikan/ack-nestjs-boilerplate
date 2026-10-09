@@ -14,10 +14,15 @@ export class HealthAwsSESIndicator {
     ) {}
 
     /**
-     * Down when the SES connection check fails or throws.
+     * Down when SES is not configured, or when the SES connection check fails or throws.
      */
     async isHealthy(key: string): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
+
+        const isInitialized = this.awsSESService.isInitialized();
+        if (!isInitialized) {
+            return indicator.down('AWS SES is not configured');
+        }
 
         try {
             const connection = await this.awsSESService.checkConnection();

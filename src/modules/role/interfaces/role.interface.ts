@@ -16,7 +16,7 @@ export type IRoleWithPolicyCount = Role & {
 };
 
 export interface IRoleUpdate {
-    description?: string;
+    description: string | null;
     type: EnumRoleType;
 }
 

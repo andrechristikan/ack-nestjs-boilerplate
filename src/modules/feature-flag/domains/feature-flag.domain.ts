@@ -7,11 +7,8 @@ import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import { FeatureFlagInvalidMetadataException } from '@modules/feature-flag/exceptions/feature-flag.invalid-metadata.exception';
 import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
-import { FeatureFlagPredefinedKeyEmptyException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-empty.exception';
-import { FeatureFlagPredefinedKeyLengthExceededException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-length-exceeded.exception';
-import { FeatureFlagPredefinedKeyNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-not-found.exception';
-import { FeatureFlagPredefinedKeyTypeInvalidException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-type-invalid.exception';
-import { FeatureFlagServiceUnavailableException } from '@modules/feature-flag/exceptions/feature-flag.service-unavailable.exception';
+import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
+import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import type {
     IFeatureFlagMetadata,
     IFeatureFlagUpdateMetadata,
@@ -43,7 +40,7 @@ export class FeatureFlagDomain {
             identifier
         );
         if (!checkRollout) {
-            throw new FeatureFlagServiceUnavailableException();
+            throw new FeatureFlagDisabledException();
         }
     }
 
@@ -61,23 +58,15 @@ export class FeatureFlagDomain {
     }
 
     async validateFeatureFlag(
-        keyPath: string,
+        key: string,
         userId: string | null,
         anonymousId: string | null
     ): Promise<void> {
-        const keys = keyPath.split('.');
-        if (keys.some(segment => segment.length === 0)) {
-            throw new FeatureFlagPredefinedKeyEmptyException();
-        } else if (keys.length > 1) {
-            throw new FeatureFlagPredefinedKeyLengthExceededException();
-        }
-
-        const key = keys[0];
         const featureFlag = await this.featureFlagCache.getByKeyAndCache(key);
         if (!featureFlag) {
-            throw new FeatureFlagPredefinedKeyNotFoundException();
+            throw new FeatureFlagNotConfiguredException(key);
         } else if (!featureFlag.isEnable) {
-            throw new FeatureFlagServiceUnavailableException();
+            throw new FeatureFlagDisabledException();
         }
 
         if (userId) {
@@ -95,7 +84,7 @@ export class FeatureFlagDomain {
         }
 
         if (!anonymousId) {
-            throw new FeatureFlagServiceUnavailableException();
+            throw new FeatureFlagDisabledException();
         }
 
         this.assertRollout(featureFlag.rolloutPercent, key, anonymousId);
@@ -107,18 +96,18 @@ export class FeatureFlagDomain {
     ): Promise<void> {
         const featureFlag = await this.featureFlagCache.getByKeyAndCache(key);
         if (!featureFlag) {
-            throw new FeatureFlagPredefinedKeyNotFoundException();
+            throw new FeatureFlagNotConfiguredException(key);
         } else if (!featureFlag.isEnable) {
-            throw new FeatureFlagServiceUnavailableException();
+            throw new FeatureFlagDisabledException();
         }
 
         const metadata: unknown =
             (featureFlag.metadata as Record<string, unknown>)?.[metadataKey] ??
             null;
         if (typeof metadata !== 'boolean') {
-            throw new FeatureFlagPredefinedKeyTypeInvalidException();
+            throw new FeatureFlagDisabledException();
         } else if (!metadata) {
-            throw new FeatureFlagServiceUnavailableException();
+            throw new FeatureFlagDisabledException();
         }
     }
 
@@ -140,15 +129,15 @@ export class FeatureFlagDomain {
         id: string,
         data: IFeatureFlagUpdateStatus
     ): Promise<FeatureFlag> {
+        // Sequential by design: gate before the work it guards
         const featureFlag = await this.featureFlagRepository.findOneById(id);
         if (!featureFlag) {
             throw new FeatureFlagNotFoundException();
         }
 
-        const [updated] = await Promise.all([
-            this.featureFlagRepository.updateStatus(id, data),
-            this.featureFlagCache.deleteCacheByKey(featureFlag.key),
-        ]);
+        const updated = await this.featureFlagRepository.updateStatus(id, data);
+        // Sequential by design: side effects whose order is part of the contract
+        await this.featureFlagCache.deleteCacheByKey(featureFlag.key);
 
         return updated;
     }
@@ -157,6 +146,7 @@ export class FeatureFlagDomain {
         id: string,
         data: IFeatureFlagUpdateMetadata
     ): Promise<FeatureFlag> {
+        // Sequential by design: gate before the work it guards
         const featureFlag = await this.featureFlagRepository.findOneById(id);
         if (!featureFlag) {
             throw new FeatureFlagNotFoundException();
@@ -170,10 +160,12 @@ export class FeatureFlagDomain {
             throw new FeatureFlagInvalidMetadataException();
         }
 
-        const [updated] = await Promise.all([
-            this.featureFlagRepository.updateMetadata(id, data),
-            this.featureFlagCache.deleteCacheByKey(featureFlag.key),
-        ]);
+        const updated = await this.featureFlagRepository.updateMetadata(
+            id,
+            data
+        );
+        // Sequential by design: side effects whose order is part of the contract
+        await this.featureFlagCache.deleteCacheByKey(featureFlag.key);
 
         return updated;
     }

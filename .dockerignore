@@ -42,6 +42,7 @@ jwks.json
 .dockerignore
 docker-compose*.yml
 ci/
+dockerfile
 
 # CI / project meta
 .github/

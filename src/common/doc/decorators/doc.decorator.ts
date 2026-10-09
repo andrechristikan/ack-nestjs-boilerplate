@@ -14,6 +14,11 @@ import {
     DocGlobalErrorResponses,
     DocResponseEntryMetaKey,
 } from '@common/doc/constants/doc.constant';
+import {
+    RequestCorrelationIdHeaderName,
+    RequestCustomLangHeaderName,
+    RequestIdHeaderName,
+} from '@common/request/constants/request.constant';
 import { faker } from '@faker-js/faker';
 
 /**
@@ -95,7 +100,7 @@ export function DocResponseError(
                       statusEntries[0]?.baseSchema ?? ResponseSchema,
                       { io: 'output' }
                   ).schema as SchemaObject)
-                : schemas[0];
+                : schemas[0]!;
         const description = described.has(httpStatus)
             ? ''
             : httpStatus.toString();
@@ -117,13 +122,13 @@ export function DocResponseError(
                           },
                       ])
                   )
-                : undefined;
+                : null;
 
         ApiResponse({
             description,
             status: httpStatus,
             schema,
-            ...(examples ? { examples } : {}),
+            ...(examples !== null && { examples }),
         })(target, propertyKey, descriptor);
     };
 }
@@ -146,16 +151,21 @@ export function DocErrors(
  * @public
  */
 export function Doc(options?: IDocOptions): MethodDecorator {
+    const summary = options?.summary ?? null;
+    const deprecated = options?.deprecated ?? null;
+    const description = options?.description ?? null;
+    const operationId = options?.operation ?? null;
+
     return applyDecorators(
         ApiOperation({
-            summary: options?.summary,
-            deprecated: options?.deprecated,
-            description: options?.description,
-            operationId: options?.operation,
+            ...(summary !== null && { summary }),
+            ...(deprecated !== null && { deprecated }),
+            ...(description !== null && { description }),
+            ...(operationId !== null && { operationId }),
         }),
         ApiHeaders([
             {
-                name: 'x-custom-lang',
+                name: RequestCustomLangHeaderName,
                 description: 'Custom language header',
                 required: false,
                 schema: {
@@ -165,7 +175,17 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                 },
             },
             {
-                name: 'x-correlation-id',
+                name: RequestIdHeaderName,
+                description:
+                    'Request identifier; a valid value is kept, otherwise the server generates one',
+                required: false,
+                schema: {
+                    example: faker.string.uuid(),
+                    type: 'string',
+                },
+            },
+            {
+                name: RequestCorrelationIdHeaderName,
                 description:
                     'Correlation identifier for tracking requests across services',
                 required: false,
@@ -185,6 +205,9 @@ export function Doc(options?: IDocOptions): MethodDecorator {
         DocGlobalErrorResponses.schemaMissing,
         DocGlobalErrorResponses.contextMissing,
         DocGlobalErrorResponses.uniqueValueGenerationFailed,
-        DocGlobalErrorResponses.serviceUnavailable
+        DocGlobalErrorResponses.databaseWriteConflict,
+        DocGlobalErrorResponses.databaseUnavailable,
+        DocGlobalErrorResponses.redisUnavailable,
+        DocGlobalErrorResponses.s3NotConfigured
     );
 }

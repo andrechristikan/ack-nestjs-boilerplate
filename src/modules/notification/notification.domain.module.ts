@@ -23,6 +23,7 @@ import { NotificationTemplateTermPolicyDomain } from '@modules/notification/doma
 import { NotificationTemplateWorkspaceDomain } from '@modules/notification/domains/notification.template.workspace.domain';
 import { NotificationTermPolicyDomain } from '@modules/notification/domains/notification.term-policy.domain';
 import { NotificationWorkspaceDomain } from '@modules/notification/domains/notification.workspace.domain';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { UserDomainModule } from '@modules/user/user.domain.module';
 import { BullModule } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
@@ -52,6 +53,7 @@ import { EnumQueue } from '@queues/enums/queue.enum';
         NotificationQueue,
         NotificationEmailQueue,
         NotificationPushQueue,
+        NotificationUtil,
     ],
     exports: [
         BullModule,
@@ -74,6 +76,7 @@ import { EnumQueue } from '@queues/enums/queue.enum';
         NotificationQueue,
         NotificationEmailQueue,
         NotificationPushQueue,
+        NotificationUtil,
     ],
     imports: [
         BullModule.registerQueueAsync(

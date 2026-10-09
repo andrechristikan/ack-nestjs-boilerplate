@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaClient } from '@generated/prisma-client/client';
-import type { IDatabaseClientOptions } from '@common/database/interfaces/database.client.interface';
+import type {
+    IDatabaseClient,
+    IDatabaseClientOptions,
+} from '@common/database/interfaces/database.client.interface';
 import { DatabaseExtensionUtil } from '@common/database/utils/database.extension.util';
 
 @Injectable()
@@ -20,12 +23,8 @@ export class DatabaseClientFactory extends PrismaClient<
         });
     }
 
-    /**
-     * Applies the audit extension to this connection. The return type stays inferred because
-     * annotating it erases the softDelete and restore model methods, so `IDatabaseClient` reads it
-     * back with `ReturnType`; the lint exception is `ts/database-inferred-client` in `eslint.config.mjs`.
-     */
-    create() {
+    /** Applies the audit extension to this connection. */
+    create(): IDatabaseClient {
         const extension = this.databaseExtensionUtil.build();
 
         return this.$extends(extension);

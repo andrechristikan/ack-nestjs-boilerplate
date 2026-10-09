@@ -88,9 +88,6 @@ tmp/
 ## Superpowers skill output (specs, plans, sdd notes) — never docs/
 .superpowers/
 
-## Graphify knowledge graph
-graphify-out/
-
 ## Cursor
 .cursorignore
 .cursorindexingignore

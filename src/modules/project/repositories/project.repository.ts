@@ -1,3 +1,4 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -11,8 +12,10 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { Prisma } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
-import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
-import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
+import type {
+    IProjectCreate,
+    IProjectUpdate,
+} from '@modules/project/interfaces/project.interface';
 import type { IProjectRepository } from '@modules/project/interfaces/project.repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -28,6 +31,11 @@ export class ProjectRepository implements IProjectRepository {
         projectId: string,
         workspaceId: string
     ): Promise<Project | null> {
+        const isValidId = this.databaseUtil.checkIdIsValid(projectId);
+        if (!isValidId) {
+            return null;
+        }
+
         return this.databaseService.client.project.findFirst({
             where: {
                 id: projectId,
@@ -37,7 +45,7 @@ export class ProjectRepository implements IProjectRepository {
         });
     }
 
-    async findByIdForAdmin(projectId: string): Promise<Project | null> {
+    async findByIdByAdmin(projectId: string): Promise<Project | null> {
         return this.databaseService.client.project.findUnique({
             where: { id: projectId },
         });
@@ -86,12 +94,12 @@ export class ProjectRepository implements IProjectRepository {
         );
     }
 
-    async findWithPaginationOffsetForAdmin(
+    async findWithPaginationOffsetByAdmin(
         {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string
+        workspaceId: string | null
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.offset<Project, Prisma.ProjectWhereInput>(
             this.databaseService.client.project,
@@ -107,7 +115,7 @@ export class ProjectRepository implements IProjectRepository {
 
     async create(
         workspaceId: string,
-        { name, description }: ProjectCreateRequestDto,
+        { name, description }: IProjectCreate,
         slugCandidates: string[]
     ): Promise<Project> {
         for (const slug of slugCandidates) {
@@ -127,7 +135,7 @@ export class ProjectRepository implements IProjectRepository {
                     'slug'
                 );
                 if (!isSlugCollision) {
-                    throw error;
+                    throw new AppUnknownException(error);
                 }
             }
         }
@@ -137,14 +145,11 @@ export class ProjectRepository implements IProjectRepository {
 
     async updateDetails(
         projectId: string,
-        { name, description }: ProjectUpdateRequestDto
+        { name, description }: IProjectUpdate
     ): Promise<Project> {
         return this.databaseService.client.project.update({
             where: { id: projectId },
-            data: {
-                name,
-                description,
-            },
+            data: { name, description },
         });
     }
 

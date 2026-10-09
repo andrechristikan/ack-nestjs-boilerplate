@@ -32,9 +32,7 @@ export class TermPolicyHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.TermPolicyWhereInput>(
                 query,
-                {
-                    availableOrderBy: TermPolicyDefaultAvailableOrderBy,
-                }
+                { availableOrderBy: TermPolicyDefaultAvailableOrderBy }
             );
         const type = this.paginationQueryUtil.inEnum(
             Prisma.TermPolicyScalarFieldEnum.type,
@@ -72,9 +70,7 @@ export class TermPolicyHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.TermPolicyWhereInput>(
                 query,
-                {
-                    availableOrderBy: TermPolicyDefaultAvailableOrderBy,
-                }
+                { availableOrderBy: TermPolicyDefaultAvailableOrderBy }
             );
         const type = this.paginationQueryUtil.inEnum(
             Prisma.TermPolicyScalarFieldEnum.type,

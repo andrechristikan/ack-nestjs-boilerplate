@@ -15,7 +15,7 @@ export class TermPolicyAcceptanceAnalyticDomain {
         private readonly userAnalyticDomain: UserAnalyticDomain
     ) {}
 
-    async acceptanceRate(
+    async getAcceptanceRate(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticTermPolicyAcceptanceRate> {
@@ -24,8 +24,8 @@ export class TermPolicyAcceptanceAnalyticDomain {
                 startDate,
                 endDate
             ),
-            this.userAnalyticDomain.countActive(),
-            this.termPolicyAnalyticDomain.countPublished(),
+            this.userAnalyticDomain.getCountActive(),
+            this.termPolicyAnalyticDomain.getCountPublished(),
         ]);
         const expected = users * published;
         return {
@@ -36,7 +36,7 @@ export class TermPolicyAcceptanceAnalyticDomain {
         };
     }
 
-    async timeToAccept(
+    async getTimeToAccept(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticTermPolicyTimeToAccept> {

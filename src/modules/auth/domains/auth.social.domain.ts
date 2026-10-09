@@ -4,39 +4,50 @@ import { LoginTicket, OAuth2Client } from 'google-auth-library';
 import type { TokenPayload } from 'google-auth-library';
 import verifyAppleToken from 'verify-apple-id-token';
 import type { VerifyAppleIdTokenResponse } from 'verify-apple-id-token';
+import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/auth.social-apple-not-configured.exception';
 import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
+import { AuthSocialGoogleNotConfiguredException } from '@modules/auth/exceptions/auth.social-google-not-configured.exception';
 
 /** Verifies Google and Apple identity tokens. See docs/authentication.md. */
 @Injectable()
 export class AuthSocialDomain {
-    private readonly appleClientId: string;
-    private readonly appleSignInClientId: string;
+    private readonly appleClientIds: string[];
 
-    private readonly googleClient: OAuth2Client;
+    private readonly google: {
+        client: OAuth2Client;
+        clientId: string;
+    } | null;
 
     constructor(private readonly configService: ConfigService) {
-        this.appleClientId = this.configService.get<string>(
+        const appleClientId = this.configService.get<string | null>(
             'auth.apple.clientId'
-        )!;
-        this.appleSignInClientId = this.configService.get<string>(
-            'auth.apple.signInClientId'
-        )!;
-
-        const googleClientId = this.configService.get<string>(
-            'auth.google.clientId'
-        )!;
-        const googleClientSecret = this.configService.get<string>(
-            'auth.google.clientSecret'
-        )!;
-        this.googleClient = new OAuth2Client(
-            googleClientId,
-            googleClientSecret
         );
+        const appleSignInClientId = this.configService.get<string | null>(
+            'auth.apple.signInClientId'
+        );
+        const googleClientId = this.configService.get<string | null>(
+            'auth.google.clientId'
+        );
+
+        this.appleClientIds = [appleClientId, appleSignInClientId].filter(
+            (clientId): clientId is string => !!clientId
+        );
+        this.google = googleClientId
+            ? {
+                  client: new OAuth2Client(googleClientId),
+                  clientId: googleClientId,
+              }
+            : null;
     }
 
     async verifyGoogle(token: string): Promise<TokenPayload> {
-        const login: LoginTicket = await this.googleClient.verifyIdToken({
+        if (!this.google) {
+            throw new AuthSocialGoogleNotConfiguredException();
+        }
+
+        const login: LoginTicket = await this.google.client.verifyIdToken({
             idToken: token,
+            audience: this.google.clientId,
         });
 
         const payload = login.getPayload();
@@ -62,9 +73,13 @@ export class AuthSocialDomain {
     }
 
     async verifyApple(token: string): Promise<VerifyAppleIdTokenResponse> {
+        if (this.appleClientIds.length === 0) {
+            throw new AuthSocialAppleNotConfiguredException();
+        }
+
         return verifyAppleToken.default({
             idToken: token,
-            clientId: [this.appleClientId, this.appleSignInClientId],
+            clientId: this.appleClientIds,
         });
     }
 }

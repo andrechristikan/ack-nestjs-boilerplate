@@ -4,7 +4,10 @@ import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import type { Response } from 'express';
 import { RequestThrottleOptionsMetaKey } from '@common/request/constants/request.constant';
-import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
+import {
+    EnumRequestThrottleName,
+    EnumRequestThrottleRoute,
+} from '@common/request/enums/request.enum';
 import type {
     IRequestApp,
     IRequestThrottleOptions,
@@ -18,7 +21,7 @@ import { RequestUtil } from '@common/request/utils/request.util';
  */
 @Injectable()
 export class RequestThrottleRouteGuard implements CanActivate {
-    private readonly name = 'route';
+    private readonly name = EnumRequestThrottleName.route;
     private readonly policies: Record<
         EnumRequestThrottleRoute,
         IRequestThrottlePolicy

@@ -21,12 +21,14 @@ I, as the maintainer, and everyone who contributes, pledge to make participation
 ## Our Standards
 
 **Expected behavior:**
+
 - Be respectful and constructive in discussions
 - Accept feedback gracefully
 - Focus on what is best for the project and community
 - Show empathy toward other contributors
 
 **Unacceptable behavior:**
+
 - Harassment, insults, or personal attacks
 - Trolling or deliberately disruptive comments
 - Publishing others' private information without consent
@@ -38,7 +40,8 @@ Instances of unacceptable behavior may be reported directly to the maintainer:
 
 📧 **andrechristikan@gmail.com**
 
-All reports are reviewed and investigated promptly and fairly. The maintainer may remove, edit, or reject comments, commits, issues, and other contributions that violate this Code of Conduct.
+- All reports are reviewed and investigated promptly and fairly.
+- The maintainer may remove, edit, or reject comments, commits, issues, and other contributions that violate this Code of Conduct.
 
 ## Attribution
 

@@ -4,15 +4,18 @@ Request validation lives in `src/common/request`.
 
 ## Overview
 
-Every request shape is a [zod][ref-zod] schema. Schemas reach the framework through the [Standard Schema][ref-standard-schema] interface, so NestJS validates a request body against the schema bound to the parameter, and the same schema also produces the OpenAPI document through [zod-openapi][ref-zod-openapi].
+Every request shape is a [zod][ref-zod] schema.
+
+- Schemas reach the framework through the [Standard Schema][ref-standard-schema] interface, so NestJS validates a request body against the schema bound to the parameter.
+- The same schema also produces the OpenAPI document through [zod-openapi][ref-zod-openapi].
 
 ## Related Documents
 
-- [Language Message Documentation][ref-doc-message] - Validation and error message i18n
-- [Handling Error Documentation][ref-doc-handling-error] - `RequestValidationException` filter path
-- [Doc Documentation][ref-doc-doc] - OpenAPI built from the same schemas
-- [Response Documentation][ref-doc-response] - Outbound schemas that serialize the payload
-- [File Upload Documentation][ref-doc-file-upload] - File validation pipes
+- [Language Message Documentation][ref-doc-message]: Validation and error message i18n
+- [Handling Error Documentation][ref-doc-handling-error]: `RequestValidationException` filter path
+- [Doc Documentation][ref-doc-doc]: OpenAPI built from the same schemas
+- [Response Documentation][ref-doc-response]: Outbound schemas that serialize the payload
+- [File Upload Documentation][ref-doc-file-upload]: File validation pipes
 
 ## Table of Contents
 
@@ -20,9 +23,9 @@ Every request shape is a [zod][ref-zod] schema. Schemas reach the framework thro
 - [Related Documents](#related-documents)
 - [Request Module](#request-module)
 - [Usage](#usage)
-  - [Request Body Validation](#request-body-validation)
-  - [Path Parameters Validation](#path-parameters-validation)
-  - [Query Parameters](#query-parameters)
+    - [Request Body Validation](#request-body-validation)
+    - [Path Parameters Validation](#path-parameters-validation)
+    - [Query Parameters](#query-parameters)
 - [Schema Shape](#schema-shape)
 - [Composing Schemas](#composing-schemas)
 - [Shared Validations](#shared-validations)
@@ -49,47 +52,49 @@ Every request shape is a [zod][ref-zod] schema. Schemas reach the framework thro
 
 The subclass adds two rules on top of the framework pipe:
 
-- **Fail-closed on `body` and `param`.** An argument of either type arriving with no schema attached throws `RequestSchemaMissingException` instead of reaching the handler unchecked, so a body is bound as `@Body({ schema: <Module><Action>RequestSchema })` and a path param as `@Param('userId', { schema: RequestMongoIdSchema })`. A `query` argument with no schema still passes.
-- **Empty issue paths carry the argument name.** An issue whose Standard Schema `path` is empty is stamped with the bound argument name before `exceptionFactory` runs, so `errors[].property` reads as the parameter rather than as `Unknown`.
+- **Fail-closed on `body` and `param`.**
+    - An argument of either type arriving with no schema attached throws `RequestSchemaMissingException` instead of reaching the handler unchecked.
+    - A body is therefore bound as `@Body({ schema: <Module><Action>RequestSchema })`.
+    - A path param is bound as `@Param('userId', { schema: RequestMongoIdSchema })`.
+    - A `query` argument with no schema still passes.
+- **Empty issue paths carry the argument name.**
+    - An issue whose Standard Schema `path` is empty is stamped with the bound argument name before `exceptionFactory` runs.
+    - `errors[].property` therefore reads as the parameter rather than as `Unknown`.
 
 The pipe also strips prototype-polluting keys from the value before validating.
 
 **Processing flow**:
-```
-Request received
-    ↓
-RequestSchemaValidationPipe validates the argument against its schema
-    ↓
-Valid? → parsed and transformed value reaches the controller
-    ↓ No
-RequestValidationException carries the Standard Schema issues
-    ↓
-AppValidationFilter catches the exception
-    ↓
-MessageService localizes each issue
-    ↓
-Standardized error response (HTTP 422)
+
+```mermaid
+flowchart TD
+    A[Request received] --> P[RequestSchemaValidationPipe validates the argument against its schema]
+    P --> V{Valid?}
+    V -->|yes| C[Parsed and transformed value reaches the controller]
+    V -->|no| E[RequestValidationException carries the Standard Schema issues]
+    E --> F[AppValidationFilter catches the exception]
+    F --> M[MessageService localizes each issue]
+    M --> R[Standardized error response, HTTP 422]
 ```
 
 ## Usage
 
 ### Request Body Validation
 
-The schema is bound on `@Body()`; the parameter is typed with the inferred DTO type:
+The schema is bound on `@Body()`, and the parameter is typed with the inferred DTO type:
 
 ```typescript
 @Controller({
-  version: '1',
-  path: '/user',
+    version: '1',
+    path: '/user',
 })
 export class UserAdminController {
-  @Post('/create')
-  create(
-    @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto,
-    @AuthJwtPayload('userId') createdBy: string
-  ) {
-    return this.userHttpService.createByAdmin(body, createdBy);
-  }
+    @Post('/create')
+    create(
+        @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto,
+        @AuthJwtPayload('userId') createdBy: string
+    ) {
+        return this.userHttpService.createByAdmin(body, createdBy);
+    }
 }
 ```
 
@@ -120,7 +125,10 @@ export type UserClaimUsernameRequestDto = z.infer<
 >;
 ```
 
-Each request schema lives in its own file under `<module>/dtos/request/` and exports the `<Module><Action>RequestSchema` constant next to the `<Module><Action>RequestDto` type inferred from it, so the type and the runtime check cannot drift apart. Both carry a one-line JSDoc summary and `@public`.
+Each request schema lives in its own file under `<module>/dtos/request/`.
+
+- The file exports the `<Module><Action>RequestSchema` constant next to the `<Module><Action>RequestDto` type inferred from it, so the type and the runtime check cannot drift apart.
+- Both carry a one-line JSDoc summary and `@public`.
 
 ### Path Parameters Validation
 
@@ -135,7 +143,9 @@ findOne(
 }
 ```
 
-`RequestMongoIdSchema` (`src/common/request/validations/request.mongo-id.validation.ts`) requires a 24-character hex ObjectId. A required non-empty string uses `RequestRequiredStringSchema`. An optional query uses `.optional()` on the schema:
+- `RequestMongoIdSchema` (`src/common/request/validations/request.mongo-id.validation.ts`) requires a 24-character hex ObjectId.
+- A required non-empty string uses `RequestRequiredStringSchema`.
+- An optional query uses `.optional()` on the schema:
 
 ```typescript
 @Query('userId', { schema: RequestMongoIdSchema.optional() })
@@ -144,7 +154,10 @@ userId?: string
 
 ### Query Parameters
 
-Pagination, search, and filtering arrive through list request schemas on `@Query({ schema })` plus `PaginationQueryUtil` in the HTTP service (see [Pagination][ref-doc-pagination]). A single extra filter is read with `@Query()` and validated by a schema on the query parameter, as above.
+- Pagination, search, and filtering arrive through list request schemas on `@Query({ schema })` plus `PaginationQueryUtil` in the HTTP service (see [Pagination][ref-doc-pagination]).
+- A list schema extends a kit base schema (`PaginationOffsetQuerySchema` or `PaginationCursorQuerySchema`), which carries `page` or `cursor`, `perPage`, and a trimmed `search` of at most 100 characters.
+- A list schema declares its own `orderBy` as a `z.templateLiteral` of `z.enum(<allow-list>)`, `':'`, and `z.enum(EnumPaginationOrderDirectionType)`, as a union with an array of the same template and `''`. A sort outside the allow-list fails validation and answers 422.
+- A single extra filter is read with `@Query()` and validated by a schema on the query parameter, as above.
 
 ## Schema Shape
 
@@ -153,30 +166,37 @@ Pagination, search, and filtering arrive through list request schemas on `@Query
 - **Normalization runs at the boundary**: `.trim()`, `.toLowerCase()`, and `.transform()` on the schema mean every caller downstream sees one canonical value.
 - **`.meta({ description, example })`** on every field is what the OpenAPI document is generated from. See [Doc][ref-doc-doc].
 - **`.optional()`** marks an optional field. Request DTOs are the one layer where `undefined` is legal.
+- **An update body is a full replace.** Every update route follows it:
+    - Every editable field is required in the body.
+    - A field that can be empty is `.nullable()`, and `null` clears it.
+    - A list field takes `[]` to clear it.
+    - A field left out answers a validation error (422, `50300`).
 
 An issue message can be a message path, which the i18n layer resolves later:
 
 ```typescript
-newPassword: z
-    .string()
+newPassword: z.string()
     .min(8)
     .max(50)
     .regex(RequestPasswordStrengthRegex, {
         error: () => 'request.error.isPassword.strong',
-    })
+    });
 ```
 
-`RequestPasswordStrengthRegex` (`src/common/request/constants/request.constant.ts`) asserts at least one uppercase letter, one lowercase letter, and one digit; length is checked by `.min()` / `.max()` beside it.
+`RequestPasswordStrengthRegex` (`src/common/request/constants/request.constant.ts`) asserts at least one uppercase letter, one lowercase letter, and one digit. `.min()` / `.max()` beside it check the length.
 
 ## Composing Schemas
 
-Zod's own combinators build one schema from another. `.extend()`, `.omit()`, `.pick()`, and `.partial()` all preserve the strictness of the base, so only the root spells out `z.strictObject`.
+Zod's own combinators build one schema from another.
+
+- `.extend()`, `.omit()`, `.pick()`, and `.partial()` all preserve the strictness of the base.
+- Only the root spells out `z.strictObject`.
 
 **Extend**, to add fields to a base:
 
 ```typescript
 export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
-    email: z.string().trim().toLowerCase().max(100),
+    email: z.string().trim().toLowerCase().max(100).pipe(RequestEmailSchema),
     roleId: z.string().regex(/^[0-9a-fA-F]{24}$/),
     countryId: z.string().regex(/^[0-9a-fA-F]{24}$/),
 });
@@ -206,44 +226,62 @@ export const UserChangePasswordRequestSchema =
 
 ## Shared Validations
 
-Checks too detailed for a chained method live as plain functions or shared zod schemas in `src/common/request/validations/` and are called from `.superRefine()` or bound on `@Param` / `@Query`.
+A check too detailed for a chained method is a zod schema const in `src/common/request/validations/`.
 
-**`validateEmail`** (`request.custom-email.validation.ts`) walks an address part by part (`@` count, domain length, domain labels, TLD, local part) and returns the i18n path of the first rule it fails, so the client is told which rule broke rather than that the address is invalid:
+- A validation file exports zod schema consts only, no function and no module-level helper.
+- Custom logic sits inside the chain (`superRefine`, `transform`, `preprocess`, or a `pipe` callback).
+
+**`RequestEmailSchema`** (`request.email.validation.ts`):
+
+- It walks an address part by part (`@` count, domain length, domain labels, TLD, local part).
+- It reports the i18n path of the first rule it fails under `request.error.email.*`.
+- The client is therefore told which rule broke rather than that the address is invalid.
+- A DTO email field normalizes first, then pipes into it:
 
 ```typescript
-email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .max(100)
-    .superRefine((value, ctx) => {
-        const validation = validateEmail(value);
-        if (!validation.validated) {
-            ctx.addIssue({
-                code: 'custom',
-                message: validation.messagePath,
-            });
-        }
-    })
+email: z.string().trim().toLowerCase().max(100).pipe(RequestEmailSchema);
 ```
 
 A module-specific check goes in that module's `validations/` folder instead.
 
 Shared schemas:
 
-- `RequestMongoIdSchema` — 24-character hex MongoDB ObjectId
-- `RequestRequiredStringSchema` — non-empty string
-- `RequestBooleanStringSchema` — `z.stringbool` accepting exactly `'true'` or `'false'`, case-sensitive; used by the boolean environment variables
-- `RequestEncryptionSecretSchema` — exactly 64 base64url characters; used by `APP_ENCRYPTION_SECRET_KEY` and `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
-- `RequestMessageLanguageSchema` — a member of `EnumMessageLanguage`, carrying its own `.meta()` for the OpenAPI document
+- `RequestMongoIdSchema`: 24-character hex MongoDB ObjectId
+- `RequestRequiredStringSchema`: non-empty string
+- `RequestBooleanStringSchema`: `z.stringbool` accepting exactly `'true'` or `'false'`, case-sensitive
+    - Used by the boolean environment variables
+- `RequestEncryptionSecretSchema`: exactly 64 base64url characters
+    - Used by `APP_ENCRYPTION_SECRET_KEY` and `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
+- `RequestEmailSchema` (`request.email.validation.ts`): an email address that reports the first failed check
+- `RequestSesIdentityArnSchema` (`request.ses-identity-arn.validation.ts`): an AWS SES identity ARN, `arn:aws[-partition]:ses:<region>:<12-digit account>:identity/<domain or address>`
+- `RequestUrlNoTrailingSlashSchema` (`request.url-no-trailing-slash.validation.ts`): an absolute URL that does not end with `/`
+- `RequestOptionalEnvSchema` (`request.optional-env.validation.ts`): a single `z.preprocess` const that parses an absent value or an empty string to `null`
+    - Any other value passes through as a string.
+    - The same file exports five named instances, each piping `RequestOptionalEnvSchema` into a nullable value schema:
+        - `RequestOptionalEnvStringSchema` over `RequestRequiredStringSchema`
+        - `RequestOptionalEnvEmailSchema` over `RequestEmailSchema`
+        - `RequestOptionalEnvSesIdentityArnSchema` over `RequestSesIdentityArnSchema`
+        - `RequestOptionalEnvUrlNoTrailingSlashSchema` over `RequestUrlNoTrailingSlashSchema`
+        - `RequestOptionalEnvUrlSchema` over `z.url()`
+- `RequestMessageLanguageSchema`: a member of `EnumMessageLanguage`, carrying its own `.meta()` for the OpenAPI document
 
 ## File Validation Pipes
 
-Upload routes use file pipes from `src/common/file/pipes/`, not request param pipes. `FileRequiredPipe()` throws `FileRequiredException` when the upload is missing. `FileExtensionPipe` validates the extension. See [File Upload][ref-doc-file-upload].
+Upload routes use file pipes from `src/common/file/pipes/`, not request param pipes.
+
+- `FileRequiredPipe()` throws `FileRequiredException` when the upload is missing.
+- `FileExtensionPipe` validates the extension.
+
+See [File Upload][ref-doc-file-upload].
 
 ## CSV Import Validation
 
-A CSV import composes pipes in order: `FileRequiredPipe()`, `FileExtensionPipe`, `FileCsvParsePipe` parses the buffer into rows, then `FileCsvValidationPipe(schema)` validates every row against a request schema.
+A CSV import composes pipes in order:
+
+1. `FileRequiredPipe()`
+2. `FileExtensionPipe`
+3. `FileCsvParsePipe` parses the buffer into rows
+4. `FileCsvValidationPipe(schema)` validates every row against a request schema
 
 ```typescript
 @UploadedFile(
@@ -259,8 +297,15 @@ data: UserImportRequestDto[]
 
 The pipe:
 
-- caps the row count at the `file.maxDataImport` config value (100, overridable per pipe through `maxDataImportConfigKey`) by throwing `FileExceedMaxDataImportException`
+- caps the row count at the `file.maxDataImport` config value by throwing `FileExceedMaxDataImportException`
+    - the default is 100
+    - `maxDataImportConfigKey` overrides it per pipe
+    - the user import reads `user.maxDataImport`, 50
 - rejects an empty file with `FileRequiredExtractFirstException`
+- validates the rows in chunks of `file.importValidationConcurrency` (10)
+    - rows within a chunk run concurrently
+    - chunks run in sequence
+    - the output keeps the input order
 - collects every per-row failure, keyed by row index, into one `FileImportException` handled by `AppValidationImportFilter`
 
 See [File Upload][ref-doc-file-upload].
@@ -269,8 +314,11 @@ See [File Upload][ref-doc-file-upload].
 
 `AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) is the zod schema `ConfigModule.forRoot()` validates `process.env` against at boot, so a missing or malformed variable stops the process instead of surfacing later as a runtime error.
 
-- An env boolean is `RequestBooleanStringSchema`, exactly `'true'` or `'false'`; every other spelling fails the boot
+- An env boolean is `RequestBooleanStringSchema`, exactly `'true'` or `'false'`
+- Every other spelling fails the boot
 - An encryption secret is `RequestEncryptionSecretSchema`, exactly 64 base64url characters
+- An optional third-party key (AWS, Firebase, Sentry, social sign-in, `EMAIL_*`, `HTTP_TRUSTED_PROXY`) is one of the `RequestOptionalEnv*Schema` instances, so a blank `.env` line parses to `null`.
+- A `superRefine` on `AppEnvSchema` then requires the rest of a group once one of its credentials is set.
 
 See [Environment][ref-doc-environment].
 
@@ -280,17 +328,21 @@ See [Environment][ref-doc-environment].
 
 ```typescript
 interface IMessageValidationError {
-  key: string;        // camelCase issue code, e.g. 'invalidFormat'
-  property: string;   // dotted property path, e.g. 'address.street'
-  message: string;    // localized message
+    key: string; // camelCase issue code, e.g. 'invalidFormat'
+    property: string; // dotted property path, e.g. 'address.street'
+    message: string; // localized message
 }
 ```
 
 **Per issue**:
 
-1. `key` is the issue's `code` in camelCase (`too_small` becomes `tooSmall`). An issue with no string `code` falls back to `custom`.
-2. `property` is the issue `path` joined with dots, so a nested field reads `address.street`. An empty path becomes `Unknown`.
-3. `message` is resolved by translating `issue.message` first. When that path exists in the language file, its translation is used, which is how a schema raising `'request.error.isPassword.strong'` speaks for itself. When the translation comes back unchanged, the message is looked up under `request.error.{key}` instead, so a plain zod issue still gets a localized sentence.
+1. `key` is the issue's `code` in camelCase (`too_small` becomes `tooSmall`).
+    - An issue with no string `code` falls back to `custom`.
+2. `property` is the issue `path` joined with dots, so a nested field reads `address.street`.
+    - An empty path becomes `Unknown`.
+3. `message` is resolved by translating `issue.message` first.
+    - When that path exists in the language file, its translation is used. This is how a schema raising `'request.error.isPassword.strong'` speaks for itself.
+    - When the translation comes back unchanged, the message is looked up under `request.error.{key}` instead, so a plain zod issue still gets a localized sentence.
 4. Both lookups interpolate `{property}` with the last segment of the path.
 
 ## Error Message Translation
@@ -299,65 +351,65 @@ Messages are translated using [nestjs-i18n][ref-nestjs-i18n] through the [Messag
 
 **Message path pattern**: `request.error.{key}`
 
-**Message file** (`src/languages/en/request.json`), one entry per zod issue code plus the nested groups a shared validation points at:
+**Message file** (`src/languages/en/request.json`), an excerpt: one entry per zod issue code plus the nested groups a shared validation points at:
 
 ```json
 {
-  "error": {
-    "invalidType": "{property} is not of the expected type.",
-    "tooSmall": "{property} is shorter than the minimum allowed.",
-    "tooBig": "{property} is longer than the maximum allowed.",
-    "invalidFormat": "{property} does not match the expected format.",
-    "invalidValue": "{property} is not one of the allowed values.",
-    "notMultipleOf": "{property} is not a multiple of the required step.",
-    "unrecognizedKeys": "The request contains fields that are not allowed.",
-    "invalidUnion": "{property} does not match any of the allowed shapes.",
-    "invalidKey": "{property} contains a key that is not allowed.",
-    "invalidElement": "{property} contains an element that is not allowed.",
-    "custom": "{property} failed a validation rule.",
-    "isPassword": {
-      "strong": "{property} must be a strong password containing uppercase, lowercase, numbers, and special characters."
-    },
-    "email": {
-      "invalid": "{property} should be a valid email address."
+    "error": {
+        "invalidType": "{property} is not of the expected type.",
+        "tooSmall": "{property} is shorter than the minimum allowed.",
+        "tooBig": "{property} is longer than the maximum allowed.",
+        "invalidFormat": "{property} does not match the expected format.",
+        "invalidValue": "{property} is not one of the allowed values.",
+        "notMultipleOf": "{property} is not a multiple of the required step.",
+        "unrecognizedKeys": "The request contains fields that are not allowed.",
+        "invalidUnion": "{property} does not match any of the allowed shapes.",
+        "invalidKey": "{property} contains a key that is not allowed.",
+        "invalidElement": "{property} contains an element that is not allowed.",
+        "custom": "{property} failed a validation rule.",
+        "isPassword": {
+            "strong": "{property} must contain at least one uppercase letter, one lowercase letter, and one number."
+        },
+        "email": {
+            "invalid": "{property} should be a valid email address."
+        }
     }
-  }
 }
 ```
 
 **Final response** (built by `AppValidationFilter`):
+
 ```json
 {
-  "statusCode": 50300,
-  "statusCodeKey": "validation",
-  "module": "request",
-  "message": "There are validation errors.",
-  "errors": [
-    {
-      "key": "custom",
-      "property": "email",
-      "message": "email should be a valid email address."
-    },
-    {
-      "key": "tooSmall",
-      "property": "password",
-      "message": "password is shorter than the minimum allowed."
+    "statusCode": 50300,
+    "statusCodeKey": "validation",
+    "module": "request",
+    "message": "There are validation errors.",
+    "errors": [
+        {
+            "key": "custom",
+            "property": "email",
+            "message": "email should be a valid email address."
+        },
+        {
+            "key": "tooSmall",
+            "property": "password",
+            "message": "password is shorter than the minimum allowed."
+        }
+    ],
+    "metadata": {
+        "language": "en",
+        "timestamp": 1660190937231,
+        "timezone": "Asia/Jakarta",
+        "version": "1",
+        "repoVersion": "1.0.0",
+        "requestId": "550e8400-e29b-41d4-a716-446655440000",
+        "correlationId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
     }
-  ],
-  "metadata": {
-    "language": "en",
-    "timestamp": 1660190937231,
-    "timezone": "Asia/Jakarta",
-    "version": "1",
-    "repoVersion": "1.0.0",
-    "requestId": "550e8400-e29b-41d4-a716-446655440000",
-    "correlationId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
-  }
 }
 ```
 
 See [Handling Error][ref-doc-handling-error] for the complete error handling flow.
-
 
 <!-- REFERENCES -->
 
@@ -365,7 +417,6 @@ See [Handling Error][ref-doc-handling-error] for the complete error handling flo
 [ref-zod-openapi]: https://github.com/samchungy/zod-openapi
 [ref-standard-schema]: https://standardschema.dev
 [ref-nestjs-i18n]: https://nestjs-i18n.com
-
 [ref-doc-message]: language-message.md
 [ref-doc-handling-error]: handling-error.md
 [ref-doc-doc]: doc.md

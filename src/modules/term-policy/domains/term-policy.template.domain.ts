@@ -1,21 +1,18 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
 @Injectable()
 export class TermPolicyTemplateDomain {
-    private readonly logger = new Logger(TermPolicyTemplateDomain.name);
-    private readonly templatesDir = join(
-        process.cwd(),
-        'src/modules/term-policy/templates'
-    );
     private readonly templateVersion = 1;
 
     constructor(
@@ -26,7 +23,8 @@ export class TermPolicyTemplateDomain {
     async importTermsOfService(): Promise<IAwsS3 | null> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'term-policy.term.en.hbs'
             );
             const templateContent = readFileSync(templatePath);
@@ -59,21 +57,33 @@ export class TermPolicyTemplateDomain {
                 this.templateVersion
             );
 
-            return this.awsS3Service.copyItem(privateItem, contentPublicPath, {
-                accessFrom: EnumAwsS3Accessibility.private,
-                accessTo: EnumAwsS3Accessibility.public,
-            });
-        } catch (err: unknown) {
-            this.logger.error(err, 'Failed to import terms of service');
+            const publicItem = await this.awsS3Service.copyItem(
+                privateItem,
+                contentPublicPath,
+                {
+                    accessFrom: EnumAwsS3Accessibility.private,
+                    accessTo: EnumAwsS3Accessibility.public,
+                }
+            );
 
-            throw err;
+            return publicItem;
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            throw new AppUnknownException(
+                err,
+                'Importing the terms of service template failed'
+            );
         }
     }
 
     async importPrivacy(): Promise<IAwsS3 | null> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'term-policy.privacy.en.hbs'
             );
             const templateContent = readFileSync(templatePath);
@@ -106,21 +116,33 @@ export class TermPolicyTemplateDomain {
                 this.templateVersion
             );
 
-            return this.awsS3Service.copyItem(privateItem, contentPublicPath, {
-                accessFrom: EnumAwsS3Accessibility.private,
-                accessTo: EnumAwsS3Accessibility.public,
-            });
-        } catch (err: unknown) {
-            this.logger.error(err, 'Failed to import privacy');
+            const publicItem = await this.awsS3Service.copyItem(
+                privateItem,
+                contentPublicPath,
+                {
+                    accessFrom: EnumAwsS3Accessibility.private,
+                    accessTo: EnumAwsS3Accessibility.public,
+                }
+            );
 
-            throw err;
+            return publicItem;
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            throw new AppUnknownException(
+                err,
+                'Importing the privacy template failed'
+            );
         }
     }
 
     async importCookie(): Promise<IAwsS3 | null> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'term-policy.cookies.en.hbs'
             );
             const templateContent = readFileSync(templatePath);
@@ -153,21 +175,33 @@ export class TermPolicyTemplateDomain {
                 this.templateVersion
             );
 
-            return this.awsS3Service.copyItem(privateItem, contentPublicPath, {
-                accessFrom: EnumAwsS3Accessibility.private,
-                accessTo: EnumAwsS3Accessibility.public,
-            });
-        } catch (err: unknown) {
-            this.logger.error(err, 'Failed to import cookie');
+            const publicItem = await this.awsS3Service.copyItem(
+                privateItem,
+                contentPublicPath,
+                {
+                    accessFrom: EnumAwsS3Accessibility.private,
+                    accessTo: EnumAwsS3Accessibility.public,
+                }
+            );
 
-            throw err;
+            return publicItem;
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            throw new AppUnknownException(
+                err,
+                'Importing the cookie template failed'
+            );
         }
     }
 
     async importMarketing(): Promise<IAwsS3 | null> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'term-policy.marketing.en.hbs'
             );
             const templateContent = readFileSync(templatePath);
@@ -200,14 +234,25 @@ export class TermPolicyTemplateDomain {
                 this.templateVersion
             );
 
-            return this.awsS3Service.copyItem(privateItem, contentPublicPath, {
-                accessFrom: EnumAwsS3Accessibility.private,
-                accessTo: EnumAwsS3Accessibility.public,
-            });
-        } catch (err: unknown) {
-            this.logger.error(err, 'Failed to import marketing');
+            const publicItem = await this.awsS3Service.copyItem(
+                privateItem,
+                contentPublicPath,
+                {
+                    accessFrom: EnumAwsS3Accessibility.private,
+                    accessTo: EnumAwsS3Accessibility.public,
+                }
+            );
 
-            throw err;
+            return publicItem;
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            throw new AppUnknownException(
+                err,
+                'Importing the marketing template failed'
+            );
         }
     }
 }

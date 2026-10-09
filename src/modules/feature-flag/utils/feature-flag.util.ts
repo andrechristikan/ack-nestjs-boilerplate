@@ -30,16 +30,15 @@ export class FeatureFlagUtil {
         }
 
         for (const key of newKeys) {
-            const newVal = newMetadata[key];
-            const oldVal = oldMetadata[key];
+            const newVal = newMetadata[key]!;
+            const oldVal = oldMetadata[key]!;
 
             const newValueType = this.metadataValueType(newVal);
             const oldValueType = this.metadataValueType(oldVal);
             if (newValueType !== oldValueType) {
                 return false;
             } else if (
-                newVal === undefined ||
-                newVal === null ||
+                (newVal ?? null) === null ||
                 newVal === '' ||
                 (Array.isArray(newVal) && newVal.length === 0)
             ) {

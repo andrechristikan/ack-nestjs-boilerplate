@@ -1,5 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationCursorReturn,
     IPaginationEqual,
@@ -11,8 +12,10 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
-import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
-import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
+import type {
+    IWorkspaceCreate,
+    IWorkspaceUpdate,
+} from '@modules/workspace/interfaces/workspace.interface';
 import type { IWorkspaceRepository } from '@modules/workspace/interfaces/workspace.repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -20,10 +23,16 @@ import { Injectable } from '@nestjs/common';
 export class WorkspaceRepository implements IWorkspaceRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async findActiveById(workspaceId: string): Promise<Workspace | null> {
+        const isValidId = this.databaseUtil.checkIdIsValid(workspaceId);
+        if (!isValidId) {
+            return null;
+        }
+
         return this.databaseService.client.workspace.findFirst({
             where: {
                 id: workspaceId,
@@ -42,7 +51,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
     }
 
-    async findByIdForAdmin(workspaceId: string): Promise<Workspace | null> {
+    async findByIdByAdmin(workspaceId: string): Promise<Workspace | null> {
         return this.databaseService.client.workspace.findUnique({
             where: { id: workspaceId },
         });
@@ -87,12 +96,12 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
     }
 
-    async findWithPaginationOffsetForAdmin(
+    async findWithPaginationOffsetByAdmin(
         {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
-        isPublic?: Record<string, IPaginationEqual>
+        isPublic: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.paginationService.offset<
             Workspace,
@@ -109,7 +118,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     async createInTx(
         tx: IDatabaseTransactionClient,
         ownerId: string,
-        { name, description, isPublic }: WorkspaceCreateRequestDto,
+        { name, description, isPublic }: IWorkspaceCreate,
         slug: string,
         workspaceId: string
     ): Promise<Workspace> {
@@ -128,14 +137,11 @@ export class WorkspaceRepository implements IWorkspaceRepository {
 
     async updateDetails(
         workspaceId: string,
-        { name, description }: WorkspaceUpdateRequestDto
+        { name, description }: IWorkspaceUpdate
     ): Promise<Workspace> {
         return this.databaseService.client.workspace.update({
             where: { id: workspaceId },
-            data: {
-                name,
-                description,
-            },
+            data: { name, description },
         });
     }
 

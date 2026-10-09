@@ -1,6 +1,6 @@
 {
     "$schema": "https://json.schemastore.org/claude-code-settings.json",
-    "includeCoAuthoredBy": false,
+    "attribution": { "commit": "", "pr": "", "sessionUrl": false },
     "plansDirectory": ".superpowers/plans",
     "permissions": {
         "defaultMode": "acceptEdits",
@@ -24,10 +24,7 @@
         ],
         "ask": [
             "Bash(git push:*)",
-            "Bash(git reset --hard:*)",
             "Bash(git clean:*)",
-            "Bash(git stash drop:*)",
-            "Bash(git stash clear:*)",
             "Bash(gh pr merge:*)",
             "Bash(gh release:*)",
             "Bash(pnpm publish:*)",
@@ -116,9 +113,14 @@
             "Agent(caveman:cavecrew-investigator)",
             "Agent(caveman:cavecrew-reviewer)",
             "Agent(caveman:docs:AGENTS)",
-            "Agent(caveman:docs:CLAUDE)"
+            "Agent(caveman:docs:CLAUDE)",
+            "Monitor",
+            "Workflow"
         ],
         "additionalDirectories": ["/tmp", "/private/tmp"]
+    },
+    "env": {
+        "BASH_DEFAULT_TIMEOUT_MS": "600000"
     },
     "extraKnownMarketplaces": {
         "caveman": {
@@ -149,7 +151,7 @@
                 ]
             },
             {
-                "matcher": "Write|Edit",
+                "matcher": "Write|Edit|MultiEdit|NotebookEdit",
                 "hooks": [
                     {
                         "type": "command",
@@ -160,7 +162,7 @@
         ],
         "PostToolUse": [
             {
-                "matcher": "Write|Edit",
+                "matcher": "Write|Edit|MultiEdit|NotebookEdit",
                 "hooks": [
                     {
                         "type": "command",

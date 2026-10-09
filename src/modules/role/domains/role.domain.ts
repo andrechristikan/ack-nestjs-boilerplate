@@ -13,12 +13,10 @@ import {
 } from '@generated/prisma-client/client';
 import type { Policy, Role } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
-import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
-import { RolePredefinedNotFoundException } from '@modules/role/exceptions/role.predefined-not-found.exception';
 import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import type {
     IRole,
@@ -46,7 +44,7 @@ export class RoleDomain {
         action: EnumActivityLogAction,
         role: IRole,
         timestamp: Date
-    ): IActivityLogStagedEvent {
+    ): IActivityLogStaged {
         const metadata = this.roleUtil.mapActivityLogMetadata(role, timestamp);
 
         return this.activityLogDomain.prepare({
@@ -61,7 +59,7 @@ export class RoleDomain {
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.roleRepository.findWithPaginationOffsetByAdmin(
             pagination,
-            type
+            type ?? null
         );
     }
 
@@ -71,7 +69,7 @@ export class RoleDomain {
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.roleRepository.findWithPaginationCursorBySystem(
             pagination,
-            type
+            type ?? null
         );
     }
 
@@ -97,6 +95,7 @@ export class RoleDomain {
     }
 
     async createByAdmin(data: IRoleCreate): Promise<IRoleWithPolicies> {
+        // Sequential by design: gate before the work it guards
         const exist = await this.roleRepository.existsByName(data.name);
         if (exist) {
             throw new RoleExistException();
@@ -104,7 +103,7 @@ export class RoleDomain {
 
         const roleId = this.databaseUtil.createId();
         const timestamp = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminRoleCreate,
                 { id: roleId, name: data.name, type: data.type },
@@ -113,7 +112,7 @@ export class RoleDomain {
         ];
         const created = await this.roleRepository.create(roleId, data);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return created;
     }
@@ -122,13 +121,14 @@ export class RoleDomain {
         id: string,
         data: IRoleUpdate
     ): Promise<IRoleWithPolicies> {
+        // Sequential by design: gate before the work it guards
         const role = await this.roleRepository.findOneById(id);
         if (!role) {
             throw new RoleNotFoundException();
         }
 
         const timestamp = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminRoleUpdate,
                 { id: role.id, name: role.name, type: data.type },
@@ -137,12 +137,13 @@ export class RoleDomain {
         ];
         const updated = await this.roleRepository.update(id, data);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return updated;
     }
 
     async deleteByAdmin(id: string): Promise<Role> {
+        // Sequential by design: gate before the work it guards
         const [role, roleUsed] = await Promise.all([
             this.roleRepository.findOneById(id),
             this.roleRepository.isUsedById(id),
@@ -154,7 +155,7 @@ export class RoleDomain {
         }
 
         const timestamp = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminRoleDelete,
                 role,
@@ -163,25 +164,19 @@ export class RoleDomain {
         ];
         const deleted = await this.roleRepository.delete(id);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return deleted;
     }
 
     async validateRoleGuard(
-        user: IUser | null,
+        user: IUser,
         requiredRoles: EnumRoleType[]
     ): Promise<Policy[]> {
-        if (!user) {
-            throw new AuthJwtAccessTokenInvalidException();
-        }
-
         const { role } = user;
 
         if (role.type === EnumRoleType.superAdmin) {
             return [];
-        } else if (requiredRoles.length === 0) {
-            throw new RolePredefinedNotFoundException();
         } else if (!requiredRoles.includes(role.type)) {
             throw new RoleForbiddenException();
         }

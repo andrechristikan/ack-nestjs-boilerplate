@@ -23,3 +23,27 @@ export const ResponseFileMediaTypes: Record<EnumFileExtensionDocument, string> =
         [EnumFileExtensionDocument.csv]: 'text/csv',
         [EnumFileExtensionDocument.pdf]: 'application/pdf',
     };
+
+/**
+ * Response header carrying the response timestamp.
+ * @public
+ */
+export const ResponseTimestampHeaderName = 'x-timestamp';
+
+/**
+ * Response header carrying the response timezone.
+ * @public
+ */
+export const ResponseTimezoneHeaderName = 'x-timezone';
+
+/**
+ * Response header carrying the API version.
+ * @public
+ */
+export const ResponseVersionHeaderName = 'x-version';
+
+/**
+ * Response header carrying the repository version.
+ * @public
+ */
+export const ResponseRepoVersionHeaderName = 'x-repo-version';

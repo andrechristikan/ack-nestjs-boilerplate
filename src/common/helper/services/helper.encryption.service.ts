@@ -98,7 +98,12 @@ export class HelperEncryptionService {
             throw new HelperDecryptFailedException();
         }
 
-        const [saltPart, ivPart, ciphertextPart, authTagPart] = parts;
+        const [saltPart, ivPart, ciphertextPart, authTagPart] = parts as [
+            string,
+            string,
+            string,
+            string,
+        ];
         const salt = this.decodePart(saltPart);
         const iv = this.decodePart(ivPart);
         const ciphertext = this.decodePart(ciphertextPart);

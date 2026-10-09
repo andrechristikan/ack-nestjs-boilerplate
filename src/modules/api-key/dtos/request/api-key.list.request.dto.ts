@@ -13,18 +13,29 @@ import { EnumApiKeyType } from '@generated/prisma-client/client';
  * @public
  */
 export const ApiKeyListRequestSchema = PaginationOffsetQuerySchema.extend({
-    search: z
-        .string()
-        .optional()
-        .meta({
-            description: `Search query, available fields: ${ApiKeyDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
-            example: '',
-        }),
+    search: PaginationOffsetQuerySchema.shape.search.meta({
+        description: `Search query, available fields: ${ApiKeyDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
+        example: '',
+    }),
     orderBy: z
-        .union([z.string(), z.array(z.string())])
+        .union([
+            z.templateLiteral([
+                z.enum(ApiKeyDefaultAvailableOrderBy),
+                ':',
+                z.enum(EnumPaginationOrderDirectionType),
+            ]),
+            z.array(
+                z.templateLiteral([
+                    z.enum(ApiKeyDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ])
+            ),
+            z.literal(''),
+        ])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${ApiKeyDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            description: `Order by field in \`field:direction\` format (e.g. \`${ApiKeyDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${ApiKeyDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
             example: `${ApiKeyDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
         }),
     isActive: RequestBooleanStringSchema.optional().meta({

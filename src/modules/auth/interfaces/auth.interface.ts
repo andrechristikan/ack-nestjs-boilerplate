@@ -1,5 +1,5 @@
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import type { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
+import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import {
     EnumRoleType,
     EnumUserLoginFrom,
@@ -63,6 +63,16 @@ export interface IAuthAccessTokenGenerate {
     sessionId: string;
 }
 
+export interface IAuthLoginIdentifiers {
+    sessionId: string;
+    jti: string;
+}
+
+export interface IAuthTokenSignInput extends IAuthLoginIdentifiers {
+    deviceOwnershipId: string;
+    loginAt: Date;
+}
+
 export interface IAuthRefreshTokenGenerate extends IAuthAccessTokenGenerate {
     expiredInMs: number;
 }
@@ -84,21 +94,21 @@ export interface IAuthTwoFactorChallenge {
 
 export interface IAuthTwoFactorChallengeCache {
     userId: string;
-    device: DeviceRequestDto;
+    device: IDeviceIdentity;
     loginFrom: EnumUserLoginFrom;
     loginWith: EnumUserLoginWith;
 }
 
 export interface IAuthTwoFactorVerify {
-    method?: EnumAuthTwoFactorMethod;
-    code?: string;
-    backupCode?: string;
+    method: EnumAuthTwoFactorMethod | null;
+    code: string | null;
+    backupCode: string | null;
 }
 
 export interface IAuthTwoFactorVerifyResult {
     isValid: boolean;
     method: EnumAuthTwoFactorMethod;
-    newBackupCodes?: string[];
+    newBackupCodes: string[] | null;
 }
 
 export interface IAuthTwoFactorSetup {

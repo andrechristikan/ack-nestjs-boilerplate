@@ -39,6 +39,7 @@ export const DatabaseModelRelations = {
         workspaceMembers: 'WorkspaceMember',
         workspaceJoinRequests: 'WorkspaceJoinRequest',
         projectMembers: 'ProjectMember',
+        termPolicyRecipients: 'TermPolicyRecipient',
     },
     Verification: { user: 'User', mobileNumber: 'UserMobileNumber' },
     PasswordHistory: { user: 'User' },
@@ -62,6 +63,7 @@ export const DatabaseModelRelations = {
     ForgotPassword: { user: 'User' },
     Notification: { user: 'User', deliveries: 'NotificationDelivery' },
     NotificationDelivery: { notification: 'Notification' },
+    TermPolicyRecipient: { user: 'User' },
     NotificationUserSetting: { user: 'User' },
     Workspace: {
         members: 'WorkspaceMember',
@@ -80,3 +82,27 @@ export const DatabaseModelRelations = {
     },
     ProjectMember: { project: 'Project', user: 'User' },
 } as const satisfies IDatabaseModelRelations;
+
+/**
+ * Prisma error codes meaning the database cannot be reached or its connection pool is exhausted.
+ * @public
+ */
+export const DatabaseUnavailableCodes: readonly string[] = [
+    'P1001',
+    'P1002',
+    'P1008',
+    'P1017',
+    'P2024',
+];
+
+/**
+ * Prisma error code of a unique-constraint violation.
+ * @public
+ */
+export const DatabaseUniqueConstraintCode = 'P2002';
+
+/**
+ * Prisma error code of a transaction write conflict or deadlock.
+ * @public
+ */
+export const DatabaseWriteConflictCode = 'P2034';

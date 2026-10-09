@@ -5,6 +5,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
+import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import type {
     IPaginationIn,
@@ -12,12 +13,12 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { FileService } from '@common/file/services/file.service';
-import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
+import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
 import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -56,8 +57,9 @@ export class TermPolicyDomain {
     private prepareActivityLog(
         action: EnumActivityLogAction,
         termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
-        timestamp: Date
-    ): IActivityLogStagedEvent {
+        timestamp: Date,
+        onError: boolean
+    ): IActivityLogStaged {
         const metadata = this.termPolicyUtil.mapActivityLogMetadata(
             termPolicy,
             timestamp
@@ -66,15 +68,41 @@ export class TermPolicyDomain {
         return this.activityLogDomain.prepare({
             action,
             metadata,
+            onError,
         });
+    }
+
+    private async enqueuePublishNotification(
+        termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
+        updatedBy: string
+    ): Promise<void> {
+        try {
+            await this.notificationQueue.sendPublishTermPolicy(
+                {
+                    termPolicyId: termPolicy.id,
+                    type: termPolicy.type,
+                    version: termPolicy.version,
+                },
+                updatedBy
+            );
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            throw new AppUnknownException(
+                err,
+                'Enqueueing the term policy publish notification failed'
+            );
+        }
     }
 
     mapPublicContent(
         newItems: IAwsS3[],
         contents: ITermPolicyContent[]
     ): ITermPolicyContent[] {
-        return newItems.map(item => {
-            const language = contents.find(c => {
+        const mapped = newItems.map(item => {
+            const content = contents.find(c => {
                 const contentFilename =
                     this.fileService.extractFilenameFromPath(c.key);
                 const itemFilename = this.fileService.extractFilenameFromPath(
@@ -82,10 +110,28 @@ export class TermPolicyDomain {
                 );
 
                 return contentFilename === itemFilename;
-            })?.language as EnumMessageLanguage;
+            });
+            if (!content) {
+                throw new AppUnknownException(
+                    null,
+                    `Term policy copy ${item.key} matches no content`
+                );
+            }
 
-            return { ...item, language };
+            return { ...item, language: content.language };
         });
+
+        const missing = contents.find(
+            c => !mapped.some(m => m.language === c.language)
+        );
+        if (missing) {
+            throw new AppUnknownException(
+                null,
+                `Term policy copy failed for language ${missing.language}`
+            );
+        }
+
+        return mapped;
     }
 
     async getListByAdmin(
@@ -93,14 +139,21 @@ export class TermPolicyDomain {
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        return this.termPolicyRepository.find(pagination, type, status);
+        return this.termPolicyRepository.find(
+            pagination,
+            type ?? null,
+            status ?? null
+        );
     }
 
     async getListPublished(
         pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        return this.termPolicyRepository.findPublished(pagination, type);
+        return this.termPolicyRepository.findPublished(
+            pagination,
+            type ?? null
+        );
     }
 
     async createByAdmin({
@@ -108,6 +161,7 @@ export class TermPolicyDomain {
         type,
         version,
     }: ITermPolicyCreate): Promise<TermPolicy> {
+        // Sequential by design: gate before the work it guards
         const isExist = await this.termPolicyRepository.existsByVersionAndType(
             version,
             type
@@ -120,6 +174,11 @@ export class TermPolicyDomain {
             this.termPolicyUtil.validateUniqueLanguages(contents);
         if (!isUniqueLanguages) {
             throw new TermPolicyLanguageDuplicateException();
+        }
+
+        const isS3Initialized = this.awsS3Service.isInitialized();
+        if (!isS3Initialized) {
+            throw new AwsS3NotConfiguredException();
         }
 
         try {
@@ -140,11 +199,12 @@ export class TermPolicyDomain {
             );
             const termPolicyId = this.databaseUtil.createId();
             const timestamp = this.helperDateService.create();
-            const events = [
+            const activityLogs = [
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyCreate,
                     { id: termPolicyId, type, version },
-                    timestamp
+                    timestamp,
+                    false
                 ),
             ];
             const created = await this.termPolicyRepository.create(
@@ -153,7 +213,7 @@ export class TermPolicyDomain {
                 mappedContents
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return created;
         } catch (err: unknown) {
@@ -177,11 +237,12 @@ export class TermPolicyDomain {
         try {
             const contentPath = this.termPolicyUtil.getPath(termPolicy);
             const timestamp = this.helperDateService.create();
-            const events = [
+            const activityLogs = [
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyDelete,
                     termPolicy,
-                    timestamp
+                    timestamp,
+                    false
                 ),
             ];
             const [deleted] = await Promise.all([
@@ -191,7 +252,7 @@ export class TermPolicyDomain {
                 }),
             ]);
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return deleted;
         } catch (err: unknown) {
@@ -211,13 +272,24 @@ export class TermPolicyDomain {
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
             throw new TermPolicyNotFoundException();
-        } else if (termPolicy.status === EnumTermPolicyStatus.published) {
-            throw new TermPolicyStatusInvalidException();
-        } else if (
-            (termPolicy.contents as unknown as ITermPolicyContent[]).length ===
-            0
-        ) {
+        }
+        if (termPolicy.status === EnumTermPolicyStatus.published) {
+            await this.enqueuePublishNotification(termPolicy, updatedBy);
+
+            return;
+        }
+
+        const contents = this.termPolicyUtil.toContents(termPolicy.contents);
+        if (contents instanceof TermPolicyContentInvalidException) {
+            throw contents;
+        }
+        if (contents.length === 0) {
             throw new TermPolicyContentEmptyException();
+        }
+
+        const isS3Initialized = this.awsS3Service.isInitialized();
+        if (!isS3Initialized) {
+            throw new AwsS3NotConfiguredException();
         }
 
         try {
@@ -225,9 +297,6 @@ export class TermPolicyDomain {
                 termPolicy.type,
                 termPolicy.version
             );
-            const contents =
-                termPolicy.contents as unknown as ITermPolicyContent[];
-
             const newItems = await this.awsS3Service.copyItems(
                 contents,
                 contentPublicPath,
@@ -236,14 +305,28 @@ export class TermPolicyDomain {
 
             const newContents = this.mapPublicContent(newItems, contents);
 
-            const events = await this.databaseService.withTransaction(
+            // Sequential by design: write must not run if an earlier step throws
+            const activityLogs = await this.databaseService.withTransaction(
                 async tx => {
-                    const row = await this.termPolicyRepository.publishInTx(
+                    const published =
+                        await this.termPolicyRepository.publishInTx(
+                            tx,
+                            termPolicyId,
+                            newContents
+                        );
+                    if (!published) {
+                        throw new TermPolicyStatusInvalidException();
+                    }
+
+                    const row = await this.termPolicyRepository.findOneByIdInTx(
                         tx,
-                        termPolicyId,
-                        newContents
+                        termPolicyId
                     );
-                    await this.userDomain.resetTermPolicyForActiveUsersInTx(
+                    if (!row) {
+                        throw new TermPolicyNotFoundException();
+                    }
+
+                    await this.userDomain.resetTermPolicyInTx(
                         tx,
                         termPolicy.type
                     );
@@ -252,21 +335,17 @@ export class TermPolicyDomain {
                         this.prepareActivityLog(
                             EnumActivityLogAction.adminTermPolicyPublish,
                             row,
-                            row.updatedAt
+                            row.updatedAt,
+                            true
                         ),
                     ];
                 }
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
-            await this.notificationQueue.sendPublishTermPolicy(
-                {
-                    type: termPolicy.type,
-                    version: termPolicy.version,
-                },
-                updatedBy
-            );
+            // Sequential by design: the job must not be enqueued if an earlier step throws
+            await this.enqueuePublishNotification(termPolicy, updatedBy);
 
             return;
         } catch (err: unknown) {

@@ -34,16 +34,16 @@ export function FileExtensionPipe(
                 allowedExtensions.filter(extension => {
                     const signatures = this.signaturesOf(extension);
 
-                    return signatures !== undefined && signatures.length === 0;
+                    return signatures !== null && signatures.length === 0;
                 })
             );
         }
 
         private signaturesOf(
             extension: EnumFileExtension
-        ): readonly string[] | undefined {
+        ): readonly string[] | null {
             if (!(extension in FileExtensionContract)) {
-                return undefined;
+                return null;
             }
 
             return FileExtensionContract[

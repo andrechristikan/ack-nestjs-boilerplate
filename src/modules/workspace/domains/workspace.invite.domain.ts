@@ -114,7 +114,7 @@ export class WorkspaceInviteDomain {
     }
 
     private createInviteTokenData(
-        expiryDurationInDays?: number
+        expiryDurationInDays: number | null
     ): IWorkspaceInviteTokenData {
         const token = this.helperStringService.random(this.inviteTokenLength);
         const hashedToken = this.helperHashService.sha256Hash(token);
@@ -207,14 +207,15 @@ export class WorkspaceInviteDomain {
         username: string
     ): Promise<IUserSignUpWorkspaceContext> {
         if (!inviteToken) {
-            const [personalContext] =
+            const personalContexts =
                 this.userOnboardingDomain.buildPersonalWorkspaceContexts([
                     username,
                 ]);
 
-            return personalContext;
+            return personalContexts[0]!;
         }
 
+        // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
         const hashedToken = this.helperHashService.sha256Hash(inviteToken);
         const invite =
@@ -246,12 +247,13 @@ export class WorkspaceInviteDomain {
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
+        // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
 
         return this.workspaceInviteRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
-            status
+            status ?? null
         );
     }
 
@@ -260,6 +262,7 @@ export class WorkspaceInviteDomain {
         actorId: string,
         create: IWorkspaceInviteCreate
     ): Promise<WorkspaceInvite> {
+        // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
 
         const hasProjectId = !!create.projectId;
@@ -295,7 +298,7 @@ export class WorkspaceInviteDomain {
         const tokenData = this.createInviteTokenData(create.expiryDuration);
 
         const workspaceInviteId = this.databaseUtil.createId();
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 userId: actorId,
@@ -310,7 +313,7 @@ export class WorkspaceInviteDomain {
             }),
         ];
         if (existingUser && existingUser.id !== actorId) {
-            const workspaceInviteCreatedByAdminEvent =
+            const workspaceInviteCreatedByAdminActivityLog =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceInviteCreatedByAdmin,
                     userId: existingUser.id,
@@ -318,7 +321,7 @@ export class WorkspaceInviteDomain {
                     workspaceId: workspace.id,
                     metadata: { actorUserId: actorId },
                 });
-            events.push(workspaceInviteCreatedByAdminEvent);
+            activityLogs.push(workspaceInviteCreatedByAdminActivityLog);
         }
 
         const invite = await this.workspaceInviteRepository.createPending({
@@ -334,7 +337,7 @@ export class WorkspaceInviteDomain {
             invitedByUserId: actorId,
         });
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         await this.sendInviteNotification(
             workspace,
@@ -351,8 +354,9 @@ export class WorkspaceInviteDomain {
         workspace: Workspace,
         actorId: string,
         workspaceInviteId: string,
-        expiryDuration?: EnumWorkspaceInviteExpiry
+        expiryDuration: EnumWorkspaceInviteExpiry | null
     ): Promise<WorkspaceInvite> {
+        // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
 
         const existing =
@@ -394,6 +398,7 @@ export class WorkspaceInviteDomain {
         actorId: string,
         workspaceInviteId: string
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
 
         const existing =
@@ -411,7 +416,7 @@ export class WorkspaceInviteDomain {
             existing.email
         );
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceInviteRevoked,
                 userId: actorId,
@@ -426,7 +431,7 @@ export class WorkspaceInviteDomain {
             }),
         ];
         if (existingUser && existingUser.id !== actorId) {
-            const workspaceInviteRevokedByAdminEvent =
+            const workspaceInviteRevokedByAdminActivityLog =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceInviteRevokedByAdmin,
                     userId: existingUser.id,
@@ -434,12 +439,12 @@ export class WorkspaceInviteDomain {
                     workspaceId: workspaceId,
                     metadata: { actorUserId: actorId },
                 });
-            events.push(workspaceInviteRevokedByAdminEvent);
+            activityLogs.push(workspaceInviteRevokedByAdminActivityLog);
         }
 
         await this.workspaceInviteRepository.revoke(workspaceInviteId);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async acceptOnSignUpInTx(
@@ -478,6 +483,7 @@ export class WorkspaceInviteDomain {
         userEmail: string,
         inviteToken: string
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
 
         const invite = await this.validateInviteToken(inviteToken);
@@ -495,7 +501,7 @@ export class WorkspaceInviteDomain {
         }
 
         const today = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceInviteAccepted,
                 userId: userId,
@@ -505,7 +511,7 @@ export class WorkspaceInviteDomain {
             }),
         ];
         if (invite.invitedByUserId !== userId) {
-            const workspaceInviteAcceptedByInviteeEvent =
+            const workspaceInviteAcceptedByInviteeActivityLog =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
                     userId: invite.invitedByUserId,
@@ -513,7 +519,7 @@ export class WorkspaceInviteDomain {
                     workspaceId: invite.workspaceId,
                     metadata: { actorUserId: userId },
                 });
-            events.push(workspaceInviteAcceptedByInviteeEvent);
+            activityLogs.push(workspaceInviteAcceptedByInviteeActivityLog);
         }
 
         await this.databaseService.withTransaction(async tx => {
@@ -546,10 +552,11 @@ export class WorkspaceInviteDomain {
             }
         });
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async previewInvite(inviteToken: string): Promise<IWorkspaceInvitePreview> {
+        // Sequential by design: gate before the work it guards
         await this.assertInvitationAllowed();
 
         const invite = await this.validateInviteToken(inviteToken);

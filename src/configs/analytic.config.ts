@@ -63,14 +63,14 @@ export interface IConfigAnalytic {
         };
         refreshSpike: {
             windowInMs: number;
-            minEvents: number;
+            minCount: number;
         };
         backupCodeNewDevice: {
             windowInMs: number;
         };
         apiKeyBurst: {
             windowInMs: number;
-            minEvents: number;
+            minCount: number;
         };
         weights: {
             sessionAfterAdmin: number;
@@ -87,12 +87,7 @@ export interface IConfigAnalytic {
             reviewMax: number;
             elevateMax: number;
         };
-        bandLabels: {
-            monitor: string;
-            review: string;
-            elevate: string;
-            critical: string;
-        };
+        concurrency: number;
     };
 }
 
@@ -103,10 +98,10 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
         fraudSummaryTtlInMs: ms('5m'),
         riskScoreTtlInMs: ms('10m'),
         keyPatterns: {
-            dashboard: 'Analytic:dashboard:{metric}:{start}:{end}',
-            anomaly: 'Analytic:anomaly:{signal}:{window}',
-            fraud: 'Analytic:fraud:{signal}:{window}',
-            riskScore: 'Analytic:fraud:risk:{userId}',
+            dashboard: 'Analytic:Dashboard:{metric}:{start}:{end}',
+            anomaly: 'Analytic:Anomaly:{signal}:{window}',
+            fraud: 'Analytic:Fraud:{signal}:{window}',
+            riskScore: 'Analytic:Fraud:Risk:{userId}',
         },
         windowTokenPattern: '{start}:{end}',
         workspaceWindowTokenPattern: '{workspaceId}:{start}:{end}',
@@ -158,14 +153,14 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
         },
         refreshSpike: {
             windowInMs: ms('10m'),
-            minEvents: 20,
+            minCount: 20,
         },
         backupCodeNewDevice: {
             windowInMs: ms('1h'),
         },
         apiKeyBurst: {
             windowInMs: ms('10m'),
-            minEvents: 5,
+            minCount: 5,
         },
         weights: {
             sessionAfterAdmin: 50,
@@ -182,11 +177,6 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
             reviewMax: 60,
             elevateMax: 90,
         },
-        bandLabels: {
-            monitor: 'monitor',
-            review: 'review',
-            elevate: 'elevate',
-            critical: 'critical',
-        },
+        concurrency: 10,
     },
 }));

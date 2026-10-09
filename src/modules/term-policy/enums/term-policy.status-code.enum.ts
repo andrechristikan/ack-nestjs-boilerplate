@@ -12,4 +12,6 @@ export enum EnumTermPolicyStatusCodeError {
     contentNotFound = 51506,
     contentExist = 51507,
     contentEmpty = 51508,
+    contentInvalid = 51509,
+    publishInProgress = 51510,
 }

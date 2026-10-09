@@ -12,11 +12,13 @@ import {
     createParamDecorator,
 } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
+import { DocAuthJwtAccessErrorResponses } from '@modules/auth/constants/auth.constant';
+import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 
 /**
  * Applies the user guard; pass `false` to skip the email-verified requirement.
- * Documents user kits without `auth.error.accessTokenUnauthorized`.
+ * Documents user kits without `auth.error.accessTokenUnauthorized`, and the missing JWT payload.
  * @public
  */
 export function UserProtected(isVerified: boolean = true): MethodDecorator {
@@ -24,12 +26,13 @@ export function UserProtected(isVerified: boolean = true): MethodDecorator {
         UseGuards(UserGuard),
         SetMetadata(UserGuardIsVerifiedMetaKey, isVerified),
         DocUserErrorResponses.unauthorized,
-        DocUserErrorResponses.forbidden
+        DocUserErrorResponses.forbidden,
+        DocAuthJwtAccessErrorResponses.guardMissing
     );
 }
 
 /**
- * Reads the current user, or one of its fields, that `UserGuard` stored; throws when either is absent.
+ * Reads the current user, or one of its fields, that `UserGuard` stored. Throws `UserGuardMissingException` when the user is absent and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const UserCurrent = createParamDecorator<
@@ -39,21 +42,22 @@ export const UserCurrent = createParamDecorator<
     (
         field: Extract<keyof IUser, string> | undefined
     ): IUser | NonNullable<IUser[Extract<keyof IUser, string>]> => {
-        const user = ClsServiceManager.getClsService().get<IUser | undefined>(
-            UserStoreKey
-        );
-        if (user === undefined || user === null) {
-            throw new RequestContextMissingException(UserStoreKey);
+        const user =
+            ClsServiceManager.getClsService().get<IUser | null>(UserStoreKey) ??
+            null;
+        if (user === null) {
+            throw new UserGuardMissingException();
         }
 
-        if (field === undefined || field === null) {
+        const fieldKey = field ?? null;
+        if (fieldKey === null) {
             return user;
         }
 
-        const value = user[field];
-        if (value === undefined || value === null) {
+        const value = user[fieldKey] ?? null;
+        if (value === null) {
             throw new RequestContextMissingException(
-                `${UserStoreKey}.${field}`
+                `${UserStoreKey}.${fieldKey}`
             );
         }
 

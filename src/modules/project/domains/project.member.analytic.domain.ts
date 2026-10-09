@@ -14,15 +14,15 @@ export class ProjectMemberAnalyticDomain {
         private readonly projectMemberAnalyticRepository: ProjectMemberAnalyticRepository
     ) {}
 
-    membershipDistributionOffset(
+    getMembershipDistributionOffset(
         params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
-        return this.projectMemberAnalyticRepository.membershipDistributionOffset(
+        return this.projectMemberAnalyticRepository.groupMembershipDistributionOffset(
             params
         );
     }
 
-    roles(): Promise<IAnalyticRoleCount[]> {
+    getRoles(): Promise<IAnalyticRoleCount[]> {
         return this.projectMemberAnalyticRepository.groupByRole();
     }
 }

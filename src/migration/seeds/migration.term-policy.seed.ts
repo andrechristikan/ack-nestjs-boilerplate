@@ -11,6 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { EnumTermPolicyStatus } from '@generated/prisma-client/client';
 import type { Prisma } from '@generated/prisma-client/client';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
 /**
  * Seeds published term policy records (without document contents) for the current environment.
@@ -80,8 +81,10 @@ export class MigrationTermPolicySeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error seeding term policies');
-            throw error;
+            throw new AppUnknownException(
+                error,
+                'Seeding term policies failed'
+            );
         }
 
         this.logger.log('TermPolicies seeded successfully.');

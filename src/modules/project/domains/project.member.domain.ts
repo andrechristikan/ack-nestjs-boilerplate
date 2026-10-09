@@ -13,13 +13,11 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { ProjectWorkspaceOwnerStoreKey } from '@modules/project/constants/project.constant';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
 import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
 import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
-import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectRoleForbiddenException } from '@modules/project/exceptions/project.role-forbidden.exception';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
@@ -57,15 +55,9 @@ export class ProjectMemberDomain {
     }
 
     async validateProjectMemberGuard(
-        projectId: string | null,
-        userId: string | null
+        projectId: string,
+        userId: string
     ): Promise<ProjectMember> {
-        if (!userId) {
-            throw new AuthJwtAccessTokenInvalidException();
-        } else if (!projectId) {
-            throw new ProjectNotFoundException();
-        }
-
         const member =
             await this.projectMemberRepository.findOneByProjectAndUser(
                 projectId,
@@ -79,16 +71,10 @@ export class ProjectMemberDomain {
     }
 
     async validateProjectRoleGuard(
-        projectId: string | null,
-        workspaceMember: WorkspaceMember | null,
+        projectId: string,
+        workspaceMember: WorkspaceMember,
         allowedProjectRoles: EnumProjectMemberRole[]
     ): Promise<boolean> {
-        if (!projectId) {
-            throw new ProjectNotFoundException();
-        } else if (!workspaceMember) {
-            throw new ProjectRoleForbiddenException();
-        }
-
         const isWorkspaceOwner =
             this.projectUtil.isWorkspaceOwner(workspaceMember);
         if (isWorkspaceOwner) {
@@ -100,7 +86,9 @@ export class ProjectMemberDomain {
                 projectId,
                 workspaceMember.userId
             );
-        if (!member || !allowedProjectRoles.includes(member.role)) {
+        if (!member) {
+            throw new ProjectMemberForbiddenException();
+        } else if (!allowedProjectRoles.includes(member.role)) {
             throw new ProjectRoleForbiddenException();
         }
 
@@ -146,6 +134,7 @@ export class ProjectMemberDomain {
             throw new WorkspaceMemberNotFoundException();
         }
 
+        // Sequential by design: gate before the work it guards
         const existing =
             await this.projectMemberRepository.findOneByProjectAndUser(
                 project.id,
@@ -155,7 +144,7 @@ export class ProjectMemberDomain {
             throw new ProjectMemberAlreadyAssignedException();
         }
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberAssigned,
                 userId: actorId,
@@ -165,14 +154,14 @@ export class ProjectMemberDomain {
             }),
         ];
         if (targetMember.userId !== actorId) {
-            const assignedByAdminEvent = this.activityLogDomain.prepare({
+            const assignedByAdminActivityLog = this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberAssignedByAdmin,
                 userId: targetMember.userId,
                 createdBy: actorId,
                 workspaceId: project.workspaceId,
                 metadata: { actorUserId: actorId },
             });
-            events.push(assignedByAdminEvent);
+            activityLogs.push(assignedByAdminActivityLog);
         }
 
         const member = await this.projectMemberRepository.create(
@@ -182,7 +171,7 @@ export class ProjectMemberDomain {
             actorId
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return member;
     }
@@ -209,7 +198,7 @@ export class ProjectMemberDomain {
             newRole
         );
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberRoleUpdated,
                 userId: actorId,
@@ -219,19 +208,20 @@ export class ProjectMemberDomain {
             }),
         ];
         if (targetMember.userId !== actorId) {
-            const roleUpdatedByAdminEvent = this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
-                userId: targetMember.userId,
-                createdBy: actorId,
-                workspaceId: project.workspaceId,
-                metadata: { actorUserId: actorId },
-            });
-            events.push(roleUpdatedByAdminEvent);
+            const roleUpdatedByAdminActivityLog =
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
+                    userId: targetMember.userId,
+                    createdBy: actorId,
+                    workspaceId: project.workspaceId,
+                    metadata: { actorUserId: actorId },
+                });
+            activityLogs.push(roleUpdatedByAdminActivityLog);
         }
 
         await this.projectMemberRepository.updateRole(targetMember.id, newRole);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async removeMember(
@@ -258,7 +248,7 @@ export class ProjectMemberDomain {
             targetMember.role
         );
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberRemoved,
                 userId: actorId,
@@ -266,25 +256,22 @@ export class ProjectMemberDomain {
                 workspaceId: project.workspaceId,
                 metadata: { targetUserId: targetMember.userId },
             }),
-        ];
-        if (targetMember.userId !== actorId) {
-            const removedByAdminEvent = this.activityLogDomain.prepare({
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberRemovedByAdmin,
                 userId: targetMember.userId,
                 createdBy: actorId,
                 workspaceId: project.workspaceId,
                 metadata: { actorUserId: actorId },
-            });
-            events.push(removedByAdminEvent);
-        }
+            }),
+        ];
 
         await this.projectMemberRepository.removeMember(targetMember.id);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async leaveProject(project: Project, member: ProjectMember): Promise<void> {
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberLeft,
                 userId: member.userId,
@@ -295,6 +282,6 @@ export class ProjectMemberDomain {
 
         await this.projectMemberRepository.removeMember(member.id);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 }

@@ -6,6 +6,7 @@ import { TermPolicyRequiredGuardMetaKey } from '@modules/term-policy/constants/t
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
+import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 /**
@@ -26,6 +27,10 @@ export class TermPolicyGuard implements CanActivate {
         );
 
         const user = this.requestStoreService.get<IUser>(UserStoreKey);
+        if (!user) {
+            throw new UserGuardMissingException();
+        }
+
         await this.termPolicyAcceptanceDomain.validateTermPolicyGuard(
             user,
             requiredTermPolicies

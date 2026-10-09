@@ -12,7 +12,6 @@ import {
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
 import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
@@ -50,15 +49,9 @@ export class WorkspaceMemberDomain {
     }
 
     async validateWorkspaceMemberGuard(
-        workspaceId: string | null,
-        userId: string | null
+        workspaceId: string,
+        userId: string
     ): Promise<WorkspaceMember> {
-        if (!userId) {
-            throw new AuthJwtAccessTokenInvalidException();
-        } else if (!workspaceId) {
-            throw new WorkspaceNotFoundException();
-        }
-
         const member =
             await this.workspaceMemberRepository.findOneByWorkspaceAndUser(
                 workspaceId,
@@ -73,13 +66,9 @@ export class WorkspaceMemberDomain {
 
     /** Enforces `allowedRoles` against the caller's membership. An `owner` satisfies every role check structurally and is therefore never listed in a route's `allowedRoles`. */
     validateWorkspaceRoleGuard(
-        member: WorkspaceMember | null,
+        member: WorkspaceMember,
         allowedRoles: EnumWorkspaceMemberRole[]
     ): WorkspaceMember {
-        if (!member) {
-            throw new WorkspaceRoleForbiddenException();
-        }
-
         if (member.role === EnumWorkspaceMemberRole.owner) {
             return member;
         }
@@ -135,7 +124,7 @@ export class WorkspaceMemberDomain {
             throw new WorkspaceMemberNotFoundException();
         }
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceOwnershipTransferred,
                 userId: actorMember.userId,
@@ -144,7 +133,7 @@ export class WorkspaceMemberDomain {
                 metadata: { targetUserId: targetMember.userId },
             }),
         ];
-        const workspaceOwnershipTransferredByOwnerEvent =
+        const workspaceOwnershipTransferredByOwnerActivityLog =
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
                 userId: targetMember.userId,
@@ -152,14 +141,14 @@ export class WorkspaceMemberDomain {
                 workspaceId: workspaceId,
                 metadata: { actorUserId: actorMember.userId },
             });
-        events.push(workspaceOwnershipTransferredByOwnerEvent);
+        activityLogs.push(workspaceOwnershipTransferredByOwnerActivityLog);
 
         await this.workspaceMemberRepository.transferOwnership(
             actorMember.id,
             targetMember.id
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async leaveWorkspace(
@@ -167,6 +156,7 @@ export class WorkspaceMemberDomain {
         member: WorkspaceMember
     ): Promise<void> {
         if (member.role === EnumWorkspaceMemberRole.owner) {
+            // Sequential by design: gate before the work it guards
             const ownerCount =
                 await this.workspaceMemberRepository.countOwners(workspaceId);
             if (ownerCount <= 1) {
@@ -174,7 +164,7 @@ export class WorkspaceMemberDomain {
             }
         }
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceMemberLeft,
                 userId: member.userId,
@@ -185,7 +175,7 @@ export class WorkspaceMemberDomain {
 
         await this.workspaceMemberRepository.removeMember(member.id);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async getMembersList(
@@ -196,7 +186,7 @@ export class WorkspaceMemberDomain {
         return this.workspaceMemberRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
-            role
+            role ?? null
         );
     }
 
@@ -215,9 +205,13 @@ export class WorkspaceMemberDomain {
             throw new WorkspaceMemberNotFoundException();
         }
 
+        if (targetMember.userId === actorMember.userId) {
+            throw new WorkspaceMemberPeerForbiddenException();
+        }
+
         this.assertPeerActionAllowed(actorMember, targetMember);
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceMemberRoleUpdated,
                 userId: actorMember.userId,
@@ -225,25 +219,21 @@ export class WorkspaceMemberDomain {
                 workspaceId: workspaceId,
                 metadata: { targetUserId: targetMember.userId },
             }),
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
+                userId: targetMember.userId,
+                createdBy: actorMember.userId,
+                workspaceId: workspaceId,
+                metadata: { actorUserId: actorMember.userId },
+            }),
         ];
-        if (targetMember.userId !== actorMember.userId) {
-            const workspaceMemberRoleUpdatedByAdminEvent =
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
-                    userId: targetMember.userId,
-                    createdBy: actorMember.userId,
-                    workspaceId: workspaceId,
-                    metadata: { actorUserId: actorMember.userId },
-                });
-            events.push(workspaceMemberRoleUpdatedByAdminEvent);
-        }
 
         await this.workspaceMemberRepository.updateRole(
             targetMember.id,
             newRole
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async removeMember(
@@ -266,7 +256,7 @@ export class WorkspaceMemberDomain {
 
         this.assertPeerActionAllowed(actorMember, targetMember);
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceMemberRemoved,
                 userId: actorMember.userId,
@@ -274,33 +264,30 @@ export class WorkspaceMemberDomain {
                 workspaceId: workspaceId,
                 metadata: { targetUserId: targetMember.userId },
             }),
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
+                userId: targetMember.userId,
+                createdBy: actorMember.userId,
+                workspaceId: workspaceId,
+                metadata: { actorUserId: actorMember.userId },
+            }),
         ];
-        if (targetMember.userId !== actorMember.userId) {
-            const workspaceMemberRemovedByAdminEvent =
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
-                    userId: targetMember.userId,
-                    createdBy: actorMember.userId,
-                    workspaceId: workspaceId,
-                    metadata: { actorUserId: actorMember.userId },
-                });
-            events.push(workspaceMemberRemovedByAdminEvent);
-        }
 
         await this.workspaceMemberRepository.removeMember(targetMember.id);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
-    async getMembersListForAdmin(
+    async getMembersListByAdmin(
         workspaceId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const [workspace, paginated] = await Promise.all([
-            this.workspaceRepository.findByIdForAdmin(workspaceId),
+            this.workspaceRepository.findByIdByAdmin(workspaceId),
             this.workspaceMemberRepository.findWithPaginationOffset(
                 workspaceId,
-                pagination
+                pagination,
+                null
             ),
         ]);
         if (!workspace) {

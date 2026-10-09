@@ -13,24 +13,18 @@ export const FeatureFlagKeyPathMetaKey = 'FeatureFlagKeyPathMetaKey';
  * @public
  */
 export const DocFeatureFlagErrorResponses = {
-    predefined: DocResponseError(
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        {
-            statusCode: EnumFeatureFlagStatusCodeError.predefinedKeyNotFound,
-            messagePath: 'featureFlag.error.predefinedKeyNotFound',
-        },
-        {
-            statusCode:
-                EnumFeatureFlagStatusCodeError.predefinedKeyLengthExceeded,
-            messagePath: 'featureFlag.error.predefinedKeyLengthExceeded',
-        },
-        {
-            statusCode: EnumFeatureFlagStatusCodeError.predefinedKeyEmpty,
-            messagePath: 'featureFlag.error.predefinedKeyEmpty',
-        }
-    ),
-    serviceUnavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
-        statusCode: EnumFeatureFlagStatusCodeError.serviceUnavailable,
-        messagePath: 'featureFlag.error.serviceUnavailable',
+    disabled: DocResponseError(HttpStatus.NOT_FOUND, {
+        statusCode: EnumFeatureFlagStatusCodeError.disabled,
+        messagePath: 'featureFlag.error.disabled',
+    }),
+    notConfigured: DocResponseError(HttpStatus.INTERNAL_SERVER_ERROR, {
+        statusCode: EnumFeatureFlagStatusCodeError.notConfigured,
+        messagePath: 'featureFlag.error.notConfigured',
     }),
 } as const;
+
+/**
+ * Request header carrying the anonymous caller id a feature flag rolls out by.
+ * @public
+ */
+export const FeatureFlagAnonymousIdHeaderName = 'x-anonymous-id';

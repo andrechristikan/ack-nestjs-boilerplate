@@ -4,9 +4,9 @@ import type { IUserRef } from '@modules/user/interfaces/user.interface';
 
 export interface IDeviceIdentity {
     fingerprint: string;
-    name?: string;
-    platform?: EnumDevicePlatform;
-    notificationToken?: string;
+    name: string | null;
+    platform: EnumDevicePlatform | null;
+    notificationToken: string | null;
 }
 
 export interface IDeviceLoginUpsert {
@@ -47,9 +47,9 @@ export interface IDeviceOwnershipDetail extends IDeviceOwnership {
 }
 
 export interface IDeviceRefresh {
-    name?: string;
-    platform?: EnumDevicePlatform;
-    notificationToken?: string;
+    name: string | null;
+    platform: EnumDevicePlatform | null;
+    notificationToken: string | null;
 }
 
 export interface IDeviceOwnershipAnalyticUserCount {

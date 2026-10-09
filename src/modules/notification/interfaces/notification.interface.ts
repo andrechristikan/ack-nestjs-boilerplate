@@ -10,7 +10,10 @@ import {
     EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationStep,
+} from '@modules/notification/enums/notification.enum';
 
 export interface INotificationKindContract {
     type: EnumNotificationType;
@@ -36,6 +39,24 @@ export interface INotificationCreate {
 export interface INotificationCreateEntry {
     kind: EnumNotificationKind;
     payload: INotificationCreate;
+}
+
+export interface INotificationTermPolicyRecipientState {
+    userId: string;
+    batchId: string;
+    enqueuedAt: Date | null;
+}
+
+export interface INotificationTermPolicyRecipientCreate {
+    userId: string;
+    notificationId: string;
+}
+
+export interface INotificationTermPolicyRecipientSend {
+    userId: string;
+    notificationId: string;
+    email: string;
+    username: string;
 }
 
 export interface INotificationUserSettingUpdate {
@@ -108,13 +129,13 @@ export interface INotificationNewDeviceLoginPayload {
 }
 
 export interface INotificationPublishTermPolicyPayload {
+    termPolicyId: string;
     type: EnumTermPolicyType;
     version: number;
 }
 
-export interface INotificationAcceptTermPolicyPayload extends INotificationPublishTermPolicyPayload {
-    termPolicyId: string;
-}
+export type INotificationAcceptTermPolicyPayload =
+    INotificationPublishTermPolicyPayload;
 
 export interface INotificationWorkspaceInvitePayload {
     workspaceId: string;
@@ -174,15 +195,21 @@ export interface INotificationWorkspaceJoinRejectedPayload {
     rejectReasonCode: EnumWorkspaceJoinRejectReason;
 }
 
-export interface INotificationBulkQueuePayload<T = unknown> {
+export interface INotificationWelcomeEncryptedPayload extends INotificationVerificationEmailEncryptedPayload {
+    verificationNotificationId: string;
+}
+
+export interface INotificationBulkQueuePayload<T = null> {
     proceedBy: string;
-    data?: T;
+    data: T;
 }
 
 export interface INotificationQueuePayload<
-    T = unknown,
+    T = null,
 > extends INotificationBulkQueuePayload<T> {
     userId: string;
+    notificationId: string;
+    completedSteps: EnumNotificationStep[];
 }
 
 export interface INotificationSendPushPayload {
@@ -192,16 +219,17 @@ export interface INotificationSendPushPayload {
     username: string;
 }
 
-export interface INotificationPushQueuePayload<T = unknown> {
+export interface INotificationPushQueuePayload<T = null> {
     send: INotificationSendPushPayload;
-    data?: T;
+    data: T;
+    completedSteps: EnumNotificationStep[];
+    failureTokens: string[] | null;
+    pendingTokens: string[] | null;
 }
 
-export interface INotificationPushCleanupTokenQueuePayload {
-    data: {
-        userId: string;
-        failureTokens: string[];
-    };
+export interface INotificationPushCleanupTokenPayload {
+    userId: string;
+    failureTokens: string[];
 }
 
 export interface INotificationEmailSendPayload {
@@ -209,27 +237,50 @@ export interface INotificationEmailSendPayload {
     notificationId: string;
     email: string;
     username: string;
-    cc?: string[];
-    bcc?: string[];
+    cc: string[];
+    bcc: string[];
 }
 
-export interface INotificationEmailQueuePayload<T = unknown> {
+export interface INotificationEmailQueuePayload<T = null> {
     send: INotificationEmailSendPayload;
-    data?: T;
+    data: T;
 }
 
-export interface INotificationEmailBulkQueuePayload<T = unknown> {
-    send: INotificationEmailSendPayload[];
-    data?: T;
+export interface INotificationEmailBulkQueuePayload<T = null> {
+    data: T;
+    batchId: string;
+    proceedBy: string;
 }
 
 export interface INotificationEmailSendUnregisteredPayload {
     email: string;
-    cc?: string[];
-    bcc?: string[];
+    cc: string[];
+    bcc: string[];
 }
 
-export interface INotificationEmailUnregisteredQueuePayload<T = unknown> {
+export interface INotificationEmailUnregisteredQueuePayload<T = null> {
     send: INotificationEmailSendUnregisteredPayload;
-    data?: T;
+    data: T;
+}
+
+export interface INotificationStepFailure {
+    step: EnumNotificationStep;
+    error: string;
+}
+
+export interface INotificationStepResult {
+    message: string;
+    completedSteps: EnumNotificationStep[];
+    failedSteps: INotificationStepFailure[];
+}
+
+export interface INotificationPushSendOutcome {
+    failureTokens: string[] | null;
+    pendingTokens: string[] | null;
+    failure: INotificationStepFailure | null;
+}
+
+export interface INotificationPushStepResult extends INotificationStepResult {
+    failureTokens: string[] | null;
+    pendingTokens: string[] | null;
 }

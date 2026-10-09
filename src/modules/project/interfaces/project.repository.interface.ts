@@ -6,15 +6,17 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
-import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
-import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
+import type {
+    IProjectCreate,
+    IProjectUpdate,
+} from '@modules/project/interfaces/project.interface';
 
 export interface IProjectRepository {
     findActiveByIdAndWorkspace(
         projectId: string,
         workspaceId: string
     ): Promise<Project | null>;
-    findByIdForAdmin(projectId: string): Promise<Project | null>;
+    findByIdByAdmin(projectId: string): Promise<Project | null>;
     existsBySlugInWorkspace(
         workspaceId: string,
         slug: string,
@@ -28,21 +30,21 @@ export interface IProjectRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
     ): Promise<IResponsePaginationReturn<Project>>;
-    findWithPaginationOffsetForAdmin(
+    findWithPaginationOffsetByAdmin(
         {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string
+        workspaceId: string | null
     ): Promise<IResponsePaginationReturn<Project>>;
     create(
         workspaceId: string,
-        { name, description }: ProjectCreateRequestDto,
+        { name, description }: IProjectCreate,
         slugCandidates: string[]
     ): Promise<Project>;
     updateDetails(
         projectId: string,
-        { name, description }: ProjectUpdateRequestDto
+        { name, description }: IProjectUpdate
     ): Promise<Project>;
     updateSlug(projectId: string, slug: string): Promise<Project>;
     softDelete(projectId: string, deletedAt: Date): Promise<void>;

@@ -20,7 +20,7 @@ export class TermPolicyPublicController {
         private readonly termPolicyHttpService: TermPolicyHttpService
     ) {}
 
-    @Doc({ summary: 'Retrieve list of publish terms and policies' })
+    @Doc({ summary: 'retrieve list of publish terms and policies' })
     @ResponsePagination('termPolicy.list', {
         schema: TermPolicyResponseSchema,
     })

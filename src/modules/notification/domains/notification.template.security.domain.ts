@@ -11,17 +11,14 @@ export class NotificationTemplateSecurityDomain {
     private readonly logger = new Logger(
         NotificationTemplateSecurityDomain.name
     );
-    private readonly templatesDir = join(
-        process.cwd(),
-        'src/modules/notification/templates'
-    );
 
     constructor(private readonly awsSESService: AwsSESService) {}
 
     async emailImportChangePassword(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.change-password.template.hbs'
             );
 
@@ -69,7 +66,8 @@ export class NotificationTemplateSecurityDomain {
     async emailImportTemporaryPasswordByAdmin(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.temporary-password-by-admin.template.hbs'
             );
 
@@ -126,7 +124,8 @@ export class NotificationTemplateSecurityDomain {
     async emailImportResetPassword(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.reset-password.template.hbs'
             );
 
@@ -174,7 +173,8 @@ export class NotificationTemplateSecurityDomain {
     async emailImportForgotPassword(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.forgot-password.template.hbs'
             );
 
@@ -222,7 +222,8 @@ export class NotificationTemplateSecurityDomain {
     async emailImportResetTwoFactorByAdmin(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.reset-two-factor-by-admin.template.hbs'
             );
 
@@ -279,7 +280,8 @@ export class NotificationTemplateSecurityDomain {
     async emailImportNewDeviceLogin(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.new-device-login.template.hbs'
             );
 

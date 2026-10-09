@@ -17,8 +17,10 @@
         "contentNotFound": "Term policy content not found.",
         "contentExist": "This content already exists in the term policy.",
         "contentEmpty": "Term policy content cannot be empty.",
+        "contentInvalid": "Term policy content is invalid.",
         "contentsLanguageMustBeUnique": "Each language can only be used once in term policy contents.",
         "requiredInvalid": "Required field value is invalid.",
-        "statusInvalid": "Term policy status is invalid."
+        "statusInvalid": "Term policy status is invalid.",
+        "publishInProgress": "Term policy publish is already in progress."
     }
 }

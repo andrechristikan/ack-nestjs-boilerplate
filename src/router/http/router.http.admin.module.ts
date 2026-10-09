@@ -24,6 +24,7 @@ import { WorkspaceAdminController } from '@modules/workspace/controllers/workspa
 import { WorkspaceHttpModule } from '@modules/workspace/workspace.http.module';
 import { AnalyticHttpModule } from '@modules/analytic/analytic.http.module';
 import { AnalyticAdminController } from '@modules/analytic/controllers/analytic.admin.controller';
+import { UserDomainModule } from '@modules/user/user.domain.module';
 import { Module } from '@nestjs/common';
 
 /**
@@ -63,6 +64,7 @@ import { Module } from '@nestjs/common';
         ProjectHttpModule,
         PolicyHttpModule,
         AnalyticHttpModule,
+        UserDomainModule,
     ],
 })
 export class RouterHttpAdminModule {}

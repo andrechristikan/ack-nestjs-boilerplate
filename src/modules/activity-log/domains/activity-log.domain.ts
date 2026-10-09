@@ -20,7 +20,7 @@ import type {
     IActivityLogFlushOptions,
     IActivityLogMetadata,
     IActivityLogStageInput,
-    IActivityLogStagedEvent,
+    IActivityLogStaged,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IActivityLogCreate } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
@@ -63,7 +63,7 @@ export class ActivityLogDomain {
 
     private assertTargetOnlyField(
         resolution: EnumActivityLogUser,
-        value: string | undefined
+        value: string | null
     ): void {
         if (resolution === EnumActivityLogUser.target) {
             if (!value) {
@@ -72,14 +72,14 @@ export class ActivityLogDomain {
             return;
         }
 
-        if (value !== undefined) {
+        if (value !== null) {
             throw new ActivityLogContractInvalidException();
         }
     }
 
     private assertWorkspaceFields(
         resolution: EnumActivityLogWorkspace,
-        workspaceId: string | null | undefined
+        workspaceId: string | null
     ): void {
         if (resolution === EnumActivityLogWorkspace.target) {
             if (!workspaceId) {
@@ -89,20 +89,20 @@ export class ActivityLogDomain {
         }
 
         if (resolution === EnumActivityLogWorkspace.none) {
-            if (workspaceId !== undefined && workspaceId !== null) {
+            if (workspaceId !== null) {
                 throw new ActivityLogContractInvalidException();
             }
             return;
         }
 
-        if (workspaceId !== undefined) {
+        if (workspaceId !== null) {
             throw new ActivityLogContractInvalidException();
         }
     }
 
     private resolveUserId(
         resolution: EnumActivityLogUser,
-        stagedUserId: string | undefined,
+        stagedUserId: string | null,
         payloadUserId: string | null
     ): string {
         if (resolution === EnumActivityLogUser.target) {
@@ -121,7 +121,7 @@ export class ActivityLogDomain {
 
     private resolveCreatedBy(
         resolution: EnumActivityLogUser,
-        stagedCreatedBy: string | undefined,
+        stagedCreatedBy: string | null,
         userId: string
     ): string {
         if (resolution === EnumActivityLogUser.target) {
@@ -136,7 +136,7 @@ export class ActivityLogDomain {
 
     private resolveWorkspaceId(
         resolution: EnumActivityLogWorkspace,
-        stagedWorkspaceId: string | null | undefined
+        stagedWorkspaceId: string | null
     ): string | null {
         if (resolution === EnumActivityLogWorkspace.none) {
             return null;
@@ -159,29 +159,32 @@ export class ActivityLogDomain {
     }
 
     private buildFlushCreate(
-        event: IActivityLogStagedEvent,
+        activityLog: IActivityLogStaged,
         payloadUserId: string | null,
         requestLog: IRequestLog
     ): IActivityLogCreate {
-        const contract = this.getContract(event.action);
-        const metadata = this.validateMetadata(event.action, event.metadata);
+        const contract = this.getContract(activityLog.action);
+        const metadata = this.validateMetadata(
+            activityLog.action,
+            activityLog.metadata
+        );
         const userId = this.resolveUserId(
             contract.user,
-            event.userId,
+            activityLog.userId,
             payloadUserId
         );
         const workspaceId = this.resolveWorkspaceId(
             contract.workspace,
-            event.workspaceId
+            activityLog.workspaceId
         );
         const createdBy = this.resolveCreatedBy(
             contract.user,
-            event.createdBy,
+            activityLog.createdBy,
             userId
         );
 
         const description = this.activityLogUtil.getDescription(
-            event.action,
+            activityLog.action,
             metadata
         );
 
@@ -189,7 +192,7 @@ export class ActivityLogDomain {
             userId,
             createdBy,
             workspaceId,
-            action: event.action,
+            action: activityLog.action,
             description,
             requestLog,
             metadata,
@@ -198,41 +201,40 @@ export class ActivityLogDomain {
 
     prepare(
         input: IActivityLogStageInput<EnumActivityLogAction>
-    ): IActivityLogStagedEvent {
+    ): IActivityLogStaged {
         const contract = this.getContract(input.action);
         const metadata = this.validateMetadata(
             input.action,
             input.metadata ?? {}
         );
 
-        this.assertTargetOnlyField(contract.user, input.userId);
-        this.assertTargetOnlyField(contract.user, input.createdBy);
-        this.assertWorkspaceFields(contract.workspace, input.workspaceId);
+        const userId = input.userId ?? null;
+        const createdBy = input.createdBy ?? null;
+        const workspaceId = input.workspaceId ?? null;
+        this.assertTargetOnlyField(contract.user, userId);
+        this.assertTargetOnlyField(contract.user, createdBy);
+        this.assertWorkspaceFields(contract.workspace, workspaceId);
 
         return {
             action: input.action,
             metadata,
             onError: input.onError === true,
-            ...(input.userId !== undefined ? { userId: input.userId } : {}),
-            ...(input.createdBy !== undefined
-                ? { createdBy: input.createdBy }
-                : {}),
-            ...(input.workspaceId !== undefined
-                ? { workspaceId: input.workspaceId }
-                : {}),
+            userId,
+            createdBy,
+            workspaceId,
         };
     }
 
-    stagePrepared(events: IActivityLogStagedEvent[]): void {
-        if (events.length === 0) {
+    stagePrepared(activityLogs: IActivityLogStaged[]): void {
+        if (activityLogs.length === 0) {
             return;
         }
 
-        const stagedEvents = this.requestStoreService.get<
-            IActivityLogStagedEvent[]
+        const stagedActivityLogs = this.requestStoreService.get<
+            IActivityLogStaged[]
         >(ActivityLogStageStoreKey);
-        const staged = stagedEvents ?? [];
-        staged.push(...events);
+        const staged = stagedActivityLogs ?? [];
+        staged.push(...activityLogs);
 
         this.requestStoreService.set(ActivityLogStageStoreKey, staged);
     }
@@ -241,7 +243,7 @@ export class ActivityLogDomain {
         payloadUserId,
         isError,
     }: IActivityLogFlushOptions): Promise<void> {
-        const staged = this.requestStoreService.get<IActivityLogStagedEvent[]>(
+        const staged = this.requestStoreService.get<IActivityLogStaged[]>(
             ActivityLogStageStoreKey
         );
         if (!staged?.length) {
@@ -249,7 +251,7 @@ export class ActivityLogDomain {
         }
 
         const toFlush = isError
-            ? staged.filter(event => event.onError)
+            ? staged.filter(activityLog => activityLog.onError)
             : staged;
 
         if (!toFlush.length) {
@@ -263,8 +265,8 @@ export class ActivityLogDomain {
             throw new ActivityLogContractInvalidException();
         }
 
-        const rows: IActivityLogCreate[] = toFlush.map(event =>
-            this.buildFlushCreate(event, payloadUserId, requestLog)
+        const rows: IActivityLogCreate[] = toFlush.map(activityLog =>
+            this.buildFlushCreate(activityLog, payloadUserId, requestLog)
         );
 
         await this.activityLogRepository.createMany(rows);

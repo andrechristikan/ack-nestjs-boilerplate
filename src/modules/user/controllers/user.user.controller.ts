@@ -14,6 +14,7 @@ import { UserHttpService } from '@modules/user/services/user.http.service';
 import { Controller, Delete } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { EnumRoleType } from '@generated/prisma-client/client';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 
 @ApiTags('modules.user.user')
 @Controller({
@@ -32,7 +33,9 @@ export class UserUserController {
     @ApiKeyProtected()
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @Delete('/self/delete')
-    async deleteSelf(@AuthJwtPayload('userId') userId: string): Promise<void> {
-        await this.userHttpService.deleteSelf(userId);
+    async deleteSelf(
+        @AuthJwtPayload('userId') userId: string
+    ): Promise<IResponseReturn<void>> {
+        return this.userHttpService.deleteSelf(userId);
     }
 }

@@ -12,10 +12,10 @@ export class PaginationInvalidCursorFormatException extends AppBaseException {
     readonly statusCodeKey = EnumPaginationStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 
-    constructor(format?: string) {
+    constructor(format: string | null = null) {
         super(
             'pagination.error.invalidCursorFormat',
-            format !== undefined ? { messageProperties: { format } } : undefined
+            format === null ? {} : { messageProperties: { format } }
         );
     }
 }

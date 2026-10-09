@@ -5,6 +5,7 @@ import {
 } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyGuard } from '@modules/term-policy/guards/term-policy.guard';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
+import { DocUserErrorResponses } from '@modules/user/constants/user.constant';
 
 /**
  * Guards a route until the user has accepted the given term policy types.
@@ -17,6 +18,7 @@ export function TermPolicyAcceptanceProtected(
     return applyDecorators(
         UseGuards(TermPolicyGuard),
         SetMetadata(TermPolicyRequiredGuardMetaKey, requiredTermPolicies),
-        DocTermPolicyErrorResponses.forbidden
+        DocTermPolicyErrorResponses.forbidden,
+        DocUserErrorResponses.guardMissing
     );
 }

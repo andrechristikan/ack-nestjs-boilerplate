@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { EnumUserStatus } from '@generated/prisma-client/client';
 
+/**
+ * Query filter for the admin user export.
+ * @public
+ */
 export const UserExportRequestSchema = z.strictObject({
     status: z
         .string()
@@ -20,4 +24,8 @@ export const UserExportRequestSchema = z.strictObject({
     }),
 });
 
+/**
+ * Inferred DTO for UserExportRequestSchema.
+ * @public
+ */
 export type UserExportRequestDto = z.infer<typeof UserExportRequestSchema>;

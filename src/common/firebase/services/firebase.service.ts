@@ -1,6 +1,7 @@
 import {
     FirebaseInvalidTokenCodes,
     FirebaseMaxSendPushBatchSize,
+    FirebaseRetryableTokenCodes,
 } from '@common/firebase/constants/firebase.constant';
 import type {
     IFirebasePushPayload,
@@ -15,6 +16,9 @@ import { ConfigService } from '@nestjs/config';
 import * as firebaseAdmin from 'firebase-admin';
 import type { App as FirebaseApp } from 'firebase-admin/app';
 import { Messaging, getMessaging } from 'firebase-admin/messaging';
+import type { Notification } from 'firebase-admin/messaging';
+import { FirebaseInitializationFailedException } from '@common/firebase/exceptions/firebase.initialization-failed.exception';
+import { FirebasePrivateKeyInvalidException } from '@common/firebase/exceptions/firebase.private-key-invalid.exception';
 
 @Injectable()
 export class FirebaseService implements OnModuleInit {
@@ -22,7 +26,8 @@ export class FirebaseService implements OnModuleInit {
 
     private readonly projectId: string | null;
     private readonly clientEmail: string | null;
-    private privateKey: string | null;
+    private readonly hasPrivateKey: boolean;
+    private readonly privateKey: string | null;
 
     private app: FirebaseApp | null = null;
     private messaging: Messaging | null = null;
@@ -32,30 +37,63 @@ export class FirebaseService implements OnModuleInit {
         private readonly helperArrayService: HelperArrayService,
         private readonly firebaseUtil: FirebaseUtil
     ) {
-        this.projectId = this.configService.get<string | null>(
+        const projectId = this.configService.get<string | null>(
             'firebase.projectId'
-        )!;
-        this.clientEmail = this.configService.get<string | null>(
+        );
+        const clientEmail = this.configService.get<string | null>(
             'firebase.clientEmail'
-        )!;
-
+        );
         const privateKey = this.configService.get<string | null>(
             'firebase.privateKey'
-        )!;
-        this.privateKey = this.firebaseUtil.normalizePrivateKey(privateKey);
+        );
+        const normalizedPrivateKey = this.firebaseUtil.normalizePrivateKey(
+            privateKey ?? null
+        );
+
+        this.projectId = projectId ?? null;
+        this.clientEmail = clientEmail ?? null;
+        this.hasPrivateKey = !!privateKey;
+        this.privateKey = normalizedPrivateKey;
     }
 
     private isInvalidTokenError(error: { code?: string } | null): boolean {
         return FirebaseInvalidTokenCodes.includes(error?.code ?? '');
     }
 
+    private isRetryableTokenError(error: { code?: string } | null): boolean {
+        const code = error?.code ?? null;
+
+        return code === null || FirebaseRetryableTokenCodes.includes(code);
+    }
+
+    private buildMessageContent(payload: IFirebasePushPayload): {
+        notification: Notification;
+        data?: Record<string, string>;
+    } {
+        const imageUrl = payload.imageUrl ?? null;
+        const data = payload.data ?? null;
+
+        return {
+            notification: {
+                title: payload.title,
+                body: payload.body,
+                ...(imageUrl !== null && { imageUrl }),
+            },
+            ...(data !== null && { data }),
+        };
+    }
+
     async onModuleInit(): Promise<void> {
-        if (!this.projectId || !this.clientEmail || !this.privateKey) {
+        if (!this.projectId || !this.clientEmail || !this.hasPrivateKey) {
             this.logger.warn(
                 'Firebase credentials not configured. Push notifications will be disabled.'
             );
 
             return;
+        }
+
+        if (!this.privateKey) {
+            throw new FirebasePrivateKeyInvalidException();
         }
 
         try {
@@ -68,11 +106,11 @@ export class FirebaseService implements OnModuleInit {
             });
 
             this.messaging = getMessaging(this.app);
-
-            this.logger.log('Firebase Admin SDK initialized successfully');
         } catch (error: unknown) {
-            this.logger.error(error, 'Failed to initialize Firebase Admin SDK');
+            throw new FirebaseInitializationFailedException(error);
         }
+
+        this.logger.log('Firebase Admin SDK initialized successfully');
     }
 
     isInitialized(): boolean {
@@ -91,14 +129,10 @@ export class FirebaseService implements OnModuleInit {
         }
 
         try {
+            const content = this.buildMessageContent(payload);
             await this.messaging!.send({
                 token,
-                notification: {
-                    title: payload.title,
-                    body: payload.body,
-                    imageUrl: payload.imageUrl,
-                },
-                data: payload.data,
+                ...content,
             });
 
             return true;
@@ -131,6 +165,7 @@ export class FirebaseService implements OnModuleInit {
 
             return {
                 failureTokens: [],
+                retryTokens: [],
                 successCount: 0,
                 failureCount: tokens.length,
             };
@@ -139,6 +174,7 @@ export class FirebaseService implements OnModuleInit {
         if (tokens.length === 0) {
             return {
                 failureTokens: [],
+                retryTokens: [],
                 successCount: 0,
                 failureCount: 0,
             };
@@ -150,27 +186,24 @@ export class FirebaseService implements OnModuleInit {
 
         const chunkedTokens = this.helperArrayService.chunk(tokens, chunkSize);
 
-        const promises = chunkedTokens.map(chunk =>
-            this.messaging!.sendEachForMulticast({
-                tokens: chunk,
-                notification: {
-                    title: payload.title,
-                    body: payload.body,
-                    imageUrl: payload.imageUrl,
-                },
-                data: payload.data,
-            })
+        const content = this.buildMessageContent(payload);
+        const responses = await Promise.allSettled(
+            chunkedTokens.map(chunk =>
+                this.messaging!.sendEachForMulticast({
+                    tokens: chunk,
+                    ...content,
+                })
+            )
         );
-
-        const responses = await Promise.allSettled(promises);
 
         let successCount = 0;
         let failureCount = 0;
         const failureTokens: string[] = [];
+        const retryTokens: string[] = [];
 
         for (let chunkIndex = 0; chunkIndex < responses.length; chunkIndex++) {
-            const response = responses[chunkIndex];
-            const chunk = chunkedTokens[chunkIndex];
+            const response = responses[chunkIndex]!;
+            const chunk = chunkedTokens[chunkIndex]!;
 
             if (response.status === 'fulfilled') {
                 successCount += response.value.successCount;
@@ -180,20 +213,25 @@ export class FirebaseService implements OnModuleInit {
                     tokenIndex,
                     resp,
                 ] of response.value.responses.entries()) {
-                    if (!resp.success && resp.error) {
-                        const isInvalidToken = this.isInvalidTokenError(
-                            resp.error as { code?: string }
-                        );
+                    if (!resp.success) {
+                        const error = (resp.error ?? null) as {
+                            code?: string;
+                        } | null;
+                        const isInvalidToken = this.isInvalidTokenError(error);
+                        const isRetryable = this.isRetryableTokenError(error);
                         if (isInvalidToken) {
-                            failureTokens.push(chunk[tokenIndex]);
+                            failureTokens.push(chunk[tokenIndex]!);
+                        } else if (isRetryable) {
+                            retryTokens.push(chunk[tokenIndex]!);
                         }
                     }
                 }
             } else {
                 failureCount += chunk.length;
+                retryTokens.push(...chunk);
             }
         }
 
-        return { successCount, failureCount, failureTokens };
+        return { successCount, failureCount, failureTokens, retryTokens };
     }
 }

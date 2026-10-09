@@ -11,17 +11,14 @@ export class NotificationTemplateAccountDomain {
     private readonly logger = new Logger(
         NotificationTemplateAccountDomain.name
     );
-    private readonly templatesDir = join(
-        process.cwd(),
-        'src/modules/notification/templates'
-    );
 
     constructor(private readonly awsSESService: AwsSESService) {}
 
     async emailImportWelcome(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.welcome.template.hbs'
             );
 
@@ -69,7 +66,8 @@ export class NotificationTemplateAccountDomain {
     async emailImportWelcomeSocial(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.welcome-social.template.hbs'
             );
 
@@ -117,7 +115,8 @@ export class NotificationTemplateAccountDomain {
     async emailImportWelcomeByAdmin(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.welcome-by-admin.template.hbs'
             );
 
@@ -171,7 +170,8 @@ export class NotificationTemplateAccountDomain {
     async emailImportVerificationEmail(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.verification-email.template.hbs'
             );
 
@@ -225,7 +225,8 @@ export class NotificationTemplateAccountDomain {
     async emailImportVerifiedEmail(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.verified-email.template.hbs'
             );
 
@@ -273,7 +274,8 @@ export class NotificationTemplateAccountDomain {
     async emailImportVerifiedMobileNumber(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.verified-mobile-number.template.hbs'
             );
 

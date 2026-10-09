@@ -24,7 +24,7 @@ import {
 import type { IActivityLogActionContract } from '@modules/activity-log/interfaces/activity-log.interface';
 
 /**
- * Per-action contract of an activity-log event: how its user and workspace resolve and the schema its metadata must match.
+ * Per-action contract of an activity log: how its user and workspace resolve and the schema its metadata must match.
  * @public
  */
 export const ActivityLogActionContract: Record<

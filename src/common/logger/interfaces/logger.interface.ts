@@ -5,3 +5,9 @@ export interface ILoggerDebugInfo {
     };
     uptime: number;
 }
+
+export interface ILoggerMixin {
+    level: number;
+    requestId: string | null;
+    correlationId: string | null;
+}

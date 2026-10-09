@@ -2,12 +2,15 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestApplication } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { writeFileSync } from 'fs';
+import { mkdirSync, writeFileSync } from 'fs';
 import { createSchema } from 'zod-openapi';
 import { z } from 'zod';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { MessageService } from '@common/message/services/message.service';
-import { ApiKeyDocSecurityName } from '@modules/api-key/constants/api-key.constant';
+import {
+    ApiKeyDocSecurityName,
+    ApiKeyHeaderName,
+} from '@modules/api-key/constants/api-key.constant';
 import {
     AuthJwtAccessDocSecurityName,
     AuthJwtRefreshDocSecurityName,
@@ -67,7 +70,7 @@ export default async function (app: NestApplication): Promise<void> {
                 AuthSocialAppleDocSecurityName
             )
             .addApiKey(
-                { type: 'apiKey', in: 'header', name: 'x-api-key' },
+                { type: 'apiKey', in: 'header', name: ApiKeyHeaderName },
                 ApiKeyDocSecurityName
             )
             .build();
@@ -79,6 +82,7 @@ export default async function (app: NestApplication): Promise<void> {
         });
 
         try {
+            mkdirSync('generated', { recursive: true });
             writeFileSync('generated/swagger.json', JSON.stringify(document));
         } catch (err: unknown) {
             logger.warn(err, 'Failed to write swagger.json');

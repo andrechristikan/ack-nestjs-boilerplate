@@ -28,10 +28,12 @@ import { DeviceOwnershipRepository } from '@modules/device/repositories/device.o
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { SessionDomain } from '@modules/session/domains/session.domain';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
 export class DeviceDomain {
+    private readonly logger = new Logger(DeviceDomain.name);
+
     constructor(
         private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
         private readonly deviceRepository: DeviceRepository,
@@ -50,7 +52,7 @@ export class DeviceDomain {
         return this.deviceOwnershipRepository.findWithPaginationOffsetByAdmin(
             userId,
             pagination,
-            isRevoked
+            isRevoked ?? null
         );
     }
 
@@ -141,7 +143,12 @@ export class DeviceDomain {
                 deviceOwnershipId
             );
         if (deviceId === null) {
-            throw new DeviceNotFoundException();
+            this.logger.warn(
+                { userId, deviceOwnershipId },
+                'No live device to clear the notification token for'
+            );
+
+            return;
         }
 
         await this.deviceRepository.clearNotificationByIdsInTx(
@@ -182,6 +189,7 @@ export class DeviceDomain {
         deviceOwnershipId: string,
         data: IDeviceRefresh
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         const deviceOwnershipExists =
             await this.deviceOwnershipRepository.existsActive(
                 userId,
@@ -191,9 +199,9 @@ export class DeviceDomain {
             throw new DeviceNotFoundException();
         }
         const notificationProvider =
-            this.deviceUtil.resolveNotificationProvider(data.platform ?? null);
+            this.deviceUtil.resolveNotificationProvider(data.platform);
         const now = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userDeviceRefresh,
             }),
@@ -216,7 +224,7 @@ export class DeviceDomain {
                 );
             });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -229,6 +237,7 @@ export class DeviceDomain {
     }
 
     async remove(userId: string, deviceOwnershipId: string): Promise<void> {
+        // Sequential by design: gate before the work it guards
         const deviceOwnershipExists =
             await this.deviceOwnershipRepository.existsActive(
                 userId,
@@ -240,7 +249,7 @@ export class DeviceDomain {
         const now = this.helperDateService.create();
 
         try {
-            const { revokedSessions, events } =
+            const { revokedSessions, activityLogs } =
                 await this.databaseService.withTransaction(async tx => {
                     const sessions =
                         await this.sessionDomain.revokeByDeviceOwnershipInTx(
@@ -277,14 +286,17 @@ export class DeviceDomain {
                         }),
                     ];
 
-                    return { revokedSessions: sessions, events: prepared };
+                    return {
+                        revokedSessions: sessions,
+                        activityLogs: prepared,
+                    };
                 });
             await this.sessionDomain.purgeRevokedLogins(
                 userId,
                 revokedSessions
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -301,6 +313,7 @@ export class DeviceDomain {
         deviceOwnershipId: string,
         removedBy: string
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         const deviceOwnershipExists =
             await this.deviceOwnershipRepository.existsActive(
                 userId,
@@ -312,7 +325,7 @@ export class DeviceDomain {
         const now = this.helperDateService.create();
 
         try {
-            const { revokedSessions, events } =
+            const { revokedSessions, activityLogs } =
                 await this.databaseService.withTransaction(async tx => {
                     const sessions =
                         await this.sessionDomain.revokeByDeviceOwnershipInTx(
@@ -354,24 +367,27 @@ export class DeviceDomain {
                                 removedBy,
                                 sessions.length
                             );
-                        const removedByAdminEvent =
+                        const removedByAdminActivityLog =
                             this.activityLogDomain.prepare({
                                 action: EnumActivityLogAction.userRemoveDeviceByAdmin,
                                 userId,
                                 createdBy: removedBy,
                                 metadata: targetMetadata,
                             });
-                        prepared.push(removedByAdminEvent);
+                        prepared.push(removedByAdminActivityLog);
                     }
 
-                    return { revokedSessions: sessions, events: prepared };
+                    return {
+                        revokedSessions: sessions,
+                        activityLogs: prepared,
+                    };
                 });
             await this.sessionDomain.purgeRevokedLogins(
                 userId,
                 revokedSessions
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {

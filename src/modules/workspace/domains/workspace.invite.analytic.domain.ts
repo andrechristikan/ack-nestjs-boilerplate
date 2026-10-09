@@ -8,7 +8,7 @@ export class WorkspaceInviteAnalyticDomain {
         private readonly workspaceInviteAnalyticRepository: WorkspaceInviteAnalyticRepository
     ) {}
 
-    funnel(
+    getFunnel(
         startDate: Date,
         endDate: Date,
         workspaceId: string | null

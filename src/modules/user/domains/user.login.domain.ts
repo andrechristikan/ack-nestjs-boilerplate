@@ -5,6 +5,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
@@ -34,6 +35,7 @@ import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.do
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionCache } from '@modules/session/caches/session.cache';
+import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import type {
@@ -73,10 +75,10 @@ export class UserLoginDomain {
     ) {}
 
     private async assertTwoFactorUnlocked(user: IUser): Promise<void> {
-        const retryAfterMs = await this.authCache.getLockTwoFactorAttempt(user);
-        if (retryAfterMs > 0) {
+        const remainingMs = await this.authCache.getLockTwoFactorAttempt(user);
+        if (remainingMs > 0) {
             throw new AuthTwoFactorAttemptTemporaryLockException(
-                retryAfterMs / 1000
+                Math.ceil(remainingMs / 1000)
             );
         }
     }
@@ -103,7 +105,7 @@ export class UserLoginDomain {
     }
 
     async recordLoginFailed(userId: string): Promise<void> {
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userLoginFailed,
                 userId,
@@ -113,7 +115,7 @@ export class UserLoginDomain {
         ];
         await this.userRepository.increasePasswordAttempt(userId);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async createTokenAndSession(
@@ -123,14 +125,13 @@ export class UserLoginDomain {
         loginWith: EnumUserLoginWith,
         loginAt: Date
     ): Promise<IAuthToken> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey);
+        if (requestLog === null) {
+            throw new RequestContextMissingException(RequestLogStoreKey);
+        }
 
-        const { tokens, sessionId, jti } = this.authJwtDomain.createTokens(
-            user,
-            loginFrom,
-            loginWith
-        );
+        const { sessionId, jti } = this.authJwtDomain.createLoginIdentifiers();
         const expiredAt = this.helperDateService.forward(
             loginAt,
             Duration.fromObject({
@@ -141,7 +142,7 @@ export class UserLoginDomain {
 
         const loginAction =
             this.userUtil.resolveLoginActivityLogAction(loginWith);
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: loginAction,
                 userId: user.id,
@@ -149,7 +150,8 @@ export class UserLoginDomain {
             }),
         ];
         const now = this.helperDateService.create();
-        const { isNewDevice, sessionShouldBeInactive } =
+        // Sequential by design: write must not run if an earlier step throws
+        const { isNewDevice, sessionShouldBeInactive, deviceOwnershipId } =
             await this.databaseService.withTransaction(async tx => {
                 const notificationProvider =
                     this.deviceUtil.resolveNotificationProvider(
@@ -194,9 +196,16 @@ export class UserLoginDomain {
                 return {
                     isNewDevice: upserted.isNewDevice,
                     sessionShouldBeInactive: revoked,
+                    deviceOwnershipId: upserted.deviceOwnership.id,
                 };
             });
 
+        const tokens = this.authJwtDomain.createTokens(
+            user,
+            { sessionId, jti, deviceOwnershipId, loginAt },
+            loginFrom,
+            loginWith
+        );
         const promises = [
             this.sessionCache.setLogin(user.id, sessionId, jti, expiredAt),
         ];
@@ -223,7 +232,7 @@ export class UserLoginDomain {
 
         await Promise.all(promises);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return tokens;
     }
@@ -241,6 +250,7 @@ export class UserLoginDomain {
                     EnumVerificationType.email
                 ) as IUserVerificationEmailCreate;
 
+            // Sequential by design: write must not run if an earlier step throws
             await this.userVerificationDomain.persistVerificationEmail(
                 user.id,
                 user.email,
@@ -277,20 +287,21 @@ export class UserLoginDomain {
             };
         }
 
-        const { challengeToken, expiresInMs } =
-            await this.authCache.createChallenge({
-                userId: user.id,
-                device,
-                loginFrom,
-                loginWith,
-            });
+        const challengePromise = this.authCache.createChallenge({
+            userId: user.id,
+            device,
+            loginFrom,
+            loginWith,
+        });
         if (user.twoFactor?.requiredSetup) {
-            const { encryptedSecret, otpauthUrl, secret } =
-                await this.authTwoFactorDomain.setupTwoFactor(
-                    user.id,
-                    user.email
-                );
-            const events = [
+            const [
+                { challengeToken, expiresInMs },
+                { encryptedSecret, otpauthUrl, secret },
+            ] = await Promise.all([
+                challengePromise,
+                this.authTwoFactorDomain.setupTwoFactor(user.id, user.email),
+            ]);
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userSetupTwoFactor,
                     userId: user.id,
@@ -302,7 +313,7 @@ export class UserLoginDomain {
                 encryptedSecret
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return {
                 isTwoFactorEnable: true,
@@ -318,6 +329,8 @@ export class UserLoginDomain {
                 },
             };
         }
+
+        const { challengeToken, expiresInMs } = await challengePromise;
 
         return {
             isTwoFactorEnable: true,
@@ -336,6 +349,7 @@ export class UserLoginDomain {
         user: IUser,
         { method, code, backupCode }: IAuthTwoFactorVerify
     ): Promise<IAuthTwoFactorVerifyResult> {
+        // Sequential by design: gate before the work it guards
         await this.assertTwoFactorUnlocked(user);
         if (!method) {
             throw new AuthTwoFactorMethodRequiredException();
@@ -366,6 +380,7 @@ export class UserLoginDomain {
         encryptedPendingSecret: string,
         code: string
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.assertTwoFactorUnlocked(user);
 
         const isValid = this.authTwoFactorDomain.verifySetupCode(
@@ -418,8 +433,11 @@ export class UserLoginDomain {
         user: IUser,
         refreshToken: string
     ): Promise<IAuthToken> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey);
+        if (requestLog === null) {
+            throw new RequestContextMissingException(RequestLogStoreKey);
+        }
 
         const {
             sessionId,
@@ -431,9 +449,14 @@ export class UserLoginDomain {
             refreshToken
         );
 
-        const session = await this.sessionCache.getLogin(userId, sessionId);
-        if (!session || !oldJti) {
+        if (!oldJti) {
             throw new AuthJwtRefreshTokenInvalidException();
+        }
+
+        // Sequential by design: gate before the work it guards
+        const session = await this.sessionCache.getLogin(userId, sessionId);
+        if (!session) {
+            throw new SessionRevokedException();
         }
 
         const sessionJtiHash = this.helperHashService.sha256Hash(session.jti);
@@ -443,7 +466,7 @@ export class UserLoginDomain {
             oldJtiHash
         );
         if (!isJtiMatch) {
-            throw new AuthJwtRefreshTokenInvalidException();
+            throw new SessionRevokedException();
         }
 
         try {
@@ -453,11 +476,12 @@ export class UserLoginDomain {
                 expiredInMs,
             } = this.authJwtDomain.refreshToken(user, refreshToken);
 
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userRefreshToken,
                 }),
             ];
+            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.withTransaction(async tx => {
                 await this.sessionDomain.updateJtiInTx(tx, sessionId, newJti);
                 const now = this.helperDateService.create();
@@ -479,10 +503,10 @@ export class UserLoginDomain {
                 expiredInMs
             );
             if (!isRotated) {
-                throw new AuthJwtRefreshTokenInvalidException();
+                throw new SessionRevokedException();
             }
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return tokens;
         } catch (err: unknown) {
@@ -499,14 +523,16 @@ export class UserLoginDomain {
         sessionId: string,
         deviceOwnershipId: string
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.sessionDomain.validateActive(userId, sessionId);
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userLogout,
             }),
         ];
         const now = this.helperDateService.create();
+        // Sequential by design: write must not run if an earlier step throws
         await this.databaseService.withTransaction(async tx => {
             await this.sessionDomain.revokeInTx(
                 tx,
@@ -527,6 +553,6 @@ export class UserLoginDomain {
             { id: sessionId },
         ]);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 }

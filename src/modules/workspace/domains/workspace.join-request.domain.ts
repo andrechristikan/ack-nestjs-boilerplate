@@ -125,6 +125,7 @@ export class WorkspaceJoinRequestDomain {
         userId: string,
         create: IWorkspaceJoinRequestCreate
     ): Promise<WorkspaceJoinRequest> {
+        // Sequential by design: gate before the work it guards
         await this.assertJoinRequestAllowed();
 
         const workspace = await this.workspaceRepository.findActiveById(
@@ -152,7 +153,7 @@ export class WorkspaceJoinRequestDomain {
             throw new WorkspaceJoinRequestDuplicateException();
         }
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceJoinRequested,
                 userId: userId,
@@ -168,7 +169,7 @@ export class WorkspaceJoinRequestDomain {
                 message: create.message,
             });
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         await this.sendJoinRequestNotifications(workspace, joinRequest, userId);
 
@@ -180,12 +181,13 @@ export class WorkspaceJoinRequestDomain {
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
+        // Sequential by design: gate before the work it guards
         await this.assertJoinRequestAllowed();
 
         return this.workspaceJoinRequestRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
-            status
+            status ?? null
         );
     }
 
@@ -194,6 +196,7 @@ export class WorkspaceJoinRequestDomain {
         reviewerId: string,
         workspaceJoinRequestId: string
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.assertJoinRequestAllowed();
 
         const joinRequest = await this.validatePendingJoinRequest(
@@ -201,7 +204,7 @@ export class WorkspaceJoinRequestDomain {
             workspace.id
         );
         const reviewedAt = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceJoinAccepted,
                 userId: reviewerId,
@@ -211,7 +214,7 @@ export class WorkspaceJoinRequestDomain {
             }),
         ];
         if (joinRequest.userId !== reviewerId) {
-            const workspaceJoinAcceptedByAdminEvent =
+            const workspaceJoinAcceptedByAdminActivityLog =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceJoinAcceptedByAdmin,
                     userId: joinRequest.userId,
@@ -219,9 +222,10 @@ export class WorkspaceJoinRequestDomain {
                     workspaceId: joinRequest.workspaceId,
                     metadata: { actorUserId: reviewerId },
                 });
-            events.push(workspaceJoinAcceptedByAdminEvent);
+            activityLogs.push(workspaceJoinAcceptedByAdminActivityLog);
         }
 
+        // Sequential by design: write must not run if an earlier step throws
         await this.databaseService.withTransaction(async tx => {
             await this.workspaceMemberDomain.createInTx(
                 tx,
@@ -238,7 +242,7 @@ export class WorkspaceJoinRequestDomain {
             );
         });
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         await this.notificationQueue.sendWorkspaceJoinAccepted(
             joinRequest.userId,
@@ -256,6 +260,7 @@ export class WorkspaceJoinRequestDomain {
         workspaceJoinRequestId: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason
     ): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.assertJoinRequestAllowed();
 
         const joinRequest = await this.validatePendingJoinRequest(
@@ -264,7 +269,7 @@ export class WorkspaceJoinRequestDomain {
         );
         const reviewedAt = this.helperDateService.create();
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceJoinRejected,
                 userId: reviewerId,
@@ -274,7 +279,7 @@ export class WorkspaceJoinRequestDomain {
             }),
         ];
         if (joinRequest.userId !== reviewerId) {
-            const workspaceJoinRejectedByAdminEvent =
+            const workspaceJoinRejectedByAdminActivityLog =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceJoinRejectedByAdmin,
                     userId: joinRequest.userId,
@@ -282,9 +287,10 @@ export class WorkspaceJoinRequestDomain {
                     workspaceId: workspace.id,
                     metadata: { actorUserId: reviewerId },
                 });
-            events.push(workspaceJoinRejectedByAdminEvent);
+            activityLogs.push(workspaceJoinRejectedByAdminActivityLog);
         }
 
+        // Sequential by design: write must not run if an earlier step throws
         await this.workspaceJoinRequestRepository.reject(
             workspaceJoinRequestId,
             reviewerId,
@@ -292,7 +298,7 @@ export class WorkspaceJoinRequestDomain {
             reviewedAt
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         await this.notificationQueue.sendWorkspaceJoinRejected(
             joinRequest.userId,

@@ -27,8 +27,8 @@ export enum EnumUserStatusCodeError {
     verificationEmailResendLimitExceeded = 51021,
     forgotPasswordRequestLimitExceeded = 51022,
     twoFactorMethodRequired = 51023,
-    notFoundForbidden = 51024,
+    accountNotFound = 51024,
     importEmailExist = 51025,
     importUsernameExist = 51026,
-    notAuthenticated = 51027,
+    guardMissing = 51027,
 }

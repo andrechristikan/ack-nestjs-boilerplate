@@ -14,18 +14,29 @@ import { faker } from '@faker-js/faker';
  */
 export const ProjectAdminListRequestSchema = PaginationOffsetQuerySchema.extend(
     {
-        search: z
-            .string()
-            .optional()
-            .meta({
-                description: `Search query, available fields: ${ProjectDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
-                example: '',
-            }),
+        search: PaginationOffsetQuerySchema.shape.search.meta({
+            description: `Search query, available fields: ${ProjectDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
+            example: '',
+        }),
         orderBy: z
-            .union([z.string(), z.array(z.string())])
+            .union([
+                z.templateLiteral([
+                    z.enum(ProjectDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ]),
+                z.array(
+                    z.templateLiteral([
+                        z.enum(ProjectDefaultAvailableOrderBy),
+                        ':',
+                        z.enum(EnumPaginationOrderDirectionType),
+                    ])
+                ),
+                z.literal(''),
+            ])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${ProjectDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                description: `Order by field in \`field:direction\` format (e.g. \`${ProjectDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${ProjectDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
                 example: `${ProjectDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
         workspaceId: RequestMongoIdSchema.optional().meta({

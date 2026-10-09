@@ -8,12 +8,28 @@ import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.
  * Offset list query for admin device listing.
  * @public
  */
-export const DeviceAdminListRequestSchema = PaginationOffsetQuerySchema.extend({
+export const DeviceAdminListRequestSchema = PaginationOffsetQuerySchema.omit({
+    search: true,
+}).extend({
     orderBy: z
-        .union([z.string(), z.array(z.string())])
+        .union([
+            z.templateLiteral([
+                z.enum(DeviceDefaultAvailableOrderBy),
+                ':',
+                z.enum(EnumPaginationOrderDirectionType),
+            ]),
+            z.array(
+                z.templateLiteral([
+                    z.enum(DeviceDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ])
+            ),
+            z.literal(''),
+        ])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${DeviceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            description: `Order by field in \`field:direction\` format (e.g. \`${DeviceDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${DeviceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
             example: `${DeviceDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
         }),
     isRevoked: RequestBooleanStringSchema.optional().meta({

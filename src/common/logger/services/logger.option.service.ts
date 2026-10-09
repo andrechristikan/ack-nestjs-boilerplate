@@ -5,16 +5,23 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import {
+    RequestCorrelationIdStoreKey,
+    RequestIdStoreKey,
+} from '@common/request/constants/request.constant';
 import {
     LoggerAutoContext,
-    LoggerExcludedRoutes,
     LoggerRedactedValue,
     LoggerSensitiveFields,
     LoggerSensitivePaths,
 } from '@common/logger/constants/logger.constant';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import type { Response } from 'express';
-import type { ILoggerDebugInfo } from '@common/logger/interfaces/logger.interface';
+import type {
+    ILoggerDebugInfo,
+    ILoggerMixin,
+} from '@common/logger/interfaces/logger.interface';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 import { LoggerUtil } from '@common/logger/utils/logger.util';
 import type { Options } from 'pino-http';
@@ -26,6 +33,7 @@ export class LoggerOptionService {
     private readonly version: string;
 
     private readonly autoLogger: boolean;
+    private readonly excludedRoutes: string[];
 
     private readonly enable: boolean;
     private readonly level: EnumLoggerLevel;
@@ -40,6 +48,7 @@ export class LoggerOptionService {
         private readonly helperStringService: HelperStringService,
         private readonly helperDateService: HelperDateService,
         private readonly requestContextService: RequestContextService,
+        private readonly requestStoreService: RequestStoreService,
         private readonly loggerUtil: LoggerUtil
     ) {
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
@@ -47,6 +56,9 @@ export class LoggerOptionService {
         this.version = this.configService.get<string>('app.version')!;
 
         this.autoLogger = this.configService.get<boolean>('logger.auto')!;
+        this.excludedRoutes = this.configService.get<string[]>(
+            'logger.excludedRoutes'
+        )!;
 
         this.enable = this.configService.get<boolean>('logger.enable')!;
         this.level = this.configService.get<EnumLoggerLevel>('logger.level')!;
@@ -61,7 +73,7 @@ export class LoggerOptionService {
         ).flat();
     }
 
-    private buildTransports(): Options['transport'] {
+    private buildTransports(): NonNullable<Options['transport']> | null {
         const transport: {
             targets: {
                 target: string;
@@ -101,8 +113,8 @@ export class LoggerOptionService {
         }
 
         return transport.targets.length > 0
-            ? (transport as unknown as Options['transport'])
-            : undefined;
+            ? (transport as unknown as NonNullable<Options['transport']>)
+            : null;
     }
 
     private createLogFormatter(): (
@@ -117,6 +129,8 @@ export class LoggerOptionService {
                 time: _time,
                 responseTime: _responseTime,
                 level,
+                requestId,
+                correlationId,
                 req,
                 res,
                 err,
@@ -138,6 +152,8 @@ export class LoggerOptionService {
             const log: Record<string, unknown> = {
                 severity,
                 context: context ?? LoggerAutoContext,
+                requestId,
+                correlationId,
                 timestamp: today.valueOf(),
                 msg: sanitizedMessage,
                 service: {
@@ -205,9 +221,9 @@ export class LoggerOptionService {
 
     private addDebugInfo(
         additionalParams: Record<string, unknown>
-    ): ILoggerDebugInfo | undefined {
+    ): ILoggerDebugInfo | null {
         if (this.env === EnumAppEnvironment.production) {
-            return undefined;
+            return null;
         }
 
         const memUsage = process.memoryUsage();
@@ -228,7 +244,7 @@ export class LoggerOptionService {
                   ignore: (req: IRequestApp) =>
                       this.helperStringService.checkUrlMatchesPatterns(
                           req.url,
-                          LoggerExcludedRoutes
+                          this.excludedRoutes
                       ),
               }
             : false;
@@ -237,10 +253,18 @@ export class LoggerOptionService {
     private createMixin(): (
         _: Record<string, unknown>,
         level: number
-    ) => Record<string, unknown> {
+    ) => ILoggerMixin {
         return (_: Record<string, unknown>, level: number) => {
+            const requestId =
+                this.requestStoreService.get<string>(RequestIdStoreKey);
+            const correlationId = this.requestStoreService.get<string>(
+                RequestCorrelationIdStoreKey
+            );
+
             return {
-                level: level,
+                level,
+                requestId,
+                correlationId,
             };
         };
     }
@@ -256,8 +280,6 @@ export class LoggerOptionService {
         return {
             forRoutes: [{ path: '{*wildcard}', method: RequestMethod.ALL }],
             pinoHttp: {
-                genReqId: (request: IRequestApp) =>
-                    this.loggerUtil.getRequestId(request),
                 formatters: {
                     log: logFormatter,
                 },
@@ -266,12 +288,12 @@ export class LoggerOptionService {
                 timestamp: false,
                 wrapSerializers: false,
                 base: null,
-                transport: transports,
+                ...(transports !== null && { transport: transports }),
                 level: this.enable ? this.level : 'silent',
                 redact: redactionConfig,
                 serializers,
                 autoLogging: autoLoggingConfig,
-            } as unknown as Params['pinoHttp'],
+            } as unknown as NonNullable<Params['pinoHttp']>,
         };
     }
 }

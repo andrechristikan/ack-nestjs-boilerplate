@@ -7,7 +7,9 @@ import {
 } from '@modules/policy/constants/policy.constant';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyGuardMissingException } from '@modules/policy/exceptions/policy.guard-missing.exception';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
+import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import type { Policy } from '@generated/prisma-client/client';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -31,7 +33,15 @@ export class PolicyGuard implements CanActivate {
         const requiredPolicies = policyMetadata ?? [];
 
         const user = this.requestStoreService.get<IUser>(UserStoreKey);
+        if (!user) {
+            throw new UserGuardMissingException();
+        }
+
         const policies = this.requestStoreService.get<Policy[]>(PolicyStoreKey);
+        if (!policies) {
+            throw new PolicyGuardMissingException();
+        }
+
         return this.policyDomain.validatePolicyGuard(
             user,
             policies,

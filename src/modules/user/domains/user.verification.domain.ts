@@ -161,7 +161,7 @@ export class UserVerificationDomain {
         }
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userVerifiedEmail,
                     userId: verification.userId,
@@ -169,6 +169,7 @@ export class UserVerificationDomain {
                 }),
             ];
             const verifiedAt = this.helperDateService.create();
+            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.withTransaction(async tx => {
                 await this.userVerificationRepository.markUsedInTx(
                     tx,
@@ -182,7 +183,7 @@ export class UserVerificationDomain {
                 );
             });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             await this.notificationQueue.sendVerifiedEmail(
                 verification.userId,
@@ -209,6 +210,7 @@ export class UserVerificationDomain {
             throw new UserEmailAlreadyVerifiedException();
         }
 
+        // Sequential by design: gate before the work it guards
         const lastVerification =
             await this.userVerificationRepository.findOneLatestByVerificationEmail(
                 user.id
@@ -224,12 +226,12 @@ export class UserVerificationDomain {
 
             if (today < canResendAt) {
                 const resendDuration = this.helperDateService.diff(
-                    today,
-                    canResendAt
+                    canResendAt,
+                    today
                 );
 
                 throw new UserVerificationEmailResendLimitExceededException(
-                    resendDuration.minutes
+                    Math.ceil(resendDuration.as('minutes'))
                 );
             }
         }
@@ -240,13 +242,14 @@ export class UserVerificationDomain {
             ) as IUserVerificationEmailCreate;
 
             const today = this.helperDateService.create();
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userSendVerificationEmail,
                     userId: user.id,
                     createdBy: user.id,
                 }),
             ];
+            // Sequential by design: write must not run if an earlier step throws
             await this.userVerificationRepository.createReplacingActive(
                 user.id,
                 user.email,
@@ -254,7 +257,7 @@ export class UserVerificationDomain {
                 today
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             const expiredAt = this.helperDateService.formatToIso(
                 emailVerification.expiredAt
@@ -278,7 +281,7 @@ export class UserVerificationDomain {
 
     async markVerified(userId: string): Promise<void> {
         const verifiedAt = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userVerifiedEmail,
                 userId: userId,
@@ -288,7 +291,7 @@ export class UserVerificationDomain {
 
         await this.userRepository.markVerified(userId, verifiedAt);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async persistVerificationEmail(
@@ -297,7 +300,7 @@ export class UserVerificationDomain {
         verification: IUserVerificationCreate
     ): Promise<void> {
         const today = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userSendVerificationEmail,
                 userId: userId,
@@ -312,7 +315,7 @@ export class UserVerificationDomain {
             today
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async createFromOnboardingInTx(

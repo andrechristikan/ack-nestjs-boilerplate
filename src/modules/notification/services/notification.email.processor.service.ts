@@ -67,7 +67,7 @@ export class NotificationEmailProcessorService {
     ): Promise<IQueueResponse> {
         return this.notificationEmailAccountDomain.processWelcomeByAdmin(
             job.data.send,
-            job.data.data!
+            job.data.data
         );
     }
 
@@ -80,7 +80,7 @@ export class NotificationEmailProcessorService {
     ): Promise<IQueueResponse> {
         return this.notificationEmailSecurityDomain.processTemporaryPasswordByAdmin(
             job.data.send,
-            job.data.data!
+            job.data.data
         );
     }
 
@@ -117,7 +117,7 @@ export class NotificationEmailProcessorService {
     ): Promise<IQueueResponse> {
         return this.notificationEmailAccountDomain.processVerificationEmail(
             job.data.send,
-            job.data.data!
+            job.data.data
         );
     }
 
@@ -130,7 +130,7 @@ export class NotificationEmailProcessorService {
     ): Promise<IQueueResponse> {
         return this.notificationEmailAccountDomain.processVerifiedEmail(
             job.data.send,
-            job.data.data!
+            job.data.data
         );
     }
 
@@ -143,7 +143,7 @@ export class NotificationEmailProcessorService {
     ): Promise<IQueueResponse> {
         return this.notificationEmailSecurityDomain.processForgotPassword(
             job.data.send,
-            job.data.data!
+            job.data.data
         );
     }
 
@@ -156,7 +156,7 @@ export class NotificationEmailProcessorService {
     ): Promise<IQueueResponse> {
         return this.notificationEmailAccountDomain.processVerifiedMobileNumber(
             job.data.send,
-            job.data.data!
+            job.data.data
         );
     }
 
@@ -181,7 +181,7 @@ export class NotificationEmailProcessorService {
     ): Promise<IQueueResponse> {
         return this.notificationEmailSecurityDomain.processNewDeviceLogin(
             job.data.send,
-            job.data.data!
+            job.data.data
         );
     }
 
@@ -193,7 +193,9 @@ export class NotificationEmailProcessorService {
         >
     ): Promise<IQueueResponse> {
         return this.notificationEmailTermPolicyDomain.processPublishTermPolicy(
-            job.data.data!
+            job.data.data,
+            job.data.batchId,
+            job.data.proceedBy
         );
     }
 
@@ -206,7 +208,7 @@ export class NotificationEmailProcessorService {
     ): Promise<IQueueResponse> {
         return this.notificationEmailWorkspaceDomain.processWorkspaceInvite(
             job.data.send,
-            job.data.data!
+            job.data.data
         );
     }
 
@@ -219,7 +221,7 @@ export class NotificationEmailProcessorService {
     ): Promise<IQueueResponse> {
         return this.notificationEmailWorkspaceDomain.processWorkspaceInviteUnregistered(
             job.data.send,
-            job.data.data!
+            job.data.data
         );
     }
 
@@ -232,7 +234,7 @@ export class NotificationEmailProcessorService {
     ): Promise<IQueueResponse> {
         return this.notificationEmailWorkspaceDomain.processWorkspaceJoinRequest(
             job.data.send,
-            job.data.data!
+            job.data.data
         );
     }
 
@@ -245,7 +247,7 @@ export class NotificationEmailProcessorService {
     ): Promise<IQueueResponse> {
         return this.notificationEmailWorkspaceDomain.processWorkspaceJoinAccepted(
             job.data.send,
-            job.data.data!
+            job.data.data
         );
     }
 
@@ -258,7 +260,7 @@ export class NotificationEmailProcessorService {
     ): Promise<IQueueResponse> {
         return this.notificationEmailWorkspaceDomain.processWorkspaceJoinRejected(
             job.data.send,
-            job.data.data!
+            job.data.data
         );
     }
 }

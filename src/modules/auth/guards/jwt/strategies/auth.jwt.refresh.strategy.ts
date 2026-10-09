@@ -5,7 +5,10 @@ import { ConfigService } from '@nestjs/config';
 import { passportJwtSecret } from 'jwks-rsa';
 import type { Algorithm } from 'jsonwebtoken';
 import type { IAuthJwtRefreshTokenPayload } from '@modules/auth/interfaces/auth.interface';
-import { AuthJwtRefreshGuardKey } from '@modules/auth/constants/auth.constant';
+import {
+    AuthBearerScheme,
+    AuthJwtRefreshGuardKey,
+} from '@modules/auth/constants/auth.constant';
 import { AuthDomain } from '@modules/auth/domains/auth.domain';
 
 /** Passport strategy validating refresh tokens via JWKS, default algorithm ES512. */
@@ -20,9 +23,8 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
     ) {
         // jti is not validated here.
         super({
-            jwtFromRequest: ExtractJwt.fromAuthHeaderWithScheme(
-                configService.get<string>('auth.jwt.prefix')!
-            ),
+            jwtFromRequest:
+                ExtractJwt.fromAuthHeaderWithScheme(AuthBearerScheme),
             ignoreExpiration: false,
             passReqToCallback: false,
             jsonWebTokenOptions: {

@@ -43,7 +43,7 @@ export class AppHttpFilter implements ExceptionFilter {
         const extended =
             responseException && typeof responseException === 'object'
                 ? (responseException as Record<string, unknown>)
-                : undefined;
+                : null;
 
         const metadata: ResponseMetadataDto =
             this.responseMetadataService.create();

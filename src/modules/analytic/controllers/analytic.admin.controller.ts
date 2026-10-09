@@ -1,44 +1,48 @@
-import { AnalyticWorkspacesMembershipListRequestSchema } from '@modules/analytic/dtos/request/analytic-workspaces-membership-list.request.dto';
-import type { AnalyticWorkspacesMembershipListRequestDto } from '@modules/analytic/dtos/request/analytic-workspaces-membership-list.request.dto';
-import { AnalyticWorkspacesActivityVolumeListRequestSchema } from '@modules/analytic/dtos/request/analytic-workspaces-activity-volume-list.request.dto';
-import type { AnalyticWorkspacesActivityVolumeListRequestDto } from '@modules/analytic/dtos/request/analytic-workspaces-activity-volume-list.request.dto';
-import { AnalyticProjectsMembershipListRequestSchema } from '@modules/analytic/dtos/request/analytic-projects-membership-list.request.dto';
-import type { AnalyticProjectsMembershipListRequestDto } from '@modules/analytic/dtos/request/analytic-projects-membership-list.request.dto';
-import { AnalyticCredentialStuffingListRequestSchema } from '@modules/analytic/dtos/request/analytic-credential-stuffing-list.request.dto';
-import type { AnalyticCredentialStuffingListRequestDto } from '@modules/analytic/dtos/request/analytic-credential-stuffing-list.request.dto';
-import { AnalyticAccountTakeoverListRequestSchema } from '@modules/analytic/dtos/request/analytic-account-takeover-list.request.dto';
-import type { AnalyticAccountTakeoverListRequestDto } from '@modules/analytic/dtos/request/analytic-account-takeover-list.request.dto';
-import { AnalyticMassRegistrationListRequestSchema } from '@modules/analytic/dtos/request/analytic-mass-registration-list.request.dto';
-import type { AnalyticMassRegistrationListRequestDto } from '@modules/analytic/dtos/request/analytic-mass-registration-list.request.dto';
-import { AnalyticPasswordResetEnumerationListRequestSchema } from '@modules/analytic/dtos/request/analytic-password-reset-enumeration-list.request.dto';
-import type { AnalyticPasswordResetEnumerationListRequestDto } from '@modules/analytic/dtos/request/analytic-password-reset-enumeration-list.request.dto';
-import { AnalyticSharedFingerprintListRequestSchema } from '@modules/analytic/dtos/request/analytic-shared-fingerprint-list.request.dto';
-import type { AnalyticSharedFingerprintListRequestDto } from '@modules/analytic/dtos/request/analytic-shared-fingerprint-list.request.dto';
-import { AnalyticSessionAfterAdminListRequestSchema } from '@modules/analytic/dtos/request/analytic-session-after-admin-list.request.dto';
-import type { AnalyticSessionAfterAdminListRequestDto } from '@modules/analytic/dtos/request/analytic-session-after-admin-list.request.dto';
-import { AnalyticForgotPasswordAbuseListRequestSchema } from '@modules/analytic/dtos/request/analytic-forgot-password-abuse-list.request.dto';
-import type { AnalyticForgotPasswordAbuseListRequestDto } from '@modules/analytic/dtos/request/analytic-forgot-password-abuse-list.request.dto';
-import { AnalyticRefreshSpikeListRequestSchema } from '@modules/analytic/dtos/request/analytic-refresh-spike-list.request.dto';
-import type { AnalyticRefreshSpikeListRequestDto } from '@modules/analytic/dtos/request/analytic-refresh-spike-list.request.dto';
-import { AnalyticBackupCodeNewDeviceListRequestSchema } from '@modules/analytic/dtos/request/analytic-backup-code-new-device-list.request.dto';
-import type { AnalyticBackupCodeNewDeviceListRequestDto } from '@modules/analytic/dtos/request/analytic-backup-code-new-device-list.request.dto';
-import { AnalyticApiKeyBurstListRequestSchema } from '@modules/analytic/dtos/request/analytic-api-key-burst-list.request.dto';
-import type { AnalyticApiKeyBurstListRequestDto } from '@modules/analytic/dtos/request/analytic-api-key-burst-list.request.dto';
-import { AnalyticFraudRiskScoresListRequestSchema } from '@modules/analytic/dtos/request/analytic-fraud-risk-scores-list.request.dto';
-import type { AnalyticFraudRiskScoresListRequestDto } from '@modules/analytic/dtos/request/analytic-fraud-risk-scores-list.request.dto';
-import { AnalyticImpossibleTravelListRequestSchema } from '@modules/analytic/dtos/request/analytic-impossible-travel-list.request.dto';
-import type { AnalyticImpossibleTravelListRequestDto } from '@modules/analytic/dtos/request/analytic-impossible-travel-list.request.dto';
-import { AnalyticLoginSpikeIpListRequestSchema } from '@modules/analytic/dtos/request/analytic-login-spike-ip-list.request.dto';
-import type { AnalyticLoginSpikeIpListRequestDto } from '@modules/analytic/dtos/request/analytic-login-spike-ip-list.request.dto';
-import { AnalyticNearLockoutListRequestSchema } from '@modules/analytic/dtos/request/analytic-near-lockout-list.request.dto';
-import type { AnalyticNearLockoutListRequestDto } from '@modules/analytic/dtos/request/analytic-near-lockout-list.request.dto';
-import { AnalyticDeviceProliferationListRequestSchema } from '@modules/analytic/dtos/request/analytic-device-proliferation-list.request.dto';
-import type { AnalyticDeviceProliferationListRequestDto } from '@modules/analytic/dtos/request/analytic-device-proliferation-list.request.dto';
-import { AnalyticLoginTimeAnomalyListRequestSchema } from '@modules/analytic/dtos/request/analytic-login-time-anomaly-list.request.dto';
-import type { AnalyticLoginTimeAnomalyListRequestDto } from '@modules/analytic/dtos/request/analytic-login-time-anomaly-list.request.dto';
+import { AnalyticWorkspacesMembershipListRequestSchema } from '@modules/analytic/dtos/request/analytic.workspaces-membership-list.request.dto';
+import type { AnalyticWorkspacesMembershipListRequestDto } from '@modules/analytic/dtos/request/analytic.workspaces-membership-list.request.dto';
+import { AnalyticWorkspacesActivityVolumeListRequestSchema } from '@modules/analytic/dtos/request/analytic.workspaces-activity-volume-list.request.dto';
+import type { AnalyticWorkspacesActivityVolumeListRequestDto } from '@modules/analytic/dtos/request/analytic.workspaces-activity-volume-list.request.dto';
+import { AnalyticProjectsMembershipListRequestSchema } from '@modules/analytic/dtos/request/analytic.projects-membership-list.request.dto';
+import type { AnalyticProjectsMembershipListRequestDto } from '@modules/analytic/dtos/request/analytic.projects-membership-list.request.dto';
+import { AnalyticCredentialStuffingListRequestSchema } from '@modules/analytic/dtos/request/analytic.credential-stuffing-list.request.dto';
+import type { AnalyticCredentialStuffingListRequestDto } from '@modules/analytic/dtos/request/analytic.credential-stuffing-list.request.dto';
+import { AnalyticAccountTakeoverListRequestSchema } from '@modules/analytic/dtos/request/analytic.account-takeover-list.request.dto';
+import type { AnalyticAccountTakeoverListRequestDto } from '@modules/analytic/dtos/request/analytic.account-takeover-list.request.dto';
+import { AnalyticMassRegistrationListRequestSchema } from '@modules/analytic/dtos/request/analytic.mass-registration-list.request.dto';
+import type { AnalyticMassRegistrationListRequestDto } from '@modules/analytic/dtos/request/analytic.mass-registration-list.request.dto';
+import { AnalyticPasswordResetEnumerationListRequestSchema } from '@modules/analytic/dtos/request/analytic.password-reset-enumeration-list.request.dto';
+import type { AnalyticPasswordResetEnumerationListRequestDto } from '@modules/analytic/dtos/request/analytic.password-reset-enumeration-list.request.dto';
+import { AnalyticSharedFingerprintListRequestSchema } from '@modules/analytic/dtos/request/analytic.shared-fingerprint-list.request.dto';
+import type { AnalyticSharedFingerprintListRequestDto } from '@modules/analytic/dtos/request/analytic.shared-fingerprint-list.request.dto';
+import { AnalyticSessionAfterAdminListRequestSchema } from '@modules/analytic/dtos/request/analytic.session-after-admin-list.request.dto';
+import type { AnalyticSessionAfterAdminListRequestDto } from '@modules/analytic/dtos/request/analytic.session-after-admin-list.request.dto';
+import { AnalyticForgotPasswordAbuseListRequestSchema } from '@modules/analytic/dtos/request/analytic.forgot-password-abuse-list.request.dto';
+import type { AnalyticForgotPasswordAbuseListRequestDto } from '@modules/analytic/dtos/request/analytic.forgot-password-abuse-list.request.dto';
+import { AnalyticRefreshSpikeListRequestSchema } from '@modules/analytic/dtos/request/analytic.refresh-spike-list.request.dto';
+import type { AnalyticRefreshSpikeListRequestDto } from '@modules/analytic/dtos/request/analytic.refresh-spike-list.request.dto';
+import { AnalyticBackupCodeNewDeviceListRequestSchema } from '@modules/analytic/dtos/request/analytic.backup-code-new-device-list.request.dto';
+import type { AnalyticBackupCodeNewDeviceListRequestDto } from '@modules/analytic/dtos/request/analytic.backup-code-new-device-list.request.dto';
+import { AnalyticApiKeyBurstListRequestSchema } from '@modules/analytic/dtos/request/analytic.api-key-burst-list.request.dto';
+import type { AnalyticApiKeyBurstListRequestDto } from '@modules/analytic/dtos/request/analytic.api-key-burst-list.request.dto';
+import { AnalyticFraudRiskScoresListRequestSchema } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores-list.request.dto';
+import type { AnalyticFraudRiskScoresListRequestDto } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores-list.request.dto';
+import { AnalyticImpossibleTravelListRequestSchema } from '@modules/analytic/dtos/request/analytic.impossible-travel-list.request.dto';
+import type { AnalyticImpossibleTravelListRequestDto } from '@modules/analytic/dtos/request/analytic.impossible-travel-list.request.dto';
+import { AnalyticLoginSpikeIpListRequestSchema } from '@modules/analytic/dtos/request/analytic.login-spike-ip-list.request.dto';
+import type { AnalyticLoginSpikeIpListRequestDto } from '@modules/analytic/dtos/request/analytic.login-spike-ip-list.request.dto';
+import { AnalyticNearLockoutListRequestSchema } from '@modules/analytic/dtos/request/analytic.near-lockout-list.request.dto';
+import type { AnalyticNearLockoutListRequestDto } from '@modules/analytic/dtos/request/analytic.near-lockout-list.request.dto';
+import { AnalyticDeviceProliferationListRequestSchema } from '@modules/analytic/dtos/request/analytic.device-proliferation-list.request.dto';
+import type { AnalyticDeviceProliferationListRequestDto } from '@modules/analytic/dtos/request/analytic.device-proliferation-list.request.dto';
+import { AnalyticLoginTimeAnomalyListRequestSchema } from '@modules/analytic/dtos/request/analytic.login-time-anomaly-list.request.dto';
+import type { AnalyticLoginTimeAnomalyListRequestDto } from '@modules/analytic/dtos/request/analytic.login-time-anomaly-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import type {
     IAnalyticAccountTakeover,
+    IAnalyticAnomalyDeviceProliferationSummary,
+    IAnalyticAnomalyFailedLoginSpikeSummary,
+    IAnalyticAnomalyImpossibleTravelSummary,
+    IAnalyticAnomalyLoginSpikeIpSummary,
     IAnalyticAnomalySummary,
     IAnalyticApiKeyActiveExpired,
     IAnalyticApiKeyBurst,
@@ -50,6 +54,7 @@ import type {
     IAnalyticDeviceProliferation,
     IAnalyticForgotPasswordAbuse,
     IAnalyticForgotPasswordConversion,
+    IAnalyticFraudCredentialStuffingSummary,
     IAnalyticFraudRiskScore,
     IAnalyticFraudSummary,
     IAnalyticImpossibleTravel,
@@ -77,13 +82,11 @@ import type {
     IAnalyticVerificationFunnels,
     IAnalyticWorkspaceCount,
 } from '@modules/analytic/interfaces/analytic.interface';
-
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import { AnalyticApiKeyActiveExpiredResponseSchema } from '@modules/analytic/dtos/response/analytic.api-key-active-expired.response.dto';
 import { AnalyticApiKeyLifecycleResponseSchema } from '@modules/analytic/dtos/response/analytic.api-key-lifecycle.response.dto';
 import { AnalyticBlockedUsersResponseSchema } from '@modules/analytic/dtos/response/analytic.blocked-users.response.dto';
@@ -108,7 +111,6 @@ import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
 import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
 import { AnalyticOptionalDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
@@ -127,10 +129,13 @@ import {
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-
 import { AnalyticFraudSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-summary.response.dto';
+import { AnalyticFraudCredentialStuffingSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-credential-stuffing-summary.response.dto';
+import { AnalyticAnomalyImpossibleTravelSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-impossible-travel-summary.response.dto';
+import { AnalyticAnomalyLoginSpikeIpSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-login-spike-ip-summary.response.dto';
+import { AnalyticAnomalyFailedLoginSpikeSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-failed-login-spike-summary.response.dto';
+import { AnalyticAnomalyDeviceProliferationSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-device-proliferation-summary.response.dto';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
-
 import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import { AnalyticFraudRiskScoreResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-risk-score.response.dto';
@@ -182,10 +187,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.usersRegistrations(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersRegistrations(query);
     }
 
     @Doc({ summary: 'admin get user churn rate by date range' })
@@ -207,10 +209,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricRate>> {
-        return this.analyticDashboardHttpService.usersChurn(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersChurn(query);
     }
 
     @Doc({ summary: 'admin get blocked user counts by date range' })
@@ -232,10 +231,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBlockedUsers>> {
-        return this.analyticDashboardHttpService.usersBlocked(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersBlocked(query);
     }
 
     @Doc({ summary: 'admin get user sign up method distribution' })
@@ -257,10 +253,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticDashboardHttpService.usersSignUpWith(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersSignUpWith(query);
     }
 
     @Doc({ summary: 'admin get user sign up source distribution' })
@@ -282,10 +275,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticDashboardHttpService.usersSignUpFrom(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersSignUpFrom(query);
     }
 
     @Doc({ summary: 'admin get user email verification rate' })
@@ -307,10 +297,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricRate>> {
-        return this.analyticDashboardHttpService.usersEmailVerification(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersEmailVerification(query);
     }
 
     @Doc({ summary: 'admin get user mobile verification rate' })
@@ -332,10 +319,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricRate>> {
-        return this.analyticDashboardHttpService.usersMobileVerification(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersMobileVerification(query);
     }
 
     @Doc({ summary: 'admin get user status distribution' })
@@ -420,10 +404,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.usersSelfDelete(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersSelfDelete(query);
     }
 
     @Doc({ summary: 'admin get username claim count by date range' })
@@ -445,10 +426,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.usersClaimUsername(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersClaimUsername(query);
     }
 
     @Doc({ summary: 'admin get user mobile number churn by date range' })
@@ -470,10 +448,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMobileChurn>> {
-        return this.analyticDashboardHttpService.usersMobileChurn(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.usersMobileChurn(query);
     }
 
     @Doc({ summary: 'admin get login frequency by date range' })
@@ -495,10 +470,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.authLoginFrequency(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authLoginFrequency(query);
     }
 
     @Doc({ summary: 'admin get login method distribution' })
@@ -520,10 +492,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticDashboardHttpService.authLoginMethod(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authLoginMethod(query);
     }
 
     @Doc({ summary: 'admin get login source distribution' })
@@ -545,10 +514,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticDashboardHttpService.authLoginSource(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authLoginSource(query);
     }
 
     @Doc({ summary: 'admin get account lockout metrics by date range' })
@@ -570,10 +536,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticLockoutMetrics>> {
-        return this.analyticDashboardHttpService.authLockout(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authLockout(query);
     }
 
     @Doc({ summary: 'admin get session revoke count by date range' })
@@ -595,10 +558,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.authSessionRevoke(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authSessionRevoke(query);
     }
 
     @Doc({ summary: 'admin get concurrent session distribution' })
@@ -641,10 +601,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticDashboardHttpService.authSessionsGeo(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authSessionsGeo(query);
     }
 
     @Doc({ summary: 'admin get session user agent distribution' })
@@ -666,10 +623,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticDashboardHttpService.authSessionsUserAgent(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authSessionsUserAgent(query);
     }
 
     @Doc({ summary: 'admin get refresh token volume by date range' })
@@ -691,10 +645,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.authRefreshTokenVolume(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authRefreshTokenVolume(query);
     }
 
     @Doc({ summary: 'admin get logout count by date range' })
@@ -716,10 +667,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.authLogoutRate(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authLogoutRate(query);
     }
 
     @Doc({
@@ -744,10 +692,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticVerificationFunnels>> {
-        return this.analyticDashboardHttpService.authVerificationFunnel(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authVerificationFunnel(query);
     }
 
     @Doc({ summary: 'admin get password expiry snapshot' })
@@ -790,10 +735,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.authPasswordChange(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authPasswordChange(query);
     }
 
     @Doc({ summary: 'admin get forgot password conversion by date range' })
@@ -816,8 +758,7 @@ export class AnalyticAdminController {
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticForgotPasswordConversion>> {
         return this.analyticDashboardHttpService.authForgotPasswordConversion(
-            query.startDate,
-            query.endDate
+            query
         );
     }
 
@@ -842,10 +783,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.authAdminForcePassword(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authAdminForcePassword(query);
     }
 
     @Doc({ summary: 'admin get two factor adoption snapshot' })
@@ -888,10 +826,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.authTwoFactorAdminReset(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.authTwoFactorAdminReset(query);
     }
 
     @Doc({ summary: 'admin get two factor verify success count by date range' })
@@ -914,8 +849,7 @@ export class AnalyticAdminController {
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         return this.analyticDashboardHttpService.authTwoFactorVerifySuccess(
-            query.startDate,
-            query.endDate
+            query
         );
     }
 
@@ -939,8 +873,7 @@ export class AnalyticAdminController {
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         return this.analyticDashboardHttpService.authBackupCodeRegeneration(
-            query.startDate,
-            query.endDate
+            query
         );
     }
 
@@ -984,10 +917,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.devicesRegistration(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.devicesRegistration(query);
     }
 
     @Doc({ summary: 'admin get device platform distribution' })
@@ -1047,10 +977,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.devicesInfoRefresh(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.devicesInfoRefresh(query);
     }
 
     @Doc({ summary: 'admin get session to device ratio' })
@@ -1131,10 +1058,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticApiKeyLifecycle>> {
-        return this.analyticDashboardHttpService.apiKeysLifecycle(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.apiKeysLifecycle(query);
     }
 
     @Doc({ summary: 'admin get active and expired api key counts' })
@@ -1197,8 +1121,7 @@ export class AnalyticAdminController {
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticTermPolicyAcceptanceRate>> {
         return this.analyticDashboardHttpService.termPoliciesAcceptanceRate(
-            query.startDate,
-            query.endDate
+            query
         );
     }
 
@@ -1222,8 +1145,7 @@ export class AnalyticAdminController {
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticTermPolicyTimeToAccept>> {
         return this.analyticDashboardHttpService.termPoliciesTimeToAccept(
-            query.startDate,
-            query.endDate
+            query
         );
     }
 
@@ -1246,10 +1168,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDashboardHttpService.workspacesCreation(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.workspacesCreation(query);
     }
 
     @Doc({ summary: 'admin get workspace visibility distribution' })
@@ -1292,10 +1211,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
-        return this.analyticDashboardHttpService.workspacesInviteFunnel(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.workspacesInviteFunnel(query);
     }
 
     @Doc({ summary: 'admin get workspace join request outcomes by date range' })
@@ -1317,10 +1233,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
-        return this.analyticDashboardHttpService.workspacesJoinOutcomes(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.workspacesJoinOutcomes(query);
     }
 
     @Doc({ summary: 'admin get member counts per workspace' })
@@ -1388,10 +1301,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticProjectCreation>> {
-        return this.analyticDashboardHttpService.projectsCreation(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticDashboardHttpService.projectsCreation(query);
     }
 
     @Doc({ summary: 'admin get member counts per project' })
@@ -1418,7 +1328,7 @@ export class AnalyticAdminController {
 
     @Doc({ summary: 'admin get credential stuffing fraud summary' })
     @Response('analytic.fraudCredentialStuffing', {
-        schema: AnalyticFraudSummaryResponseSchema,
+        schema: AnalyticFraudCredentialStuffingSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -1434,10 +1344,8 @@ export class AnalyticAdminController {
     async credentialStuffing(
         @Query({ schema: AnalyticWindowRequestSchema })
         query: AnalyticWindowRequestDto
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticFraudHttpService.credentialStuffingSummary(
-            query.windowMs
-        );
+    ): Promise<IResponseReturn<IAnalyticFraudCredentialStuffingSummary>> {
+        return this.analyticFraudHttpService.credentialStuffingSummary(query);
     }
 
     @Doc({ summary: 'admin get all credential stuffing fraud detections' })
@@ -1481,10 +1389,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticFraudHttpService.accountTakeoverSummary(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticFraudHttpService.accountTakeoverSummary(query);
     }
 
     @Doc({ summary: 'admin get all account takeover fraud detections' })
@@ -1528,9 +1433,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticWindowRequestSchema })
         query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticFraudHttpService.massRegistrationSummary(
-            query.windowMs
-        );
+        return this.analyticFraudHttpService.massRegistrationSummary(query);
     }
 
     @Doc({ summary: 'admin get all mass registration fraud detections' })
@@ -1575,7 +1478,7 @@ export class AnalyticAdminController {
         query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         return this.analyticFraudHttpService.passwordResetEnumerationSummary(
-            query.windowMs
+            query
         );
     }
 
@@ -1667,10 +1570,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticFraudHttpService.sessionAfterAdminSummary(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticFraudHttpService.sessionAfterAdminSummary(query);
     }
 
     @Doc({
@@ -1717,7 +1617,7 @@ export class AnalyticAdminController {
         query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         return this.analyticFraudHttpService.forgotPasswordTokenAbuseSummary(
-            query.windowMs
+            query
         );
     }
 
@@ -1766,9 +1666,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticWindowRequestSchema })
         query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticFraudHttpService.refreshSpikeSummary(
-            query.windowMs
-        );
+        return this.analyticFraudHttpService.refreshSpikeSummary(query);
     }
 
     @Doc({ summary: 'admin get all refresh token spike fraud detections' })
@@ -1812,9 +1710,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticWindowRequestSchema })
         query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticFraudHttpService.backupCodeNewDeviceSummary(
-            query.windowMs
-        );
+        return this.analyticFraudHttpService.backupCodeNewDeviceSummary(query);
     }
 
     @Doc({
@@ -1860,7 +1756,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticWindowRequestSchema })
         query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticFraudHttpService.apiKeyBurstSummary(query.windowMs);
+        return this.analyticFraudHttpService.apiKeyBurstSummary(query);
     }
 
     @Doc({ summary: 'admin get all api key burst fraud detections' })
@@ -1931,7 +1827,7 @@ export class AnalyticAdminController {
 
     @Doc({ summary: 'admin get impossible travel anomaly summary' })
     @Response('analytic.anomalyImpossibleTravel', {
-        schema: AnalyticAnomalySummaryResponseSchema,
+        schema: AnalyticAnomalyImpossibleTravelSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -1947,11 +1843,8 @@ export class AnalyticAdminController {
     async impossibleTravel(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
-    ): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
-        return this.analyticAnomalyHttpService.impossibleTravelSummary(
-            query.startDate,
-            query.endDate
-        );
+    ): Promise<IResponseReturn<IAnalyticAnomalyImpossibleTravelSummary>> {
+        return this.analyticAnomalyHttpService.impossibleTravelSummary(query);
     }
 
     @Doc({ summary: 'admin get all impossible travel anomaly detections' })
@@ -1978,7 +1871,7 @@ export class AnalyticAdminController {
 
     @Doc({ summary: 'admin get login spike by ip anomaly summary' })
     @Response('analytic.anomalyLoginSpikeIp', {
-        schema: AnalyticAnomalySummaryResponseSchema,
+        schema: AnalyticAnomalyLoginSpikeIpSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -1994,10 +1887,8 @@ export class AnalyticAdminController {
     async loginSpikeIp(
         @Query({ schema: AnalyticWindowRequestSchema })
         query: AnalyticWindowRequestDto
-    ): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
-        return this.analyticAnomalyHttpService.loginSpikeIpSummary(
-            query.windowMs
-        );
+    ): Promise<IResponseReturn<IAnalyticAnomalyLoginSpikeIpSummary>> {
+        return this.analyticAnomalyHttpService.loginSpikeIpSummary(query);
     }
 
     @Doc({ summary: 'admin get all login spike by ip anomaly detections' })
@@ -2024,7 +1915,7 @@ export class AnalyticAdminController {
 
     @Doc({ summary: 'admin get failed login spike anomaly summary' })
     @Response('analytic.anomalyFailedLoginSpike', {
-        schema: AnalyticAnomalySummaryResponseSchema,
+        schema: AnalyticAnomalyFailedLoginSpikeSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -2038,7 +1929,7 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/anomaly/failed-login-spike')
     async failedLoginSpike(): Promise<
-        IResponseReturn<IAnalyticAnomalySummary>
+        IResponseReturn<IAnalyticAnomalyFailedLoginSpikeSummary>
     > {
         return this.analyticAnomalyHttpService.failedLoginSpikeSummary();
     }
@@ -2067,7 +1958,7 @@ export class AnalyticAdminController {
 
     @Doc({ summary: 'admin get device proliferation anomaly summary' })
     @Response('analytic.anomalyDeviceProliferation', {
-        schema: AnalyticAnomalySummaryResponseSchema,
+        schema: AnalyticAnomalyDeviceProliferationSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -2081,7 +1972,7 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/anomaly/device-proliferation')
     async deviceProliferation(): Promise<
-        IResponseReturn<IAnalyticAnomalySummary>
+        IResponseReturn<IAnalyticAnomalyDeviceProliferationSummary>
     > {
         return this.analyticAnomalyHttpService.deviceProliferationSummary();
     }
@@ -2127,10 +2018,7 @@ export class AnalyticAdminController {
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
-        return this.analyticAnomalyHttpService.loginTimeSummary(
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticAnomalyHttpService.loginTimeSummary(query);
     }
 
     @Doc({ summary: 'admin get all login time anomaly detections' })

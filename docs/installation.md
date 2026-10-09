@@ -4,13 +4,17 @@
 
 How to clone, install, seed, and run the project locally.
 
-**Docker is the recommended path.** Compose gives you a MongoDB replica set, Redis, a JWKS server, and BullBoard with almost no manual wiring. Use [MongoDB Atlas][ref-mongodb] and your own Redis only when you cannot run Docker.
+**Docker is the recommended path.** Compose gives you a MongoDB replica set, Redis, a JWKS server, and BullBoard with almost no manual wiring.
+
+Use [MongoDB Atlas][ref-mongodb] and your own Redis only when you cannot run Docker.
 
 ## Related Documents
 
-- [Environment Documentation][ref-doc-environment] - Environment variables
-- [Database Documentation][ref-doc-database] - Schema sync and seeding
-- [Configuration Documentation][ref-doc-configuration] - Config structure
+- [Environment Documentation][ref-doc-environment]: Environment variables
+- [Database Documentation][ref-doc-database]: Schema sync and seeding
+- [Configuration Documentation][ref-doc-configuration]: Config structure
+- [Release Documentation][ref-doc-release]: Releasing to a production host
+- [Logger Documentation][ref-doc-logger]: Boot failure and seed exit codes
 
 ## Table of Contents
 
@@ -19,18 +23,18 @@ How to clone, install, seed, and run the project locally.
 - [Prerequisites](#prerequisites)
 - [Clone Repository](#clone-repository)
 - [Installation with Docker (Recommended)](#installation-with-docker-recommended)
-  - [What's Included](#whats-included)
-  - [Install Packages](#install-packages)
-  - [Create Environment](#create-environment)
-  - [Generate Keys](#generate-keys)
-  - [Run Containers](#run-containers)
-  - [Troubleshooting](#troubleshooting)
+    - [What's Included](#whats-included)
+    - [Install Packages](#install-packages)
+    - [Create Environment](#create-environment)
+    - [Generate Keys](#generate-keys)
+    - [Run Containers](#run-containers)
+    - [Troubleshooting](#troubleshooting)
 - [Installation without Docker](#installation-without-docker)
-  - [Hosted MongoDB and Redis](#hosted-mongodb-and-redis)
-  - [Install Packages](#install-packages-1)
-  - [Create Environment](#create-environment-1)
-  - [Generate Keys](#generate-keys-1)
-  - [Host JWKS Files](#host-jwks-files)
+    - [Hosted MongoDB and Redis](#hosted-mongodb-and-redis)
+    - [Install Packages](#install-packages-1)
+    - [Create Environment](#create-environment-1)
+    - [Generate Keys](#generate-keys-1)
+    - [Host JWKS Files](#host-jwks-files)
 - [Secret Management with Vault (Optional)](#secret-management-with-vault-optional)
 - [Generate Database Client](#generate-database-client)
 - [Database Migration \& Seeding](#database-migration--seeding)
@@ -38,14 +42,12 @@ How to clone, install, seed, and run the project locally.
 - [Development Tools](#development-tools)
 - [Accessing the Application](#accessing-the-application)
 
-
 ## Prerequisites
 
-> [!NOTE]
-> This project uses PNPM. Examples below use PNPM commands.
+> [!NOTE] This project uses PNPM. Examples below use PNPM commands.
 
 | Tool | Version | Notes |
-|------|---------|--------|
+| --- | --- | --- |
 | [Node.js](https://nodejs.org) | >= 24.15.0 | Always required |
 | [PNPM](http://pnpm.io) | >= 10.25.0 (pin `pnpm@12.5.1`) | Always required |
 | [Git](https://git-scm.com) | v2.39.x+ | Always required |
@@ -54,11 +56,11 @@ How to clone, install, seed, and run the project locally.
 
 Without Docker you also need:
 
-- A [MongoDB Atlas][ref-mongodb] cluster (or any MongoDB 8+ **replica set**; Prisma transactions need one)
-- A Redis 8+ instance for cache (`db:0`) and queues (`db:1`)
+- A [MongoDB Atlas][ref-mongodb] cluster, or any MongoDB 8.0+ **replica set** (Prisma transactions need one).
+- The project runs MongoDB 9: the production Compose file pins `mongo:9.0.2`, and the local Compose file uses `mongo:latest`.
+- A Redis 6.0+ instance for cache (`db:0`) and queues (`db:1`). `SessionCache` runs `SCAN` with the `TYPE` option, which Redis supports from 6.0.
 
-> [!IMPORTANT]
-> Prefer [Installation with Docker](#installation-with-docker-recommended). Local single-node MongoDB without a replica set will break Prisma transactions.
+> [!IMPORTANT] Prefer [Installation with Docker](#installation-with-docker-recommended). Local single-node MongoDB without a replica set will break Prisma transactions.
 
 ## Clone Repository
 
@@ -70,14 +72,16 @@ git branch
 
 ## Installation with Docker (Recommended)
 
-Compose starts MongoDB, Redis, JWKS, and BullBoard already wired for this app. Run the API on the host with `pnpm start:dev`, or add the `apis` profile to run it in Compose too.
+Compose starts MongoDB, Redis, JWKS, and BullBoard already wired for this app.
+
+The API runs on the host with `pnpm start:dev`, or in Compose with the `apis` profile.
 
 ### What's Included
 
-- **MongoDB replica set** - Ready for Prisma transactions (port 27017)
-- **Redis** - Cache on `db:0`, queues on `db:1` (port 6379)
-- **JWKS server** - Serves your JWT public keys (port 3011)
-- **BullMQ Dashboard** - Queue UI (port 3010; default `admin` / `admin123`)
+- **MongoDB replica set**: Ready for Prisma transactions (port 27017, or `DOCKER_MONGO_PORT`). Authentication is off unless `DOCKER_MONGO_ROOT_PASSWORD` is set
+- **Redis**: Cache on `db:0`, queues on `db:1` (port 6379). Authentication is off unless `DOCKER_REDIS_PASSWORD` is set
+- **JWKS server**: Serves your JWT public keys (port 3011)
+- **BullMQ Dashboard**: Queue UI on port 3010, default login `admin` / `admin123`
 
 ### Install Packages
 
@@ -91,36 +95,83 @@ pnpm install
 cp .env.example .env
 ```
 
-Point the app at the Compose services:
+Point the host app at the Compose services:
 
 **Database**
+
 ```bash
 DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
 ```
 
 **Redis**
+
 ```bash
 CACHE_REDIS_URL=redis://localhost:6379/0
 QUEUE_REDIS_URL=redis://localhost:6379/1
 ```
 
 **JWKS (Compose-hosted)**
+
 ```bash
 AUTH_JWT_ACCESS_TOKEN_JWKS_URI=http://localhost:3011/.well-known/access-jwks.json
 AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://localhost:3011/.well-known/refresh-jwks.json
 ```
 
+**Two-factor issuer** (required and empty in `.env.example`, which `pnpm generate:secret` leaves alone)
+
+```bash
+AUTH_TWO_FACTOR_ISSUER=ACKNestJs
+```
+
+The `DOCKER_*` variables in `.env` are optional and empty in `.env.example`.
+
+- Compose reads them from `.env`.
+- A variable left empty falls back to plain MongoDB, plain Redis, and the BullBoard login `admin` / `admin123`.
+- To turn authentication on, set `DOCKER_MONGO_ROOT_PASSWORD` and `DOCKER_REDIS_PASSWORD` and put the credentials into the URLs.
+- `<user>` is `DOCKER_MONGO_ROOT_USERNAME`, `root` when it is empty.
+- Special characters in a password are percent-encoded.
+
+Example URLs:
+
+```bash
+DATABASE_URL=mongodb://<user>:<password>@localhost:27017/ACKNestJs?authSource=admin&retryWrites=true&w=majority&replicaSet=rs0
+CACHE_REDIS_URL=redis://:<password>@localhost:6379/0
+QUEUE_REDIS_URL=redis://:<password>@localhost:6379/1
+```
+
 Full variable list: [Environment Documentation][ref-doc-environment].
+
+Third-party integrations (AWS S3, AWS SES, Firebase, Google and Apple sign-in, Sentry) are optional. Leave their lines blank in `.env` and the app boots without them:
+
+- A route that needs S3 or a social sign-in that is not set up answers 404.
+- Email and push delivery are skipped.
+- The health indicator of each missing integration reports it down.
+
+Turning one on:
+
+- S3 and SES turn on when their IAM credential key or secret is set.
+- Firebase turns on when any of its three keys is set.
+- Once one of those is on, startup validation fails with the keys it still needs.
+- Google, Apple, and Sentry turn on from their client id or DSN alone.
+- A region, bucket, or `EMAIL_*` value set on its own boots fine.
+
+The full trigger table is in [Environment Documentation][ref-doc-environment].
 
 ### Generate Keys
 
-The app uses **ES256** access tokens, **ES512** refresh tokens, and two encryption roots: `APP_ENCRYPTION_SECRET_KEY` (notification job payloads) and `AUTH_TWO_FACTOR_ENCRYPTION_KEY` (stored TOTP secrets).
+The app uses:
 
-> [!WARNING]
-> Back up `keys/` and `.env` before regenerating. New JWT keys invalidate every issued token. New encryption secrets leave existing ciphertext (TOTP secrets, queued notification jobs) undecryptable.
+- **ES256** access tokens
+- **ES512** refresh tokens
+- two encryption roots: `APP_ENCRYPTION_SECRET_KEY` (notification job payloads) and `AUTH_TWO_FACTOR_ENCRYPTION_KEY` (stored TOTP secrets)
+
+Compose also mounts a MongoDB keyfile, `keys/mongo-keyfile`.
+
+> [!WARNING] Back up `keys/` and `.env` before regenerating. New JWT keys invalidate every issued token. New encryption secrets leave existing ciphertext (TOTP secrets, queued notification jobs) undecryptable.
 
 ```bash
-# JWT keys, JWKS files, and both encryption secrets, written into .env
+# JWT keys, JWKS files, both encryption secrets, and the MongoDB keyfile;
+# the JWT and encryption values are written into .env
 pnpm generate:secret --direct-insert
 ```
 
@@ -130,23 +181,46 @@ Useful variants:
 pnpm generate:secret
 pnpm generate:secret:jwt [--direct-insert]
 pnpm generate:secret:encryption [--direct-insert]
+pnpm generate:secret:mongo
 ```
 
 **What `jwt` does:**
+
 - Writes access/refresh PEM key pairs under `keys/` (private keys `0600`)
 - Writes `keys/access-jwks.json` and `keys/refresh-jwks.json` (the `jwks-server` container mounts these)
-- Prints paths and key IDs only; key material never goes to the console
+- Prints paths and key IDs only, never key material
 - With `--direct-insert`: upserts `AUTH_JWT_ACCESS_TOKEN_KID`, `AUTH_JWT_REFRESH_TOKEN_KID`, and the four `AUTH_JWT_*_PRIVATE_KEY` / `AUTH_JWT_*_PUBLIC_KEY` values into `.env`
 
 **What `encryption` does:**
+
 - Draws both encryption secrets (48 random bytes each, 64 base64url characters)
 - Writes them to `keys/encryption-secret.env` (`0600`) and prints only that path
 - With `--direct-insert`: upserts those two variables into `.env`
 
-`pnpm generate:secret` runs `jwt` then `encryption`. `--direct-insert` creates `.env` from `.env.example` when missing and sets `.env` to `0600`. The `keys/` directory is gitignored.
+**What `mongo` does:**
 
-> [!NOTE]
-> The app reads `AUTH_JWT_*_PRIVATE_KEY` / `AUTH_JWT_*_PUBLIC_KEY` as base64 (DER), not raw PEM. `--direct-insert` writes the correctly encoded values. Without it, copy the two lines from `keys/encryption-secret.env` into `.env` by hand.
+- Draws 756 random bytes, base64 encoded, and writes them to `keys/mongo-keyfile` with mode `0400`
+- Replaces an existing keyfile
+- Never writes to `.env`, and `--direct-insert` does nothing for it: Compose mounts the file at `/etc/mongo/keyfile`
+
+Command behavior:
+
+- `pnpm generate:secret` runs `jwt`, `encryption`, then `mongo`.
+- `--direct-insert` creates `.env` from `.env.example` when missing.
+- `--direct-insert` sets `.env` to `0644`, so the non-root production container user can read it through the bind mount.
+- The `keys/` directory is gitignored.
+
+> [!NOTE] Both Compose files mount `keys/access-jwks.json`, `keys/refresh-jwks.json`, and `keys/mongo-keyfile` as bind mounts that fail the start when the file is missing. Run `pnpm generate:secret` before the first `docker-compose up`.
+
+> [!NOTE] The app reads `AUTH_JWT_*_PRIVATE_KEY` / `AUTH_JWT_*_PUBLIC_KEY` as base64 (DER), not raw PEM. `--direct-insert` writes the encoded values.
+
+Without `--direct-insert`, a manual `.env` needs these values from each target:
+
+- `jwt`:
+    - `AUTH_JWT_ACCESS_TOKEN_KID` and `AUTH_JWT_REFRESH_TOKEN_KID`, the `kid` values the command prints and the JWKS files hold.
+    - The four `AUTH_JWT_*_PRIVATE_KEY` / `AUTH_JWT_*_PUBLIC_KEY` values, each from its PEM file under `keys/` with the `-----BEGIN` and `-----END` lines and the line breaks removed.
+- `encryption`: both lines of `keys/encryption-secret.env`, copied as they are.
+- `mongo`: nothing. The app does not read the keyfile, and Compose mounts `keys/mongo-keyfile` into the `mongo` container.
 
 JWKS URLs after Compose is up:
 
@@ -155,55 +229,104 @@ JWKS URLs after Compose is up:
 
 ### Run Containers
 
-By default Compose starts dependencies only (MongoDB, Redis, JWKS, BullBoard). The API stays on the host unless you enable the `apis` profile.
+By default Compose starts dependencies only (MongoDB, Redis, JWKS, BullBoard).
+
+The API stays on the host unless the `apis` profile is enabled.
 
 **Dependencies only:**
+
 ```bash
 docker-compose up -d
 ```
 
 **Dependencies + API container:**
+
 ```bash
 docker-compose --profile apis up -d
 ```
 
 That brings up:
 
-- MongoDB single-node replica set on `27017`
+- MongoDB single-node replica set on `27017` (`DOCKER_MONGO_PORT` changes the host port)
 - Redis on `6379`
 - JWKS server on `3011`
 - BullBoard on `3010`
 - With `--profile apis`, the API on `3000`
+
+The API container reads different `.env` values from the host app: see [API container](#api-container-apis-profile).
 
 ```bash
 docker-compose ps
 docker-compose logs -f
 ```
 
-Health checks mark each service ready only after its check passes.
+- The Compose file for local work is `docker-compose.yml`, and the API image is the root `dockerfile`.
+- A production host uses `ci/docker-compose.production.yml` and `ci/dockerfile.production`, described in [Release][ref-doc-release].
+- MongoDB, Redis, BullBoard, the JWKS server, the API container, and Vault (profile `vault`) carry health checks.
+- A service that depends on one starts after that check passes, so `vault-bootstrap` waits for Vault.
+
+#### API container (`apis` profile)
+
+The `apis` service mounts the repository `.env` at `/app/.env`, the file the host app reads. Inside the Compose network the other services answer on their service names, and `localhost` points at the container itself. For the container the file holds:
+
+- `HTTP_HOST` is `0.0.0.0`.
+- `HTTP_PORT` is `3000`, the port Compose publishes and the container health check calls.
+- `DATABASE_URL` uses host `mongo` on port `27017`.
+- `CACHE_REDIS_URL` and `QUEUE_REDIS_URL` use host `redis` on port `6379`.
+- `AUTH_JWT_ACCESS_TOKEN_JWKS_URI` and `AUTH_JWT_REFRESH_TOKEN_JWKS_URI` use host `jwks-server` on port `80`, the port nginx listens on inside the network.
+
+```bash
+HTTP_HOST=0.0.0.0
+DATABASE_URL=mongodb://mongo:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
+CACHE_REDIS_URL=redis://redis:6379/0
+QUEUE_REDIS_URL=redis://redis:6379/1
+AUTH_JWT_ACCESS_TOKEN_JWKS_URI=http://jwks-server/.well-known/access-jwks.json
+AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://jwks-server/.well-known/refresh-jwks.json
+```
+
+The same file feeds `pnpm start:dev` on the host, which needs the `localhost` values from [Create Environment](#create-environment). With authentication on, the credentials from that section go into these URLs too.
+
+MongoDB reports its replica set member as `host.docker.internal:27017`, or `host.docker.internal:<DOCKER_MONGO_PORT>` when that variable is set:
+
+- `docker-compose.yml` passes the member host to `ci/mongo/entrypoint.sh` as `RS_HOST`, built from `DOCKER_MONGO_PORT`.
+- The port in `DATABASE_URL` matches `DOCKER_MONGO_PORT`.
+- A client with `replicaSet=rs0` connects to the member host the replica set reports.
+- Compose maps `host.docker.internal` to the host gateway on both the `mongo` and the `apis` services (`extra_hosts`), so the name resolves inside `apis` and inside `mongo`. The host machine resolves it through its own OS.
+
+Steps:
+
+1. Start the dependencies: `docker-compose up -d`.
+2. With the `localhost` values in `.env`, run `pnpm db:migrate` and `pnpm migration:seed` on the host.
+3. Change `.env` to the container values above.
+4. Start the API container: `docker-compose --profile apis up -d`.
 
 ### Troubleshooting
 
-- **Port conflicts** - Free `27017`, `6379`, `3010`, and `3011`
-- **Host resolution** - Add `127.0.0.1 host.docker.internal` to `/etc/hosts` if needed
-- **Replica set still starting** - Wait a minute or two after first `up`
-- **Permissions** - Confirm Docker can create volumes and networks
+- **Port conflicts**: Compose publishes ports `27017`, `6379`, `3010`, and `3011` on the host, so a process already on one of them blocks the start.
+    - Set `DOCKER_MONGO_PORT` to move the MongoDB host port, and change the port in `DATABASE_URL` to match.
+    - The published MongoDB host port is also the port in the replica set member host `host.docker.internal:<port>`, so the host machine and the containers reach the same member.
+- **Host resolution**: Add `127.0.0.1 host.docker.internal` to the host machine's `/etc/hosts` when the name does not resolve there. The containers need no entry.
+- **Bind mount error naming a file under `keys/`**: The file does not exist yet. Run `pnpm generate:secret`.
+- **Replica set still starting**: The replica set takes a minute or two after the first `up`.
+- **Permissions**: Docker needs permission to create volumes and networks.
 
 ## Installation without Docker
 
-Use this only when Docker is not an option. You still run the Node app on the host with PNPM; MongoDB and Redis come from hosted services.
+Use this only when Docker is not an option:
+
+- The Node app runs on the host with PNPM.
+- MongoDB and Redis come from hosted services.
 
 ### Hosted MongoDB and Redis
 
-1. **MongoDB** - Create a [MongoDB Atlas][ref-mongodb] cluster (or any MongoDB 8+ deployment that is a **replica set**). Copy the connection string into `DATABASE_URL`.
-2. **Redis** - Use a hosted Redis 8+ service such as [Amazon ElastiCache][ref-elasticache]. Point cache and queues at different logical DBs when you can:
-   ```bash
-   CACHE_REDIS_URL=redis://<host>:6379/0
-   QUEUE_REDIS_URL=redis://<host>:6379/1
-   ```
+1. **MongoDB**: Create a [MongoDB Atlas][ref-mongodb] cluster, or use any MongoDB deployment that is a **replica set**. Copy the connection string into `DATABASE_URL`.
+2. **Redis**: Use a hosted Redis 6.0+ service such as [Amazon ElastiCache][ref-elasticache]. Point cache and queues at different logical DBs when you can:
+    ```bash
+    CACHE_REDIS_URL=redis://<host>:6379/0
+    QUEUE_REDIS_URL=redis://<host>:6379/1
+    ```
 
-> [!IMPORTANT]
-> Atlas (and any other MongoDB you use) must be a replica set. Prisma transactions fail without one.
+> [!IMPORTANT] Prisma transactions need a replica set, so Atlas (and any other MongoDB you use) runs as one. Without one, transactions fail.
 
 ### Install Packages
 
@@ -223,6 +346,7 @@ Set at least:
 DATABASE_URL=<your Atlas (or other replica-set) connection string>
 CACHE_REDIS_URL=redis://<your-redis-host>:6379/0
 QUEUE_REDIS_URL=redis://<your-redis-host>:6379/1
+AUTH_TWO_FACTOR_ISSUER=ACKNestJs
 ```
 
 Other variables: [Environment Documentation][ref-doc-environment].
@@ -239,7 +363,7 @@ See [Generate Keys](#generate-keys) under the Docker section for what each targe
 
 ### Host JWKS Files
 
-Without the Compose JWKS server you must publish the JWKS files yourself:
+Without the Compose JWKS server, publish the JWKS files yourself:
 
 1. Upload `keys/access-jwks.json` and `keys/refresh-jwks.json` to a public URL (S3, CDN, or any static host)
 2. Point `.env` at those URLs:
@@ -251,15 +375,20 @@ AUTH_JWT_REFRESH_TOKEN_JWKS_URI="https://<your_domain>/.well-known/refresh-jwks.
 
 ## Secret Management with Vault (Optional)
 
-Instead of hand-managing `.env`, you can run an optional [HashiCorp Vault][ref-vault] server that holds secrets and writes them into `.env`. It sits behind the `vault` Compose profile:
+Instead of hand-managing `.env`, an optional [HashiCorp Vault][ref-vault] server can hold secrets and write them into `.env`. It sits behind the `vault` Compose profile:
 
 ```bash
 docker compose --profile vault up -d
 pnpm vault:pull
 ```
 
-The bundled config uses a persistent file backend, auto-initialized and auto-unsealed by the container entrypoint. Secrets are laid out per environment (`production`, `staging`, `development`) and read through a per-environment read-only AppRole. Full detail: [Vault Documentation][ref-doc-vault].
+The bundled config:
 
+- uses a persistent file backend, auto-initialized and auto-unsealed by the container entrypoint
+- lays secrets out per environment (`production`, `staging`, `development`)
+- reads them through a per-environment read-only AppRole
+
+Full detail: [Vault Documentation][ref-doc-vault].
 
 ## Generate Database Client
 
@@ -272,35 +401,45 @@ The bundled config uses a persistent file backend, auto-initialized and auto-uns
 pnpm generate
 ```
 
-Run this after `pnpm install`, and again after changes to `prisma/schema.prisma` or those `package.json` fields. CI and both dockerfiles run it before building.
+- Run this after `pnpm install`, and again after changes to `prisma/schema.prisma` or those `package.json` fields.
+- The CI workflows and both dockerfiles (`dockerfile` for local work, `ci/dockerfile.production`) run it before building.
 
 ## Database Migration & Seeding
 
 **Sync schema to MongoDB:**
+
 ```bash
 pnpm db:migrate
 ```
 
 **Seed initial data:**
+
 ```bash
 pnpm migration:seed
 ```
 
 **Remove seeded data:**
 
-> [!WARNING]
-> `migration:remove` deletes more than the seeded rows: the `user` seed's removal deletes every user, session, and activity log, and the API key, country, feature flag, role, and term policy seeds each delete their whole collection.
+> [!WARNING] `migration:remove` deletes more than the seeded rows: the `user` seed's removal deletes every user, session, and activity log, and the API key, country, feature flag, role, and term policy seeds each delete their whole collection.
 
 ```bash
 pnpm migration:remove
 ```
 
-Every seeded row names the superadmin's fixed id (`MigrationUserSuperAdminId`) as its actor. When the database holds a superadmin under a different id, `pnpm migration:seed` logs an error from the `user` seed and writes no user. Realign with `pnpm migration:remove`, then `pnpm migration:seed`. Details: [Database Documentation][ref-doc-database].
+- Every seeded row names the superadmin's fixed id (`MigrationUserSuperAdminId`) as its actor.
+- When the database holds a superadmin under a different id, `pnpm migration:seed` logs an error from the `user` seed and writes no user.
+- Realign with `pnpm migration:remove`, then `pnpm migration:seed`.
+- Details: [Database Documentation][ref-doc-database].
+
+Exit codes of a seed command:
+
+- A seed that throws exits with code `1` after one `FATAL [Bootstrap]` line. In `pnpm migration:seed` the `&&` between commands skips the remaining seeds.
+- A seed that logs an error and returns, such as the superadmin check above, exits with code `0`, and the next seed still runs.
+- Details: [Logger Documentation][ref-doc-logger].
 
 **Reset and reseed:**
 
-> [!WARNING]
-> `migration:fresh` runs `prisma db push --force-reset`, which drops all existing data.
+> [!WARNING] `migration:fresh` runs `prisma db push --force-reset`, which drops all existing data.
 
 ```bash
 pnpm migration:fresh
@@ -308,7 +447,9 @@ pnpm migration:fresh
 
 **Seed email templates:**
 
-SES template sync (not a database seed). Commands and template list: [Email Documentation][ref-doc-email].
+- It syncs SES templates and is not a database seed.
+- With SES unconfigured, the seed logs a warning and skips.
+- Commands and template list: [Email Documentation][ref-doc-email].
 
 ```bash
 pnpm migration templateEmailNotification --type seed
@@ -316,7 +457,8 @@ pnpm migration templateEmailNotification --type seed
 
 **Seed term policies (HTML on S3):**
 
-See [Term Policy Documentation][ref-doc-term-policy].
+- With S3 unconfigured, the seed logs a warning and skips.
+- See [Term Policy Documentation][ref-doc-term-policy].
 
 ```bash
 pnpm migration templateTermPolicy --type seed
@@ -324,14 +466,15 @@ pnpm migration templateTermPolicy --type seed
 
 **S3 bucket policy / CORS:**
 
-See [Third Party Integration; Bucket setup][ref-doc-third-party-s3].
+- The seed needs S3 and `AWS_S3_IAM_ARN` (the principal the public bucket policy grants).
+- With either unset, it logs a warning and skips.
+- See [Third Party Integration: Bucket setup][ref-doc-third-party-s3].
 
 ```bash
 pnpm migration awsS3Config --type seed
 ```
 
 Database row seeds and schema sync: [Database Documentation][ref-doc-database].
-
 
 ## Run Project
 
@@ -348,7 +491,14 @@ pnpm build
 pnpm start:prod
 ```
 
-If you started Compose with `--profile apis`, the API is already on port 3000 and you can skip `pnpm start:dev` on the host.
+Production on a host with Docker runs the same build in a container: [Release][ref-doc-release].
+
+A failure while the application starts, such as an invalid `.env` value or an unreachable MongoDB, logs one `FATAL [Bootstrap]` line and exits with code `1`:
+
+- The `apis` Compose service carries `restart: on-failure`, so Compose starts the container again.
+- Details: [Logger Documentation][ref-doc-logger].
+
+With `--profile apis` the API container already serves port 3000, so `pnpm start:dev` on the host is skipped. The container reads the `.env` values listed under [API container](#api-container-apis-profile).
 
 ## Development Tools
 
@@ -363,13 +513,16 @@ pnpm deadcode
 pnpm spell
 ```
 
-`pnpm test` is `TZ=UTC vitest run --passWithNoTests`:
+`pnpm test` is `TZ=UTC vitest run --project unit`:
 
+- `vitest.config.ts` declares one project, `unit`. The integration and e2e suites are held: no project exists, and `package.json` defines no script for either.
+    - Its specs live under `test/unit/`, mirroring `src/`.
+    - `test/helpers/test.logger.helper.ts` is the setup file.
 - No coverage by default (`coverage.enabled` is `false` in `vitest.config.ts`)
 - `pnpm test:cov` adds `--coverage` and applies the 100% thresholds
-- The suite is unit specs only
-- `pre-commit` and CI (`.github/workflows/test.yml`, `workflow_dispatch`) run `NODE_ENV=test pnpm test`
-- `.github/workflows/linter.yml` runs on `pull_request`
+- `pre-commit` and CI (`.github/workflows/test-unit.yml`, `workflow_dispatch`) run `NODE_ENV=test pnpm test`
+- `.github/workflows/test-integration.yml` and `test-e2e.yml` run on `workflow_dispatch` and call scripts `package.json` does not define, so they fail
+- `.github/workflows/linter.yml` runs on `pull_request` and `workflow_dispatch`
 - `testTimeout` is 5000ms
 
 Dependency helpers:
@@ -380,15 +533,15 @@ pnpm package:upgrade
 pnpm clean && pnpm install
 ```
 
-> [!NOTE]
-> `pnpm clean` removes `node_modules`, `dist`, and the pnpm cache before a fresh install. Useful after dependency conflicts or a broken build.
-
+> [!NOTE] `pnpm clean` removes `dist` and `node_modules` and prunes the pnpm store before a fresh install.
+>
+> It helps after dependency conflicts or a broken build.
 
 ## Accessing the Application
 
 - **Base URL**: `http://localhost:3000`
 - **API docs**: `http://localhost:3000/docs` (Swagger UI)
-- **Queue dashboard**: `http://localhost:3010` (Docker Compose; default `admin` / `admin123`)
+- **Queue dashboard**: `http://localhost:3010` (Docker Compose, default login `admin` / `admin123`)
 
 Quick checks:
 
@@ -396,18 +549,17 @@ Quick checks:
 2. Swagger at `http://localhost:3000/docs`
 3. App logs for MongoDB and Redis connections
 
-
-
 <!-- REFERENCES -->
 
 [ref-vault]: https://developer.hashicorp.com/vault
 [ref-mongodb]: https://www.mongodb.com/products/platform/atlas-database
 [ref-elasticache]: https://aws.amazon.com/elasticache/
-
 [ref-doc-environment]: environment.md
 [ref-doc-database]: database.md
 [ref-doc-configuration]: configuration.md
 [ref-doc-vault]: vault.md
+[ref-doc-release]: release.md
+[ref-doc-logger]: logger.md#startup-and-boot-failure
 [ref-doc-email]: email.md
 [ref-doc-term-policy]: term-policy.md#migration--seeding
 [ref-doc-third-party-s3]: third-party-integration.md#bucket-setup

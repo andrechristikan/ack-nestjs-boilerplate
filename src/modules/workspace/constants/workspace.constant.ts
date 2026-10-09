@@ -7,13 +7,13 @@ import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace
  * Request-store key holding the workspace the workspace guard resolved.
  * @public
  */
-export const WorkspaceStoreKey = 'WorkspaceStore';
+export const WorkspaceStoreKey = 'WorkspaceStoreKey';
 
 /**
  * Request-store key holding the caller's workspace membership.
  * @public
  */
-export const WorkspaceMemberStoreKey = 'WorkspaceMemberStore';
+export const WorkspaceMemberStoreKey = 'WorkspaceMemberStoreKey';
 
 /**
  * Route metadata key holding the workspace roles `@WorkspaceMemberProtected` requires.
@@ -22,10 +22,14 @@ export const WorkspaceMemberStoreKey = 'WorkspaceMemberStore';
 export const WorkspaceRoleMetaKey = 'WorkspaceRoleMetaKey';
 
 /**
- * Workspace guard error kit for `@WorkspaceProtected`.
+ * Workspace guard error kit for `@WorkspaceProtected`; `guardMissing` and `memberGuardMissing` document a guard or param decorator that reads the workspace or workspace member store.
  * @public
  */
 export const DocWorkspaceErrorResponses = {
+    badRequest: DocResponseError(HttpStatus.BAD_REQUEST, {
+        statusCode: EnumWorkspaceStatusCodeError.headerMissing,
+        messagePath: 'workspace.error.headerMissing',
+    }),
     notFound: DocResponseError(HttpStatus.NOT_FOUND, {
         statusCode: EnumWorkspaceStatusCodeError.notFound,
         messagePath: 'workspace.error.notFound',
@@ -34,6 +38,14 @@ export const DocWorkspaceErrorResponses = {
         statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
         messagePath: 'workspace.error.memberForbidden',
     }),
+    guardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
+        statusCode: EnumWorkspaceStatusCodeError.guardMissing,
+        messagePath: 'workspace.error.guardMissing',
+    }),
+    memberGuardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
+        statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
+        messagePath: 'workspace.error.memberGuardMissing',
+    }),
 } as const;
 
 /**
@@ -41,10 +53,17 @@ export const DocWorkspaceErrorResponses = {
  * @public
  */
 export const DocWorkspaceRoleErrorResponses = {
-    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
-        messagePath: 'workspace.error.roleForbidden',
-    }),
+    forbidden: DocResponseError(
+        HttpStatus.FORBIDDEN,
+        {
+            statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
+            messagePath: 'workspace.error.memberForbidden',
+        },
+        {
+            statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
+            messagePath: 'workspace.error.roleForbidden',
+        }
+    ),
 } as const;
 
 /**

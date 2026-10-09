@@ -24,15 +24,15 @@ export interface ITermPolicyRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
-        type?: Record<string, IPaginationIn>,
-        status?: Record<string, IPaginationIn>
+        type: Record<string, IPaginationIn> | null,
+        status: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<TermPolicy>>;
     findPublished(
         {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
-        type?: Record<string, IPaginationIn>
+        type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<TermPolicy>>;
     findUserAccepted(
         userId: string,
@@ -42,6 +42,10 @@ export interface ITermPolicyRepository {
         }: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>>;
     findOneById(termPolicyId: string): Promise<TermPolicy | null>;
+    findOneByIdInTx(
+        tx: IDatabaseTransactionClient,
+        termPolicyId: string
+    ): Promise<TermPolicy | null>;
     findLatestPublishedByType(type: EnumTermPolicyType): Promise<{
         id: string;
         type: EnumTermPolicyType;
@@ -94,5 +98,5 @@ export interface ITermPolicyRepository {
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
         contents: ITermPolicyContent[]
-    ): Promise<TermPolicy>;
+    ): Promise<boolean>;
 }

@@ -16,6 +16,9 @@ export type IPaginationOrderBy = Record<
     EnumPaginationOrderDirectionType
 >;
 
+/** The `orderBy` value a list DTO parses (zod output of an optional field): one `field:direction` string, an array of them, an empty string, or absent. */
+export type IPaginationOrderByQuery = string | string[] | undefined;
+
 export interface IPaginationQuery {
     search?: string;
     filters?: IPaginationQueryFilter;
@@ -28,13 +31,13 @@ export interface IPaginationQuery {
 }
 
 export interface IPaginationQueryOffsetOptions {
-    availableOrderBy?: readonly string[];
+    availableOrderBy: readonly string[];
     availableSearch?: readonly string[];
     defaultPerPage?: number;
 }
 
 export interface IPaginationQueryCursorOptions {
-    availableOrderBy?: readonly string[];
+    availableOrderBy: readonly string[];
     availableSearch?: readonly string[];
     defaultPerPage?: number;
     cursorField?: string;
@@ -53,7 +56,7 @@ export interface IPaginationQueryReturn<
     TArgsWhere = IPaginationQueryDefaultWhere,
 > {
     where?: TArgsWhere;
-    orderBy?: IPaginationOrderBy[];
+    orderBy: IPaginationOrderBy[];
     limit: number;
 }
 
@@ -156,26 +159,6 @@ export interface IPaginationRepository {
 export interface IPaginationCursorValue {
     cursor: string;
     fingerprint: string;
-}
-
-/**
- * Wire shape shared by offset list query DTOs after zod parse.
- */
-export interface IPaginationOffsetQueryDto {
-    page?: number;
-    perPage?: number;
-    search?: string;
-    orderBy?: string | string[];
-}
-
-/**
- * Wire shape shared by cursor list query DTOs after zod parse.
- */
-export interface IPaginationCursorQueryDto {
-    cursor?: string;
-    perPage?: number;
-    search?: string;
-    orderBy?: string | string[];
 }
 
 /**

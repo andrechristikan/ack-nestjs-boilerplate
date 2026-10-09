@@ -16,7 +16,7 @@
         "custom": "{property} failed a validation rule.",
         "isPassword": {
             "required": "{property} password is required.",
-            "strong": "{property} must be a strong password containing uppercase, lowercase, numbers, and special characters."
+            "strong": "{property} must contain at least one uppercase letter, one lowercase letter, and one number."
         },
         "isAfterNow": {
             "invalid": "{property} must be a future date."
@@ -36,7 +36,7 @@
         "email": {
             "invalid": "{property} should be a valid email address.",
             "multipleAtSymbols": "{property} should not contain multiple '@' symbols.",
-            "domainLength": "{property} domain length should be less than or equal to 255 characters.",
+            "domainLength": "{property} domain length should be less than or equal to 253 characters.",
             "localPartMaxLength": "{property} local part length should be less than or equal to 64 characters.",
             "localPartDot": "{property} local part should not start or end with a dot.",
             "consecutiveDots": "{property} local part should not contain consecutive dots.",

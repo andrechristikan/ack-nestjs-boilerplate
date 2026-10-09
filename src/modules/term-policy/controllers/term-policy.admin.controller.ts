@@ -1,6 +1,6 @@
 import type { TermPolicyAdminListRequestDto } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
 import { TermPolicyAdminListRequestSchema } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
-import { Doc } from '@common/doc/decorators/doc.decorator';
+import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
 import { AwsS3PresignResponseSchema } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -11,21 +11,18 @@ import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
-
+import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { TermPolicyContentPresignRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
 import type { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
@@ -52,14 +49,12 @@ import {
     Put,
     Query,
 } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-
 import type { TermPolicy } from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.termPolicy')
@@ -73,7 +68,7 @@ export class TermPolicyAdminController {
         private readonly termPolicyContentHttpService: TermPolicyContentHttpService
     ) {}
 
-    @Doc({ summary: 'Retrieve list of terms and policies for admin' })
+    @Doc({ summary: 'retrieve list of terms and policies for admin' })
     @ResponsePagination('termPolicy.list', {
         schema: TermPolicyResponseSchema,
     })
@@ -95,7 +90,7 @@ export class TermPolicyAdminController {
         return this.termPolicyHttpService.getListByAdmin(query);
     }
 
-    @Doc({ summary: 'Create a new term or policy' })
+    @Doc({ summary: 'create a new term or policy' })
     @Response('termPolicy.create', { schema: TermPolicyResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -115,7 +110,7 @@ export class TermPolicyAdminController {
         return this.termPolicyHttpService.createByAdmin(body);
     }
 
-    @Doc({ summary: 'Delete a term or policy by ID' })
+    @Doc({ summary: 'delete a term or policy by ID' })
     @Response('termPolicy.delete', {
         schema: TermPolicyResponseSchema,
     })
@@ -137,7 +132,7 @@ export class TermPolicyAdminController {
         return this.termPolicyHttpService.deleteByAdmin(termPolicyId);
     }
 
-    @Doc({ summary: 'Generate presign url for term or policy content upload' })
+    @Doc({ summary: 'generate presign url for term or policy content upload' })
     @Response('termPolicy.generateContentPresign', {
         schema: AwsS3PresignResponseSchema,
     })
@@ -166,7 +161,7 @@ export class TermPolicyAdminController {
         );
     }
 
-    @Doc({ summary: 'Update content of a term or policy by ID' })
+    @Doc({ summary: 'update content of a term or policy by ID' })
     @Response('termPolicy.updateContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -191,7 +186,7 @@ export class TermPolicyAdminController {
         );
     }
 
-    @Doc({ summary: 'Add content to a term or policy by ID' })
+    @Doc({ summary: 'add content to a term or policy by ID' })
     @Response('termPolicy.addContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -216,7 +211,7 @@ export class TermPolicyAdminController {
         );
     }
 
-    @Doc({ summary: 'Remove content of a term or policy by ID' })
+    @Doc({ summary: 'remove content of a term or policy by ID' })
     @Response('termPolicy.removeContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -241,7 +236,7 @@ export class TermPolicyAdminController {
         );
     }
 
-    @Doc({ summary: 'Get content of a term or policy by ID and language' })
+    @Doc({ summary: 'get content of a term or policy by ID and language' })
     @Response('termPolicy.getContent', {
         schema: AwsS3PresignResponseSchema,
     })
@@ -268,8 +263,12 @@ export class TermPolicyAdminController {
         );
     }
 
-    @Doc({ summary: 'Publish a term or policy by ID' })
+    @Doc({ summary: 'publish a term or policy by ID' })
     @Response('termPolicy.publish')
+    @DocErrors(HttpStatus.CONFLICT, {
+        statusCode: EnumTermPolicyStatusCodeError.publishInProgress,
+        messagePath: 'termPolicy.error.publishInProgress',
+    })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.termPolicy,

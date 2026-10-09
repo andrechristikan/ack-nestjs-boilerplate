@@ -1,5 +1,7 @@
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import { AnalyticCacheEmptyToken } from '@modules/analytic/constants/analytic.constant';
+import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticMetricCount,
     IAnalyticRoleCount,
@@ -27,8 +29,8 @@ export class AnalyticWorkspaceUserDomain {
 
     async summary(
         workspaceId: string,
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IAnalyticWorkspaceSummary> {
         const key = this.analyticDateUtil.workspaceWindowToken(
             workspaceId,
@@ -37,28 +39,28 @@ export class AnalyticWorkspaceUserDomain {
         );
         const cached =
             await this.analyticCache.getDashboard<IAnalyticWorkspaceSummary>(
-                'workspace.summary',
+                EnumAnalyticDashboardMetric.workspaceSummary,
                 key,
-                '_'
+                AnalyticCacheEmptyToken
             );
         if (cached) {
             return cached;
         }
 
-        const [memberCount, projectCount] = await Promise.all([
-            this.workspaceMemberAnalyticDomain.countByWorkspace(workspaceId),
-            this.projectAnalyticDomain.countByWorkspace(workspaceId),
-        ]);
-
-        let activityCount = 0;
+        let activityCountPromise: Promise<number> = Promise.resolve(0);
         if (startDate && endDate) {
-            activityCount =
-                await this.activityLogAnalyticDomain.countByWorkspaceInRange(
+            activityCountPromise =
+                this.activityLogAnalyticDomain.getCountByWorkspaceInRange(
                     workspaceId,
                     startDate,
                     endDate
                 );
         }
+        const [memberCount, projectCount, activityCount] = await Promise.all([
+            this.workspaceMemberAnalyticDomain.getCountByWorkspace(workspaceId),
+            this.projectAnalyticDomain.getCountByWorkspace(workspaceId),
+            activityCountPromise,
+        ]);
 
         const value: IAnalyticWorkspaceSummary = {
             memberCount,
@@ -66,9 +68,9 @@ export class AnalyticWorkspaceUserDomain {
             activityCount,
         };
         await this.analyticCache.setDashboard(
-            'workspace.summary',
+            EnumAnalyticDashboardMetric.workspaceSummary,
             key,
-            '_',
+            AnalyticCacheEmptyToken,
             value
         );
         return value;
@@ -79,7 +81,7 @@ export class AnalyticWorkspaceUserDomain {
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticStatusCount[]> {
-        return this.workspaceInviteAnalyticDomain.funnel(
+        return this.workspaceInviteAnalyticDomain.getFunnel(
             startDate,
             endDate,
             workspaceId
@@ -91,7 +93,7 @@ export class AnalyticWorkspaceUserDomain {
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticStatusCount[]> {
-        return this.workspaceJoinRequestAnalyticDomain.outcomes(
+        return this.workspaceJoinRequestAnalyticDomain.getOutcomes(
             startDate,
             endDate,
             workspaceId
@@ -99,7 +101,7 @@ export class AnalyticWorkspaceUserDomain {
     }
 
     memberRoles(workspaceId: string): Promise<IAnalyticRoleCount[]> {
-        return this.workspaceMemberAnalyticDomain.roles(workspaceId);
+        return this.workspaceMemberAnalyticDomain.getRoles(workspaceId);
     }
 
     async activity(
@@ -108,7 +110,7 @@ export class AnalyticWorkspaceUserDomain {
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
         const count =
-            await this.activityLogAnalyticDomain.countByWorkspaceInRange(
+            await this.activityLogAnalyticDomain.getCountByWorkspaceInRange(
                 workspaceId,
                 startDate,
                 endDate

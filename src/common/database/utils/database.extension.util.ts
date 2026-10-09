@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
 import { DatabaseModelRelations } from '@common/database/constants/database.constant';
+import type { IDatabaseExtension } from '@common/database/interfaces/database.client.interface';
 import type {
     IDatabaseData,
     IDatabaseModelContext,
@@ -34,7 +35,7 @@ export class DatabaseExtensionUtil {
      * model is given.
      */
     private modelHasField(
-        model: Prisma.ModelName | undefined,
+        model: Prisma.ModelName | null,
         field: 'createdBy' | 'updatedBy'
     ): boolean {
         if (!model) {
@@ -78,7 +79,7 @@ export class DatabaseExtensionUtil {
      * writes. A field the caller already set is left alone.
      */
     private stampCreate(
-        model: Prisma.ModelName | undefined,
+        model: Prisma.ModelName | null,
         data: unknown,
         actor: string
     ): void {
@@ -103,7 +104,7 @@ export class DatabaseExtensionUtil {
      * the caller already set is left alone.
      */
     private stampUpdate(
-        model: Prisma.ModelName | undefined,
+        model: Prisma.ModelName | null,
         data: unknown,
         actor: string
     ): void {
@@ -124,7 +125,7 @@ export class DatabaseExtensionUtil {
      * resolved from `DatabaseModelRelations`.
      */
     private stampRelations(
-        model: Prisma.ModelName | undefined,
+        model: Prisma.ModelName | null,
         payload: IDatabaseData,
         actor: string
     ): void {
@@ -212,10 +213,8 @@ export class DatabaseExtensionUtil {
 
     /**
      * Builds the audit extension, closing over this instance's actor getter, clock, and stampers.
-     * The return type stays inferred because annotating it erases the softDelete and restore model
-     * methods; the lint exception is `ts/database-inferred-client` in `eslint.config.mjs`.
      */
-    build() {
+    build(): IDatabaseExtension {
         const getActor = (): string | null =>
             this.requestStoreService.get<string>(RequestActorStoreKey);
         const getNow = (): Date => this.helperDateService.create();

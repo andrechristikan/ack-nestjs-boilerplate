@@ -11,22 +11,18 @@ import {
     Post,
     Query,
 } from '@nestjs/common';
-
 import {
     UserCurrent,
     UserProtected,
 } from '@modules/user/decorators/user.decorator';
-
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/term-policy.acceptance.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
@@ -34,7 +30,6 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import { TermPolicyUserAcceptanceResponseSchema } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
 import { TermPolicyAcceptRequestSchema } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import type { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
@@ -52,7 +47,7 @@ export class TermPolicySharedController {
         private readonly termPolicyAcceptanceHttpService: TermPolicyAcceptanceHttpService
     ) {}
 
-    @Doc({ summary: 'List of terms or policies accepted by the user' })
+    @Doc({ summary: 'list of terms or policies accepted by the user' })
     @ResponsePagination('termPolicy.listAccepted', {
         schema: TermPolicyUserAcceptanceResponseSchema,
     })
@@ -73,9 +68,8 @@ export class TermPolicySharedController {
         );
     }
 
-    @Doc({ summary: 'User accepts term or policy' })
+    @Doc({ summary: 'user accepts term or policy' })
     @Response('termPolicy.accept')
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

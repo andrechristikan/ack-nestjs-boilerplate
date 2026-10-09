@@ -7,23 +7,19 @@ import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-
 import type { Project } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-
 import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectHttpService } from '@modules/project/services/project.http.service';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
@@ -62,7 +58,7 @@ export class ProjectAdminController {
         @Query({ schema: ProjectAdminListRequestSchema })
         query: ProjectAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
-        return this.projectHttpService.getListForAdmin(query);
+        return this.projectHttpService.getListOffsetByAdmin(query);
     }
 
     @Doc({
@@ -86,6 +82,6 @@ export class ProjectAdminController {
         @Param('projectId', { schema: RequestMongoIdSchema })
         projectId: string
     ): Promise<IResponseReturn<Project>> {
-        return this.projectHttpService.getByIdForAdmin(projectId);
+        return this.projectHttpService.getByIdByAdmin(projectId);
     }
 }

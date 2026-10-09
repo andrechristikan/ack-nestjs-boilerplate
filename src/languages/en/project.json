@@ -24,6 +24,8 @@
         "memberNotFound": "Sorry, we couldn't find that project member.",
         "memberAlreadyAssigned": "This user is already assigned to the project.",
         "slugAlreadyExists": "This project slug is already taken in this workspace.",
-        "slugInvalid": "This project slug is not allowed; use letters, digits and hyphens only, within the allowed length."
+        "slugInvalid": "This project slug is not allowed; use letters, digits and hyphens only, within the allowed length.",
+        "guardMissing": "The project could not be verified for this request.",
+        "memberGuardMissing": "Your project membership could not be verified for this request."
     }
 }

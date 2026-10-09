@@ -90,19 +90,20 @@ export class UserTwoFactorDomain {
             });
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userVerifyTwoFactor,
                     userId: user.id,
                     createdBy: user.id,
                 }),
             ];
+            // Sequential by design: write must not run if an earlier step throws
             await this.userLoginDomain.recordTwoFactorVerification(
                 user,
                 twoFactorVerified
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             const loginAt = this.helperDateService.create();
             const [tokens] = await Promise.all([
@@ -155,6 +156,7 @@ export class UserTwoFactorDomain {
             throw new AuthTwoFactorSetupRequiredException();
         }
 
+        // Sequential by design: gate before the work it guards
         await this.userLoginDomain.handleTwoFactorSetupValidation(
             user,
             pendingSecret,
@@ -163,7 +165,7 @@ export class UserTwoFactorDomain {
 
         try {
             const backupCodes = this.authTwoFactorDomain.generateBackupCodes();
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userEnableTwoFactor,
                 }),
@@ -174,7 +176,7 @@ export class UserTwoFactorDomain {
                 backupCodes.hashes
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return backupCodes.codes;
         } catch (err: unknown) {
@@ -202,9 +204,11 @@ export class UserTwoFactorDomain {
                 throw new AuthTwoFactorBackupCodeRequiredException();
             }
 
+            // Sequential by design: gate before the work it guards
             backupCodeVerified =
                 await this.userLoginDomain.handleTwoFactorValidation(user, {
                     method: EnumAuthTwoFactorMethod.backupCodes,
+                    code: null,
                     backupCode,
                 });
             backupCodes = user.twoFactor.backupCodes;
@@ -216,7 +220,7 @@ export class UserTwoFactorDomain {
                     user.id,
                     user.email
                 );
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userSetupTwoFactor,
                     userId: user.id,
@@ -241,7 +245,7 @@ export class UserTwoFactorDomain {
                 );
             }
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return {
                 secret,
@@ -265,6 +269,7 @@ export class UserTwoFactorDomain {
             throw new AuthTwoFactorSetupRequiredException();
         }
 
+        // Sequential by design: gate before the work it guards
         await this.userLoginDomain.handleTwoFactorSetupValidation(
             user,
             pendingSecret,
@@ -273,7 +278,7 @@ export class UserTwoFactorDomain {
 
         try {
             const backupCodes = this.authTwoFactorDomain.generateBackupCodes();
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userEnableTwoFactor,
                 }),
@@ -284,7 +289,7 @@ export class UserTwoFactorDomain {
                 backupCodes.hashes
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return backupCodes.codes;
         } catch (err: unknown) {
@@ -304,6 +309,7 @@ export class UserTwoFactorDomain {
             throw new AuthTwoFactorNotEnabledException();
         }
 
+        // Sequential by design: gate before the work it guards
         await this.userLoginDomain.handleTwoFactorValidation(user, {
             method,
             code,
@@ -311,12 +317,13 @@ export class UserTwoFactorDomain {
         });
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userDisableTwoFactor,
                 }),
             ];
             const now = this.helperDateService.create();
+            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.withTransaction(async tx => {
                 await this.userTwoFactorRepository.disableTwoFactorInTx(
                     tx,
@@ -331,7 +338,7 @@ export class UserTwoFactorDomain {
             });
             await this.sessionDomain.purgeLoginsByUser(user.id);
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -351,14 +358,16 @@ export class UserTwoFactorDomain {
             throw new AuthTwoFactorNotEnabledException();
         }
 
+        // Sequential by design: gate before the work it guards
         await this.userLoginDomain.handleTwoFactorValidation(user, {
             method: EnumAuthTwoFactorMethod.code,
             code,
+            backupCode: null,
         });
 
         try {
             const backupCodes = this.authTwoFactorDomain.generateBackupCodes();
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
                 }),
@@ -368,7 +377,7 @@ export class UserTwoFactorDomain {
                 backupCodes.hashes
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return backupCodes.codes;
         } catch (err: unknown) {
@@ -404,7 +413,7 @@ export class UserTwoFactorDomain {
                 user,
                 updatedBy
             );
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.adminUserResetTwoFactor,
                     metadata: actorMetadata,
@@ -417,6 +426,7 @@ export class UserTwoFactorDomain {
                 }),
             ];
             const now = this.helperDateService.create();
+            // Sequential by design: write must not run if an earlier step throws
             await Promise.all([
                 this.databaseService.withTransaction(async tx => {
                     await this.userTwoFactorRepository.resetTwoFactorByAdminInTx(
@@ -432,9 +442,10 @@ export class UserTwoFactorDomain {
                 }),
                 this.authCache.clearLockTwoFactorAttempt(user),
             ]);
+            // Sequential by design: side effects whose order is part of the contract
             await this.sessionDomain.purgeLoginsByUser(userId);
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             await this.notificationQueue.sendResetTwoFactorByAdmin(
                 user.id,

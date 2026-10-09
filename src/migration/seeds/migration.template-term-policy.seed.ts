@@ -14,9 +14,10 @@ import { TermPolicyTemplateDomain } from '@modules/term-policy/domains/term-poli
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
 /**
- * Uploads term policy documents to S3 and writes their published records; removal is a no-op. Throws if S3 is uninitialized.
+ * Uploads term policy documents to S3 and writes their published records; removal is a no-op. Skips with a warning when S3 is not configured.
  */
 @Command({
     name: 'templateTermPolicy',
@@ -50,11 +51,11 @@ export class MigrationTemplateTermPolicySeed
 
         const isS3Initialized = this.awsS3Service.isInitialized();
         if (!isS3Initialized) {
-            this.logger.error(
-                'AWS S3 is not initialized. Cannot seed term policies.'
+            this.logger.warn(
+                'AWS S3 is not configured. Skipping term policy seed.'
             );
 
-            throw new Error('AWS S3 is not initialized');
+            return;
         }
 
         try {
@@ -125,8 +126,10 @@ export class MigrationTemplateTermPolicySeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error seeding term policies');
-            throw error;
+            throw new AppUnknownException(
+                error,
+                'Seeding term policy templates failed'
+            );
         }
 
         this.logger.log('Term Policies seeded successfully.');

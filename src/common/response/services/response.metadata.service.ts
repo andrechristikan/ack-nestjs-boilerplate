@@ -5,11 +5,20 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
+    RequestCorrelationIdHeaderName,
     RequestCorrelationIdStoreKey,
+    RequestCustomLangHeaderName,
+    RequestIdHeaderName,
     RequestIdStoreKey,
     RequestLanguageStoreKey,
     RequestVersionStoreKey,
 } from '@common/request/constants/request.constant';
+import {
+    ResponseRepoVersionHeaderName,
+    ResponseTimestampHeaderName,
+    ResponseTimezoneHeaderName,
+    ResponseVersionHeaderName,
+} from '@common/response/constants/response.constant';
 import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 
 /**
@@ -39,20 +48,24 @@ export class ResponseMetadataService {
 
         const storedLanguage = this.requestStoreService.get<string>(
             RequestLanguageStoreKey
-        ) as EnumMessageLanguage;
+        );
         const timestamp = this.helperDateService.getTimestamp(today);
         const timezone = this.helperDateService.getZone(today);
         const storedVersion = this.requestStoreService.get<string>(
             RequestVersionStoreKey
         );
         const requestId =
-            this.requestStoreService.get<string>(RequestIdStoreKey)!;
+            this.requestStoreService.get<string>(RequestIdStoreKey);
         const correlationId = this.requestStoreService.get<string>(
             RequestCorrelationIdStoreKey
-        )!;
+        );
+        const language =
+            Object.values(EnumMessageLanguage).find(
+                value => value === storedLanguage
+            ) ?? this.defaultLanguage;
 
         return {
-            language: storedLanguage ?? this.defaultLanguage,
+            language,
             timestamp,
             timezone,
             version: storedVersion ?? this.urlVersion,
@@ -63,12 +76,19 @@ export class ResponseMetadataService {
     }
 
     setHeaders(response: Response, metadata: ResponseMetadataDto): void {
-        response.setHeader('x-custom-lang', metadata.language);
-        response.setHeader('x-timestamp', metadata.timestamp);
-        response.setHeader('x-timezone', metadata.timezone);
-        response.setHeader('x-version', metadata.version);
-        response.setHeader('x-repo-version', metadata.repoVersion);
-        response.setHeader('x-request-id', metadata.requestId);
-        response.setHeader('x-correlation-id', metadata.correlationId);
+        response.setHeader(RequestCustomLangHeaderName, metadata.language);
+        response.setHeader(ResponseTimestampHeaderName, metadata.timestamp);
+        response.setHeader(ResponseTimezoneHeaderName, metadata.timezone);
+        response.setHeader(ResponseVersionHeaderName, metadata.version);
+        response.setHeader(ResponseRepoVersionHeaderName, metadata.repoVersion);
+        if (metadata.requestId !== null) {
+            response.setHeader(RequestIdHeaderName, metadata.requestId);
+        }
+        if (metadata.correlationId !== null) {
+            response.setHeader(
+                RequestCorrelationIdHeaderName,
+                metadata.correlationId
+            );
+        }
     }
 }

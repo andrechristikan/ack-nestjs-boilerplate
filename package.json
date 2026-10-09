@@ -21,6 +21,7 @@
         "generate:secret": "node scripts/generate-secret.ts all",
         "generate:secret:jwt": "node scripts/generate-secret.ts jwt",
         "generate:secret:encryption": "node scripts/generate-secret.ts encryption",
+        "generate:secret:mongo": "node scripts/generate-secret.ts mongo",
         "generate:package": "node scripts/generate-package.ts",
         "generate": "pnpm db:generate && pnpm generate:package",
         "format": "prettier --write '{src,test}/**/*.{ts,json,yml,yaml}' && prettier --write '*.{ts,json,yml,yaml,mjs}'",
@@ -32,11 +33,11 @@
         "start": "nest start application --config nest-cli.json --exec \"node --import ./dist/instrument.js\"",
         "start:dev": "concurrently -n \"Nest,TypeCheck\" -c \"green,yellow\" \"nest start application --watch --config nest-cli.json --exec 'node --import ./dist/instrument.js'\" \"pnpm typecheck:watch\"",
         "start:prod": "node --import ./dist/instrument.js dist/main.js",
-        "lint": "eslint",
+        "lint": "eslint --max-warnings 0",
         "lint:staged": "lint-staged",
         "lint:fix": "eslint --fix",
-        "test": "TZ=UTC vitest run --passWithNoTests",
-        "test:cov": "TZ=UTC vitest run --passWithNoTests --coverage",
+        "test": "TZ=UTC vitest run --project unit",
+        "test:cov": "TZ=UTC vitest run --project unit --coverage",
         "package:upgrade": "npx npm-check-updates -u",
         "package:check": "npx npm-check-updates -i",
         "migration": "nest build migration --config nest-cli.json && node --import ./dist/instrument.js dist/migration.js",
@@ -172,6 +173,9 @@
             "stop-only --file"
         ],
         "*.{json,yml,yaml}": [
+            "prettier --write"
+        ],
+        "*.md": [
             "prettier --write"
         ]
     },

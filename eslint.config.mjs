@@ -102,7 +102,28 @@ const thisCallRestrictions = [
     message: 'Assign the this-call to a const before using its value.',
 }));
 
-const codeStyleSyntaxRestrictions = [
+const undefinedSyntaxRestrictions = [
+    {
+        selector: 'ReturnStatement > Identifier.argument[name="undefined"]',
+        message: 'Return null, not undefined (null-safety.md).',
+    },
+    {
+        selector:
+            'LogicalExpression[operator="??"] > Identifier.right[name="undefined"]',
+        message: 'Use a conditional spread, not ?? undefined (null-safety.md).',
+    },
+    {
+        selector:
+            'ConditionalExpression > Identifier[name="undefined"]:matches(.consequent, .alternate)',
+        message: 'A ternary branch is null, not undefined (null-safety.md).',
+    },
+    {
+        selector: 'ArrowFunctionExpression > Identifier.body[name="undefined"]',
+        message: 'Return null, not undefined (null-safety.md).',
+    },
+];
+
+const baseSyntaxRestrictions = [
     ...thisCallRestrictions,
     {
         selector:
@@ -117,13 +138,39 @@ const codeStyleSyntaxRestrictions = [
     },
 ];
 
+const codeStyleSyntaxRestrictions = [
+    ...baseSyntaxRestrictions,
+    ...undefinedSyntaxRestrictions,
+];
+
 const newDateRestriction = {
     selector: 'NewExpression[callee.name="Date"]',
     message: 'Use HelperDateService.',
 };
 
+const throwNewErrorRestriction = {
+    selector: 'ThrowStatement > NewExpression[callee.name="Error"]',
+    message:
+        'Throw a typed exception: AppUnknownException (or a subclass) outside an HTTP request, AppBaseException for one that answers a request.',
+};
+
+const ownExceptionName = '/(Exception|^UnrecoverableError)$/';
+const instanceofOwnException = path =>
+    `[${path}.operator='instanceof'][${path}.right.name=${ownExceptionName}]`;
+const guardedByOwnException = [
+    `IfStatement${instanceofOwnException('test')}`,
+    `IfStatement[test.operator='||']${instanceofOwnException('test.left')}${instanceofOwnException('test.right')}`,
+    `IfStatement[test.operator='||'][test.left.operator='||']${instanceofOwnException('test.left.left')}${instanceofOwnException('test.left.right')}${instanceofOwnException('test.right')}`,
+].join(', ');
+
+const throwIdentifierRestriction = {
+    selector: `ThrowStatement[argument.type='Identifier']:not(:matches(${guardedByOwnException}) > .consequent ThrowStatement)`,
+    message:
+        'Rethrow a caught value only inside the if branch of an instanceof guard of our own exception (if (err instanceof AppBaseException) { throw err; }); otherwise throw new AppUnknownException(err).',
+};
+
 const orderDirectionRestriction = {
-    selector: 'Literal[value=/^(asc|desc)$/]',
+    selector: 'Literal[value=/^(asc|desc)$/]:not(TSEnumMember > Literal)',
     message: 'Use EnumPaginationOrderDirectionType.',
 };
 
@@ -198,6 +245,8 @@ const codeStyleRules = {
         ...codeStyleSyntaxRestrictions,
         newDateRestriction,
         orderDirectionRestriction,
+        throwNewErrorRestriction,
+        throwIdentifierRestriction,
     ],
     '@typescript-eslint/member-ordering': [
         'error',
@@ -220,6 +269,7 @@ const codeStyleRules = {
 
 // Enhanced code quality rules
 const codeQualityRules = {
+    '@typescript-eslint/prefer-nullish-coalescing': 'error',
     '@typescript-eslint/no-explicit-any': 'error',
     '@typescript-eslint/explicit-function-return-type': [
         'error',
@@ -269,7 +319,31 @@ const importOrderRules = {
             allowSeparatedGroups: true,
         },
     ],
+    'padding-line-between-statements': [
+        'error',
+        { blankLine: 'always', prev: 'import', next: '*' },
+        { blankLine: 'never', prev: 'import', next: 'import' },
+    ],
 };
+
+const testSyntaxRestrictions = [
+    {
+        selector:
+            'MemberExpression[property.name="mock"]:not([object.name="vi"])',
+        message:
+            'Assert through toHaveBeenCalledWith and friends, not fn.mock.*',
+    },
+    {
+        selector: 'ClassDeclaration',
+        message:
+            'A spec declares no class; apply the decorator to a plain object and read the metadata',
+    },
+    {
+        selector: 'ClassExpression',
+        message:
+            'A spec declares no class; apply the decorator to a plain object and read the metadata',
+    },
+];
 
 export default [
     eslintConfigPrettier,
@@ -285,6 +359,7 @@ export default [
             'src/metadata.ts',
             'src/generated/**',
             'generated/*',
+            '.superpowers/*',
             'logs/*',
             'keys/*',
             '.warmup/*',
@@ -305,7 +380,7 @@ export default [
         },
         linterOptions: {
             noInlineConfig: true,
-            reportUnusedDisableDirectives: true,
+            reportUnusedDisableDirectives: 'error',
         },
         plugins: {
             '@typescript-eslint': tsEsLintPlugin,
@@ -320,55 +395,11 @@ export default [
         },
     },
     {
-        name: 'ts/database-inferred-client',
-        files: [
-            'src/common/database/utils/database.extension.util.ts',
-            'src/common/database/factories/database.client.factory.ts',
-        ],
-        languageOptions: {
-            ecmaVersion: 'latest',
-            sourceType: 'module',
-            parser: tsParser,
-            parserOptions: {
-                project: 'tsconfig.json',
-                tsconfigRootDir: import.meta.dirname,
-            },
-        },
-        linterOptions: {
-            noInlineConfig: true,
-            reportUnusedDisableDirectives: true,
-        },
-        plugins: {
-            '@typescript-eslint': tsEsLintPlugin,
-            security,
-        },
-        rules: {
-            ...rules,
-            ...codeQualityRules,
-            ...securityRules,
-            ...importOrderRules,
-            ...codeStyleRules,
-            '@typescript-eslint/explicit-function-return-type': 'off',
-            '@typescript-eslint/explicit-module-boundary-types': 'off',
-        },
-    },
-    {
-        name: 'code-style/new-date-allowed',
-        files: ['src/configs/**/*.ts'],
-        rules: {
-            'no-restricted-syntax': [
-                'error',
-                ...codeStyleSyntaxRestrictions,
-                orderDirectionRestriction,
-            ],
-        },
-    },
-    {
-        name: 'code-style/process-env-allowed',
+        name: 'ts/env-boundary',
         files: [
             'src/configs/**/*.ts',
-            'src/common/common.module.ts',
             'src/main.ts',
+            'src/instrument.ts',
             'src/queues/decorators/queue.decorator.ts',
         ],
         rules: {
@@ -376,19 +407,8 @@ export default [
         },
     },
     {
-        name: 'code-style/order-direction-allowed',
-        files: ['src/common/pagination/enums/pagination.enum.ts'],
-        rules: {
-            'no-restricted-syntax': [
-                'error',
-                ...codeStyleSyntaxRestrictions,
-                newDateRestriction,
-            ],
-        },
-    },
-    {
-        name: 'ts/scripts',
-        files: ['scripts/**/*.ts'],
+        name: 'ts/other',
+        files: ['scripts/**/*.ts', 'vitest.config.ts'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',
@@ -400,59 +420,13 @@ export default [
         },
         linterOptions: {
             noInlineConfig: true,
-            reportUnusedDisableDirectives: true,
+            reportUnusedDisableDirectives: 'error',
         },
         plugins: {
             '@typescript-eslint': tsEsLintPlugin,
-            security,
         },
         rules: {
             ...rules,
-            ...codeQualityRules,
-            ...securityRules,
-            ...importOrderRules,
-            'no-console': 'off',
-        },
-    },
-    {
-        name: 'ts/vitest-config',
-        files: ['vitest.config.ts'],
-        languageOptions: {
-            ecmaVersion: 'latest',
-            sourceType: 'module',
-            parser: tsParser,
-            parserOptions: {
-                project: 'tsconfig.json',
-                tsconfigRootDir: import.meta.dirname,
-            },
-        },
-        linterOptions: {
-            noInlineConfig: true,
-            reportUnusedDisableDirectives: true,
-        },
-        plugins: {
-            '@typescript-eslint': tsEsLintPlugin,
-            security,
-        },
-        rules: {
-            ...rules,
-            ...codeQualityRules,
-            ...securityRules,
-            ...importOrderRules,
-        },
-    },
-    {
-        name: 'security/non-literal-fs-allowed',
-        files: [
-            'src/modules/notification/domains/notification.template.*.domain.ts',
-            'src/modules/term-policy/domains/term-policy.template.domain.ts',
-            'scripts/**/*.ts',
-        ],
-        plugins: {
-            security,
-        },
-        rules: {
-            'security/detect-non-literal-fs-filename': 'off',
         },
     },
     {
@@ -468,8 +442,8 @@ export default [
             },
         },
         linterOptions: {
-            noInlineConfig: false,
-            reportUnusedDisableDirectives: true,
+            noInlineConfig: true,
+            reportUnusedDisableDirectives: 'error',
         },
         plugins: {
             '@typescript-eslint': tsEsLintPlugin,
@@ -492,29 +466,18 @@ export default [
             ],
             'no-restricted-imports': [
                 'error',
-                { patterns: [relativeImportPattern] },
-            ],
-            'no-restricted-syntax': [
-                'error',
                 {
-                    selector:
-                        'MemberExpression[property.name="mock"]:not([object.name="vi"])',
-                    message:
-                        'Assert through toHaveBeenCalledWith and friends, not fn.mock.*',
-                },
-                {
-                    selector: 'ClassDeclaration',
-                    message:
-                        'A spec declares no class; apply the decorator to a plain object and read the metadata',
-                },
-                {
-                    selector: 'ClassExpression',
-                    message:
-                        'A spec declares no class; apply the decorator to a plain object and read the metadata',
+                    paths: restrictedImportPaths,
+                    patterns: [
+                        ...restrictedImportPatterns,
+                        relativeImportPattern,
+                    ],
                 },
             ],
+            'no-restricted-syntax': ['error', ...testSyntaxRestrictions],
             'no-restricted-properties': [
                 'error',
+                mathRandomRestriction,
                 {
                     object: 'vi',
                     property: 'clearAllMocks',
@@ -532,6 +495,33 @@ export default [
             ],
             ...commentRules,
             ...namingConventionRules,
+        },
+    },
+    {
+        name: 'ts/test-spec',
+        files: ['test/**/*.spec.ts'],
+        rules: {
+            'no-restricted-syntax': [
+                'error',
+                ...testSyntaxRestrictions,
+                {
+                    selector: 'FunctionDeclaration',
+                    message:
+                        'A spec declares no function; move it to test/<type>/helpers/ or test/helpers/',
+                },
+                {
+                    selector:
+                        'VariableDeclarator > :matches(ArrowFunctionExpression, FunctionExpression).init',
+                    message:
+                        'A spec stores no function in a variable; reuse data as a const, logic as a helper',
+                },
+                {
+                    selector:
+                        ':matches(ArrowFunctionExpression, FunctionExpression):not(CallExpression[callee.name=/^(describe|it|test|beforeAll|beforeEach|afterAll|afterEach|expect)$/] > .arguments):not(CallExpression[callee.property.name=/^(fn|mock|hoisted|mockImplementation|mockImplementationOnce|only|skip|todo|each|concurrent|sequential)$/] > .arguments):not(CallExpression[callee.callee.property.name="each"] > .arguments)',
+                    message:
+                        'An arrow is allowed only as a direct argument to describe/it/test/hooks/expect/vi.fn/vi.mock/mockImplementation',
+                },
+            ],
         },
     },
 ];

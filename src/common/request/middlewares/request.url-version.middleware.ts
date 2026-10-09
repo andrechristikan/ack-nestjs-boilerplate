@@ -47,7 +47,7 @@ export class RequestUrlVersionMiddleware implements NestMiddleware {
             )
         ) {
             const url: string[] = originalUrl.split('/');
-            version = url[2].replace(this.urlVersionPrefix, '');
+            version = url[2]!.replace(this.urlVersionPrefix, '');
         }
 
         this.requestStoreService.set(RequestVersionStoreKey, version);

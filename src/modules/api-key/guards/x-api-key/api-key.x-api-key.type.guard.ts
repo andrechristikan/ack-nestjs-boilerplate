@@ -8,6 +8,7 @@ import {
 } from '@modules/api-key/constants/api-key.constant';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
+import { ApiKeyGuardMissingException } from '@modules/api-key/exceptions/api-key.guard-missing.exception';
 import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 
 /**
@@ -28,6 +29,10 @@ export class ApiKeyXApiKeyTypeGuard implements CanActivate {
         >(ApiKeyXTypeMetaKey, [context.getHandler(), context.getClass()]);
 
         const apiKey = this.requestStoreService.get<ApiKey>(ApiKeyStoreKey);
+        if (!apiKey) {
+            throw new ApiKeyGuardMissingException();
+        }
+
         return this.apiKeyDomain.validateXApiKeyTypeGuard(apiKey, apiKeyTypes);
     }
 }

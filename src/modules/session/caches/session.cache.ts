@@ -2,6 +2,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import type KeyvRedis from '@keyv/redis';
+import type { RedisClientType } from '@keyv/redis';
 import {
     SessionCacheProvider,
     SessionCachePurgeScanCount,
@@ -41,12 +42,28 @@ export class SessionCache {
         return this.keyv.store as KeyvRedis<string>;
     }
 
+    private async deleteMatchingOnNode(
+        client: RedisClientType,
+        match: string
+    ): Promise<void> {
+        for await (const keys of client.scanIterator({
+            MATCH: match,
+            COUNT: SessionCachePurgeScanCount,
+            TYPE: 'string',
+        })) {
+            if (keys.length > 0) {
+                await client.unlink(keys);
+            }
+        }
+    }
+
+    /** Reads the login entry through the Keyv client so a store failure throws; the cache manager would report it as a miss. */
     async getLogin(
         userId: string,
         sessionId: string
     ): Promise<ISessionCache | null> {
         const key = this.buildKey(userId, sessionId);
-        const cached = await this.cacheManager.get<ISessionCache>(key);
+        const cached = await this.keyv.get<ISessionCache>(key);
 
         return cached ?? null;
     }
@@ -86,11 +103,13 @@ export class SessionCache {
         const sessionKey = this.buildKey(userId, sessionId);
         const key = store.createKeyPrefix(sessionKey, store.namespace);
         const now = this.helperDateService.create();
-        const value = await this.keyv.serializeData<ISessionCache>({
-            value: { ...session, jti },
-            expires: now.getTime() + expiredInMs,
-        });
-        const client = await store.getClient();
+        const [value, client] = await Promise.all([
+            this.keyv.serializeData<ISessionCache>({
+                value: { ...session, jti },
+                expires: now.getTime() + expiredInMs,
+            }),
+            store.getClient(),
+        ]);
         const reply = await client.set(key, value as string, {
             expiration: { type: 'PX', value: expiredInMs },
             condition: 'XX',
@@ -110,22 +129,14 @@ export class SessionCache {
         );
     }
 
-    /** Deletes every session login entry of a user, found by `SCAN` on the shared client. */
+    /** Deletes every session login entry of a user, found by `SCAN` on every master node of the shared client. */
     async deleteLoginsByUser(userId: string): Promise<void> {
         const store = this.getStore();
         const userKey = this.buildKey(userId, '*');
         const match = store.createKeyPrefix(userKey, store.namespace);
         const clients = await store.getMasterNodes();
-        for (const client of clients) {
-            for await (const keys of client.scanIterator({
-                MATCH: match,
-                COUNT: SessionCachePurgeScanCount,
-                TYPE: 'string',
-            })) {
-                if (keys.length > 0) {
-                    await client.unlink(keys);
-                }
-            }
-        }
+        await Promise.all(
+            clients.map(client => this.deleteMatchingOnNode(client, match))
+        );
     }
 }

@@ -16,7 +16,6 @@ import {
 } from '@common/response/constants/response.constant';
 import type { ResponseDto } from '@common/response/dtos/response.dto';
 import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
-import type { IMessageProperties } from '@common/message/interfaces/message.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { ResponseSerializationException } from '@common/response/exceptions/response.serialization.exception';
@@ -38,7 +37,7 @@ export class ResponseInterceptor<T> implements NestInterceptor {
      * A payload without a declared schema is a route that promised no data, so it fails closed.
      */
     private async serialize(
-        schema: StandardSchemaV1 | undefined,
+        schema: StandardSchemaV1 | null,
         payload: unknown
     ): Promise<T> {
         if (!schema) {
@@ -69,40 +68,40 @@ export class ResponseInterceptor<T> implements NestInterceptor {
                         ResponseMessagePathMetaKey,
                         context.getHandler()
                     );
-                    const schema = this.reflector.get<
+                    const reflectedSchema = this.reflector.get<
                         StandardSchemaV1 | undefined
                     >(ResponseSchemaMetaKey, context.getHandler());
-                    let messageProperties: IMessageProperties | undefined;
+                    const schema = reflectedSchema ?? null;
 
                     let httpStatus: HttpStatus = response.statusCode;
                     let statusCode: number = response.statusCode;
-                    let data: T | undefined = undefined;
+                    let data: T | null = null;
 
                     const metadata: ResponseMetadataDto =
                         this.responseMetadataService.create();
 
                     const responseData = (await res) as IResponseReturn<T>;
+                    const responseMetadata = responseData?.metadata;
                     if (responseData) {
-                        const { metadata: responseMetadata } = responseData;
-
-                        const payload = responseData.data ?? undefined;
-                        if (payload === undefined) {
-                            data = undefined;
-                        } else {
+                        const payload = responseData.data ?? null;
+                        if (payload !== null) {
                             data = await this.serialize(schema, payload);
                         }
                         httpStatus = responseMetadata?.httpStatus ?? httpStatus;
                         statusCode = responseMetadata?.statusCode ?? statusCode;
                         messagePath =
                             responseMetadata?.messagePath ?? messagePath;
-                        messageProperties = responseMetadata?.messageProperties;
                     }
 
+                    const messageProperties =
+                        responseMetadata?.messageProperties ?? null;
                     const message: string = this.messageService.setMessage(
                         messagePath,
                         {
                             customLanguage: metadata.language,
-                            properties: messageProperties,
+                            ...(messageProperties !== null && {
+                                properties: messageProperties,
+                            }),
                         }
                     );
 
@@ -113,7 +112,7 @@ export class ResponseInterceptor<T> implements NestInterceptor {
                         statusCode,
                         message,
                         metadata,
-                        data,
+                        ...(data !== null && { data }),
                     };
                 })
             );

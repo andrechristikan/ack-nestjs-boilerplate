@@ -8,12 +8,26 @@ import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-polic
  * @public
  */
 export const TermPolicyAcceptedListRequestSchema =
-    PaginationCursorQuerySchema.extend({
+    PaginationCursorQuerySchema.omit({ search: true }).extend({
         orderBy: z
-            .union([z.string(), z.array(z.string())])
+            .union([
+                z.templateLiteral([
+                    z.enum(TermPolicyAcceptanceDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ]),
+                z.array(
+                    z.templateLiteral([
+                        z.enum(TermPolicyAcceptanceDefaultAvailableOrderBy),
+                        ':',
+                        z.enum(EnumPaginationOrderDirectionType),
+                    ])
+                ),
+                z.literal(''),
+            ])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${TermPolicyAcceptanceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                description: `Order by field in \`field:direction\` format (e.g. \`${TermPolicyAcceptanceDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${TermPolicyAcceptanceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
                 example: `${TermPolicyAcceptanceDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
     });

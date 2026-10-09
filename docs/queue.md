@@ -1,6 +1,7 @@
 # Queue Documentation
 
-The BullMQ framework layer lives in `src/queues`. Named queues are registered by the owning feature.
+- The BullMQ framework layer lives in `src/queues`.
+- Named queues are registered by the owning feature.
 
 ## Overview
 
@@ -14,14 +15,15 @@ Config lives in two files:
 Code lives in two places:
 
 - `src/queues`: BullMQ framework layer (enums, decorator, base class, queue registration)
-- owning feature modules: enqueue classes and processors; the router mounts the processors
+- owning feature modules: enqueue classes and processors
+    - the router mounts the processors
 
 ## Related Documents
 
-- [Configuration][ref-doc-configuration] - Queue Redis and BullMQ config keys
-- [Environment][ref-doc-environment] - `QUEUE_REDIS_URL` and related vars
-- [Notification][ref-doc-notification] - Notification queue consumers
-- [Installation][ref-doc-installation] - Local Redis and BullBoard via Compose
+- [Configuration][ref-doc-configuration]: Queue Redis and BullMQ config keys
+- [Environment][ref-doc-environment]: `QUEUE_REDIS_URL` and related vars
+- [Notification][ref-doc-notification]: Notification queue consumers
+- [Installation][ref-doc-installation]: Local Redis and BullBoard via Compose
 
 ## Table of Contents
 
@@ -31,17 +33,18 @@ Code lives in two places:
 - [Queue Structure](#queue-structure)
 - [Available Queues](#available-queues)
 - [Usage](#usage)
-  - [Adding Jobs to Queue](#adding-jobs-to-queue)
-  - [Job Options](#job-options)
+    - [Adding Jobs to Queue](#adding-jobs-to-queue)
+    - [Job Options](#job-options)
+    - [Re-adding a Job by Id](#re-adding-a-job-by-id)
 - [Creating New Queue](#creating-new-queue)
 - [Creating New Processor](#creating-new-processor)
 - [QueueProcessorBase](#queueprocessorbase)
-  - [Implementation](#implementation)
-  - [Behavior](#behavior)
+    - [Implementation](#implementation)
+    - [Behavior](#behavior)
 - [QueueException](#queueexception)
-  - [Usage](#usage-1)
-  - [Properties](#properties)
-  - [Behavior](#behavior-1)
+    - [Usage](#usage-1)
+    - [Properties](#properties)
+    - [Behavior](#behavior-1)
 - [Bull Board Dashboard](#bull-board-dashboard)
 
 ## Configuration
@@ -53,13 +56,18 @@ Redis connection for queues is managed in `src/configs/redis.config.ts`:
 queue: {
     url: string;
     namespace: string;
-};
+}
 ```
 
-Job defaults (attempts, backoff delays, `keepLogs`, completed and failed retention age) are in `src/configs/queue.config.ts`. `QueueModule.forRoot()` (`src/queues/queue.module.ts`) applies shared connection defaults; each named queue's owning feature sets its own backoff and `keepLogs` through a `RegisterQueueOptionsFactory` on that feature's domain module.
+Job defaults (attempts, backoff delays, `keepLogs`, completed and failed retention age) are in `src/configs/queue.config.ts`.
+
+- `QueueModule.forRoot()` (`src/queues/queue.module.ts`) applies shared connection defaults to both connections.
+    - The default backoff is the `notificationBackoffDelayInMs` value (3 s). The key carries the notification queue's name, and the default applies to every queue on the connection.
+- Each named queue's owning feature sets its own backoff and `keepLogs` through a `RegisterQueueOptionsFactory` on that feature's domain module, which overrides the connection default. The `EnumQueue.notification` factory reads the same `notificationBackoffDelayInMs` key, so that queue's backoff equals the connection default.
 
 Environment variables:
-- `QUEUE_REDIS_URL`: Redis connection URL (default: `redis://localhost:6379/1`). Queues live on Redis database `1`; the cache uses database `0` through `CACHE_REDIS_URL`
+
+- `QUEUE_REDIS_URL`: Redis connection URL (default: `redis://localhost:6379/1`). Queues live on Redis database `1`, and the cache uses database `0` through `CACHE_REDIS_URL`
 - `APP_NAME`: Application name for connection naming
 - `APP_ENV`: Application environment for connection naming
 
@@ -71,24 +79,40 @@ The queue system consists of:
 2. **Queue Processor Base** (`src/queues/bases/queue.processor.base.ts`): concrete `process` template (`job.log`, await `handle`, Nest `Logger.error` on failure), fatal-gate `onFailed` with Sentry `withScope`
 3. **Queue Processor Decorator** (`src/queues/decorators/queue.decorator.ts`): Custom decorator for processor registration
 4. **Queue Constants** (`src/queues/constants/queue.constant.ts`): `QueueConfigKey` and `QueueProcessorConfigKey`
-5. **Queue Enums, Exception, Interface** (`src/queues/enums/queue.enum.ts`, `exceptions/queue.exception.ts`, `interfaces/queue.interface.ts`): `EnumQueue` and `EnumQueuePriority`, `QueueException`, `IQueueResponse`
+5. **Queue Enums, Exception, Interface** (`src/queues/enums/queue.enum.ts`, `exceptions/queue.exception.ts`, `interfaces/queue.interface.ts`): `EnumQueue`, `EnumQueuePriority` and `EnumQueueJobState`, `QueueException`, `IQueueResponse`
 
-**An enqueue lives in a queue class, never in a util or a service.** Path: `<feature>/queues/<feature>[.<concern>].queue.ts`. The class is `@Injectable()`, injects the BullMQ `Queue` with `@InjectQueue`, and the feature's `<feature>.domain.module.ts` both provides and exports it:
+**An enqueue lives in a queue class, never in a util or a service.**
 
-| Class | From |
-|---|---|
-| `NotificationQueue` | `NotificationDomainModule` |
+- Path: `<feature>/queues/<feature>[.<concern>].queue.ts`.
+- The class is `@Injectable()`.
+- The class injects the BullMQ `Queue` with `@InjectQueue`.
+- The feature's `<feature>.domain.module.ts` both provides and exports it:
+
+| Class                    | From                       |
+| ------------------------ | -------------------------- |
+| `NotificationQueue`      | `NotificationDomainModule` |
 | `NotificationEmailQueue` | `NotificationDomainModule` |
-| `NotificationPushQueue` | `NotificationDomainModule` |
-| `WorkspaceQueue` | `WorkspaceDomainModule` |
+| `NotificationPushQueue`  | `NotificationDomainModule` |
+| `WorkspaceQueue`         | `WorkspaceDomainModule`    |
 
 A caller in another module injects the exported class rather than the `Queue` itself.
 
-Named queues are registered on the owning feature's domain module with `BullModule.registerQueueAsync({ name, configKey: QueueConfigKey, useClass: <Feature>[<Concern>]QueueFactory })`. The factory lives at `factories/<module>[.<concern>].queue.factory.ts` and sets that queue's job defaults.
+- Named queues are registered on the owning feature's domain module with `BullModule.registerQueueAsync({ name, configKey: QueueConfigKey, useClass: <Feature>[<Concern>]QueueFactory })`.
+- The factory lives at `factories/<module>[.<concern>].queue.factory.ts` and sets that queue's job defaults.
 
-Processors are not registered inside `src/queues`. Each one is a provider of its own feature's `<feature>.processor.module.ts` (`NotificationProcessorModule`, `WorkspaceProcessorModule`), and `RouterProcessorModule` (`src/router/processor/router.processor.module.ts`) imports every one of them. `RouterModule` imports `RouterProcessorModule` alongside the five HTTP route modules, so booting the API boots the workers in the same process.
+Processors are not registered inside `src/queues`.
 
-Producers and workers do not share one connection. `queue.module.ts` calls `BullModule.forRootAsync` twice: once under `QueueConfigKey` for the producer side (connection name `{APP_NAME}-{APP_ENV}:queue`) and once under `QueueProcessorConfigKey` for the worker side (connection name `{APP_NAME}-{APP_ENV}:processor`). Both use `redis.queue.url` and the queue Redis namespace as prefix. A named queue registers with `configKey: QueueConfigKey`; the `@QueueProcessor` decorator binds `QueueProcessorConfigKey` itself.
+- Each one is a provider of its own feature's `<feature>.processor.module.ts` (`NotificationProcessorModule`, `WorkspaceProcessorModule`).
+- `RouterProcessorModule` (`src/router/processor/router.processor.module.ts`) imports every one of them.
+- `RouterModule` imports `RouterProcessorModule` alongside the five HTTP route modules, so booting the API boots the workers in the same process.
+
+Producers and workers do not share one connection. `queue.module.ts` calls `BullModule.forRootAsync` twice:
+
+- Once under `QueueConfigKey` for the producer side (connection name `{APP_NAME}-{APP_ENV}:queue`).
+- Once under `QueueProcessorConfigKey` for the worker side (connection name `{APP_NAME}-{APP_ENV}:processor`).
+- Both use `redis.queue.url` and the queue Redis namespace as prefix.
+- A named queue registers with `configKey: QueueConfigKey`.
+- The `@QueueProcessor` decorator binds `QueueProcessorConfigKey` itself.
 
 ## Available Queues
 
@@ -100,9 +124,15 @@ Currently available queues defined in `src/queues/enums/queue.enum.ts`:
 - `EnumQueue.workspace`: Workspace background processing queue
 
 Queue priorities defined in `EnumQueuePriority`:
+
 - `high`: 1
 - `medium`: 5
 - `low`: 10
+
+Job states defined in `EnumQueueJobState`:
+
+- BullMQ exports its `JobState` as a type only, so the enum names the strings `Job.getState()` returns: `completed`, `failed`, `active`, `delayed`, `prioritized`, `waiting`, `waitingChildren` (`waiting-children`), and `unknown`.
+- Code that branches on a job state switches on `EnumQueueJobState`, never on a string literal.
 
 ## Usage
 
@@ -118,7 +148,8 @@ export class NotificationPushQueue {
     constructor(
         @InjectQueue(EnumQueue.notificationPush)
         private readonly notificationPushQueue: Queue,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly helperStringService: HelperStringService
     ) {
         this.dedupTtlInMs = this.configService.get<number>(
             'notification.dedupTtlInMs'
@@ -133,15 +164,35 @@ export class NotificationPushQueue {
             {
                 send: sendPayload,
                 data,
+                completedSteps: [],
+                failureTokens: null,
+                pendingTokens: null,
             };
+
+        const deduplicationId = this.helperStringService.fillPattern(
+            NotificationUserJobIdPattern,
+            {
+                process: EnumNotificationPushProcess.newDeviceLogin,
+                userId: sendPayload.userId,
+            }
+        );
+
+        const jobId = this.helperStringService.fillPattern(
+            NotificationStepJobIdPattern,
+            {
+                notificationId: sendPayload.notificationId,
+                step: EnumNotificationStep.sendPush,
+            }
+        );
 
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.newDeviceLogin,
             payload,
             {
+                jobId,
                 priority: EnumQueuePriority.high,
                 deduplication: {
-                    id: `${EnumNotificationPushProcess.newDeviceLogin}-${sendPayload.userId}`,
+                    id: deduplicationId,
                     ttl: this.dedupTtlInMs,
                 },
             }
@@ -149,6 +200,13 @@ export class NotificationPushQueue {
     }
 }
 ```
+
+A deduplication id is a `{token}` pattern from `src/modules/notification/constants/notification.constant.ts`, filled by `HelperStringService.fillPattern`.
+
+- `NotificationUserJobIdPattern` is `{process}-{userId}`.
+- The other patterns key by invite reference, workspace and user, or user and term policy.
+- The two term-policy publication patterns, `{process}-{termPolicyId}` and `{process}-{termPolicyId}-{batchId}`, fill a BullMQ `jobId` instead and carry no deduplication TTL.
+- `NotificationStepJobIdPattern` is `{notificationId}-{step}`. It fills the `jobId` of a push job, of a cleanup job, and of an email job for a recipient with an account, so one notification enqueues each step once.
 
 A domain that needs the job injects the queue class and calls that method:
 
@@ -158,10 +216,23 @@ await this.notificationPushQueue.sendNewDeviceLogin(sendPayload, data);
 
 ### Job Options
 
-Default job options come from `queue.config.ts` (interface `IConfigQueue`). Connection-level defaults on `QueueModule.forRoot()` use `notificationBackoffDelayInMs`; each queue factory overrides backoff for its own queue and sets `keepLogs` from `queue.job.keepLogs` (20). Retention is age-based: every queue shares `attempts: 3` and `keepLogs: 20`, keeps a completed job for `removeOnCompleteAgeInSeconds` (7 days) and a failed one for `removeOnFailAgeInSeconds` (14 days), and they differ in the exponential backoff `delay`:
+Default job options come from `queue.config.ts` (interface `IConfigQueue`).
+
+- The connection-level backoff default on `QueueModule.forRoot()` is `notificationBackoffDelayInMs`, a connection default that takes the notification queue's key name.
+- Each queue factory overrides backoff for its own queue with the key in the table below and sets `keepLogs` from `queue.job.keepLogs` (20).
+- Retention is age-based.
+
+Every queue shares:
+
+- `attempts: 3`
+- `keepLogs: 20`
+- a completed job kept for `removeOnCompleteAgeInSeconds` (7 days)
+- a failed job kept for `removeOnFailAgeInSeconds` (14 days)
+
+The queues differ in the exponential backoff `delay`:
 
 | Queue | config key | backoff delay |
-|-------|------------|---------------|
+| --- | --- | --- |
 | `EnumQueue.notificationEmail` | `emailBackoffDelayInMs` | `10000` |
 | `EnumQueue.notificationPush` | `pushBackoffDelayInMs` | `5000` |
 | `EnumQueue.notification` | `notificationBackoffDelayInMs` | `3000` |
@@ -182,7 +253,39 @@ For example, the `notificationEmail` queue:
 }
 ```
 
-A single `add()` call overrides any of these options for that job. `keepLogs` retains the BullMQ `job.log` lines the base writes for that retention window.
+- A single `add()` call overrides any of these options for that job.
+- `keepLogs` retains the BullMQ `job.log` lines the base writes for that retention window.
+
+### Re-adding a Job by Id
+
+BullMQ ignores an `add` whose `jobId` still exists in the queue. A queue method that must re-run a job under a stable id reads the existing job first and decides by its state.
+
+`NotificationQueue.sendPublishTermPolicy` is the one such method. It uses the `jobId` `publishTermPolicy-{termPolicyId}`:
+
+1. `getJob(jobId)` returns the existing job, or none.
+2. With no job, it adds one.
+3. With a job, `getState()` is switched on `EnumQueueJobState`:
+    - `failed`: `retry(EnumQueueJobState.failed, { resetAttemptsMade: true })` puts the job back with its attempt count reset. A `JobNotInState` error from BullMQ means the job left `failed` in the meantime and is treated as in progress.
+    - `waiting`, `prioritized`, `delayed`, `active`, `waitingChildren`: the method throws `TermPolicyPublishInProgressException` (`409`, `51510`) and adds nothing. The `term-policy` module owns that exception and its code (`EnumTermPolicyStatusCodeError.publishInProgress`).
+    - `completed`, `unknown`: `remove()` deletes the old job, then a new one is added under the same id.
+
+Any other error from the retry is wrapped in `AppUnknownException` and answers `500`. The effect on users and markers is in [Notification][ref-doc-notification].
+
+The read and the add are two separate Redis calls with no lock around them:
+
+- Two simultaneous first publishes both see no job, and both call `add` with the same `jobId`.
+- BullMQ ignores the second `add` because the `jobId` already exists, and raises no error.
+- The second caller therefore gets a success answer, not `TermPolicyPublishInProgressException`, although its own `add` created nothing.
+- The same window exists between `remove()` and the new `add` of a completed job.
+
+**Per-batch email jobs.** `NotificationEmailQueue.sendPublishTermPolicyBatch` adds one job per recipient batch under the `jobId` `publishTermPolicy-{termPolicyId}-{batchId}`, with a `delay` of `index * email.batchDelayInMs`. It checks no job state, so BullMQ's duplicate rule decides a re-publish:
+
+1. A re-publish runs `processPublishTermPolicy` again, and users that already hold a recipient marker are skipped.
+2. A batch whose markers carry no `enqueuedAt` is added again under its stored `batchId`.
+    - BullMQ ignores that `add` while a job with the id still exists in the email queue (waiting, delayed, active, or kept after completion or failure).
+    - Once the old job has expired, the same `add` creates a new job.
+3. A batch already marked enqueued is not added again.
+4. Users with no marker form a new batch with a new `batchId`, so they get a new job.
 
 ## Creating New Queue
 
@@ -207,17 +310,19 @@ job: {
 }
 ```
 
-3. Add a queue factory under `src/modules/<feature>/factories/` that implements `RegisterQueueOptionsFactory`, reading job defaults from config (see `NotificationEmailQueueFactory`). Register the queue on the feature's `<feature>.domain.module.ts`:
+3. Add a queue factory under `src/modules/<feature>/factories/` that implements `RegisterQueueOptionsFactory`, reading job defaults from config (see `NotificationEmailQueueFactory`).
+
+4. Register the queue on the feature's `<feature>.domain.module.ts`:
 
 ```typescript
 BullModule.registerQueueAsync({
     name: EnumQueue.yourQueue,
     configKey: QueueConfigKey,
     useClass: YourQueueFactory,
-})
+});
 ```
 
-4. Add the enqueue class in `src/modules/<feature>/queues/`, and provide plus export it from the feature's `<feature>.domain.module.ts`:
+5. Add the enqueue class in `src/modules/<feature>/queues/`, and provide plus export it from the feature's `<feature>.domain.module.ts`:
 
 ```typescript
 @Injectable()
@@ -237,7 +342,9 @@ export class YourFeatureQueue {
 
 ## Creating New Processor
 
-1. Create the processor class inside its owning feature module, under `src/modules/<feature>/processors/`, extending `QueueProcessorBase`. The base owns the concrete `process` method; the subclass implements `protected abstract handle` only:
+1. Create the processor class inside its owning feature module, under `src/modules/<feature>/processors/`, extending `QueueProcessorBase`.
+    - The base owns the concrete `process` method.
+    - The subclass implements `protected abstract handle` only:
 
 ```typescript
 @QueueProcessor(EnumQueue.notificationPush, {
@@ -275,9 +382,17 @@ export class NotificationPushProcessor extends QueueProcessorBase {
 }
 ```
 
-`handle` is the dispatcher: it switches on `job.name` and awaits a `*.processor.service.ts` method. Feature remaps stay inside `handle` (for example `NotificationEmailProcessor` maps `HelperDecryptFailedException` to BullMQ `UnrecoverableError`). The subclass implements `handle` only; `QueueProcessorBase` owns `process`, Nest failure logging, and `job.log`.
+`handle` is the dispatcher:
 
-The second argument of `@QueueProcessor` is `IQueueProcessorOptions`, a BullMQ `WorkerOptions` minus `name` and `connection` (the decorator owns the first, the shared Redis connection the second), so a worker that needs its own throughput ceiling passes one: `NotificationPushProcessor` sets `limiter` from the Firebase send-quota constants. The worker name itself is derived by the decorator as `{APP_NAME}-{APP_ENV}:{queue}:consumer`, read from `process.env` at decoration time.
+- It switches on `job.name` and awaits a `*.processor.service.ts` method.
+- Feature remaps stay inside `handle` (for example `NotificationEmailProcessor` maps `HelperDecryptFailedException` to BullMQ `UnrecoverableError`).
+- The subclass implements `handle` only. `QueueProcessorBase` owns `process`, Nest failure logging, and `job.log`.
+
+The second argument of `@QueueProcessor` is `IQueueProcessorOptions`:
+
+- It is a BullMQ `WorkerOptions` minus `name` and `connection`. The decorator owns the name, and the shared Redis connection is the connection.
+- A worker that needs its own throughput ceiling passes one: `NotificationPushProcessor` sets `limiter` from the Firebase send-quota constants.
+- The decorator derives the worker name as `{APP_NAME}-{APP_ENV}:{queue}:consumer`, read from `process.env` at decoration time.
 
 2. Register the processor and its processor service in the feature's own `<feature>.processor.module.ts`:
 
@@ -303,6 +418,9 @@ export class NotificationProcessorModule {}
 
 ```typescript
 @Module({
+    controllers: [],
+    providers: [],
+    exports: [],
     imports: [
         NotificationProcessorModule,
         WorkspaceProcessorModule,
@@ -316,7 +434,12 @@ A processor module imports whatever its processor services depend on: `Workspace
 
 ## QueueProcessorBase
 
-`QueueProcessorBase` is the base class for all queue processors. It extends `WorkerHost` from BullMQ, takes the global `SentryService` in its constructor, owns the concrete `process` template (including BullMQ `job.log` lines), and reports a fatal job failure to Sentry once from the `failed` worker event.
+`QueueProcessorBase` is the base class for all queue processors. It:
+
+- extends `WorkerHost` from BullMQ
+- takes the global `SentryService` in its constructor
+- owns the concrete `process` template (including BullMQ `job.log` lines)
+- reports a fatal job failure to Sentry once from the `failed` worker event
 
 ### Implementation
 
@@ -329,6 +452,8 @@ export abstract class QueueProcessorBase extends WorkerHost {
     constructor(protected readonly sentryService: SentryService) {
         super();
     }
+
+    protected abstract handle(job: Job): Promise<IQueueResponse>;
 
     async process(job: Job): Promise<IQueueResponse> {
         const maxAttempts = job.opts.attempts ?? 1;
@@ -354,7 +479,16 @@ export abstract class QueueProcessorBase extends WorkerHost {
 
             await this.writeJobLog(job, `Job failed ${failureMessage}`);
             this.logger.error(error, 'Queue job failed');
-            throw error;
+
+            if (
+                error instanceof QueueException ||
+                error instanceof AppBaseException ||
+                error instanceof UnrecoverableError
+            ) {
+                throw error;
+            }
+
+            throw new AppUnknownException(error);
         }
     }
 
@@ -380,20 +514,21 @@ export abstract class QueueProcessorBase extends WorkerHost {
             return;
         }
 
-        this.sentryService.withScope(scope => {
+        const sentryService = this.sentryService;
+
+        sentryService.withScope(scope => {
             scope.setAttribute('job.id', String(job.id));
             scope.setAttribute('job.name', job.name);
             scope.setAttribute('job.attemptsMade', job.attemptsMade);
             scope.setAttribute('job.maxAttempts', maxAttempts);
-            this.sentryService.captureException(error);
+            sentryService.captureException(error);
         });
     }
-
-    protected abstract handle(job: Job): Promise<IQueueResponse>;
 }
 ```
 
-`writeJobLog` wraps `job.log` and swallows a logging fault (Nest `Logger.warn` at most). A `job.log` fault leaves the job outcome unchanged.
+- `writeJobLog` wraps `job.log` and swallows a logging fault (Nest `Logger.warn` at most).
+- A `job.log` fault leaves the job outcome unchanged.
 
 ### Behavior
 
@@ -406,8 +541,11 @@ flowchart TD
     logFinish --> done[return result]
     handle -->|throw| logFail[job.log failure]
     logFail --> nestErr["Logger.error once"]
-    nestErr --> rethrow[rethrow]
+    nestErr --> typed{QueueException, AppBaseException, or UnrecoverableError?}
+    typed -->|yes| rethrow[throw as is]
+    typed -->|no| wrap[throw AppUnknownException]
     rethrow --> failedEvt[BullMQ failed event]
+    wrap --> failedEvt
     failedEvt --> gate{final attempt or UnrecoverableError?}
     gate -->|no| skip[return]
     gate -->|yes| fatal{QueueException.isFatal?}
@@ -415,17 +553,27 @@ flowchart TD
     fatal -->|true or other error| sentry["withScope job attrs then captureException"]
 ```
 
-1. **`process` template**: start log, input metadata log (`job.id`, `job.name`, `attemptsMade`, `maxAttempts` from `job.opts.attempts`), await `handle`, then finish log with `JSON.stringify` of the returned `IQueueResponse`. The input line never includes `job.data`.
-2. **On throw inside `process`**: one failure `job.log` line, one Nest `Logger.error` (object-first) for Pino, then rethrow so BullMQ can retry or mark the job failed.
-3. **On Job Failure (`onFailed`)**: triggered by the BullMQ `failed` worker event after the rethrow.
+1. **`process` template**:
+    - start log
+    - input metadata log (`job.id`, `job.name`, `attemptsMade`, `maxAttempts` from `job.opts.attempts`)
+    - await `handle`
+    - finish log with `JSON.stringify` of the returned `IQueueResponse`
+
+    The input line never includes `job.data`.
+
+2. **On throw inside `process`**: one failure `job.log` line, one Nest `Logger.error` (object-first) for Pino, then a throw so BullMQ can retry or mark the job failed.
+    - A `QueueException`, an `AppBaseException`, or an `UnrecoverableError` is thrown as it is.
+    - Any other error is wrapped in `AppUnknownException`, with the cause in `rawError`.
+3. **On Job Failure (`onFailed`)**: triggered by the BullMQ `failed` worker event after the throw.
 4. **Retry Check**: the failure is final when BullMQ will not retry it: `attemptsMade` (which already counts the failed attempt) has reached `attempts`, or the error is an `UnrecoverableError`.
 5. **Error Classification**:
-   - `QueueException` with `isFatal: true` → Reports to Sentry
-   - `QueueException` with `isFatal: false` → Does not report to Sentry
-   - Other exceptions, `UnrecoverableError` included → Reports to Sentry (treated as fatal)
+    - `QueueException` with `isFatal: true` → Reports to Sentry
+    - `QueueException` with `isFatal: false` → Does not report to Sentry
+    - Other exceptions, `UnrecoverableError` included → Reports to Sentry (treated as fatal)
 6. **Sentry Reporting**: on that final fatal failure, `withScope` sets `job.id`, `job.name`, `job.attemptsMade`, and `job.maxAttempts`, then `SentryService.captureException` runs once.
 
-A processor throws `UnrecoverableError` for a failure no retry can fix; `NotificationEmailProcessor.handle` does so for a payload that fails to decrypt (see [Notification][ref-doc-notification]).
+- A processor throws `UnrecoverableError` for a failure no retry can fix.
+- `NotificationEmailProcessor.handle` does so for a payload that fails to decrypt (see [Notification][ref-doc-notification]).
 
 ## QueueException
 
@@ -444,6 +592,8 @@ throw new QueueException('Temporary service unavailable', false);
 throw new QueueException('Minor validation error');
 ```
 
+A notification processor service throws `QueueException(summary, true)` when a step of the job fails, so BullMQ retries and Sentry hears of it on the last attempt (see [Notification][ref-doc-notification]).
+
 ### Properties
 
 - `message`: Error message
@@ -452,11 +602,12 @@ throw new QueueException('Minor validation error');
 ### Behavior
 
 When a job fails:
-1. `QueueProcessorBase.process` writes a failure `job.log` line, calls Nest `Logger.error` once, and rethrows
+
+1. `QueueProcessorBase.process` writes a failure `job.log` line, calls Nest `Logger.error` once, and throws the error as is when it is a `QueueException`, an `AppBaseException`, or an `UnrecoverableError`, and wrapped in `AppUnknownException` otherwise
 2. On the final failure (last attempt, or an `UnrecoverableError`), `onFailed` classifies the error:
-   - If error is `QueueException` with `isFatal: true` → Reports to Sentry (with job attributes on the scope)
-   - If error is `QueueException` with `isFatal: false` → Does not report to Sentry
-   - If error is any other exception → Reports to Sentry (treated as fatal)
+    - If error is `QueueException` with `isFatal: true` → Reports to Sentry (with job attributes on the scope)
+    - If error is `QueueException` with `isFatal: false` → Does not report to Sentry
+    - If error is any other exception → Reports to Sentry (treated as fatal)
 3. On a failure BullMQ will retry → Does not report to Sentry
 
 ## Bull Board Dashboard
@@ -464,40 +615,50 @@ When a job fails:
 ACK NestJS Boilerplate includes Bull Board for queue monitoring and management.
 
 Access the dashboard:
+
 ```bash
-docker-compose up
+docker-compose up -d
 ```
 
 Dashboard URL: `http://localhost:3010`
 
 Default credentials:
+
 - Username: `admin`
 - Password: `admin123`
 
+- `DOCKER_BULLBOARD_USER` and `DOCKER_BULLBOARD_PASSWORD` in `.env` replace the defaults.
+- `DOCKER_REDIS_PASSWORD` is passed on when Redis requires a password.
+- Compose reads `.env` for these variables. With them empty, the defaults apply.
+
 Configuration in `docker-compose.yml`:
+
 ```yaml
 redis-bullboard:
     image: venatum/bull-board:latest
+    hostname: redis-bullboard
     ports:
         - 3010:3000
     environment:
         - REDIS_HOST=redis
         - REDIS_PORT=6379
+        - REDIS_PASSWORD=${DOCKER_REDIS_PASSWORD:-}
         - BULL_PREFIX=Queue
-        - USER_LOGIN=admin
-        - USER_PASSWORD=admin123
+        - USER_LOGIN=${DOCKER_BULLBOARD_USER:-admin}
+        - USER_PASSWORD=${DOCKER_BULLBOARD_PASSWORD:-admin123}
         - REDIS_DB=1
 ```
 
-
-
+- Both Compose files give the service a health check that requests `http://127.0.0.1:3000/login` inside the container.
+- The production Compose file publishes the dashboard on `127.0.0.1:3010` only.
+- See [Release][ref-doc-release].
 
 <!-- REFERENCES -->
 
 [ref-bullmq]: https://bullmq.io
 [ref-redis]: https://redis.io
-
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
 [ref-doc-notification]: notification.md
 [ref-doc-installation]: installation.md
+[ref-doc-release]: release.md

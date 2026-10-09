@@ -71,6 +71,7 @@ import type {
 import type {
     IAwsS3,
     IAwsS3ConfigBucket,
+    IAwsS3ConfigBucketSource,
     IAwsS3CopyItemOptions,
     IAwsS3CreateMultiplePart,
     IAwsS3DeleteDirOptions,
@@ -92,6 +93,7 @@ import {
     AwsS3MaxPartNumber,
 } from '@common/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import type { AwsS3PresignPartRequestDto } from '@common/aws/dtos/request/aws.s3-presign-part.request.dto';
 import type { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
@@ -110,6 +112,7 @@ export class AwsS3Service implements OnModuleInit {
     private readonly accessKeyId: string | null;
     private readonly secretAccessKey: string | null;
     private readonly region: string | null;
+    private readonly endpoint: string | null;
     private readonly maxAttempts: number;
     private readonly timeoutInMs: number;
 
@@ -118,6 +121,7 @@ export class AwsS3Service implements OnModuleInit {
     private readonly corsMaxAgeLongInSeconds: number;
     private readonly corsMaxAgeShortInSeconds: number;
 
+    private readonly baseUrlPattern: string;
     private readonly objectUrlPattern: string;
     private readonly cdnUrlPattern: string;
 
@@ -133,32 +137,47 @@ export class AwsS3Service implements OnModuleInit {
         private readonly fileService: FileService,
         private readonly helperStringService: HelperStringService
     ) {
-        this.accessKeyId = this.configService.get<string | null>(
+        const accessKeyId = this.configService.get<string | null>(
             'aws.s3.iam.key'
-        )!;
-        this.secretAccessKey = this.configService.get<string | null>(
+        );
+        this.accessKeyId = accessKeyId ?? null;
+        const secretAccessKey = this.configService.get<string | null>(
             'aws.s3.iam.secret'
-        )!;
-        this.region = this.configService.get<string | null>('aws.s3.region')!;
+        );
+        this.secretAccessKey = secretAccessKey ?? null;
+        const region = this.configService.get<string | null>('aws.s3.region');
+        this.region = region ?? null;
+        const endpoint = this.configService.get<string | null>(
+            'aws.s3.endpoint'
+        );
+        this.endpoint = endpoint ?? null;
         this.maxAttempts =
             this.configService.get<number>('aws.s3.maxAttempts')!;
         this.timeoutInMs =
             this.configService.get<number>('aws.s3.timeoutInMs')!;
 
-        const publicBucketConfig = this.configService.get<IAwsS3ConfigBucket>(
+        this.baseUrlPattern = this.configService.get<string>(
+            'aws.s3.baseUrlPattern'
+        )!;
+
+        const publicSource = this.configService.get<IAwsS3ConfigBucketSource>(
             'aws.s3.config.public'
         )!;
-        const privateBucketConfig = this.configService.get<IAwsS3ConfigBucket>(
+        const privateSource = this.configService.get<IAwsS3ConfigBucketSource>(
             'aws.s3.config.private'
         )!;
+        const publicBaseUrl = this.buildBaseUrl(publicSource.bucket);
+        const privateBaseUrl = this.buildBaseUrl(privateSource.bucket);
 
         this.config = {
             [EnumAwsS3Accessibility.public]: {
-                ...publicBucketConfig,
+                ...publicSource,
+                baseUrl: publicBaseUrl,
                 access: EnumAwsS3Accessibility.public,
             },
             [EnumAwsS3Accessibility.private]: {
-                ...privateBucketConfig,
+                ...privateSource,
+                baseUrl: privateBaseUrl,
                 access: EnumAwsS3Accessibility.private,
             },
         };
@@ -183,7 +202,8 @@ export class AwsS3Service implements OnModuleInit {
             'aws.s3.cdnUrlPattern'
         )!;
 
-        this.iamArn = this.configService.get<string | null>('aws.s3.iam.arn')!;
+        const iamArn = this.configService.get<string | null>('aws.s3.iam.arn');
+        this.iamArn = iamArn ?? null;
         this.corsAllowedOrigin = this.configService.get<string[]>(
             'request.cors.allowedOrigin'
         )!;
@@ -205,6 +225,23 @@ export class AwsS3Service implements OnModuleInit {
         return { pathWithFilename, filename, extension, mime };
     }
 
+    private buildBaseUrl(bucket: string | null): string | null {
+        if (!bucket || (!this.endpoint && !this.region)) {
+            return null;
+        }
+
+        const baseUrl = this.helperStringService.fillPattern(
+            this.baseUrlPattern,
+            {
+                endpoint: this.endpoint ?? '',
+                bucket,
+                region: this.region ?? '',
+            }
+        );
+
+        return baseUrl;
+    }
+
     private getConfig(access: EnumAwsS3Accessibility): IAwsS3ConfigBucket {
         return this.config[access];
     }
@@ -213,7 +250,8 @@ export class AwsS3Service implements OnModuleInit {
         config: IAwsS3ConfigBucket,
         key: string
     ): { completedUrl: string; cdnUrl: string | null } {
-        const { baseUrl, cdnUrl } = config;
+        const { cdnUrl } = config;
+        const baseUrl = config.baseUrl ?? '';
         const completedUrl = this.helperStringService.fillPattern(
             this.objectUrlPattern,
             { baseUrl, key }
@@ -301,6 +339,9 @@ export class AwsS3Service implements OnModuleInit {
             requestHandler: {
                 requestTimeout: this.timeoutInMs,
             },
+            ...(this.endpoint
+                ? { endpoint: this.endpoint, forcePathStyle: true }
+                : {}),
         });
     }
 
@@ -421,7 +462,9 @@ export class AwsS3Service implements OnModuleInit {
                 Bucket: config.bucket,
                 Prefix: path,
                 MaxKeys: AwsS3MaxFetchItems,
-                ContinuationToken: continuationToken ?? undefined,
+                ...(continuationToken !== null && {
+                    ContinuationToken: continuationToken,
+                }),
             });
 
             const listItems: ListObjectsV2Output = await this.s3Client.send<
@@ -490,6 +533,7 @@ export class AwsS3Service implements OnModuleInit {
         >(command);
         const { extension, mime } = this.getFileInfoFromKey(key);
         const { completedUrl, cdnUrl } = this.buildUrls(config, key);
+        const body = item.Body ?? null;
 
         return {
             bucket: config.bucket,
@@ -497,7 +541,7 @@ export class AwsS3Service implements OnModuleInit {
             completedUrl,
             cdnUrl,
             extension,
-            data: item.Body,
+            ...(body !== null && { data: body }),
             size: item.ContentLength ?? 0,
             mime,
             access: accessibility,
@@ -539,6 +583,7 @@ export class AwsS3Service implements OnModuleInit {
             });
 
             try {
+                // Sequential by design: write must not run if an earlier step throws
                 await this.s3Client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput
@@ -546,8 +591,12 @@ export class AwsS3Service implements OnModuleInit {
 
                 throw new AwsS3ObjectExistException();
             } catch (error: unknown) {
-                if (!(error instanceof NotFound)) {
+                if (error instanceof AwsS3ObjectExistException) {
                     throw error;
+                }
+
+                if (!(error instanceof NotFound)) {
+                    throw new AppUnknownException(error);
                 }
             }
         }
@@ -667,7 +716,9 @@ export class AwsS3Service implements OnModuleInit {
                 Bucket: config.bucket,
                 Prefix: path,
                 MaxKeys: AwsS3MaxFetchItems,
-                ContinuationToken: continuationToken ?? undefined,
+                ...(continuationToken !== null && {
+                    ContinuationToken: continuationToken,
+                }),
             });
 
             const listItems: ListObjectsV2Output = await this.s3Client.send<
@@ -728,6 +779,7 @@ export class AwsS3Service implements OnModuleInit {
             });
 
             try {
+                // Sequential by design: write must not run if an earlier step throws
                 await this.s3Client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput
@@ -735,8 +787,12 @@ export class AwsS3Service implements OnModuleInit {
 
                 throw new AwsS3ObjectExistException();
             } catch (error: unknown) {
-                if (!(error instanceof NotFound)) {
+                if (error instanceof AwsS3ObjectExistException) {
                     throw error;
+                }
+
+                if (!(error instanceof NotFound)) {
+                    throw new AppUnknownException(error);
                 }
             }
         }
@@ -907,22 +963,6 @@ export class AwsS3Service implements OnModuleInit {
 
         const config = this.getConfig(options.access);
 
-        const headCommand = new HeadObjectCommand({
-            Bucket: config.bucket,
-            Key: key,
-        });
-
-        try {
-            await this.s3Client.send<
-                HeadObjectCommandInput,
-                HeadObjectCommandOutput
-            >(headCommand);
-        } catch (error: unknown) {
-            if (!(error instanceof NotFound)) {
-                throw error;
-            }
-        }
-
         const { extension, mime } = this.getFileInfoFromKey(key);
         const command: GetObjectCommand = new GetObjectCommand({
             Bucket: config.bucket,
@@ -970,6 +1010,7 @@ export class AwsS3Service implements OnModuleInit {
             });
 
             try {
+                // Sequential by design: gate before the work it guards
                 await this.s3Client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput
@@ -977,8 +1018,12 @@ export class AwsS3Service implements OnModuleInit {
 
                 throw new AwsS3ObjectExistException();
             } catch (error: unknown) {
-                if (!(error instanceof NotFound)) {
+                if (error instanceof AwsS3ObjectExistException) {
                     throw error;
+                }
+
+                if (!(error instanceof NotFound)) {
+                    throw new AppUnknownException(error);
                 }
             }
         }

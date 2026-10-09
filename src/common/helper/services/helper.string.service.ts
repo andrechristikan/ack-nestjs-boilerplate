@@ -1,8 +1,4 @@
-import type {
-    IHelperEmailValidation,
-    IHelperPasswordOptions,
-} from '@common/helper/interfaces/helper.interface';
-import { validateEmail } from '@common/request/validations/request.custom-email.validation';
+import type { IHelperPasswordOptions } from '@common/helper/interfaces/helper.interface';
 import { RequestPasswordStrengthRegex } from '@common/request/constants/request.constant';
 import {
     HelperStringAlphanumericCharacters,
@@ -27,8 +23,8 @@ export class HelperStringService {
 
     private matchesGlob(path: string, pattern: string): boolean {
         const segments = pattern.split('*');
-        const head = segments[0];
-        const tail = segments[segments.length - 1];
+        const head = segments[0]!;
+        const tail = segments[segments.length - 1]!;
         if (
             path.length < head.length + tail.length ||
             !path.startsWith(head) ||
@@ -71,7 +67,7 @@ export class HelperStringService {
                     throw new HelperPatternTokenMissingException(token);
                 }
 
-                return values[token];
+                return values[token]!;
             }
         );
     }
@@ -106,10 +102,6 @@ export class HelperStringService {
         );
     }
 
-    checkEmail(value: string): IHelperEmailValidation {
-        return validateEmail(value);
-    }
-
     checkUrlMatchesPatterns(url: string, patterns: string[]): boolean {
         if (!url || !patterns?.length) {
             return false;
@@ -120,7 +112,7 @@ export class HelperStringService {
             const urlObj = new URL(url);
             pathname = urlObj.pathname;
         } catch {
-            pathname = url.split('?')[0].split('#')[0];
+            pathname = url.split('?')[0]!.split('#')[0]!;
         }
 
         const normalizedPath = pathname.toLowerCase();

@@ -43,7 +43,7 @@ import { SessionAnalyticDomain } from '@modules/session/domains/session.analytic
             ): CacheOptions => {
                 return {
                     stores: [redisClient],
-                    ttl: configService.get<number>('redis.cache.ttlInMs'),
+                    ttl: configService.get<number>('redis.cache.ttlInMs')!,
                 };
             },
         }),

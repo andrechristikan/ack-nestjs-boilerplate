@@ -3,6 +3,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type {
     IPaginationEqual,
     IPaginationIn,
@@ -11,15 +12,18 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import { UserAdminListSelect } from '@modules/user/constants/user.constant';
+import {
+    UserAdminListSelect,
+    UserIdSelect,
+    UserNotDeletedWhere,
+} from '@modules/user/constants/user.constant';
 import type {
     IUser,
-    IUserContact,
     IUserCreateWithWorkspaceInput,
     IUserList,
     IUserProfile,
+    IUserUpdateProfile,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserRepository } from '@modules/user/interfaces/user.repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -80,9 +84,9 @@ export class UserRepository implements IUserRepository {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        status: Record<string, IPaginationIn> | null,
+        roleId: Record<string, IPaginationEqual> | null,
+        countryId: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.paginationService.offset<IUserList, Prisma.UserWhereInput>(
             this.databaseService.client.user,
@@ -100,18 +104,21 @@ export class UserRepository implements IUserRepository {
         );
     }
 
-    async findActive(): Promise<IUserContact[]> {
-        return this.databaseService.client.user.findMany({
+    async findIdsCursor(
+        cursor: string | null,
+        take: number
+    ): Promise<string[]> {
+        const rows = await this.databaseService.client.user.findMany({
             where: {
-                status: EnumUserStatus.active,
-                deletedAt: null,
+                ...UserNotDeletedWhere,
+                ...(cursor !== null && { id: { gt: cursor } }),
             },
-            select: {
-                id: true,
-                username: true,
-                email: true,
-            },
+            select: UserIdSelect,
+            orderBy: { id: EnumPaginationOrderDirectionType.asc },
+            take,
         });
+
+        return rows.map(({ id }) => id);
     }
 
     async findOneById(id: string): Promise<User | null> {
@@ -291,14 +298,11 @@ export class UserRepository implements IUserRepository {
 
     async updateProfile(
         userId: string,
-        { countryId, ...data }: UserUpdateProfileRequestDto
+        { countryId, gender, name }: IUserUpdateProfile
     ): Promise<User> {
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
-            data: {
-                ...data,
-                countryId,
-            },
+            data: { name, gender, countryId },
         });
     }
 
@@ -477,24 +481,27 @@ export class UserRepository implements IUserRepository {
             },
             data: {
                 termPolicy: {
-                    [type]: true,
+                    update: {
+                        [type]: true,
+                    },
                 },
             },
         });
     }
 
-    async resetTermPolicyForActiveUsersInTx(
+    async resetTermPolicyInTx(
         tx: IDatabaseTransactionClient,
         type: EnumTermPolicyType
     ): Promise<void> {
         await tx.user.updateMany({
             where: {
                 deletedAt: null,
-                status: EnumUserStatus.active,
             },
             data: {
                 termPolicy: {
-                    [type]: false,
+                    update: {
+                        [type]: false,
+                    },
                 },
             },
         });

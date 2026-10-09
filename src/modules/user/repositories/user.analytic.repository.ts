@@ -55,8 +55,8 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
     }
 
     async groupBySignUpWith(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IUserAnalyticGroupCount<EnumUserSignUpWith>[]> {
         const rows = await this.databaseService.client.user.groupBy({
             by: ['signUpWith'],
@@ -72,8 +72,8 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
     }
 
     async groupBySignUpFrom(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IUserAnalyticGroupCount<EnumUserSignUpFrom>[]> {
         const rows = await this.databaseService.client.user.groupBy({
             by: ['signUpFrom'],
@@ -166,7 +166,7 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
         });
     }
 
-    async listNearLockoutOffset(
+    async findNearLockoutOffset(
         minAttempt: number,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {

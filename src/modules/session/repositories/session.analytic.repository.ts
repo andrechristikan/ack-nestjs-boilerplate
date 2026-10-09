@@ -13,8 +13,8 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
     constructor(private readonly databaseService: DatabaseService) {}
 
     async findActiveWithGeoInRange(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<ISessionAnalyticSession[]> {
         return this.databaseService.client.session.findMany({
             where: {
@@ -49,8 +49,8 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
     }
 
     async groupByCountry(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IAnalyticCountBucket[]> {
         const sessions = await this.findActiveWithGeoInRange(
             startDate,

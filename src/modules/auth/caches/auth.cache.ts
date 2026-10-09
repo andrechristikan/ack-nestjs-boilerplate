@@ -1,4 +1,5 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
     IAuthTwoFactorChallenge,
@@ -22,7 +23,8 @@ export class AuthCache {
     constructor(
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
         private readonly configService: ConfigService,
-        private readonly helperStringService: HelperStringService
+        private readonly helperStringService: HelperStringService,
+        private readonly helperDateService: HelperDateService
     ) {
         this.challengeKeyPattern = this.configService.get<string>(
             'auth.twoFactor.challengeKeyPattern'
@@ -87,22 +89,22 @@ export class AuthCache {
         const ttlExponentialInMs =
             Math.pow(2, (user.twoFactor?.attempt ?? 0) / this.maxAttempt) *
             this.lockAttemptDurationInMs;
-        try {
-            await this.cacheManager.set<boolean>(key, true, ttlExponentialInMs);
-        } catch (error: unknown) {
-            this.logger.error(error, 'Two-factor lock cache write failed');
-        }
+        await this.cacheManager.set<boolean>(key, true, ttlExponentialInMs);
     }
 
     /** Returns the remaining 2FA lock duration in ms, or 0 when not locked. */
     async getLockTwoFactorAttempt(user: IUser): Promise<number> {
         const key = this.lockKeyPattern.replace('{userId}', () => user.id);
-        const [isLocked, retryAfterMs] = await Promise.all([
-            this.cacheManager.get<boolean>(key),
-            this.cacheManager.ttl(key),
-        ]);
+        const ttl = await this.cacheManager.ttl(key);
+        const expiresAt = ttl ?? null;
+        if (expiresAt === null) {
+            return 0;
+        }
 
-        return isLocked ? (retryAfterMs ?? 0) : 0;
+        const now = this.helperDateService.create();
+        const nowTimestamp = this.helperDateService.getTimestamp(now);
+
+        return Math.max(0, expiresAt - nowTimestamp);
     }
 
     async clearLockTwoFactorAttempt(user: IUser): Promise<void> {

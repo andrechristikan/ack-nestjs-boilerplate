@@ -7,19 +7,16 @@ import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import type { Notification } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import { NotificationUserSettingRequestSchema } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationResponseSchema } from '@modules/notification/dtos/response/notification.response.dto';
@@ -52,7 +49,7 @@ export class NotificationSharedController {
         private readonly notificationHttpService: NotificationHttpService
     ) {}
 
-    @Doc({ summary: 'Get all notifications for current user' })
+    @Doc({ summary: 'get all notifications for current user' })
     @ResponsePagination('notification.list', {
         schema: NotificationResponseSchema,
     })
@@ -70,7 +67,7 @@ export class NotificationSharedController {
         return this.notificationHttpService.getListCursor(userId, query);
     }
 
-    @Doc({ summary: 'Get all notification settings for current user' })
+    @Doc({ summary: 'get all notification settings for current user' })
     @Response('notification.listUserSetting', {
         schema: NotificationUserSettingResponseSchema,
     })
@@ -86,7 +83,7 @@ export class NotificationSharedController {
         return this.notificationHttpService.getListUserSetting(userId);
     }
 
-    @Doc({ summary: 'Mark a notification as read' })
+    @Doc({ summary: 'mark a notification as read' })
     @Response('notification.markAsRead')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -102,7 +99,7 @@ export class NotificationSharedController {
         return this.notificationHttpService.markAsRead(userId, notificationId);
     }
 
-    @Doc({ summary: 'Mark all notifications as read' })
+    @Doc({ summary: 'mark all notifications as read' })
     @Response('notification.markAllAsRead')
     @TermPolicyAcceptanceProtected()
     @UserProtected()

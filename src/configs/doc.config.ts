@@ -7,9 +7,11 @@ export interface IConfigDoc {
     jsonUrlPattern: string;
 }
 
-export default registerAs('doc', (): IConfigDoc => ({
-    name: `${process.env.APP_NAME!} APIs Specification`,
-    prefix: '/docs',
-    version: '3.1.0',
-    jsonUrlPattern: '{docPrefix}/json',
-}));
+export default registerAs('doc', (): IConfigDoc => {
+    return {
+        name: `${process.env.APP_NAME!} APIs Specification`,
+        prefix: '/docs',
+        version: '3.1.0',
+        jsonUrlPattern: '{docPrefix}/json',
+    };
+});

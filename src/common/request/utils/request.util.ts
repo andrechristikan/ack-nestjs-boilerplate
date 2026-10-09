@@ -30,8 +30,8 @@ export class RequestUtil {
         return isIP(ip) ? ip : (req.socket.remoteAddress ?? '');
     }
 
-    parseUserAgent(raw: string | undefined): UserAgent {
-        const result = UAParser(raw);
+    parseUserAgent(raw: string | null): UserAgent {
+        const result = UAParser(raw ?? '');
 
         const browser: UserAgentBrowser = {
             name: result.browser.name ?? null,
@@ -89,7 +89,9 @@ export class RequestUtil {
      * Called once per HTTP request from the request-log middleware.
      */
     buildRequestLog(req: IncomingMessage): IRequestLog {
-        const userAgent = this.parseUserAgent(req.headers['user-agent']);
+        const userAgent = this.parseUserAgent(
+            req.headers['user-agent'] ?? null
+        );
         const ipAddress = getClientIp(req) ?? null;
 
         let geoLocation: GeoLocation | null = null;

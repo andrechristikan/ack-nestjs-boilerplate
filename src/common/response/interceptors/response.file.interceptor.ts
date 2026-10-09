@@ -1,8 +1,9 @@
-import { Injectable, StreamableFile } from '@nestjs/common';
+import { Injectable, StreamableFile, mixin } from '@nestjs/common';
 import type {
     CallHandler,
     ExecutionContext,
     NestInterceptor,
+    Type,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -11,139 +12,182 @@ import type { Response } from 'express';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { FileService } from '@common/file/services/file.service';
-import type { IResponseFileReturn } from '@common/response/interfaces/response.interface';
+import type {
+    IResponseFileInterceptorOptions,
+    IResponseFileReturn,
+} from '@common/response/interfaces/response.interface';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
+import { FileExceedMaxDataExportException } from '@common/file/exceptions/file.exceed-max-data-export.exception';
 import { FileExceedMaxSizeExportException } from '@common/file/exceptions/file.exceed-max-size-export.exception';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { ResponseFileDataInvalidException } from '@common/response/exceptions/response.file-data-invalid.exception';
 
 /**
- * Streams CSV/PDF return values as a `StreamableFile`, setting download and standard headers.
+ * Builds an interceptor that streams CSV/PDF return values as a `StreamableFile`, setting
+ * download and standard headers, and rejects a CSV with more data rows than the configured cap.
  */
-@Injectable()
-export class ResponseFileInterceptor implements NestInterceptor {
-    private readonly filenameExportPattern: string;
-    private readonly maxSizeExportInBytes: number;
+export function ResponseFileInterceptor(
+    options?: IResponseFileInterceptorOptions
+): Type<NestInterceptor> {
+    @Injectable()
+    class MixinResponseFileInterceptor implements NestInterceptor {
+        private readonly filenameExportPattern: string;
+        private readonly maxSizeExportInBytes: number;
+        private readonly maxDataExport: number;
 
-    constructor(
-        private readonly fileService: FileService,
-        private readonly helperDateService: HelperDateService,
-        private readonly helperStringService: HelperStringService,
-        private readonly responseMetadataService: ResponseMetadataService,
-        private readonly configService: ConfigService
-    ) {
-        this.filenameExportPattern = this.configService.get<string>(
-            'response.filenameExportPattern'
-        )!;
-        this.maxSizeExportInBytes = this.configService.get<number>(
-            'file.maxSizeExportInBytes'
-        )!;
-    }
-
-    private handleFileResponse(responseData: IResponseFileReturn): Buffer {
-        if (responseData.extension === EnumFileExtensionDocument.csv) {
-            return Buffer.from(responseData.data, 'utf-8');
-        } else if (responseData.extension === EnumFileExtensionDocument.pdf) {
-            return responseData.data;
+        constructor(
+            private readonly fileService: FileService,
+            private readonly helperDateService: HelperDateService,
+            private readonly helperStringService: HelperStringService,
+            private readonly responseMetadataService: ResponseMetadataService,
+            private readonly configService: ConfigService
+        ) {
+            this.filenameExportPattern = this.configService.get<string>(
+                'response.filenameExportPattern'
+            )!;
+            this.maxSizeExportInBytes = this.configService.get<number>(
+                'file.maxSizeExportInBytes'
+            )!;
+            // Takes the config KEY, not the value: an interceptor factory runs at
+            // decoration time, before config is resolved.
+            this.maxDataExport = this.configService.get<number>(
+                options?.maxDataExportConfigKey ?? 'file.maxDataExport'
+            )!;
         }
 
-        return Buffer.from([]);
-    }
-
-    private validateDataResponse(
-        responseData: IResponseFileReturn | null
-    ): void {
-        if (!responseData) {
-            throw new ResponseFileDataInvalidException();
-        }
-
-        if (responseData.extension === EnumFileExtensionDocument.csv) {
-            this.validateCsvResponse(responseData);
-        } else if (responseData.extension === EnumFileExtensionDocument.pdf) {
-            this.validatePdfResponse(responseData);
-        }
-    }
-
-    private validateCsvResponse(responseData: IResponseFileReturn): void {
-        if (!responseData.data || typeof responseData.data !== 'string') {
-            throw new ResponseFileDataInvalidException();
-        }
-    }
-
-    private validatePdfResponse(responseData: IResponseFileReturn): void {
-        if (!responseData.data || !(responseData.data instanceof Buffer)) {
-            throw new ResponseFileDataInvalidException();
-        }
-    }
-
-    private createTimestamp(): number {
-        const today = this.helperDateService.create();
-        return this.helperDateService.getTimestamp(today);
-    }
-
-    private createDefaultFilename(timestamp: number): string {
-        return this.helperStringService.fillPattern(
-            this.filenameExportPattern,
-            {
-                timestamp: String(timestamp),
-                extension: EnumFileExtensionDocument.csv,
+        private handleFileResponse(responseData: IResponseFileReturn): Buffer {
+            if (responseData.extension === EnumFileExtensionDocument.csv) {
+                return Buffer.from(responseData.data, 'utf-8');
+            } else if (
+                responseData.extension === EnumFileExtensionDocument.pdf
+            ) {
+                return responseData.data;
             }
-        );
-    }
 
-    private createDisposition(filename: string, fallback: string): string {
-        const sanitizedFilename = this.fileService.sanitizeFilename(filename);
-        const ascii = sanitizedFilename || fallback;
+            return Buffer.from([]);
+        }
 
-        return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
-    }
+        private validateDataResponse(
+            responseData: IResponseFileReturn | null
+        ): void {
+            if (!responseData) {
+                throw new ResponseFileDataInvalidException();
+            }
 
-    intercept(
-        context: ExecutionContext,
-        next: CallHandler
-    ): Observable<Promise<StreamableFile>> {
-        if (context.getType() === 'http') {
-            return next.handle().pipe(
-                map(async (res: Promise<Response>) => {
-                    const ctx = context.switchToHttp();
-                    const response: Response = ctx.getResponse();
+            if (responseData.extension === EnumFileExtensionDocument.csv) {
+                this.validateCsvResponse(responseData);
+            } else if (
+                responseData.extension === EnumFileExtensionDocument.pdf
+            ) {
+                this.validatePdfResponse(responseData);
+            }
+        }
 
-                    const responseData =
-                        (await res) as unknown as IResponseFileReturn;
-                    this.validateDataResponse(responseData);
+        private validateCsvResponse(responseData: IResponseFileReturn): void {
+            if (!responseData.data || typeof responseData.data !== 'string') {
+                throw new ResponseFileDataInvalidException();
+            }
+        }
 
-                    const fileBuffer: Buffer =
-                        this.handleFileResponse(responseData);
+        private validatePdfResponse(responseData: IResponseFileReturn): void {
+            if (!responseData.data || !(responseData.data instanceof Buffer)) {
+                throw new ResponseFileDataInvalidException();
+            }
+        }
 
-                    if (fileBuffer.length > this.maxSizeExportInBytes) {
-                        throw new FileExceedMaxSizeExportException();
-                    }
+        private countDataRows(responseData: IResponseFileReturn): number {
+            if (responseData.extension === EnumFileExtensionDocument.csv) {
+                const rows = this.fileService.readCsv(responseData.data);
 
-                    const timestamp = this.createTimestamp();
-                    const defaultFilename =
-                        this.createDefaultFilename(timestamp);
-                    const filename = responseData.filename ?? defaultFilename;
-                    const mimeFromFilename =
-                        this.fileService.extractMimeFromFilename(filename);
-                    const mime = mimeFromFilename ?? 'application/octet-stream';
+                return rows.length;
+            }
 
-                    const metadata = this.responseMetadataService.create();
-                    this.responseMetadataService.setHeaders(response, metadata);
+            return 0;
+        }
 
-                    const disposition = this.createDisposition(
-                        filename,
-                        defaultFilename
-                    );
+        private createTimestamp(): number {
+            const today = this.helperDateService.create();
+            return this.helperDateService.getTimestamp(today);
+        }
 
-                    return new StreamableFile(fileBuffer, {
-                        type: mime,
-                        disposition,
-                        length: fileBuffer.length,
-                    });
-                })
+        private createDefaultFilename(timestamp: number): string {
+            return this.helperStringService.fillPattern(
+                this.filenameExportPattern,
+                {
+                    timestamp: String(timestamp),
+                    extension: EnumFileExtensionDocument.csv,
+                }
             );
         }
 
-        return next.handle();
+        private createDisposition(filename: string, fallback: string): string {
+            const sanitizedFilename =
+                this.fileService.sanitizeFilename(filename);
+            const ascii =
+                sanitizedFilename === '' ? fallback : sanitizedFilename;
+
+            return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+        }
+
+        intercept(
+            context: ExecutionContext,
+            next: CallHandler
+        ): Observable<Promise<StreamableFile>> {
+            if (context.getType() === 'http') {
+                return next.handle().pipe(
+                    map(async (res: Promise<Response>) => {
+                        const ctx = context.switchToHttp();
+                        const response: Response = ctx.getResponse();
+
+                        const responseData =
+                            (await res) as unknown as IResponseFileReturn;
+                        this.validateDataResponse(responseData);
+
+                        const dataRows = this.countDataRows(responseData);
+                        if (dataRows > this.maxDataExport) {
+                            throw new FileExceedMaxDataExportException();
+                        }
+
+                        const fileBuffer: Buffer =
+                            this.handleFileResponse(responseData);
+
+                        if (fileBuffer.length > this.maxSizeExportInBytes) {
+                            throw new FileExceedMaxSizeExportException();
+                        }
+
+                        const timestamp = this.createTimestamp();
+                        const defaultFilename =
+                            this.createDefaultFilename(timestamp);
+                        const filename =
+                            responseData.filename ?? defaultFilename;
+                        const mimeFromFilename =
+                            this.fileService.extractMimeFromFilename(filename);
+                        const mime =
+                            mimeFromFilename ?? 'application/octet-stream';
+
+                        const metadata = this.responseMetadataService.create();
+                        this.responseMetadataService.setHeaders(
+                            response,
+                            metadata
+                        );
+
+                        const disposition = this.createDisposition(
+                            filename,
+                            defaultFilename
+                        );
+
+                        return new StreamableFile(fileBuffer, {
+                            type: mime,
+                            disposition,
+                            length: fileBuffer.length,
+                        });
+                    })
+                );
+            }
+
+            return next.handle();
+        }
     }
+
+    return mixin(MixinResponseFileInterceptor);
 }

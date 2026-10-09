@@ -123,10 +123,10 @@ export class UserImportDomain {
         const isVerified = checkRole.type !== EnumRoleType.user;
         const inputs: IUserCreateWithWorkspaceInput[] = data.map(
             ({ email, name }, index) => ({
-                userId: userIds[index],
+                userId: userIds[index]!,
                 email,
-                name: name ?? null,
-                username: usernames[index],
+                name,
+                username: usernames[index]!,
                 countryId,
                 roleId: checkRole.id,
                 signUpFrom: EnumUserSignUpFrom.admin,
@@ -136,12 +136,12 @@ export class UserImportDomain {
                 acceptedTermPolicyTypes: [
                     ...UserTermPolicyContract.requiredTypes,
                 ],
-                password: passwordHasheds[index],
+                password: passwordHasheds[index]!,
                 passwordHistoryType:
                     UserCreateContract[EnumUserCreateMode.admin]
                         .passwordHistoryType,
                 verification: null,
-                workspaceContext: workspaceContexts[index],
+                workspaceContext: workspaceContexts[index]!,
                 createdBy,
             })
         );
@@ -158,16 +158,16 @@ export class UserImportDomain {
         await Promise.all(
             users.map((newUser, index) => {
                 const passwordCreatedAt = this.helperDateService.formatToIso(
-                    passwordHasheds[index].passwordCreated
+                    passwordHasheds[index]!.passwordCreated
                 );
                 const passwordExpiredAt = this.helperDateService.formatToIso(
-                    passwordHasheds[index].passwordExpired
+                    passwordHasheds[index]!.passwordExpired
                 );
 
                 return this.notificationQueue.sendWelcomeByAdmin(
                     newUser.id,
                     {
-                        password: passwordStrings[index],
+                        password: passwordStrings[index]!,
                         passwordCreatedAt,
                         passwordExpiredAt,
                     },
@@ -178,14 +178,14 @@ export class UserImportDomain {
     }
 
     async exportByAdmin(
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        status: Record<string, IPaginationIn> | null,
+        roleId: Record<string, IPaginationEqual> | null,
+        countryId: Record<string, IPaginationEqual> | null
     ): Promise<IUser[]> {
         const users = await this.userRepository.findExport(
-            status ?? null,
-            roleId ?? null,
-            countryId ?? null,
+            status,
+            roleId,
+            countryId,
             this.maxDataExport + 1
         );
 

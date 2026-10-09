@@ -4,15 +4,18 @@ Transactional email through AWS SES: Handlebars templates, the sync command, and
 
 ## Overview
 
-Templates live as `.hbs` files under `src/modules/notification/templates/`. Four template domains import them into SES as named templates. Runtime sends go through the notification email queue and `AwsSESService`.
+- Templates live as `.hbs` files under `src/modules/notification/templates/`.
+- Four template domains import them into SES as named templates.
+- A template domain reads a file from the `templates/` folder beside `domains/`, resolved from `import.meta.dirname`, so the path holds under `src/` and under `dist/`.
+- Runtime sends go through the notification email queue and `AwsSESService`.
 
 ## Related Documents
 
-- [Notification Documentation][ref-doc-notification] - Queues, channels, and delivery tracking
-- [Third Party Integration][ref-doc-third-party] - SES credentials and no-op mode
-- [Environment Documentation][ref-doc-environment] - `AWS_SES_*` and `HOME_*` / support email vars
-- [Configuration Documentation][ref-doc-configuration] - Email and home config keys
-- [Term Policy Documentation][ref-doc-term-policy] - Policy HTML on S3 (`templateTermPolicy`), not SES
+- [Notification Documentation][ref-doc-notification]: Queues, channels, and delivery tracking
+- [Third Party Integration][ref-doc-third-party]: SES credentials and the unconfigured state
+- [Environment Documentation][ref-doc-environment]: `AWS_SES_*` and `HOME_*` / support email vars
+- [Configuration Documentation][ref-doc-configuration]: Email and home config keys
+- [Term Policy Documentation][ref-doc-term-policy]: Policy HTML on S3 (`templateTermPolicy`), not SES
 
 ## Table of Contents
 
@@ -24,19 +27,22 @@ Templates live as `.hbs` files under `src/modules/notification/templates/`. Four
 
 ## Template System
 
-The shipped Handlebars templates under `src/modules/notification/templates/` are plain HTML with light inline styles and no layout polish. This repo is the API backend; HTML look-and-feel is left for the integrator to edit in those `.hbs` files before or after SES sync.
+The shipped Handlebars templates under `src/modules/notification/templates/` are plain HTML with light inline styles and no layout polish.
+
+- This repo is the API backend.
+- The integrator edits the HTML look-and-feel in those `.hbs` files, before or after SES sync.
 
 Four domains own import / get / delete per template:
 
-- `NotificationTemplateAccountDomain` - welcome and verification
-- `NotificationTemplateSecurityDomain` - passwords, two-factor, new device login
-- `NotificationTemplateTermPolicyDomain` - policy publication
-- `NotificationTemplateWorkspaceDomain` - invite and join request
+- `NotificationTemplateAccountDomain`: welcome and verification
+- `NotificationTemplateSecurityDomain`: passwords, two-factor, new device login
+- `NotificationTemplateTermPolicyDomain`: policy publication
+- `NotificationTemplateWorkspaceDomain`: invite and join request
 
 Available templates (one per `EnumNotificationProcess` that uses email):
 
 | Template File | Process |
-|---------------|---------|
+| --- | --- |
 | `notification.welcome.template.hbs` | `welcome` |
 | `notification.welcome-social.template.hbs` | `welcomeSocial` |
 | `notification.welcome-by-admin.template.hbs` | `welcomeByAdmin` |
@@ -57,23 +63,39 @@ Available templates (one per `EnumNotificationProcess` that uses email):
 
 ## Syncing templates to SES
 
-Not part of `pnpm migration:seed` / `migration:remove`. Standalone command `templateEmailNotification` (`MigrationTemplateEmailNotificationSeed` in `MigrationModule`):
+The standalone command `templateEmailNotification` (`MigrationTemplateEmailNotificationSeed` in `MigrationModule`) syncs the templates. It is not part of `pnpm migration:seed` / `migration:remove`:
 
 ```bash
 pnpm migration templateEmailNotification --type seed
 pnpm migration templateEmailNotification --type remove
 ```
 
-On `seed`, each owning domain's `emailImport*` runs (for example `NotificationTemplateAccountDomain.emailImportWelcome()`). On `remove`, the matching `emailDelete*` runs. The command refuses to run when SES reports itself uninitialized.
+- On `seed`, the command reads every template from SES through the owning domain's `emailGet*`.
+    - It runs `emailImport*` only for the ones missing (for example `NotificationTemplateAccountDomain.emailImportWelcome()`).
+    - A template already in SES stays as it is.
+- On `remove`, the matching `emailDelete*` runs for all of them.
+- When SES is unconfigured, `seed` logs a warning and skips.
+- A failed SES call throws, and the command exits with code `1` (see [Logger Documentation][ref-doc-logger]).
 
-SES credentials and no-op mode: [Third Party Integration; SES][ref-doc-third-party-ses].
+SES credentials and the unconfigured state: [Third Party Integration: SES][ref-doc-third-party-ses].
 
 ## Sending
 
-`NotificationEmailProcessorService` routes each job to an email channel domain (`NotificationEmailAccountDomain`, `NotificationEmailSecurityDomain`, `NotificationEmailTermPolicyDomain`, `NotificationEmailWorkspaceDomain`). That domain calls `AwsSESService.send()` or `sendBulk()` with the named SES template and merges `defaultTemplateData` (`homeName`, `supportEmail`, `homeUrl`).
+`NotificationEmailProcessor` dispatches each job by its `EnumNotificationProcess` name to `NotificationEmailProcessorService`, which calls an email channel domain (`NotificationEmailAccountDomain`, `NotificationEmailSecurityDomain`, `NotificationEmailTermPolicyDomain`, `NotificationEmailWorkspaceDomain`). That domain:
+
+- calls `AwsSESService.send()` (or `sendBulk()` for `publishTermPolicy`) with the SES template named after the job's `EnumNotificationProcess` value (`workspaceInviteUnregistered` sends the `workspaceInvite` template)
+- sends from `EMAIL_NO_REPLY`
+- merges `defaultTemplateData` (`homeName`, `supportEmail` from `EMAIL_SUPPORT`, `homeUrl`) into the template data
+
+Send behavior:
+
+- A job carries `cc` and `bcc` as arrays, empty when there is no copy recipient.
+- The channel domain passes a non-empty list on to the send call.
+- When `AWS_SES_IDENTITY_ARN` is set, both calls pass it as `SourceArn`.
+- When SES is unconfigured, both calls log a warning and return an empty output.
+- The job then completes and no email leaves.
 
 Queue names, rate limits, dedup, and payload encryption: [Notification Documentation][ref-doc-notification].
-
 
 <!-- REFERENCES -->
 
@@ -82,4 +104,5 @@ Queue names, rate limits, dedup, and payload encryption: [Notification Documenta
 [ref-doc-third-party-ses]: third-party-integration.md#ses-email
 [ref-doc-environment]: environment.md
 [ref-doc-configuration]: configuration.md
+[ref-doc-logger]: logger.md#migration-command-failure
 [ref-doc-term-policy]: term-policy.md#migration--seeding

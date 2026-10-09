@@ -35,7 +35,7 @@ export class WorkspaceMemberAnalyticRepository implements IWorkspaceMemberAnalyt
         });
     }
 
-    async membershipDistributionOffset(
+    async groupMembershipDistributionOffset(
         params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         const { where, skip, limit } = params;

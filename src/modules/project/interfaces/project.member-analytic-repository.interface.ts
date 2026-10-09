@@ -7,7 +7,7 @@ import type {
 } from '@modules/analytic/interfaces/analytic.interface';
 
 export interface IProjectMemberAnalyticRepository {
-    membershipDistributionOffset(
+    groupMembershipDistributionOffset(
         params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>>;
     groupByRole(): Promise<IAnalyticRoleCount[]>;

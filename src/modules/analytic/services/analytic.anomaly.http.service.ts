@@ -6,20 +6,17 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import {
-    AnalyticDeviceProliferationAvailableOrderBy,
-    AnalyticImpossibleTravelAvailableOrderBy,
-    AnalyticLoginSpikeIpAvailableOrderBy,
-    AnalyticLoginTimeAnomalyAvailableOrderBy,
-    AnalyticNearLockoutAvailableOrderBy,
-} from '@modules/analytic/constants/analytic.list.constant';
-import type { AnalyticDeviceProliferationListRequestDto } from '@modules/analytic/dtos/request/analytic-device-proliferation-list.request.dto';
-import type { AnalyticImpossibleTravelListRequestDto } from '@modules/analytic/dtos/request/analytic-impossible-travel-list.request.dto';
-import type { AnalyticLoginSpikeIpListRequestDto } from '@modules/analytic/dtos/request/analytic-login-spike-ip-list.request.dto';
-import type { AnalyticLoginTimeAnomalyListRequestDto } from '@modules/analytic/dtos/request/analytic-login-time-anomaly-list.request.dto';
-import type { AnalyticNearLockoutListRequestDto } from '@modules/analytic/dtos/request/analytic-near-lockout-list.request.dto';
+import type { AnalyticDeviceProliferationListRequestDto } from '@modules/analytic/dtos/request/analytic.device-proliferation-list.request.dto';
+import type { AnalyticImpossibleTravelListRequestDto } from '@modules/analytic/dtos/request/analytic.impossible-travel-list.request.dto';
+import type { AnalyticLoginSpikeIpListRequestDto } from '@modules/analytic/dtos/request/analytic.login-spike-ip-list.request.dto';
+import type { AnalyticLoginTimeAnomalyListRequestDto } from '@modules/analytic/dtos/request/analytic.login-time-anomaly-list.request.dto';
+import type { AnalyticNearLockoutListRequestDto } from '@modules/analytic/dtos/request/analytic.near-lockout-list.request.dto';
 import { AnalyticAnomalyDomain } from '@modules/analytic/domains/analytic.anomaly.domain';
 import type {
+    IAnalyticAnomalyDeviceProliferationSummary,
+    IAnalyticAnomalyFailedLoginSpikeSummary,
+    IAnalyticAnomalyImpossibleTravelSummary,
+    IAnalyticAnomalyLoginSpikeIpSummary,
     IAnalyticAnomalySummary,
     IAnalyticDeviceProliferation,
     IAnalyticImpossibleTravel,
@@ -28,7 +25,16 @@ import type {
     IAnalyticNearLockout,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
+import type { AnalyticOptionalDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
+import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import { Injectable } from '@nestjs/common';
+import {
+    AnalyticDeviceProliferationAvailableOrderBy,
+    AnalyticImpossibleTravelAvailableOrderBy,
+    AnalyticLoginSpikeIpAvailableOrderBy,
+    AnalyticLoginTimeAnomalyAvailableOrderBy,
+    AnalyticNearLockoutAvailableOrderBy,
+} from '@modules/analytic/constants/analytic.list.constant';
 
 @Injectable()
 export class AnalyticAnomalyHttpService {
@@ -40,12 +46,11 @@ export class AnalyticAnomalyHttpService {
     ) {}
 
     async impossibleTravelSummary(
-        startDate?: Date,
-        endDate?: Date
-    ): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
+        query: AnalyticOptionalDateRangeRequestDto
+    ): Promise<IResponseReturn<IAnalyticAnomalyImpossibleTravelSummary>> {
         const range = this.analyticDateDomain.optionalRange(
-            startDate ?? null,
-            endDate ?? null
+            query.startDate ?? null,
+            query.endDate ?? null
         );
         const data = await this.analyticAnomalyDomain.impossibleTravelSummary(
             range.startDate,
@@ -75,10 +80,10 @@ export class AnalyticAnomalyHttpService {
     }
 
     async loginSpikeIpSummary(
-        windowMs?: number
-    ): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
+        query: AnalyticWindowRequestDto
+    ): Promise<IResponseReturn<IAnalyticAnomalyLoginSpikeIpSummary>> {
         const data = await this.analyticAnomalyDomain.loginSpikeIpSummary(
-            windowMs ?? null
+            query.windowMs ?? null
         );
 
         return { data };
@@ -90,9 +95,7 @@ export class AnalyticAnomalyHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
                 query,
-                {
-                    availableOrderBy: AnalyticLoginSpikeIpAvailableOrderBy,
-                }
+                { availableOrderBy: AnalyticLoginSpikeIpAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -103,7 +106,7 @@ export class AnalyticAnomalyHttpService {
     }
 
     async failedLoginSpikeSummary(): Promise<
-        IResponseReturn<IAnalyticAnomalySummary>
+        IResponseReturn<IAnalyticAnomalyFailedLoginSpikeSummary>
     > {
         const data = await this.analyticAnomalyDomain.failedLoginSpikeSummary();
 
@@ -123,7 +126,7 @@ export class AnalyticAnomalyHttpService {
     }
 
     async deviceProliferationSummary(): Promise<
-        IResponseReturn<IAnalyticAnomalySummary>
+        IResponseReturn<IAnalyticAnomalyDeviceProliferationSummary>
     > {
         const data =
             await this.analyticAnomalyDomain.deviceProliferationSummary();
@@ -148,12 +151,11 @@ export class AnalyticAnomalyHttpService {
     }
 
     async loginTimeSummary(
-        startDate?: Date,
-        endDate?: Date
+        query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
         const range = this.analyticDateDomain.optionalRange(
-            startDate ?? null,
-            endDate ?? null
+            query.startDate ?? null,
+            query.endDate ?? null
         );
         const data = await this.analyticAnomalyDomain.loginTimeSummary(
             range.startDate,
@@ -169,9 +171,7 @@ export class AnalyticAnomalyHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
                 query,
-                {
-                    availableOrderBy: AnalyticLoginTimeAnomalyAvailableOrderBy,
-                }
+                { availableOrderBy: AnalyticLoginTimeAnomalyAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.optionalRange(

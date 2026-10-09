@@ -1,3 +1,4 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
 import type { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
@@ -17,8 +18,8 @@ export class HealthHttpService {
     ) {}
 
     /**
-     * Unwraps the health result Terminus reports through `ServiceUnavailableException`, and
-     * re-throws any other error unchanged.
+     * Unwraps the health result Terminus reports through `ServiceUnavailableException`, re-throws a
+     * `ServiceUnavailableException` carrying no health result, and wraps any other error.
      */
     private async resolveResponse(
         check: Promise<HealthCheckResult>
@@ -36,9 +37,11 @@ export class HealthHttpService {
                 if (isHealthCheckResult) {
                     return this.mapResponse(response);
                 }
+
+                throw error;
             }
 
-            throw error;
+            throw new AppUnknownException(error);
         }
     }
 

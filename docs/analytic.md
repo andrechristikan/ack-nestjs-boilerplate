@@ -4,7 +4,10 @@ Analytic lives at `src/modules/analytic`.
 
 ## Overview
 
-Analytic exposes read-only HTTP metrics. Platform admins get dashboard numbers, anomaly summaries, and fraud reports across the whole platform. Authenticated workspace members get metrics for the workspace named in `x-workspace-id`.
+Analytic exposes read-only HTTP metrics:
+
+- Platform admins get dashboard numbers, anomaly summaries, and fraud reports across the whole platform.
+- Authenticated workspace members get metrics for the workspace named in `x-workspace-id`.
 
 Each request aggregates from owner-module data, then Redis `AnalyticCache` stores the result under keys and TTLs from `src/configs/analytic.config.ts`.
 
@@ -13,20 +16,25 @@ Fraud and anomaly routes are report-only:
 - They return summaries, lists, and risk scores.
 - They do not block users, revoke sessions, or change credentials.
 
-Analytic injects owner `*AnalyticDomain` / `*AnalyticRepository` pairs and never opens foreign Prisma models.
+Module wiring:
 
-Status codes for this module live in the `52100` block. Catalog: [Status Codes](status-codes.md).
+- Analytic injects the owner modules' `*AnalyticDomain` classes.
+- Each `*AnalyticDomain` reads through its own module's `*AnalyticRepository`.
+- The analytic module owns no repository and opens no Prisma model.
+- Every public read on a `*.analytic.domain.ts` is a `get*` method.
+
+Status codes for this module live in the `52100` block ([Status Codes](status-codes.md)).
 
 ## Related Documents
 
-- [Authorization](authorization.md): `EnumPolicySubject.analytic` on admin routes
-- [Cache](cache.md): `CacheMainProvider` and feature cache classes
-- [Configuration](configuration.md): `analytic.config.ts`
-- [Activity Log](activity-log.md): actions Analytic counts, including `userLoginFailed` and `userReachMaxPasswordAttempt`
-- [Workspace](workspace.md): `x-workspace-id` and workspace member roles
-- [Pagination](pagination.md): offset list envelopes
-- [Response](response.md): response envelope and schema stripping
-- [Status Codes](status-codes.md): `52100` block
+- [Authorization][ref-doc-authorization]: `EnumPolicySubject.analytic` on admin routes
+- [Cache][ref-doc-cache]: `CacheMainProvider` and feature cache classes
+- [Configuration][ref-doc-configuration]: `analytic.config.ts`
+- [Activity Log][ref-doc-activity-log]: actions Analytic counts, including `userLoginFailed` and `userReachMaxPasswordAttempt`
+- [Workspace][ref-doc-workspace]: `x-workspace-id` and workspace member roles
+- [Pagination][ref-doc-pagination]: offset list envelopes
+- [Response][ref-doc-response]: response envelope and schema stripping
+- [Status Codes][ref-doc-status-codes]: `52100` block
 
 ## Table of Contents
 
@@ -42,12 +50,13 @@ Status codes for this module live in the `52100` block. Catalog: [Status Codes](
 
 Global prefix `/api` and URI version `v1`. Controllers mount through the HTTP router:
 
-| Scope | Router path | Controller | Controller path |
-|---|---|---|---|
-| Admin | `/admin` | `AnalyticAdminController` | `/analytic` |
-| User | `/user` | `AnalyticUserController` | `/analytic` |
+| Scope | Router path | Controller                | Controller path |
+| ----- | ----------- | ------------------------- | --------------- |
+| Admin | `/admin`    | `AnalyticAdminController` | `/analytic`     |
+| User  | `/user`     | `AnalyticUserController`  | `/analytic`     |
 
-Full paths below are under `/api/v1`. Every Analytic route is `GET`.
+- Full paths below are under `/api/v1`.
+- Every Analytic route is `GET`.
 
 ```mermaid
 flowchart LR
@@ -87,16 +96,17 @@ Admin scope carries no workspace header.
 - `@TermPolicyAcceptanceProtected`
 - `@RequestThrottle({ user: true })`
 
-The workspace comes from `x-workspace-id` only. These routes do not use `PolicyProtected` or `EnumPolicySubject.analytic`.
+The workspace comes from `x-workspace-id` only, so these routes do not use `PolicyProtected` or `EnumPolicySubject.analytic`.
 
 ### Admin dashboard
 
-Mounted at `/admin/analytic`. One controller: `AnalyticAdminController` (`analytic.admin.controller.ts`).
+- Mounted at `/admin/analytic`.
+- One controller: `AnalyticAdminController` (`analytic.admin.controller.ts`).
 
 #### Users
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/users/registrations` | Registration count for a required date range |
 | `GET` | `/admin/analytic/users/churn` | Churn rate for a required date range |
 | `GET` | `/admin/analytic/users/blocked` | Blocked-user counts for a required date range |
@@ -114,7 +124,7 @@ Mounted at `/admin/analytic`. One controller: `AnalyticAdminController` (`analyt
 #### Auth and sessions
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/auth/login-frequency` | Login count for a required date range |
 | `GET` | `/admin/analytic/auth/login-method` | Login method distribution (optional date range) |
 | `GET` | `/admin/analytic/auth/login-source` | Login source distribution (optional date range) |
@@ -139,7 +149,7 @@ Mounted at `/admin/analytic`. One controller: `AnalyticAdminController` (`analyt
 #### Devices
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/devices/registration` | Device registration count for a required date range |
 | `GET` | `/admin/analytic/devices/platform` | Device platform distribution |
 | `GET` | `/admin/analytic/devices/push-token` | Push-token coverage rate |
@@ -151,7 +161,7 @@ Mounted at `/admin/analytic`. One controller: `AnalyticAdminController` (`analyt
 #### API keys
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/api-keys/lifecycle` | API-key lifecycle counts for a required date range |
 | `GET` | `/admin/analytic/api-keys/active-expired` | Active and expired API-key counts |
 | `GET` | `/admin/analytic/api-keys/type-mix` | API-key type distribution |
@@ -159,14 +169,14 @@ Mounted at `/admin/analytic`. One controller: `AnalyticAdminController` (`analyt
 #### Term policies
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/term-policies/acceptance-rate` | Term-policy acceptance rate (optional date range) |
 | `GET` | `/admin/analytic/term-policies/time-to-accept` | Term-policy time-to-accept (optional date range) |
 
 #### Workspaces and projects
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/workspaces/creation` | Workspace creation count for a required date range |
 | `GET` | `/admin/analytic/workspaces/visibility` | Workspace visibility distribution |
 | `GET` | `/admin/analytic/workspaces/invite-funnel` | Invite status counts for a required date range (`{ statuses: [...] }`) |
@@ -176,12 +186,19 @@ Mounted at `/admin/analytic`. One controller: `AnalyticAdminController` (`analyt
 | `GET` | `/admin/analytic/projects/creation` | Project creation counts for a required date range |
 | `GET` | `/admin/analytic/projects/membership` | Offset-paginated member counts per project |
 
+Workspace and project counts cover live rows only:
+
+- `WorkspaceAnalyticRepository` and `ProjectAnalyticRepository` filter with `OR: WorkspaceActiveFilter` and `OR: ProjectActiveFilter`.
+- A soft-deleted workspace or project drops out of creation, visibility, and per-workspace project counts.
+
 ### Admin fraud
 
-Fraud routes live under `/admin/analytic/fraud`. Each signal exposes a summary and a matching `/list` (offset-paginated detail), except risk score which is per-user or a paginated roster.
+- Fraud routes live under `/admin/analytic/fraud`.
+- Each signal exposes a summary and a matching `/list` (offset-paginated detail).
+- Risk score is the exception: it is per-user or a paginated roster.
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/fraud/credential-stuffing` | Credential-stuffing summary (`windowMs`) |
 | `GET` | `/admin/analytic/fraud/credential-stuffing/list` | Offset-paginated credential-stuffing rows |
 | `GET` | `/admin/analytic/fraud/account-takeover` | Account-takeover summary (required date range) |
@@ -207,10 +224,11 @@ Fraud routes live under `/admin/analytic/fraud`. Each signal exposes a summary a
 
 ### Admin anomaly
 
-Anomaly routes live under `/admin/analytic/anomaly`. Each signal exposes a summary and a matching `/list`.
+- Anomaly routes live under `/admin/analytic/anomaly`.
+- Each signal exposes a summary and a matching `/list`.
 
 | Method | Path | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/admin/analytic/anomaly/impossible-travel` | Impossible-travel summary (optional date range) |
 | `GET` | `/admin/analytic/anomaly/impossible-travel/list` | Offset-paginated impossible-travel rows |
 | `GET` | `/admin/analytic/anomaly/login-spike-ip` | Login-spike-by-IP summary (`windowMs`) |
@@ -224,10 +242,11 @@ Anomaly routes live under `/admin/analytic/anomaly`. Each signal exposes a summa
 
 ### User (current workspace)
 
-Mounted at `/user/analytic`. One controller: `AnalyticUserController` (`analytic.user.controller.ts`).
+- Mounted at `/user/analytic`.
+- One controller: `AnalyticUserController` (`analytic.user.controller.ts`).
 
 | Method | Path | Who | Returns |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `GET` | `/user/analytic/workspace/summary` | Any workspace member | Workspace summary (optional date range) |
 | `GET` | `/user/analytic/workspace/invite-funnel` | Workspace `admin` (owner satisfies every role check) | Invite status counts for a required date range (`{ statuses: [...] }`) |
 | `GET` | `/user/analytic/workspace/join-outcomes` | Workspace `admin` (owner satisfies every role check) | Join-request status counts for a required date range (`{ statuses: [...] }`) |
@@ -237,15 +256,52 @@ Mounted at `/user/analytic`. One controller: `AnalyticUserController` (`analytic
 ### Query shapes and pagination
 
 - Required date range: `AnalyticDateRangeRequestSchema` (`startDate`, `endDate`).
-- Optional date range: `AnalyticOptionalDateRangeRequestSchema`. Both bounds together or neither; a single bound raises `AnalyticInvalidDateRangeException`.
+- Optional date range: `AnalyticOptionalDateRangeRequestSchema`.
+    - It takes both bounds together or neither.
+    - A single bound raises `AnalyticInvalidDateRangeException`.
 - Window: `AnalyticWindowRequestSchema` (`windowMs`) on several fraud and anomaly summaries.
-- Offset lists: anomaly and fraud `/list` routes, `GET /fraud/risk-scores`, and the three dashboard distributions `GET /workspaces/membership`, `GET /workspaces/activity-volume`, and `GET /projects/membership` use `@ResponsePagination` and list schemas that extend `PaginationOffsetQuerySchema`. Anomaly and fraud lists carry order-by allow-lists in `analytic.list.constant.ts`. The three dashboard membership / activity-volume lists extend the kit offset schema only and declare no `orderBy` allow-list.
+- Offset lists use `@ResponsePagination` and list schemas that extend `PaginationOffsetQuerySchema`. They are:
+    - the anomaly and fraud `/list` routes
+    - `GET /fraud/risk-scores`
+    - the three dashboard distributions `GET /workspaces/membership`, `GET /workspaces/activity-volume`, and `GET /projects/membership`
+- Anomaly and fraud lists omit `search` from the kit offset schema and declare `orderBy` inline over an allow-list in `analytic.list.constant.ts`.
+    - A sort outside the allow-list fails validation and answers 422.
+    - The response `metadata.availableOrderBy` reports the allow-list.
+- The three dashboard membership and activity-volume lists omit `search`, declare no `orderBy`, and declare no allow-list.
+    - The strict schema rejects an `orderBy` key, and the repository fixes the order.
+    - The response `metadata.availableOrderBy` is `[]`.
 
-A signal that the database cannot group and page in one query computes its rows, slices `[skip, skip + limit)`, and builds the envelope with `PaginationService.offsetPage`, so `page` is 1-based and `totalPage` counts the whole computed set. Page metadata: [Pagination](pagination.md).
+Summary responses:
 
-Every route declares its payload on `@Response` or `@ResponsePagination`. Schemas live in `src/modules/analytic/dtos/response/`. Handlers return `IResponseReturn<T>` or `IResponsePaginationReturn<T>`; the response interceptors serialize `data` against the declared schema. Flow: [Response](response.md).
+- A summary route returns `count` and `window` (the window in milliseconds as a string, or `null` when the detector has none).
+- Credential stuffing, impossible travel, login spike by IP, failed login spike, and device proliferation add a `meta` object carrying the thresholds and statistics that detector applied. Each detector has its own `meta` shape.
+- Every other summary carries no `meta`.
 
-Each endpoint carries `@Doc({ summary })` plus `@Response` / `@ResponsePagination`. Query parameters reach OpenAPI from the zod schema on `@Query({ schema })`. Published OpenAPI errors are kit-only; domain exceptions such as `AnalyticInvalidDateRangeException` appear in OpenAPI only when an endpoint opts in with `@DocErrors`. Flow: [Doc](doc.md).
+A signal that the database cannot group and page in one query:
+
+1. Computes its rows.
+2. Slices `[skip, skip + limit)`.
+3. Builds the envelope with `PaginationService.offsetPage`.
+
+`page` is 1-based and `totalPage` counts the whole computed set.
+
+Page metadata: [Pagination](pagination.md).
+
+Response declaration:
+
+- Every route declares its payload on `@Response` or `@ResponsePagination`.
+- Schemas live in `src/modules/analytic/dtos/response/`.
+- Handlers return `IResponseReturn<T>` or `IResponsePaginationReturn<T>`.
+- The response interceptors serialize `data` against the declared schema.
+- Flow: [Response](response.md).
+
+OpenAPI:
+
+- Each endpoint carries `@Doc({ summary })` plus `@Response` / `@ResponsePagination`.
+- Query parameters reach OpenAPI from the zod schema on `@Query({ schema })`.
+- Published OpenAPI errors are kit-only.
+- A domain exception such as `AnalyticInvalidDateRangeException` appears in OpenAPI only when an endpoint opts in with `@DocErrors`.
+- Flow: [Doc](doc.md).
 
 ## Caching and config
 
@@ -258,51 +314,104 @@ Each endpoint carries `@Doc({ summary })` plus `@Response` / `@ResponsePaginatio
 
 Default TTLs in `analytic.config.ts`:
 
-| Concern | TTL |
-|---|---|
-| Dashboard metric | 1h |
-| Anomaly summary | 5m |
-| Fraud summary | 5m |
+| Concern          | TTL |
+| ---------------- | --- |
+| Dashboard metric | 1h  |
+| Anomaly summary  | 5m  |
+| Fraud summary    | 5m  |
 | Fraud risk score | 10m |
 
-The same config file holds anomaly and fraud detection thresholds (windows, minimum counts, risk weights, band labels). Values are literals via `ms(...)`; they are not environment-driven.
+The same config file holds anomaly and fraud detection thresholds:
 
-Date range validation lives in `AnalyticDateDomain` (`requireRange`, `optionalRange`). A required range with a missing bound or `startDate >= endDate` raises `AnalyticInvalidDateRangeException`. An optional range accepts both bounds together or neither.
+- windows, minimum counts, risk weights, and band cutoffs
+- the band a risk score lands in is an `EnumAnalyticFraudBand` value
+- values are literals via `ms(...)`, not environment-driven
+
+Concurrency:
+
+- `analytic.fraud.concurrency` (10) is the chunk size for the fraud detectors that look up one row per flagged user. Each chunk runs concurrently and the chunks run one after another.
+- `GET /fraud/risk-scores` reads the shared fingerprints once, takes the first 100 users near lockout, and scores them in chunks of that size.
+    - It scores each listed user from the near-lockout row it already read and does not read the user again, so a user deleted mid-request is still scored.
+- A score already cached for a user is reused.
+- `GET /fraud/risk-score/:userId` reads the user first and answers `UserNotFoundException` for a missing one.
+
+Each required-range route binds `AnalyticDateRangeRequestDto` on `@Query({ schema })` and passes the whole DTO to its analytic HTTP service. A workspace route passes the workspace id first, then the DTO. The HTTP service destructures `startDate` and `endDate`, validates them through `AnalyticDateDomain`, and passes the validated range to the domain.
+
+Date range validation lives in `AnalyticDateDomain` (`requireRange`, `optionalRange`):
+
+- A required range with a missing bound or `startDate >= endDate` raises `AnalyticInvalidDateRangeException`.
+- An optional range accepts both bounds together or neither.
 
 ## Authorization
 
-Admin analytic routes require `EnumPolicySubject.analytic` with `EnumPolicyAction.read`, plus `EnumRoleType.admin`. The subject is seeded with the other policy subjects for roles that receive every subject. User workspace analytic routes authorize through workspace membership, not CASL. Details: [Authorization](authorization.md).
+- Admin analytic routes require `EnumPolicySubject.analytic` with `EnumPolicyAction.read`, plus `EnumRoleType.admin`.
+- The subject is seeded with the other policy subjects for roles that receive every subject.
+- User workspace analytic routes authorize through workspace membership, not CASL.
+- Details: [Authorization](authorization.md).
 
 ## Status codes
 
 | member | statusCode | httpStatus | messagePath |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `invalidDateRange` | `52100` | 400 (`BAD_REQUEST`) | `analytic.error.invalidDateRange` |
 
 Exception class: `AnalyticInvalidDateRangeException`.
 
 ## Activity log seam
 
-Several dashboard, anomaly, and fraud metrics count or list `ActivityLog` rows by `EnumActivityLogAction`. Contract and description: [Activity Log](activity-log.md). Login path: [Authentication](authentication.md).
+Several dashboard, anomaly, and fraud metrics count or list `ActivityLog` rows by `EnumActivityLogAction`.
 
-Credential-failure rows (`UserAuthDomain` calls both writers; every row uses `onError: true`, so they are written although the request answers an error):
+- Contract and description: [Activity Log](activity-log.md).
+- Login path: [Authentication](authentication.md).
 
-- Wrong password → `userLoginFailed` through `UserLoginDomain.recordLoginFailed`
-- Password-attempt limit → `userRevokeAllSessions` and `userReachMaxPasswordAttempt` through `UserPasswordDomain.reachMaxPasswordAttempt`
+Credential-failure rows:
+
+- `UserAuthDomain` calls both writers.
+- Every row uses `onError: true`, so the rows are written although the request answers an error.
+
+By cause:
+
+- Wrong password: `userLoginFailed` through `UserLoginDomain.recordLoginFailed`
+- Password-attempt limit: `userRevokeAllSessions` and `userReachMaxPasswordAttempt` through `UserPasswordDomain.reachMaxPasswordAttempt`
 
 How Analytic reads them:
 
-- `UserLoginAnalyticDomain.lockoutMetrics` (`GET /admin/analytic/auth/lockout`) counts `userLoginFailed` and `userReachMaxPasswordAttempt`
-- `findFailedLoginEvents` lists those two for the credential-stuffing signal
+- `UserLoginAnalyticDomain.getLockoutMetrics` (`GET /admin/analytic/auth/lockout`) counts `userLoginFailed` and `userReachMaxPasswordAttempt`
+- `UserLoginAnalyticDomain.getFailedLoginActivityLogs` lists those two for the credential-stuffing signal
 
 An action one user takes on another writes an actor row and a target row ([Activity Log](activity-log.md#actor-and-target-rows)). The metrics that read those actions count one side of each pair:
 
 | Metric | Actions counted | Route |
-|---|---|---|
+| --- | --- | --- |
 | `authSessionRevoke` | `userRevokeSession`, `userRevokeAllSessions`, `userRevokeSessionByAdmin`, `userRevokeAllSessionsByAdmin` | `GET /admin/analytic/auth/session-revoke` |
 | Session after admin revoke (`computeSessionAfterAdmin`) | `userRevokeSessionByAdmin`, `userRevokeAllSessionsByAdmin` | `GET /admin/analytic/fraud/session-after-admin` and `/list` |
 | Workspace activity volume | Every action in the workspace except the ones listed in `ActivityLogWorkspaceVolumeContract` | `GET /admin/analytic/workspaces/activity-volume`, `GET /user/analytic/workspace/summary`, `GET /user/analytic/workspace/activity` |
 
-- `authSessionRevoke` counts the rows of the user whose sessions were revoked, so an admin revoke counts once. Every account self-deletion writes `userRevokeAllSessions`, including one that revoked no session, so each self-deletion adds one to this metric and one to the `userDeleteSelf` count. Every credential lockout writes `userRevokeAllSessions` the same way, so each lockout also adds one to this metric. An admin revoking a session of their own account writes only `adminSessionRevoke`, which this metric does not count.
-- The session-after-admin signal reads the target rows, whose `userId` is the user whose sessions were revoked, and flags a login by that same user within `analytic.fraud.sessionAfterAdmin.sessionAfterAdminRevokeInMs`. An admin status change to `blocked` or `inactive` that revokes sessions writes `userRevokeAllSessionsByAdmin` too, so it feeds both metrics.
-- `ActivityLogWorkspaceVolumeContract` (owned by the activity-log module) lists the eleven workspace and project target actions. `workspaceCreatedByAdmin` stays counted, because the admin's row for that event carries no workspace.
+`authSessionRevoke`:
+
+- It counts the rows of the user whose sessions were revoked, so an admin revoke counts once.
+- Every account self-deletion writes `userRevokeAllSessions`, including one that revoked no session. Each self-deletion adds one to this metric and one to the `userDeleteSelf` count.
+- Every credential lockout writes `userRevokeAllSessions` the same way, so each lockout also adds one to this metric.
+- An admin revoking a session of their own account writes only `adminSessionRevoke`, which this metric does not count.
+
+Session after admin revoke:
+
+- The signal reads the target rows, whose `userId` is the user whose sessions were revoked.
+- It flags a login by that same user within `analytic.fraud.sessionAfterAdmin.sessionAfterAdminRevokeInMs`.
+- An admin status change to `blocked` or `inactive` that revokes sessions writes `userRevokeAllSessionsByAdmin` too, so it feeds both metrics.
+
+Workspace activity volume:
+
+- `ActivityLogWorkspaceVolumeContract` (owned by the activity-log module) lists the eleven workspace and project target actions.
+- `workspaceCreatedByAdmin` stays counted, because the admin's row for that action carries no workspace.
+
+<!-- REFERENCES -->
+
+[ref-doc-authorization]: authorization.md
+[ref-doc-cache]: cache.md
+[ref-doc-configuration]: configuration.md
+[ref-doc-activity-log]: activity-log.md
+[ref-doc-workspace]: workspace.md
+[ref-doc-pagination]: pagination.md
+[ref-doc-response]: response.md
+[ref-doc-status-codes]: status-codes.md

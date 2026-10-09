@@ -33,6 +33,8 @@ export class NotificationEmailSecurityDomain {
         private readonly helperDateService: HelperDateService,
         private readonly helperEncryptionService: HelperEncryptionService
     ) {
+        // AppEnvSchema requires both addresses once AWS SES credentials are set, and
+        // AwsSESService.send is a no-op while SES is uninitialized, so neither is read as null.
         this.noreplyEmail = this.configService.get<string>('email.noreply')!;
         this.supportEmail = this.configService.get<string>('email.support')!;
 
@@ -83,8 +85,8 @@ export class NotificationEmailSecurityDomain {
                 passwordExpiredAt: passwordExpiredAtFormatted,
                 passwordCreatedAt: passwordCreatedAtFormatted,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return { message: 'Temporary password email processed', result };
@@ -104,8 +106,8 @@ export class NotificationEmailSecurityDomain {
                 ...this.defaultTemplateData,
                 username,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return { message: 'Change password email processed', result };
@@ -125,8 +127,8 @@ export class NotificationEmailSecurityDomain {
                 ...this.defaultTemplateData,
                 username,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return { message: 'Reset password email processed', result };
@@ -163,8 +165,8 @@ export class NotificationEmailSecurityDomain {
                 reference,
                 expiredInMinutes: String(expiredInMinutes),
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return { message: 'Forgot password email processed', result };
@@ -184,8 +186,8 @@ export class NotificationEmailSecurityDomain {
                 ...this.defaultTemplateData,
                 username,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return {
@@ -219,8 +221,8 @@ export class NotificationEmailSecurityDomain {
                 userAgent: flatten(userAgent),
                 ipAddress: ipAddress ?? '',
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return { message: 'New device login email processed', result };

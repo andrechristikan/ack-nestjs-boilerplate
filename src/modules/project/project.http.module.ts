@@ -7,11 +7,7 @@ import { Module } from '@nestjs/common';
 @Module({
     controllers: [],
     providers: [ProjectHttpService, ProjectMemberHttpService],
-    exports: [
-        ProjectHttpService,
-        ProjectMemberHttpService,
-        ProjectDomainModule,
-    ],
+    exports: [ProjectHttpService, ProjectMemberHttpService],
     imports: [ProjectDomainModule, WorkspaceDomainModule],
 })
 export class ProjectHttpModule {}

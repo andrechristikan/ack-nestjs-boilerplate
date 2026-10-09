@@ -1,0 +1,41 @@
+# Build stage base
+FROM node:24.15.0-alpine AS base
+LABEL maintainer="andrechristikan@gmail.com"
+# pnpm version is pinned via the "packageManager" field in package.json
+RUN corepack enable
+WORKDIR /app
+
+# Stage to install all dependencies and build the app
+FROM base AS builder
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN set -x && pnpm install --frozen-lockfile --ignore-scripts
+
+COPY . .
+
+RUN pnpm generate
+RUN pnpm build
+
+# Main Stage
+FROM base AS main
+ARG NODE_ENV
+ENV NODE_ENV=${NODE_ENV}
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN set -x && pnpm install --frozen-lockfile --prod --ignore-scripts
+
+# Copy only necessary files from previous stages
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./package.json
+
+# Create non-root user for security
+RUN addgroup -S ec2-user && adduser -S ec2-user -G ec2-user && \
+    chown -R ec2-user:ec2-user /app
+USER ec2-user
+
+RUN touch .env
+EXPOSE 3000
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/public/hello
+
+CMD ["node", "--import", "./dist/instrument.js", "dist/main.js"]

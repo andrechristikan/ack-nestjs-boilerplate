@@ -1,9 +1,11 @@
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import { AnalyticCacheEmptyToken } from '@modules/analytic/constants/analytic.constant';
 import {
     AnalyticAccountTakeoverAvailableOrderBy,
     AnalyticBackupCodeNewDeviceAvailableOrderBy,
@@ -15,12 +17,18 @@ import {
     AnalyticSharedFingerprintAvailableOrderBy,
     AnalyticUserCountAvailableOrderBy,
 } from '@modules/analytic/constants/analytic.list.constant';
+import {
+    EnumAnalyticFraudBand,
+    EnumAnalyticFraudContributingSignal,
+    EnumAnalyticFraudSignal,
+} from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticAccountTakeover,
     IAnalyticApiKeyBurst,
     IAnalyticBackupCodeNewDevice,
     IAnalyticCredentialStuffing,
     IAnalyticForgotPasswordAbuse,
+    IAnalyticFraudCredentialStuffingSummary,
     IAnalyticFraudRiskScore,
     IAnalyticFraudSummary,
     IAnalyticMassRegistration,
@@ -32,6 +40,7 @@ import type {
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
 import { DeviceAnalyticDomain } from '@modules/device/domains/device.analytic.domain';
+import type { IUserAnalyticRef } from '@modules/user/interfaces/user.interface';
 import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
 import { UserForgotPasswordAnalyticDomain } from '@modules/user/domains/user.forgot-password.analytic.domain';
 import { UserLoginAnalyticDomain } from '@modules/user/domains/user.login.analytic.domain';
@@ -44,6 +53,37 @@ import { Duration } from 'luxon';
 
 @Injectable()
 export class AnalyticFraudDomain {
+    private readonly credentialStuffingWindowInMs: number;
+    private readonly credentialStuffingMinUniqueAccounts: number;
+    private readonly accountTakeoverNewDeviceAfterPasswordChangeInMs: number;
+    private readonly massRegistrationWindowInMs: number;
+    private readonly massRegistrationMinAccountsPerIp: number;
+    private readonly passwordResetEnumerationWindowInMs: number;
+    private readonly passwordResetEnumerationMinRequestsPerIp: number;
+    private readonly sharedFingerprintMinUsersPerFingerprint: number;
+    private readonly sessionAfterAdminRevokeInMs: number;
+    private readonly forgotPasswordTokenAbuseWindowInMs: number;
+    private readonly forgotPasswordTokenAbuseMinUnusedTokens: number;
+    private readonly refreshSpikeWindowInMs: number;
+    private readonly refreshSpikeMinCount: number;
+    private readonly backupCodeNewDeviceWindowInMs: number;
+    private readonly apiKeyBurstWindowInMs: number;
+    private readonly apiKeyBurstMinCount: number;
+    private readonly weightSessionAfterAdmin: number;
+    private readonly weightImpossibleTravel: number;
+    private readonly weightNewDeviceAfterPasswordChange: number;
+    private readonly weightCredentialStuffingIp: number;
+    private readonly weightSharedFingerprint: number;
+    private readonly weightNearLockout: number;
+    private readonly weightMassRegistrationIp: number;
+    private readonly weightForgotPasswordAbuse: number;
+    private readonly passwordMaxAttempt: number;
+    private readonly failedLoginSpikeNearLockoutOffset: number;
+    private readonly bandMonitorMax: number;
+    private readonly bandReviewMax: number;
+    private readonly bandElevateMax: number;
+    private readonly concurrency: number;
+
     constructor(
         private readonly analyticCache: AnalyticCache,
         private readonly analyticDateUtil: AnalyticDateUtil,
@@ -51,49 +91,132 @@ export class AnalyticFraudDomain {
         private readonly paginationService: PaginationService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
+        private readonly helperArrayService: HelperArrayService,
         private readonly activityLogAnalyticDomain: ActivityLogAnalyticDomain,
         private readonly userLoginAnalyticDomain: UserLoginAnalyticDomain,
         private readonly userAnalyticDomain: UserAnalyticDomain,
         private readonly userPasswordAnalyticDomain: UserPasswordAnalyticDomain,
         private readonly userForgotPasswordAnalyticDomain: UserForgotPasswordAnalyticDomain,
         private readonly deviceAnalyticDomain: DeviceAnalyticDomain
-    ) {}
-
-    private resolveWindow(windowMs: number | null, configKey: string): number {
-        if (windowMs) {
-            return windowMs;
-        }
-        return this.configService.get<number>(configKey)!;
-    }
-
-    private resolveBand(score: number): string {
-        const monitorMax = this.configService.get<number>(
+    ) {
+        this.credentialStuffingWindowInMs = this.configService.get<number>(
+            'analytic.fraud.credentialStuffing.windowInMs'
+        )!;
+        this.credentialStuffingMinUniqueAccounts =
+            this.configService.get<number>(
+                'analytic.fraud.credentialStuffing.minUniqueAccounts'
+            )!;
+        this.accountTakeoverNewDeviceAfterPasswordChangeInMs =
+            this.configService.get<number>(
+                'analytic.fraud.accountTakeover.newDeviceAfterPasswordChangeInMs'
+            )!;
+        this.massRegistrationWindowInMs = this.configService.get<number>(
+            'analytic.fraud.massRegistration.windowInMs'
+        )!;
+        this.massRegistrationMinAccountsPerIp = this.configService.get<number>(
+            'analytic.fraud.massRegistration.minAccountsPerIp'
+        )!;
+        this.passwordResetEnumerationWindowInMs =
+            this.configService.get<number>(
+                'analytic.fraud.passwordResetEnumeration.windowInMs'
+            )!;
+        this.passwordResetEnumerationMinRequestsPerIp =
+            this.configService.get<number>(
+                'analytic.fraud.passwordResetEnumeration.minRequestsPerIp'
+            )!;
+        this.sharedFingerprintMinUsersPerFingerprint =
+            this.configService.get<number>(
+                'analytic.fraud.sharedFingerprint.minUsersPerFingerprint'
+            )!;
+        this.sessionAfterAdminRevokeInMs = this.configService.get<number>(
+            'analytic.fraud.sessionAfterAdmin.sessionAfterAdminRevokeInMs'
+        )!;
+        this.forgotPasswordTokenAbuseWindowInMs =
+            this.configService.get<number>(
+                'analytic.fraud.forgotPasswordTokenAbuse.windowInMs'
+            )!;
+        this.forgotPasswordTokenAbuseMinUnusedTokens =
+            this.configService.get<number>(
+                'analytic.fraud.forgotPasswordTokenAbuse.minUnusedTokens'
+            )!;
+        this.refreshSpikeWindowInMs = this.configService.get<number>(
+            'analytic.fraud.refreshSpike.windowInMs'
+        )!;
+        this.refreshSpikeMinCount = this.configService.get<number>(
+            'analytic.fraud.refreshSpike.minCount'
+        )!;
+        this.backupCodeNewDeviceWindowInMs = this.configService.get<number>(
+            'analytic.fraud.backupCodeNewDevice.windowInMs'
+        )!;
+        this.apiKeyBurstWindowInMs = this.configService.get<number>(
+            'analytic.fraud.apiKeyBurst.windowInMs'
+        )!;
+        this.apiKeyBurstMinCount = this.configService.get<number>(
+            'analytic.fraud.apiKeyBurst.minCount'
+        )!;
+        this.weightSessionAfterAdmin = this.configService.get<number>(
+            'analytic.fraud.weights.sessionAfterAdmin'
+        )!;
+        this.weightImpossibleTravel = this.configService.get<number>(
+            'analytic.fraud.weights.impossibleTravel'
+        )!;
+        this.weightNewDeviceAfterPasswordChange =
+            this.configService.get<number>(
+                'analytic.fraud.weights.newDeviceAfterPasswordChange'
+            )!;
+        this.weightCredentialStuffingIp = this.configService.get<number>(
+            'analytic.fraud.weights.credentialStuffingIp'
+        )!;
+        this.weightSharedFingerprint = this.configService.get<number>(
+            'analytic.fraud.weights.sharedFingerprint'
+        )!;
+        this.weightNearLockout = this.configService.get<number>(
+            'analytic.fraud.weights.nearLockout'
+        )!;
+        this.weightMassRegistrationIp = this.configService.get<number>(
+            'analytic.fraud.weights.massRegistrationIp'
+        )!;
+        this.weightForgotPasswordAbuse = this.configService.get<number>(
+            'analytic.fraud.weights.forgotPasswordAbuse'
+        )!;
+        this.passwordMaxAttempt = this.configService.get<number>(
+            'auth.password.maxAttempt'
+        )!;
+        this.failedLoginSpikeNearLockoutOffset = this.configService.get<number>(
+            'analytic.anomaly.failedLoginSpike.nearLockoutOffset'
+        )!;
+        this.bandMonitorMax = this.configService.get<number>(
             'analytic.fraud.bands.monitorMax'
         )!;
-        const reviewMax = this.configService.get<number>(
+        this.bandReviewMax = this.configService.get<number>(
             'analytic.fraud.bands.reviewMax'
         )!;
-        const elevateMax = this.configService.get<number>(
+        this.bandElevateMax = this.configService.get<number>(
             'analytic.fraud.bands.elevateMax'
         )!;
-        if (score <= monitorMax) {
-            return this.configService.get<string>(
-                'analytic.fraud.bandLabels.monitor'
-            )!;
-        }
-        if (score <= reviewMax) {
-            return this.configService.get<string>(
-                'analytic.fraud.bandLabels.review'
-            )!;
-        }
-        if (score <= elevateMax) {
-            return this.configService.get<string>(
-                'analytic.fraud.bandLabels.elevate'
-            )!;
-        }
-        return this.configService.get<string>(
-            'analytic.fraud.bandLabels.critical'
+        this.concurrency = this.configService.get<number>(
+            'analytic.fraud.concurrency'
         )!;
+    }
+
+    private resolveWindow(
+        windowMs: number | null,
+        defaultWindowInMs: number
+    ): number {
+        return windowMs ?? defaultWindowInMs;
+    }
+
+    private resolveBand(score: number): EnumAnalyticFraudBand {
+        if (score <= this.bandMonitorMax) {
+            return EnumAnalyticFraudBand.monitor;
+        }
+        if (score <= this.bandReviewMax) {
+            return EnumAnalyticFraudBand.review;
+        }
+        if (score <= this.bandElevateMax) {
+            return EnumAnalyticFraudBand.elevate;
+        }
+        return EnumAnalyticFraudBand.critical;
     }
 
     private async computeCredentialStuffing(
@@ -104,28 +227,29 @@ export class AnalyticFraudDomain {
             end,
             Duration.fromMillis(windowMs)
         );
-        const events = await this.userLoginAnalyticDomain.findFailedLoginEvents(
-            start,
-            end
-        );
-        const minUnique = this.configService.get<number>(
-            'analytic.fraud.credentialStuffing.minUniqueAccounts'
-        )!;
+        const activityLogs =
+            await this.userLoginAnalyticDomain.getFailedLoginActivityLogs(
+                start,
+                end
+            );
         const map = new Map<
             string,
             { users: Set<string>; failCount: number }
         >();
-        for (const e of events) {
-            const ip = e.ipAddress ?? 'unknown';
+        for (const activityLog of activityLogs) {
+            const ip = activityLog.ipAddress ?? 'unknown';
             if (!map.has(ip)) {
                 map.set(ip, { users: new Set(), failCount: 0 });
             }
             const row = map.get(ip)!;
-            row.users.add(e.userId);
+            row.users.add(activityLog.userId);
             row.failCount++;
         }
         return [...map.entries()]
-            .filter(([, v]) => v.users.size >= minUnique)
+            .filter(
+                ([, v]) =>
+                    v.users.size >= this.credentialStuffingMinUniqueAccounts
+            )
             .map(([ipAddress, v]) => ({
                 ipAddress,
                 uniqueUsers: v.users.size,
@@ -137,32 +261,42 @@ export class AnalyticFraudDomain {
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticAccountTakeover[]> {
-        const changes =
-            await this.userPasswordAnalyticDomain.findProfileChanges(
-                startDate,
-                endDate
-            );
-        const windowMs = this.configService.get<number>(
-            'analytic.fraud.accountTakeover.newDeviceAfterPasswordChangeInMs'
-        )!;
+        const changes = await this.userPasswordAnalyticDomain.getProfileChanges(
+            startDate,
+            endDate
+        );
         const flagged: IAnalyticAccountTakeover[] = [];
-        for (const change of changes) {
-            const windowEnd = this.helperDateService.forward(
-                change.createdAt,
-                Duration.fromMillis(windowMs)
-            );
-            const devices = await this.deviceAnalyticDomain.findCreatedInRange(
-                change.createdAt,
-                windowEnd
-            );
-            const forUser = devices.filter(d => d.userId === change.userId);
-            if (forUser.length > 0) {
-                flagged.push({
-                    userId: change.userId,
-                    indicatorCodes: ['newDeviceAfterPasswordChange'],
-                    passwordChangedAt: change.createdAt,
-                });
-            }
+        const batches = this.helperArrayService.chunk(
+            changes,
+            this.concurrency
+        );
+        for (const batch of batches) {
+            const devicePromises = batch.map(change => {
+                const windowEnd = this.helperDateService.forward(
+                    change.createdAt,
+                    Duration.fromMillis(
+                        this.accountTakeoverNewDeviceAfterPasswordChangeInMs
+                    )
+                );
+                return this.deviceAnalyticDomain.getCreatedInRange(
+                    change.createdAt,
+                    windowEnd
+                );
+            });
+            // Sequential by design: bounded chunks, concurrent within a chunk
+            const devicesPerChange = await Promise.all(devicePromises);
+            batch.forEach((change, index) => {
+                const forUser = devicesPerChange[index]!.filter(
+                    d => d.userId === change.userId
+                );
+                if (forUser.length > 0) {
+                    flagged.push({
+                        userId: change.userId,
+                        indicatorCodes: ['newDeviceAfterPasswordChange'],
+                        passwordChangedAt: change.createdAt,
+                    });
+                }
+            });
         }
         return flagged;
     }
@@ -175,20 +309,19 @@ export class AnalyticFraudDomain {
             end,
             Duration.fromMillis(windowMs)
         );
-        const users = await this.userAnalyticDomain.findSignUpsInRange(
+        const users = await this.userAnalyticDomain.getSignUpsInRange(
             start,
             end
         );
-        const minAccounts = this.configService.get<number>(
-            'analytic.fraud.massRegistration.minAccountsPerIp'
-        )!;
         const map = new Map<string, number>();
         for (const u of users) {
             const key = String(u.signUpFrom);
             map.set(key, (map.get(key) ?? 0) + 1);
         }
         return [...map.entries()]
-            .filter(([, count]) => count >= minAccounts)
+            .filter(
+                ([, count]) => count >= this.massRegistrationMinAccountsPerIp
+            )
             .map(([key, count]) => ({ key, count }));
     }
 
@@ -201,20 +334,20 @@ export class AnalyticFraudDomain {
             Duration.fromMillis(windowMs)
         );
         const rows =
-            await this.userForgotPasswordAnalyticDomain.findCreatedInRange(
+            await this.userForgotPasswordAnalyticDomain.getCreatedInRange(
                 start,
                 end
             );
-        const minReq = this.configService.get<number>(
-            'analytic.fraud.passwordResetEnumeration.minRequestsPerIp'
-        )!;
         const map = new Map<string, number>();
         for (const r of rows) {
-            const domain = r.to.includes('@') ? r.to.split('@')[1] : r.to;
+            const domain = r.to.includes('@') ? r.to.split('@')[1]! : r.to;
             map.set(domain, (map.get(domain) ?? 0) + 1);
         }
         return [...map.entries()]
-            .filter(([, count]) => count >= minReq)
+            .filter(
+                ([, count]) =>
+                    count >= this.passwordResetEnumerationMinRequestsPerIp
+            )
             .map(([key, count]) => ({ key, count }));
     }
 
@@ -223,7 +356,7 @@ export class AnalyticFraudDomain {
         endDate: Date
     ): Promise<IAnalyticSessionAfterAdmin[]> {
         const revokes =
-            await this.activityLogAnalyticDomain.findManyByActionsInRange(
+            await this.activityLogAnalyticDomain.getManyByActionsInRange(
                 [
                     EnumActivityLogAction.userRevokeSessionByAdmin,
                     EnumActivityLogAction.userRevokeAllSessionsByAdmin,
@@ -231,27 +364,36 @@ export class AnalyticFraudDomain {
                 startDate,
                 endDate
             );
-        const delta = this.configService.get<number>(
-            'analytic.fraud.sessionAfterAdmin.sessionAfterAdminRevokeInMs'
-        )!;
         const flagged: IAnalyticSessionAfterAdmin[] = [];
-        for (const revoke of revokes) {
-            const windowEnd = this.helperDateService.forward(
-                revoke.createdAt,
-                Duration.fromMillis(delta)
-            );
-            const logins = await this.userLoginAnalyticDomain.findLoginEvents(
-                revoke.createdAt,
-                windowEnd
-            );
-            const hit = logins.find(l => l.userId === revoke.userId);
-            if (hit) {
-                flagged.push({
-                    userId: revoke.userId,
-                    revokedAt: revoke.createdAt,
-                    loginAt: hit.createdAt,
-                });
-            }
+        const batches = this.helperArrayService.chunk(
+            revokes,
+            this.concurrency
+        );
+        for (const batch of batches) {
+            const loginPromises = batch.map(revoke => {
+                const windowEnd = this.helperDateService.forward(
+                    revoke.createdAt,
+                    Duration.fromMillis(this.sessionAfterAdminRevokeInMs)
+                );
+                return this.userLoginAnalyticDomain.getLoginActivityLogs(
+                    revoke.createdAt,
+                    windowEnd
+                );
+            });
+            // Sequential by design: bounded chunks, concurrent within a chunk
+            const loginsPerRevoke = await Promise.all(loginPromises);
+            batch.forEach((revoke, index) => {
+                const hit = loginsPerRevoke[index]!.find(
+                    l => l.userId === revoke.userId
+                );
+                if (hit) {
+                    flagged.push({
+                        userId: revoke.userId,
+                        revokedAt: revoke.createdAt,
+                        loginAt: hit.createdAt,
+                    });
+                }
+            });
         }
         return flagged;
     }
@@ -264,16 +406,15 @@ export class AnalyticFraudDomain {
             end,
             Duration.fromMillis(windowMs)
         );
-        const minUnused = this.configService.get<number>(
-            'analytic.fraud.forgotPasswordTokenAbuse.minUnusedTokens'
-        )!;
         const rows =
-            await this.userForgotPasswordAnalyticDomain.unusedTokenCountsByUser(
+            await this.userForgotPasswordAnalyticDomain.getUnusedTokenCountsByUser(
                 start,
                 end
             );
         return rows
-            .filter(r => r.count >= minUnused)
+            .filter(
+                r => r.count >= this.forgotPasswordTokenAbuseMinUnusedTokens
+            )
             .map(r => ({ userId: r.userId, tokenCount: r.count }));
     }
 
@@ -285,21 +426,18 @@ export class AnalyticFraudDomain {
             end,
             Duration.fromMillis(windowMs)
         );
-        const minEvents = this.configService.get<number>(
-            'analytic.fraud.refreshSpike.minEvents'
-        )!;
-        const events =
-            await this.activityLogAnalyticDomain.findManyByActionsInRange(
+        const activityLogs =
+            await this.activityLogAnalyticDomain.getManyByActionsInRange(
                 [EnumActivityLogAction.userRefreshToken],
                 start,
                 end
             );
         const map = new Map<string, number>();
-        for (const e of events) {
-            map.set(e.userId, (map.get(e.userId) ?? 0) + 1);
+        for (const activityLog of activityLogs) {
+            map.set(activityLog.userId, (map.get(activityLog.userId) ?? 0) + 1);
         }
         return [...map.entries()]
-            .filter(([, count]) => count >= minEvents)
+            .filter(([, count]) => count >= this.refreshSpikeMinCount)
             .map(([userId, count]) => ({ userId, count }));
     }
 
@@ -312,27 +450,41 @@ export class AnalyticFraudDomain {
             Duration.fromMillis(windowMs)
         );
         const regenerations =
-            await this.activityLogAnalyticDomain.findManyByActionsInRange(
+            await this.activityLogAnalyticDomain.getManyByActionsInRange(
                 [EnumActivityLogAction.userRegenerateTwoFactorBackupCodes],
                 start,
                 end
             );
         const flagged: IAnalyticBackupCodeNewDevice[] = [];
-        for (const regeneration of regenerations) {
-            const windowEnd = this.helperDateService.forward(
-                regeneration.createdAt,
-                Duration.fromMillis(windowMs)
-            );
-            const devices = await this.deviceAnalyticDomain.findCreatedInRange(
-                regeneration.createdAt,
-                windowEnd
-            );
-            if (devices.some(d => d.userId === regeneration.userId)) {
-                flagged.push({
-                    userId: regeneration.userId,
-                    regeneratedAt: regeneration.createdAt,
-                });
-            }
+        const batches = this.helperArrayService.chunk(
+            regenerations,
+            this.concurrency
+        );
+        for (const batch of batches) {
+            const devicePromises = batch.map(regeneration => {
+                const windowEnd = this.helperDateService.forward(
+                    regeneration.createdAt,
+                    Duration.fromMillis(windowMs)
+                );
+                return this.deviceAnalyticDomain.getCreatedInRange(
+                    regeneration.createdAt,
+                    windowEnd
+                );
+            });
+            // Sequential by design: bounded chunks, concurrent within a chunk
+            const devicesPerRegeneration = await Promise.all(devicePromises);
+            batch.forEach((regeneration, index) => {
+                if (
+                    devicesPerRegeneration[index]!.some(
+                        d => d.userId === regeneration.userId
+                    )
+                ) {
+                    flagged.push({
+                        userId: regeneration.userId,
+                        regeneratedAt: regeneration.createdAt,
+                    });
+                }
+            });
         }
         return flagged;
     }
@@ -345,11 +497,8 @@ export class AnalyticFraudDomain {
             end,
             Duration.fromMillis(windowMs)
         );
-        const minEvents = this.configService.get<number>(
-            'analytic.fraud.apiKeyBurst.minEvents'
-        )!;
-        const events =
-            await this.activityLogAnalyticDomain.findManyByActionsInRange(
+        const activityLogs =
+            await this.activityLogAnalyticDomain.getManyByActionsInRange(
                 [
                     EnumActivityLogAction.adminApiKeyCreate,
                     EnumActivityLogAction.adminApiKeyReset,
@@ -358,42 +507,129 @@ export class AnalyticFraudDomain {
                 end
             );
         const map = new Map<string, number>();
-        for (const e of events) {
-            map.set(e.userId, (map.get(e.userId) ?? 0) + 1);
+        for (const activityLog of activityLogs) {
+            map.set(activityLog.userId, (map.get(activityLog.userId) ?? 0) + 1);
         }
         return [...map.entries()]
-            .filter(([, count]) => count >= minEvents)
+            .filter(([, count]) => count >= this.apiKeyBurstMinCount)
             .map(([userId, count]) => ({ userId, count }));
+    }
+
+    private async scoreCached(
+        userId: string
+    ): Promise<IAnalyticFraudRiskScore> {
+        const cached =
+            await this.analyticCache.getRiskScore<IAnalyticFraudRiskScore>(
+                userId
+            );
+        if (cached) {
+            return cached;
+        }
+
+        // Sequential by design: gate before the work it guards
+        const user = await this.userAnalyticDomain.getOneById(userId);
+        if (!user) {
+            throw new UserNotFoundException();
+        }
+
+        const fingerprints =
+            await this.deviceAnalyticDomain.getSharedFingerprints(
+                this.sharedFingerprintMinUsersPerFingerprint
+            );
+        return this.scoreUser(user, fingerprints);
+    }
+
+    private async scoreListed(
+        user: IUserAnalyticRef,
+        shared: IAnalyticSharedFingerprint[]
+    ): Promise<IAnalyticFraudRiskScore> {
+        const cached =
+            await this.analyticCache.getRiskScore<IAnalyticFraudRiskScore>(
+                user.id
+            );
+        if (cached) {
+            return cached;
+        }
+
+        return this.scoreUser(user, shared);
+    }
+
+    private async scoreUser(
+        user: IUserAnalyticRef,
+        shared: IAnalyticSharedFingerprint[]
+    ): Promise<IAnalyticFraudRiskScore> {
+        const weights = {
+            sessionAfterAdmin: this.weightSessionAfterAdmin,
+            impossibleTravel: this.weightImpossibleTravel,
+            newDeviceAfterPasswordChange:
+                this.weightNewDeviceAfterPasswordChange,
+            credentialStuffingIp: this.weightCredentialStuffingIp,
+            sharedFingerprint: this.weightSharedFingerprint,
+            nearLockout: this.weightNearLockout,
+            massRegistrationIp: this.weightMassRegistrationIp,
+            forgotPasswordAbuse: this.weightForgotPasswordAbuse,
+        };
+
+        const contributingSignalCodes: EnumAnalyticFraudContributingSignal[] =
+            [];
+        let score = 0;
+
+        if (
+            (user.passwordAttempt ?? 0) >=
+            Math.max(
+                1,
+                this.passwordMaxAttempt - this.failedLoginSpikeNearLockoutOffset
+            )
+        ) {
+            score += weights.nearLockout;
+            contributingSignalCodes.push(
+                EnumAnalyticFraudContributingSignal.nearLockout
+            );
+        }
+
+        if (shared.some(s => s.userIds.includes(user.id))) {
+            score += weights.sharedFingerprint;
+            contributingSignalCodes.push(
+                EnumAnalyticFraudContributingSignal.sharedFingerprint
+            );
+        }
+
+        const band = this.resolveBand(score);
+        const result: IAnalyticFraudRiskScore = {
+            userId: user.id,
+            score,
+            band,
+            contributingSignalCodes,
+        };
+        await this.analyticCache.setRiskScore(user.id, result);
+        return result;
     }
 
     async credentialStuffingSummary(
         windowMs: number | null
-    ): Promise<IAnalyticFraudSummary> {
+    ): Promise<IAnalyticFraudCredentialStuffingSummary> {
         const window = this.resolveWindow(
             windowMs,
-            'analytic.fraud.credentialStuffing.windowInMs'
+            this.credentialStuffingWindowInMs
         );
         const cached =
-            await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'credential-stuffing',
+            await this.analyticCache.getFraudSummary<IAnalyticFraudCredentialStuffingSummary>(
+                EnumAnalyticFraudSignal.credentialStuffing,
                 String(window)
             );
         if (cached) {
             return cached;
         }
         const rows = await this.computeCredentialStuffing(window);
-        const minUniqueAccounts = this.configService.get<number>(
-            'analytic.fraud.credentialStuffing.minUniqueAccounts'
-        )!;
-        const summary: IAnalyticFraudSummary = {
+        const summary: IAnalyticFraudCredentialStuffingSummary = {
             count: rows.length,
             window: String(window),
             meta: {
-                minUniqueAccounts,
+                minUniqueAccounts: this.credentialStuffingMinUniqueAccounts,
             },
         };
         await this.analyticCache.setFraudSummary(
-            'credential-stuffing',
+            EnumAnalyticFraudSignal.credentialStuffing,
             String(window),
             summary
         );
@@ -406,7 +642,7 @@ export class AnalyticFraudDomain {
     ): Promise<IResponsePaginationReturn<IAnalyticCredentialStuffing>> {
         const window = this.resolveWindow(
             windowMs,
-            'analytic.fraud.credentialStuffing.windowInMs'
+            this.credentialStuffingWindowInMs
         );
         const rows = await this.computeCredentialStuffing(window);
 
@@ -431,7 +667,7 @@ export class AnalyticFraudDomain {
         const window = this.analyticDateUtil.windowToken(startDate, endDate);
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'account-takeover',
+                EnumAnalyticFraudSignal.accountTakeover,
                 window
             );
         if (cached) {
@@ -443,7 +679,7 @@ export class AnalyticFraudDomain {
             window,
         };
         await this.analyticCache.setFraudSummary(
-            'account-takeover',
+            EnumAnalyticFraudSignal.accountTakeover,
             window,
             summary
         );
@@ -476,11 +712,11 @@ export class AnalyticFraudDomain {
     ): Promise<IAnalyticFraudSummary> {
         const window = this.resolveWindow(
             windowMs,
-            'analytic.fraud.massRegistration.windowInMs'
+            this.massRegistrationWindowInMs
         );
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'mass-registration',
+                EnumAnalyticFraudSignal.massRegistration,
                 String(window)
             );
         if (cached) {
@@ -492,7 +728,7 @@ export class AnalyticFraudDomain {
             window: String(window),
         };
         await this.analyticCache.setFraudSummary(
-            'mass-registration',
+            EnumAnalyticFraudSignal.massRegistration,
             String(window),
             summary
         );
@@ -505,7 +741,7 @@ export class AnalyticFraudDomain {
     ): Promise<IResponsePaginationReturn<IAnalyticMassRegistration>> {
         const window = this.resolveWindow(
             windowMs,
-            'analytic.fraud.massRegistration.windowInMs'
+            this.massRegistrationWindowInMs
         );
         const rows = await this.computeMassRegistration(window);
 
@@ -528,11 +764,11 @@ export class AnalyticFraudDomain {
     ): Promise<IAnalyticFraudSummary> {
         const window = this.resolveWindow(
             windowMs,
-            'analytic.fraud.passwordResetEnumeration.windowInMs'
+            this.passwordResetEnumerationWindowInMs
         );
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'password-reset-enumeration',
+                EnumAnalyticFraudSignal.passwordResetEnumeration,
                 String(window)
             );
         if (cached) {
@@ -544,7 +780,7 @@ export class AnalyticFraudDomain {
             window: String(window),
         };
         await this.analyticCache.setFraudSummary(
-            'password-reset-enumeration',
+            EnumAnalyticFraudSignal.passwordResetEnumeration,
             String(window),
             summary
         );
@@ -557,7 +793,7 @@ export class AnalyticFraudDomain {
     ): Promise<IResponsePaginationReturn<IAnalyticPasswordResetEnumeration>> {
         const window = this.resolveWindow(
             windowMs,
-            'analytic.fraud.passwordResetEnumeration.windowInMs'
+            this.passwordResetEnumerationWindowInMs
         );
         const rows = await this.computePasswordResetEnumeration(window);
 
@@ -578,21 +814,22 @@ export class AnalyticFraudDomain {
     async sharedFingerprintSummary(): Promise<IAnalyticFraudSummary> {
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'shared-fingerprint',
-                '_'
+                EnumAnalyticFraudSignal.sharedFingerprint,
+                AnalyticCacheEmptyToken
             );
         if (cached) {
             return cached;
         }
-        const minUsers = this.configService.get<number>(
-            'analytic.fraud.sharedFingerprint.minUsersPerFingerprint'
-        )!;
-        const rows =
-            await this.deviceAnalyticDomain.sharedFingerprints(minUsers);
-        const summary: IAnalyticFraudSummary = { count: rows.length };
+        const rows = await this.deviceAnalyticDomain.getSharedFingerprints(
+            this.sharedFingerprintMinUsersPerFingerprint
+        );
+        const summary: IAnalyticFraudSummary = {
+            count: rows.length,
+            window: null,
+        };
         await this.analyticCache.setFraudSummary(
-            'shared-fingerprint',
-            '_',
+            EnumAnalyticFraudSignal.sharedFingerprint,
+            AnalyticCacheEmptyToken,
             summary
         );
         return summary;
@@ -601,11 +838,9 @@ export class AnalyticFraudDomain {
     async sharedFingerprintList(
         params: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticSharedFingerprint>> {
-        const minUsers = this.configService.get<number>(
-            'analytic.fraud.sharedFingerprint.minUsersPerFingerprint'
-        )!;
-        const rows =
-            await this.deviceAnalyticDomain.sharedFingerprints(minUsers);
+        const rows = await this.deviceAnalyticDomain.getSharedFingerprints(
+            this.sharedFingerprintMinUsersPerFingerprint
+        );
         const { skip, limit, orderBy } = params;
         const sorted = this.analyticSortUtil.sortRows(
             rows,
@@ -627,7 +862,7 @@ export class AnalyticFraudDomain {
         const window = this.analyticDateUtil.windowToken(startDate, endDate);
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'session-after-admin',
+                EnumAnalyticFraudSignal.sessionAfterAdmin,
                 window
             );
         if (cached) {
@@ -639,7 +874,7 @@ export class AnalyticFraudDomain {
             window,
         };
         await this.analyticCache.setFraudSummary(
-            'session-after-admin',
+            EnumAnalyticFraudSignal.sessionAfterAdmin,
             window,
             summary
         );
@@ -672,11 +907,11 @@ export class AnalyticFraudDomain {
     ): Promise<IAnalyticFraudSummary> {
         const window = this.resolveWindow(
             windowMs,
-            'analytic.fraud.forgotPasswordTokenAbuse.windowInMs'
+            this.forgotPasswordTokenAbuseWindowInMs
         );
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'forgot-password-token-abuse',
+                EnumAnalyticFraudSignal.forgotPasswordTokenAbuse,
                 String(window)
             );
         if (cached) {
@@ -688,7 +923,7 @@ export class AnalyticFraudDomain {
             window: String(window),
         };
         await this.analyticCache.setFraudSummary(
-            'forgot-password-token-abuse',
+            EnumAnalyticFraudSignal.forgotPasswordTokenAbuse,
             String(window),
             summary
         );
@@ -701,7 +936,7 @@ export class AnalyticFraudDomain {
     ): Promise<IResponsePaginationReturn<IAnalyticForgotPasswordAbuse>> {
         const window = this.resolveWindow(
             windowMs,
-            'analytic.fraud.forgotPasswordTokenAbuse.windowInMs'
+            this.forgotPasswordTokenAbuseWindowInMs
         );
         const rows = await this.computeForgotPasswordAbuse(window);
 
@@ -724,11 +959,11 @@ export class AnalyticFraudDomain {
     ): Promise<IAnalyticFraudSummary> {
         const window = this.resolveWindow(
             windowMs,
-            'analytic.fraud.refreshSpike.windowInMs'
+            this.refreshSpikeWindowInMs
         );
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'refresh-spike',
+                EnumAnalyticFraudSignal.refreshSpike,
                 String(window)
             );
         if (cached) {
@@ -740,7 +975,7 @@ export class AnalyticFraudDomain {
             window: String(window),
         };
         await this.analyticCache.setFraudSummary(
-            'refresh-spike',
+            EnumAnalyticFraudSignal.refreshSpike,
             String(window),
             summary
         );
@@ -753,7 +988,7 @@ export class AnalyticFraudDomain {
     ): Promise<IResponsePaginationReturn<IAnalyticRefreshSpike>> {
         const window = this.resolveWindow(
             windowMs,
-            'analytic.fraud.refreshSpike.windowInMs'
+            this.refreshSpikeWindowInMs
         );
         const rows = await this.computeRefreshSpike(window);
 
@@ -776,11 +1011,11 @@ export class AnalyticFraudDomain {
     ): Promise<IAnalyticFraudSummary> {
         const window = this.resolveWindow(
             windowMs,
-            'analytic.fraud.backupCodeNewDevice.windowInMs'
+            this.backupCodeNewDeviceWindowInMs
         );
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'backup-code-new-device',
+                EnumAnalyticFraudSignal.backupCodeNewDevice,
                 String(window)
             );
         if (cached) {
@@ -792,7 +1027,7 @@ export class AnalyticFraudDomain {
             window: String(window),
         };
         await this.analyticCache.setFraudSummary(
-            'backup-code-new-device',
+            EnumAnalyticFraudSignal.backupCodeNewDevice,
             String(window),
             summary
         );
@@ -805,7 +1040,7 @@ export class AnalyticFraudDomain {
     ): Promise<IResponsePaginationReturn<IAnalyticBackupCodeNewDevice>> {
         const window = this.resolveWindow(
             windowMs,
-            'analytic.fraud.backupCodeNewDevice.windowInMs'
+            this.backupCodeNewDeviceWindowInMs
         );
         const rows = await this.computeBackupCodeNewDevice(window);
 
@@ -826,13 +1061,10 @@ export class AnalyticFraudDomain {
     async apiKeyBurstSummary(
         windowMs: number | null
     ): Promise<IAnalyticFraudSummary> {
-        const window = this.resolveWindow(
-            windowMs,
-            'analytic.fraud.apiKeyBurst.windowInMs'
-        );
+        const window = this.resolveWindow(windowMs, this.apiKeyBurstWindowInMs);
         const cached =
             await this.analyticCache.getFraudSummary<IAnalyticFraudSummary>(
-                'api-key-burst',
+                EnumAnalyticFraudSignal.apiKeyBurst,
                 String(window)
             );
         if (cached) {
@@ -844,7 +1076,7 @@ export class AnalyticFraudDomain {
             window: String(window),
         };
         await this.analyticCache.setFraudSummary(
-            'api-key-burst',
+            EnumAnalyticFraudSignal.apiKeyBurst,
             String(window),
             summary
         );
@@ -855,10 +1087,7 @@ export class AnalyticFraudDomain {
         windowMs: number | null,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticApiKeyBurst>> {
-        const window = this.resolveWindow(
-            windowMs,
-            'analytic.fraud.apiKeyBurst.windowInMs'
-        );
+        const window = this.resolveWindow(windowMs, this.apiKeyBurstWindowInMs);
         const rows = await this.computeApiKeyBurst(window);
 
         const { skip, limit, orderBy } = params;
@@ -876,104 +1105,36 @@ export class AnalyticFraudDomain {
     }
 
     async riskScore(userId: string): Promise<IAnalyticFraudRiskScore> {
-        const cached =
-            await this.analyticCache.getRiskScore<IAnalyticFraudRiskScore>(
-                userId
-            );
-        if (cached) {
-            return cached;
-        }
-
-        const user = await this.userAnalyticDomain.findOneById(userId);
-        if (!user) {
-            throw new UserNotFoundException();
-        }
-
-        const sessionAfterAdminWeight = this.configService.get<number>(
-            'analytic.fraud.weights.sessionAfterAdmin'
-        )!;
-        const impossibleTravelWeight = this.configService.get<number>(
-            'analytic.fraud.weights.impossibleTravel'
-        )!;
-        const newDeviceAfterPasswordChangeWeight =
-            this.configService.get<number>(
-                'analytic.fraud.weights.newDeviceAfterPasswordChange'
-            )!;
-        const credentialStuffingIpWeight = this.configService.get<number>(
-            'analytic.fraud.weights.credentialStuffingIp'
-        )!;
-        const sharedFingerprintWeight = this.configService.get<number>(
-            'analytic.fraud.weights.sharedFingerprint'
-        )!;
-        const nearLockoutWeight = this.configService.get<number>(
-            'analytic.fraud.weights.nearLockout'
-        )!;
-        const massRegistrationIpWeight = this.configService.get<number>(
-            'analytic.fraud.weights.massRegistrationIp'
-        )!;
-        const forgotPasswordAbuseWeight = this.configService.get<number>(
-            'analytic.fraud.weights.forgotPasswordAbuse'
-        )!;
-        const weights = {
-            sessionAfterAdmin: sessionAfterAdminWeight,
-            impossibleTravel: impossibleTravelWeight,
-            newDeviceAfterPasswordChange: newDeviceAfterPasswordChangeWeight,
-            credentialStuffingIp: credentialStuffingIpWeight,
-            sharedFingerprint: sharedFingerprintWeight,
-            nearLockout: nearLockoutWeight,
-            massRegistrationIp: massRegistrationIpWeight,
-            forgotPasswordAbuse: forgotPasswordAbuseWeight,
-        };
-
-        const contributingSignalCodes: string[] = [];
-        let score = 0;
-
-        const maxAttempt = this.configService.get<number>(
-            'auth.password.maxAttempt'
-        )!;
-        const nearOffset = this.configService.get<number>(
-            'analytic.anomaly.failedLoginSpike.nearLockoutOffset'
-        )!;
-        if (
-            (user.passwordAttempt ?? 0) >= Math.max(1, maxAttempt - nearOffset)
-        ) {
-            score += weights.nearLockout;
-            contributingSignalCodes.push('nearLockout');
-        }
-
-        const minUsers = this.configService.get<number>(
-            'analytic.fraud.sharedFingerprint.minUsersPerFingerprint'
-        )!;
-        const shared =
-            await this.deviceAnalyticDomain.sharedFingerprints(minUsers);
-        if (shared.some(s => s.userIds.includes(userId))) {
-            score += weights.sharedFingerprint;
-            contributingSignalCodes.push('sharedFingerprint');
-        }
-
-        const band = this.resolveBand(score);
-        const result: IAnalyticFraudRiskScore = {
-            userId,
-            score,
-            band,
-            contributingSignalCodes,
-        };
-        await this.analyticCache.setRiskScore(userId, result);
-        return result;
+        return this.scoreCached(userId);
     }
 
     async riskScores(
         minScore: number | null,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
-        const near = await this.userAnalyticDomain.findNearLockout(1);
-        const scored: IAnalyticFraudRiskScore[] = [];
-        for (const u of near.slice(0, 100)) {
-            const s = await this.riskScore(u.id);
-            if (minScore === null || s.score >= minScore) {
-                scored.push(s);
-            }
+        const [near, shared] = await Promise.all([
+            this.userAnalyticDomain.getNearLockout(1),
+            this.deviceAnalyticDomain.getSharedFingerprints(
+                this.sharedFingerprintMinUsersPerFingerprint
+            ),
+        ]);
+
+        const all: IAnalyticFraudRiskScore[] = [];
+        const batches = this.helperArrayService.chunk(
+            near.slice(0, 100),
+            this.concurrency
+        );
+        for (const batch of batches) {
+            // Sequential by design: bounded chunks, concurrent within a chunk
+            const batchScores = await Promise.all(
+                batch.map(u => this.scoreListed(u, shared))
+            );
+            all.push(...batchScores);
         }
+
+        const scored = all.filter(
+            s => minScore === null || s.score >= minScore
+        );
         scored.sort((a, b) => b.score - a.score);
         const { skip, limit, orderBy } = params;
         const sorted = this.analyticSortUtil.sortRows(

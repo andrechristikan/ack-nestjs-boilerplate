@@ -14,15 +14,13 @@ import {
 } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
 import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
 import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
 import { ApiKeyStartAtNotFutureException } from '@modules/api-key/exceptions/api-key.start-at-not-future.exception';
 import { ApiKeyXApiKeyForbiddenException } from '@modules/api-key/exceptions/api-key.x-api-key-forbidden.exception';
 import { ApiKeyXApiKeyInvalidException } from '@modules/api-key/exceptions/api-key.x-api-key-invalid.exception';
-import { ApiKeyXApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.x-api-key-not-found.exception';
-import { ApiKeyXApiKeyPredefinedNotFoundException } from '@modules/api-key/exceptions/api-key.x-api-key-predefined-not-found.exception';
 import { ApiKeyXApiKeyRequiredException } from '@modules/api-key/exceptions/api-key.x-api-key-required.exception';
 import type {
     IApiKey,
@@ -79,7 +77,7 @@ export class ApiKeyDomain {
         apiKey: Pick<ApiKey, 'id' | 'name' | 'type'>,
         timestamp: Date,
         onError: boolean
-    ): IActivityLogStagedEvent {
+    ): IActivityLogStaged {
         const metadata = this.apiKeyUtil.mapActivityLogMetadata(
             apiKey,
             timestamp
@@ -99,8 +97,8 @@ export class ApiKeyDomain {
     ): Promise<IResponsePaginationReturn<IApiKey>> {
         return this.apiKeyRepository.findWithPagination(
             pagination,
-            isActive,
-            type
+            isActive ?? null,
+            type ?? null
         );
     }
 
@@ -117,7 +115,7 @@ export class ApiKeyDomain {
             this.apiKeyCredentialUtil.generateCredential();
         const apiKeyId = this.databaseUtil.createId();
         const createdAt = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyCreate,
                 { id: apiKeyId, name: others.name, type: others.type },
@@ -125,37 +123,37 @@ export class ApiKeyDomain {
                 false
             ),
         ];
-        let startAtDay: Date | undefined;
-        let endAtDay: Date | undefined;
+        let dateWindow: { startAt: Date | null; endAt: Date | null } = {
+            startAt: null,
+            endAt: null,
+        };
         if (startAt && endAt) {
-            startAtDay = this.helperDateService.create(startAt, {
+            const startAtDay = this.helperDateService.create(startAt, {
                 dayOf: EnumHelperDateDayOf.start,
             });
-            endAtDay = this.helperDateService.create(endAt, {
+            const endAtDay = this.helperDateService.create(endAt, {
                 dayOf: EnumHelperDateDayOf.end,
             });
-        } else {
-            startAtDay = undefined;
-            endAtDay = undefined;
+            dateWindow = { startAt: startAtDay, endAt: endAtDay };
         }
         const created = await this.apiKeyRepository.create(
             apiKeyId,
             {
                 ...others,
-                startAt: startAtDay,
-                endAt: endAtDay,
+                ...dateWindow,
             },
             key,
             hash
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { apiKey: created, secret };
     }
 
     async updateStatusByAdmin(id: string, isActive: boolean): Promise<IApiKey> {
         const today = this.helperDateService.create();
+        // Sequential by design: gate before the work it guards
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
             throw new ApiKeyNotFoundException();
@@ -172,7 +170,7 @@ export class ApiKeyDomain {
             throw new ApiKeyExpiredException();
         }
 
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyUpdateStatus,
                 apiKey,
@@ -183,18 +181,19 @@ export class ApiKeyDomain {
         const updated = await this.apiKeyRepository.updateStatus(id, {
             isActive,
         });
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
         return updated;
     }
 
     async updateByAdmin(id: string, name: string): Promise<IApiKey> {
+        // Sequential by design: gate before the work it guards
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
         const updatedAt = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyUpdate,
                 {
@@ -207,7 +206,7 @@ export class ApiKeyDomain {
             ),
         ];
         const updated = await this.apiKeyRepository.updateName(id, name);
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
         return updated;
@@ -220,6 +219,7 @@ export class ApiKeyDomain {
     ): Promise<IApiKey> {
         this.validateStartAtIsFuture(startAt);
 
+        // Sequential by design: gate before the work it guards
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
@@ -231,7 +231,7 @@ export class ApiKeyDomain {
         });
 
         const timestamp = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyUpdateDate,
                 apiKey,
@@ -243,13 +243,14 @@ export class ApiKeyDomain {
             startAt: newStartAt,
             endAt: newEndAt,
         });
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
         return updated;
     }
 
     async resetByAdmin(id: string): Promise<IApiKeyWithSecret> {
+        // Sequential by design: gate before the work it guards
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
@@ -259,7 +260,7 @@ export class ApiKeyDomain {
             secret
         );
         const timestamp = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyReset,
                 apiKey,
@@ -268,20 +269,21 @@ export class ApiKeyDomain {
             ),
         ];
         const updated = await this.apiKeyRepository.updateHash(id, hash);
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
         return { apiKey: updated, secret };
     }
 
     async deleteByAdmin(id: string): Promise<IApiKey> {
+        // Sequential by design: gate before the work it guards
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
             throw new ApiKeyNotFoundException();
         }
 
         const timestamp = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyDelete,
                 apiKey,
@@ -290,13 +292,13 @@ export class ApiKeyDomain {
             ),
         ];
         const deleted = await this.apiKeyRepository.delete(id);
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
         return deleted;
     }
 
-    async findOneActiveByKeyAndCache(key: string): Promise<ApiKey | null> {
+    async getOneActiveByKeyAndCache(key: string): Promise<ApiKey | null> {
         const cached = await this.apiKeyCache.getCacheByKey(key);
         if (cached) {
             return cached;
@@ -327,10 +329,10 @@ export class ApiKeyDomain {
 
         const [key, secret] = xApiKey;
         const today = this.helperDateService.create();
-        const apiKey = await this.findOneActiveByKeyAndCache(key);
+        const apiKey = await this.getOneActiveByKeyAndCache(key);
 
         if (!apiKey) {
-            throw new ApiKeyXApiKeyNotFoundException();
+            throw new ApiKeyXApiKeyInvalidException();
         }
 
         const isCredentialValid = this.apiKeyCredentialUtil.validateCredential(
@@ -354,17 +356,9 @@ export class ApiKeyDomain {
     }
 
     validateXApiKeyTypeGuard(
-        apiKey: ApiKey | null,
+        apiKey: ApiKey,
         apiKeyTypes: EnumApiKeyType[]
     ): boolean {
-        if (apiKeyTypes.length === 0) {
-            throw new ApiKeyXApiKeyPredefinedNotFoundException();
-        }
-
-        if (!apiKey) {
-            throw new ApiKeyXApiKeyForbiddenException();
-        }
-
         const isTypeAllowed = this.apiKeyUtil.validateType(apiKey, apiKeyTypes);
         if (!isTypeAllowed) {
             throw new ApiKeyXApiKeyForbiddenException();

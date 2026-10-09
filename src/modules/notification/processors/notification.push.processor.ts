@@ -5,7 +5,7 @@ import {
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
-    INotificationPushCleanupTokenQueuePayload,
+    INotificationPushCleanupTokenPayload,
     INotificationPushQueuePayload,
     INotificationTemporaryPasswordPushPayload,
     INotificationWorkspaceInvitePushPayload,
@@ -75,6 +75,14 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                         EnumNotificationPushProcess
                     >
                 );
+            case EnumNotificationPushProcess.forgotPassword:
+                return await this.notificationPushProcessorService.processForgotPassword(
+                    job as Job<
+                        INotificationPushQueuePayload,
+                        IQueueResponse,
+                        EnumNotificationPushProcess
+                    >
+                );
             case EnumNotificationPushProcess.workspaceInvite:
                 return await this.notificationPushProcessorService.processWorkspaceInvite(
                     job as Job<
@@ -110,7 +118,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
             case EnumNotificationPushProcess.cleanupTokens:
                 return await this.notificationPushProcessorService.processCleanupTokens(
                     job as Job<
-                        INotificationPushCleanupTokenQueuePayload,
+                        INotificationPushCleanupTokenPayload,
                         IQueueResponse,
                         EnumNotificationPushProcess
                     >

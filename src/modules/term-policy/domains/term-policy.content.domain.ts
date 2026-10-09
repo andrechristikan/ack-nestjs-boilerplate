@@ -1,15 +1,16 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import { AwsServiceUnavailableException } from '@common/aws/exceptions/aws.service-unavailable.exception';
+import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
+import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
@@ -41,7 +42,7 @@ export class TermPolicyContentDomain {
         action: EnumActivityLogAction,
         termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
         timestamp: Date
-    ): IActivityLogStagedEvent {
+    ): IActivityLogStaged {
         const metadata = this.termPolicyUtil.mapActivityLogMetadata(
             termPolicy,
             timestamp
@@ -71,6 +72,7 @@ export class TermPolicyContentDomain {
         type,
         version,
     }: ITermPolicyContentPresign): Promise<IAwsS3Presign> {
+        // Sequential by design: gate before the work it guards
         const status =
             await this.termPolicyRepository.findStatusByVersionAndType(
                 version,
@@ -103,7 +105,7 @@ export class TermPolicyContentDomain {
             );
 
         if (!aws) {
-            throw new AwsServiceUnavailableException();
+            throw new AwsS3NotConfiguredException();
         }
 
         return aws;
@@ -114,6 +116,15 @@ export class TermPolicyContentDomain {
         { key, size, language }: ITermPolicyContentUpload
     ): Promise<void> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
+        const contents = this.termPolicyUtil.toContents(termPolicy.contents);
+        if (contents instanceof TermPolicyContentInvalidException) {
+            throw contents;
+        }
+
+        const isS3Initialized = this.awsS3Service.isInitialized();
+        if (!isS3Initialized) {
+            throw new AwsS3NotConfiguredException();
+        }
 
         try {
             const presign = this.awsS3Service.mapPresign(
@@ -127,7 +138,7 @@ export class TermPolicyContentDomain {
                 ...presign,
             };
             const timestamp = this.helperDateService.create();
-            const events = [
+            const activityLogs = [
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyUpdateContent,
                     termPolicy,
@@ -136,11 +147,11 @@ export class TermPolicyContentDomain {
             ];
             await this.termPolicyRepository.updateContent(
                 termPolicyId,
-                termPolicy.contents as unknown as ITermPolicyContent[],
+                contents,
                 mappedContent
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -157,13 +168,22 @@ export class TermPolicyContentDomain {
         { key, size, language }: ITermPolicyContentUpload
     ): Promise<void> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
+        const contents = this.termPolicyUtil.toContents(termPolicy.contents);
+        if (contents instanceof TermPolicyContentInvalidException) {
+            throw contents;
+        }
 
         const existingContent = this.termPolicyUtil.getContentByLanguage(
-            termPolicy.contents as unknown as ITermPolicyContent[],
+            contents,
             language
         );
         if (existingContent) {
             throw new TermPolicyContentExistException();
+        }
+
+        const isS3Initialized = this.awsS3Service.isInitialized();
+        if (!isS3Initialized) {
+            throw new AwsS3NotConfiguredException();
         }
 
         try {
@@ -178,7 +198,7 @@ export class TermPolicyContentDomain {
                 ...presign,
             };
             const timestamp = this.helperDateService.create();
-            const events = [
+            const activityLogs = [
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyAddContent,
                     termPolicy,
@@ -190,7 +210,7 @@ export class TermPolicyContentDomain {
                 mappedContent
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -207,9 +227,13 @@ export class TermPolicyContentDomain {
         language: EnumMessageLanguage
     ): Promise<void> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
+        const contents = this.termPolicyUtil.toContents(termPolicy.contents);
+        if (contents instanceof TermPolicyContentInvalidException) {
+            throw contents;
+        }
 
         const existingContent = this.termPolicyUtil.getContentByLanguage(
-            termPolicy.contents as unknown as ITermPolicyContent[],
+            contents,
             language
         );
         if (!existingContent) {
@@ -218,7 +242,7 @@ export class TermPolicyContentDomain {
 
         try {
             const timestamp = this.helperDateService.create();
-            const events = [
+            const activityLogs = [
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyRemoveContent,
                     termPolicy,
@@ -227,11 +251,11 @@ export class TermPolicyContentDomain {
             ];
             await this.termPolicyRepository.removeContent(
                 termPolicyId,
-                termPolicy.contents as unknown as ITermPolicyContent[],
+                contents,
                 { language }
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -252,9 +276,13 @@ export class TermPolicyContentDomain {
         if (!termPolicy) {
             throw new TermPolicyNotFoundException();
         }
+        const contents = this.termPolicyUtil.toContents(termPolicy.contents);
+        if (contents instanceof TermPolicyContentInvalidException) {
+            throw contents;
+        }
 
         const existContent = this.termPolicyUtil.getContentByLanguage(
-            termPolicy.contents as unknown as ITermPolicyContent[],
+            contents,
             language
         );
         if (!existContent) {
@@ -267,7 +295,7 @@ export class TermPolicyContentDomain {
             });
 
         if (!awsPresign) {
-            throw new AwsServiceUnavailableException();
+            throw new AwsS3NotConfiguredException();
         }
 
         return awsPresign;

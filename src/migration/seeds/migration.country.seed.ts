@@ -8,6 +8,7 @@ import type { CountryRequestDto } from '@modules/country/dtos/request/country.re
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
 /**
  * Seeds country reference data for the current environment.
@@ -66,8 +67,7 @@ export class MigrationCountrySeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error seeding countries');
-            throw error;
+            throw new AppUnknownException(error, 'Seeding countries failed');
         }
 
         this.logger.log('Countries seeded successfully.');
@@ -83,8 +83,7 @@ export class MigrationCountrySeed
                 where: {},
             });
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing countries');
-            throw error;
+            throw new AppUnknownException(error, 'Removing countries failed');
         }
 
         this.logger.log('Countries removed successfully.');

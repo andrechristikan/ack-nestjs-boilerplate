@@ -74,10 +74,11 @@ export class FeatureFlagHttpService {
         id: string,
         body: FeatureFlagUpdateStatusRequestDto
     ): Promise<IResponseReturn<FeatureFlag>> {
-        const updated = await this.featureFlagDomain.updateStatusByAdmin(
-            id,
-            body
-        );
+        const updated = await this.featureFlagDomain.updateStatusByAdmin(id, {
+            isEnable: body.isEnable,
+            rolloutPercent: body.rolloutPercent,
+            targetUserIds: body.targetUserIds,
+        });
 
         return {
             data: updated,

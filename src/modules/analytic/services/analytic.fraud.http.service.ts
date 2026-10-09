@@ -6,6 +6,37 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import type { AnalyticAccountTakeoverListRequestDto } from '@modules/analytic/dtos/request/analytic.account-takeover-list.request.dto';
+import type { AnalyticApiKeyBurstListRequestDto } from '@modules/analytic/dtos/request/analytic.api-key-burst-list.request.dto';
+import type { AnalyticBackupCodeNewDeviceListRequestDto } from '@modules/analytic/dtos/request/analytic.backup-code-new-device-list.request.dto';
+import type { AnalyticCredentialStuffingListRequestDto } from '@modules/analytic/dtos/request/analytic.credential-stuffing-list.request.dto';
+import type { AnalyticForgotPasswordAbuseListRequestDto } from '@modules/analytic/dtos/request/analytic.forgot-password-abuse-list.request.dto';
+import type { AnalyticFraudRiskScoresListRequestDto } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores-list.request.dto';
+import type { AnalyticMassRegistrationListRequestDto } from '@modules/analytic/dtos/request/analytic.mass-registration-list.request.dto';
+import type { AnalyticPasswordResetEnumerationListRequestDto } from '@modules/analytic/dtos/request/analytic.password-reset-enumeration-list.request.dto';
+import type { AnalyticRefreshSpikeListRequestDto } from '@modules/analytic/dtos/request/analytic.refresh-spike-list.request.dto';
+import type { AnalyticSessionAfterAdminListRequestDto } from '@modules/analytic/dtos/request/analytic.session-after-admin-list.request.dto';
+import type { AnalyticSharedFingerprintListRequestDto } from '@modules/analytic/dtos/request/analytic.shared-fingerprint-list.request.dto';
+import { AnalyticFraudDomain } from '@modules/analytic/domains/analytic.fraud.domain';
+import type {
+    IAnalyticAccountTakeover,
+    IAnalyticApiKeyBurst,
+    IAnalyticBackupCodeNewDevice,
+    IAnalyticCredentialStuffing,
+    IAnalyticForgotPasswordAbuse,
+    IAnalyticFraudCredentialStuffingSummary,
+    IAnalyticFraudRiskScore,
+    IAnalyticFraudSummary,
+    IAnalyticMassRegistration,
+    IAnalyticPasswordResetEnumeration,
+    IAnalyticRefreshSpike,
+    IAnalyticSessionAfterAdmin,
+    IAnalyticSharedFingerprint,
+} from '@modules/analytic/interfaces/analytic.interface';
+import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
+import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
+import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
+import { Injectable } from '@nestjs/common';
 import {
     AnalyticAccountTakeoverAvailableOrderBy,
     AnalyticBackupCodeNewDeviceAvailableOrderBy,
@@ -17,34 +48,6 @@ import {
     AnalyticSharedFingerprintAvailableOrderBy,
     AnalyticUserCountAvailableOrderBy,
 } from '@modules/analytic/constants/analytic.list.constant';
-import type { AnalyticAccountTakeoverListRequestDto } from '@modules/analytic/dtos/request/analytic-account-takeover-list.request.dto';
-import type { AnalyticApiKeyBurstListRequestDto } from '@modules/analytic/dtos/request/analytic-api-key-burst-list.request.dto';
-import type { AnalyticBackupCodeNewDeviceListRequestDto } from '@modules/analytic/dtos/request/analytic-backup-code-new-device-list.request.dto';
-import type { AnalyticCredentialStuffingListRequestDto } from '@modules/analytic/dtos/request/analytic-credential-stuffing-list.request.dto';
-import type { AnalyticForgotPasswordAbuseListRequestDto } from '@modules/analytic/dtos/request/analytic-forgot-password-abuse-list.request.dto';
-import type { AnalyticFraudRiskScoresListRequestDto } from '@modules/analytic/dtos/request/analytic-fraud-risk-scores-list.request.dto';
-import type { AnalyticMassRegistrationListRequestDto } from '@modules/analytic/dtos/request/analytic-mass-registration-list.request.dto';
-import type { AnalyticPasswordResetEnumerationListRequestDto } from '@modules/analytic/dtos/request/analytic-password-reset-enumeration-list.request.dto';
-import type { AnalyticRefreshSpikeListRequestDto } from '@modules/analytic/dtos/request/analytic-refresh-spike-list.request.dto';
-import type { AnalyticSessionAfterAdminListRequestDto } from '@modules/analytic/dtos/request/analytic-session-after-admin-list.request.dto';
-import type { AnalyticSharedFingerprintListRequestDto } from '@modules/analytic/dtos/request/analytic-shared-fingerprint-list.request.dto';
-import { AnalyticFraudDomain } from '@modules/analytic/domains/analytic.fraud.domain';
-import type {
-    IAnalyticAccountTakeover,
-    IAnalyticApiKeyBurst,
-    IAnalyticBackupCodeNewDevice,
-    IAnalyticCredentialStuffing,
-    IAnalyticForgotPasswordAbuse,
-    IAnalyticFraudRiskScore,
-    IAnalyticFraudSummary,
-    IAnalyticMassRegistration,
-    IAnalyticPasswordResetEnumeration,
-    IAnalyticRefreshSpike,
-    IAnalyticSessionAfterAdmin,
-    IAnalyticSharedFingerprint,
-} from '@modules/analytic/interfaces/analytic.interface';
-import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
-import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class AnalyticFraudHttpService {
@@ -56,10 +59,10 @@ export class AnalyticFraudHttpService {
     ) {}
 
     async credentialStuffingSummary(
-        windowMs?: number
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
+        query: AnalyticWindowRequestDto
+    ): Promise<IResponseReturn<IAnalyticFraudCredentialStuffingSummary>> {
         const data = await this.analyticFraudDomain.credentialStuffingSummary(
-            windowMs ?? null
+            query.windowMs ?? null
         );
 
         return { data };
@@ -71,10 +74,7 @@ export class AnalyticFraudHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
                 query,
-                {
-                    availableOrderBy:
-                        AnalyticCredentialStuffingAvailableOrderBy,
-                }
+                { availableOrderBy: AnalyticCredentialStuffingAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -84,14 +84,13 @@ export class AnalyticFraudHttpService {
         );
     }
 
-    async accountTakeoverSummary(
-        startDate?: Date,
-        endDate?: Date
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+    async accountTakeoverSummary({
+        startDate,
+        endDate,
+    }: AnalyticDateRangeRequestDto): Promise<
+        IResponseReturn<IAnalyticFraudSummary>
+    > {
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticFraudDomain.accountTakeoverSummary(
             range.startDate,
             range.endDate
@@ -106,9 +105,7 @@ export class AnalyticFraudHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.PasswordHistoryWhereInput>(
                 query,
-                {
-                    availableOrderBy: AnalyticAccountTakeoverAvailableOrderBy,
-                }
+                { availableOrderBy: AnalyticAccountTakeoverAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.requireRange(
@@ -123,10 +120,10 @@ export class AnalyticFraudHttpService {
     }
 
     async massRegistrationSummary(
-        windowMs?: number
+        query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         const data = await this.analyticFraudDomain.massRegistrationSummary(
-            windowMs ?? null
+            query.windowMs ?? null
         );
 
         return { data };
@@ -148,11 +145,11 @@ export class AnalyticFraudHttpService {
     }
 
     async passwordResetEnumerationSummary(
-        windowMs?: number
+        query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         const data =
             await this.analyticFraudDomain.passwordResetEnumerationSummary(
-                windowMs ?? null
+                query.windowMs ?? null
             );
 
         return { data };
@@ -164,9 +161,7 @@ export class AnalyticFraudHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ForgotPasswordWhereInput>(
                 query,
-                {
-                    availableOrderBy: AnalyticKeyCountAvailableOrderBy,
-                }
+                { availableOrderBy: AnalyticKeyCountAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -190,23 +185,20 @@ export class AnalyticFraudHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.DeviceOwnershipWhereInput>(
                 query,
-                {
-                    availableOrderBy: AnalyticSharedFingerprintAvailableOrderBy,
-                }
+                { availableOrderBy: AnalyticSharedFingerprintAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         return this.analyticFraudDomain.sharedFingerprintList(params);
     }
 
-    async sessionAfterAdminSummary(
-        startDate?: Date,
-        endDate?: Date
-    ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
-        );
+    async sessionAfterAdminSummary({
+        startDate,
+        endDate,
+    }: AnalyticDateRangeRequestDto): Promise<
+        IResponseReturn<IAnalyticFraudSummary>
+    > {
+        const range = this.analyticDateDomain.requireRange(startDate, endDate);
         const data = await this.analyticFraudDomain.sessionAfterAdminSummary(
             range.startDate,
             range.endDate
@@ -221,9 +213,7 @@ export class AnalyticFraudHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
                 query,
-                {
-                    availableOrderBy: AnalyticSessionAfterAdminAvailableOrderBy,
-                }
+                { availableOrderBy: AnalyticSessionAfterAdminAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.requireRange(
@@ -238,11 +228,11 @@ export class AnalyticFraudHttpService {
     }
 
     async forgotPasswordTokenAbuseSummary(
-        windowMs?: number
+        query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         const data =
             await this.analyticFraudDomain.forgotPasswordTokenAbuseSummary(
-                windowMs ?? null
+                query.windowMs ?? null
             );
 
         return { data };
@@ -268,10 +258,10 @@ export class AnalyticFraudHttpService {
     }
 
     async refreshSpikeSummary(
-        windowMs?: number
+        query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         const data = await this.analyticFraudDomain.refreshSpikeSummary(
-            windowMs ?? null
+            query.windowMs ?? null
         );
 
         return { data };
@@ -283,9 +273,7 @@ export class AnalyticFraudHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
                 query,
-                {
-                    availableOrderBy: AnalyticUserCountAvailableOrderBy,
-                }
+                { availableOrderBy: AnalyticUserCountAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -296,10 +284,10 @@ export class AnalyticFraudHttpService {
     }
 
     async backupCodeNewDeviceSummary(
-        windowMs?: number
+        query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         const data = await this.analyticFraudDomain.backupCodeNewDeviceSummary(
-            windowMs ?? null
+            query.windowMs ?? null
         );
 
         return { data };
@@ -325,10 +313,10 @@ export class AnalyticFraudHttpService {
     }
 
     async apiKeyBurstSummary(
-        windowMs?: number
+        query: AnalyticWindowRequestDto
     ): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         const data = await this.analyticFraudDomain.apiKeyBurstSummary(
-            windowMs ?? null
+            query.windowMs ?? null
         );
 
         return { data };
@@ -340,9 +328,7 @@ export class AnalyticFraudHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
                 query,
-                {
-                    availableOrderBy: AnalyticUserCountAvailableOrderBy,
-                }
+                { availableOrderBy: AnalyticUserCountAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 

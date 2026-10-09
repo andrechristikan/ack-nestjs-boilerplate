@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
 /**
- * Shapes the API key lifecycle events of a window.
+ * Shapes the API key lifecycle counts of a window.
  * @public
  */
 export const AnalyticApiKeyLifecycleResponseSchema = z.object({
@@ -25,7 +25,7 @@ export const AnalyticApiKeyLifecycleResponseSchema = z.object({
 });
 
 /**
- * API key lifecycle events of a window.
+ * API key lifecycle counts of a window.
  * @public
  */
 export type AnalyticApiKeyLifecycleResponseDto = z.infer<

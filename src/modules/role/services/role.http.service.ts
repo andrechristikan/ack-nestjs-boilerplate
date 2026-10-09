@@ -113,7 +113,11 @@ export class RoleHttpService {
     async createByAdmin(
         body: RoleCreateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
-        const created = await this.roleDomain.createByAdmin(body);
+        const created = await this.roleDomain.createByAdmin({
+            name: body.name,
+            description: body.description ?? null,
+            type: body.type,
+        });
 
         return { data: created };
     }
@@ -122,7 +126,10 @@ export class RoleHttpService {
         id: string,
         body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
-        const updated = await this.roleDomain.updateByAdmin(id, body);
+        const updated = await this.roleDomain.updateByAdmin(id, {
+            description: body.description,
+            type: body.type,
+        });
 
         return { data: updated };
     }

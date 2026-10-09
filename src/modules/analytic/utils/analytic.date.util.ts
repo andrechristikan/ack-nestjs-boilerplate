@@ -1,4 +1,5 @@
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { AnalyticCacheEmptyToken } from '@modules/analytic/constants/analytic.constant';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -19,11 +20,11 @@ export class AnalyticDateUtil {
         )!;
     }
 
-    cacheToken(date?: Date): string {
-        return date ? date.toISOString() : '_';
+    cacheToken(date: Date | null): string {
+        return date ? date.toISOString() : AnalyticCacheEmptyToken;
     }
 
-    windowToken(startDate?: Date, endDate?: Date): string {
+    windowToken(startDate: Date | null, endDate: Date | null): string {
         const startToken = this.cacheToken(startDate);
         const endToken = this.cacheToken(endDate);
 
@@ -35,8 +36,8 @@ export class AnalyticDateUtil {
 
     workspaceWindowToken(
         workspaceId: string,
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): string {
         const startToken = this.cacheToken(startDate);
         const endToken = this.cacheToken(endDate);

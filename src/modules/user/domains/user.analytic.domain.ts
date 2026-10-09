@@ -25,14 +25,14 @@ export class UserAnalyticDomain {
         private readonly userAnalyticRepository: UserAnalyticRepository
     ) {}
 
-    countRegistrations(startDate: Date, endDate: Date): Promise<number> {
+    getCountRegistrations(startDate: Date, endDate: Date): Promise<number> {
         return this.userAnalyticRepository.countRegistrations(
             startDate,
             endDate
         );
     }
 
-    async churnRate(
+    async getChurnRate(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricRate> {
@@ -47,13 +47,13 @@ export class UserAnalyticDomain {
         };
     }
 
-    countByStatus(status: EnumUserStatus): Promise<number> {
+    getCountByStatus(status: EnumUserStatus): Promise<number> {
         return this.userAnalyticRepository.countByStatus(status);
     }
 
-    groupBySignUpWith(
-        startDate?: Date,
-        endDate?: Date
+    getGroupBySignUpWith(
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IUserAnalyticGroupCount<EnumUserSignUpWith>[]> {
         return this.userAnalyticRepository.groupBySignUpWith(
             startDate,
@@ -61,9 +61,9 @@ export class UserAnalyticDomain {
         );
     }
 
-    groupBySignUpFrom(
-        startDate?: Date,
-        endDate?: Date
+    getGroupBySignUpFrom(
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IUserAnalyticGroupCount<EnumUserSignUpFrom>[]> {
         return this.userAnalyticRepository.groupBySignUpFrom(
             startDate,
@@ -71,19 +71,19 @@ export class UserAnalyticDomain {
         );
     }
 
-    groupByStatus(): Promise<IUserAnalyticGroupCount<EnumUserStatus>[]> {
+    getGroupByStatus(): Promise<IUserAnalyticGroupCount<EnumUserStatus>[]> {
         return this.userAnalyticRepository.groupByStatus();
     }
 
-    groupByCountry(): Promise<IAnalyticCountBucket[]> {
+    getGroupByCountry(): Promise<IAnalyticCountBucket[]> {
         return this.userAnalyticRepository.groupByCountry();
     }
 
-    groupByRole(): Promise<IAnalyticCountBucket[]> {
+    getGroupByRole(): Promise<IAnalyticCountBucket[]> {
         return this.userAnalyticRepository.groupByRole();
     }
 
-    async emailVerificationRate(): Promise<IAnalyticMetricRate> {
+    async getEmailVerificationRate(): Promise<IAnalyticMetricRate> {
         const [verified, total] = await Promise.all([
             this.userAnalyticRepository.countVerifiedEmail(),
             this.userAnalyticRepository.countActive(),
@@ -95,37 +95,37 @@ export class UserAnalyticDomain {
         };
     }
 
-    countPasswordExpired(now: Date): Promise<number> {
+    getCountPasswordExpired(now: Date): Promise<number> {
         return this.userAnalyticRepository.countPasswordExpired(now);
     }
 
-    countActive(): Promise<number> {
+    getCountActive(): Promise<number> {
         return this.userAnalyticRepository.countActive();
     }
 
-    findNearLockout(minAttempt: number): Promise<IAnalyticNearLockout[]> {
+    getNearLockout(minAttempt: number): Promise<IAnalyticNearLockout[]> {
         return this.userAnalyticRepository.findNearLockout(minAttempt);
     }
 
-    groupPasswordAttemptBuckets(): Promise<IAnalyticCountBucket[]> {
+    getGroupPasswordAttemptBuckets(): Promise<IAnalyticCountBucket[]> {
         return this.userAnalyticRepository.groupPasswordAttemptBuckets();
     }
 
-    findOneById(id: string): Promise<IUserAnalyticRef | null> {
+    getOneById(id: string): Promise<IUserAnalyticRef | null> {
         return this.userAnalyticRepository.findOneById(id);
     }
 
-    listNearLockoutOffset(
+    getListNearLockoutOffset(
         minAttempt: number,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
-        return this.userAnalyticRepository.listNearLockoutOffset(
+        return this.userAnalyticRepository.findNearLockoutOffset(
             minAttempt,
             params
         );
     }
 
-    findSignUpsInRange(
+    getSignUpsInRange(
         startDate: Date,
         endDate: Date
     ): Promise<IUserAnalyticSignUp[]> {

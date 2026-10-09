@@ -7,8 +7,3 @@ export interface IHelperPasswordOptions {
 export interface IHelperDateCreateOptions {
     dayOf?: EnumHelperDateDayOf;
 }
-
-export interface IHelperEmailValidation {
-    validated: boolean;
-    messagePath?: string;
-}

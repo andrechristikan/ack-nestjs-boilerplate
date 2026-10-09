@@ -5,7 +5,6 @@ import {
     LoggerRedactMaxArrayLength,
     LoggerRedactMaxDepth,
     LoggerRedactedValue,
-    LoggerRequestIdHeaders,
     LoggerSensitiveFields,
     LoggerUrlStaticSegmentRegex,
 } from '@common/logger/constants/logger.constant';
@@ -100,7 +99,7 @@ export class LoggerUtil {
         if (headers) {
             const forwarded = headers['x-forwarded-for'] as string;
             if (forwarded) {
-                const firstIP = forwarded.split(',')[0].trim();
+                const firstIP = forwarded.split(',')[0]!.trim();
                 if (firstIP) {
                     return firstIP;
                 }
@@ -125,7 +124,7 @@ export class LoggerUtil {
     }
 
     private serializeParams(
-        params: Record<string, string> | undefined
+        params: Record<string, string> | null
     ): Record<string, string> {
         return Object.fromEntries(
             Object.keys(params ?? {}).map(key => [key, LoggerRedactedValue])
@@ -134,22 +133,6 @@ export class LoggerUtil {
 
     private serializeUser(request: IRequestApp): string | null {
         return (request.user as unknown as { userId: string })?.userId ?? null;
-    }
-
-    getRequestId(request: IRequestApp): string {
-        const headers = request.headers;
-        if (!headers) {
-            return request.id as string;
-        }
-
-        for (const header of LoggerRequestIdHeaders) {
-            const value = headers[header];
-            if (value) {
-                return value as string;
-            }
-        }
-
-        return request.id as string;
     }
 
     sanitizeMessage(message: unknown): unknown {
@@ -180,17 +163,15 @@ export class LoggerUtil {
 
             return `${parsed.origin}${maskedPath}`;
         } catch {
-            return this.maskPath(url.split('?')[0].split('#')[0]);
+            return this.maskPath(url.split('?')[0]!.split('#')[0]!);
         }
     }
 
     serializeRequest(request: IRequestApp): Record<string, unknown> {
         const route = this.serializeRoute(request);
-        let referer: string | undefined;
+        let referer: string | null = null;
         if (request.headers.referer) {
             referer = this.maskUrl(request.headers.referer);
-        } else {
-            referer = undefined;
         }
         const clientIp = this.extractClientIP(request);
         const user = this.serializeUser(request);
@@ -199,7 +180,6 @@ export class LoggerUtil {
         const headers = this.redactValue(request.headers);
 
         return {
-            id: request.id,
             method: request.method,
             route,
             userAgent: request.headers['user-agent'],

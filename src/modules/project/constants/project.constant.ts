@@ -11,19 +11,19 @@ import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace
  * Request-store key holding the project the project guard resolved.
  * @public
  */
-export const ProjectStoreKey = 'ProjectStore';
+export const ProjectStoreKey = 'ProjectStoreKey';
 
 /**
  * Request-store key holding the caller's project membership.
  * @public
  */
-export const ProjectMemberStoreKey = 'ProjectMemberStore';
+export const ProjectMemberStoreKey = 'ProjectMemberStoreKey';
 
 /**
  * Request-store key holding whether `ProjectRoleGuard` let the caller through on the workspace-owner bypass instead of a `ProjectMember` row.
  * @public
  */
-export const ProjectWorkspaceOwnerStoreKey = 'ProjectWorkspaceOwnerStore';
+export const ProjectWorkspaceOwnerStoreKey = 'ProjectWorkspaceOwnerStoreKey';
 
 /**
  * Route metadata key holding the project roles `@ProjectMemberProtected` requires.
@@ -32,7 +32,7 @@ export const ProjectWorkspaceOwnerStoreKey = 'ProjectWorkspaceOwnerStore';
 export const ProjectRoleMetaKey = 'ProjectRoleMetaKey';
 
 /**
- * Project guard error kit for `@ProjectProtected`.
+ * Project guard error kit for `@ProjectProtected`; `guardMissing` and `memberGuardMissing` document a guard or param decorator that reads the project or project member store.
  * @public
  */
 export const DocProjectErrorResponses = {
@@ -47,6 +47,14 @@ export const DocProjectErrorResponses = {
             messagePath: 'project.error.notFound',
         }
     ),
+    guardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
+        statusCode: EnumProjectStatusCodeError.guardMissing,
+        messagePath: 'project.error.guardMissing',
+    }),
+    memberGuardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
+        statusCode: EnumProjectStatusCodeError.memberGuardMissing,
+        messagePath: 'project.error.memberGuardMissing',
+    }),
 } as const;
 
 /**
@@ -73,10 +81,17 @@ export const DocProjectRoleErrorResponses = {
         statusCode: EnumProjectStatusCodeError.notFound,
         messagePath: 'project.error.notFound',
     }),
-    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumProjectStatusCodeError.roleForbidden,
-        messagePath: 'project.error.roleForbidden',
-    }),
+    forbidden: DocResponseError(
+        HttpStatus.FORBIDDEN,
+        {
+            statusCode: EnumProjectStatusCodeError.memberForbidden,
+            messagePath: 'project.error.memberForbidden',
+        },
+        {
+            statusCode: EnumProjectStatusCodeError.roleForbidden,
+            messagePath: 'project.error.roleForbidden',
+        }
+    ),
 } as const;
 
 /**

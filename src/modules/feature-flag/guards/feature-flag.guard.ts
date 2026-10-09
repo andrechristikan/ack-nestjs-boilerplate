@@ -1,5 +1,8 @@
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
-import { FeatureFlagKeyPathMetaKey } from '@modules/feature-flag/constants/feature-flag.constant';
+import {
+    FeatureFlagAnonymousIdHeaderName,
+    FeatureFlagKeyPathMetaKey,
+} from '@modules/feature-flag/constants/feature-flag.constant';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
@@ -11,23 +14,19 @@ import { Reflector } from '@nestjs/core';
  */
 @Injectable()
 export class FeatureFlagGuard implements CanActivate {
-    private readonly anonymousHeaderName: string;
     private readonly anonymousIdMaxLength: number;
-    private readonly anonymousIdPattern: RegExp;
+    private readonly anonymousIdRegex: RegExp;
 
     constructor(
         private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly reflector: Reflector,
         private readonly configService: ConfigService
     ) {
-        this.anonymousHeaderName = this.configService.get<string>(
-            'featureFlag.anonymous.headerName'
-        )!;
         this.anonymousIdMaxLength = this.configService.get<number>(
             'featureFlag.anonymous.idMaxLength'
         )!;
-        this.anonymousIdPattern = this.configService.get<RegExp>(
-            'featureFlag.anonymous.idPattern'
+        this.anonymousIdRegex = this.configService.get<RegExp>(
+            'featureFlag.anonymous.idRegex'
         )!;
     }
 
@@ -38,7 +37,8 @@ export class FeatureFlagGuard implements CanActivate {
         );
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
-        const rawAnonymousId = request.headers[this.anonymousHeaderName];
+        const rawAnonymousId =
+            request.headers[FeatureFlagAnonymousIdHeaderName];
         let anonymousId: string | null = null;
         if (
             typeof rawAnonymousId === 'string' &&
@@ -46,7 +46,7 @@ export class FeatureFlagGuard implements CanActivate {
             rawAnonymousId.length <= this.anonymousIdMaxLength
         ) {
             const isAnonymousIdValid =
-                this.anonymousIdPattern.test(rawAnonymousId);
+                this.anonymousIdRegex.test(rawAnonymousId);
             if (isAnonymousIdValid) {
                 anonymousId = rawAnonymousId;
             }

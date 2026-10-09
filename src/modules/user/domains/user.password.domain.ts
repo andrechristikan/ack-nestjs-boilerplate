@@ -150,11 +150,11 @@ export class UserPasswordDomain {
     }
 
     async reachMaxPasswordAttempt(userId: string): Promise<void> {
-        const revokeAllEvents = this.sessionDomain.prepareRevokeAllSelf(
+        const revokeAllActivityLogs = this.sessionDomain.prepareRevokeAllSelf(
             userId,
             true
         );
-        const reachMaxEvents = [
+        const reachMaxActivityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userReachMaxPasswordAttempt,
                 userId,
@@ -165,6 +165,7 @@ export class UserPasswordDomain {
         const now = this.helperDateService.create();
 
         try {
+            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.withTransaction(async tx => {
                 await this.userDomain.deactivateForMaxPasswordAttemptInTx(
                     tx,
@@ -184,9 +185,12 @@ export class UserPasswordDomain {
                 );
             });
 
-            await this.sessionDomain.finalizeRevokeAll(userId, revokeAllEvents);
+            await this.sessionDomain.finalizeRevokeAll(
+                userId,
+                revokeAllActivityLogs
+            );
 
-            this.activityLogDomain.stagePrepared(reachMaxEvents);
+            this.activityLogDomain.stagePrepared(reachMaxActivityLogs);
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -204,6 +208,7 @@ export class UserPasswordDomain {
             throw new UserNotSelfException();
         }
 
+        // Sequential by design: gate before the work it guards
         const user = await this.userRepository.findOneById(userId);
         if (!user) {
             throw new UserNotFoundException();
@@ -220,7 +225,8 @@ export class UserPasswordDomain {
                 }
             );
 
-            const { updated, events } =
+            // Sequential by design: write must not run if an earlier step throws
+            const { updated, activityLogs } =
                 await this.databaseService.withTransaction(async tx => {
                     const row = await this.userDomain.updatePasswordInTx(
                         tx,
@@ -254,7 +260,7 @@ export class UserPasswordDomain {
 
                     return {
                         updated: row,
-                        events: [
+                        activityLogs: [
                             this.activityLogDomain.prepare({
                                 action: EnumActivityLogAction.adminUserUpdatePassword,
                                 metadata: actorMetadata,
@@ -268,9 +274,10 @@ export class UserPasswordDomain {
                         ],
                     };
                 });
+            // Sequential by design: side effects whose order is part of the contract
             await this.sessionDomain.purgeLoginsByUser(userId);
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             const passwordCreatedAt = this.helperDateService.formatToIso(
                 password.passwordCreated
@@ -325,26 +332,25 @@ export class UserPasswordDomain {
                 throw new UserPasswordNotMatchException();
             }
 
-            await this.userDomain.resetPasswordAttempt(user.id);
-
-            const passwordHistories =
-                await this.passwordHistoryDomain.getActiveByUser(user.id);
+            const [, passwordHistories] = await Promise.all([
+                this.userDomain.resetPasswordAttempt(user.id),
+                this.passwordHistoryDomain.getActiveByUser(user.id),
+            ]);
             const passwordCheck = this.authPasswordUtil.checkPasswordPeriod(
                 passwordHistories,
                 newPassword
             );
             if (passwordCheck) {
-                const passwordExpiredAt =
-                    this.helperDateService.formatToRFC2822(
-                        passwordCheck.expiredAt
-                    );
+                const passwordPeriodInDays =
+                    this.authPasswordUtil.getPasswordPeriodInDays();
 
-                throw new UserPasswordMustNewException(passwordExpiredAt);
+                throw new UserPasswordMustNewException(passwordPeriodInDays);
             }
         }
 
-        let twoFactorVerified: IAuthTwoFactorVerifyResult | undefined;
+        let twoFactorVerified: IAuthTwoFactorVerifyResult | null = null;
         if (user.twoFactor?.enabled) {
+            // Sequential by design: gate before the work it guards
             twoFactorVerified =
                 await this.userLoginDomain.handleTwoFactorValidation(user, {
                     code,
@@ -355,20 +361,22 @@ export class UserPasswordDomain {
 
         try {
             const password = this.authPasswordUtil.createPassword(newPassword);
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userChangePassword,
                 }),
             ];
             if (twoFactorVerified) {
-                const verifyTwoFactorEvent = this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userVerifyTwoFactor,
-                    userId: user.id,
-                    createdBy: user.id,
-                });
-                events.push(verifyTwoFactorEvent);
+                const verifyTwoFactorActivityLog =
+                    this.activityLogDomain.prepare({
+                        action: EnumActivityLogAction.userVerifyTwoFactor,
+                        userId: user.id,
+                        createdBy: user.id,
+                    });
+                activityLogs.push(verifyTwoFactorActivityLog);
             }
 
+            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.withTransaction(async tx => {
                 await this.userDomain.updatePasswordInTx(
                     tx,
@@ -399,9 +407,10 @@ export class UserPasswordDomain {
                     );
                 }
             });
+            // Sequential by design: side effects whose order is part of the contract
             await this.sessionDomain.purgeLoginsByUser(user.id);
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             await this.notificationQueue.sendChangePassword(user.id);
 
@@ -416,6 +425,7 @@ export class UserPasswordDomain {
     }
 
     async forgotPassword(email: string): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.assertForgotPasswordAllowed();
 
         const user = await this.userRepository.findOneActiveByEmail(email);
@@ -438,12 +448,12 @@ export class UserPasswordDomain {
 
             if (today < canResendAt) {
                 const resendDuration = this.helperDateService.diff(
-                    today,
-                    canResendAt
+                    canResendAt,
+                    today
                 );
 
                 throw new UserForgotPasswordRequestLimitExceededException(
-                    resendDuration.minutes
+                    Math.ceil(resendDuration.as('minutes'))
                 );
             }
         }
@@ -451,20 +461,21 @@ export class UserPasswordDomain {
         try {
             const resetPassword = this.forgotPasswordCreate();
 
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userForgotPassword,
                     userId: user.id,
                     createdBy: user.id,
                 }),
             ];
+            // Sequential by design: write must not run if an earlier step throws
             await this.userPasswordRepository.createReplacingUnused(
                 user.id,
                 email,
                 resetPassword
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             const expiredAt = this.helperDateService.formatToIso(
                 resetPassword.expiredAt
@@ -494,6 +505,7 @@ export class UserPasswordDomain {
         code,
         method,
     }: IUserResetPassword): Promise<void> {
+        // Sequential by design: gate before the work it guards
         await this.assertForgotPasswordAllowed();
 
         const hashedToken = this.helperHashService.sha256Hash(token);
@@ -505,6 +517,7 @@ export class UserPasswordDomain {
             throw new UserNotFoundException();
         }
 
+        // Sequential by design: gate before the work it guards
         const passwordHistories =
             await this.passwordHistoryDomain.getActiveByUser(
                 resetPassword.userId
@@ -520,7 +533,7 @@ export class UserPasswordDomain {
             throw new UserPasswordMustNewException(passwordPeriodInDays);
         }
 
-        let twoFactorVerified: IAuthTwoFactorVerifyResult | undefined;
+        let twoFactorVerified: IAuthTwoFactorVerifyResult | null = null;
         if (resetPassword.user.twoFactor?.enabled) {
             twoFactorVerified =
                 await this.userLoginDomain.handleTwoFactorValidation(
@@ -535,7 +548,7 @@ export class UserPasswordDomain {
 
         try {
             const password = this.authPasswordUtil.createPassword(newPassword);
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userResetPassword,
                     userId: resetPassword.userId,
@@ -543,14 +556,16 @@ export class UserPasswordDomain {
                 }),
             ];
             if (twoFactorVerified) {
-                const verifyTwoFactorEvent = this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userVerifyTwoFactor,
-                    userId: resetPassword.userId,
-                    createdBy: resetPassword.userId,
-                });
-                events.push(verifyTwoFactorEvent);
+                const verifyTwoFactorActivityLog =
+                    this.activityLogDomain.prepare({
+                        action: EnumActivityLogAction.userVerifyTwoFactor,
+                        userId: resetPassword.userId,
+                        createdBy: resetPassword.userId,
+                    });
+                activityLogs.push(verifyTwoFactorActivityLog);
             }
 
+            // Sequential by design: write must not run if an earlier step throws
             await this.databaseService.withTransaction(async tx => {
                 await this.userDomain.updatePasswordInTx(
                     tx,
@@ -586,9 +601,10 @@ export class UserPasswordDomain {
                     );
                 }
             });
+            // Sequential by design: side effects whose order is part of the contract
             await this.sessionDomain.purgeLoginsByUser(resetPassword.userId);
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             await this.notificationQueue.sendResetPassword(
                 resetPassword.userId

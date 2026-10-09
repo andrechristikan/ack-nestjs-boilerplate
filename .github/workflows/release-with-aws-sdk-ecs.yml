@@ -8,7 +8,7 @@ on:
     #         - development
 
 env:
-    DOCKERFILE: ci/dockerfile
+    DOCKERFILE: ci/dockerfile.production
 
 jobs:
     build_image:

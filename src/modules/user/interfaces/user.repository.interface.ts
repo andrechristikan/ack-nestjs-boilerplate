@@ -7,14 +7,13 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type {
     IUser,
-    IUserContact,
     IUserCreateWithWorkspaceInput,
     IUserList,
     IUserProfile,
+    IUserUpdateProfile,
 } from '@modules/user/interfaces/user.interface';
 import {
     EnumTermPolicyType,
@@ -32,11 +31,11 @@ export interface IUserRepository {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        status: Record<string, IPaginationIn> | null,
+        roleId: Record<string, IPaginationEqual> | null,
+        countryId: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<IUserList>>;
-    findActive(): Promise<IUserContact[]>;
+    findIdsCursor(cursor: string | null, take: number): Promise<string[]>;
     findOneById(id: string): Promise<User | null>;
     findOneActiveById(id: string): Promise<User | null>;
     findOneActiveByEmail(email: string): Promise<User | null>;
@@ -70,7 +69,7 @@ export interface IUserRepository {
     ): Promise<User>;
     updateProfile(
         userId: string,
-        { countryId, ...data }: UserUpdateProfileRequestDto
+        { countryId, ...data }: IUserUpdateProfile
     ): Promise<User>;
     updatePhotoProfile(userId: string, photo: IAwsS3): Promise<User>;
     deleteSelfInTx(
@@ -119,7 +118,7 @@ export interface IUserRepository {
         userId: string,
         type: EnumTermPolicyType
     ): Promise<void>;
-    resetTermPolicyForActiveUsersInTx(
+    resetTermPolicyInTx(
         tx: IDatabaseTransactionClient,
         type: EnumTermPolicyType
     ): Promise<void>;

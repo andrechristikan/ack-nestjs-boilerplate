@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ApiSecurity } from '@nestjs/swagger';
 import { ClsServiceManager } from 'nestjs-cls';
+import { ApiKeyGuardMissingException } from '@modules/api-key/exceptions/api-key.guard-missing.exception';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import {
     ApiKeyDocSecurityName,
@@ -19,7 +20,7 @@ import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 
 /**
- * Reads the authenticated `ApiKey`, or one of its fields, that `@ApiKeyProtected()` or `@ApiKeySystemProtected()` stored; throws when either is absent.
+ * Reads the authenticated `ApiKey`, or one of its fields, that `@ApiKeyProtected()` or `@ApiKeySystemProtected()` stored. Throws `ApiKeyGuardMissingException` when the request carries no key and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const ApiKeyPayload = createParamDecorator<
@@ -29,19 +30,21 @@ export const ApiKeyPayload = createParamDecorator<
     (
         field: Extract<keyof ApiKey, string> | undefined
     ): ApiKey | NonNullable<ApiKey[Extract<keyof ApiKey, string>]> => {
-        const apiKey = ClsServiceManager.getClsService().get<
-            ApiKey | undefined
-        >(ApiKeyStoreKey);
-        if (apiKey === undefined || apiKey === null) {
-            throw new RequestContextMissingException(ApiKeyStoreKey);
+        const current =
+            ClsServiceManager.getClsService().get<ApiKey | null>(
+                ApiKeyStoreKey
+            ) ?? null;
+        if (current === null) {
+            throw new ApiKeyGuardMissingException();
         }
 
-        if (field === undefined || field === null) {
-            return apiKey;
+        const fieldKey = field ?? null;
+        if (fieldKey === null) {
+            return current;
         }
 
-        const value = apiKey[field];
-        if (value === undefined || value === null) {
+        const value = current[fieldKey] ?? null;
+        if (value === null) {
             throw new RequestContextMissingException(
                 `${ApiKeyStoreKey}.${field}`
             );
@@ -62,7 +65,7 @@ export function ApiKeySystemProtected(): MethodDecorator {
         ApiSecurity(ApiKeyDocSecurityName),
         DocApiKeyErrorResponses.unauthorized,
         DocApiKeyErrorResponses.forbidden,
-        DocApiKeyErrorResponses.predefinedNotFound
+        DocApiKeyErrorResponses.guardMissing
     );
 }
 
@@ -77,6 +80,6 @@ export function ApiKeyProtected(): MethodDecorator {
         ApiSecurity(ApiKeyDocSecurityName),
         DocApiKeyErrorResponses.unauthorized,
         DocApiKeyErrorResponses.forbidden,
-        DocApiKeyErrorResponses.predefinedNotFound
+        DocApiKeyErrorResponses.guardMissing
     );
 }

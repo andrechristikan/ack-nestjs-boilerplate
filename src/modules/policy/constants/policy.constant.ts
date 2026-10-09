@@ -12,7 +12,7 @@ export const PolicyRequiredMetaKey = 'PolicyRequiredMetaKey';
  * Request-store key holding the caller's role policies, set by the role guard and read by the policy guard.
  * @public
  */
-export const PolicyStoreKey = 'PolicyStore';
+export const PolicyStoreKey = 'PolicyStoreKey';
 
 /**
  * Policy guard error kit for `@PolicyProtected`.
@@ -23,8 +23,8 @@ export const DocPolicyErrorResponses = {
         statusCode: EnumPolicyStatusCodeError.forbidden,
         messagePath: 'policy.error.forbidden',
     }),
-    predefinedNotFound: DocResponseError(HttpStatus.INTERNAL_SERVER_ERROR, {
-        statusCode: EnumPolicyStatusCodeError.predefinedNotFound,
-        messagePath: 'policy.error.predefinedNotFound',
+    guardMissing: DocResponseError(HttpStatus.FORBIDDEN, {
+        statusCode: EnumPolicyStatusCodeError.guardMissing,
+        messagePath: 'policy.error.guardMissing',
     }),
 } as const;

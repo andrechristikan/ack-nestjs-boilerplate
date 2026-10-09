@@ -3,10 +3,11 @@ import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagin
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { ActivityLogAnalyticListSelect } from '@modules/activity-log/constants/activity-log.constant';
 import type { IActivityLogAnalyticRepository } from '@modules/activity-log/interfaces/activity-log.analytic-repository.interface';
 import type {
     IActivityLogAnalyticActionCount,
-    IActivityLogAnalyticEvent,
+    IActivityLogAnalyticList,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
@@ -36,8 +37,8 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
 
     async groupByActionInRange(
         actions: EnumActivityLogAction[],
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IActivityLogAnalyticActionCount[]> {
         const rows = await this.databaseService.client.activityLog.groupBy({
             by: ['action'],
@@ -56,21 +57,13 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date
-    ): Promise<IActivityLogAnalyticEvent[]> {
+    ): Promise<IActivityLogAnalyticList[]> {
         return this.databaseService.client.activityLog.findMany({
             where: {
                 action: { in: actions },
                 createdAt: { gte: startDate, lt: endDate },
             },
-            select: {
-                id: true,
-                userId: true,
-                action: true,
-                ipAddress: true,
-                createdAt: true,
-                userAgent: true,
-                workspaceId: true,
-            },
+            select: ActivityLogAnalyticListSelect,
             orderBy: { createdAt: EnumPaginationOrderDirectionType.asc },
         });
     }

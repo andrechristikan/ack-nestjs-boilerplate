@@ -1,12 +1,12 @@
 import { z } from 'zod';
 import {
     PaginationDefaultMaxPerPage,
+    PaginationDefaultMaxSearchLength,
     PaginationDefaultPerPage,
 } from '@common/pagination/constants/pagination.constant';
 
 /**
- * Cursor list query kit: `cursor` and `perPage` only. Modules `.extend` `search` / `orderBy`
- * when their allow-lists are non-empty, plus any filter fields.
+ * Cursor list query: cursor, perPage, and search; a module list schema extends it and declares its own `orderBy` inline over its allow-list.
  * @public
  */
 export const PaginationCursorQuerySchema = z.strictObject({
@@ -21,6 +21,15 @@ export const PaginationCursorQuerySchema = z.strictObject({
         .meta({
             description: `Data per page, max ${PaginationDefaultMaxPerPage}`,
             example: PaginationDefaultPerPage,
+        }),
+    search: z
+        .string()
+        .trim()
+        .max(PaginationDefaultMaxSearchLength)
+        .optional()
+        .meta({
+            description: `Search query, case-insensitive, partial match, max ${PaginationDefaultMaxSearchLength} characters`,
+            example: '',
         }),
 });
 

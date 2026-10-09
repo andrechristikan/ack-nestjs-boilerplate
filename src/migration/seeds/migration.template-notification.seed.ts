@@ -7,9 +7,10 @@ import { NotificationTemplateTermPolicyDomain } from '@modules/notification/doma
 import { NotificationTemplateWorkspaceDomain } from '@modules/notification/domains/notification.template.workspace.domain';
 import { Logger } from '@nestjs/common';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
 /**
- * Imports email notification templates into AWS SES, skipping any already present. Throws if SES is uninitialized.
+ * Imports email notification templates into AWS SES, skipping any already present. Skips with a warning when SES is not configured.
  */
 @Command({
     name: 'templateEmailNotification',
@@ -39,11 +40,11 @@ export class MigrationTemplateEmailNotificationSeed
 
         const isSESInitialized = this.awsSESService.isInitialized();
         if (!isSESInitialized) {
-            this.logger.error(
-                'AWS SES is not initialized. Cannot seed email templates.'
+            this.logger.warn(
+                'AWS SES is not configured. Skipping email template seed.'
             );
 
-            throw new Error('AWS SES is not initialized');
+            return;
         }
 
         const [
@@ -240,8 +241,10 @@ export class MigrationTemplateEmailNotificationSeed
             try {
                 await Promise.all(promises);
             } catch (error: unknown) {
-                this.logger.error(error, 'Error seeding emails');
-                throw error;
+                throw new AppUnknownException(
+                    error,
+                    'Seeding email templates failed'
+                );
             }
         }
 
@@ -274,8 +277,10 @@ export class MigrationTemplateEmailNotificationSeed
                 this.notificationTemplateWorkspaceDomain.emailDeleteWorkspaceJoinRejected(),
             ]);
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing emails');
-            throw error;
+            throw new AppUnknownException(
+                error,
+                'Removing email templates failed'
+            );
         }
 
         this.logger.log('Emails removed successfully.');

@@ -1,6 +1,10 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
+import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/auth.social-apple-not-configured.exception';
 import { AuthSocialAppleInvalidException } from '@modules/auth/exceptions/auth.social-apple-invalid.exception';
+import { AuthSocialGoogleNotConfiguredException } from '@modules/auth/exceptions/auth.social-google-not-configured.exception';
 import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
 import type {
     IAuthJwtAccessTokenPayload,
@@ -8,8 +12,10 @@ import type {
     IAuthSocialPayload,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthSocialDomain } from '@modules/auth/domains/auth.social.domain';
+import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import { SessionCache } from '@modules/session/caches/session.cache';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { Injectable } from '@nestjs/common';
 import type { TokenPayload } from 'google-auth-library';
 
@@ -17,8 +23,17 @@ import type { TokenPayload } from 'google-auth-library';
 export class AuthDomain {
     constructor(
         private readonly authSocialDomain: AuthSocialDomain,
-        private readonly sessionCache: SessionCache
+        private readonly authUtil: AuthUtil,
+        private readonly sessionCache: SessionCache,
+        private readonly helperHashService: HelperHashService
     ) {}
+
+    private isSessionJtiMatch(sessionJti: string, jti: string): boolean {
+        const sessionJtiHash = this.helperHashService.sha256Hash(sessionJti);
+        const jtiHash = this.helperHashService.sha256Hash(jti);
+
+        return this.helperHashService.sha256Compare(sessionJtiHash, jtiHash);
+    }
 
     async validateJwtAccessStrategy(
         payload: IAuthJwtAccessTokenPayload
@@ -36,7 +51,12 @@ export class AuthDomain {
         }
 
         const isValidSession = await this.sessionCache.getLogin(sub, sessionId);
-        if (!isValidSession || jti !== isValidSession.jti) {
+        if (!isValidSession) {
+            throw new SessionRevokedException();
+        }
+
+        const isJtiMatch = this.isSessionJtiMatch(isValidSession.jti, jti);
+        if (!isJtiMatch) {
             throw new SessionRevokedException();
         }
 
@@ -48,8 +68,22 @@ export class AuthDomain {
         user: IAuthJwtAccessTokenPayload,
         info: Error
     ): IAuthJwtAccessTokenPayload {
-        if (err || !user) {
-            throw new AuthJwtAccessTokenInvalidException(err ? err : info);
+        if (err instanceof AppBaseException) {
+            throw err;
+        }
+
+        if (err) {
+            throw new AppUnknownException(
+                err,
+                'Validating the JWT access token session failed'
+            );
+        }
+
+        if (!user) {
+            const unavailable =
+                this.authUtil.toProviderUnavailableException(info);
+
+            throw unavailable ?? new AuthJwtAccessTokenInvalidException(info);
         }
 
         return user;
@@ -70,7 +104,12 @@ export class AuthDomain {
         }
 
         const isValidSession = await this.sessionCache.getLogin(sub, sessionId);
-        if (!isValidSession || jti !== isValidSession.jti) {
+        if (!isValidSession) {
+            throw new SessionRevokedException();
+        }
+
+        const isJtiMatch = this.isSessionJtiMatch(isValidSession.jti, jti);
+        if (!isJtiMatch) {
             throw new SessionRevokedException();
         }
 
@@ -82,8 +121,22 @@ export class AuthDomain {
         user: IAuthJwtRefreshTokenPayload,
         info: Error
     ): IAuthJwtRefreshTokenPayload {
-        if (err || !user) {
-            throw new AuthJwtRefreshTokenInvalidException(err ? err : info);
+        if (err instanceof AppBaseException) {
+            throw err;
+        }
+
+        if (err) {
+            throw new AppUnknownException(
+                err,
+                'Validating the JWT refresh token session failed'
+            );
+        }
+
+        if (!user) {
+            const unavailable =
+                this.authUtil.toProviderUnavailableException(info);
+
+            throw unavailable ?? new AuthJwtRefreshTokenInvalidException(info);
         }
 
         return user;
@@ -98,7 +151,14 @@ export class AuthDomain {
                 emailVerified: payload.email_verified,
             };
         } catch (err: unknown) {
-            throw new AuthSocialAppleInvalidException(err);
+            if (err instanceof AuthSocialAppleNotConfiguredException) {
+                throw err;
+            }
+
+            const unavailable =
+                this.authUtil.toProviderUnavailableException(err);
+
+            throw unavailable ?? new AuthSocialAppleInvalidException(err);
         }
     }
 
@@ -112,7 +172,14 @@ export class AuthDomain {
                 emailVerified: payload.email_verified ?? false,
             };
         } catch (err: unknown) {
-            throw new AuthSocialGoogleInvalidException(err);
+            if (err instanceof AuthSocialGoogleNotConfiguredException) {
+                throw err;
+            }
+
+            const unavailable =
+                this.authUtil.toProviderUnavailableException(err);
+
+            throw unavailable ?? new AuthSocialGoogleInvalidException(err);
         }
     }
 }

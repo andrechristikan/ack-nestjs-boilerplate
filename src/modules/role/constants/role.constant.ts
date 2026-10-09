@@ -17,8 +17,4 @@ export const DocRoleErrorResponses = {
         statusCode: EnumRoleStatusCodeError.forbidden,
         messagePath: 'role.error.forbidden',
     }),
-    predefinedNotFound: DocResponseError(HttpStatus.INTERNAL_SERVER_ERROR, {
-        statusCode: EnumRoleStatusCodeError.predefinedNotFound,
-        messagePath: 'role.error.predefinedNotFound',
-    }),
 } as const;

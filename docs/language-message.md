@@ -1,6 +1,7 @@
 # Language Message Documentation
 
-i18n lives in `src/common/message`. Message files live in `src/languages/`.
+- i18n lives in `src/common/message`.
+- Message files live in `src/languages/`.
 
 ## Overview
 
@@ -8,14 +9,15 @@ i18n through [nestjs-i18n][ref-nestjs-i18n].
 
 - Message files live in `src/languages/{language}` as JSON
 - English (`en`) is the only language shipped
-- `MessageModule` is imported globally through `CommonModule` in `src/common/common.module.ts`, so `MessageService` is injectable without a local import
+- `MessageModule` is imported globally through `CommonModule` in `src/common/common.module.ts`
+- `MessageService` is therefore injectable without a local import
 
 ## Related Documents
 
-- [Response Documentation][ref-doc-response] - Message paths on success envelopes
-- [Handling Error Documentation][ref-doc-handling-error] - Exception filters that resolve message paths
-- [Request Validation Documentation][ref-doc-request-validation] - Validation message translation
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - `x-custom-lang` middleware
+- [Response Documentation][ref-doc-response]: Message paths on success envelopes
+- [Handling Error Documentation][ref-doc-handling-error]: Exception filters that resolve message paths
+- [Request Validation Documentation][ref-doc-request-validation]: Validation message translation
+- [Security and Middleware Documentation][ref-doc-security-and-middleware]: `x-custom-lang` middleware
 
 ## Table of Contents
 
@@ -24,15 +26,15 @@ i18n through [nestjs-i18n][ref-nestjs-i18n].
 - [Configuration](#configuration)
 - [Message Files](#message-files)
 - [Usage](#usage)
-  - [Basic Translation](#basic-translation)
-  - [Filter Language](#filter-language)
-  - [Bulk Import Validation Messages](#bulk-import-validation-messages)
-  - [Translation with Variables](#translation-with-variables)
-  - [Custom Language](#custom-language)
+    - [Basic Translation](#basic-translation)
+    - [Filter Language](#filter-language)
+    - [Bulk Import Validation Messages](#bulk-import-validation-messages)
+    - [Translation with Variables](#translation-with-variables)
+    - [Custom Language](#custom-language)
 - [Integration](#integration)
-  - [Exception Filters](#exception-filters)
-  - [Response Decorator](#response-decorator)
-  - [Validation Pipe](#validation-pipe)
+    - [Exception Filters](#exception-filters)
+    - [Response Decorator](#response-decorator)
+    - [Validation Pipe](#validation-pipe)
 - [Adding New Language](#adding-new-language)
 
 ## Configuration
@@ -47,14 +49,17 @@ Configuration structure:
 
 ```typescript
 // src/configs/message.config.ts
-export default registerAs(
-    'message',
-    (): IConfigMessage => ({
-        availableLanguage: Object.values(EnumMessageLanguage),
-        language: process.env.APP_LANGUAGE!,
-    })
-);
+export default registerAs('message', (): IConfigMessage => ({
+    availableLanguage: Object.values(EnumMessageLanguage),
+    language: process.env.APP_LANGUAGE!,
+}));
 ```
+
+`MessageModule.forRoot()` registers nestjs-i18n with:
+
+- `I18nJsonLoader` over `src/languages/`
+- a `HeaderResolver` on `x-custom-lang`
+- `fallbackLanguage` set to `message.language`, so a key missing from the requested language resolves from the default one
 
 Language options are defined in the enum:
 
@@ -66,17 +71,20 @@ export enum EnumMessageLanguage {
 
 ## Message Files
 
-Message files use JSON format with nested structure. Key paths follow the pattern: `filename.field.nested`. Files are located in `src/languages/en/`:
+Message files use JSON format with nested structure.
+
+- Key paths follow the pattern `filename.field.nested`.
+- Files are located in `src/languages/en/`:
 
 | File | Description |
-|------|-------------|
+| --- | --- |
 | `activityLog.json` | Activity log messages |
 | `analytic.json` | Analytic messages |
 | `apiKey.json` | API key messages |
 | `auth.json` | Authentication messages |
 | `aws.json` | AWS service messages |
 | `country.json` | Country-related messages |
-| `database.json` | Database-related messages |
+| `database.json` | Database kit errors (unique value generation, write conflict, unavailable) |
 | `device.json` | Device management messages |
 | `doc.json` | API documentation messages |
 | `featureFlag.json` | Feature flag messages |
@@ -91,6 +99,7 @@ Message files use JSON format with nested structure. Key paths follow the patter
 | `passwordHistory.json` | Password history messages |
 | `policy.json` | Policy messages |
 | `project.json` | Project messages |
+| `redis.json` | Redis kit errors (unavailable) |
 | `request.json` | Request validation messages |
 | `response.json` | Response kit errors (serialization, pagination shape, file download data) |
 | `role.json` | Role messages |
@@ -125,26 +134,25 @@ Access pattern:
 
 ### Basic Translation
 
-Inject `MessageService` and use `setMessage` method:
+Inject `MessageService` and call `setMessage` with a key path. `NotificationEmailWorkspaceDomain` labels a join-request rejection reason this way:
 
 ```typescript
-@Injectable()
-export class UserDomain {
-    constructor(private readonly messageService: MessageService) {}
-
-    getUpdateProfileMessage(): string {
-        return this.messageService.setMessage('user.updateProfile');
-    }
-}
+const rejectReasonLabel = this.messageService.setMessage(
+    `notification.rejectReason.${rejectReasonCode}`
+);
+// rejectReasonCode 'spam' → "Spam"
 ```
 
 ### Filter Language
 
-Use `filterLanguage` to validate if a language is supported before using it:
+Use `filterLanguage` to resolve a requested language to a supported one. It returns the language when it is in `message.availableLanguage` and the default `message.language` otherwise:
 
 ```typescript
-const validLang = this.messageService.filterLanguage('id');
-// Returns 'id' if supported, undefined if not
+const supported = this.messageService.filterLanguage('en');
+// Returns 'en'
+
+const fallback = this.messageService.filterLanguage('fr');
+// Returns the default language (message.language), because 'fr' is not supported
 ```
 
 ### Bulk Import Validation Messages
@@ -153,7 +161,7 @@ Use `setValidationImportMessage` to format validation errors for bulk/import ope
 
 ```typescript
 const errors = this.messageService.setValidationImportMessage([
-    { row: 1, errors: validationErrors }
+    { row: 1, errors: validationErrors },
 ]);
 // Returns: [{ row: 1, errors: [{ key, property, message }] }]
 ```
@@ -192,7 +200,7 @@ Override default language using the `customLanguage` option:
 
 ```typescript
 const message = this.messageService.setMessage('user.updateProfile', {
-    customLanguage: 'id' // Indonesian
+    customLanguage: 'id', // Indonesian
 });
 ```
 
@@ -202,13 +210,21 @@ Request-specific language can be set via the `x-custom-lang` header:
 curl -H "x-custom-lang: id" http://localhost:3000/api/v1/shared/user/profile/get
 ```
 
-`RequestCustomLanguageMiddleware` validates the header against the supported languages and writes the resolved value to the request store under `RequestLanguageStoreKey` (falling back to config `message.language`). Response interceptors and exception filters read it from there to localize messages and set `x-custom-lang`. See [Security and Middleware Documentation][ref-doc-security-and-middleware].
+`RequestCustomLanguageMiddleware`:
+
+- validates the header against the supported languages
+- writes the resolved value to the request store under `RequestLanguageStoreKey` (falling back to config `message.language`)
+
+Response interceptors and exception filters read it from there to localize messages and set `x-custom-lang`. See [Security and Middleware Documentation][ref-doc-security-and-middleware].
 
 ## Integration
 
 ### Exception Filters
 
-Exception filters automatically translate message paths. Application errors are dedicated `AppBaseException` subclasses; the filter resolves each exception's `messagePath` against the message system.
+Exception filters automatically translate message paths.
+
+- Application errors are dedicated `AppBaseException` subclasses.
+- The filter resolves each exception's `messagePath` against the message system.
 
 ```typescript
 throw new UserEmailExistException();
@@ -218,8 +234,8 @@ throw new UserEmailExistException();
 With variables, the exception class accepts constructor params and maps them to `messageProperties` internally:
 
 ```typescript
-throw new UserVerificationEmailResendLimitExceededException(resendIn);
-// the class internally calls super('user.error.verificationEmailResendLimitExceeded', { messageProperties: { resendIn } })
+throw new UserVerificationEmailResendLimitExceededException(minutes);
+// the class internally calls super('user.error.verificationEmailResendLimitExceeded', { messageProperties: { minutes } })
 ```
 
 ### Response Decorator
@@ -237,11 +253,16 @@ async create(
 }
 ```
 
-With variables, the HTTP service returns `messageProperties` on the `metadata` field of `IResponseReturn`, and `ResponseInterceptor` feeds them to `MessageService.setMessage` as translation arguments. The controller carries only the `@Response` message path:
+With variables:
+
+- The HTTP service returns `messageProperties` on the `metadata` field of `IResponseReturn`.
+- `ResponseInterceptor` feeds them to `MessageService.setMessage` as translation arguments.
+- The controller carries only the `@Response` message path.
 
 ```typescript
 // controller
 @Response('notification.markAllAsRead')
+@HttpCode(HttpStatus.OK)
 @Post('/update/read')
 async markAllAsRead(
     @AuthJwtPayload('userId') userId: string
@@ -310,7 +331,8 @@ const UserSchema = z.strictObject({
 }
 ```
 
-An issue with an empty path renders `Unknown`, and an issue carrying no string `code` falls back to the key `custom`.
+- An issue with an empty path renders `Unknown`.
+- An issue carrying no string `code` falls back to the key `custom`.
 
 **Standard validation response:**
 
@@ -361,12 +383,9 @@ export enum EnumMessageLanguage {
 
 4. Restart the application to load new language files.
 
-
-
 <!-- REFERENCES -->
 
 [ref-nestjs-i18n]: https://nestjs-i18n.com
-
 [ref-doc-response]: response.md
 [ref-doc-handling-error]: handling-error.md
 [ref-doc-request-validation]: request-validation.md

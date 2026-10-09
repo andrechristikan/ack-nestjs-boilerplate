@@ -8,7 +8,7 @@ on:
     #         - development
 
 env:
-    DOCKERFILE: ci/dockerfile
+    DOCKERFILE: ci/dockerfile.production
 
 jobs:
     build_image:
@@ -124,7 +124,7 @@ jobs:
                       docker pull ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }}
                       docker stop ${{ vars.DOCKER_CONTAINER_NAME }} && docker rm ${{ vars.DOCKER_CONTAINER_NAME }} || true
                       docker network create app-network --driver=bridge 2>/dev/null || true
-                      docker run -itd --env NODE_ENV=${{ matrix.env }} --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_CONTAINER_PORT }}:3000 --network app-network --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }}
+                      docker run -itd --env NODE_ENV=${{ matrix.env }} --hostname ${{ vars.DOCKER_CONTAINER_NAME }} --publish ${{ vars.DOCKER_CONTAINER_PORT }}:3000 --network app-network --volume $HOME/${{ vars.DOCKER_CONTAINER_NAME }}/.env:/app/.env:ro --restart unless-stopped --name ${{ vars.DOCKER_CONTAINER_NAME }} ${{ vars.DOCKER_REGISTRY_URL }}/${{ vars.DOCKER_IMAGE_NAME }}:${{ matrix.env }}
 
     clean:
         needs: [deploy]

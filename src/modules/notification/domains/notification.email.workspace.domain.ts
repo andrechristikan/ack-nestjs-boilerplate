@@ -37,6 +37,8 @@ export class NotificationEmailWorkspaceDomain {
         private readonly messageService: MessageService,
         private readonly helperEncryptionService: HelperEncryptionService
     ) {
+        // AppEnvSchema requires both addresses once AWS SES credentials are set, and
+        // AwsSESService.send is a no-op while SES is uninitialized, so neither is read as null.
         this.noreplyEmail = this.configService.get<string>('email.noreply')!;
         this.supportEmail = this.configService.get<string>('email.support')!;
 
@@ -87,8 +89,8 @@ export class NotificationEmailWorkspaceDomain {
                 reference,
                 expiredAt: expiredAtFormatted,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return { message: 'Workspace invite email processed', result };
@@ -163,8 +165,8 @@ export class NotificationEmailWorkspaceDomain {
                 requesterName,
                 joinRequestReviewLink,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return {
@@ -186,8 +188,8 @@ export class NotificationEmailWorkspaceDomain {
                 username,
                 workspaceName,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return {
@@ -217,8 +219,8 @@ export class NotificationEmailWorkspaceDomain {
                 workspaceName,
                 rejectReasonLabel,
             },
-            ...(cc?.length && { cc }),
-            ...(bcc?.length && { bcc }),
+            ...(cc.length > 0 && { cc }),
+            ...(bcc.length > 0 && { bcc }),
         });
 
         return {

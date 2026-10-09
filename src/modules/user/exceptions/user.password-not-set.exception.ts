@@ -13,6 +13,6 @@ export class UserPasswordNotSetException extends AppBaseException {
     readonly httpStatus = HttpStatus.BAD_REQUEST;
 
     constructor() {
-        super('auth.error.passwordNotSet');
+        super('user.error.passwordNotSet');
     }
 }

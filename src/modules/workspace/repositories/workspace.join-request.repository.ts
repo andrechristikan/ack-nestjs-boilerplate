@@ -57,7 +57,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
-        status?: Record<string, IPaginationIn>
+        status: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<WorkspaceJoinRequest>> {
         return this.paginationService.cursor<
             WorkspaceJoinRequest,

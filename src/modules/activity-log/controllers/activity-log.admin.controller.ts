@@ -1,11 +1,12 @@
 import type { ActivityLogAdminListRequestDto } from '@modules/activity-log/dtos/request/activity-log.admin-list.request.dto';
 import { ActivityLogAdminListRequestSchema } from '@modules/activity-log/dtos/request/activity-log.admin-list.request.dto';
+import type { ActivityLogAdminWorkspaceListRequestDto } from '@modules/activity-log/dtos/request/activity-log.admin-workspace-list.request.dto';
+import { ActivityLogAdminWorkspaceListRequestSchema } from '@modules/activity-log/dtos/request/activity-log.admin-workspace-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { ResponsePagination } from '@common/response/decorators/response.decorator';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-
 import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
@@ -85,16 +86,13 @@ export class ActivityLogAdminController {
     @RequestThrottle({ user: true })
     @Get('/workspace/:workspaceId/list')
     async listByWorkspace(
-        @Query({ schema: ActivityLogAdminListRequestSchema })
-        query: ActivityLogAdminListRequestDto,
+        @Query({ schema: ActivityLogAdminWorkspaceListRequestSchema })
+        query: ActivityLogAdminWorkspaceListRequestDto,
         @Param('workspaceId', { schema: RequestMongoIdSchema })
-        workspaceId: string,
-        @Query('userId', { schema: RequestMongoIdSchema.optional() })
-        userId?: string
+        workspaceId: string
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogHttpService.getListOffsetByWorkspace(
             workspaceId,
-            userId ?? null,
             query
         );
     }

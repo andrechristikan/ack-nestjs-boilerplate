@@ -4,12 +4,11 @@
  */
 export enum EnumApiKeyStatusCodeError {
     xApiKeyRequired = 50700,
-    xApiKeyNotFound = 50701,
-    xApiKeyInvalid = 50702,
-    xApiKeyForbidden = 50703,
-    xApiKeyPredefinedNotFound = 50704,
-    expired = 50705,
-    notFound = 50706,
-    inactive = 50707,
-    startAtNotFuture = 50708,
+    xApiKeyInvalid = 50701,
+    xApiKeyForbidden = 50702,
+    expired = 50703,
+    notFound = 50704,
+    inactive = 50705,
+    startAtNotFuture = 50706,
+    guardMissing = 50707,
 }

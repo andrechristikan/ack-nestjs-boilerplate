@@ -1,23 +1,18 @@
 import '@instrument';
-
 import { NestApplication, NestFactory } from '@nestjs/core';
-import { Logger, VersioningType } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
+import * as Sentry from '@sentry/nestjs';
 import { AppModule } from '@app/app.module';
+import { AppBootstrapSentryFlushTimeoutInMs } from '@app/constants/app.constant';
 import { ConfigService } from '@nestjs/config';
+import { ConfigureOptions, configure } from '@configure';
 import swaggerInit from '@swagger';
-import { Logger as PinoLogger } from 'nestjs-pino';
-import type { Express } from 'express';
 
 async function bootstrap(): Promise<void> {
-    let app: NestApplication = await NestFactory.create(AppModule, {
-        abortOnError: true,
-        bufferLogs: true,
-        bodyParser: false,
-        routeConflictPolicy: { duplicate: 'error', shadow: 'error' },
-        routeResolutionStrategy: 'specificity',
-    });
-
-    app.useLogger(app.get(PinoLogger));
+    let app: NestApplication = await NestFactory.create(
+        AppModule,
+        ConfigureOptions
+    );
 
     const configService = app.get(ConfigService);
     const env: string = configService.get<string>('app.env')!;
@@ -41,30 +36,13 @@ async function bootstrap(): Promise<void> {
     const loggerDebugEnable = configService.get<boolean>('logger.enable')!;
     const loggerDebugLevel = configService.get<string>('logger.level')!;
 
-    const versionEnable: boolean = configService.get<boolean>(
-        'app.urlVersion.enable'
-    )!;
+    const logger = new Logger(`${appName}-Main`);
 
     process.env.NODE_ENV = env;
     process.env.TZ = timezone;
 
     app = app.enableShutdownHooks();
-
-    app.setGlobalPrefix(globalPrefix);
-    app.getHttpAdapter()
-        .getInstance<Express>()
-        .set('trust proxy', trustedProxy);
-    app.getHttpAdapter().getInstance<Express>().disable('x-powered-by');
-
-    if (versionEnable) {
-        app.enableVersioning({
-            type: VersioningType.URI,
-            defaultVersion: version,
-            prefix: versioningPrefix,
-        });
-    }
-
-    const logger = new Logger(`${appName}-Main`);
+    app = configure(app);
 
     await swaggerInit(app);
 
@@ -96,15 +74,14 @@ async function bootstrap(): Promise<void> {
     return;
 }
 
-/**
- * Forces the exit on a failed boot. Shutdown hooks are already registered by then, so the signal
- * listeners keep the event loop alive and nothing else would terminate the process.
- */
-bootstrap().catch((error: unknown) => {
-    const detail =
-        error instanceof Error ? (error.stack ?? error.message) : String(error);
+bootstrap().catch(async (error: unknown) => {
+    const logger = new Logger('Bootstrap');
 
-    process.stderr.write(`[Bootstrap] Failed to start the application\n`);
-    process.stderr.write(`${detail}\n`);
+    logger.fatal(error);
+    Logger.flush();
+
+    Sentry.captureException(error);
+    await Sentry.flush(AppBootstrapSentryFlushTimeoutInMs);
+
     process.exit(1);
 });

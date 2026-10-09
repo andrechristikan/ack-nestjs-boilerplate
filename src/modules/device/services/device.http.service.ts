@@ -1,21 +1,19 @@
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import type {
-    IResponsePaginationReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
-import {
-    DeviceCursorAvailableOrderBy,
-    DeviceDefaultAvailableOrderBy,
-} from '@modules/device/constants/device.list.constant';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import type { DeviceSharedListRequestDto } from '@modules/device/dtos/request/device.shared-list.request.dto';
 import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { Injectable } from '@nestjs/common';
+import {
+    DeviceCursorAvailableOrderBy,
+    DeviceDefaultAvailableOrderBy,
+} from '@modules/device/constants/device.list.constant';
 
 @Injectable()
 export class DeviceHttpService {
@@ -32,9 +30,7 @@ export class DeviceHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.DeviceOwnershipWhereInput>(
                 query,
-                {
-                    availableOrderBy: DeviceDefaultAvailableOrderBy,
-                }
+                { availableOrderBy: DeviceDefaultAvailableOrderBy }
             );
         const isRevoked = this.paginationQueryUtil.equalBoolean(
             Prisma.DeviceOwnershipScalarFieldEnum.isRevoked,
@@ -76,9 +72,7 @@ export class DeviceHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.DeviceOwnershipWhereInput>(
                 query,
-                {
-                    availableOrderBy: DeviceCursorAvailableOrderBy,
-                }
+                { availableOrderBy: DeviceCursorAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
@@ -105,16 +99,23 @@ export class DeviceHttpService {
         userId: string,
         deviceOwnershipId: string,
         body: DeviceRefreshRequestDto
-    ): Promise<void> {
-        await this.deviceDomain.refresh(userId, deviceOwnershipId, body);
+    ): Promise<IResponseReturn<void>> {
+        await this.deviceDomain.refresh(userId, deviceOwnershipId, {
+            name: body.name ?? null,
+            platform: body.platform ?? null,
+            notificationToken: body.notificationToken ?? null,
+        });
 
-        return;
+        return {};
     }
 
-    async remove(userId: string, deviceOwnershipId: string): Promise<void> {
+    async remove(
+        userId: string,
+        deviceOwnershipId: string
+    ): Promise<IResponseReturn<void>> {
         await this.deviceDomain.remove(userId, deviceOwnershipId);
 
-        return;
+        return {};
     }
 
     async removeByAdmin(

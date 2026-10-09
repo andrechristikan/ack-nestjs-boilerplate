@@ -15,9 +15,12 @@ export class ActivityLogUtil {
     /**
      * Resolves the human-readable description from the `activityLog.<action>` i18n key, interpolating metadata.
      */
-    getDescription(action: string, metadata?: IActivityLogMetadata): string {
+    getDescription(
+        action: string,
+        metadata: IActivityLogMetadata | null
+    ): string {
         return this.messageService.setMessage(`activityLog.${action}`, {
-            properties: metadata,
+            ...(metadata !== null && { properties: metadata }),
         });
     }
 
@@ -26,7 +29,7 @@ export class ActivityLogUtil {
         workspaceId: string | null,
         action: EnumActivityLogAction,
         { ipAddress, userAgent, geoLocation }: IRequestLog,
-        metadata?: IActivityLogMetadata
+        metadata: IActivityLogMetadata | null
     ): Prisma.ActivityLogCreateManyUserInput {
         const description = this.getDescription(action, metadata);
         const plainUserAgent = this.databaseUtil.toPlainObject(userAgent);
@@ -39,7 +42,7 @@ export class ActivityLogUtil {
             ipAddress,
             userAgent: plainUserAgent,
             geoLocation: plainGeoLocation,
-            metadata,
+            ...(metadata !== null && { metadata }),
             createdBy: actorId,
         };
     }
@@ -54,7 +57,8 @@ export class ActivityLogUtil {
             actorId,
             workspaceId,
             action,
-            requestLog
+            requestLog,
+            null
         );
 
         return {

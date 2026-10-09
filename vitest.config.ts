@@ -13,12 +13,8 @@ export default defineConfig({
     test: {
         globals: true,
         environment: 'node',
-        setupFiles: ['test/setup.ts'],
-        isolate: false,
         fsModuleCache: true,
-        testTimeout: 5000,
         passWithNoTests: true,
-        include: ['test/**/*.spec.ts'],
         coverage: {
             enabled: false,
             provider: 'v8',
@@ -48,5 +44,18 @@ export default defineConfig({
                 statements: 100,
             },
         },
+        projects: [
+            {
+                extends: true,
+                test: {
+                    name: 'unit',
+                    include: ['test/unit/**/*.spec.ts'],
+                    setupFiles: ['test/helpers/test.logger.helper.ts'],
+                    isolate: false,
+                    testTimeout: 5000,
+                    sequence: { groupOrder: 0 },
+                },
+            },
+        ],
     },
 });

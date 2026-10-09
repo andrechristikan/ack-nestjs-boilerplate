@@ -28,20 +28,24 @@ export class UserPasswordHttpService {
             code,
             method,
         }: UserChangePasswordRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userPasswordDomain.changePassword(user, {
             newPassword,
             oldPassword,
-            backupCode,
-            code,
-            method,
+            backupCode: backupCode ?? null,
+            code: code ?? null,
+            method: method ?? null,
         });
+
+        return {};
     }
 
     async forgotPassword({
         email,
-    }: UserForgotPasswordRequestDto): Promise<void> {
+    }: UserForgotPasswordRequestDto): Promise<IResponseReturn<void>> {
         await this.userPasswordDomain.forgotPassword(email);
+
+        return {};
     }
 
     async resetPassword({
@@ -50,13 +54,15 @@ export class UserPasswordHttpService {
         backupCode,
         code,
         method,
-    }: UserForgotPasswordResetRequestDto): Promise<void> {
+    }: UserForgotPasswordResetRequestDto): Promise<IResponseReturn<void>> {
         await this.userPasswordDomain.resetPassword({
             newPassword,
             token,
-            backupCode,
-            code,
-            method,
+            backupCode: backupCode ?? null,
+            code: code ?? null,
+            method: method ?? null,
         });
+
+        return {};
     }
 }

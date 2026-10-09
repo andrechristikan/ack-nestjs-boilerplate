@@ -1,3 +1,4 @@
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -28,19 +29,23 @@ export class WorkspaceMemberHttpService {
         workspaceId: string,
         actorMember: WorkspaceMember,
         { targetUserId }: WorkspaceTransferOwnershipRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceMemberDomain.transferOwnership(
             workspaceId,
             actorMember,
             targetUserId
         );
+
+        return {};
     }
 
     async leaveWorkspace(
         workspaceId: string,
         member: WorkspaceMember
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceMemberDomain.leaveWorkspace(workspaceId, member);
+
+        return {};
     }
 
     async getMembersList(
@@ -50,9 +55,7 @@ export class WorkspaceMemberHttpService {
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.WorkspaceMemberWhereInput>(
                 query,
-                {
-                    availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
-                }
+                { availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy }
             );
         const role = this.paginationQueryUtil.inEnum(
             Prisma.WorkspaceMemberScalarFieldEnum.role,
@@ -85,42 +88,44 @@ export class WorkspaceMemberHttpService {
         actorMember: WorkspaceMember,
         targetMemberId: string,
         { role }: WorkspaceMemberUpdateRoleRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceMemberDomain.updateMemberRole(
             workspaceId,
             actorMember,
             targetMemberId,
             role
         );
+
+        return {};
     }
 
     async removeMember(
         workspaceId: string,
         actorMember: WorkspaceMember,
         targetMemberId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceMemberDomain.removeMember(
             workspaceId,
             actorMember,
             targetMemberId
         );
+
+        return {};
     }
 
-    async getMembersListForAdmin(
+    async getMembersListByAdmin(
         workspaceId: string,
         query: WorkspaceAdminMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.WorkspaceMemberWhereInput>(
                 query,
-                {
-                    availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
-                }
+                { availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy }
             );
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =
-            await this.workspaceMemberDomain.getMembersListForAdmin(
+            await this.workspaceMemberDomain.getMembersListByAdmin(
                 workspaceId,
                 params
             );

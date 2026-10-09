@@ -7,13 +7,13 @@ import { EnumSessionStatusCodeError } from '@modules/session/enums/session.statu
  * Passport strategy name of the JWT access-token guard.
  * @public
  */
-export const AuthJwtAccessGuardKey = 'JwtAccess';
+export const AuthJwtAccessGuardKey = 'AuthJwtAccessGuardKey';
 
 /**
  * Passport strategy name of the JWT refresh-token guard.
  * @public
  */
-export const AuthJwtRefreshGuardKey = 'JwtRefresh';
+export const AuthJwtRefreshGuardKey = 'AuthJwtRefreshGuardKey';
 
 /**
  * OpenAPI Bearer scheme name for JWT access-token routes.
@@ -43,7 +43,7 @@ export const AuthSocialAppleDocSecurityName = 'apple';
  * Request-store key holding the verified JWT payload.
  * @public
  */
-export const AuthPayloadStoreKey = 'AuthPayloadStore';
+export const AuthPayloadStoreKey = 'AuthPayloadStoreKey';
 
 /**
  * HKDF purpose that seals stored two-factor secrets.
@@ -52,7 +52,7 @@ export const AuthPayloadStoreKey = 'AuthPayloadStore';
 export const AuthTwoFactorSecretEncryptionPurpose = 'auth.twoFactor.secret';
 
 /**
- * JWT access-token guard error kit for `@AuthJwtAccessProtected`.
+ * JWT access-token guard error kit for `@AuthJwtAccessProtected`; `guardMissing` documents a route that reads the JWT payload without the guard.
  * @public
  */
 export const DocAuthJwtAccessErrorResponses = {
@@ -67,6 +67,14 @@ export const DocAuthJwtAccessErrorResponses = {
             statusCode: EnumSessionStatusCodeError.revoked,
         }
     ),
+    unavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
+        messagePath: 'auth.error.providerUnavailable',
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+    }),
+    guardMissing: DocResponseError(HttpStatus.UNAUTHORIZED, {
+        messagePath: 'auth.error.jwtGuardMissing',
+        statusCode: EnumAuthStatusCodeError.jwtGuardMissing,
+    }),
 } as const;
 
 /**
@@ -85,6 +93,10 @@ export const DocAuthJwtRefreshErrorResponses = {
             statusCode: EnumSessionStatusCodeError.revoked,
         }
     ),
+    unavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
+        messagePath: 'auth.error.providerUnavailable',
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+    }),
 } as const;
 
 /**
@@ -103,6 +115,14 @@ export const DocAuthSocialGoogleErrorResponses = {
             statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
         }
     ),
+    notConfigured: DocResponseError(HttpStatus.NOT_FOUND, {
+        messagePath: 'auth.error.socialGoogleNotConfigured',
+        statusCode: EnumAuthStatusCodeError.socialGoogleNotConfigured,
+    }),
+    unavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
+        messagePath: 'auth.error.providerUnavailable',
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+    }),
 } as const;
 
 /**
@@ -121,4 +141,51 @@ export const DocAuthSocialAppleErrorResponses = {
             statusCode: EnumAuthStatusCodeError.socialAppleRequired,
         }
     ),
+    notConfigured: DocResponseError(HttpStatus.NOT_FOUND, {
+        messagePath: 'auth.error.socialAppleNotConfigured',
+        statusCode: EnumAuthStatusCodeError.socialAppleNotConfigured,
+    }),
+    unavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
+        messagePath: 'auth.error.providerUnavailable',
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+    }),
 } as const;
+
+/**
+ * Node network error codes that mark an unreachable key or identity provider endpoint.
+ * @public
+ */
+export const AuthProviderNetworkErrorCodes: readonly string[] = [
+    'ECONNREFUSED',
+    'ECONNRESET',
+    'ENOTFOUND',
+    'ETIMEDOUT',
+    'EAI_AGAIN',
+    'EHOSTUNREACH',
+    'ENETUNREACH',
+];
+
+/**
+ * Error name `jwks-rsa` gives a JWKS endpoint that answers an HTTP error or no usable key.
+ * @public
+ */
+export const AuthJwksErrorName = 'JwksError';
+
+/**
+ * Message prefix `google-auth-library` puts on a failed certificate fetch.
+ * @public
+ */
+export const AuthGoogleCertificateErrorPrefix =
+    'Failed to retrieve verification certificates';
+
+/**
+ * Request header carrying the JWT or social ID token.
+ * @public
+ */
+export const AuthHeaderName = 'Authorization';
+
+/**
+ * Scheme preceding the token in `AuthHeaderName`, and the `tokenType` a login response reports.
+ * @public
+ */
+export const AuthBearerScheme = 'Bearer';

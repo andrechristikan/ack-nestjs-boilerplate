@@ -1,7 +1,7 @@
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import type {
     IActivityLogAnalyticActionCount,
-    IActivityLogAnalyticEvent,
+    IActivityLogAnalyticList,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAnalyticLockoutMetrics } from '@modules/analytic/interfaces/analytic.interface';
 import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
@@ -14,36 +14,36 @@ export class UserLoginAnalyticDomain {
         private readonly activityLogAnalyticDomain: ActivityLogAnalyticDomain
     ) {}
 
-    loginFrequency(startDate: Date, endDate: Date): Promise<number> {
-        return this.activityLogAnalyticDomain.countByActionsInRange(
+    getLoginFrequency(startDate: Date, endDate: Date): Promise<number> {
+        return this.activityLogAnalyticDomain.getCountByActionsInRange(
             UserLoginAnalyticActions,
             startDate,
             endDate
         );
     }
 
-    loginMethodMix(
+    getLoginMethodMix(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IActivityLogAnalyticActionCount[]> {
-        return this.activityLogAnalyticDomain.groupByActionInRange(
+        return this.activityLogAnalyticDomain.getGroupByActionInRange(
             UserLoginAnalyticActions,
-            startDate ?? undefined,
-            endDate ?? undefined
+            startDate,
+            endDate
         );
     }
 
-    async lockoutMetrics(
+    async getLockoutMetrics(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticLockoutMetrics> {
         const [failed, maxAttempt] = await Promise.all([
-            this.activityLogAnalyticDomain.countByActionsInRange(
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
                 [EnumActivityLogAction.userLoginFailed],
                 startDate,
                 endDate
             ),
-            this.activityLogAnalyticDomain.countByActionsInRange(
+            this.activityLogAnalyticDomain.getCountByActionsInRange(
                 [EnumActivityLogAction.userReachMaxPasswordAttempt],
                 startDate,
                 endDate
@@ -52,22 +52,22 @@ export class UserLoginAnalyticDomain {
         return { failed, maxAttempt };
     }
 
-    findLoginEvents(
+    getLoginActivityLogs(
         startDate: Date,
         endDate: Date
-    ): Promise<IActivityLogAnalyticEvent[]> {
-        return this.activityLogAnalyticDomain.findManyByActionsInRange(
+    ): Promise<IActivityLogAnalyticList[]> {
+        return this.activityLogAnalyticDomain.getManyByActionsInRange(
             UserLoginAnalyticActions,
             startDate,
             endDate
         );
     }
 
-    findFailedLoginEvents(
+    getFailedLoginActivityLogs(
         startDate: Date,
         endDate: Date
-    ): Promise<IActivityLogAnalyticEvent[]> {
-        return this.activityLogAnalyticDomain.findManyByActionsInRange(
+    ): Promise<IActivityLogAnalyticList[]> {
+        return this.activityLogAnalyticDomain.getManyByActionsInRange(
             [
                 EnumActivityLogAction.userLoginFailed,
                 EnumActivityLogAction.userReachMaxPasswordAttempt,

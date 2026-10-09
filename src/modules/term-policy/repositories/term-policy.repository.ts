@@ -39,8 +39,8 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
-        type?: Record<string, IPaginationIn>,
-        status?: Record<string, IPaginationIn>
+        type: Record<string, IPaginationIn> | null,
+        status: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
         return this.paginationService.offset<
             TermPolicy,
@@ -60,7 +60,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
-        type?: Record<string, IPaginationIn>
+        type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
         return this.paginationService.cursor<
             TermPolicy,
@@ -96,6 +96,17 @@ export class TermPolicyRepository implements ITermPolicyRepository {
 
     async findOneById(termPolicyId: string): Promise<TermPolicy | null> {
         return this.databaseService.client.termPolicy.findUnique({
+            where: {
+                id: termPolicyId,
+            },
+        });
+    }
+
+    async findOneByIdInTx(
+        tx: IDatabaseTransactionClient,
+        termPolicyId: string
+    ): Promise<TermPolicy | null> {
+        return tx.termPolicy.findUnique({
             where: {
                 id: termPolicyId,
             },
@@ -309,12 +320,13 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
         contents: ITermPolicyContent[]
-    ): Promise<TermPolicy> {
+    ): Promise<boolean> {
         const publishedAt = this.helperDateService.create();
 
-        return tx.termPolicy.update({
+        const { count } = await tx.termPolicy.updateMany({
             where: {
                 id: termPolicyId,
+                status: EnumTermPolicyStatus.draft,
             },
             data: {
                 status: EnumTermPolicyStatus.published,
@@ -322,5 +334,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                 contents,
             },
         });
+
+        return count > 0;
     }
 }

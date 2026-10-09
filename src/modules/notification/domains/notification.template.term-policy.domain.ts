@@ -11,17 +11,14 @@ export class NotificationTemplateTermPolicyDomain {
     private readonly logger = new Logger(
         NotificationTemplateTermPolicyDomain.name
     );
-    private readonly templatesDir = join(
-        process.cwd(),
-        'src/modules/notification/templates'
-    );
 
     constructor(private readonly awsSESService: AwsSESService) {}
 
     async emailImportPublishTermPolicy(): Promise<boolean> {
         try {
             const templatePath = join(
-                this.templatesDir,
+                import.meta.dirname,
+                '../templates',
                 'notification.publish-term-policy.template.hbs'
             );
 

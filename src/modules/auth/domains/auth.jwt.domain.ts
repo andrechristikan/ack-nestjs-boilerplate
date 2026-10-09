@@ -5,12 +5,14 @@ import { JwtService } from '@nestjs/jwt';
 import type { JwtSignOptions } from '@nestjs/jwt';
 import { createPrivateKey, createPublicKey } from 'node:crypto';
 import type {
-    IAuthAccessTokenGenerate,
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
+    IAuthLoginIdentifiers,
     IAuthRefreshTokenGenerate,
     IAuthToken,
+    IAuthTokenSignInput,
 } from '@modules/auth/interfaces/auth.interface';
+import { AuthBearerScheme } from '@modules/auth/constants/auth.constant';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
@@ -19,6 +21,8 @@ import {
 } from '@generated/prisma-client/client';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { AuthJwtConfigInvalidException } from '@modules/auth/exceptions/auth.jwt-config-invalid.exception';
+import { AuthJwtConfigMissingException } from '@modules/auth/exceptions/auth.jwt-config-missing.exception';
 
 /** Signs, verifies and rotates the access/refresh token pair. See docs/authentication.md. */
 @Injectable()
@@ -35,7 +39,6 @@ export class AuthJwtDomain {
     readonly jwtRefreshTokenExpirationTimeInSeconds: number;
     private readonly jwtRefreshTokenAlgorithm: Algorithm;
 
-    private readonly jwtPrefix: string;
     private readonly jwtAudience: string;
     private readonly jwtIssuer: string;
 
@@ -81,7 +84,6 @@ export class AuthJwtDomain {
             'auth.jwt.refreshToken.algorithm'
         )!;
 
-        this.jwtPrefix = this.configService.get<string>('auth.jwt.prefix')!;
         this.jwtAudience = this.configService.get<string>('auth.jwt.audience')!;
         this.jwtIssuer = this.configService.get<string>('auth.jwt.issuer')!;
     }
@@ -91,9 +93,7 @@ export class AuthJwtDomain {
         const raw = value?.trim();
 
         if (!raw) {
-            throw new Error(
-                `Invalid JWT configuration: ${configKey} is missing.`
-            );
+            throw new AuthJwtConfigMissingException(configKey);
         }
 
         try {
@@ -106,9 +106,10 @@ export class AuthJwtDomain {
                 format: 'pem',
             }) as string;
         } catch (error) {
-            throw new Error(
-                `Invalid JWT configuration: ${configKey} must be a valid base64-encoded PKCS#8 DER private key.`,
-                { cause: error }
+            throw new AuthJwtConfigInvalidException(
+                configKey,
+                'PKCS#8 DER private key',
+                error
             );
         }
     }
@@ -118,9 +119,7 @@ export class AuthJwtDomain {
         const raw = value?.trim();
 
         if (!raw) {
-            throw new Error(
-                `Invalid JWT configuration: ${configKey} is missing.`
-            );
+            throw new AuthJwtConfigMissingException(configKey);
         }
 
         try {
@@ -133,9 +132,10 @@ export class AuthJwtDomain {
                 format: 'pem',
             }) as string;
         } catch (error) {
-            throw new Error(
-                `Invalid JWT configuration: ${configKey} must be a valid base64-encoded SPKI DER public key.`,
-                { cause: error }
+            throw new AuthJwtConfigInvalidException(
+                configKey,
+                'SPKI DER public key',
+                error
             );
         }
     }
@@ -215,22 +215,27 @@ export class AuthJwtDomain {
         return this.jwtService.decode<T>(token);
     }
 
+    /** Mints a new session id and a new jti. */
+    createLoginIdentifiers(): IAuthLoginIdentifiers {
+        const sessionId = this.databaseUtil.createId();
+        const jti = this.authUtil.generateJti();
+
+        return { sessionId, jti };
+    }
+
+    /** Signs the access and refresh token pair for the user. */
     createTokens(
         user: IUser,
+        { sessionId, jti, deviceOwnershipId, loginAt }: IAuthTokenSignInput,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith
-    ): IAuthAccessTokenGenerate {
-        const loginDate = this.helperDateService.create();
-
-        const sessionId = this.databaseUtil.createId();
-        const deviceOwnershipId = this.databaseUtil.createId();
-        const jti = this.authUtil.generateJti();
+    ): IAuthToken {
         const payloadAccessToken: IAuthJwtAccessTokenPayload =
             this.authUtil.createPayloadAccessToken(
                 user,
                 sessionId,
                 deviceOwnershipId,
-                loginDate,
+                loginAt,
                 loginFrom,
                 loginWith
             );
@@ -248,18 +253,12 @@ export class AuthJwtDomain {
             payloadRefreshToken
         );
 
-        const tokens: IAuthToken = {
-            tokenType: this.jwtPrefix,
+        return {
+            tokenType: AuthBearerScheme,
             roleType: user.role.type,
             expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
             accessToken,
             refreshToken,
-        };
-
-        return {
-            tokens,
-            jti,
-            sessionId,
         };
     }
 
@@ -319,7 +318,7 @@ export class AuthJwtDomain {
         );
 
         const tokens: IAuthToken = {
-            tokenType: this.jwtPrefix,
+            tokenType: AuthBearerScheme,
             roleType: user.role.type,
             expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
             accessToken,

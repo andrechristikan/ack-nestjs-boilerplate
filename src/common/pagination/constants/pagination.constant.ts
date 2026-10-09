@@ -14,6 +14,12 @@ export const PaginationDefaultPerPage = 20;
 export const PaginationDefaultMaxPerPage = 100;
 
 /**
+ * Longest `search` string a list request may send.
+ * @public
+ */
+export const PaginationDefaultMaxSearchLength = 100;
+
+/**
  * Largest `page` an offset list request may send.
  * @public
  */
@@ -51,17 +57,7 @@ export const PaginationDefaultOrderBy: readonly IPaginationOrderBy[] =
     ]);
 
 /**
- * Order directions a list request may send.
- * @public
- */
-export const PaginationAllowedOrderDirections: EnumPaginationOrderDirectionType[] =
-    [
-        EnumPaginationOrderDirectionType.asc,
-        EnumPaginationOrderDirectionType.desc,
-    ];
-
-/**
  * Request-store key holding the parsed pagination, search and filter state of a list request.
  * @public
  */
-export const PaginationStoreKey = 'PaginationStore';
+export const PaginationStoreKey = 'PaginationStoreKey';

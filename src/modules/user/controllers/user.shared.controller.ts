@@ -103,7 +103,6 @@ export class UserSharedController {
 
     @Doc({ summary: 'refresh token' })
     @Response('user.refresh', { schema: AuthTokenResponseSchema })
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtRefreshProtected()
     @ApiKeyProtected()
@@ -145,8 +144,8 @@ export class UserSharedController {
         userId: string,
         @Body({ schema: UserUpdateProfileRequestSchema })
         body: UserUpdateProfileRequestDto
-    ): Promise<void> {
-        await this.userProfileHttpService.updateProfile(userId, body);
+    ): Promise<IResponseReturn<void>> {
+        return this.userProfileHttpService.updateProfile(userId, body);
     }
 
     @Doc({ summary: 'generate upload photo profile presign' })
@@ -185,8 +184,8 @@ export class UserSharedController {
         userId: string,
         @Body({ schema: UserUpdateProfilePhotoRequestSchema })
         body: UserUpdateProfilePhotoRequestDto
-    ): Promise<void> {
-        await this.userProfileHttpService.updatePhotoProfile(userId, body);
+    ): Promise<IResponseReturn<void>> {
+        return this.userProfileHttpService.updatePhotoProfile(userId, body);
     }
 
     @Doc({ summary: 'upload photo profile' })
@@ -212,8 +211,8 @@ export class UserSharedController {
             ])
         )
         file: IFile
-    ): Promise<void> {
-        await this.userProfileHttpService.uploadPhotoProfile(userId, file);
+    ): Promise<IResponseReturn<void>> {
+        return this.userProfileHttpService.uploadPhotoProfile(userId, file);
     }
 
     @Doc({ summary: 'change password' })
@@ -229,8 +228,8 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @Body({ schema: UserChangePasswordRequestSchema })
         body: UserChangePasswordRequestDto
-    ): Promise<void> {
-        await this.userPasswordHttpService.changePassword(user, body);
+    ): Promise<IResponseReturn<void>> {
+        return this.userPasswordHttpService.changePassword(user, body);
     }
 
     @Doc({ summary: 'user add mobile number' })
@@ -309,11 +308,11 @@ export class UserSharedController {
         @AuthJwtPayload('userId') userId: string,
         @Body({ schema: UserClaimUsernameRequestSchema })
         body: UserClaimUsernameRequestDto
-    ): Promise<void> {
-        await this.userProfileHttpService.claimUsername(userId, body);
+    ): Promise<IResponseReturn<void>> {
+        return this.userProfileHttpService.claimUsername(userId, body);
     }
 
-    @Doc({ summary: 'Get current two-factor authentication status' })
+    @Doc({ summary: 'get current two-factor authentication status' })
     @Response('user.twoFactor.status', {
         schema: UserTwoFactorStatusResponseSchema,
     })
@@ -331,7 +330,7 @@ export class UserSharedController {
 
     @Doc({
         summary:
-            'Start two-factor setup and receive secret; requires an unused backup code while two-factor is enabled',
+            'start two-factor setup and receive secret; requires an unused backup code while two-factor is enabled',
     })
     @Response('user.twoFactor.setup', {
         schema: UserTwoFactorSetupResponseSchema,
@@ -351,7 +350,7 @@ export class UserSharedController {
         return this.userTwoFactorHttpService.setupTwoFactor(user, body);
     }
 
-    @Doc({ summary: 'Enable two-factor authentication' })
+    @Doc({ summary: 'enable two-factor authentication' })
     @Response('user.twoFactor.enable', {
         schema: UserTwoFactorEnableResponseSchema,
     })
@@ -370,7 +369,7 @@ export class UserSharedController {
         return this.userTwoFactorHttpService.enableTwoFactor(user, body);
     }
 
-    @Doc({ summary: 'Disable two-factor authentication' })
+    @Doc({ summary: 'disable two-factor authentication' })
     @Response('user.twoFactor.disable')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -382,11 +381,11 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @Body({ schema: UserTwoFactorDisableRequestSchema })
         body: UserTwoFactorDisableRequestDto
-    ): Promise<void> {
-        await this.userTwoFactorHttpService.disableTwoFactor(user, body);
+    ): Promise<IResponseReturn<void>> {
+        return this.userTwoFactorHttpService.disableTwoFactor(user, body);
     }
 
-    @Doc({ summary: 'Regenerate two-factor backup codes' })
+    @Doc({ summary: 'regenerate two-factor backup codes' })
     @Response('user.twoFactor.regenerateBackupCodes', {
         schema: UserTwoFactorEnableResponseSchema,
     })
@@ -395,6 +394,7 @@ export class UserSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @HttpCode(HttpStatus.OK)
     @Post('/2fa/backup-code/regenerate')
     async regenerateTwoFactorBackupCodes(
         @UserCurrent() user: IUser,
@@ -409,7 +409,7 @@ export class UserSharedController {
 
     @Doc({
         summary:
-            'Logout from current session, invalidating the access token and deleting the session.',
+            'logout from current session, invalidating the access token and deleting the session.',
     })
     @Response('user.logout')
     @TermPolicyAcceptanceProtected()
@@ -422,8 +422,8 @@ export class UserSharedController {
     async logout(
         @AuthJwtPayload()
         { sessionId, userId, deviceOwnershipId }: IAuthJwtAccessTokenPayload
-    ): Promise<void> {
-        await this.userAuthHttpService.logout(
+    ): Promise<IResponseReturn<void>> {
+        return this.userAuthHttpService.logout(
             userId,
             sessionId,
             deviceOwnershipId

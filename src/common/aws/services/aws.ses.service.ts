@@ -42,16 +42,29 @@ export class AwsSESService implements OnModuleInit {
 
     private readonly iamKey: string | null;
     private readonly iamSecret: string | null;
+    private readonly identityArn: string | null;
     private readonly region: string | null;
+    private readonly endpoint: string | null;
 
     private sesClient: SESClient;
 
     constructor(private readonly configService: ConfigService) {
-        this.iamKey = this.configService.get<string | null>('aws.ses.iam.key')!;
-        this.iamSecret = this.configService.get<string | null>(
+        const iamKey = this.configService.get<string | null>('aws.ses.iam.key');
+        this.iamKey = iamKey ?? null;
+        const iamSecret = this.configService.get<string | null>(
             'aws.ses.iam.secret'
-        )!;
-        this.region = this.configService.get<string | null>('aws.ses.region')!;
+        );
+        this.iamSecret = iamSecret ?? null;
+        const identityArn = this.configService.get<string | null>(
+            'aws.ses.identityArn'
+        );
+        this.identityArn = identityArn ?? null;
+        const region = this.configService.get<string | null>('aws.ses.region');
+        this.region = region ?? null;
+        const endpoint = this.configService.get<string | null>(
+            'aws.ses.endpoint'
+        );
+        this.endpoint = endpoint ?? null;
     }
 
     onModuleInit(): void {
@@ -69,6 +82,7 @@ export class AwsSESService implements OnModuleInit {
                 secretAccessKey: this.iamSecret,
             },
             region: this.region,
+            ...(this.endpoint ? { endpoint: this.endpoint } : {}),
         });
     }
 
@@ -135,10 +149,7 @@ export class AwsSESService implements OnModuleInit {
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
 
-            return {
-                $metadata: {},
-                Template: undefined,
-            } as GetTemplateCommandOutput;
+            return { $metadata: {} } as GetTemplateCommandOutput;
         }
 
         const command: GetTemplateCommand = new GetTemplateCommand({
@@ -264,10 +275,7 @@ export class AwsSESService implements OnModuleInit {
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
 
-            return {
-                MessageId: undefined,
-                $metadata: {},
-            } as SendTemplatedEmailCommandOutput;
+            return { $metadata: {} } as SendTemplatedEmailCommandOutput;
         }
 
         const command: SendTemplatedEmailCommand =
@@ -279,6 +287,7 @@ export class AwsSESService implements OnModuleInit {
                     CcAddresses: cc ?? [],
                 },
                 Source: sender,
+                ...(this.identityArn ? { SourceArn: this.identityArn } : {}),
                 TemplateData: JSON.stringify(templateData ?? ''),
                 ReplyToAddresses: [replyTo ?? sender],
             });
@@ -327,6 +336,7 @@ export class AwsSESService implements OnModuleInit {
                     ),
                 })),
                 Source: sender,
+                ...(this.identityArn ? { SourceArn: this.identityArn } : {}),
                 DefaultTemplateData: JSON.stringify(defaultTemplateData ?? {}),
                 ReplyToAddresses: [replyTo ?? sender],
             });

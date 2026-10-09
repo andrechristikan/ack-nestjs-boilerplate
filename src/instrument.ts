@@ -12,7 +12,6 @@ import appConfigFunction from '@configs/app.config';
 import loggerConfigFunction from '@configs/logger.config';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import {
-    LoggerExcludedRoutes,
     LoggerHttpMethodPrefixRegex,
     LoggerRedactedValue,
     LoggerSensitiveFields,
@@ -34,11 +33,19 @@ const sentryLogLevels: LogSeverityLevel[] =
         ? ['warn', 'error', 'fatal']
         : ['trace', 'debug', 'info', 'warn', 'error', 'fatal'];
 
+const isProduction = appConfigs.env === EnumAppEnvironment.production;
+const tracesSampleRate = isProduction
+    ? loggerConfigs.sentry.tracesSampleRateProduction
+    : loggerConfigs.sentry.tracesSampleRate;
+const profilesSampleRate = isProduction
+    ? loggerConfigs.sentry.profilesSampleRateProduction
+    : loggerConfigs.sentry.profilesSampleRate;
+
 const sensitiveFields = new Set(
     LoggerSensitiveFields.map(field => field.toLowerCase())
 );
 
-function isExcludedUrl(url: string | undefined, patterns: string[]): boolean {
+function isExcludedUrl(url: string | null, patterns: string[]): boolean {
     if (!url || !patterns.length) {
         return false;
     }
@@ -47,7 +54,7 @@ function isExcludedUrl(url: string | undefined, patterns: string[]): boolean {
     try {
         pathname = new URL(url).pathname;
     } catch {
-        pathname = url.split('?')[0].split('#')[0];
+        pathname = url.split('?')[0]!.split('#')[0]!;
     }
 
     const normalizedPath = pathname.toLowerCase();
@@ -88,13 +95,13 @@ function maskUrl(url: string): string {
         const parsed = new URL(url);
         return `${parsed.origin}${maskPath(parsed.pathname)}`;
     } catch {
-        return maskPath(url.split('?')[0].split('#')[0]);
+        return maskPath(url.split('?')[0]!.split('#')[0]!);
     }
 }
 
-function maskName(name: string | undefined): string | undefined {
-    const separator = name?.indexOf(' ') ?? -1;
-    if (!name || separator === -1) {
+function maskName(name: string): string {
+    const separator = name.indexOf(' ');
+    if (separator === -1) {
         return name;
     }
 
@@ -122,7 +129,7 @@ function isSensitiveHeaderAttribute(key: string): boolean {
         return false;
     }
 
-    const header = key.slice(prefix.length).split('.')[0];
+    const header = key.slice(prefix.length).split('.')[0]!;
     return isSensitiveKey(header.replaceAll('_', '-'));
 }
 
@@ -191,7 +198,7 @@ function redactBody(data: unknown): unknown {
     return LoggerRedactedValue;
 }
 
-function scrubData(data: Record<string, unknown> | undefined): void {
+function scrubData(data: Record<string, unknown> | null): void {
     if (!data) {
         return;
     }
@@ -220,7 +227,7 @@ function scrubData(data: Record<string, unknown> | undefined): void {
     }
 }
 
-function scrubRequest(request: RequestEventData | undefined): void {
+function scrubRequest(request: RequestEventData | null): void {
     if (!request) {
         return;
     }
@@ -249,24 +256,28 @@ function scrubRequest(request: RequestEventData | undefined): void {
 }
 
 function scrubEvent<T extends Event>(event: T): T {
-    scrubRequest(event.request);
-    event.transaction = maskName(event.transaction);
-    scrubData(event.contexts?.trace?.data);
+    scrubRequest(event.request ?? null);
+    if (event.transaction) {
+        event.transaction = maskName(event.transaction);
+    }
+    scrubData(event.contexts?.trace?.data ?? null);
 
     for (const span of event.spans ?? []) {
-        span.description = maskName(span.description);
-        scrubData(span.data);
+        if (span.description) {
+            span.description = maskName(span.description);
+        }
+        scrubData(span.data ?? null);
     }
 
     for (const breadcrumb of event.breadcrumbs ?? []) {
-        scrubData(breadcrumb.data);
+        scrubData(breadcrumb.data ?? null);
     }
 
     return event;
 }
 
 function scrubBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb {
-    scrubData(breadcrumb.data);
+    scrubData(breadcrumb.data ?? null);
 
     return breadcrumb;
 }
@@ -294,10 +305,8 @@ if (loggerConfigs.sentry.dsn) {
             nodeProfilingIntegration(),
             Sentry.pinoIntegration({ log: { levels: sentryLogLevels } }),
         ],
-        tracesSampleRate:
-            appConfigs.env === EnumAppEnvironment.production ? 0.3 : 1.0,
-        profilesSampleRate:
-            appConfigs.env === EnumAppEnvironment.production ? 0.1 : 0.5,
+        tracesSampleRate,
+        profilesSampleRate,
         normalizeDepth: 3,
         maxValueLength: 1000,
         attachStacktrace: true,
@@ -313,9 +322,9 @@ if (loggerConfigs.sentry.dsn) {
             }
 
             if (event.request) {
-                const url = event.request.url;
+                const url = event.request.url ?? null;
 
-                if (isExcludedUrl(url, LoggerExcludedRoutes)) {
+                if (isExcludedUrl(url, loggerConfigs.excludedRoutes)) {
                     return null;
                 }
             }
@@ -352,21 +361,21 @@ if (loggerConfigs.sentry.dsn) {
         tracesSampler: samplingContext => {
             if (
                 isExcludedUrl(
-                    samplingContext.normalizedRequest?.url,
-                    LoggerExcludedRoutes
+                    samplingContext.normalizedRequest?.url ?? null,
+                    loggerConfigs.excludedRoutes
                 ) ||
                 isExcludedUrl(
                     samplingContext.name.replace(
                         LoggerHttpMethodPrefixRegex,
                         ''
                     ),
-                    LoggerExcludedRoutes
+                    loggerConfigs.excludedRoutes
                 )
             ) {
                 return 0;
             }
 
-            return appConfigs.env === EnumAppEnvironment.production ? 0.3 : 1.0;
+            return tracesSampleRate;
         },
     });
 }

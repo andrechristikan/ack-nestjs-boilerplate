@@ -33,7 +33,11 @@ export class UserTwoFactorHttpService {
     > {
         const tokens = await this.userTwoFactorDomain.loginVerifyTwoFactor(
             challengeToken,
-            { code, backupCode, method }
+            {
+                code: code ?? null,
+                backupCode: backupCode ?? null,
+                method,
+            }
         );
 
         return { data: tokens };
@@ -90,12 +94,14 @@ export class UserTwoFactorHttpService {
     async disableTwoFactor(
         user: IUser,
         { code, backupCode, method }: UserTwoFactorDisableRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userTwoFactorDomain.disableTwoFactor(user, {
-            code,
-            backupCode,
+            code: code ?? null,
+            backupCode: backupCode ?? null,
             method,
         });
+
+        return {};
     }
 
     async regenerateTwoFactorBackupCodes(
@@ -114,7 +120,9 @@ export class UserTwoFactorHttpService {
     async resetTwoFactorByAdmin(
         userId: string,
         updatedBy: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.userTwoFactorDomain.resetTwoFactorByAdmin(userId, updatedBy);
+
+        return {};
     }
 }

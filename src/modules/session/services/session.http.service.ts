@@ -1,20 +1,18 @@
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import type {
-    IResponsePaginationReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
-import {
-    SessionCursorAvailableOrderBy,
-    SessionDefaultAvailableOrderBy,
-} from '@modules/session/constants/session.list.constant';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { Injectable } from '@nestjs/common';
+import {
+    SessionCursorAvailableOrderBy,
+    SessionDefaultAvailableOrderBy,
+} from '@modules/session/constants/session.list.constant';
 
 @Injectable()
 export class SessionHttpService {
@@ -76,10 +74,13 @@ export class SessionHttpService {
         };
     }
 
-    async revoke(userId: string, sessionId: string): Promise<void> {
+    async revoke(
+        userId: string,
+        sessionId: string
+    ): Promise<IResponseReturn<void>> {
         await this.sessionDomain.revoke(userId, sessionId);
 
-        return;
+        return {};
     }
 
     async revokeByAdmin(

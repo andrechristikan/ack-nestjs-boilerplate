@@ -35,7 +35,7 @@ export class WorkspaceJoinRequestHttpService {
         const joinRequest =
             await this.workspaceJoinRequestDomain.createJoinRequest(userId, {
                 workspaceId,
-                message,
+                message: message ?? null,
             });
 
         return { data: joinRequest };
@@ -83,12 +83,14 @@ export class WorkspaceJoinRequestHttpService {
         workspace: Workspace,
         reviewerId: string,
         workspaceJoinRequestId: string
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceJoinRequestDomain.acceptJoinRequest(
             workspace,
             reviewerId,
             workspaceJoinRequestId
         );
+
+        return {};
     }
 
     async rejectJoinRequest(
@@ -96,12 +98,14 @@ export class WorkspaceJoinRequestHttpService {
         reviewerId: string,
         workspaceJoinRequestId: string,
         { rejectReasonCode }: WorkspaceJoinRequestRejectRequestDto
-    ): Promise<void> {
+    ): Promise<IResponseReturn<void>> {
         await this.workspaceJoinRequestDomain.rejectJoinRequest(
             workspace,
             reviewerId,
             workspaceJoinRequestId,
             rejectReasonCode
         );
+
+        return {};
     }
 }
