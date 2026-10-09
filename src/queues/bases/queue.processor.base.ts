@@ -1,6 +1,8 @@
 import { OnWorkerEvent, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job, UnrecoverableError } from 'bullmq';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueException } from '@queues/exceptions/queue.exception';
 import type { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -54,7 +56,15 @@ export abstract class QueueProcessorBase extends WorkerHost {
 
             this.logger.error(error, 'Queue job failed');
 
-            throw error;
+            if (
+                error instanceof QueueException ||
+                error instanceof AppBaseException ||
+                error instanceof UnrecoverableError
+            ) {
+                throw error;
+            }
+
+            throw new AppUnknownException(error);
         }
     }
 

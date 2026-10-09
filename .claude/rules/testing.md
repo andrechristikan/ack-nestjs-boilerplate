@@ -11,15 +11,17 @@ A spec succeeds when it fails on a behaviour change. Load tests are not this sui
 | Type | Subject | Runs against |
 | --- | --- | --- |
 | unit | one class: domain, HTTP or processor service, util, guard, pipe, interceptor, filter, queue class, DTO | nothing; every collaborator doubled |
-| integration | a repository, a domain whose invariant needs real storage, a kit adapter (`AwsS3Service`, `AwsSESService`, `DatabaseService`, cache), a queue class | Mongo, Redis, LocalStack; FCM faked |
-| e2e | a route or a flow over HTTP, BullMQ workers included | Mongo, Redis, LocalStack, nginx serving JWKS; FCM faked |
+| integration (held) | a repository, a domain whose invariant needs real storage, a kit adapter (`AwsS3Service`, `AwsSESService`, `DatabaseService`, cache), a queue class | Mongo, Redis, LocalStack; FCM faked |
+| e2e (held) | a route or a flow over HTTP, BullMQ workers included | Mongo, Redis, LocalStack, nginx serving JWKS; FCM faked |
+
+Integration and e2e are held: no Vitest project, script, or `test/` folder exists for them. Do not run, write, or dispatch one; a task needing one is a hand-back.
 
 Integration asserts only what a mock cannot: a rollback, a unique index rejecting a duplicate, the rows a filter, select, or page returns, cross-repository consistency in one transaction, a request the emulator accepts. It never re-tests branch logic a unit spec covers; a domain enters it only for a transaction or cross-repository invariant.
 
 ## Layout and runs
 
-- `vitest.config.ts` is the only config; `test.projects` holds `unit`, `integration`, `e2e`, each running only `test/<type>/**/*.spec.ts`. A spec mirrors its subject's `src/` path under `test/<type>/`; an e2e flow across several routes is `test/e2e/flows/<module>.<flow>.spec.ts`. A helper for one type lives in `test/<type>/helpers/` and moves to `test/helpers/` when a second type imports it (names: `naming.md`); specs import it through `@test/*`.
-- `pnpm test` (unit, no Docker; pre-commit and `verify.sh` run it), `pnpm test:integration`, and `pnpm test:e2e` (Docker daemon) take a path filter (`pnpm test user.domain`); name it when reporting. `pnpm test:cov` applies the 100% thresholds to `src/**/*.ts` minus `coverage.exclude`; an excluded file gets no spec.
+- `vitest.config.ts` is the only config; `test.projects` holds `unit` (`test/unit/**/*.spec.ts`); a released type adds its project on the same pattern. A spec mirrors its subject's `src/` path under `test/<type>/`. A helper for one type lives in `test/<type>/helpers/` and moves to `test/helpers/` when a second type imports it (names: `naming.md`); specs import it through `@test/*`.
+- `pnpm test` (unit, no Docker; pre-commit and `verify.sh` run it) takes a path filter (`pnpm test user.domain`); name it when reporting. `pnpm test:cov` applies the 100% thresholds to `src/**/*.ts` minus `coverage.exclude`; an excluded file gets no spec.
 - `test/helpers/test.logger.helper.ts`, first in every `setupFiles`, mutes Nest loggers; never mock, spy, or assert one.
 
 ## Spec content
@@ -38,10 +40,10 @@ Integration asserts only what a mock cannot: a rollback, a unique index rejectin
 - Per layer: a domain asserts orchestration and the exception per branch; an HTTP or processor service the shaping and hand-off; a queue class job name, payload with every encrypted field, and options; a guard transport behaviour; an interceptor or filter the envelope and headers; a DTO per `dto.md`; an exception its five fields. A controller, processor, repository, contract, or module is no unit subject.
 - On the coverage path `src/` wins: no production change beyond a typo fix; pin the spec to current behaviour and record the defect with file and line. Never delete, `.skip`, or weaken a failing spec, lower the threshold, extend the exclude list, or add `/* v8 ignore */`. An elaborate mock is a design defect to report; `new Date()` is not.
 
-## Integration and e2e
+## Integration and e2e (held)
 
 - `TestEnv` (`test/helpers/test.env.helper.ts`) names every `AppEnvSchema` key and `applyTestEnv` throws on a missing one: `@nestjs/config` fills a missing key from the local `.env`, which holds live credentials. No `.env.<type>`.
 - Under `test/`, only setup files, global-setup files, `test.env.helper.ts`, and `test.container.helper.ts` touch `process.env`. An env-writing setup file imports nothing that reaches `AppModule` or `CommonModule`, because `ConfigModule.forRoot` and `queue.decorator.ts` read env at import; app hooks go in a later setup file.
-- `test/<type>/test.<type>.global-setup.ts` starts the containers once per project run, runs `prisma db push --skip-generate` against the throwaway Mongo (the one schema push an agent runs), prepares LocalStack, and hands URLs to workers through `project.provide` and `inject` (`test.provided-context.d.ts`).
+- `test/<type>/test.<type>.global-setup.ts` starts the containers once per project run, runs `prisma db push --skip-generate` against the throwaway Mongo, prepares LocalStack, and hands URLs to workers through `project.provide` and `inject` (`test.provided-context.d.ts`).
 - `maxWorkers: 1`: files run serially on one database. Integration resets Mongo and Redis in `beforeEach` (`test.database.helper.ts`). e2e resets once per file, boots `AppModule` plus `MigrationModule` through `@configure`, and seeds the baseline (`test/e2e/helpers/test.e2e.app.helper.ts`); a spec calls `getE2eApp()`.
-- FCM has no emulator: `TestFirebaseFake` (`test/helpers/test.firebase.helper.ts`) replaces `FirebaseService` through `.overrideProvider(...).useValue(...)` and records into `TestFirebasePushes`. S3 and SES reach LocalStack through `AWS_S3_ENDPOINT` and `AWS_SES_ENDPOINT`. Images: `docker.md`.
+- FCM has no emulator: `TestFirebaseFake` (`test/helpers/test.firebase.helper.ts`) replaces `FirebaseService` through `.overrideProvider(...).useValue(...)` and records into `TestFirebasePushes`. S3 and SES reach LocalStack through `AWS_S3_ENDPOINT` and `AWS_SES_ENDPOINT`.

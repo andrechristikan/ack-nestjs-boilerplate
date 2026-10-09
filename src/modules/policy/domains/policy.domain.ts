@@ -1,8 +1,7 @@
-import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
+import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
 import { PolicyExistException } from '@modules/policy/exceptions/policy.exist.exception';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
-import { PolicyPredefinedNotFoundException } from '@modules/policy/exceptions/policy.predefined-not-found.exception';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
@@ -42,15 +41,13 @@ export class PolicyDomain {
         requiredPolicies: PolicyRequestDto[]
     ): boolean {
         if (!user) {
-            throw new AuthJwtAccessTokenInvalidException();
+            throw new UserNotAuthenticatedException();
         }
 
         const { role } = user;
 
         if (role.type === EnumRoleType.superAdmin) {
             return true;
-        } else if (requiredPolicies.length === 0) {
-            throw new PolicyPredefinedNotFoundException();
         }
 
         const userPolicies = this.policyAbilityFactory.createByUser(
@@ -89,14 +86,14 @@ export class PolicyDomain {
             throw new PolicyExistException();
         }
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.adminPolicyCreate,
             }),
         ];
         const created = await this.policyRepository.create(roleId, data);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return created;
     }
@@ -117,14 +114,14 @@ export class PolicyDomain {
             throw new PolicyNotFoundException();
         }
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.adminPolicyUpdate,
             }),
         ];
         const updated = await this.policyRepository.update(id, data);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return updated;
     }
@@ -141,14 +138,14 @@ export class PolicyDomain {
             throw new PolicyNotFoundException();
         }
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.adminPolicyDelete,
             }),
         ];
         const deleted = await this.policyRepository.delete(id);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return deleted;
     }

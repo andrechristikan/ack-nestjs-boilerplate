@@ -35,4 +35,27 @@ describe('PaginationCursorQuerySchema', () => {
             PaginationCursorQuerySchema.parse({ ...payload, page: 1 })
         ).toThrow();
     });
+
+    it('accepts search and a single orderBy string', () => {
+        const result = PaginationCursorQuerySchema.safeParse({
+            search: 'jane',
+            orderBy: 'createdAt:desc',
+        });
+
+        expect(result.success).toBe(true);
+    });
+
+    it('accepts orderBy repeated as an array', () => {
+        const result = PaginationCursorQuerySchema.safeParse({
+            orderBy: ['createdAt:desc', 'name:asc'],
+        });
+
+        expect(result.success).toBe(true);
+    });
+
+    it('rejects a non-string orderBy', () => {
+        const result = PaginationCursorQuerySchema.safeParse({ orderBy: 1 });
+
+        expect(result.success).toBe(false);
+    });
 });

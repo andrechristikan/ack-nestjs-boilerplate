@@ -13,12 +13,11 @@ import {
 } from '@generated/prisma-client/client';
 import type { Policy, Role } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
-import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
-import { RolePredefinedNotFoundException } from '@modules/role/exceptions/role.predefined-not-found.exception';
 import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import type {
     IRole,
@@ -46,7 +45,7 @@ export class RoleDomain {
         action: EnumActivityLogAction,
         role: IRole,
         timestamp: Date
-    ): IActivityLogStagedEvent {
+    ): IActivityLogStaged {
         const metadata = this.roleUtil.mapActivityLogMetadata(role, timestamp);
 
         return this.activityLogDomain.prepare({
@@ -105,7 +104,7 @@ export class RoleDomain {
 
         const roleId = this.databaseUtil.createId();
         const timestamp = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminRoleCreate,
                 { id: roleId, name: data.name, type: data.type },
@@ -114,7 +113,7 @@ export class RoleDomain {
         ];
         const created = await this.roleRepository.create(roleId, data);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return created;
     }
@@ -130,7 +129,7 @@ export class RoleDomain {
         }
 
         const timestamp = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminRoleUpdate,
                 { id: role.id, name: role.name, type: data.type },
@@ -139,7 +138,7 @@ export class RoleDomain {
         ];
         const updated = await this.roleRepository.update(id, data);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return updated;
     }
@@ -157,7 +156,7 @@ export class RoleDomain {
         }
 
         const timestamp = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminRoleDelete,
                 role,
@@ -166,7 +165,7 @@ export class RoleDomain {
         ];
         const deleted = await this.roleRepository.delete(id);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return deleted;
     }
@@ -176,15 +175,13 @@ export class RoleDomain {
         requiredRoles: EnumRoleType[]
     ): Promise<Policy[]> {
         if (!user) {
-            throw new AuthJwtAccessTokenInvalidException();
+            throw new UserNotAuthenticatedException();
         }
 
         const { role } = user;
 
         if (role.type === EnumRoleType.superAdmin) {
             return [];
-        } else if (requiredRoles.length === 0) {
-            throw new RolePredefinedNotFoundException();
         } else if (!requiredRoles.includes(role.type)) {
             throw new RoleForbiddenException();
         }

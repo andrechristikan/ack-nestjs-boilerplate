@@ -9,8 +9,8 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import {
     EnumActivityLogAction,
@@ -138,18 +138,18 @@ describe('TermPolicyAcceptanceDomain', () => {
     });
 
     describe('validateTermPolicyGuard', () => {
-        it('throws AuthJwtAccessTokenInvalidException when no user is present', async () => {
+        it('throws UserNotAuthenticatedException when no user is present', async () => {
             const promise = domain.validateTermPolicyGuard(null, []);
 
             await expect(promise).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notAuthenticated,
                 statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtAccessTokenInvalid
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.notAuthenticated
                     ],
                 httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'auth.error.accessTokenUnauthorized',
+                messagePath: 'user.error.notAuthenticated',
             });
         });
 
@@ -309,7 +309,7 @@ describe('TermPolicyAcceptanceDomain', () => {
             termPolicyRepository.existsAcceptanceByPolicyAndUser.mockResolvedValue(
                 false
             );
-            const preparedEvent: IActivityLogStagedEvent = {
+            const preparedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userAcceptTermPolicy,
                 metadata: {},
                 onError: false,
@@ -317,7 +317,7 @@ describe('TermPolicyAcceptanceDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(preparedEvent);
+            activityLogDomain.prepare.mockReturnValue(preparedActivityLog);
             databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
             );
@@ -337,7 +337,7 @@ describe('TermPolicyAcceptanceDomain', () => {
                 EnumTermPolicyType.privacy
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                preparedEvent,
+                preparedActivityLog,
             ]);
             expect(
                 notificationQueue.sendUserAcceptTermPolicy

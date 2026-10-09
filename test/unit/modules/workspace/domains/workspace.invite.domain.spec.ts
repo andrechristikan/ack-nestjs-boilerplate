@@ -33,7 +33,7 @@ import type {
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
@@ -585,8 +585,8 @@ describe('WorkspaceInviteDomain', () => {
             });
         });
 
-        it('creates the invite, stages the event in order, and emails the unregistered invitee when no user matches', async () => {
-            const stagedEvent: IActivityLogStagedEvent = {
+        it('creates the invite, stages the activity log in order, and emails the unregistered invitee when no user matches', async () => {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 metadata: {},
                 onError: false,
@@ -594,7 +594,7 @@ describe('WorkspaceInviteDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
             const callOrder: string[] = [];
             workspaceInviteRepository.createPending.mockImplementation(
                 async () => {
@@ -622,7 +622,7 @@ describe('WorkspaceInviteDomain', () => {
                 metadata: { workspaceInviteId: 'invite-1' },
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
             expect(callOrder).toEqual(['createPending', 'stagePrepared']);
             expect(
@@ -638,10 +638,10 @@ describe('WorkspaceInviteDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('creates the invite with two events in order and notifies the existing user when it differs from the actor', async () => {
+        it('creates the invite with two activity logs in order and notifies the existing user when it differs from the actor', async () => {
             const existingUser = { ...baseUser, id: 'user-9' };
             userDomain.getOneActiveByEmail.mockResolvedValue(existingUser);
-            const createdEvent: IActivityLogStagedEvent = {
+            const createdActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 metadata: {},
                 onError: false,
@@ -649,7 +649,7 @@ describe('WorkspaceInviteDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            const createdByAdminEvent: IActivityLogStagedEvent = {
+            const createdByAdminActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteCreatedByAdmin,
                 metadata: {},
                 onError: false,
@@ -658,8 +658,8 @@ describe('WorkspaceInviteDomain', () => {
                 workspaceId: null,
             };
             activityLogDomain.prepare
-                .mockReturnValueOnce(createdEvent)
-                .mockReturnValueOnce(createdByAdminEvent);
+                .mockReturnValueOnce(createdActivityLog)
+                .mockReturnValueOnce(createdByAdminActivityLog);
             const callOrder: string[] = [];
             workspaceInviteRepository.createPending.mockImplementation(
                 async () => {
@@ -692,8 +692,8 @@ describe('WorkspaceInviteDomain', () => {
                 metadata: { actorUserId: 'user-1' },
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                createdEvent,
-                createdByAdminEvent,
+                createdActivityLog,
+                createdByAdminActivityLog,
             ]);
             expect(callOrder).toEqual(['createPending', 'stagePrepared']);
             expect(notificationQueue.sendWorkspaceInvite).toHaveBeenCalledTimes(
@@ -701,10 +701,10 @@ describe('WorkspaceInviteDomain', () => {
             );
         });
 
-        it('creates the invite with a single event in order when the existing user is the actor', async () => {
+        it('creates the invite with a single activity log in order when the existing user is the actor', async () => {
             const existingUser = { ...baseUser, id: 'user-1' };
             userDomain.getOneActiveByEmail.mockResolvedValue(existingUser);
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 metadata: {},
                 onError: false,
@@ -712,7 +712,7 @@ describe('WorkspaceInviteDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
             const callOrder: string[] = [];
             workspaceInviteRepository.createPending.mockImplementation(
                 async () => {
@@ -738,7 +738,7 @@ describe('WorkspaceInviteDomain', () => {
                 },
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
             expect(callOrder).toEqual(['createPending', 'stagePrepared']);
         });
@@ -746,7 +746,7 @@ describe('WorkspaceInviteDomain', () => {
         it('looks up the active project when a project id and role are given', async () => {
             const project = baseProject;
             projectDomain.getActiveByIdAndWorkspace.mockResolvedValue(project);
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 metadata: {},
                 onError: false,
@@ -754,7 +754,7 @@ describe('WorkspaceInviteDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
             await domain.createInvite(workspace, 'user-1', {
                 ...create,
@@ -774,7 +774,7 @@ describe('WorkspaceInviteDomain', () => {
                 })
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
     });
@@ -910,12 +910,12 @@ describe('WorkspaceInviteDomain', () => {
             });
         });
 
-        it('revokes with a single event in order when no active user matches the invited email', async () => {
+        it('revokes with a single activity log in order when no active user matches the invited email', async () => {
             workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
                 baseInvite
             );
             userDomain.getOneActiveByEmail.mockResolvedValue(null);
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteRevoked,
                 metadata: {},
                 onError: false,
@@ -923,7 +923,7 @@ describe('WorkspaceInviteDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
             const callOrder: string[] = [];
             workspaceInviteRepository.revoke.mockImplementation(async () => {
                 callOrder.push('revoke');
@@ -946,12 +946,12 @@ describe('WorkspaceInviteDomain', () => {
                 'invite-1'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
             expect(callOrder).toEqual(['revoke', 'stagePrepared']);
         });
 
-        it('revokes with two events in order when the existing user differs from the actor', async () => {
+        it('revokes with two activity logs in order when the existing user differs from the actor', async () => {
             workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
                 baseInvite
             );
@@ -959,7 +959,7 @@ describe('WorkspaceInviteDomain', () => {
                 ...baseUser,
                 id: 'user-9',
             });
-            const revokedEvent: IActivityLogStagedEvent = {
+            const revokedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteRevoked,
                 metadata: {},
                 onError: false,
@@ -967,7 +967,7 @@ describe('WorkspaceInviteDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            const revokedByAdminEvent: IActivityLogStagedEvent = {
+            const revokedByAdminActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteRevokedByAdmin,
                 metadata: {},
                 onError: false,
@@ -976,8 +976,8 @@ describe('WorkspaceInviteDomain', () => {
                 workspaceId: null,
             };
             activityLogDomain.prepare
-                .mockReturnValueOnce(revokedEvent)
-                .mockReturnValueOnce(revokedByAdminEvent);
+                .mockReturnValueOnce(revokedActivityLog)
+                .mockReturnValueOnce(revokedByAdminActivityLog);
 
             await domain.revokeInvite('workspace-1', 'user-1', 'invite-1');
 
@@ -990,12 +990,12 @@ describe('WorkspaceInviteDomain', () => {
                 metadata: { actorUserId: 'user-1' },
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                revokedEvent,
-                revokedByAdminEvent,
+                revokedActivityLog,
+                revokedByAdminActivityLog,
             ]);
         });
 
-        it('revokes with a single event when the existing user is the actor', async () => {
+        it('revokes with a single activity log when the existing user is the actor', async () => {
             workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
                 baseInvite
             );
@@ -1003,7 +1003,7 @@ describe('WorkspaceInviteDomain', () => {
                 ...baseUser,
                 id: 'user-1',
             });
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteRevoked,
                 metadata: {},
                 onError: false,
@@ -1011,13 +1011,13 @@ describe('WorkspaceInviteDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
             await domain.revokeInvite('workspace-1', 'user-1', 'invite-1');
 
             expect(activityLogDomain.prepare).toHaveBeenCalledTimes(1);
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
     });
@@ -1167,7 +1167,7 @@ describe('WorkspaceInviteDomain', () => {
             });
         });
 
-        it('claims with a single event and no project membership when the caller invited itself', async () => {
+        it('claims with a single activity log and no project membership when the caller invited itself', async () => {
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
                 {
                     ...baseInvite,
@@ -1178,7 +1178,7 @@ describe('WorkspaceInviteDomain', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 null
             );
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteAccepted,
                 metadata: {},
                 onError: false,
@@ -1186,7 +1186,7 @@ describe('WorkspaceInviteDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
             await domain.claimInvite('user-1', 'user@example.com', 'raw-token');
 
@@ -1198,11 +1198,11 @@ describe('WorkspaceInviteDomain', () => {
             );
             expect(projectMemberDomain.createInTx).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
 
-        it('claims with two events and creates the project membership when both invitedByUserId and project fields differ', async () => {
+        it('claims with two activity logs and creates the project membership when both invitedByUserId and project fields differ', async () => {
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
                 {
                     ...baseInvite,
@@ -1215,7 +1215,7 @@ describe('WorkspaceInviteDomain', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 null
             );
-            const acceptedEvent: IActivityLogStagedEvent = {
+            const acceptedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteAccepted,
                 metadata: {},
                 onError: false,
@@ -1223,7 +1223,7 @@ describe('WorkspaceInviteDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            const acceptedByInviteeEvent: IActivityLogStagedEvent = {
+            const acceptedByInviteeActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
                 metadata: {},
                 onError: false,
@@ -1232,8 +1232,8 @@ describe('WorkspaceInviteDomain', () => {
                 workspaceId: null,
             };
             activityLogDomain.prepare
-                .mockReturnValueOnce(acceptedEvent)
-                .mockReturnValueOnce(acceptedByInviteeEvent);
+                .mockReturnValueOnce(acceptedActivityLog)
+                .mockReturnValueOnce(acceptedByInviteeActivityLog);
 
             await domain.claimInvite('user-1', 'user@example.com', 'raw-token');
 
@@ -1253,8 +1253,8 @@ describe('WorkspaceInviteDomain', () => {
                 'user-1'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                acceptedEvent,
-                acceptedByInviteeEvent,
+                acceptedActivityLog,
+                acceptedByInviteeActivityLog,
             ]);
         });
     });

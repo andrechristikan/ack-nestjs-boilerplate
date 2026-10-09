@@ -24,7 +24,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
@@ -399,7 +399,7 @@ export class UserDomain {
 
         try {
             // Sequential by design: write must not run if an earlier step throws
-            const { statusEvents, revokeAllEvents } =
+            const { statusActivityLogs, revokeAllActivityLogs } =
                 await this.databaseService.withTransaction(async tx => {
                     const row =
                         await this.userRepository.updateStatusByAdminInTx(
@@ -426,7 +426,7 @@ export class UserDomain {
                             metadata: targetMetadata,
                         }),
                     ];
-                    let revokeAll: IActivityLogStagedEvent[] = [];
+                    let revokeAll: IActivityLogStaged[] = [];
                     if (revokesAccess) {
                         const sessions =
                             await this.sessionDomain.revokeActiveByUserInTx(
@@ -443,18 +443,18 @@ export class UserDomain {
                     }
 
                     return {
-                        statusEvents: prepared,
-                        revokeAllEvents: revokeAll,
+                        statusActivityLogs: prepared,
+                        revokeAllActivityLogs: revokeAll,
                     };
                 });
             if (revokesAccess) {
                 await this.sessionDomain.finalizeRevokeAll(
                     userId,
-                    revokeAllEvents
+                    revokeAllActivityLogs
                 );
             }
 
-            this.activityLogDomain.stagePrepared(statusEvents);
+            this.activityLogDomain.stagePrepared(statusActivityLogs);
 
             return;
         } catch (err: unknown) {
@@ -494,11 +494,9 @@ export class UserDomain {
 
     async deleteSelf(userId: string): Promise<void> {
         try {
-            const revokeAllEvents = this.sessionDomain.prepareRevokeAllSelf(
-                userId,
-                false
-            );
-            const deleteSelfEvents = [
+            const revokeAllActivityLogs =
+                this.sessionDomain.prepareRevokeAllSelf(userId, false);
+            const deleteSelfActivityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userDeleteSelf,
                 }),
@@ -520,9 +518,12 @@ export class UserDomain {
                     now
                 );
             });
-            await this.sessionDomain.finalizeRevokeAll(userId, revokeAllEvents);
+            await this.sessionDomain.finalizeRevokeAll(
+                userId,
+                revokeAllActivityLogs
+            );
 
-            this.activityLogDomain.stagePrepared(deleteSelfEvents);
+            this.activityLogDomain.stagePrepared(deleteSelfActivityLogs);
 
             return;
         } catch (err: unknown) {

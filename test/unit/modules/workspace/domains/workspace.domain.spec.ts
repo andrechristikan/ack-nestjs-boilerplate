@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
@@ -36,7 +37,7 @@ import type {
     Workspace,
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
@@ -689,11 +690,11 @@ describe('WorkspaceDomain', () => {
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
         });
 
-        it('maps a non-collision transaction error through the onboarding util and throws it', async () => {
+        it('maps a non-collision transaction error through the onboarding util and throws the mapped AppBaseException', async () => {
             const otherError = new Error('duplicate email');
             databaseService.withTransaction.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
-            const mapped = new Error('mapped exception');
+            const mapped = new WorkspaceNotFoundException();
             userOnboardingUtil.mapCreateCollision.mockReturnValue(mapped);
 
             await expect(
@@ -708,11 +709,29 @@ describe('WorkspaceDomain', () => {
             );
         });
 
-        it('builds the admin payload metadata event and stages it', async () => {
+        it('wraps a non-collision transaction error the onboarding util leaves unmapped in AppUnknownException', async () => {
+            const otherError = new Error('unexpected');
+            databaseService.withTransaction.mockRejectedValue(otherError);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+            userOnboardingUtil.mapCreateCollision.mockReturnValue(otherError);
+
+            await expect(
+                domain.commitOnboarding(
+                    [personalInput],
+                    EnumUserCreateMode.signUp,
+                    5000
+                )
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: otherError,
+            });
+        });
+
+        it('builds the admin payload metadata activity log and stages it', async () => {
             userOnboardingDomain.buildAdminPayloadMetadata.mockReturnValue({
                 userCount: 7,
             });
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminUserImport,
                 metadata: { userCount: 7 },
                 onError: false,
@@ -720,7 +739,7 @@ describe('WorkspaceDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
             await domain.commitOnboarding(
                 [inviteInput],
@@ -739,7 +758,7 @@ describe('WorkspaceDomain', () => {
                 metadata: { userCount: 7 },
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
     });
@@ -783,7 +802,7 @@ describe('WorkspaceDomain', () => {
             const tx = {} as IDatabaseTransactionClient;
             databaseService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceRepository.createInTx.mockResolvedValue(workspace);
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceCreated,
                 metadata: {},
                 onError: false,
@@ -791,7 +810,7 @@ describe('WorkspaceDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
             const result = await domain.createWorkspace('user-1', create);
 
@@ -810,7 +829,7 @@ describe('WorkspaceDomain', () => {
                 workspaceId: 'workspace-1',
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
 
@@ -830,7 +849,7 @@ describe('WorkspaceDomain', () => {
                 .mockImplementationOnce(fn => fn(tx));
             databaseUtil.isUniqueCollision.mockReturnValue(true);
             workspaceRepository.createInTx.mockResolvedValue(workspace);
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceCreated,
                 metadata: {},
                 onError: false,
@@ -838,18 +857,18 @@ describe('WorkspaceDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
             const result = await domain.createWorkspace('user-1', create);
 
             expect(result).toBe(workspace);
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
 
-        it('propagates a non-collision transaction error without retrying', async () => {
+        it('wraps a non-collision transaction error in AppUnknownException without retrying', async () => {
             workspaceMemberRepository.countOwnedActiveByUser.mockResolvedValue(
                 1
             );
@@ -859,8 +878,27 @@ describe('WorkspaceDomain', () => {
             databaseService.withTransaction.mockRejectedValue(otherError);
             databaseUtil.isUniqueCollision.mockReturnValue(false);
 
+            await expect(
+                domain.createWorkspace('user-1', create)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: otherError,
+            });
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+        });
+
+        it('propagates an AppBaseException raised in the transaction without retrying', async () => {
+            workspaceMemberRepository.countOwnedActiveByUser.mockResolvedValue(
+                1
+            );
+            helperStringService.generateSlug.mockReturnValue('ws-aaa');
+            databaseUtil.createId.mockReturnValue('workspace-1');
+            const typedError = new WorkspaceNotFoundException();
+            databaseService.withTransaction.mockRejectedValue(typedError);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+
             await expect(domain.createWorkspace('user-1', create)).rejects.toBe(
-                otherError
+                typedError
             );
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
@@ -901,7 +939,7 @@ describe('WorkspaceDomain', () => {
                 description: null,
             };
             workspaceRepository.updateDetails.mockResolvedValue(workspace);
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceUpdated,
                 metadata: {},
                 onError: false,
@@ -909,7 +947,7 @@ describe('WorkspaceDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
             const result = await domain.updateWorkspace(
                 'workspace-1',
@@ -929,14 +967,14 @@ describe('WorkspaceDomain', () => {
                 update
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
     });
 
     describe('updateWorkspaceIsPublic', () => {
         it('updates the visibility and stages the visibility-updated activity in order', async () => {
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceVisibilityUpdated,
                 metadata: {},
                 onError: false,
@@ -944,7 +982,7 @@ describe('WorkspaceDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
             const callOrder: string[] = [];
             workspaceRepository.updateIsPublic.mockImplementation(async () => {
                 callOrder.push('updateIsPublic');
@@ -972,7 +1010,7 @@ describe('WorkspaceDomain', () => {
                 true
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
             expect(callOrder).toEqual(['updateIsPublic', 'stagePrepared']);
         });
@@ -1020,7 +1058,7 @@ describe('WorkspaceDomain', () => {
         it('updates the slug and stages the updated activity', async () => {
             workspaceRepository.existsBySlug.mockResolvedValue(false);
             workspaceRepository.updateSlug.mockResolvedValue(workspace);
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceUpdated,
                 metadata: {},
                 onError: false,
@@ -1028,7 +1066,7 @@ describe('WorkspaceDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
             const result = await domain.updateWorkspaceSlug(
                 'workspace-1',
@@ -1046,7 +1084,7 @@ describe('WorkspaceDomain', () => {
                 'acme-team'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
     });
@@ -1075,7 +1113,7 @@ describe('WorkspaceDomain', () => {
 
         it('validates membership and sets the last workspace', async () => {
             workspaceRepository.findActiveById.mockResolvedValue(workspace);
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceSwitched,
                 metadata: {},
                 onError: false,
@@ -1083,7 +1121,7 @@ describe('WorkspaceDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
             await domain.switchWorkspace('user-1', 'workspace-1');
 
@@ -1101,7 +1139,7 @@ describe('WorkspaceDomain', () => {
                 'workspace-1'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
     });
@@ -1112,7 +1150,7 @@ describe('WorkspaceDomain', () => {
             helperDateService.create.mockReturnValue(deletedAt);
             const tx = {} as IDatabaseTransactionClient;
             databaseService.withTransaction.mockImplementation(fn => fn(tx));
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceDeleted,
                 metadata: {},
                 onError: false,
@@ -1120,7 +1158,7 @@ describe('WorkspaceDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
             await domain.softDeleteWorkspace('workspace-1', 'user-1');
 
@@ -1145,7 +1183,7 @@ describe('WorkspaceDomain', () => {
                 workspaceJoinRequestRepository.cancelPendingByWorkspaceInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1');
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
     });
@@ -1446,23 +1484,23 @@ describe('WorkspaceDomain', () => {
             createdBy: 'user-1',
         };
 
-        it('adds no admin event when no admin action is given', () => {
+        it('adds no admin activity log when no admin action is given', () => {
             userOnboardingDomain.buildOnboardingActivities.mockReturnValue([]);
 
-            const events = domain['prepareOnboardingActivities'](
+            const activityLogs = domain['prepareOnboardingActivities'](
                 [],
                 [],
                 EnumUserCreateMode.signUp
             );
 
-            expect(events).toEqual([]);
+            expect(activityLogs).toEqual([]);
             expect(
                 userOnboardingDomain.buildAdminPayloadMetadata
             ).not.toHaveBeenCalled();
         });
 
         it('passes the workspaceId of an onboarding activity that carries one', () => {
-            const activityEvent: IActivityLogStagedEvent = {
+            const activityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userCreated,
                 metadata: {},
                 onError: false,
@@ -1479,15 +1517,15 @@ describe('WorkspaceDomain', () => {
                     metadata: {},
                 },
             ]);
-            activityLogDomain.prepare.mockReturnValueOnce(activityEvent);
+            activityLogDomain.prepare.mockReturnValueOnce(activityLog);
 
-            const events = domain['prepareOnboardingActivities'](
+            const activityLogs = domain['prepareOnboardingActivities'](
                 [personalInputFixture],
                 [user],
                 EnumUserCreateMode.signUp
             );
 
-            expect(events).toEqual([activityEvent]);
+            expect(activityLogs).toEqual([activityLog]);
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userCreated,
                 userId: 'user-1',
@@ -1497,8 +1535,8 @@ describe('WorkspaceDomain', () => {
             });
         });
 
-        it('adds the admin payload event and every onboarding activity when an admin action is given', () => {
-            const stagedEvent: IActivityLogStagedEvent = {
+        it('adds the admin payload activity log and every onboarding activity when an admin action is given', () => {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminUserImport,
                 metadata: { userCount: 7 },
                 onError: false,
@@ -1506,7 +1544,7 @@ describe('WorkspaceDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            const activityEvent: IActivityLogStagedEvent = {
+            const activityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userCreated,
                 metadata: {},
                 onError: false,
@@ -1527,19 +1565,19 @@ describe('WorkspaceDomain', () => {
                 },
             ]);
             activityLogDomain.prepare
-                .mockReturnValueOnce(stagedEvent)
-                .mockReturnValueOnce(activityEvent);
+                .mockReturnValueOnce(stagedActivityLog)
+                .mockReturnValueOnce(activityLog);
 
-            const events = domain['prepareOnboardingActivities'](
+            const activityLogs = domain['prepareOnboardingActivities'](
                 [personalInputFixture],
                 [user],
                 EnumUserCreateMode.admin,
                 EnumActivityLogAction.adminUserImport
             );
 
-            expect(events).toHaveLength(2);
-            expect(events[0]).toBe(stagedEvent);
-            expect(events[1]).toBe(activityEvent);
+            expect(activityLogs).toHaveLength(2);
+            expect(activityLogs[0]).toBe(stagedActivityLog);
+            expect(activityLogs[1]).toBe(activityLog);
             expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(1, {
                 action: EnumActivityLogAction.adminUserImport,
                 metadata: { userCount: 7 },

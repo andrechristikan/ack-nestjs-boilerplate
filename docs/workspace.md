@@ -172,8 +172,12 @@ Five user-scope routes carry no workspace header, because they act across worksp
 - With no arguments it applies `WorkspaceMemberGuard` alone.
 - With roles it applies `WorkspaceMemberGuard` **and** `WorkspaceRoleGuard`.
 
-- `WorkspaceMemberGuard` confirms the user loaded by `UserGuard` has a `WorkspaceMember` row in the resolved workspace, and stores it under `WorkspaceMemberStoreKey`. No membership throws `WorkspaceMemberForbiddenException` (403, `51601`).
-- `WorkspaceRoleGuard` enforces the declared roles against that stored membership. A mismatch throws `WorkspaceRoleForbiddenException` (403, `51602`).
+- `WorkspaceMemberGuard` confirms the user loaded by `UserGuard` has a `WorkspaceMember` row in the resolved workspace, and stores it under `WorkspaceMemberStoreKey`.
+    - No authenticated user throws `UserNotAuthenticatedException` (401, `51027`).
+    - No membership throws `WorkspaceMemberForbiddenException` (403, `51601`).
+- `WorkspaceRoleGuard` enforces the declared roles against that stored membership.
+    - A missing stored membership throws `WorkspaceMemberForbiddenException` (403, `51601`).
+    - A mismatch throws `WorkspaceRoleForbiddenException` (403, `51602`).
 -   - **The `owner` role always passes, whatever roles were declared.**
         - Owner is never listed in a route's `allowedRoles`.
         - Folding it in would make every `@WorkspaceMemberProtected(admin)` route reject the owner.
@@ -183,7 +187,9 @@ Five user-scope routes carry no workspace header, because they act across worksp
 **Parameter decorators** that read back the `Workspace` and `WorkspaceMember` the guards stored.
 
 - Each takes an optional field name typed against its model: `@WorkspaceCurrent()` returns the whole row, `@WorkspaceCurrent('id')` returns that field
-- Both return a non-null value, so a route that reads one without the matching guard, or names a field holding `null`, answers `RequestContextMissingException` (500, `50304`)
+- Both return a non-null value.
+    - A route that reads one without the matching guard answers that guard's exception: `WorkspaceNotFoundException` (404, `51600`) for `WorkspaceCurrent()`, `WorkspaceMemberForbiddenException` (403, `51601`) for `WorkspaceMemberCurrent()`.
+    - A field name that holds `null` answers `RequestContextMissingException` (500, `50304`)
 
 See [Security and Middleware][ref-doc-security-and-middleware].
 
@@ -208,7 +214,7 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 4. `WorkspaceInviteDomain.acceptOnSignUpInTx` joins an invite-token sign-up
 5. `TermPolicyAcceptanceDomain.acceptPublishedInTx` writes the accepted policies
 
-- The transaction callback prepares the onboarding events from the rows it wrote and returns them.
+- The transaction callback prepares the onboarding activity logs from the rows it wrote and returns them.
 - After the commit, `commitOnboarding` stages them with `ActivityLogDomain.stagePrepared`.
 - `ActivityLogInterceptor` writes them once the handler returns.
 - The rows are listed under [Activity Log](#activity-log).
@@ -227,7 +233,7 @@ Callers:
 
 - The `withTransaction` runs with the first candidate.
 - A unique collision on `slug` rolls the transaction back, and the next candidate is tried.
-- Running out of candidates raises `DatabaseUniqueValueGenerationFailedException` (500, `51800`), so the caller never sees a leaked Prisma error.
+- Running out of candidates raises `DatabaseUniqueValueGenerationFailedException` (409, `51800`), so the caller never sees a leaked Prisma error.
 - Admin CSV import writes all its rows in one `withTransaction` through `WorkspaceDomain.commitOnboarding`. That call substitutes the same candidate index into every personal row of the batch and retries the whole batch, up to the smallest candidate count in it.
 
 | User-creation path | Personal workspace                     |
@@ -457,11 +463,11 @@ A requester has no endpoint to withdraw their own request.
     2. prepares `workspaceCreated`
     3. opens a `withTransaction` that calls `createInTx` (`WorkspaceRepository.createInTx` plus `WorkspaceMemberRepository.createOwnerInTx`)
 - Around that loop:
-    - The event is staged only after a commit.
+    - The activity log is staged only after a commit.
     - A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate.
-    - Any other error is rethrown untouched.
-    - Exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`).
-- The personal-workspace slug follows the same budget inside the onboarding transaction, ending in the same `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
+    - An `AppBaseException` passes through, and any other error is wrapped in `AppUnknownException`.
+    - Exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (409, `51800`).
+- The personal-workspace slug follows the same budget inside the onboarding transaction, ending in the same `DatabaseUniqueValueGenerationFailedException` (409, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
 
 ## Soft Delete
 

@@ -87,7 +87,7 @@ services:
             start_period: 10s
 
     mongo:
-        image: mongo:8.3.11
+        image: mongo:9.0.2
         environment:
             HOME: /tmp
             MONGO_INITDB_ROOT_USERNAME: ${DOCKER_MONGO_ROOT_USERNAME:-root}
@@ -170,6 +170,15 @@ services:
         depends_on:
             redis:
                 condition: service_healthy
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'wget -q --spider http://127.0.0.1:3000/login || exit 1',
+                ]
+            interval: 10s
+            timeout: 10s
+            retries: 5
         deploy:
             resources:
                 limits:

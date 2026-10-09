@@ -48,20 +48,24 @@ export class ResponseMetadataService {
 
         const storedLanguage = this.requestStoreService.get<string>(
             RequestLanguageStoreKey
-        ) as EnumMessageLanguage;
+        );
         const timestamp = this.helperDateService.getTimestamp(today);
         const timezone = this.helperDateService.getZone(today);
         const storedVersion = this.requestStoreService.get<string>(
             RequestVersionStoreKey
         );
         const requestId =
-            this.requestStoreService.get<string>(RequestIdStoreKey)!;
+            this.requestStoreService.get<string>(RequestIdStoreKey);
         const correlationId = this.requestStoreService.get<string>(
             RequestCorrelationIdStoreKey
-        )!;
+        );
+        const language =
+            Object.values(EnumMessageLanguage).find(
+                value => value === storedLanguage
+            ) ?? this.defaultLanguage;
 
         return {
-            language: storedLanguage ?? this.defaultLanguage,
+            language,
             timestamp,
             timezone,
             version: storedVersion ?? this.urlVersion,
@@ -77,10 +81,14 @@ export class ResponseMetadataService {
         response.setHeader(ResponseTimezoneHeaderName, metadata.timezone);
         response.setHeader(ResponseVersionHeaderName, metadata.version);
         response.setHeader(ResponseRepoVersionHeaderName, metadata.repoVersion);
-        response.setHeader(RequestIdHeaderName, metadata.requestId);
-        response.setHeader(
-            RequestCorrelationIdHeaderName,
-            metadata.correlationId
-        );
+        if (metadata.requestId !== null) {
+            response.setHeader(RequestIdHeaderName, metadata.requestId);
+        }
+        if (metadata.correlationId !== null) {
+            response.setHeader(
+                RequestCorrelationIdHeaderName,
+                metadata.correlationId
+            );
+        }
     }
 }

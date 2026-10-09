@@ -1,3 +1,4 @@
+import { AnalyticUserCountAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticRefreshSpikeListRequestSchema } from '@modules/analytic/dtos/request/analytic.refresh-spike-list.request.dto';
 
 describe('AnalyticRefreshSpikeListRequestSchema', () => {
@@ -38,5 +39,19 @@ describe('AnalyticRefreshSpikeListRequestSchema', () => {
                 extra: true,
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticRefreshSpikeListRequestSchema.safeParse({ search: 'x' })
+                .success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticRefreshSpikeListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticUserCountAvailableOrderBy.join(', '));
     });
 });

@@ -235,7 +235,7 @@ The credential lockout (`UserPasswordDomain.reachMaxPasswordAttempt`) is the sec
 - `notificationProvider` is re-derived from the `platform` in the body and written on the shared `Device` row.
     - A body without `platform` leaves `notificationProvider` and the stored `platform` unchanged.
 - `lastActiveAt` is stamped on both the `DeviceOwnership` and the `Device`.
-- `DeviceDomain.refresh` prepares `userDeviceRefresh`, opens `withTransaction` around `DeviceOwnershipRepository.touchInTx` (which returns the device id) and `DeviceRepository.refreshInTx`, then stages the prepared event after the commit.
+- `DeviceDomain.refresh` prepares `userDeviceRefresh`, opens `withTransaction` around `DeviceOwnershipRepository.touchInTx` (which returns the device id) and `DeviceRepository.refreshInTx`, then stages the prepared activity log after the commit.
 - The refresh write leaves `lastLoginAt` and `lastIPAddress` on `User` untouched. The login path stamps those.
 - The handler returns `200 OK` with no data payload.
 

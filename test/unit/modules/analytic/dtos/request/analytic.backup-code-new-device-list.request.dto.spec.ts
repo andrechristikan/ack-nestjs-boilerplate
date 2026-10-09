@@ -1,3 +1,4 @@
+import { AnalyticBackupCodeNewDeviceAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticBackupCodeNewDeviceListRequestSchema } from '@modules/analytic/dtos/request/analytic.backup-code-new-device-list.request.dto';
 
 describe('AnalyticBackupCodeNewDeviceListRequestSchema', () => {
@@ -38,5 +39,20 @@ describe('AnalyticBackupCodeNewDeviceListRequestSchema', () => {
                 extra: true,
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticBackupCodeNewDeviceListRequestSchema.safeParse({
+                search: 'x',
+            }).success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticBackupCodeNewDeviceListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticBackupCodeNewDeviceAvailableOrderBy.join(', '));
     });
 });

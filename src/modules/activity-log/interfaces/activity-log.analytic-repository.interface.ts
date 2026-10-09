@@ -2,8 +2,8 @@ import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type {
+    IActivityLogAnalytic,
     IActivityLogAnalyticActionCount,
-    IActivityLogAnalyticEvent,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 
@@ -23,7 +23,7 @@ export interface IActivityLogAnalyticRepository {
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date
-    ): Promise<IActivityLogAnalyticEvent[]>;
+    ): Promise<IActivityLogAnalytic[]>;
     countByWorkspaceInRange(
         excludedActions: EnumActivityLogAction[],
         workspaceId: string,

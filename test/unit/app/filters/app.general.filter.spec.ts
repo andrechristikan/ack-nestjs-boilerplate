@@ -5,13 +5,24 @@ import type { TestingModule } from '@nestjs/testing';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { RedisErrorMessages } from '@keyv/redis';
+import { Prisma } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AppGeneralFilter } from '@app/filters/app.general.filter';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
+import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
+import { RedisUtil } from '@common/redis/utils/redis.util';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { MessageService } from '@common/message/services/message.service';
+import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
+import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
 import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
+import { ResponseSerializationException } from '@common/response/exceptions/response.serialization.exception';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
+import { AuthTwoFactorAttemptTemporaryLockException } from '@modules/auth/exceptions/auth.two-factor-attempt-temporary-lock.exception';
 
 describe('AppGeneralFilter', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
@@ -57,6 +68,8 @@ describe('AppGeneralFilter', () => {
                     useValue: responseMetadataService,
                 },
                 { provide: SentryService, useValue: sentryService },
+                DatabaseUtil,
+                RedisUtil,
             ],
         }).compile();
 
@@ -64,7 +77,7 @@ describe('AppGeneralFilter', () => {
     });
 
     describe('catch', () => {
-        it('responds 500 with the app unknown error envelope', async () => {
+        it('responds 500 with the app unknown error envelope for an unmapped error', async () => {
             await filter.catch(new Error('boom'), argumentsHost);
 
             expect(response.status).toHaveBeenCalledWith(
@@ -80,7 +93,61 @@ describe('AppGeneralFilter', () => {
             });
         });
 
-        it('reports the exception to Sentry', async () => {
+        it('answers 409 with the database write-conflict code for a Prisma P2034 error', async () => {
+            const error = new Prisma.PrismaClientKnownRequestError('conflict', {
+                code: 'P2034',
+                clientVersion: '6.19.0',
+            });
+
+            await filter.catch(error, argumentsHost);
+
+            expect(response.status).toHaveBeenCalledWith(HttpStatus.CONFLICT);
+            expect(response.json).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    statusCode: EnumDatabaseStatusCodeError.writeConflict,
+                    module: 'database',
+                })
+            );
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'database.error.writeConflict',
+                { customLanguage: EnumMessageLanguage.en }
+            );
+            expect(sentryService.captureException).not.toHaveBeenCalled();
+        });
+
+        it('answers 503 with the redis unavailable code for a keyv not-connected error and reports it', async () => {
+            const error = new Error(
+                RedisErrorMessages.RedisClientNotConnectedThrown
+            );
+
+            await filter.catch(error, argumentsHost);
+
+            expect(response.status).toHaveBeenCalledWith(
+                HttpStatus.SERVICE_UNAVAILABLE
+            );
+            expect(response.json).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    statusCode: EnumRedisStatusCodeError.unavailable,
+                    module: 'redis',
+                })
+            );
+            expect(sentryService.captureException).toHaveBeenCalledWith(error);
+        });
+
+        it('answers 500 for a raw ECONNREFUSED error that names no subject', async () => {
+            const error = Object.assign(new Error('connect refused'), {
+                code: 'ECONNREFUSED',
+            });
+
+            await filter.catch(error, argumentsHost);
+
+            expect(response.status).toHaveBeenCalledWith(
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+            expect(sentryService.captureException).toHaveBeenCalledWith(error);
+        });
+
+        it('reports the error itself to Sentry', async () => {
             const exception = new Error('boom');
 
             await filter.catch(exception, argumentsHost);
@@ -112,6 +179,183 @@ describe('AppGeneralFilter', () => {
             );
         });
 
+        it('renders an AppUnknownException into the standard error envelope', async () => {
+            const exception = new AppUnknownException(new Error('boom'));
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(response.status).toHaveBeenCalledWith(
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+            expect(response.json).toHaveBeenCalledWith({
+                statusCode: EnumAppStatusCodeError.unknown,
+                statusCodeKey:
+                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
+                module: 'app',
+                message: 'Internal Server Error',
+                metadata,
+                data: undefined,
+            });
+        });
+
+        it('answers with the exception own httpStatus and module for a 4xx exception', async () => {
+            const exception = new RequestValidationException([]);
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(response.status).toHaveBeenCalledWith(
+                HttpStatus.UNPROCESSABLE_ENTITY
+            );
+            expect(response.json).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    statusCode: EnumRequestStatusCodeError.validation,
+                    statusCodeKey:
+                        EnumRequestStatusCodeError[
+                            EnumRequestStatusCodeError.validation
+                        ],
+                    module: 'request',
+                })
+            );
+            expect(sentryService.captureException).not.toHaveBeenCalled();
+        });
+
+        it('translates the exception messagePath with its messageProperties and the metadata language', async () => {
+            const exception = new AuthTwoFactorAttemptTemporaryLockException(
+                30
+            );
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'auth.error.twoFactorAttemptTemporaryLock',
+                {
+                    customLanguage: EnumMessageLanguage.en,
+                    properties: { retryAfterSeconds: 30 },
+                }
+            );
+        });
+
+        it('translates the messagePath with the metadata language alone when the exception has no messageProperties', async () => {
+            const exception = new RequestValidationException([]);
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'request.error.validation',
+                { customLanguage: EnumMessageLanguage.en }
+            );
+        });
+
+        it('spreads exception metadata under the response metadata and keeps data', async () => {
+            const exception = new ResponseSerializationException({
+                metadata: {
+                    source: 'serialization',
+                    language: 'id',
+                },
+                data: { issues: 2 },
+            });
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(response.json).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: { issues: 2 },
+                    metadata: {
+                        ...metadata,
+                        source: 'serialization',
+                    },
+                })
+            );
+        });
+
+        it('answers 409 with the database write-conflict code for an AppUnknownException wrapping a Prisma P2034 error', async () => {
+            const rawError = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                { code: 'P2034', clientVersion: '6.19.0' }
+            );
+
+            await filter.catch(
+                new AppUnknownException(rawError),
+                argumentsHost
+            );
+
+            expect(response.status).toHaveBeenCalledWith(HttpStatus.CONFLICT);
+            expect(response.json).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    statusCode: EnumDatabaseStatusCodeError.writeConflict,
+                    module: 'database',
+                })
+            );
+            expect(sentryService.captureException).not.toHaveBeenCalled();
+        });
+
+        it('answers 503 with the redis unavailable code for an AppUnknownException wrapping a keyv not-connected error and reports the raw error', async () => {
+            const rawError = new Error(
+                RedisErrorMessages.RedisClientNotConnectedThrown
+            );
+
+            await filter.catch(
+                new AppUnknownException(rawError),
+                argumentsHost
+            );
+
+            expect(response.status).toHaveBeenCalledWith(
+                HttpStatus.SERVICE_UNAVAILABLE
+            );
+            expect(response.json).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    statusCode: EnumRedisStatusCodeError.unavailable,
+                    module: 'redis',
+                })
+            );
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                rawError
+            );
+        });
+
+        it('keeps 500 for an AppUnknownException wrapping an unrelated error', async () => {
+            await filter.catch(
+                new AppUnknownException(new Error('boom')),
+                argumentsHost
+            );
+
+            expect(response.status).toHaveBeenCalledWith(
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        });
+
+        it('does not map the rawError of an exception other than AppUnknownException', async () => {
+            const rawError = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                { code: 'P2034', clientVersion: '6.19.0' }
+            );
+            const exception = new ResponseSerializationException({
+                rawError,
+            });
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(response.status).toHaveBeenCalledWith(
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        });
+
+        it('reports an AppUnknownException subclass that carries a description and no cause as itself', async () => {
+            const exception = new AppUnknownException(
+                null,
+                'Firebase private key could not be normalized'
+            );
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(response.status).toHaveBeenCalledWith(
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                exception
+            );
+        });
+
         it('mirrors the metadata onto the response headers', async () => {
             await filter.catch(new Error('boom'), argumentsHost);
 
@@ -129,14 +373,41 @@ describe('AppGeneralFilter', () => {
     });
 
     describe('sendToSentry', () => {
-        it('reports the exception', () => {
-            const exception = new Error('boom');
+        it('reports the error itself when it is not an AppBaseException', () => {
+            const error = new Error('boom');
 
-            filter['sendToSentry'](exception);
+            filter['sendToSentry'](error, new AppUnknownException(error));
+
+            expect(sentryService.captureException).toHaveBeenCalledWith(error);
+        });
+
+        it('reports the rawError when the exception is 500 or above', () => {
+            const rawError = new Error('boom');
+            const exception = new AppUnknownException(rawError);
+
+            filter['sendToSentry'](exception, exception);
+
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                rawError
+            );
+        });
+
+        it('reports the exception itself when a 500 exception carries no rawError', () => {
+            const exception = new AppUnknownException(undefined);
+
+            filter['sendToSentry'](exception, exception);
 
             expect(sentryService.captureException).toHaveBeenCalledWith(
                 exception
             );
+        });
+
+        it('reports nothing when the resolved exception is below 500', () => {
+            const exception = new RequestValidationException([]);
+
+            filter['sendToSentry'](exception, exception);
+
+            expect(sentryService.captureException).not.toHaveBeenCalled();
         });
     });
 });

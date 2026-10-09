@@ -23,16 +23,22 @@ export class PolicyAbilityFactory {
     }
 
     /**
-     * Returns true only when the user holds every required action on each subject.
+     * Returns true only when at least one policy is required and the user holds every required action on each subject; an empty policy list or an empty action list is denied.
      */
     handlerPolicies(
         userPolicies: IPolicyAbilityRule,
         policies: PolicyRequestDto[]
     ): boolean {
-        return policies.every((policy: PolicyRequestDto) =>
-            policy.action.every((action: EnumPolicyAction) =>
-                userPolicies.can(action, policy.subject)
-            )
+        if (policies.length === 0) {
+            return false;
+        }
+
+        return policies.every(
+            (policy: PolicyRequestDto) =>
+                policy.action.length > 0 &&
+                policy.action.every((action: EnumPolicyAction) =>
+                    userPolicies.can(action, policy.subject)
+                )
         );
     }
 }

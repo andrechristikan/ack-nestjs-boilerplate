@@ -18,6 +18,7 @@ import { WorkspaceMemberRepository } from '@modules/workspace/repositories/works
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
 /**
  * Seeds one default personal workspace (owner membership, no project) per seeded user. Requires users to already be seeded, and aborts otherwise.
@@ -111,7 +112,7 @@ export class MigrationWorkspaceSeed
                     'slug'
                 );
                 if (!isSlugCollision) {
-                    throw error;
+                    throw new AppUnknownException(error);
                 }
             }
         }
@@ -161,8 +162,7 @@ export class MigrationWorkspaceSeed
                 })
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error seeding workspaces');
-            throw error;
+            throw new AppUnknownException(error);
         }
 
         this.logger.log('Workspaces seeded successfully.');
@@ -293,8 +293,7 @@ export class MigrationWorkspaceSeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing workspaces');
-            throw error;
+            throw new AppUnknownException(error);
         }
 
         this.logger.log('Workspaces removed completed.');

@@ -1,7 +1,9 @@
 import { HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
+import type { CorsOptions } from 'cors';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
@@ -16,6 +18,12 @@ export interface ICorsConfig {
     allowedMethod: string[];
     allowedHeader: string[];
     exposedHeader: string[];
+}
+
+export interface IFreshCorsMiddleware {
+    middleware: RequestCorsMiddleware;
+    handler: Mock;
+    captured: { options: CorsOptions };
 }
 
 export function expectRequestContextMissing(thrown: unknown): void {
@@ -77,6 +85,38 @@ export async function createRequestCorsMiddleware(
     }).compile();
 
     return module.get(RequestCorsMiddleware);
+}
+
+export async function createFreshRequestCorsMiddleware(
+    config: ICorsConfig
+): Promise<IFreshCorsMiddleware> {
+    const handler = vi.fn();
+    const captured: { options: CorsOptions } = { options: {} };
+    vi.resetModules();
+    vi.doMock('cors', () => ({
+        default: vi.fn((options: CorsOptions) => {
+            captured.options = options;
+
+            return handler;
+        }),
+    }));
+    const { RequestCorsMiddleware: FreshMiddleware } =
+        await import('@common/request/middlewares/request.cors.middleware');
+    vi.doUnmock('cors');
+    const configService = buildConfigService({
+        'request.cors.allowedOrigin': config.allowedOrigin,
+        'request.cors.allowedMethod': config.allowedMethod,
+        'request.cors.allowedHeader': config.allowedHeader,
+        'request.cors.exposedHeader': config.exposedHeader,
+    });
+    const module = await Test.createTestingModule({
+        providers: [
+            FreshMiddleware,
+            { provide: ConfigService, useValue: configService },
+        ],
+    }).compile();
+
+    return { middleware: module.get(FreshMiddleware), handler, captured };
 }
 
 export async function createRequestUrlVersionMiddleware(

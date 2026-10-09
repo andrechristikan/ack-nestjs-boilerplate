@@ -1,3 +1,4 @@
+import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 import { ActivityLogSharedListRequestSchema } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
 
 describe('ActivityLogSharedListRequestSchema', () => {
@@ -35,5 +36,18 @@ describe('ActivityLogSharedListRequestSchema', () => {
         expect(() =>
             ActivityLogSharedListRequestSchema.parse({ extra: true })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            ActivityLogSharedListRequestSchema.safeParse({ search: 'x' })
+                .success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            ActivityLogSharedListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(ActivityLogDefaultAvailableOrderBy.join(', '));
     });
 });

@@ -119,9 +119,11 @@ describe('FirebaseService', () => {
                 firebaseDoubles
             );
 
-            await expect(misconfigured.onModuleInit()).rejects.toThrow(
-                'Firebase private key could not be normalized'
-            );
+            await expect(misconfigured.onModuleInit()).rejects.toMatchObject({
+                module: 'app',
+                message: 'Firebase private key could not be normalized',
+                rawError: null,
+            });
             expect(firebaseAdmin.initializeApp).not.toHaveBeenCalled();
             expect(misconfigured.isInitialized()).toBe(false);
         });
@@ -167,8 +169,9 @@ describe('FirebaseService', () => {
             );
 
             await expect(initialized.onModuleInit()).rejects.toMatchObject({
+                module: 'app',
                 message: 'Failed to initialize Firebase Admin SDK',
-                cause,
+                rawError: cause,
             });
             expect(initialized.isInitialized()).toBe(false);
         });
@@ -301,6 +304,7 @@ describe('FirebaseService', () => {
 
             expect(result).toEqual({
                 failureTokens: [],
+                retryTokens: [],
                 successCount: 0,
                 failureCount: 2,
             });
@@ -318,6 +322,7 @@ describe('FirebaseService', () => {
 
             expect(result).toEqual({
                 failureTokens: [],
+                retryTokens: [],
                 successCount: 0,
                 failureCount: 0,
             });
@@ -417,6 +422,7 @@ describe('FirebaseService', () => {
                 successCount: 1,
                 failureCount: 3,
                 failureTokens: ['token-2'],
+                retryTokens: ['token-3', 'token-4'],
             });
         });
 
@@ -448,7 +454,209 @@ describe('FirebaseService', () => {
                 successCount: 1,
                 failureCount: 2,
                 failureTokens: [],
+                retryTokens: chunkB,
             });
+        });
+
+        it('returns every token of a rejected chunk as retryTokens', async () => {
+            const messaging: MockProxy<Messaging> = mock<Messaging>();
+            const initialized = await createInitializedFirebaseService(
+                fullCredentials,
+                firebaseDoubles,
+                messaging
+            );
+            const tokens = ['t1', 't2'];
+            helperArrayService.chunk.mockReturnValue([tokens]);
+            messaging.sendEachForMulticast.mockRejectedValueOnce(
+                new Error('fcm down')
+            );
+
+            const result = await initialized.sendMulticast(tokens, payload);
+
+            expect(result).toEqual({
+                successCount: 0,
+                failureCount: 2,
+                failureTokens: [],
+                retryTokens: ['t1', 't2'],
+            });
+        });
+
+        it('splits a per-token failure into invalid and retryable', async () => {
+            const messaging: MockProxy<Messaging> = mock<Messaging>();
+            const initialized = await createInitializedFirebaseService(
+                fullCredentials,
+                firebaseDoubles,
+                messaging
+            );
+            const tokens = ['ok', 'bad', 'later'];
+            helperArrayService.chunk.mockReturnValue([tokens]);
+            messaging.sendEachForMulticast.mockResolvedValueOnce({
+                successCount: 1,
+                failureCount: 2,
+                responses: [
+                    { success: true },
+                    {
+                        success: false,
+                        error: {
+                            code: 'messaging/registration-token-not-registered',
+                        },
+                    },
+                    {
+                        success: false,
+                        error: { code: 'messaging/internal-error' },
+                    },
+                ],
+            } as never);
+
+            const result = await initialized.sendMulticast(tokens, payload);
+
+            expect(result.failureTokens).toEqual(['bad']);
+            expect(result.retryTokens).toEqual(['later']);
+        });
+
+        it('puts a permanent non-invalid failure code in neither list', async () => {
+            const messaging: MockProxy<Messaging> = mock<Messaging>();
+            const initialized = await createInitializedFirebaseService(
+                fullCredentials,
+                firebaseDoubles,
+                messaging
+            );
+            const tokens = ['too-big'];
+            helperArrayService.chunk.mockReturnValue([tokens]);
+            messaging.sendEachForMulticast.mockResolvedValueOnce({
+                successCount: 0,
+                failureCount: 1,
+                responses: [
+                    {
+                        success: false,
+                        error: {
+                            code: 'messaging/payload-size-limit-exceeded',
+                        },
+                    },
+                ],
+            } as never);
+
+            const result = await initialized.sendMulticast(tokens, payload);
+
+            expect(result).toEqual({
+                successCount: 0,
+                failureCount: 1,
+                failureTokens: [],
+                retryTokens: [],
+            });
+        });
+
+        it('counts an invalid-argument payload failure without purging or retrying the token', async () => {
+            const messaging: MockProxy<Messaging> = mock<Messaging>();
+            const initialized = await createInitializedFirebaseService(
+                fullCredentials,
+                firebaseDoubles,
+                messaging
+            );
+            const tokens = ['good-token'];
+            helperArrayService.chunk.mockReturnValue([tokens]);
+            messaging.sendEachForMulticast.mockResolvedValueOnce({
+                successCount: 0,
+                failureCount: 1,
+                responses: [
+                    {
+                        success: false,
+                        error: { code: 'messaging/invalid-argument' },
+                    },
+                ],
+            } as never);
+
+            const result = await initialized.sendMulticast(tokens, payload);
+
+            expect(result).toEqual({
+                successCount: 0,
+                failureCount: 1,
+                failureTokens: [],
+                retryTokens: [],
+            });
+        });
+
+        it('puts a mismatched-credential failure in failureTokens', async () => {
+            const messaging: MockProxy<Messaging> = mock<Messaging>();
+            const initialized = await createInitializedFirebaseService(
+                fullCredentials,
+                firebaseDoubles,
+                messaging
+            );
+            const tokens = ['other-project'];
+            helperArrayService.chunk.mockReturnValue([tokens]);
+            messaging.sendEachForMulticast.mockResolvedValueOnce({
+                successCount: 0,
+                failureCount: 1,
+                responses: [
+                    {
+                        success: false,
+                        error: { code: 'messaging/mismatched-credential' },
+                    },
+                ],
+            } as never);
+
+            const result = await initialized.sendMulticast(tokens, payload);
+
+            expect(result.failureTokens).toEqual(['other-project']);
+            expect(result.retryTokens).toEqual([]);
+        });
+
+        it('puts a transient code and a code-less failure in retryTokens', async () => {
+            const messaging: MockProxy<Messaging> = mock<Messaging>();
+            const initialized = await createInitializedFirebaseService(
+                fullCredentials,
+                firebaseDoubles,
+                messaging
+            );
+            const tokens = ['busy', 'unknown'];
+            helperArrayService.chunk.mockReturnValue([tokens]);
+            messaging.sendEachForMulticast.mockResolvedValueOnce({
+                successCount: 0,
+                failureCount: 2,
+                responses: [
+                    {
+                        success: false,
+                        error: { code: 'messaging/server-unavailable' },
+                    },
+                    { success: false },
+                ],
+            } as never);
+
+            const result = await initialized.sendMulticast(tokens, payload);
+
+            expect(result.failureTokens).toEqual([]);
+            expect(result.retryTokens).toEqual(['busy', 'unknown']);
+        });
+
+        it('puts an app network-error and network-timeout failure in retryTokens', async () => {
+            const messaging: MockProxy<Messaging> = mock<Messaging>();
+            const initialized = await createInitializedFirebaseService(
+                fullCredentials,
+                firebaseDoubles,
+                messaging
+            );
+            const tokens = ['dropped', 'slow'];
+            helperArrayService.chunk.mockReturnValue([tokens]);
+            messaging.sendEachForMulticast.mockResolvedValueOnce({
+                successCount: 0,
+                failureCount: 2,
+                responses: [
+                    {
+                        success: false,
+                        error: { code: 'app/network-error' },
+                    },
+                    {
+                        success: false,
+                        error: { code: 'app/network-timeout' },
+                    },
+                ],
+            } as never);
+
+            const result = await initialized.sendMulticast(tokens, payload);
+
+            expect(result.failureTokens).toEqual([]);
+            expect(result.retryTokens).toEqual(['dropped', 'slow']);
         });
     });
 

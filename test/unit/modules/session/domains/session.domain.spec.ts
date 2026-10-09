@@ -13,7 +13,7 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import type {
     ISession,
@@ -78,7 +78,7 @@ describe('SessionDomain', () => {
         revokedBy: null,
     };
 
-    const baseEvent: IActivityLogStagedEvent = {
+    const baseActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userRevokeSession,
         metadata: {},
         onError: false,
@@ -360,12 +360,12 @@ describe('SessionDomain', () => {
     });
 
     describe('revoke', () => {
-        it('revokes the session, purges the cache and stages the activity event', async () => {
+        it('revokes the session, purges the cache and stages the activity log', async () => {
             sessionRepository.findOneActive.mockResolvedValue(session);
             const revokedAt = new Date('2026-01-05T00:00:00.000Z');
             helperDateService.create.mockReturnValue(revokedAt);
-            const event = baseEvent;
-            activityLogDomain.prepare.mockReturnValue(event);
+            const activityLog = baseActivityLog;
+            activityLogDomain.prepare.mockReturnValue(activityLog);
             sessionRepository.revoke.mockResolvedValue(true);
 
             await domain.revoke('user-1', 'session-1');
@@ -383,7 +383,7 @@ describe('SessionDomain', () => {
                 { id: 'session-1' },
             ]);
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -392,7 +392,7 @@ describe('SessionDomain', () => {
             helperDateService.create.mockReturnValue(
                 new Date('2026-01-05T00:00:00.000Z')
             );
-            activityLogDomain.prepare.mockReturnValue(baseEvent);
+            activityLogDomain.prepare.mockReturnValue(baseActivityLog);
             sessionRepository.revoke.mockResolvedValue(false);
 
             const rejection = domain.revoke('user-1', 'session-1');
@@ -412,7 +412,7 @@ describe('SessionDomain', () => {
     });
 
     describe('revokeByAdmin', () => {
-        it('stages one event when the admin revokes their own session', async () => {
+        it('stages one activity log when the admin revokes their own session', async () => {
             sessionRepository.findOneActive.mockResolvedValue(session);
             const revokedAt = new Date('2026-01-05T00:00:00.000Z');
             helperDateService.create.mockReturnValue(revokedAt);
@@ -423,12 +423,12 @@ describe('SessionDomain', () => {
             sessionUtil.mapActivityLogActorMetadata.mockReturnValue(
                 actorMetadata
             );
-            const actorEvent = {
-                ...baseEvent,
+            const actorActivityLog = {
+                ...baseActivityLog,
                 action: EnumActivityLogAction.adminSessionRevoke,
                 metadata: actorMetadata,
             };
-            activityLogDomain.prepare.mockReturnValue(actorEvent);
+            activityLogDomain.prepare.mockReturnValue(actorActivityLog);
             sessionRepository.revokeByAdmin.mockResolvedValue(true);
 
             await domain.revokeByAdmin('user-1', 'session-1', 'user-1');
@@ -439,11 +439,11 @@ describe('SessionDomain', () => {
                 metadata: actorMetadata,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                actorEvent,
+                actorActivityLog,
             ]);
         });
 
-        it('stages an additional target event when the admin revokes another user session', async () => {
+        it('stages an additional target activity log when the admin revokes another user session', async () => {
             sessionRepository.findOneActive.mockResolvedValue(session);
             const revokedAt = new Date('2026-01-05T00:00:00.000Z');
             helperDateService.create.mockReturnValue(revokedAt);
@@ -461,21 +461,21 @@ describe('SessionDomain', () => {
             sessionUtil.mapActivityLogTargetMetadata.mockReturnValue(
                 targetMetadata
             );
-            const actorEvent = {
-                ...baseEvent,
+            const actorActivityLog = {
+                ...baseActivityLog,
                 action: EnumActivityLogAction.adminSessionRevoke,
                 metadata: actorMetadata,
             };
-            const targetEvent = {
-                ...baseEvent,
+            const targetActivityLog = {
+                ...baseActivityLog,
                 action: EnumActivityLogAction.userRevokeSessionByAdmin,
                 userId: 'user-1',
                 createdBy: 'admin-1',
                 metadata: targetMetadata,
             };
             activityLogDomain.prepare
-                .mockReturnValueOnce(actorEvent)
-                .mockReturnValueOnce(targetEvent);
+                .mockReturnValueOnce(actorActivityLog)
+                .mockReturnValueOnce(targetActivityLog);
             sessionRepository.revokeByAdmin.mockResolvedValue(true);
 
             await domain.revokeByAdmin('user-1', 'session-1', 'admin-1');
@@ -487,8 +487,8 @@ describe('SessionDomain', () => {
                 metadata: targetMetadata,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                actorEvent,
-                targetEvent,
+                actorActivityLog,
+                targetActivityLog,
             ]);
         });
 
@@ -498,7 +498,7 @@ describe('SessionDomain', () => {
                 new Date('2026-01-05T00:00:00.000Z')
             );
             sessionUtil.mapActivityLogActorMetadata.mockReturnValue({});
-            activityLogDomain.prepare.mockReturnValue(baseEvent);
+            activityLogDomain.prepare.mockReturnValue(baseActivityLog);
             sessionRepository.revokeByAdmin.mockResolvedValue(false);
 
             const rejection = domain.revokeByAdmin(
@@ -562,7 +562,7 @@ describe('SessionDomain', () => {
     });
 
     describe('prepareRevokeAllByAdmin', () => {
-        it('returns no events when no session was revoked', () => {
+        it('returns no activity logs when no session was revoked', () => {
             const result = domain.prepareRevokeAllByAdmin(
                 'user-1',
                 'admin-1',
@@ -573,12 +573,12 @@ describe('SessionDomain', () => {
             expect(activityLogDomain.prepare).not.toHaveBeenCalled();
         });
 
-        it('returns one event when the admin revokes their own sessions', () => {
-            const event = {
-                ...baseEvent,
+        it('returns one activity log when the admin revokes their own sessions', () => {
+            const activityLog = {
+                ...baseActivityLog,
                 action: EnumActivityLogAction.adminSessionRevokeAll,
             };
-            activityLogDomain.prepare.mockReturnValue(event);
+            activityLogDomain.prepare.mockReturnValue(activityLog);
 
             const result = domain.prepareRevokeAllByAdmin(
                 'user-1',
@@ -586,25 +586,25 @@ describe('SessionDomain', () => {
                 2
             );
 
-            expect(result).toEqual([event]);
+            expect(result).toEqual([activityLog]);
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.adminSessionRevokeAll,
                 metadata: { targetUserId: 'user-1', sessionCount: 2 },
             });
         });
 
-        it('returns two events when an admin revokes another user sessions', () => {
-            const adminEvent = {
-                ...baseEvent,
+        it('returns two activity logs when an admin revokes another user sessions', () => {
+            const adminActivityLog = {
+                ...baseActivityLog,
                 action: EnumActivityLogAction.adminSessionRevokeAll,
             };
-            const userEvent = {
-                ...baseEvent,
+            const userActivityLog = {
+                ...baseActivityLog,
                 action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
             };
             activityLogDomain.prepare
-                .mockReturnValueOnce(adminEvent)
-                .mockReturnValueOnce(userEvent);
+                .mockReturnValueOnce(adminActivityLog)
+                .mockReturnValueOnce(userActivityLog);
 
             const result = domain.prepareRevokeAllByAdmin(
                 'user-1',
@@ -612,7 +612,7 @@ describe('SessionDomain', () => {
                 2
             );
 
-            expect(result).toEqual([adminEvent, userEvent]);
+            expect(result).toEqual([adminActivityLog, userActivityLog]);
             expect(activityLogDomain.prepare).toHaveBeenNthCalledWith(2, {
                 action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
                 userId: 'user-1',
@@ -623,17 +623,17 @@ describe('SessionDomain', () => {
     });
 
     describe('prepareRevokeAllSelf', () => {
-        it('prepares the self revoke-all event carrying onError', () => {
-            const event = {
-                ...baseEvent,
+        it('prepares the self revoke-all activity log carrying onError', () => {
+            const activityLog = {
+                ...baseActivityLog,
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 onError: true,
             };
-            activityLogDomain.prepare.mockReturnValue(event);
+            activityLogDomain.prepare.mockReturnValue(activityLog);
 
             const result = domain.prepareRevokeAllSelf('user-1', true);
 
-            expect(result).toEqual([event]);
+            expect(result).toEqual([activityLog]);
             expect(activityLogDomain.prepare).toHaveBeenCalledWith({
                 action: EnumActivityLogAction.userRevokeAllSessions,
                 userId: 'user-1',
@@ -644,16 +644,16 @@ describe('SessionDomain', () => {
     });
 
     describe('finalizeRevokeAll', () => {
-        it('purges every login of the user and stages the prepared events', async () => {
-            const events = [baseEvent];
+        it('purges every login of the user and stages the prepared activity logs', async () => {
+            const activityLogs = [baseActivityLog];
 
-            await domain.finalizeRevokeAll('user-1', events);
+            await domain.finalizeRevokeAll('user-1', activityLogs);
 
             expect(sessionCache.deleteLoginsByUser).toHaveBeenCalledWith(
                 'user-1'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith(
-                events
+                activityLogs
             );
         });
     });
@@ -691,22 +691,22 @@ describe('SessionDomain', () => {
             });
         });
 
-        it('purges the cache and stages the revoke-all events', async () => {
+        it('purges the cache and stages the revoke-all activity logs', async () => {
             const revokedAt = new Date('2026-01-05T00:00:00.000Z');
             helperDateService.create.mockReturnValue(revokedAt);
             const refs: ISessionRef[] = [{ id: 'session-1' }];
             sessionRepository.revokeActiveByUser.mockResolvedValue(refs);
-            const adminEvent = {
-                ...baseEvent,
+            const adminActivityLog = {
+                ...baseActivityLog,
                 action: EnumActivityLogAction.adminSessionRevokeAll,
             };
-            const userEvent = {
-                ...baseEvent,
+            const userActivityLog = {
+                ...baseActivityLog,
                 action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
             };
             activityLogDomain.prepare
-                .mockReturnValueOnce(adminEvent)
-                .mockReturnValueOnce(userEvent);
+                .mockReturnValueOnce(adminActivityLog)
+                .mockReturnValueOnce(userActivityLog);
 
             await domain.revokeAllByAdmin('user-1', 'admin-1');
 
@@ -719,8 +719,8 @@ describe('SessionDomain', () => {
                 'user-1'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                adminEvent,
-                userEvent,
+                adminActivityLog,
+                userActivityLog,
             ]);
         });
     });

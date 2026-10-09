@@ -1,3 +1,4 @@
+import { PasswordHistoryDefaultAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistoryAdminListRequestSchema } from '@modules/password-history/dtos/request/password-history.admin-list.request.dto';
 
 describe('PasswordHistoryAdminListRequestSchema', () => {
@@ -36,5 +37,19 @@ describe('PasswordHistoryAdminListRequestSchema', () => {
                 cursor: 'x',
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            PasswordHistoryAdminListRequestSchema.safeParse({ search: 'x' })
+                .success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            PasswordHistoryAdminListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(PasswordHistoryDefaultAvailableOrderBy.join(', '));
     });
 });

@@ -34,7 +34,6 @@ import type {
     IPaginationDate,
     IPaginationEqual,
     IPaginationIn,
-    IPaginationListQuery,
     IPaginationNin,
     IPaginationNotEqual,
     IPaginationOrderBy,
@@ -355,7 +354,7 @@ export class PaginationQueryUtil {
     }
 
     offset<TArgsWhere = unknown>(
-        dto: PaginationOffsetQueryDto & IPaginationListQuery,
+        dto: PaginationOffsetQueryDto,
         options: IPaginationQueryOffsetOptions = {}
     ): {
         params: IPaginationQueryOffsetParams<TArgsWhere>;
@@ -405,7 +404,7 @@ export class PaginationQueryUtil {
     }
 
     cursor<TArgsWhere = unknown>(
-        dto: PaginationCursorQueryDto & IPaginationListQuery,
+        dto: PaginationCursorQueryDto,
         options: IPaginationQueryCursorOptions = {}
     ): {
         params: IPaginationQueryCursorParams<TArgsWhere>;

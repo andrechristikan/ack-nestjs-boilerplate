@@ -1,3 +1,4 @@
+import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
 import { NotificationListRequestSchema } from '@modules/notification/dtos/request/notification.list.request.dto';
 
 describe('NotificationListRequestSchema', () => {
@@ -33,5 +34,17 @@ describe('NotificationListRequestSchema', () => {
         expect(() =>
             NotificationListRequestSchema.parse({ ...payload, page: 1 })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            NotificationListRequestSchema.safeParse({ search: 'x' }).success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            NotificationListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(NotificationDefaultAvailableOrderBy.join(', '));
     });
 });

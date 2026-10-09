@@ -10,7 +10,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type {
@@ -158,7 +158,7 @@ export class SessionDomain {
         // Sequential by design: gate before the work it guards
         await this.validateActive(userId, sessionId);
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userRevokeSession,
             }),
@@ -176,7 +176,7 @@ export class SessionDomain {
 
         await this.purgeRevokedLogins(userId, [{ id: sessionId }]);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async revokeByAdmin(
@@ -192,7 +192,7 @@ export class SessionDomain {
             session,
             revokedAt
         );
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.adminSessionRevoke,
                 metadata: actorMetadata,
@@ -205,13 +205,13 @@ export class SessionDomain {
                     revokedBy,
                     revokedAt
                 );
-            const revokedByAdminEvent = this.activityLogDomain.prepare({
+            const revokedByAdminActivityLog = this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userRevokeSessionByAdmin,
                 userId,
                 createdBy: revokedBy,
                 metadata: targetMetadata,
             });
-            events.push(revokedByAdminEvent);
+            activityLogs.push(revokedByAdminActivityLog);
         }
 
         const isRevoked = await this.sessionRepository.revokeByAdmin(
@@ -225,7 +225,7 @@ export class SessionDomain {
 
         await this.purgeRevokedLogins(userId, [{ id: sessionId }]);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     /**
@@ -260,12 +260,12 @@ export class SessionDomain {
         userId: string,
         revokedBy: string,
         sessionCount: number
-    ): IActivityLogStagedEvent[] {
+    ): IActivityLogStaged[] {
         if (sessionCount === 0) {
             return [];
         }
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.adminSessionRevokeAll,
                 metadata: {
@@ -275,26 +275,28 @@ export class SessionDomain {
             }),
         ];
         if (userId !== revokedBy) {
-            const revokedAllByAdminEvent = this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                userId,
-                createdBy: revokedBy,
-                metadata: {
-                    actorUserId: revokedBy,
-                    sessionCount,
-                },
-            });
-            events.push(revokedAllByAdminEvent);
+            const revokedAllByAdminActivityLog = this.activityLogDomain.prepare(
+                {
+                    action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                    userId,
+                    createdBy: revokedBy,
+                    metadata: {
+                        actorUserId: revokedBy,
+                        sessionCount,
+                    },
+                }
+            );
+            activityLogs.push(revokedAllByAdminActivityLog);
         }
 
-        return events;
+        return activityLogs;
     }
 
     /** Prepares the self revoke-all row of a whole-user revoke; `onError` keeps it on the error-path flush. */
     prepareRevokeAllSelf(
         userId: string,
         onError: boolean
-    ): IActivityLogStagedEvent[] {
+    ): IActivityLogStaged[] {
         return [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userRevokeAllSessions,
@@ -305,14 +307,14 @@ export class SessionDomain {
         ];
     }
 
-    /** Runs after a whole-user revoke commits: purges every login of the user, then stages the prepared revoke-all events. */
+    /** Runs after a whole-user revoke commits: purges every login of the user, then stages the prepared revoke-all activity logs. */
     async finalizeRevokeAll(
         userId: string,
-        events: IActivityLogStagedEvent[]
+        activityLogs: IActivityLogStaged[]
     ): Promise<void> {
         await this.purgeLoginsByUser(userId);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async revokeAllByAdmin(userId: string, revokedBy: string): Promise<void> {
@@ -330,11 +332,11 @@ export class SessionDomain {
             throw new SessionNotFoundException();
         }
 
-        const events = this.prepareRevokeAllByAdmin(
+        const activityLogs = this.prepareRevokeAllByAdmin(
             userId,
             revokedBy,
             sessions.length
         );
-        await this.finalizeRevokeAll(userId, events);
+        await this.finalizeRevokeAll(userId, activityLogs);
     }
 }

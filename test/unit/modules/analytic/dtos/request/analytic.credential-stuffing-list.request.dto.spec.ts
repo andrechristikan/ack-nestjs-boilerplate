@@ -1,3 +1,4 @@
+import { AnalyticCredentialStuffingAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticCredentialStuffingListRequestSchema } from '@modules/analytic/dtos/request/analytic.credential-stuffing-list.request.dto';
 
 describe('AnalyticCredentialStuffingListRequestSchema', () => {
@@ -38,5 +39,20 @@ describe('AnalyticCredentialStuffingListRequestSchema', () => {
                 extra: true,
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticCredentialStuffingListRequestSchema.safeParse({
+                search: 'x',
+            }).success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticCredentialStuffingListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticCredentialStuffingAvailableOrderBy.join(', '));
     });
 });

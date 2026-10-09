@@ -1,3 +1,4 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -104,7 +105,7 @@ export class AuthTwoFactorDomain {
                 throw new AuthTwoFactorSecretUnavailableException();
             }
 
-            throw err;
+            throw new AppUnknownException(err);
         }
     }
 

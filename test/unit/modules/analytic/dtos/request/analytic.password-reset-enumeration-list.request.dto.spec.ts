@@ -1,3 +1,4 @@
+import { AnalyticKeyCountAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticPasswordResetEnumerationListRequestSchema } from '@modules/analytic/dtos/request/analytic.password-reset-enumeration-list.request.dto';
 
 describe('AnalyticPasswordResetEnumerationListRequestSchema', () => {
@@ -40,5 +41,20 @@ describe('AnalyticPasswordResetEnumerationListRequestSchema', () => {
                 extra: true,
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
+                search: 'x',
+            }).success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticPasswordResetEnumerationListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticKeyCountAvailableOrderBy.join(', '));
     });
 });

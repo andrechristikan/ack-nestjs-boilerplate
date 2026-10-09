@@ -440,6 +440,8 @@ Restricts endpoint access based on environment.
 ```
 
 - `RequestEnvProtected` takes one or more `EnumAppEnvironment` values.
+- Called with none, it throws `RequestEnvProtectedEmptyException` when the decorator is evaluated.
+- A request in an environment outside the list answers `RequestEnvForbiddenException` (403, `50302`).
 - No controller stacks it.
 
 **Configuration:** See [Configuration][ref-doc-configuration]
@@ -695,6 +697,7 @@ RequestEnvProtected(...envs: EnumAppEnvironment[]): MethodDecorator
 ```
 
 - Takes one or more `EnumAppEnvironment` values.
+- Called with none, it throws `RequestEnvProtectedEmptyException` when the decorator is evaluated.
 - No controller stacks it.
 
 ### @RequestThrottle
@@ -751,26 +754,28 @@ StoreReader<K extends Extract<keyof Model, string>>(field?: K): ParameterDecorat
 
 - Without `field`, the decorator returns the whole stored value. With `field`, it returns that property, typed as a key of the model and non-nullable.
 - Every reader fails fast.
-    - An empty store key, or a `field` whose value is `null` or `undefined`, throws `RequestContextMissingException` (500, `50304`, message `request.error.contextMissing`).
+    - A `field` whose value is `null` or `undefined` throws `RequestContextMissingException` (500, `50304`, message `request.error.contextMissing`).
+    - A present store whose `role` is `null` throws `RequestContextMissingException` from `@RoleCurrent()`.
+    - An empty store key throws the exception in the last column of the table below.
     - `@PolicyCurrent()` takes no field and accepts an empty list, which is what a `superAdmin` carries.
     - The key name travels only in the exception's `rawError` and never reaches the response body.
     - A missing value means the guard or middleware that writes the key did not run on the route.
 - A handler parameter therefore takes the non-null type, as in `@UserCurrent() user: IUser`.
 
-| Decorator | Reads | Store key | Written by |
-| --- | --- | --- | --- |
-| `@RequestIPAddress()`, `@RequestGeoLocation()`, `@RequestUserAgent()` | one fixed field of the request log, no argument | `RequestLogStoreKey` | `RequestRequestLogMiddleware` |
-| `@UserCurrent(field?)` | `IUser` | `UserStoreKey` | `UserGuard` |
-| `@RoleCurrent(field?)` | `IRoleWithPolicies`, the role on the stored user | `UserStoreKey` | `UserGuard` |
-| `@PolicyCurrent()` | `Policy[]`, no argument | `PolicyStoreKey` | `RoleGuard` |
-| `@ApiKeyPayload(field?)` | `ApiKey` | `ApiKeyStoreKey` | `ApiKeyXApiKeyGuard` |
-| `@WorkspaceCurrent(field?)` | `Workspace` | `WorkspaceStoreKey` | `WorkspaceGuard` |
-| `@WorkspaceMemberCurrent(field?)` | `WorkspaceMember` | `WorkspaceMemberStoreKey` | `WorkspaceMemberGuard` |
-| `@ProjectCurrent(field?)` | `Project` | `ProjectStoreKey` | `ProjectGuard` |
-| `@ProjectMemberCurrent(field?)` | `ProjectMember` | `ProjectMemberStoreKey` | `ProjectMemberGuard`, bound by the role-less `@ProjectMemberProtected()` |
+| Decorator | Reads | Store key | Written by | Empty store key throws |
+| --- | --- | --- | --- | --- |
+| `@RequestIPAddress()`, `@RequestGeoLocation()`, `@RequestUserAgent()` | one fixed field of the request log, no argument | `RequestLogStoreKey` | `RequestRequestLogMiddleware` | `RequestContextMissingException` |
+| `@UserCurrent(field?)` | `IUser` | `UserStoreKey` | `UserGuard` | `UserNotAuthenticatedException` |
+| `@RoleCurrent(field?)` | `IRoleWithPolicies`, the role on the stored user | `UserStoreKey` | `UserGuard` | `UserNotAuthenticatedException` |
+| `@PolicyCurrent()` | `Policy[]`, no argument | `PolicyStoreKey` | `RoleGuard` | `PolicyForbiddenException` |
+| `@ApiKeyPayload(field?)` | `ApiKey` | `ApiKeyStoreKey` | `ApiKeyXApiKeyGuard` | `ApiKeyXApiKeyRequiredException` |
+| `@WorkspaceCurrent(field?)` | `Workspace` | `WorkspaceStoreKey` | `WorkspaceGuard` | `WorkspaceNotFoundException` |
+| `@WorkspaceMemberCurrent(field?)` | `WorkspaceMember` | `WorkspaceMemberStoreKey` | `WorkspaceMemberGuard` | `WorkspaceMemberForbiddenException` |
+| `@ProjectCurrent(field?)` | `Project` | `ProjectStoreKey` | `ProjectGuard` | `ProjectNotFoundException` |
+| `@ProjectMemberCurrent(field?)` | `ProjectMember` | `ProjectMemberStoreKey` | `ProjectMemberGuard`, bound by the role-less `@ProjectMemberProtected()` | `ProjectMemberForbiddenException` |
 
-- `@ProjectMemberCurrent()` is valid only on a route carrying the role-less `@ProjectMemberProtected()`. The role form binds `ProjectRoleGuard` instead, which stores no member row, so the read throws there.
-- `@AuthJwtPayload<T, K>(field?)` reads `request.user` rather than the store, and fails the same way: an empty `request.user`, or a missing field on it, throws `RequestContextMissingException`. See [Authentication][ref-doc-authentication].
+- `@ProjectMemberCurrent()` is valid only on a route carrying the role-less `@ProjectMemberProtected()`. The role form binds `ProjectRoleGuard` instead, which stores no member row, so the read throws `ProjectMemberForbiddenException` there.
+- `@AuthJwtPayload<T, K>(field?)` reads `request.user` rather than the store: an empty `request.user`, or a missing field on it, throws `RequestContextMissingException`. See [Authentication][ref-doc-authentication].
 
 <!-- REFERENCES -->
 

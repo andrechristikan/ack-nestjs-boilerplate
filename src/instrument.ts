@@ -45,7 +45,7 @@ const sensitiveFields = new Set(
     LoggerSensitiveFields.map(field => field.toLowerCase())
 );
 
-function isExcludedUrl(url: string | undefined, patterns: string[]): boolean {
+function isExcludedUrl(url: string | null, patterns: string[]): boolean {
     if (!url || !patterns.length) {
         return false;
     }
@@ -198,7 +198,7 @@ function redactBody(data: unknown): unknown {
     return LoggerRedactedValue;
 }
 
-function scrubData(data: Record<string, unknown> | undefined): void {
+function scrubData(data: Record<string, unknown> | null): void {
     if (!data) {
         return;
     }
@@ -227,7 +227,7 @@ function scrubData(data: Record<string, unknown> | undefined): void {
     }
 }
 
-function scrubRequest(request: RequestEventData | undefined): void {
+function scrubRequest(request: RequestEventData | null): void {
     if (!request) {
         return;
     }
@@ -256,28 +256,28 @@ function scrubRequest(request: RequestEventData | undefined): void {
 }
 
 function scrubEvent<T extends Event>(event: T): T {
-    scrubRequest(event.request);
+    scrubRequest(event.request ?? null);
     if (event.transaction) {
         event.transaction = maskName(event.transaction);
     }
-    scrubData(event.contexts?.trace?.data);
+    scrubData(event.contexts?.trace?.data ?? null);
 
     for (const span of event.spans ?? []) {
         if (span.description) {
             span.description = maskName(span.description);
         }
-        scrubData(span.data);
+        scrubData(span.data ?? null);
     }
 
     for (const breadcrumb of event.breadcrumbs ?? []) {
-        scrubData(breadcrumb.data);
+        scrubData(breadcrumb.data ?? null);
     }
 
     return event;
 }
 
 function scrubBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb {
-    scrubData(breadcrumb.data);
+    scrubData(breadcrumb.data ?? null);
 
     return breadcrumb;
 }
@@ -322,7 +322,7 @@ if (loggerConfigs.sentry.dsn) {
             }
 
             if (event.request) {
-                const url = event.request.url;
+                const url = event.request.url ?? null;
 
                 if (isExcludedUrl(url, loggerConfigs.excludedRoutes)) {
                     return null;
@@ -361,7 +361,7 @@ if (loggerConfigs.sentry.dsn) {
         tracesSampler: samplingContext => {
             if (
                 isExcludedUrl(
-                    samplingContext.normalizedRequest?.url,
+                    samplingContext.normalizedRequest?.url ?? null,
                     loggerConfigs.excludedRoutes
                 ) ||
                 isExcludedUrl(

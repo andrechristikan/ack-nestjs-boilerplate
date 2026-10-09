@@ -20,6 +20,8 @@ import {
 import { ApiParam } from '@nestjs/swagger';
 import { ClsServiceManager } from 'nestjs-cls';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
+import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 
 /**
  * Requires the `projectId` route param to resolve to an existing, non-deleted project in the current workspace.
@@ -40,7 +42,7 @@ export function ProjectProtected(): MethodDecorator {
 }
 
 /**
- * Reads the current project, or one of its fields, that `ProjectGuard` stored; throws when either is absent.
+ * Reads the current project, or one of its fields, that `ProjectGuard` stored. Throws `ProjectNotFoundException` when the project is absent and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const ProjectCurrent = createParamDecorator<
@@ -55,7 +57,7 @@ export const ProjectCurrent = createParamDecorator<
                 ProjectStoreKey
             ) ?? null;
         if (project === null) {
-            throw new RequestContextMissingException(ProjectStoreKey);
+            throw new ProjectNotFoundException();
         }
 
         const fieldKey = field ?? null;
@@ -101,7 +103,7 @@ export function ProjectMemberProtected(
 }
 
 /**
- * Reads the caller's project member row, or one of its fields, that the role-less `@ProjectMemberProtected()` stored. Valid only on a route using that role-less form: a role-gated route stores no row, and the read throws `RequestContextMissingException`.
+ * Reads the caller's project member row, or one of its fields, that the role-less `@ProjectMemberProtected()` stored. Valid only on a route using that role-less form: a role-gated route stores no row, and the read throws `ProjectMemberForbiddenException`; a requested field that is null throws `RequestContextMissingException`.
  * @public
  */
 export const ProjectMemberCurrent = createParamDecorator<
@@ -119,7 +121,7 @@ export const ProjectMemberCurrent = createParamDecorator<
                 ProjectMemberStoreKey
             ) ?? null;
         if (projectMember === null) {
-            throw new RequestContextMissingException(ProjectMemberStoreKey);
+            throw new ProjectMemberForbiddenException();
         }
 
         const fieldKey = field ?? null;

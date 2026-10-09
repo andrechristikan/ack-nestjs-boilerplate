@@ -63,14 +63,14 @@ export interface IConfigAnalytic {
         };
         refreshSpike: {
             windowInMs: number;
-            minEvents: number;
+            minCount: number;
         };
         backupCodeNewDevice: {
             windowInMs: number;
         };
         apiKeyBurst: {
             windowInMs: number;
-            minEvents: number;
+            minCount: number;
         };
         weights: {
             sessionAfterAdmin: number;
@@ -153,14 +153,14 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
         },
         refreshSpike: {
             windowInMs: ms('10m'),
-            minEvents: 20,
+            minCount: 20,
         },
         backupCodeNewDevice: {
             windowInMs: ms('1h'),
         },
         apiKeyBurst: {
             windowInMs: ms('10m'),
-            minEvents: 5,
+            minCount: 5,
         },
         weights: {
             sessionAfterAdmin: 50,

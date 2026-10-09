@@ -9,15 +9,14 @@ import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/anal
  * @public
  */
 export const AnalyticLoginSpikeIpListRequestSchema =
-    PaginationOffsetQuerySchema.extend({
-        orderBy: z
-            .union([z.string(), z.array(z.string())])
-            .optional()
-            .meta({
+    PaginationOffsetQuerySchema.omit({ search: true })
+        .extend({
+            orderBy: PaginationOffsetQuerySchema.shape.orderBy.meta({
                 description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${AnalyticLoginSpikeIpAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
                 example: `${AnalyticLoginSpikeIpAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
-    }).extend(AnalyticWindowRequestSchema.shape);
+        })
+        .extend(AnalyticWindowRequestSchema.shape);
 
 /**
  * Inferred DTO for AnalyticLoginSpikeIpListRequestSchema.

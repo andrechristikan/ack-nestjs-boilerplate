@@ -1,3 +1,4 @@
+import { AnalyticLoginSpikeIpAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticLoginSpikeIpListRequestSchema } from '@modules/analytic/dtos/request/analytic.login-spike-ip-list.request.dto';
 
 describe('AnalyticLoginSpikeIpListRequestSchema', () => {
@@ -38,5 +39,19 @@ describe('AnalyticLoginSpikeIpListRequestSchema', () => {
                 extra: true,
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticLoginSpikeIpListRequestSchema.safeParse({ search: 'x' })
+                .success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticLoginSpikeIpListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticLoginSpikeIpAvailableOrderBy.join(', '));
     });
 });

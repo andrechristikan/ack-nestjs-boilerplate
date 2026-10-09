@@ -65,10 +65,10 @@ export class AnalyticFraudDomain {
     private readonly forgotPasswordTokenAbuseWindowInMs: number;
     private readonly forgotPasswordTokenAbuseMinUnusedTokens: number;
     private readonly refreshSpikeWindowInMs: number;
-    private readonly refreshSpikeMinEvents: number;
+    private readonly refreshSpikeMinCount: number;
     private readonly backupCodeNewDeviceWindowInMs: number;
     private readonly apiKeyBurstWindowInMs: number;
-    private readonly apiKeyBurstMinEvents: number;
+    private readonly apiKeyBurstMinCount: number;
     private readonly weightSessionAfterAdmin: number;
     private readonly weightImpossibleTravel: number;
     private readonly weightNewDeviceAfterPasswordChange: number;
@@ -142,8 +142,8 @@ export class AnalyticFraudDomain {
         this.refreshSpikeWindowInMs = this.configService.get<number>(
             'analytic.fraud.refreshSpike.windowInMs'
         )!;
-        this.refreshSpikeMinEvents = this.configService.get<number>(
-            'analytic.fraud.refreshSpike.minEvents'
+        this.refreshSpikeMinCount = this.configService.get<number>(
+            'analytic.fraud.refreshSpike.minCount'
         )!;
         this.backupCodeNewDeviceWindowInMs = this.configService.get<number>(
             'analytic.fraud.backupCodeNewDevice.windowInMs'
@@ -151,8 +151,8 @@ export class AnalyticFraudDomain {
         this.apiKeyBurstWindowInMs = this.configService.get<number>(
             'analytic.fraud.apiKeyBurst.windowInMs'
         )!;
-        this.apiKeyBurstMinEvents = this.configService.get<number>(
-            'analytic.fraud.apiKeyBurst.minEvents'
+        this.apiKeyBurstMinCount = this.configService.get<number>(
+            'analytic.fraud.apiKeyBurst.minCount'
         )!;
         this.weightSessionAfterAdmin = this.configService.get<number>(
             'analytic.fraud.weights.sessionAfterAdmin'
@@ -227,21 +227,22 @@ export class AnalyticFraudDomain {
             end,
             Duration.fromMillis(windowMs)
         );
-        const events = await this.userLoginAnalyticDomain.getFailedLoginEvents(
-            start,
-            end
-        );
+        const activityLogs =
+            await this.userLoginAnalyticDomain.getFailedLoginActivityLogs(
+                start,
+                end
+            );
         const map = new Map<
             string,
             { users: Set<string>; failCount: number }
         >();
-        for (const e of events) {
-            const ip = e.ipAddress ?? 'unknown';
+        for (const activityLog of activityLogs) {
+            const ip = activityLog.ipAddress ?? 'unknown';
             if (!map.has(ip)) {
                 map.set(ip, { users: new Set(), failCount: 0 });
             }
             const row = map.get(ip)!;
-            row.users.add(e.userId);
+            row.users.add(activityLog.userId);
             row.failCount++;
         }
         return [...map.entries()]
@@ -374,7 +375,7 @@ export class AnalyticFraudDomain {
                     revoke.createdAt,
                     Duration.fromMillis(this.sessionAfterAdminRevokeInMs)
                 );
-                return this.userLoginAnalyticDomain.getLoginEvents(
+                return this.userLoginAnalyticDomain.getLoginActivityLogs(
                     revoke.createdAt,
                     windowEnd
                 );
@@ -425,18 +426,18 @@ export class AnalyticFraudDomain {
             end,
             Duration.fromMillis(windowMs)
         );
-        const events =
+        const activityLogs =
             await this.activityLogAnalyticDomain.getManyByActionsInRange(
                 [EnumActivityLogAction.userRefreshToken],
                 start,
                 end
             );
         const map = new Map<string, number>();
-        for (const e of events) {
-            map.set(e.userId, (map.get(e.userId) ?? 0) + 1);
+        for (const activityLog of activityLogs) {
+            map.set(activityLog.userId, (map.get(activityLog.userId) ?? 0) + 1);
         }
         return [...map.entries()]
-            .filter(([, count]) => count >= this.refreshSpikeMinEvents)
+            .filter(([, count]) => count >= this.refreshSpikeMinCount)
             .map(([userId, count]) => ({ userId, count }));
     }
 
@@ -496,7 +497,7 @@ export class AnalyticFraudDomain {
             end,
             Duration.fromMillis(windowMs)
         );
-        const events =
+        const activityLogs =
             await this.activityLogAnalyticDomain.getManyByActionsInRange(
                 [
                     EnumActivityLogAction.adminApiKeyCreate,
@@ -506,11 +507,11 @@ export class AnalyticFraudDomain {
                 end
             );
         const map = new Map<string, number>();
-        for (const e of events) {
-            map.set(e.userId, (map.get(e.userId) ?? 0) + 1);
+        for (const activityLog of activityLogs) {
+            map.set(activityLog.userId, (map.get(activityLog.userId) ?? 0) + 1);
         }
         return [...map.entries()]
-            .filter(([, count]) => count >= this.apiKeyBurstMinEvents)
+            .filter(([, count]) => count >= this.apiKeyBurstMinCount)
             .map(([userId, count]) => ({ userId, count }));
     }
 

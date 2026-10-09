@@ -89,10 +89,19 @@ describe('PolicyAbilityFactory', () => {
             expect(factory.handlerPolicies(ability, required)).toBe(false);
         });
 
-        it('returns true for an empty required policy list', () => {
+        it('returns false for an empty required policy list', () => {
             const ability = factory.createByUser([]);
 
-            expect(factory.handlerPolicies(ability, [])).toBe(true);
+            expect(factory.handlerPolicies(ability, [])).toBe(false);
+        });
+
+        it('returns false when a required policy names no action', () => {
+            const ability = factory.createByUser([policy]);
+            const required: PolicyRequestDto[] = [
+                { subject: EnumPolicySubject.user, action: [] },
+            ];
+
+            expect(factory.handlerPolicies(ability, required)).toBe(false);
         });
     });
 });

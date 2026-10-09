@@ -1,3 +1,4 @@
+import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 import { SessionAdminListRequestSchema } from '@modules/session/dtos/request/session.admin-list.request.dto';
 
 describe('SessionAdminListRequestSchema', () => {
@@ -38,5 +39,11 @@ describe('SessionAdminListRequestSchema', () => {
                 isRevoked: 'maybe',
             })
         ).toThrow();
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            SessionAdminListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(SessionDefaultAvailableOrderBy.join(', '));
     });
 });

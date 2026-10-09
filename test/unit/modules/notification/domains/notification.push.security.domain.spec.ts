@@ -23,6 +23,9 @@ import { NotificationUtil } from '@modules/notification/utils/notification.util'
 import {
     buildPushNotification,
     expectPushAllStepsSkipped,
+    expectPushFailureTokensMerged,
+    expectPushOutagePending,
+    expectPushRetrySendsPending,
     expectPushRetrySkipsSend,
     expectPushSendFailure,
     expectPushSentAtFailure,
@@ -54,13 +57,21 @@ describe('NotificationPushSecurityDomain', () => {
     const notification = buildPushNotification();
     const partialFailure = {
         failureTokens: ['bad'],
+        retryTokens: [],
         successCount: 1,
         failureCount: 1,
     };
     const fullSuccess = {
         failureTokens: [],
+        retryTokens: [],
         successCount: 2,
         failureCount: 0,
+    };
+    const totalOutage = {
+        failureTokens: [],
+        retryTokens: ['t1', 't2'],
+        successCount: 0,
+        failureCount: 2,
     };
     const recorded = PushRecordedSteps;
     const doubles: INotificationPushDoubles = {
@@ -146,7 +157,8 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 [EnumNotificationStep.updateProcessAt],
-                ['bad']
+                ['bad'],
+                ['t1']
             );
 
             expect(result).toEqual({
@@ -155,6 +167,7 @@ describe('NotificationPushSecurityDomain', () => {
                 completedSteps: [EnumNotificationStep.updateProcessAt],
                 failedSteps: [],
                 failureTokens: ['bad'],
+                pendingTokens: ['t1'],
             });
             expect(
                 notificationRepository.updateProcessAt
@@ -168,6 +181,7 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
@@ -200,7 +214,8 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 recorded,
-                ['bad']
+                ['bad'],
+                null
             );
 
             expectPushRetrySkipsSend(doubles, send, result);
@@ -211,6 +226,7 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 PushAllSteps,
+                null,
                 null
             );
 
@@ -227,6 +243,7 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
@@ -240,10 +257,53 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
             expectPushSendFailure(doubles, result);
+        });
+
+        it('fails the multicast step and records every retry token as pending on a total outage', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(totalOutage);
+
+            const result = await domain.processNewDeviceLogin(
+                send,
+                data,
+                [],
+                null,
+                null
+            );
+
+            expectPushOutagePending(doubles, result);
+        });
+
+        it('sends a retry only to the pending tokens and merges the recorded failure tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+
+            const result = await domain.processNewDeviceLogin(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                ['bad'],
+                ['t2']
+            );
+
+            expectPushRetrySendsPending(doubles, send, result);
+        });
+
+        it('deduplicates the failure tokens merged across attempts', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
+
+            const result = await domain.processNewDeviceLogin(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                ['old', 'bad'],
+                ['t2']
+            );
+
+            expectPushFailureTokensMerged(doubles, send, result);
         });
     });
 
@@ -260,7 +320,8 @@ describe('NotificationPushSecurityDomain', () => {
             const result = await domain.processResetTwoFactorByAdmin(
                 send,
                 [],
-                null
+                null,
+                ['t1']
             );
 
             expect(result).toEqual({
@@ -269,6 +330,7 @@ describe('NotificationPushSecurityDomain', () => {
                 completedSteps: [],
                 failedSteps: [],
                 failureTokens: null,
+                pendingTokens: ['t1'],
             });
         });
 
@@ -278,6 +340,7 @@ describe('NotificationPushSecurityDomain', () => {
             const result = await domain.processResetTwoFactorByAdmin(
                 send,
                 [],
+                null,
                 null
             );
 
@@ -298,7 +361,8 @@ describe('NotificationPushSecurityDomain', () => {
             const result = await domain.processResetTwoFactorByAdmin(
                 send,
                 recorded,
-                ['bad']
+                ['bad'],
+                null
             );
 
             expectPushRetrySkipsSend(doubles, send, result);
@@ -308,6 +372,7 @@ describe('NotificationPushSecurityDomain', () => {
             const result = await domain.processResetTwoFactorByAdmin(
                 send,
                 PushAllSteps,
+                null,
                 null
             );
 
@@ -323,6 +388,7 @@ describe('NotificationPushSecurityDomain', () => {
             const result = await domain.processResetTwoFactorByAdmin(
                 send,
                 [],
+                null,
                 null
             );
 
@@ -335,10 +401,50 @@ describe('NotificationPushSecurityDomain', () => {
             const result = await domain.processResetTwoFactorByAdmin(
                 send,
                 [],
+                null,
                 null
             );
 
             expectPushSendFailure(doubles, result);
+        });
+
+        it('fails the multicast step and records every retry token as pending on a total outage', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(totalOutage);
+
+            const result = await domain.processResetTwoFactorByAdmin(
+                send,
+                [],
+                null,
+                null
+            );
+
+            expectPushOutagePending(doubles, result);
+        });
+
+        it('sends a retry only to the pending tokens and merges the recorded failure tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+
+            const result = await domain.processResetTwoFactorByAdmin(
+                send,
+                [EnumNotificationStep.updateProcessAt],
+                ['bad'],
+                ['t2']
+            );
+
+            expectPushRetrySendsPending(doubles, send, result);
+        });
+
+        it('deduplicates the failure tokens merged across attempts', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
+
+            const result = await domain.processResetTwoFactorByAdmin(
+                send,
+                [EnumNotificationStep.updateProcessAt],
+                ['old', 'bad'],
+                ['t2']
+            );
+
+            expectPushFailureTokensMerged(doubles, send, result);
         });
     });
 
@@ -367,7 +473,8 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 [],
-                null
+                null,
+                ['t1']
             );
 
             expect(result).toEqual({
@@ -376,6 +483,7 @@ describe('NotificationPushSecurityDomain', () => {
                 completedSteps: [],
                 failedSteps: [],
                 failureTokens: null,
+                pendingTokens: ['t1'],
             });
         });
 
@@ -386,6 +494,7 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
@@ -412,7 +521,8 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 recorded,
-                ['bad']
+                ['bad'],
+                null
             );
 
             expectPushRetrySkipsSend(doubles, send, result);
@@ -423,6 +533,7 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 PushAllSteps,
+                null,
                 null
             );
 
@@ -439,6 +550,7 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
@@ -452,10 +564,53 @@ describe('NotificationPushSecurityDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
             expectPushSendFailure(doubles, result);
+        });
+
+        it('fails the multicast step and records every retry token as pending on a total outage', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(totalOutage);
+
+            const result = await domain.processTemporaryPasswordByAdmin(
+                send,
+                data,
+                [],
+                null,
+                null
+            );
+
+            expectPushOutagePending(doubles, result);
+        });
+
+        it('sends a retry only to the pending tokens and merges the recorded failure tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+
+            const result = await domain.processTemporaryPasswordByAdmin(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                ['bad'],
+                ['t2']
+            );
+
+            expectPushRetrySendsPending(doubles, send, result);
+        });
+
+        it('deduplicates the failure tokens merged across attempts', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
+
+            const result = await domain.processTemporaryPasswordByAdmin(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                ['old', 'bad'],
+                ['t2']
+            );
+
+            expectPushFailureTokensMerged(doubles, send, result);
         });
     });
 
@@ -469,7 +624,9 @@ describe('NotificationPushSecurityDomain', () => {
         it('returns the progress as passed when Firebase is not initialized', async () => {
             firebaseService.isInitialized.mockReturnValue(false);
 
-            const result = await domain.processResetPassword(send, [], null);
+            const result = await domain.processResetPassword(send, [], null, [
+                't1',
+            ]);
 
             expect(result).toEqual({
                 message:
@@ -477,13 +634,19 @@ describe('NotificationPushSecurityDomain', () => {
                 completedSteps: [],
                 failedSteps: [],
                 failureTokens: null,
+                pendingTokens: ['t1'],
             });
         });
 
         it('sends, then cleans up and stamps sentAt with the failed tokens', async () => {
             firebaseService.sendMulticast.mockResolvedValue(partialFailure);
 
-            const result = await domain.processResetPassword(send, [], null);
+            const result = await domain.processResetPassword(
+                send,
+                [],
+                null,
+                null
+            );
 
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
@@ -499,9 +662,12 @@ describe('NotificationPushSecurityDomain', () => {
         });
 
         it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
-            const result = await domain.processResetPassword(send, recorded, [
-                'bad',
-            ]);
+            const result = await domain.processResetPassword(
+                send,
+                recorded,
+                ['bad'],
+                null
+            );
 
             expectPushRetrySkipsSend(doubles, send, result);
         });
@@ -510,6 +676,7 @@ describe('NotificationPushSecurityDomain', () => {
             const result = await domain.processResetPassword(
                 send,
                 PushAllSteps,
+                null,
                 null
             );
 
@@ -522,7 +689,12 @@ describe('NotificationPushSecurityDomain', () => {
                 new Error('mongo')
             );
 
-            const result = await domain.processResetPassword(send, [], null);
+            const result = await domain.processResetPassword(
+                send,
+                [],
+                null,
+                null
+            );
 
             expectPushSentAtFailure(doubles, result);
         });
@@ -530,9 +702,53 @@ describe('NotificationPushSecurityDomain', () => {
         it('names a thrown sendMulticast and runs neither cleanup nor sentAt', async () => {
             firebaseService.sendMulticast.mockRejectedValue(new Error('fcm'));
 
-            const result = await domain.processResetPassword(send, [], null);
+            const result = await domain.processResetPassword(
+                send,
+                [],
+                null,
+                null
+            );
 
             expectPushSendFailure(doubles, result);
+        });
+
+        it('fails the multicast step and records every retry token as pending on a total outage', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(totalOutage);
+
+            const result = await domain.processResetPassword(
+                send,
+                [],
+                null,
+                null
+            );
+
+            expectPushOutagePending(doubles, result);
+        });
+
+        it('sends a retry only to the pending tokens and merges the recorded failure tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+
+            const result = await domain.processResetPassword(
+                send,
+                [EnumNotificationStep.updateProcessAt],
+                ['bad'],
+                ['t2']
+            );
+
+            expectPushRetrySendsPending(doubles, send, result);
+        });
+
+        it('deduplicates the failure tokens merged across attempts', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
+
+            const result = await domain.processResetPassword(
+                send,
+                [EnumNotificationStep.updateProcessAt],
+                ['old', 'bad'],
+                ['t2']
+            );
+
+            expectPushFailureTokensMerged(doubles, send, result);
         });
     });
 
@@ -546,7 +762,9 @@ describe('NotificationPushSecurityDomain', () => {
         it('returns the progress as passed when Firebase is not initialized', async () => {
             firebaseService.isInitialized.mockReturnValue(false);
 
-            const result = await domain.processForgotPassword(send, [], null);
+            const result = await domain.processForgotPassword(send, [], null, [
+                't1',
+            ]);
 
             expect(result).toEqual({
                 message:
@@ -554,13 +772,19 @@ describe('NotificationPushSecurityDomain', () => {
                 completedSteps: [],
                 failedSteps: [],
                 failureTokens: null,
+                pendingTokens: ['t1'],
             });
         });
 
         it('sends, then cleans up and stamps sentAt with the failed tokens', async () => {
             firebaseService.sendMulticast.mockResolvedValue(partialFailure);
 
-            const result = await domain.processForgotPassword(send, [], null);
+            const result = await domain.processForgotPassword(
+                send,
+                [],
+                null,
+                null
+            );
 
             expect(messageService.setMessage).toHaveBeenNthCalledWith(
                 2,
@@ -576,9 +800,12 @@ describe('NotificationPushSecurityDomain', () => {
         });
 
         it('does not push again and reuses the recorded tokens on a retry after a failed updateSentAt', async () => {
-            const result = await domain.processForgotPassword(send, recorded, [
-                'bad',
-            ]);
+            const result = await domain.processForgotPassword(
+                send,
+                recorded,
+                ['bad'],
+                null
+            );
 
             expectPushRetrySkipsSend(doubles, send, result);
         });
@@ -587,6 +814,7 @@ describe('NotificationPushSecurityDomain', () => {
             const result = await domain.processForgotPassword(
                 send,
                 PushAllSteps,
+                null,
                 null
             );
 
@@ -599,7 +827,12 @@ describe('NotificationPushSecurityDomain', () => {
                 new Error('mongo')
             );
 
-            const result = await domain.processForgotPassword(send, [], null);
+            const result = await domain.processForgotPassword(
+                send,
+                [],
+                null,
+                null
+            );
 
             expectPushSentAtFailure(doubles, result);
         });
@@ -607,9 +840,53 @@ describe('NotificationPushSecurityDomain', () => {
         it('names a thrown sendMulticast and runs neither cleanup nor sentAt', async () => {
             firebaseService.sendMulticast.mockRejectedValue(new Error('fcm'));
 
-            const result = await domain.processForgotPassword(send, [], null);
+            const result = await domain.processForgotPassword(
+                send,
+                [],
+                null,
+                null
+            );
 
             expectPushSendFailure(doubles, result);
+        });
+
+        it('fails the multicast step and records every retry token as pending on a total outage', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(totalOutage);
+
+            const result = await domain.processForgotPassword(
+                send,
+                [],
+                null,
+                null
+            );
+
+            expectPushOutagePending(doubles, result);
+        });
+
+        it('sends a retry only to the pending tokens and merges the recorded failure tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+
+            const result = await domain.processForgotPassword(
+                send,
+                [EnumNotificationStep.updateProcessAt],
+                ['bad'],
+                ['t2']
+            );
+
+            expectPushRetrySendsPending(doubles, send, result);
+        });
+
+        it('deduplicates the failure tokens merged across attempts', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
+
+            const result = await domain.processForgotPassword(
+                send,
+                [EnumNotificationStep.updateProcessAt],
+                ['old', 'bad'],
+                ['t2']
+            );
+
+            expectPushFailureTokensMerged(doubles, send, result);
         });
     });
 });

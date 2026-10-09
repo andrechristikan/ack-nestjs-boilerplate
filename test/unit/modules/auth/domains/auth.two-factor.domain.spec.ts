@@ -45,6 +45,7 @@ describe('AuthTwoFactorDomain', () => {
     let generateSecret: typeof import('otplib').generateSecret;
     let verifySync: typeof import('otplib').verifySync;
     let AuthTwoFactorDomain: typeof import('@modules/auth/domains/auth.two-factor.domain').AuthTwoFactorDomain;
+    let AppUnknownException: typeof import('@app/exceptions/app.unknown.exception').AppUnknownException;
     let HelperDecryptFailedException: typeof import('@common/helper/exceptions/helper.decrypt-failed.exception').HelperDecryptFailedException;
     let HelperEncryptionServiceClass: typeof import('@common/helper/services/helper.encryption.service').HelperEncryptionService;
     let HelperHashServiceClass: typeof import('@common/helper/services/helper.hash.service').HelperHashService;
@@ -128,6 +129,8 @@ describe('AuthTwoFactorDomain', () => {
         ({ generateSecret, verifySync } = await import('otplib'));
         ({ AuthTwoFactorDomain } =
             await import('@modules/auth/domains/auth.two-factor.domain'));
+        ({ AppUnknownException } =
+            await import('@app/exceptions/app.unknown.exception'));
         ({ HelperDecryptFailedException } =
             await import('@common/helper/exceptions/helper.decrypt-failed.exception'));
         ({ HelperEncryptionService: HelperEncryptionServiceClass } =
@@ -553,7 +556,7 @@ describe('AuthTwoFactorDomain', () => {
             );
         });
 
-        it('rethrows an error that is not a decrypt failure', () => {
+        it('wraps an error that is not a decrypt failure in AppUnknownException', () => {
             const otherError = new Error('unexpected');
             helperEncryptionService.aes256Decrypt.mockImplementation(() => {
                 throw otherError;
@@ -566,7 +569,8 @@ describe('AuthTwoFactorDomain', () => {
                 thrown = error;
             }
 
-            expect(thrown).toBe(otherError);
+            expect(thrown).toBeInstanceOf(AppUnknownException);
+            expect(thrown).toMatchObject({ rawError: otherError });
             expect(sentryService.captureException).not.toHaveBeenCalled();
         });
     });

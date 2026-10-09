@@ -120,7 +120,7 @@ sequenceDiagram
     Note over Admin,Users: Publishing Process
 
     Admin->>API: Publish policy
-    API->>Database: Reject an already-published policy, then a policy with no content
+    API->>Database: Already published: re-queue when it has no recipient marker, else reject<br/>Draft: reject a policy with no content
     API->>API: Reject when S3 is not configured (404)
     API->>S3 Public: Copy all content files from the private bucket
     API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to the public items,<br/>non-deleted users termPolicy[type] = false
@@ -132,14 +132,16 @@ sequenceDiagram
 
 Publishing is the one admin action that fans out to every user. After the transaction commits it queues one `publishTermPolicy` job:
 
-- A policy already `published` fails the status pre-check with `400` (`statusInvalid`) and queues nothing.
+- A policy already `published` takes one of two paths at the status pre-check:
+    - With no `TermPolicyRecipient` marker, it queues the job again and writes nothing else.
+    - With a marker, it fails with `400` (`statusInvalid`) and queues nothing.
 - The status update matches the policy only while it is `draft`, so one of two concurrent publishes commits.
     - The losing publish queues nothing and answers `400` (`statusInvalid`) when its update runs after the winner commits.
-    - It answers `500` when the two transactions overlap: MongoDB raises a write conflict (`P2034`) and nothing retries it.
+    - It answers `409` (`DatabaseWriteConflictException`, `51801`) when the two transactions overlap: MongoDB raises a write conflict (`P2034`) and nothing retries it.
 - The job is queued after the commit.
     - When the add fails, the request answers `500`.
     - When the add fails, the policy stays `published` and no email goes out.
-    - A later publish is refused by the status pre-check, so nothing queues the job again.
+    - A later publish of the same policy queues the job again while no recipient marker exists.
 - The job id is `publishTermPolicy-{termPolicyId}`, with no deduplication TTL.
 - The job targets every non-deleted user, whatever the user's status.
     - Each user gets one marker per term policy, which stops a duplicate `Notification` row and a second batch.
@@ -340,7 +342,8 @@ Publishing:
 
 - sets `termPolicy[type]` to `false` for every non-deleted user, whatever the status, so each one accepts again
 - queues the publication email described under [Admin Flow Diagram](#admin-flow-diagram)
-- an already-published policy returns `400` (`statusInvalid`)
+- an already-published policy with a `TermPolicyRecipient` marker returns `400` (`statusInvalid`)
+- an already-published policy with no marker queues the publication email again
 - a policy with no content returns `400` (`contentEmpty`)
 - a stored content with an unknown language or access returns `500` (`contentInvalid`)
 
@@ -375,7 +378,7 @@ DELETE /admin/term-policy/delete/:termPolicyId
 
 The `@TermPolicyAcceptanceProtected()` decorator protects endpoints by requiring users to accept specific policies before accessing them.
 
-The guard reads the user out of the request store, which `@UserProtected()` fills and `@AuthJwtAccessProtected()` feeds. Without both, it resolves no user and throws `401 Unauthorized` (`jwtAccessTokenInvalid`).
+The guard reads the user out of the request store, which `@UserProtected()` fills and `@AuthJwtAccessProtected()` feeds. Without both, it resolves no user and throws `UserNotAuthenticatedException` (`401 Unauthorized`, `51027`).
 
 **Decorator order** (from top to bottom):
 
@@ -447,7 +450,7 @@ flowchart TD
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
     UserGuard --> CheckUser{RequestStoreService.get UserStoreKey<br/>resolves a user?}
 
-    CheckUser -->|No| ErrorUser[Throw 401: Unauthorized<br/>jwtAccessTokenInvalid]
+    CheckUser -->|No| ErrorUser[Throw UserNotAuthenticatedException<br/>401 Unauthorized]
     CheckUser -->|Yes| CheckRequired{Required term policies<br/>specified?}
 
     CheckRequired -->|No| SetDefault[Use Default:<br/>termsOfService + privacy]
@@ -477,7 +480,7 @@ flowchart TD
 - Decorator order from top to bottom: `@TermPolicyAcceptanceProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`
 - For more details about `@AuthJwtAccessProtected()`, see [Authentication Documentation][ref-doc-authentication]
 - For more details about `@UserProtected()`, see [Authorization Documentation][ref-doc-authorization]
-- Without the required decorators, the guard finds no user and throws `401 Unauthorized` (`jwtAccessTokenInvalid`)
+- Without the required decorators, the guard finds no user and throws `UserNotAuthenticatedException` (`401 Unauthorized`, `51027`)
 - If no term policies are specified, it defaults to requiring `termsOfService` and `privacy` acceptance
 - Access is granted only when the user has accepted every specified term policy
 - A user missing any required acceptance gets `403 Forbidden` (`requiredInvalid`)

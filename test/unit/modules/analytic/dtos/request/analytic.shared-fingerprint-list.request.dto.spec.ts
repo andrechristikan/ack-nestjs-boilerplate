@@ -1,3 +1,4 @@
+import { AnalyticSharedFingerprintAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticSharedFingerprintListRequestSchema } from '@modules/analytic/dtos/request/analytic.shared-fingerprint-list.request.dto';
 
 describe('AnalyticSharedFingerprintListRequestSchema', () => {
@@ -36,5 +37,20 @@ describe('AnalyticSharedFingerprintListRequestSchema', () => {
                 extra: true,
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticSharedFingerprintListRequestSchema.safeParse({
+                search: 'x',
+            }).success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticSharedFingerprintListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticSharedFingerprintAvailableOrderBy.join(', '));
     });
 });

@@ -2,8 +2,10 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
+import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
@@ -148,13 +150,45 @@ describe('TermPolicyTemplateDomain', () => {
             expect(awsS3Service.copyItem).not.toHaveBeenCalled();
         });
 
-        it('rethrows when reading the template fails', async () => {
+        it('wraps a failure reading the template in AppUnknownException', async () => {
             const readError = new Error('read failed');
             readFileSync.mockImplementation(() => {
                 throw readError;
             });
 
-            await expect(domain[method]()).rejects.toBe(readError);
+            await expect(domain[method]()).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: readError,
+            });
+        });
+
+        it('wraps a rejected public copy in AppUnknownException', async () => {
+            readFileSync.mockReturnValue(Buffer.from('<html></html>'));
+            termPolicyUtil.createRandomFilenameContentWithPath.mockReturnValue(
+                'term-policies/type/1/en.hbs'
+            );
+            awsS3Service.putItem.mockResolvedValue(privateItem);
+            termPolicyUtil.getContentPublicPath.mockReturnValue(
+                'public/term-policies/type/1'
+            );
+            const copyError = new Error('copy failed');
+            awsS3Service.copyItem.mockRejectedValue(copyError);
+
+            await expect(domain[method]()).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: copyError,
+            });
+        });
+
+        it('rethrows an AppBaseException raised while importing', async () => {
+            readFileSync.mockReturnValue(Buffer.from('<html></html>'));
+            termPolicyUtil.createRandomFilenameContentWithPath.mockReturnValue(
+                'term-policies/type/1/en.hbs'
+            );
+            const typedError = new AwsS3NotConfiguredException();
+            awsS3Service.putItem.mockRejectedValue(typedError);
+
+            await expect(domain[method]()).rejects.toBe(typedError);
         });
     });
 });

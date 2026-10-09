@@ -180,7 +180,7 @@ export class NotificationTermPolicyDomain {
         if (!user) {
             return {
                 message:
-                    'User not found, skipping user accept term policy notification',
+                    'User not active, skipping user accept term policy notification',
                 completedSteps,
                 failedSteps: [],
             };

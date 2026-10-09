@@ -6,10 +6,10 @@ Activity Log lives in `src/modules/activity-log`.
 
 Activity Log records audited user actions:
 
-- During the request, a domain builds each event with `ActivityLogDomain.prepare` and queues it with `ActivityLogDomain.stagePrepared`.
+- During the request, a domain builds each activity log with `ActivityLogDomain.prepare` and queues it with `ActivityLogDomain.stagePrepared`.
 - The always-on `ActivityLogInterceptor` (registered from `ActivityLogDomainModule`) flushes after the handler settles:
-    - success flushes every staged event
-    - an error path flushes only events prepared with `onError: true`
+    - success flushes every staged activity log
+    - an error path flushes only activity logs prepared with `onError: true`
 - Flushed rows go through `ActivityLogRepository.createMany`, one `client.activityLog.createMany` call with no transaction.
 - An action one user takes on another user writes two rows: one owned by the actor and one owned by the affected user. See [Actor and target rows](#actor-and-target-rows).
 
@@ -29,7 +29,7 @@ Password mismatch:
 1. `UserAuthDomain` calls `UserLoginDomain.recordLoginFailed`.
 2. It prepares `EnumActivityLogAction.userLoginFailed` with `onError: true`, and with `userId` and `createdBy` set to the target user.
 3. It increments the password-attempt counter.
-4. It stages the event.
+4. It stages the activity log.
 
 The i18n key is `activityLog.userLoginFailed` ("Login failed with invalid credentials").
 
@@ -46,6 +46,7 @@ The i18n key is `activityLog.userReachMaxPasswordAttempt` ("Maximum password att
 **Notes:**
 
 - Flush failures are logged and do not change the handler outcome.
+- An error that is neither an `AppBaseException` nor an `HttpException` leaves the interceptor wrapped in `AppUnknownException`.
 - Metadata carries no secrets (password, token, API key) and no large objects.
 - Each action's metadata schema in `ActivityLogActionContract` declares what it holds.
 - Metadata is returned to the client through a typed response schema.
@@ -74,10 +75,10 @@ The i18n key is `activityLog.userReachMaxPasswordAttempt` ("Maximum password att
 
 | Component | Responsibility |
 | --- | --- |
-| `ActivityLogDomain.prepare` | Validates contract and metadata, returns an `IActivityLogStagedEvent`; stages nothing |
-| `ActivityLogDomain.stagePrepared` | Pushes prepared events onto the request-store stage list |
+| `ActivityLogDomain.prepare` | Validates contract and metadata, returns an `IActivityLogStaged`; stages nothing |
+| `ActivityLogDomain.stagePrepared` | Pushes prepared activity logs onto the request-store stage list |
 | `ActivityLogInterceptor` | After the handler settles, calls `ActivityLogDomain.flushStaged` (all staged on success; `onError: true` only on error) |
-| `RequestStoreService` | Per-request carrier for staged events (`ActivityLogStageStoreKey`, value `'ActivityLogStageStoreKey'`), request log, and workspace |
+| `RequestStoreService` | Per-request carrier for staged activity logs (`ActivityLogStageStoreKey`, value `'ActivityLogStageStoreKey'`), request log, and workspace |
 | `ActivityLogDomain.flushStaged` | Builds rows and writes them via `ActivityLogRepository.createMany` |
 | `ActivityLogHttpService` | Transport layer for the four list routes; the page it returns is serialized against `ActivityLogResponseSchema` declared on the route |
 | `ActivityLogRepository` | Data access (Prisma), including `createMany`, which inserts every flushed row in one call with no transaction |
@@ -123,7 +124,7 @@ sequenceDiagram
     Controller->>Domain: business logic
     Note over Domain: prepare({ action, userId?, createdBy?, workspaceId?, metadata?, onError? })<br/>validates before the audited write
     Domain->>Domain: audited write
-    Domain->>Storage: stagePrepared(events)
+    Domain->>Storage: stagePrepared(activityLogs)
     alt Success
         Domain-->>Interceptor: result
         Interceptor->>Domain: flushStaged({ isError: false })
@@ -132,7 +133,7 @@ sequenceDiagram
     else Failure
         Domain-->>Interceptor: throws
         Interceptor->>Domain: flushStaged({ isError: true })
-        Note over Domain: Only events with onError true
+        Note over Domain: Only activity logs with onError true
         Domain->>Repo: createMany(rows) when any qualify
         Repo-->>Client: Error Response
     end
@@ -142,11 +143,11 @@ sequenceDiagram
 
 Every caller follows one order:
 
-1. Prepare and validate every event (`prepare` checks metadata against `ActivityLogActionContract[action].metadata` and the user and workspace fields).
+1. Prepare and validate every activity log (`prepare` checks metadata against `ActivityLogActionContract[action].metadata` and the user and workspace fields).
 2. Write.
     - A contract failure throws before anything commits.
     - A failed write stages nothing.
-3. Stage the prepared events.
+3. Stage the prepared activity logs.
 
 Ordering and values:
 
@@ -159,7 +160,7 @@ Example from `RoleDomain.createByAdmin`, whose private `prepareActivityLog` wrap
 ```typescript
 const roleId = this.databaseUtil.createId();
 const timestamp = this.helperDateService.create();
-const events = [
+const activityLogs = [
     this.prepareActivityLog(
         EnumActivityLogAction.adminRoleCreate,
         { id: roleId, name: data.name, type: data.type },
@@ -168,13 +169,13 @@ const events = [
 ];
 const created = await this.roleRepository.create(roleId, data);
 
-this.activityLogDomain.stagePrepared(events);
+this.activityLogDomain.stagePrepared(activityLogs);
 ```
 
 `userLoginFailed` is prepared with an explicit target `userId`, the same user as `createdBy`, empty metadata, and `onError: true`:
 
 ```typescript
-const events = [
+const activityLogs = [
     this.activityLogDomain.prepare({
         action: EnumActivityLogAction.userLoginFailed,
         userId,
@@ -184,10 +185,10 @@ const events = [
 ];
 await this.userRepository.increasePasswordAttempt(userId);
 
-this.activityLogDomain.stagePrepared(events);
+this.activityLogDomain.stagePrepared(activityLogs);
 ```
 
-Events prepared inside a transaction callback, after a write whose returned row the metadata needs, are returned from the callback and staged after the commit.
+Activity logs prepared inside a transaction callback, after a write whose returned row the metadata needs, are returned from the callback and staged after the commit.
 
 `SessionDomain.revokeAllByAdmin` prepares its pair after the revoke write, because `sessionCount` exists only once the revoke has run.
 
@@ -196,9 +197,10 @@ Events prepared inside a transaction callback, after a write whose returned row 
 - `userLoginFailed`
 - `userReachMaxPasswordAttempt` and `userRevokeAllSessions` on the lockout path
 - the five API key admin writes (status, name, dates, reset, delete)
+- `adminTermPolicyPublish`, which stays recorded when the publication job fails to queue after the commit
 
 - An API key admin write stages its row after the database write and before the cache delete, so a cache delete that fails and answers 500 still records the change.
-- Every other event is success-only.
+- Every other activity log is success-only.
 
 The contract's `user` value decides which user fields `prepare` accepts:
 
@@ -306,8 +308,8 @@ An invite resend writes no row.
 **Counting**
 
 - `ActivityLogWorkspaceVolumeContract` lists the eleven workspace and project target actions.
-- Workspace volume metrics leave them out, so each paired workspace event counts once.
-- `workspaceCreatedByAdmin` is not on the list, because the admin's row for the same event carries no workspace.
+- Workspace volume metrics leave them out, so each paired workspace action counts once.
+- `workspaceCreatedByAdmin` is not on the list, because the admin's row for the same action carries no workspace.
 - See [Analytic][ref-doc-analytic].
 
 ## Data
@@ -335,7 +337,7 @@ type IActivityLogMetadata = Record<string, string | number | boolean | Date>;
 ```
 
 - Stored as `null` when empty.
-- Each action's schema is a strict zod object, so a key the schema does not declare fails the contract when the event is prepared.
+- Each action's schema is a strict zod object, so a key the schema does not declare fails the contract when the activity log is prepared.
 - Every id in the schemas below is required.
 
 | Actions | Keys |

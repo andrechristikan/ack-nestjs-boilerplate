@@ -23,7 +23,7 @@ import { EnumRequestStatusCodeError } from '@common/request/enums/request.status
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
@@ -93,7 +93,7 @@ describe('UserLoginDomain', () => {
 
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-01T00:00:00.000Z');
-    const event: IActivityLogStagedEvent = {
+    const activityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userLoginCredential,
         metadata: {},
         onError: false,
@@ -198,7 +198,7 @@ describe('UserLoginDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        activityLogDomain.prepare.mockReturnValue(event);
+        activityLogDomain.prepare.mockReturnValue(activityLog);
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -255,7 +255,7 @@ describe('UserLoginDomain', () => {
     });
 
     describe('recordLoginFailed', () => {
-        it('increases the password attempt and stages an on-error activity event', async () => {
+        it('increases the password attempt and stages an on-error activity log', async () => {
             await domain.recordLoginFailed('user-wisteria');
 
             expect(activityLogDomain.prepare).toHaveBeenCalledWith(
@@ -270,7 +270,7 @@ describe('UserLoginDomain', () => {
                 'user-wisteria'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
     });
@@ -291,7 +291,7 @@ describe('UserLoginDomain', () => {
             );
         });
 
-        it('creates a session for a new device, notifies of the new login, and stages the event in order', async () => {
+        it('creates a session for a new device, notifies of the new login, and stages the activity log in order', async () => {
             userUtil.resolveLoginActivityLogAction.mockReturnValue(
                 EnumActivityLogAction.userLoginCredential
             );
@@ -418,7 +418,7 @@ describe('UserLoginDomain', () => {
                 createdBy: user.id,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
             expect(callOrder).toEqual([
                 'committed',
@@ -492,7 +492,7 @@ describe('UserLoginDomain', () => {
             );
             expect(notificationQueue.sendNewDeviceLogin).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -544,7 +544,7 @@ describe('UserLoginDomain', () => {
 
             expect(sessionDomain.purgeRevokedLogins).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -603,7 +603,7 @@ describe('UserLoginDomain', () => {
                 null
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -829,11 +829,11 @@ describe('UserLoginDomain', () => {
                 tokens,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
-        it('creates a challenge, a fresh setup, and stages the event in order when two-factor requires it', async () => {
+        it('creates a challenge, a fresh setup, and stages the activity log in order when two-factor requires it', async () => {
             const user = {
                 ...baseUser,
                 twoFactor: {
@@ -851,7 +851,7 @@ describe('UserLoginDomain', () => {
                 otpauthUrl: 'otpauth://totp/secret',
                 secret: 'secret',
             });
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userSetupTwoFactor,
                 metadata: {},
                 onError: false,
@@ -859,7 +859,7 @@ describe('UserLoginDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
             const callOrder: string[] = [];
             userTwoFactorRepository.setupTwoFactor.mockImplementation(
                 async () => {
@@ -903,7 +903,7 @@ describe('UserLoginDomain', () => {
                 createdBy: user.id,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
             expect(callOrder).toEqual(['setupTwoFactor', 'stagePrepared']);
         });
@@ -1305,7 +1305,7 @@ describe('UserLoginDomain', () => {
             expiredInMs: 2592000000,
         };
 
-        it('rotates the session, returns fresh tokens, and stages the event in order', async () => {
+        it('rotates the session, returns fresh tokens, and stages the activity log in order', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 session,
@@ -1345,7 +1345,7 @@ describe('UserLoginDomain', () => {
                 action: EnumActivityLogAction.userRefreshToken,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
             expect(callOrder).toEqual([
                 'updateLoginInTx',
@@ -1478,7 +1478,7 @@ describe('UserLoginDomain', () => {
     });
 
     describe('logout', () => {
-        it('revokes the session, clears the device notification and stages the activity log event', async () => {
+        it('revokes the session, clears the device notification and stages the activity log', async () => {
             await domain.logout(
                 'user-wisteria',
                 'session-wisteria',
@@ -1508,7 +1508,7 @@ describe('UserLoginDomain', () => {
                 [{ id: 'session-wisteria' }]
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
     });

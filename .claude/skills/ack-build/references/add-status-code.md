@@ -13,7 +13,7 @@ find src -name '*.status-code.enum.ts' | sort | while read -r f; do
 done
 ```
 
-The output lists each owner's low and high member. Owners are feature modules under `src/modules/` and the `src/common/` sub-trees with an enum (`src/app`, `aws`, `database`, `file`, `firebase`, `helper`, `pagination`, `request`, `response`). The next free hundred is the highest block base plus 100.
+The output lists each owner's low and high member. Owners are feature modules under `src/modules/` and the `src/common/` sub-trees with an enum (`src/app`, `aws`, `database`, `file`, `firebase`, `helper`, `pagination`, `redis`, `request`, `response`). The next free hundred is the highest block base plus 100.
 
 ## 2. Reuse before adding
 
@@ -24,7 +24,7 @@ Open the owner's enum and find a member that already means the thing. Add a memb
 1. Check headroom: the next sequential number stays inside the owner's hundred. When it does not, stop and report.
 2. Append the member at the next number, no gap, camelCase descriptor (`src/modules/user/enums/user.status-code.enum.ts`).
 3. Create `exceptions/<module>.<descriptor>.exception.ts` from `src/modules/device/exceptions/device.not-found.exception.ts:9-18`: `module`, `statusCode` by member name, `statusCodeKey` as the reverse lookup on the same member, `httpStatus`, and `super('<module>.error.<descriptor>')`. Named constructor params go into `messageProperties`.
-4. Choose `httpStatus` deliberately: it is the wire status and the Sentry switch (500 and above is reported).
+4. Choose `httpStatus` deliberately: it is the wire status and the Sentry switch (500 and above is reported). 500 is only for an unknown error or a bug we detect ourselves; a failure outside an HTTP request gets no member and extends `AppUnknownException` (`.claude/rules/exceptions.md`, The hierarchy).
 5. Add `error.<descriptor>` to `src/languages/<lang>/<module>.json` in every language directory (`.claude/rules/i18n.md`).
 6. Throw it from the domain, or return it from a util for the caller to throw.
 

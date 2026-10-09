@@ -1,3 +1,4 @@
+import { AnalyticUserCountAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticApiKeyBurstListRequestSchema } from '@modules/analytic/dtos/request/analytic.api-key-burst-list.request.dto';
 
 describe('AnalyticApiKeyBurstListRequestSchema', () => {
@@ -35,5 +36,19 @@ describe('AnalyticApiKeyBurstListRequestSchema', () => {
         expect(() =>
             AnalyticApiKeyBurstListRequestSchema.parse({ page: 1, extra: true })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticApiKeyBurstListRequestSchema.safeParse({ search: 'x' })
+                .success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticApiKeyBurstListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticUserCountAvailableOrderBy.join(', '));
     });
 });

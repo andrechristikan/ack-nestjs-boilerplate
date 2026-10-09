@@ -5,6 +5,7 @@ import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interf
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
 /**
  * Applies access/CORS/lifecycle policies to the public and private S3 buckets; removal is a no-op. Skips with a warning
@@ -112,8 +113,7 @@ export class MigrationAwsS3ConfigSeed
                 this.setPrivateBucketPolicies(),
             ]);
         } catch (error: unknown) {
-            this.logger.error(error, 'Error setting AWS S3 policies');
-            throw error;
+            throw new AppUnknownException(error);
         }
 
         this.logger.log('Finished seeding AWS S3 Policies.');

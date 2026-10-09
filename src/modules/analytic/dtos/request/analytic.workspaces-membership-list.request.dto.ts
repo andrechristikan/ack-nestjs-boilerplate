@@ -6,7 +6,7 @@ import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.
  * @public
  */
 export const AnalyticWorkspacesMembershipListRequestSchema =
-    PaginationOffsetQuerySchema;
+    PaginationOffsetQuerySchema.omit({ search: true, orderBy: true });
 
 /**
  * Inferred DTO for AnalyticWorkspacesMembershipListRequestSchema.

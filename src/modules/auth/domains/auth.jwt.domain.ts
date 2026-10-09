@@ -21,6 +21,8 @@ import {
 } from '@generated/prisma-client/client';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { AuthJwtConfigInvalidException } from '@modules/auth/exceptions/auth.jwt-config-invalid.exception';
+import { AuthJwtConfigMissingException } from '@modules/auth/exceptions/auth.jwt-config-missing.exception';
 
 /** Signs, verifies and rotates the access/refresh token pair. See docs/authentication.md. */
 @Injectable()
@@ -91,9 +93,7 @@ export class AuthJwtDomain {
         const raw = value?.trim();
 
         if (!raw) {
-            throw new Error(
-                `Invalid JWT configuration: ${configKey} is missing.`
-            );
+            throw new AuthJwtConfigMissingException(configKey);
         }
 
         try {
@@ -106,9 +106,10 @@ export class AuthJwtDomain {
                 format: 'pem',
             }) as string;
         } catch (error) {
-            throw new Error(
-                `Invalid JWT configuration: ${configKey} must be a valid base64-encoded PKCS#8 DER private key.`,
-                { cause: error }
+            throw new AuthJwtConfigInvalidException(
+                configKey,
+                'PKCS#8 DER private key',
+                error
             );
         }
     }
@@ -118,9 +119,7 @@ export class AuthJwtDomain {
         const raw = value?.trim();
 
         if (!raw) {
-            throw new Error(
-                `Invalid JWT configuration: ${configKey} is missing.`
-            );
+            throw new AuthJwtConfigMissingException(configKey);
         }
 
         try {
@@ -133,9 +132,10 @@ export class AuthJwtDomain {
                 format: 'pem',
             }) as string;
         } catch (error) {
-            throw new Error(
-                `Invalid JWT configuration: ${configKey} must be a valid base64-encoded SPKI DER public key.`,
-                { cause: error }
+            throw new AuthJwtConfigInvalidException(
+                configKey,
+                'SPKI DER public key',
+                error
             );
         }
     }

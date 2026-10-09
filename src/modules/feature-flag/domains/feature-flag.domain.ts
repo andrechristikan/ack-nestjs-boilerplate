@@ -7,10 +7,6 @@ import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import { FeatureFlagInvalidMetadataException } from '@modules/feature-flag/exceptions/feature-flag.invalid-metadata.exception';
 import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
-import { FeatureFlagPredefinedKeyEmptyException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-empty.exception';
-import { FeatureFlagPredefinedKeyLengthExceededException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-length-exceeded.exception';
-import { FeatureFlagPredefinedKeyNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-not-found.exception';
-import { FeatureFlagPredefinedKeyTypeInvalidException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-type-invalid.exception';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import type {
     IFeatureFlagMetadata,
@@ -61,21 +57,13 @@ export class FeatureFlagDomain {
     }
 
     async validateFeatureFlag(
-        keyPath: string,
+        key: string,
         userId: string | null,
         anonymousId: string | null
     ): Promise<void> {
-        const keys = keyPath.split('.');
-        if (keys.some(segment => segment.length === 0)) {
-            throw new FeatureFlagPredefinedKeyEmptyException();
-        } else if (keys.length > 1) {
-            throw new FeatureFlagPredefinedKeyLengthExceededException();
-        }
-
-        const key = keys[0]!;
         const featureFlag = await this.featureFlagCache.getByKeyAndCache(key);
         if (!featureFlag) {
-            throw new FeatureFlagPredefinedKeyNotFoundException();
+            throw new FeatureFlagNotFoundException();
         } else if (!featureFlag.isEnable) {
             throw new FeatureFlagDisabledException();
         }
@@ -107,7 +95,7 @@ export class FeatureFlagDomain {
     ): Promise<void> {
         const featureFlag = await this.featureFlagCache.getByKeyAndCache(key);
         if (!featureFlag) {
-            throw new FeatureFlagPredefinedKeyNotFoundException();
+            throw new FeatureFlagNotFoundException();
         } else if (!featureFlag.isEnable) {
             throw new FeatureFlagDisabledException();
         }
@@ -116,7 +104,7 @@ export class FeatureFlagDomain {
             (featureFlag.metadata as Record<string, unknown>)?.[metadataKey] ??
             null;
         if (typeof metadata !== 'boolean') {
-            throw new FeatureFlagPredefinedKeyTypeInvalidException();
+            throw new FeatureFlagDisabledException();
         } else if (!metadata) {
             throw new FeatureFlagDisabledException();
         }

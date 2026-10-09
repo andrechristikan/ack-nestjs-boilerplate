@@ -15,8 +15,8 @@ import {
 } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
@@ -120,7 +120,7 @@ describe('PolicyDomain', () => {
     });
 
     describe('validatePolicyGuard', () => {
-        it('throws AuthJwtAccessTokenInvalidException when no user is present', () => {
+        it('throws UserNotAuthenticatedException when no user is present', () => {
             let thrown: unknown;
             try {
                 domain.validatePolicyGuard(null, [], []);
@@ -129,14 +129,14 @@ describe('PolicyDomain', () => {
             }
 
             expect(thrown).toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notAuthenticated,
                 statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtAccessTokenInvalid
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.notAuthenticated
                     ],
                 httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'auth.error.accessTokenUnauthorized',
+                messagePath: 'user.error.notAuthenticated',
             });
         });
 
@@ -150,28 +150,6 @@ describe('PolicyDomain', () => {
 
             expect(result).toBe(true);
             expect(policyAbilityFactory.createByUser).not.toHaveBeenCalled();
-        });
-
-        it('throws PolicyPredefinedNotFoundException when no required policies are declared', () => {
-            const user = baseUser;
-
-            let thrown: unknown;
-            try {
-                domain.validatePolicyGuard(user, [], []);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                module: 'policy',
-                statusCode: EnumPolicyStatusCodeError.predefinedNotFound,
-                statusCodeKey:
-                    EnumPolicyStatusCodeError[
-                        EnumPolicyStatusCodeError.predefinedNotFound
-                    ],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'policy.error.predefinedNotFound',
-            });
         });
 
         it('throws PolicyForbiddenException when the built ability lacks a required policy', () => {
@@ -322,7 +300,7 @@ describe('PolicyDomain', () => {
             roleDomain.existsById.mockResolvedValue(true);
             policyRepository.existsByRoleIdAndSubject.mockResolvedValue(false);
             policyRepository.create.mockResolvedValue(policy);
-            const preparedEvent: IActivityLogStagedEvent = {
+            const preparedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminPolicyCreate,
                 metadata: {},
                 onError: false,
@@ -330,7 +308,7 @@ describe('PolicyDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(preparedEvent);
+            activityLogDomain.prepare.mockReturnValue(preparedActivityLog);
 
             const result = await domain.createByAdmin('role-1', body);
 
@@ -343,7 +321,7 @@ describe('PolicyDomain', () => {
                 action: EnumActivityLogAction.adminPolicyCreate,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                preparedEvent,
+                preparedActivityLog,
             ]);
         });
     });
@@ -392,7 +370,7 @@ describe('PolicyDomain', () => {
             roleDomain.existsById.mockResolvedValue(true);
             policyRepository.existsByRoleIdAndId.mockResolvedValue(true);
             policyRepository.update.mockResolvedValue(policy);
-            const preparedEvent: IActivityLogStagedEvent = {
+            const preparedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminPolicyUpdate,
                 metadata: {},
                 onError: false,
@@ -400,7 +378,7 @@ describe('PolicyDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(preparedEvent);
+            activityLogDomain.prepare.mockReturnValue(preparedActivityLog);
 
             const result = await domain.updateByAdmin(
                 'role-1',
@@ -417,7 +395,7 @@ describe('PolicyDomain', () => {
                 action: EnumActivityLogAction.adminPolicyUpdate,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                preparedEvent,
+                preparedActivityLog,
             ]);
         });
     });
@@ -462,7 +440,7 @@ describe('PolicyDomain', () => {
             roleDomain.existsById.mockResolvedValue(true);
             policyRepository.existsByRoleIdAndId.mockResolvedValue(true);
             policyRepository.delete.mockResolvedValue(policy);
-            const preparedEvent: IActivityLogStagedEvent = {
+            const preparedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminPolicyDelete,
                 metadata: {},
                 onError: false,
@@ -470,7 +448,7 @@ describe('PolicyDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(preparedEvent);
+            activityLogDomain.prepare.mockReturnValue(preparedActivityLog);
 
             const result = await domain.deleteByAdmin('role-1', 'policy-1');
 
@@ -480,7 +458,7 @@ describe('PolicyDomain', () => {
                 action: EnumActivityLogAction.adminPolicyDelete,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                preparedEvent,
+                preparedActivityLog,
             ]);
         });
     });

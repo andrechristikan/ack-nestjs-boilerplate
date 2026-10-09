@@ -161,7 +161,7 @@ export class UserVerificationDomain {
         }
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userVerifiedEmail,
                     userId: verification.userId,
@@ -183,7 +183,7 @@ export class UserVerificationDomain {
                 );
             });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             await this.notificationQueue.sendVerifiedEmail(
                 verification.userId,
@@ -242,7 +242,7 @@ export class UserVerificationDomain {
             ) as IUserVerificationEmailCreate;
 
             const today = this.helperDateService.create();
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userSendVerificationEmail,
                     userId: user.id,
@@ -257,7 +257,7 @@ export class UserVerificationDomain {
                 today
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             const expiredAt = this.helperDateService.formatToIso(
                 emailVerification.expiredAt
@@ -281,7 +281,7 @@ export class UserVerificationDomain {
 
     async markVerified(userId: string): Promise<void> {
         const verifiedAt = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userVerifiedEmail,
                 userId: userId,
@@ -291,7 +291,7 @@ export class UserVerificationDomain {
 
         await this.userRepository.markVerified(userId, verifiedAt);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async persistVerificationEmail(
@@ -300,7 +300,7 @@ export class UserVerificationDomain {
         verification: IUserVerificationCreate
     ): Promise<void> {
         const today = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userSendVerificationEmail,
                 userId: userId,
@@ -315,7 +315,7 @@ export class UserVerificationDomain {
             today
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async createFromOnboardingInTx(

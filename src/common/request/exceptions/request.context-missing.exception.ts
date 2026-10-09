@@ -1,5 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
 /**
@@ -14,7 +15,8 @@ export class RequestContextMissingException extends AppBaseException {
 
     constructor(contextKey: string) {
         super('request.error.contextMissing', {
-            rawError: new Error(
+            rawError: new AppUnknownException(
+                null,
                 `RequestContextMissingException: no value for "${contextKey}"`
             ),
         });

@@ -8,21 +8,18 @@ import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/sessi
  * Offset list query for admin session listing.
  * @public
  */
-export const SessionAdminListRequestSchema = PaginationOffsetQuerySchema.extend(
-    {
-        orderBy: z
-            .union([z.string(), z.array(z.string())])
-            .optional()
-            .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${SessionDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-                example: `${SessionDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-            }),
-        isRevoked: RequestBooleanStringSchema.optional().meta({
-            description: "Filter by revoked session: 'true' or 'false'",
-            example: 'true',
-        }),
-    }
-);
+export const SessionAdminListRequestSchema = PaginationOffsetQuerySchema.omit({
+    search: true,
+}).extend({
+    orderBy: PaginationOffsetQuerySchema.shape.orderBy.meta({
+        description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${SessionDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+        example: `${SessionDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+    }),
+    isRevoked: RequestBooleanStringSchema.optional().meta({
+        description: "Filter by revoked session: 'true' or 'false'",
+        example: 'true',
+    }),
+});
 
 /**
  * Inferred DTO for SessionAdminListRequestSchema.

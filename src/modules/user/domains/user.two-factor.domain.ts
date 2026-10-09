@@ -90,7 +90,7 @@ export class UserTwoFactorDomain {
             });
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userVerifyTwoFactor,
                     userId: user.id,
@@ -103,7 +103,7 @@ export class UserTwoFactorDomain {
                 twoFactorVerified
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             const loginAt = this.helperDateService.create();
             const [tokens] = await Promise.all([
@@ -165,7 +165,7 @@ export class UserTwoFactorDomain {
 
         try {
             const backupCodes = this.authTwoFactorDomain.generateBackupCodes();
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userEnableTwoFactor,
                 }),
@@ -176,7 +176,7 @@ export class UserTwoFactorDomain {
                 backupCodes.hashes
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return backupCodes.codes;
         } catch (err: unknown) {
@@ -220,7 +220,7 @@ export class UserTwoFactorDomain {
                     user.id,
                     user.email
                 );
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userSetupTwoFactor,
                     userId: user.id,
@@ -245,7 +245,7 @@ export class UserTwoFactorDomain {
                 );
             }
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return {
                 secret,
@@ -278,7 +278,7 @@ export class UserTwoFactorDomain {
 
         try {
             const backupCodes = this.authTwoFactorDomain.generateBackupCodes();
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userEnableTwoFactor,
                 }),
@@ -289,7 +289,7 @@ export class UserTwoFactorDomain {
                 backupCodes.hashes
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return backupCodes.codes;
         } catch (err: unknown) {
@@ -317,7 +317,7 @@ export class UserTwoFactorDomain {
         });
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userDisableTwoFactor,
                 }),
@@ -338,7 +338,7 @@ export class UserTwoFactorDomain {
             });
             await this.sessionDomain.purgeLoginsByUser(user.id);
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -367,7 +367,7 @@ export class UserTwoFactorDomain {
 
         try {
             const backupCodes = this.authTwoFactorDomain.generateBackupCodes();
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
                 }),
@@ -377,7 +377,7 @@ export class UserTwoFactorDomain {
                 backupCodes.hashes
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return backupCodes.codes;
         } catch (err: unknown) {
@@ -413,7 +413,7 @@ export class UserTwoFactorDomain {
                 user,
                 updatedBy
             );
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.adminUserResetTwoFactor,
                     metadata: actorMetadata,
@@ -445,7 +445,7 @@ export class UserTwoFactorDomain {
             // Sequential by design: side effects whose order is part of the contract
             await this.sessionDomain.purgeLoginsByUser(userId);
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             await this.notificationQueue.sendResetTwoFactorByAdmin(
                 user.id,

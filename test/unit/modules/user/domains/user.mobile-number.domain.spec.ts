@@ -7,7 +7,7 @@ import type { Country } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
@@ -58,7 +58,7 @@ describe('UserMobileNumberDomain', () => {
         updatedBy: null,
         country,
     };
-    const event: IActivityLogStagedEvent = {
+    const activityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userAddMobileNumber,
         metadata: {},
         onError: false,
@@ -73,7 +73,7 @@ describe('UserMobileNumberDomain', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        activityLogDomain.prepare.mockReturnValue(event);
+        activityLogDomain.prepare.mockReturnValue(activityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -93,7 +93,7 @@ describe('UserMobileNumberDomain', () => {
     });
 
     describe('addMobileNumber', () => {
-        it('adds the mobile number and stages the activity log event', async () => {
+        it('adds the mobile number and stages the activity log', async () => {
             countryDomain.getOne.mockResolvedValue(country);
             userUtil.checkMobileNumber.mockReturnValue(true);
             userMobileNumberRepository.existsMobileNumber.mockResolvedValue(
@@ -122,7 +122,7 @@ describe('UserMobileNumberDomain', () => {
                 'user-marlin'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -228,7 +228,7 @@ describe('UserMobileNumberDomain', () => {
     });
 
     describe('updateMobileNumber', () => {
-        it('updates the mobile number, stages the event in order, keeping verification when number and phone code are unchanged', async () => {
+        it('updates the mobile number, stages the activity log in order, keeping verification when number and phone code are unchanged', async () => {
             const verified = { ...mobileNumber, isVerified: true };
             userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
                 verified
@@ -274,7 +274,7 @@ describe('UserMobileNumberDomain', () => {
                 action: EnumActivityLogAction.userUpdateMobileNumber,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
             expect(callOrder).toEqual(['updateInTx', 'stagePrepared']);
         });
@@ -310,7 +310,7 @@ describe('UserMobileNumberDomain', () => {
                 false
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -470,7 +470,7 @@ describe('UserMobileNumberDomain', () => {
     });
 
     describe('deleteMobileNumber', () => {
-        it('deletes the mobile number and stages the activity log event in order', async () => {
+        it('deletes the mobile number and stages the activity log in order', async () => {
             userMobileNumberRepository.findOneMobileNumber.mockResolvedValue(
                 mobileNumber
             );
@@ -503,7 +503,7 @@ describe('UserMobileNumberDomain', () => {
                 action: EnumActivityLogAction.userDeleteMobileNumber,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
             expect(callOrder).toEqual(['deleteInTx', 'stagePrepared']);
         });

@@ -1,8 +1,10 @@
+import type { IFirebasePushPayload } from '@common/firebase/interfaces/firebase.interface';
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import { EnumNotificationStep } from '@modules/notification/enums/notification.enum';
 import type {
+    INotificationPushSendOutcome,
     INotificationPushStepResult,
     INotificationSendPushPayload,
     INotificationStepFailure,
@@ -27,6 +29,43 @@ export class NotificationPushWorkspaceDomain {
         private readonly notificationUtil: NotificationUtil
     ) {}
 
+    private async sendMulticastStep(
+        notificationTokens: string[],
+        payload: IFirebasePushPayload,
+        failureTokens: string[] | null,
+        pendingTokens: string[] | null
+    ): Promise<INotificationPushSendOutcome> {
+        const recipients = pendingTokens ?? notificationTokens;
+        try {
+            const result = await this.firebaseService.sendMulticast(
+                recipients,
+                payload
+            );
+            const merged = [...(failureTokens ?? []), ...result.failureTokens];
+            const pending = result.retryTokens;
+            const failure: INotificationStepFailure | null =
+                pending.length > 0
+                    ? {
+                          step: EnumNotificationStep.sendMulticast,
+                          error: `${pending.length} tokens pending retry`,
+                      }
+                    : null;
+
+            return {
+                failureTokens: [...new Set(merged)],
+                pendingTokens: pending,
+                failure,
+            };
+        } catch (error: unknown) {
+            const failure = this.notificationUtil.toStepFailure(
+                EnumNotificationStep.sendMulticast,
+                error
+            );
+
+            return { failureTokens, pendingTokens, failure };
+        }
+    }
+
     async processWorkspaceInvite(
         {
             notificationTokens,
@@ -36,7 +75,8 @@ export class NotificationPushWorkspaceDomain {
         }: INotificationSendPushPayload,
         data: INotificationWorkspaceInvitePushPayload,
         completedSteps: EnumNotificationStep[],
-        failureTokens: string[] | null
+        failureTokens: string[] | null,
+        pendingTokens: string[] | null
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
@@ -46,6 +86,7 @@ export class NotificationPushWorkspaceDomain {
                 completedSteps,
                 failedSteps: [],
                 failureTokens,
+                pendingTokens,
             };
         }
 
@@ -60,6 +101,7 @@ export class NotificationPushWorkspaceDomain {
         }
 
         let tokens = failureTokens;
+        let pending = pendingTokens;
         if (!done.includes(EnumNotificationStep.sendMulticast)) {
             const title = this.messageService.setMessage(notification.title);
             const body = this.messageService.setMessage(notification.body, {
@@ -69,26 +111,25 @@ export class NotificationPushWorkspaceDomain {
                     inviterName: data.inviterName,
                 },
             });
-            try {
-                const result = await this.firebaseService.sendMulticast(
-                    notificationTokens,
-                    { title, body }
-                );
-                tokens = result.failureTokens;
-                done.push(EnumNotificationStep.sendMulticast);
-            } catch (error: unknown) {
-                const failure = this.notificationUtil.toStepFailure(
-                    EnumNotificationStep.sendMulticast,
-                    error
-                );
-
+            const sent = await this.sendMulticastStep(
+                notificationTokens,
+                { title, body },
+                tokens,
+                pending
+            );
+            tokens = sent.failureTokens;
+            pending = sent.pendingTokens;
+            if (sent.failure !== null) {
                 return {
                     message: 'Workspace invite notification failed',
                     completedSteps: done,
-                    failedSteps: [failure],
+                    failedSteps: [sent.failure],
                     failureTokens: tokens,
+                    pendingTokens: pending,
                 };
             }
+
+            done.push(EnumNotificationStep.sendMulticast);
         }
 
         const recordedTokens = tokens ?? [];
@@ -136,6 +177,7 @@ export class NotificationPushWorkspaceDomain {
             completedSteps: done,
             failedSteps,
             failureTokens: tokens,
+            pendingTokens: pending,
         };
     }
 
@@ -148,7 +190,8 @@ export class NotificationPushWorkspaceDomain {
         }: INotificationSendPushPayload,
         data: INotificationWorkspaceJoinRequestPushPayload,
         completedSteps: EnumNotificationStep[],
-        failureTokens: string[] | null
+        failureTokens: string[] | null,
+        pendingTokens: string[] | null
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
@@ -158,6 +201,7 @@ export class NotificationPushWorkspaceDomain {
                 completedSteps,
                 failedSteps: [],
                 failureTokens,
+                pendingTokens,
             };
         }
 
@@ -172,6 +216,7 @@ export class NotificationPushWorkspaceDomain {
         }
 
         let tokens = failureTokens;
+        let pending = pendingTokens;
         if (!done.includes(EnumNotificationStep.sendMulticast)) {
             const title = this.messageService.setMessage(notification.title);
             const body = this.messageService.setMessage(notification.body, {
@@ -181,26 +226,25 @@ export class NotificationPushWorkspaceDomain {
                     requesterName: data.requesterName,
                 },
             });
-            try {
-                const result = await this.firebaseService.sendMulticast(
-                    notificationTokens,
-                    { title, body }
-                );
-                tokens = result.failureTokens;
-                done.push(EnumNotificationStep.sendMulticast);
-            } catch (error: unknown) {
-                const failure = this.notificationUtil.toStepFailure(
-                    EnumNotificationStep.sendMulticast,
-                    error
-                );
-
+            const sent = await this.sendMulticastStep(
+                notificationTokens,
+                { title, body },
+                tokens,
+                pending
+            );
+            tokens = sent.failureTokens;
+            pending = sent.pendingTokens;
+            if (sent.failure !== null) {
                 return {
                     message: 'Workspace join request notification failed',
                     completedSteps: done,
-                    failedSteps: [failure],
+                    failedSteps: [sent.failure],
                     failureTokens: tokens,
+                    pendingTokens: pending,
                 };
             }
+
+            done.push(EnumNotificationStep.sendMulticast);
         }
 
         const recordedTokens = tokens ?? [];
@@ -248,6 +292,7 @@ export class NotificationPushWorkspaceDomain {
             completedSteps: done,
             failedSteps,
             failureTokens: tokens,
+            pendingTokens: pending,
         };
     }
 
@@ -260,7 +305,8 @@ export class NotificationPushWorkspaceDomain {
         }: INotificationSendPushPayload,
         data: INotificationWorkspaceJoinAcceptedPayload,
         completedSteps: EnumNotificationStep[],
-        failureTokens: string[] | null
+        failureTokens: string[] | null,
+        pendingTokens: string[] | null
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
@@ -270,6 +316,7 @@ export class NotificationPushWorkspaceDomain {
                 completedSteps,
                 failedSteps: [],
                 failureTokens,
+                pendingTokens,
             };
         }
 
@@ -284,6 +331,7 @@ export class NotificationPushWorkspaceDomain {
         }
 
         let tokens = failureTokens;
+        let pending = pendingTokens;
         if (!done.includes(EnumNotificationStep.sendMulticast)) {
             const title = this.messageService.setMessage(notification.title);
             const body = this.messageService.setMessage(notification.body, {
@@ -292,26 +340,25 @@ export class NotificationPushWorkspaceDomain {
                     workspaceName: data.workspaceName,
                 },
             });
-            try {
-                const result = await this.firebaseService.sendMulticast(
-                    notificationTokens,
-                    { title, body }
-                );
-                tokens = result.failureTokens;
-                done.push(EnumNotificationStep.sendMulticast);
-            } catch (error: unknown) {
-                const failure = this.notificationUtil.toStepFailure(
-                    EnumNotificationStep.sendMulticast,
-                    error
-                );
-
+            const sent = await this.sendMulticastStep(
+                notificationTokens,
+                { title, body },
+                tokens,
+                pending
+            );
+            tokens = sent.failureTokens;
+            pending = sent.pendingTokens;
+            if (sent.failure !== null) {
                 return {
                     message: 'Workspace join accepted notification failed',
                     completedSteps: done,
-                    failedSteps: [failure],
+                    failedSteps: [sent.failure],
                     failureTokens: tokens,
+                    pendingTokens: pending,
                 };
             }
+
+            done.push(EnumNotificationStep.sendMulticast);
         }
 
         const recordedTokens = tokens ?? [];
@@ -359,6 +406,7 @@ export class NotificationPushWorkspaceDomain {
             completedSteps: done,
             failedSteps,
             failureTokens: tokens,
+            pendingTokens: pending,
         };
     }
 
@@ -371,7 +419,8 @@ export class NotificationPushWorkspaceDomain {
         }: INotificationSendPushPayload,
         data: INotificationWorkspaceJoinRejectedPayload,
         completedSteps: EnumNotificationStep[],
-        failureTokens: string[] | null
+        failureTokens: string[] | null,
+        pendingTokens: string[] | null
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
@@ -381,6 +430,7 @@ export class NotificationPushWorkspaceDomain {
                 completedSteps,
                 failedSteps: [],
                 failureTokens,
+                pendingTokens,
             };
         }
 
@@ -395,6 +445,7 @@ export class NotificationPushWorkspaceDomain {
         }
 
         let tokens = failureTokens;
+        let pending = pendingTokens;
         if (!done.includes(EnumNotificationStep.sendMulticast)) {
             const rejectReasonLabel = this.messageService.setMessage(
                 `notification.rejectReason.${data.rejectReasonCode}`
@@ -407,26 +458,25 @@ export class NotificationPushWorkspaceDomain {
                     rejectReasonLabel,
                 },
             });
-            try {
-                const result = await this.firebaseService.sendMulticast(
-                    notificationTokens,
-                    { title, body }
-                );
-                tokens = result.failureTokens;
-                done.push(EnumNotificationStep.sendMulticast);
-            } catch (error: unknown) {
-                const failure = this.notificationUtil.toStepFailure(
-                    EnumNotificationStep.sendMulticast,
-                    error
-                );
-
+            const sent = await this.sendMulticastStep(
+                notificationTokens,
+                { title, body },
+                tokens,
+                pending
+            );
+            tokens = sent.failureTokens;
+            pending = sent.pendingTokens;
+            if (sent.failure !== null) {
                 return {
                     message: 'Workspace join rejected notification failed',
                     completedSteps: done,
-                    failedSteps: [failure],
+                    failedSteps: [sent.failure],
                     failureTokens: tokens,
+                    pendingTokens: pending,
                 };
             }
+
+            done.push(EnumNotificationStep.sendMulticast);
         }
 
         const recordedTokens = tokens ?? [];
@@ -474,6 +524,7 @@ export class NotificationPushWorkspaceDomain {
             completedSteps: done,
             failedSteps,
             failureTokens: tokens,
+            pendingTokens: pending,
         };
     }
 }

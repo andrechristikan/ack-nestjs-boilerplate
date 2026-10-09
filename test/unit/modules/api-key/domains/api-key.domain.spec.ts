@@ -18,7 +18,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { ApiKey, Prisma } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
@@ -58,7 +58,7 @@ describe('ApiKeyDomain', () => {
         updatedAt: now,
         updatedBy: 'user-1',
     };
-    const stagedEvent: IActivityLogStagedEvent = {
+    const stagedActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.adminApiKeyCreate,
         metadata: { apiKeyId: apiKey.id },
         onError: false,
@@ -72,7 +72,7 @@ describe('ApiKeyDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
-        activityLogDomain.prepare.mockReturnValue(stagedEvent);
+        activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -173,7 +173,7 @@ describe('ApiKeyDomain', () => {
             apiKeyRepository.create.mockResolvedValue(apiKey);
         });
 
-        it('creates the api key with no date window and stages the create event', async () => {
+        it('creates the api key with no date window and stages the create activity log', async () => {
             const result = await domain.createByAdmin(create);
 
             expect(result).toEqual({ apiKey, secret: 'plain-secret' });
@@ -189,7 +189,7 @@ describe('ApiKeyDomain', () => {
                 'hashed-secret'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
 
@@ -225,7 +225,7 @@ describe('ApiKeyDomain', () => {
                 'hashed-secret'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
 
@@ -288,7 +288,7 @@ describe('ApiKeyDomain', () => {
             });
         });
 
-        it('updates the status, stages the event, and purges the cache', async () => {
+        it('updates the status, stages the activity log, and purges the cache', async () => {
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
             apiKeyUtil.isExpired.mockReturnValue(false);
             const updated: ApiKey = { ...apiKey, isActive: false };
@@ -302,7 +302,7 @@ describe('ApiKeyDomain', () => {
                 { isActive: false }
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
             expect(apiKeyCache.deleteCacheByKey).toHaveBeenCalledWith(
                 apiKey.key
@@ -349,7 +349,7 @@ describe('ApiKeyDomain', () => {
             });
         });
 
-        it('renames the api key, stages the event in order, and purges the cache when a name is given', async () => {
+        it('renames the api key, stages the activity log in order, and purges the cache when a name is given', async () => {
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
             apiKeyUtil.isActive.mockReturnValue(true);
             const metadata = { apiKeyId: apiKey.id };
@@ -384,7 +384,7 @@ describe('ApiKeyDomain', () => {
                 'New Name'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
             expect(apiKeyCache.deleteCacheByKey).toHaveBeenCalledWith(
                 apiKey.key
@@ -453,7 +453,7 @@ describe('ApiKeyDomain', () => {
             });
         });
 
-        it('normalizes and updates the date window, stages the event in order, and purges the cache', async () => {
+        it('normalizes and updates the date window, stages the activity log in order, and purges the cache', async () => {
             const startAtDay = new Date('2026-02-01T00:00:00.000Z');
             const endAtDay = new Date('2026-03-01T23:59:59.999Z');
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
@@ -510,7 +510,7 @@ describe('ApiKeyDomain', () => {
                 onError: true,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
             expect(apiKeyCache.deleteCacheByKey).toHaveBeenCalledWith(
                 apiKey.key
@@ -555,7 +555,7 @@ describe('ApiKeyDomain', () => {
             });
         });
 
-        it('creates a new secret, updates the hash, stages the event in order, and purges the cache', async () => {
+        it('creates a new secret, updates the hash, stages the activity log in order, and purges the cache', async () => {
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
             apiKeyUtil.isActive.mockReturnValue(true);
             apiKeyCredentialUtil.createSecret.mockReturnValue('new-secret');
@@ -596,7 +596,7 @@ describe('ApiKeyDomain', () => {
                 onError: true,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
             expect(apiKeyCache.deleteCacheByKey).toHaveBeenCalledWith(
                 apiKey.key
@@ -627,7 +627,7 @@ describe('ApiKeyDomain', () => {
             );
         });
 
-        it('deletes the api key, stages the event, and purges the cache', async () => {
+        it('deletes the api key, stages the activity log, and purges the cache', async () => {
             apiKeyRepository.findOneById.mockResolvedValue(apiKey);
             apiKeyRepository.delete.mockResolvedValue(apiKey);
 
@@ -636,7 +636,7 @@ describe('ApiKeyDomain', () => {
             expect(result).toBe(apiKey);
             expect(apiKeyRepository.delete).toHaveBeenCalledWith(apiKey.id);
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
             expect(apiKeyCache.deleteCacheByKey).toHaveBeenCalledWith(
                 apiKey.key
@@ -778,7 +778,7 @@ describe('ApiKeyDomain', () => {
                     EnumApiKeyStatusCodeError[
                         EnumApiKeyStatusCodeError.xApiKeyNotFound
                     ],
-                httpStatus: HttpStatus.FORBIDDEN,
+                httpStatus: HttpStatus.UNAUTHORIZED,
                 messagePath: 'apiKey.error.xApiKey.notFound',
             });
         });
@@ -838,27 +838,7 @@ describe('ApiKeyDomain', () => {
     });
 
     describe('validateXApiKeyTypeGuard', () => {
-        it('throws ApiKeyXApiKeyPredefinedNotFoundException when no api key type is required', () => {
-            let thrown: unknown;
-            try {
-                domain.validateXApiKeyTypeGuard(apiKey, []);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyPredefinedNotFound,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyPredefinedNotFound
-                    ],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'apiKey.error.xApiKey.predefinedNotFound',
-            });
-        });
-
-        it('throws ApiKeyXApiKeyForbiddenException when no api key is resolved', () => {
+        it('throws ApiKeyXApiKeyRequiredException when no api key is resolved', () => {
             let thrown: unknown;
             try {
                 domain.validateXApiKeyTypeGuard(null, [EnumApiKeyType.default]);
@@ -868,13 +848,13 @@ describe('ApiKeyDomain', () => {
 
             expect(thrown).toMatchObject({
                 module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
+                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
                 statusCodeKey:
                     EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyForbidden
+                        EnumApiKeyStatusCodeError.xApiKeyRequired
                     ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'apiKey.error.xApiKey.forbidden',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+                messagePath: 'apiKey.error.xApiKey.required',
             });
         });
 
@@ -1011,7 +991,7 @@ describe('ApiKeyDomain', () => {
     });
 
     describe('prepareActivityLog', () => {
-        it('maps the metadata and prepares the activity log event', () => {
+        it('maps the metadata and prepares the activity log', () => {
             const metadata = { apiKeyId: apiKey.id };
             apiKeyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
 
@@ -1022,7 +1002,7 @@ describe('ApiKeyDomain', () => {
                 false
             );
 
-            expect(result).toBe(stagedEvent);
+            expect(result).toBe(stagedActivityLog);
             expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 apiKey,
                 now

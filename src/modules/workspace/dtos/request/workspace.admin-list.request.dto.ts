@@ -13,20 +13,14 @@ import {
  */
 export const WorkspaceAdminListRequestSchema =
     PaginationOffsetQuerySchema.extend({
-        search: z
-            .string()
-            .optional()
-            .meta({
-                description: `Search query, available fields: ${WorkspaceDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
-                example: '',
-            }),
-        orderBy: z
-            .union([z.string(), z.array(z.string())])
-            .optional()
-            .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${WorkspaceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-                example: `${WorkspaceDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-            }),
+        search: PaginationOffsetQuerySchema.shape.search.meta({
+            description: `Search query, available fields: ${WorkspaceDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
+            example: '',
+        }),
+        orderBy: PaginationOffsetQuerySchema.shape.orderBy.meta({
+            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${WorkspaceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            example: `${WorkspaceDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+        }),
         isPublic: RequestBooleanStringSchema.optional().meta({
             description: 'Filter by public visibility',
             example: 'true',

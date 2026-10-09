@@ -21,7 +21,7 @@ import type {
     Workspace,
     WorkspaceJoinRequest,
 } from '@generated/prisma-client/client';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
@@ -269,7 +269,7 @@ describe('WorkspaceJoinRequestDomain', () => {
                     return joinRequest;
                 }
             );
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceJoinRequested,
                 metadata: {},
                 onError: false,
@@ -277,7 +277,7 @@ describe('WorkspaceJoinRequestDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
             activityLogDomain.stagePrepared.mockImplementation(() => {
                 callOrder.push('stagePrepared');
             });
@@ -306,7 +306,7 @@ describe('WorkspaceJoinRequestDomain', () => {
                 message: 'Please let me in',
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
             expect(callOrder).toEqual(['createPending', 'stagePrepared']);
             expect(
@@ -444,12 +444,12 @@ describe('WorkspaceJoinRequestDomain', () => {
             });
         });
 
-        it('accepts with a single event in order when the reviewer is the requester', async () => {
+        it('accepts with a single activity log in order when the reviewer is the requester', async () => {
             const joinRequest = { ...baseJoinRequest, userId: 'reviewer-1' };
             workspaceJoinRequestRepository.findByIdAndWorkspace.mockResolvedValue(
                 joinRequest
             );
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceJoinAccepted,
                 metadata: {},
                 onError: false,
@@ -457,7 +457,7 @@ describe('WorkspaceJoinRequestDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
             const callOrder: string[] = [];
             workspaceJoinRequestRepository.acceptInTx.mockImplementation(
                 async () => {
@@ -496,7 +496,7 @@ describe('WorkspaceJoinRequestDomain', () => {
                 new Date('2026-03-01T00:00:00.000Z')
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
             expect(
                 notificationQueue.sendWorkspaceJoinAccepted
@@ -512,12 +512,12 @@ describe('WorkspaceJoinRequestDomain', () => {
             ]);
         });
 
-        it('accepts with two events when the reviewer differs from the requester', async () => {
+        it('accepts with two activity logs when the reviewer differs from the requester', async () => {
             const joinRequest = { ...baseJoinRequest, userId: 'user-2' };
             workspaceJoinRequestRepository.findByIdAndWorkspace.mockResolvedValue(
                 joinRequest
             );
-            const acceptedEvent: IActivityLogStagedEvent = {
+            const acceptedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceJoinAccepted,
                 metadata: {},
                 onError: false,
@@ -525,7 +525,7 @@ describe('WorkspaceJoinRequestDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            const acceptedByAdminEvent: IActivityLogStagedEvent = {
+            const acceptedByAdminActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceJoinAcceptedByAdmin,
                 metadata: {},
                 onError: false,
@@ -534,8 +534,8 @@ describe('WorkspaceJoinRequestDomain', () => {
                 workspaceId: null,
             };
             activityLogDomain.prepare
-                .mockReturnValueOnce(acceptedEvent)
-                .mockReturnValueOnce(acceptedByAdminEvent);
+                .mockReturnValueOnce(acceptedActivityLog)
+                .mockReturnValueOnce(acceptedByAdminActivityLog);
 
             await domain.acceptJoinRequest(
                 workspace,
@@ -552,8 +552,8 @@ describe('WorkspaceJoinRequestDomain', () => {
                 metadata: { actorUserId: 'reviewer-1' },
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                acceptedEvent,
-                acceptedByAdminEvent,
+                acceptedActivityLog,
+                acceptedByAdminActivityLog,
             ]);
         });
     });
@@ -617,12 +617,12 @@ describe('WorkspaceJoinRequestDomain', () => {
             });
         });
 
-        it('rejects with a single event in order when the reviewer is the requester', async () => {
+        it('rejects with a single activity log in order when the reviewer is the requester', async () => {
             const joinRequest = { ...baseJoinRequest, userId: 'reviewer-1' };
             workspaceJoinRequestRepository.findByIdAndWorkspace.mockResolvedValue(
                 joinRequest
             );
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceJoinRejected,
                 metadata: {},
                 onError: false,
@@ -630,7 +630,7 @@ describe('WorkspaceJoinRequestDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
             const callOrder: string[] = [];
             workspaceJoinRequestRepository.reject.mockImplementation(
                 async () => {
@@ -661,7 +661,7 @@ describe('WorkspaceJoinRequestDomain', () => {
                 new Date('2026-03-01T00:00:00.000Z')
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
             expect(
                 notificationQueue.sendWorkspaceJoinRejected
@@ -682,12 +682,12 @@ describe('WorkspaceJoinRequestDomain', () => {
             ]);
         });
 
-        it('rejects with two events when the reviewer differs from the requester', async () => {
+        it('rejects with two activity logs when the reviewer differs from the requester', async () => {
             const joinRequest = { ...baseJoinRequest, userId: 'user-2' };
             workspaceJoinRequestRepository.findByIdAndWorkspace.mockResolvedValue(
                 joinRequest
             );
-            const rejectedEvent: IActivityLogStagedEvent = {
+            const rejectedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceJoinRejected,
                 metadata: {},
                 onError: false,
@@ -695,7 +695,7 @@ describe('WorkspaceJoinRequestDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            const rejectedByAdminEvent: IActivityLogStagedEvent = {
+            const rejectedByAdminActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceJoinRejectedByAdmin,
                 metadata: {},
                 onError: false,
@@ -704,8 +704,8 @@ describe('WorkspaceJoinRequestDomain', () => {
                 workspaceId: null,
             };
             activityLogDomain.prepare
-                .mockReturnValueOnce(rejectedEvent)
-                .mockReturnValueOnce(rejectedByAdminEvent);
+                .mockReturnValueOnce(rejectedActivityLog)
+                .mockReturnValueOnce(rejectedByAdminActivityLog);
 
             await domain.rejectJoinRequest(
                 workspace,
@@ -723,8 +723,8 @@ describe('WorkspaceJoinRequestDomain', () => {
                 metadata: { actorUserId: 'reviewer-1' },
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                rejectedEvent,
-                rejectedByAdminEvent,
+                rejectedActivityLog,
+                rejectedByAdminActivityLog,
             ]);
         });
     });

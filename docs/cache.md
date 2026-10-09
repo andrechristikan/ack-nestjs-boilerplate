@@ -65,7 +65,7 @@ CommonModule
 
 ### RedisCacheModule
 
-Provides `RedisClientCachedProvider` (global).
+Provides `RedisClientCachedProvider` and `RedisUtil` (global).
 
 **Configuration:**
 
@@ -193,9 +193,11 @@ Writes and deletes split into three groups:
 
 | Group | Calls | On a Redis failure |
 | --- | --- | --- |
-| Propagate | `SessionCache.setLogin` (every login), `SessionCache.updateLogin` (refresh), `AuthCache.createChallenge` (login with two-factor), `AuthCache.lockTwoFactorAttempt` (the lock set when a failed verification reaches the attempt limit), `ApiKeyCache.deleteCacheByKey` (API key admin writes, `MigrationApiKeySeed.remove`) | The request answers 500 |
+| Propagate | `SessionCache.setLogin` (every login), `SessionCache.updateLogin` (refresh), `AuthCache.createChallenge` (login with two-factor), `AuthCache.lockTwoFactorAttempt` (the lock set when a failed verification reaches the attempt limit), `ApiKeyCache.deleteCacheByKey` (API key admin writes, `MigrationApiKeySeed.remove`) | The request answers 500, or 503 (`52400`) when the failure is the Keyv not-connected error |
 | Caught in the cache class and logged | `AuthCache.clearChallenge`, `AuthCache.clearLockTwoFactorAttempt`, `ApiKeyCache.setCacheByKey`, every `FeatureFlagCache` and `AnalyticCache` call | The request continues |
 | Caught in `SessionDomain` and logged | `SessionCache.deleteLogins`, `SessionCache.deleteLoginsByUser` | The request continues |
+
+`AppGeneralFilter` maps the Keyv not-connected error through `RedisUtil.toException` to `RedisUnavailableException` (503, `52400`). Any other Redis error that reaches the filter answers 500 (`50000`). See [Handling Error][ref-doc-handling-error].
 
 `ResponseCacheInterceptor` inherits the error handling of `@nestjs/cache-manager`'s `CacheInterceptor`, which logs a failed write and runs the handler when the cache lookup fails.
 
@@ -207,7 +209,7 @@ An API key admin write that changes or deletes a key runs, in order:
 
 Writes covered: status, name, dates, reset, delete.
 
-- When the delete fails, the request answers 500 with the database change applied and its activity row written.
+- When the delete fails, the request answers 500 (503 for the not-connected error) with the database change applied and its activity row written.
 - `MigrationApiKeySeed.remove` deletes the `ApiKey` rows first, then the cache entries of the seeded keys.
 
 ## Configuration
@@ -297,6 +299,7 @@ For cache operations (set, get, delete, etc.), see:
 [ref-doc-environment]: environment.md
 [ref-doc-authentication]: authentication.md
 [ref-doc-response]: response.md
+[ref-doc-handling-error]: handling-error.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
 [ref-doc-installation]: installation.md
 [ref-elasticache]: https://aws.amazon.com/elasticache/

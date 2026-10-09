@@ -23,8 +23,4 @@ export const DocPolicyErrorResponses = {
         statusCode: EnumPolicyStatusCodeError.forbidden,
         messagePath: 'policy.error.forbidden',
     }),
-    predefinedNotFound: DocResponseError(HttpStatus.INTERNAL_SERVER_ERROR, {
-        statusCode: EnumPolicyStatusCodeError.predefinedNotFound,
-        messagePath: 'policy.error.predefinedNotFound',
-    }),
 } as const;

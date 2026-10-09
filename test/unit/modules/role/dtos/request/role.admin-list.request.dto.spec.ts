@@ -1,5 +1,9 @@
 import { EnumRoleType } from '@generated/prisma-client/client';
 import { RoleAdminListRequestSchema } from '@modules/role/dtos/request/role.admin-list.request.dto';
+import {
+    RoleDefaultAvailableSearch,
+    RoleDefaultAvailableOrderBy,
+} from '@modules/role/constants/role.list.constant';
 
 describe('RoleAdminListRequestSchema', () => {
     it('parses page, perPage, search, orderBy, and type', () => {
@@ -30,5 +34,14 @@ describe('RoleAdminListRequestSchema', () => {
         expect(() =>
             RoleAdminListRequestSchema.parse({ extra: true })
         ).toThrow();
+    });
+
+    it('keeps the module search and orderBy descriptions', () => {
+        expect(
+            RoleAdminListRequestSchema.shape.search.meta()?.description
+        ).toContain(RoleDefaultAvailableSearch.join(', '));
+        expect(
+            RoleAdminListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(RoleDefaultAvailableOrderBy.join(', '));
     });
 });

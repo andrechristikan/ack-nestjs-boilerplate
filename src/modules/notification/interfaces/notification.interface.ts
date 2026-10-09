@@ -224,6 +224,7 @@ export interface INotificationPushQueuePayload<T = null> {
     data: T;
     completedSteps: EnumNotificationStep[];
     failureTokens: string[] | null;
+    pendingTokens: string[] | null;
 }
 
 export interface INotificationPushCleanupTokenPayload {
@@ -273,6 +274,13 @@ export interface INotificationStepResult {
     failedSteps: INotificationStepFailure[];
 }
 
+export interface INotificationPushSendOutcome {
+    failureTokens: string[] | null;
+    pendingTokens: string[] | null;
+    failure: INotificationStepFailure | null;
+}
+
 export interface INotificationPushStepResult extends INotificationStepResult {
     failureTokens: string[] | null;
+    pendingTokens: string[] | null;
 }

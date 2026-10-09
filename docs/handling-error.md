@@ -19,40 +19,39 @@ Exception filters turn thrown errors into the same HTTP error body, with i18n me
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
+- [Filter Chain](#filter-chain)
+- [Error Response Structure](#error-response-structure)
+- [Response Metadata](#response-metadata)
+- [Response Headers](#response-headers)
 - [Exception Filters](#exception-filters)
-    - [AppBaseExceptionFilter](#appbaseexceptionfilter)
     - [AppGeneralFilter](#appgeneralfilter)
     - [AppHttpFilter](#apphttpfilter)
     - [AppValidationFilter](#appvalidationfilter)
     - [AppValidationImportFilter](#appvalidationimportfilter)
-- [Error Response Structure](#error-response-structure)
-- [Response Metadata](#response-metadata)
-- [Response Headers](#response-headers)
 - [Usage](#usage)
     - [Throwing an error](#throwing-an-error)
     - [Error with message interpolation](#error-with-message-interpolation)
     - [Error wrapping a cause](#error-wrapping-a-cause)
+    - [Runtime errors outside a request](#runtime-errors-outside-a-request)
     - [Defining a new exception](#defining-a-new-exception)
 
-## Exception Filters
+## Filter Chain
 
-Five exception filters are registered globally as `APP_FILTER` providers in `src/app/app.module.ts`. The provider array order is:
+Four [NestJS exception filters][ref-nestjs-exception-filters] are registered globally as `APP_FILTER` providers in `src/app/app.module.ts`. The provider array order is:
 
 1. `AppGeneralFilter`
-2. `AppBaseExceptionFilter`
-3. `AppHttpFilter`
-4. `AppValidationFilter`
-5. `AppValidationImportFilter`
+2. `AppHttpFilter`
+3. `AppValidationFilter`
+4. `AppValidationImportFilter`
 
 NestJS evaluates global filters in reverse of the registration array, so the most specific catch runs first. Effective matching order:
 
 1. **AppValidationImportFilter**: Handles `FileImportException`
 2. **AppValidationFilter**: Handles `RequestValidationException`
 3. **AppHttpFilter**: Handles framework `HttpException` (route 404s, rate-limit `ThrottlerException`, etc.)
-4. **AppBaseExceptionFilter**: Handles `AppBaseException` (every application error)
-5. **AppGeneralFilter**: Catches all unhandled exceptions
+4. **AppGeneralFilter**: Catches every other error, `AppBaseException` included
 
-`AppBaseException` does not extend `HttpException`, so the relative position of those two filters does not change which one catches a given error.
+`AppBaseException` does not extend `HttpException`, so it reaches `AppGeneralFilter`.
 
 **Processing flow**:
 
@@ -62,13 +61,17 @@ flowchart TD
     M -->|FileImportException| VI[AppValidationImportFilter]
     M -->|RequestValidationException| V[AppValidationFilter]
     M -->|HttpException| H[AppHttpFilter]
-    M -->|AppBaseException| B[AppBaseExceptionFilter]
-    M -->|none of the above| G[AppGeneralFilter]
-    VI --> R[Error envelope plus Sentry when that filter reports]
+    M -->|any other error| G[AppGeneralFilter]
+    G --> C{What is the error?}
+    C -->|AppBaseException| B1[Renders as itself]
+    C -->|Database or Redis failure, bare or in rawError| B2[Renders the mapped exception]
+    C -->|anything else| B3[AppUnknownException, 500]
+    VI --> R[Error envelope]
     V --> R
     H --> R
-    B --> R
-    G --> R
+    B1 --> R
+    B2 --> R
+    B3 --> R
 ```
 
 **Common behavior**:
@@ -78,7 +81,8 @@ flowchart TD
 - Resolve localized error message using [Message System][ref-doc-message]
 - Set response headers
 - Format into `ResponseErrorDto`
-- Log the error and report it through `SentryService.captureException` from `src/common/sentry` (conditions vary by filter). See [Logger][ref-doc-logger]
+- `AppGeneralFilter` and `AppHttpFilter` log the error and report it through `SentryService.captureException` from `src/common/sentry` only when the resolved HTTP status is 500 or above. See [Logger][ref-doc-logger]
+- The two validation filters neither log nor report
 
 ## Error Response Structure
 
@@ -128,13 +132,13 @@ All errors are formatted into `ResponseErrorDto`:
 
 | Field | Source | Fallback |
 | --- | --- | --- |
-| `language` | Request store `RequestLanguageStoreKey` | Config `message.language` |
+| `language` | Request store `RequestLanguageStoreKey` | Config `message.language`, also for a stored value outside `EnumMessageLanguage` |
 | `timestamp` | `HelperDateService.getTimestamp()` | - |
 | `timezone` | `HelperDateService.getZone()` | - |
 | `version` | Request store `RequestVersionStoreKey` | Config `app.urlVersion.version` |
 | `repoVersion` | Config `app.version` | - |
-| `requestId` | Request store `RequestIdStoreKey` | - |
-| `correlationId` | Request store `RequestCorrelationIdStoreKey` | - |
+| `requestId` | Request store `RequestIdStoreKey` | `null` |
+| `correlationId` | Request store `RequestCorrelationIdStoreKey` | `null` |
 
 ## Response Headers
 
@@ -150,6 +154,8 @@ x-request-id: 550e8400-e29b-41d4-a716-446655440000
 x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 ```
 
+`x-request-id` and `x-correlation-id` are omitted when the request store holds no value.
+
 A rate-limited 429 also carries `Retry-After`, in seconds.
 
 - Whichever limiter blocks the request sets it (`RequestThrottleDefaultGuard`, `RequestThrottleRouteGuard`, or `RequestThrottleUserInterceptor`), before the exception reaches any filter.
@@ -159,21 +165,37 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 
 ## Exception Filters
 
-### AppBaseExceptionFilter
+### AppGeneralFilter
 
-**Location**: `src/app/filters/app.base-exception.filter.ts`
+**Location**: `src/app/filters/app.general.filter.ts`
 
-**Catches**: `@Catch(AppBaseException)`, every application error
+**Catches**: `@Catch()`, every error no other filter claims
 
-**Use case**: All errors thrown by application code (services, guards, pipes) as dedicated exception classes extending `AppBaseException`.
+**Use case**: The single translator for application errors, known database and Redis failures, and unexpected errors.
+
+**Resolution**:
+
+1. An `AppUnknownException` renders as the mapped exception when its `rawError` maps through `DatabaseUtil.toException` or `RedisUtil.toException`, and as itself otherwise.
+2. Any other `AppBaseException` renders as itself.
+3. Any other error maps through the same two utils.
+4. An error that maps nowhere is wrapped in `AppUnknownException`.
+
+**Mapped failures**:
+
+| Failure | Exception | `statusCode` | HTTP status |
+| --- | --- | --- | --- |
+| `PrismaClientInitializationError`, or a Prisma code in `DatabaseUnavailableCodes` (`P1001`, `P1002`, `P1008`, `P1017`, `P2024`) | `DatabaseUnavailableException` | `51802` | 503 |
+| Prisma `P2034` write conflict | `DatabaseWriteConflictException` | `51801` | 409 |
+| Keyv Redis not-connected error | `RedisUnavailableException` | `52400` | 503 |
 
 **Behavior**:
 
-- Reads `statusCode`, `httpStatus`, `messagePath`, `messageProperties`, `metadata`, and optional `data` directly from the exception instance
-- `messageProperties` and `metadata` are `null` when the exception carries none
-- Resolves the localized message via the [Message System][ref-doc-message]
-- Merges `exception.metadata` into the response metadata
-- Reports `exception.rawError` (or the exception itself) to Sentry only when `httpStatus >= 500`
+- Reads `statusCode`, `httpStatus`, `messagePath`, `messageProperties`, `metadata`, and `data` from the resolved exception.
+- `messageProperties` and `metadata` are `null` when the exception carries none.
+- Resolves the localized message via the [Message System][ref-doc-message].
+- Merges `exception.metadata` into the response metadata.
+- Logs and sends to Sentry only when the resolved `httpStatus` is 500 or above. The report carries `rawError` when the thrown exception has one, otherwise the exception itself.
+- An unmapped unknown error answers HTTP 500 with message path `http.serverError.internalServerError` and status code `50000` (`EnumAppStatusCodeError.unknown`).
 
 **Response example**:
 
@@ -187,21 +209,7 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 }
 ```
 
-### AppGeneralFilter
-
-**Location**: `src/app/filters/app.general.filter.ts`
-
-**Catches**: `@Catch()`, all unhandled exceptions
-
-**Use case**: Fallback for unexpected errors (database crashes, unhandled promise rejections, runtime errors)
-
-**Behavior**:
-
-- Always returns HTTP 500
-- Uses message path `http.serverError.internalServerError` and status code `50000` (`EnumAppStatusCodeError.unknown`)
-- Sends all exceptions to Sentry
-
-**Response example**:
+**Unknown error example**:
 
 ```json
 {
@@ -222,7 +230,7 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 **Use case**: NestJS/framework `HttpException`s.
 
 - Application code does not throw `HttpException`.
-- Every application error is an `AppBaseException` subclass handled by `AppBaseExceptionFilter`.
+- Every application error is an `AppBaseException` subclass handled by `AppGeneralFilter`.
 
 **Message**: Resolves the message path `http.{statusCode}` via the [Message System][ref-doc-message]
 
@@ -231,7 +239,7 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 - They come from the `HttpException` response object when it carries those fields.
 - Otherwise `statusCodeKey` is the camelCase `HttpStatus` name and `module` is `'http'`.
 
-**Sentry integration**: Only sends exceptions with HTTP status ≥ 500
+**Sentry integration**: Logs and sends only exceptions with HTTP status ≥ 500
 
 **Response example**:
 
@@ -338,7 +346,7 @@ See [Request Validation][ref-doc-request-validation] for details.
 
 ## Usage
 
-Application code throws a dedicated exception class per error, each extending `AppBaseException`. Each class fixes:
+Application code throws a dedicated exception class per error, each extending `AppBaseException`. A runtime error outside a request throws `AppUnknownException` or a subclass (see [Runtime errors outside a request](#runtime-errors-outside-a-request)). An `AppBaseException` subclass fixes:
 
 - its own `module`
 - `statusCode`
@@ -379,10 +387,12 @@ super('user.error.passwordMustNew', { messageProperties: { period } });
 
 ### Error wrapping a cause
 
-For a caught error, pass the cause.
+A caught error leaves the `catch` as a typed exception.
 
-- It is reported to Sentry for 5xx errors and never serialized into the response body.
-- A service that wraps a caught error lets a typed one through first, so a domain exception raised inside the `try` reaches the client with its own status code instead of the generic 500.
+- `throw new Error(...)` is rejected by ESLint. Code throws a typed exception: `AppBaseException` when the error answers a request, `AppUnknownException` or a subclass otherwise.
+- A bare `throw err` is allowed only inside an `instanceof` guard that names a class of ours. Everything else is wrapped as `throw new AppUnknownException(err)`.
+- The cause rides in `rawError`. It is reported to Sentry for 5xx errors and never serialized into the response body.
+- A guard that lets a typed exception through first keeps a domain exception raised inside the `try` on its own status code.
 
 ```typescript
 try {
@@ -395,6 +405,54 @@ try {
     throw new AppUnknownException(err);
 }
 ```
+
+`AppGeneralFilter` maps a wrapped Prisma or Redis failure to its typed exception, so a `catch` around a repository call needs no database-specific branch.
+
+**Classes a guard names**:
+
+1. Domains guard `AppBaseException`, which covers `AppUnknownException` and its subclasses.
+2. `QueueProcessorBase.process` logs the failure once at error level, then guards `QueueException`, `AppBaseException`, and BullMQ's `UnrecoverableError`, and wraps every other error in `AppUnknownException`. A processor that catches inside `handle` follows the same split.
+3. `ActivityLogInterceptor` guards `AppBaseException` and the framework `HttpException`, so a framework error keeps its own filter. It wraps every other error in `AppUnknownException`.
+4. Seeds guard nothing. Every caught error is wrapped in `AppUnknownException`.
+
+### Runtime errors outside a request
+
+`AppUnknownException` extends `AppBaseException` and fixes the status code `50000` and the HTTP status 500.
+
+- The constructor is `AppUnknownException(rawError, description = null)`.
+- `rawError` carries the cause.
+- `description` replaces only the `message` of the `Error` object, which is what logs and Sentry show.
+- `description` never reaches the response. The response message always resolves from the message path `http.serverError.internalServerError`.
+- A runtime error with no request to answer is a subclass that names the failure through `description`.
+- The status code `50000` and the HTTP status 500 apply when the error renders in a response with an unmapped `rawError`.
+- A `rawError` that maps through `DatabaseUtil.toException` or `RedisUtil.toException` renders as the mapped exception (409 or 503), as [AppGeneralFilter](#appgeneralfilter) describes.
+
+**Boot failures** throw their subclass, so the process fails with a named message:
+
+- Firebase initialization (`FirebasePrivateKeyInvalidException`, `FirebaseInitializationFailedException`).
+- JWT configuration (`AuthJwtConfigMissingException`, `AuthJwtConfigInvalidException`).
+
+**Decorator-argument errors** throw when the route decorator is evaluated at load, so a misdecorated route fails the boot (`RequestEnvProtectedEmptyException`, `RoleProtectedEmptyException`, `PolicyProtectedEmptyException`, `PolicyProtectedActionEmptyException`, `FeatureFlagKeyEmptyException`, `FeatureFlagKeyNestedException`).
+
+**The throttle exception** is logged, never thrown:
+
+1. The throttle storage runs while a request is being counted, and `RequestThrottleResponseInvalidException` describes a Redis script answer it cannot read.
+2. The throttler fails open, so the storage logs the exception at error level and lets the request through.
+3. The exception never reaches a filter, so the client never receives it.
+
+| Exception | Occurs when |
+| --- | --- |
+| `FirebasePrivateKeyInvalidException` | The configured Firebase private key cannot be normalized into a PEM key |
+| `FirebaseInitializationFailedException` | The Firebase Admin SDK throws while initializing |
+| `RequestEnvProtectedEmptyException` | `RequestEnvProtected` receives no environment |
+| `RequestThrottleResponseInvalidException` | The throttle Redis script answers a shape or number the storage cannot read |
+| `RoleProtectedEmptyException` | `RoleProtected` receives no role |
+| `PolicyProtectedEmptyException` | `PolicyProtected` receives no policy |
+| `PolicyProtectedActionEmptyException` | A policy given to `PolicyProtected` has no action |
+| `FeatureFlagKeyEmptyException` | `FeatureFlagProtected` receives an empty key or key segment |
+| `FeatureFlagKeyNestedException` | `FeatureFlagProtected` receives a key with dots |
+| `AuthJwtConfigMissingException` | A required JWT key is not configured |
+| `AuthJwtConfigInvalidException` | A configured JWT key does not parse as its expected format |
 
 ### Defining a new exception
 

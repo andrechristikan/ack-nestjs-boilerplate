@@ -1,3 +1,4 @@
+import { DeviceCursorAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 import { DeviceSharedListRequestSchema } from '@modules/device/dtos/request/device.shared-list.request.dto';
 
 describe('DeviceSharedListRequestSchema', () => {
@@ -35,5 +36,17 @@ describe('DeviceSharedListRequestSchema', () => {
         expect(() =>
             DeviceSharedListRequestSchema.parse({ extra: true })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            DeviceSharedListRequestSchema.safeParse({ search: 'x' }).success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            DeviceSharedListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(DeviceCursorAvailableOrderBy.join(', '));
     });
 });

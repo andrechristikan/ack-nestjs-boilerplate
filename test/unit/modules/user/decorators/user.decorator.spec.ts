@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import type { ExecutionContext, Type } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
@@ -12,7 +13,11 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
-import { UserGuardIsVerifiedMetaKey } from '@modules/user/constants/user.constant';
+import {
+    UserGuardIsVerifiedMetaKey,
+    UserStoreKey,
+} from '@modules/user/constants/user.constant';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import {
     UserCurrent,
     UserProtected,
@@ -21,7 +26,7 @@ import { UserGuard } from '@modules/user/guards/user.guard';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
-import { expectRequestContextMissing } from '@test/unit/helpers/test.unit.request.helper';
+import { expectRequestContextMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('user.decorator', () => {
     describe('UserProtected', () => {
@@ -58,6 +63,17 @@ describe('user.decorator', () => {
     });
 
     describe('UserCurrent', () => {
+        const notAuthenticated = {
+            module: 'user',
+            statusCode: EnumUserStatusCodeError.notAuthenticated,
+            statusCodeKey:
+                EnumUserStatusCodeError[
+                    EnumUserStatusCodeError.notAuthenticated
+                ],
+            httpStatus: HttpStatus.UNAUTHORIZED,
+            messagePath: 'user.error.notAuthenticated',
+        };
+
         const clsService: MockProxy<
             ReturnType<typeof ClsServiceManager.getClsService>
         > = mock<ReturnType<typeof ClsServiceManager.getClsService>>();
@@ -143,7 +159,7 @@ describe('user.decorator', () => {
             vi.restoreAllMocks();
         });
 
-        it('throws RequestContextMissingException when the stored user is undefined', () => {
+        it('throws UserNotAuthenticatedException when the stored user is undefined', () => {
             const target = {} as Type<unknown>;
             UserCurrent()(target, 'undefinedUser', 0);
             const factory = getParamDecoratorFactory(target, 'undefinedUser');
@@ -156,10 +172,10 @@ describe('user.decorator', () => {
                 thrown = error;
             }
 
-            expectRequestContextMissing(thrown);
+            expect(thrown).toMatchObject(notAuthenticated);
         });
 
-        it('throws RequestContextMissingException when the stored user is null', () => {
+        it('throws UserNotAuthenticatedException when the stored user is null', () => {
             const target = {} as Type<unknown>;
             UserCurrent()(target, 'nullUser', 0);
             const factory = getParamDecoratorFactory(target, 'nullUser');
@@ -172,7 +188,7 @@ describe('user.decorator', () => {
                 thrown = error;
             }
 
-            expectRequestContextMissing(thrown);
+            expect(thrown).toMatchObject(notAuthenticated);
         });
 
         it('returns the whole user when no field is requested', () => {
@@ -215,7 +231,10 @@ describe('user.decorator', () => {
                 thrown = error;
             }
 
-            expectRequestContextMissing(thrown);
+            expectRequestContextMissingWithKey(
+                thrown,
+                `${UserStoreKey}.gender`
+            );
         });
 
         it('throws RequestContextMissingException when the requested field is null', () => {
@@ -231,7 +250,10 @@ describe('user.decorator', () => {
                 thrown = error;
             }
 
-            expectRequestContextMissing(thrown);
+            expectRequestContextMissingWithKey(
+                thrown,
+                `${UserStoreKey}.gender`
+            );
         });
     });
 });

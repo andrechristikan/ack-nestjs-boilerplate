@@ -20,7 +20,7 @@ import type {
     IActivityLogFlushOptions,
     IActivityLogMetadata,
     IActivityLogStageInput,
-    IActivityLogStagedEvent,
+    IActivityLogStaged,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IActivityLogCreate } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
@@ -159,29 +159,32 @@ export class ActivityLogDomain {
     }
 
     private buildFlushCreate(
-        event: IActivityLogStagedEvent,
+        activityLog: IActivityLogStaged,
         payloadUserId: string | null,
         requestLog: IRequestLog
     ): IActivityLogCreate {
-        const contract = this.getContract(event.action);
-        const metadata = this.validateMetadata(event.action, event.metadata);
+        const contract = this.getContract(activityLog.action);
+        const metadata = this.validateMetadata(
+            activityLog.action,
+            activityLog.metadata
+        );
         const userId = this.resolveUserId(
             contract.user,
-            event.userId,
+            activityLog.userId,
             payloadUserId
         );
         const workspaceId = this.resolveWorkspaceId(
             contract.workspace,
-            event.workspaceId
+            activityLog.workspaceId
         );
         const createdBy = this.resolveCreatedBy(
             contract.user,
-            event.createdBy,
+            activityLog.createdBy,
             userId
         );
 
         const description = this.activityLogUtil.getDescription(
-            event.action,
+            activityLog.action,
             metadata
         );
 
@@ -189,7 +192,7 @@ export class ActivityLogDomain {
             userId,
             createdBy,
             workspaceId,
-            action: event.action,
+            action: activityLog.action,
             description,
             requestLog,
             metadata,
@@ -198,7 +201,7 @@ export class ActivityLogDomain {
 
     prepare(
         input: IActivityLogStageInput<EnumActivityLogAction>
-    ): IActivityLogStagedEvent {
+    ): IActivityLogStaged {
         const contract = this.getContract(input.action);
         const metadata = this.validateMetadata(
             input.action,
@@ -222,16 +225,16 @@ export class ActivityLogDomain {
         };
     }
 
-    stagePrepared(events: IActivityLogStagedEvent[]): void {
-        if (events.length === 0) {
+    stagePrepared(activityLogs: IActivityLogStaged[]): void {
+        if (activityLogs.length === 0) {
             return;
         }
 
-        const stagedEvents = this.requestStoreService.get<
-            IActivityLogStagedEvent[]
+        const stagedActivityLogs = this.requestStoreService.get<
+            IActivityLogStaged[]
         >(ActivityLogStageStoreKey);
-        const staged = stagedEvents ?? [];
-        staged.push(...events);
+        const staged = stagedActivityLogs ?? [];
+        staged.push(...activityLogs);
 
         this.requestStoreService.set(ActivityLogStageStoreKey, staged);
     }
@@ -240,7 +243,7 @@ export class ActivityLogDomain {
         payloadUserId,
         isError,
     }: IActivityLogFlushOptions): Promise<void> {
-        const staged = this.requestStoreService.get<IActivityLogStagedEvent[]>(
+        const staged = this.requestStoreService.get<IActivityLogStaged[]>(
             ActivityLogStageStoreKey
         );
         if (!staged?.length) {
@@ -248,7 +251,7 @@ export class ActivityLogDomain {
         }
 
         const toFlush = isError
-            ? staged.filter(event => event.onError)
+            ? staged.filter(activityLog => activityLog.onError)
             : staged;
 
         if (!toFlush.length) {
@@ -262,8 +265,8 @@ export class ActivityLogDomain {
             throw new ActivityLogContractInvalidException();
         }
 
-        const rows: IActivityLogCreate[] = toFlush.map(event =>
-            this.buildFlushCreate(event, payloadUserId, requestLog)
+        const rows: IActivityLogCreate[] = toFlush.map(activityLog =>
+            this.buildFlushCreate(activityLog, payloadUserId, requestLog)
         );
 
         await this.activityLogRepository.createMany(rows);

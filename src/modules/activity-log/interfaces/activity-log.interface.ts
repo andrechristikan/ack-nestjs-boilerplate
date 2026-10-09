@@ -17,7 +17,7 @@ export type IActivityLogMetadata = Record<
     string | number | boolean | Date
 >;
 
-export interface IActivityLogStagedEvent {
+export interface IActivityLogStaged {
     action: EnumActivityLogAction;
     metadata: IActivityLogMetadata;
     onError: boolean;
@@ -61,7 +61,7 @@ export interface IActivityLogAnalyticActionCount {
     count: number;
 }
 
-export interface IActivityLogAnalyticEvent {
+export interface IActivityLogAnalytic {
     id: string;
     userId: string;
     action: EnumActivityLogAction;

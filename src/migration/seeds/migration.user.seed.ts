@@ -32,6 +32,7 @@ import { Command } from 'nest-commander';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestUtil } from '@common/request/utils/request.util';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
 /**
  * Seeds default users with password, verification, acceptances, and activity logs. Requires roles, countries, and term policies to already be seeded, and aborts otherwise.
@@ -363,8 +364,7 @@ export class MigrationUserSeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error seeding users');
-            throw error;
+            throw new AppUnknownException(error);
         }
 
         this.logger.log('Users seeded successfully.');
@@ -400,8 +400,7 @@ export class MigrationUserSeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing users');
-            throw error;
+            throw new AppUnknownException(error);
         }
 
         this.logger.log('Users removed completed.');

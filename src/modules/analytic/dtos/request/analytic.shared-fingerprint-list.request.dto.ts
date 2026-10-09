@@ -8,14 +8,11 @@ import { AnalyticSharedFingerprintAvailableOrderBy } from '@modules/analytic/con
  * @public
  */
 export const AnalyticSharedFingerprintListRequestSchema =
-    PaginationOffsetQuerySchema.extend({
-        orderBy: z
-            .union([z.string(), z.array(z.string())])
-            .optional()
-            .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${AnalyticSharedFingerprintAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-                example: `${AnalyticSharedFingerprintAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-            }),
+    PaginationOffsetQuerySchema.omit({ search: true }).extend({
+        orderBy: PaginationOffsetQuerySchema.shape.orderBy.meta({
+            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${AnalyticSharedFingerprintAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            example: `${AnalyticSharedFingerprintAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+        }),
     });
 
 /**

@@ -82,3 +82,27 @@ export const DatabaseModelRelations = {
     },
     ProjectMember: { project: 'Project', user: 'User' },
 } as const satisfies IDatabaseModelRelations;
+
+/**
+ * Prisma error codes meaning the database cannot be reached or its connection pool is exhausted.
+ * @public
+ */
+export const DatabaseUnavailableCodes: readonly string[] = [
+    'P1001',
+    'P1002',
+    'P1008',
+    'P1017',
+    'P2024',
+];
+
+/**
+ * Prisma error code of a unique-constraint violation.
+ * @public
+ */
+export const DatabaseUniqueConstraintCode = 'P2002';
+
+/**
+ * Prisma error code of a transaction write conflict or deadlock.
+ * @public
+ */
+export const DatabaseWriteConflictCode = 'P2034';

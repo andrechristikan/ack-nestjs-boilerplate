@@ -1,4 +1,7 @@
 import { Job, UnrecoverableError } from 'bullmq';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { QueueException } from '@queues/exceptions/queue.exception';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
 import { SentryService } from '@common/sentry/services/sentry.service';
@@ -226,7 +229,15 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                 throw new UnrecoverableError(error.message);
             }
 
-            throw error;
+            if (
+                error instanceof QueueException ||
+                error instanceof AppBaseException ||
+                error instanceof UnrecoverableError
+            ) {
+                throw error;
+            }
+
+            throw new AppUnknownException(error);
         }
     }
 }

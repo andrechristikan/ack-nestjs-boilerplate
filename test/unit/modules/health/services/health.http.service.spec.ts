@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { ServiceUnavailableException } from '@nestjs/common';
 import type { HealthCheckResult } from '@nestjs/terminus';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumHealthStatus } from '@modules/health/enums/health.enum';
 import { HealthDomain } from '@modules/health/domains/health.domain';
 import { HealthHttpService } from '@modules/health/services/health.http.service';
@@ -128,12 +129,15 @@ describe('HealthHttpService', () => {
             });
         });
 
-        it('rethrows an error that is not a ServiceUnavailableException', async () => {
+        it('wraps an error that is not a ServiceUnavailableException in AppUnknownException', async () => {
             const error = new Error('indicator crashed');
 
             await expect(
                 service['resolveResponse'](Promise.reject(error))
-            ).rejects.toBe(error);
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
 
         it('rethrows a ServiceUnavailableException whose response is not a health check result', async () => {

@@ -27,6 +27,7 @@ import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
 import { expectRequestContextMissing } from '@test/unit/helpers/test.unit.request.helper';
+import { RequestEnvProtectedEmptyException } from '@common/request/exceptions/request.env-protected-empty.exception';
 
 describe('request.decorator', () => {
     describe('RequestTimeout', () => {
@@ -70,6 +71,15 @@ describe('request.decorator', () => {
                 EnumAppEnvironment.local,
                 EnumAppEnvironment.development,
             ]);
+        });
+
+        it('throws at evaluation when no environment is given', () => {
+            expect(() => RequestEnvProtected()).toThrow(
+                RequestEnvProtectedEmptyException
+            );
+            expect(() => RequestEnvProtected()).toThrow(
+                'RequestEnvProtected needs at least one environment'
+            );
         });
     });
 

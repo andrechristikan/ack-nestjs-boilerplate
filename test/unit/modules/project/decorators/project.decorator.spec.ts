@@ -6,7 +6,6 @@ import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import { ClsServiceManager } from 'nestjs-cls';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
-import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import {
     ProjectMemberStoreKey,
     ProjectRoleMetaKey,
@@ -27,6 +26,7 @@ import {
     buildDecoratorTarget,
     getParamDecoratorFactory,
 } from '@test/unit/helpers/test.unit.decorator.helper';
+import { expectRequestContextMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('project.decorator', () => {
     describe('ProjectProtected', () => {
@@ -81,6 +81,15 @@ describe('project.decorator', () => {
     });
 
     describe('ProjectCurrent', () => {
+        const projectNotFound = {
+            module: 'project',
+            statusCode: EnumProjectStatusCodeError.notFound,
+            statusCodeKey:
+                EnumProjectStatusCodeError[EnumProjectStatusCodeError.notFound],
+            httpStatus: HttpStatus.NOT_FOUND,
+            messagePath: 'project.error.notFound',
+        };
+
         const project: Project = {
             id: '507f1f77bcf86cd799439011',
             workspaceId: '507f1f77bcf86cd799439012',
@@ -130,7 +139,7 @@ describe('project.decorator', () => {
             expect(result).toBe('website-revamp');
         });
 
-        it('throws RequestContextMissingException when no project is stored', () => {
+        it('throws ProjectNotFoundException when no project is stored', () => {
             vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue({
                 get: vi.fn().mockReturnValue(undefined),
             } as never);
@@ -148,20 +157,7 @@ describe('project.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.contextMissing
-                    ],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'request.error.contextMissing',
-                rawError: expect.objectContaining({
-                    message:
-                        'RequestContextMissingException: no value for "ProjectStoreKey"',
-                }),
-            });
+            expect(thrown).toMatchObject(projectNotFound);
         });
 
         it('throws RequestContextMissingException when the requested field is absent', () => {
@@ -182,20 +178,10 @@ describe('project.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.contextMissing
-                    ],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'request.error.contextMissing',
-                rawError: expect.objectContaining({
-                    message:
-                        'RequestContextMissingException: no value for "ProjectStoreKey.description"',
-                }),
-            });
+            expectRequestContextMissingWithKey(
+                thrown,
+                `${ProjectStoreKey}.description`
+            );
         });
     });
 
@@ -276,6 +262,17 @@ describe('project.decorator', () => {
     });
 
     describe('ProjectMemberCurrent', () => {
+        const memberForbidden = {
+            module: 'project',
+            statusCode: EnumProjectStatusCodeError.memberForbidden,
+            statusCodeKey:
+                EnumProjectStatusCodeError[
+                    EnumProjectStatusCodeError.memberForbidden
+                ],
+            httpStatus: HttpStatus.FORBIDDEN,
+            messagePath: 'project.error.memberForbidden',
+        };
+
         const projectMember: ProjectMember = {
             id: '507f1f77bcf86cd799439021',
             projectId: '507f1f77bcf86cd799439011',
@@ -326,7 +323,7 @@ describe('project.decorator', () => {
             expect(result).toBe(EnumProjectMemberRole.member);
         });
 
-        it('throws RequestContextMissingException when no project member is stored', () => {
+        it('throws ProjectMemberForbiddenException when no project member is stored', () => {
             vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue({
                 get: vi.fn().mockReturnValue(undefined),
             } as never);
@@ -344,20 +341,7 @@ describe('project.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.contextMissing
-                    ],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'request.error.contextMissing',
-                rawError: expect.objectContaining({
-                    message:
-                        'RequestContextMissingException: no value for "ProjectMemberStoreKey"',
-                }),
-            });
+            expect(thrown).toMatchObject(memberForbidden);
         });
 
         it('throws RequestContextMissingException when the requested field is absent', () => {
@@ -385,20 +369,10 @@ describe('project.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.contextMissing
-                    ],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'request.error.contextMissing',
-                rawError: expect.objectContaining({
-                    message:
-                        'RequestContextMissingException: no value for "ProjectMemberStoreKey.joinedAt"',
-                }),
-            });
+            expectRequestContextMissingWithKey(
+                thrown,
+                `${ProjectMemberStoreKey}.joinedAt`
+            );
         });
     });
 });

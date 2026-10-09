@@ -69,10 +69,11 @@ Scope: <module directories this task may edit; test/ mirrors of the same; the sp
 Test first: when the task changes src/ behaviour, write the failing spec under test/unit/
   mirroring the subject, run `pnpm test <path filter>` and quote the failing line, then
   implement the minimum. Specs, test helpers, setup or global-setup files, and test config
-  the task's Files list names (a moved spec, a spec rewritten to a rule, an integration or
-  e2e proof) are written as listed; no other spec (coverage work is tester).
+  the task's Files list names (a moved spec, a spec rewritten to a rule) are written as
+  listed; no other spec (coverage work is tester). Integration and e2e are held
+  (`.claude/rules/testing.md`): a task naming one is a hand-back.
 Acceptance: `pnpm typecheck` exit 0; the task's own acceptance commands when the plan
-  names them (`pnpm test:integration`, `pnpm test:e2e`, the parity counts), otherwise
+  names them (the parity counts), otherwise
   `pnpm test <module>` green with the new spec named; the run surface (`.claude/rules/layering.md`,
   The run surface is a call site) repaired where this change moved a command, port, path, or
   script name.

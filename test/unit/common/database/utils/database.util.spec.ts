@@ -2,6 +2,8 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { Prisma } from '@generated/prisma-client/client';
 import { ObjectId } from 'bson';
+import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 
 describe('DatabaseUtil', () => {
@@ -94,6 +96,61 @@ describe('DatabaseUtil', () => {
             });
 
             expect(util.isUniqueCollision(error, 'email')).toBe(false);
+        });
+    });
+
+    describe('toException', () => {
+        it('maps a P2034 write conflict to DatabaseWriteConflictException', () => {
+            const error = new Prisma.PrismaClientKnownRequestError('conflict', {
+                code: 'P2034',
+                clientVersion: '6.19.0',
+            });
+
+            expect(util.toException(error)).toBeInstanceOf(
+                DatabaseWriteConflictException
+            );
+        });
+
+        it.each(['P1001', 'P1002', 'P1008', 'P1017', 'P2024'])(
+            'maps the %s connection code to DatabaseUnavailableException',
+            code => {
+                const error = new Prisma.PrismaClientKnownRequestError('down', {
+                    code,
+                    clientVersion: '6.19.0',
+                });
+
+                expect(util.toException(error)).toBeInstanceOf(
+                    DatabaseUnavailableException
+                );
+            }
+        );
+
+        it('maps a PrismaClientInitializationError to DatabaseUnavailableException', () => {
+            const error = new Prisma.PrismaClientInitializationError(
+                'cannot reach database',
+                '6.19.0'
+            );
+
+            expect(util.toException(error)).toBeInstanceOf(
+                DatabaseUnavailableException
+            );
+        });
+
+        it('returns null for a known request error with an unrelated code', () => {
+            const error = new Prisma.PrismaClientKnownRequestError('missing', {
+                code: 'P2025',
+                clientVersion: '6.19.0',
+            });
+
+            expect(util.toException(error)).toBeNull();
+        });
+
+        it('returns null for an unrelated error', () => {
+            expect(util.toException(new Error('boom'))).toBeNull();
+        });
+
+        it('returns null for a value that is not an Error', () => {
+            expect(util.toException('boom')).toBeNull();
         });
     });
 

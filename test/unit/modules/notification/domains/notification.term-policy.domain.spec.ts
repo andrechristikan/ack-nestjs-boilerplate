@@ -552,7 +552,7 @@ describe('NotificationTermPolicyDomain', () => {
 
             expect(result).toEqual({
                 message:
-                    'User not found, skipping user accept term policy notification',
+                    'User not active, skipping user accept term policy notification',
                 completedSteps: [],
                 failedSteps: [],
             });

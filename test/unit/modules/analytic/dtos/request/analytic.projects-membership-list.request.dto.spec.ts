@@ -24,4 +24,17 @@ describe('AnalyticProjectsMembershipListRequestSchema', () => {
             })
         ).toThrow();
     });
+
+    it('rejects search and orderBy', () => {
+        expect(
+            AnalyticProjectsMembershipListRequestSchema.safeParse({
+                search: 'x',
+            }).success
+        ).toBe(false);
+        expect(
+            AnalyticProjectsMembershipListRequestSchema.safeParse({
+                orderBy: 'createdAt:desc',
+            }).success
+        ).toBe(false);
+    });
 });

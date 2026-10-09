@@ -1,3 +1,4 @@
+import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyAcceptedListRequestSchema } from '@modules/term-policy/dtos/request/term-policy.accepted-list.request.dto';
 
 describe('TermPolicyAcceptedListRequestSchema', () => {
@@ -41,5 +42,12 @@ describe('TermPolicyAcceptedListRequestSchema', () => {
         expect(() =>
             TermPolicyAcceptedListRequestSchema.parse({ search: 'x' })
         ).toThrow();
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            TermPolicyAcceptedListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(TermPolicyAcceptanceDefaultAvailableOrderBy.join(', '));
     });
 });

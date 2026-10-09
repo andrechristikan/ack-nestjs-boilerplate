@@ -1,3 +1,4 @@
+import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
 import { ProjectMemberListRequestSchema } from '@modules/project/dtos/request/project.member-list.request.dto';
 
 describe('ProjectMemberListRequestSchema', () => {
@@ -33,5 +34,17 @@ describe('ProjectMemberListRequestSchema', () => {
         expect(() =>
             ProjectMemberListRequestSchema.parse({ extra: true })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            ProjectMemberListRequestSchema.safeParse({ search: 'x' }).success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            ProjectMemberListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(ProjectMemberDefaultAvailableOrderBy.join(', '));
     });
 });

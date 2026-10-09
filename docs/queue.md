@@ -159,6 +159,7 @@ export class NotificationPushQueue {
                 data,
                 completedSteps: [],
                 failureTokens: null,
+                pendingTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -438,7 +439,16 @@ export abstract class QueueProcessorBase extends WorkerHost {
 
             await this.writeJobLog(job, `Job failed ${failureMessage}`);
             this.logger.error(error, 'Queue job failed');
-            throw error;
+
+            if (
+                error instanceof QueueException ||
+                error instanceof AppBaseException ||
+                error instanceof UnrecoverableError
+            ) {
+                throw error;
+            }
+
+            throw new AppUnknownException(error);
         }
     }
 
@@ -491,8 +501,11 @@ flowchart TD
     logFinish --> done[return result]
     handle -->|throw| logFail[job.log failure]
     logFail --> nestErr["Logger.error once"]
-    nestErr --> rethrow[rethrow]
+    nestErr --> typed{QueueException, AppBaseException, or UnrecoverableError?}
+    typed -->|yes| rethrow[throw as is]
+    typed -->|no| wrap[throw AppUnknownException]
     rethrow --> failedEvt[BullMQ failed event]
+    wrap --> failedEvt
     failedEvt --> gate{final attempt or UnrecoverableError?}
     gate -->|no| skip[return]
     gate -->|yes| fatal{QueueException.isFatal?}
@@ -508,8 +521,10 @@ flowchart TD
 
     The input line never includes `job.data`.
 
-2. **On throw inside `process`**: one failure `job.log` line, one Nest `Logger.error` (object-first) for Pino, then rethrow so BullMQ can retry or mark the job failed.
-3. **On Job Failure (`onFailed`)**: triggered by the BullMQ `failed` worker event after the rethrow.
+2. **On throw inside `process`**: one failure `job.log` line, one Nest `Logger.error` (object-first) for Pino, then a throw so BullMQ can retry or mark the job failed.
+    - A `QueueException`, an `AppBaseException`, or an `UnrecoverableError` is thrown as it is.
+    - Any other error is wrapped in `AppUnknownException`, with the cause in `rawError`.
+3. **On Job Failure (`onFailed`)**: triggered by the BullMQ `failed` worker event after the throw.
 4. **Retry Check**: the failure is final when BullMQ will not retry it: `attemptsMade` (which already counts the failed attempt) has reached `attempts`, or the error is an `UnrecoverableError`.
 5. **Error Classification**:
     - `QueueException` with `isFatal: true` → Reports to Sentry
@@ -548,7 +563,7 @@ A notification processor service throws `QueueException(summary, true)` when a s
 
 When a job fails:
 
-1. `QueueProcessorBase.process` writes a failure `job.log` line, calls Nest `Logger.error` once, and rethrows
+1. `QueueProcessorBase.process` writes a failure `job.log` line, calls Nest `Logger.error` once, and throws the error as is when it is a `QueueException`, an `AppBaseException`, or an `UnrecoverableError`, and wrapped in `AppUnknownException` otherwise
 2. On the final failure (last attempt, or an `UnrecoverableError`), `onFailed` classifies the error:
     - If error is `QueueException` with `isFatal: true` → Reports to Sentry (with job attributes on the scope)
     - If error is `QueueException` with `isFatal: false` → Does not report to Sentry
@@ -594,6 +609,7 @@ redis-bullboard:
         - REDIS_DB=1
 ```
 
+- Both Compose files give the service a health check that requests `http://127.0.0.1:3000/login` inside the container.
 - The production Compose file publishes the dashboard on `127.0.0.1:3010` only.
 - See [Release][ref-doc-release].
 

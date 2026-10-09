@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -14,9 +15,8 @@ import type { FeatureFlag } from '@generated/prisma-client/client';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
-import { FeatureFlagPredefinedKeyNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-not-found.exception';
-import { FeatureFlagPredefinedKeyTypeInvalidException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-type-invalid.exception';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
+import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
 import type {
     IFeatureFlagUpdateMetadata,
     IFeatureFlagUpdateStatus,
@@ -98,50 +98,21 @@ describe('FeatureFlagDomain', () => {
     });
 
     describe('validateFeatureFlag', () => {
-        it('throws FeatureFlagPredefinedKeyEmptyException on an empty key segment', async () => {
-            await expect(
-                domain.validateFeatureFlag('changePassword.', null, null)
-            ).rejects.toMatchObject({
-                module: 'featureFlag',
-                statusCode: EnumFeatureFlagStatusCodeError.predefinedKeyEmpty,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.predefinedKeyEmpty
-                    ],
-                messagePath: 'featureFlag.error.predefinedKeyEmpty',
-            });
-        });
-
-        it('throws FeatureFlagPredefinedKeyLengthExceededException on a dotted key', async () => {
-            await expect(
-                domain.validateFeatureFlag('workspace.metadataKey', null, null)
-            ).rejects.toMatchObject({
-                module: 'featureFlag',
-                statusCode:
-                    EnumFeatureFlagStatusCodeError.predefinedKeyLengthExceeded,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError
-                            .predefinedKeyLengthExceeded
-                    ],
-                messagePath: 'featureFlag.error.predefinedKeyLengthExceeded',
-            });
-        });
-
-        it('throws FeatureFlagPredefinedKeyNotFoundException when the flag is unregistered', async () => {
+        it('throws FeatureFlagNotFoundException (404) when the flag is unregistered', async () => {
             featureFlagCache.getByKeyAndCache.mockResolvedValue(null);
 
             await expect(
                 domain.validateFeatureFlag('unknownFlag', null, null)
             ).rejects.toMatchObject({
+                constructor: FeatureFlagNotFoundException,
                 module: 'featureFlag',
-                statusCode:
-                    EnumFeatureFlagStatusCodeError.predefinedKeyNotFound,
+                httpStatus: HttpStatus.NOT_FOUND,
+                statusCode: EnumFeatureFlagStatusCodeError.notFound,
                 statusCodeKey:
                     EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.predefinedKeyNotFound
+                        EnumFeatureFlagStatusCodeError.notFound
                     ],
-                messagePath: 'featureFlag.error.predefinedKeyNotFound',
+                messagePath: 'featureFlag.error.notFound',
             });
             expect(featureFlagCache.getByKeyAndCache).toHaveBeenCalledWith(
                 'unknownFlag'
@@ -289,21 +260,21 @@ describe('FeatureFlagDomain', () => {
     });
 
     describe('validateFeatureFlagMetadata', () => {
-        it('throws FeatureFlagPredefinedKeyNotFoundException when the flag is unregistered', async () => {
+        it('throws FeatureFlagNotFoundException (404) when the flag is unregistered', async () => {
             featureFlagCache.getByKeyAndCache.mockResolvedValue(null);
 
             await expect(
                 domain.validateFeatureFlagMetadata('unknownFlag', 'enabled')
             ).rejects.toMatchObject({
-                constructor: FeatureFlagPredefinedKeyNotFoundException,
+                constructor: FeatureFlagNotFoundException,
                 module: 'featureFlag',
-                statusCode:
-                    EnumFeatureFlagStatusCodeError.predefinedKeyNotFound,
+                httpStatus: HttpStatus.NOT_FOUND,
+                statusCode: EnumFeatureFlagStatusCodeError.notFound,
                 statusCodeKey:
                     EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.predefinedKeyNotFound
+                        EnumFeatureFlagStatusCodeError.notFound
                     ],
-                messagePath: 'featureFlag.error.predefinedKeyNotFound',
+                messagePath: 'featureFlag.error.notFound',
             });
         });
 
@@ -358,7 +329,7 @@ describe('FeatureFlagDomain', () => {
             });
         });
 
-        it('throws FeatureFlagPredefinedKeyTypeInvalidException when the metadata sub-key is not boolean', async () => {
+        it('throws FeatureFlagDisabledException (404) when the metadata sub-key is not boolean', async () => {
             featureFlagCache.getByKeyAndCache.mockResolvedValue({
                 ...baseFlag,
                 metadata: { enabled: 'yes' },
@@ -367,19 +338,19 @@ describe('FeatureFlagDomain', () => {
             await expect(
                 domain.validateFeatureFlagMetadata('loginWithGoogle', 'enabled')
             ).rejects.toMatchObject({
-                constructor: FeatureFlagPredefinedKeyTypeInvalidException,
+                constructor: FeatureFlagDisabledException,
+                httpStatus: HttpStatus.NOT_FOUND,
                 module: 'featureFlag',
-                statusCode:
-                    EnumFeatureFlagStatusCodeError.predefinedKeyTypeInvalid,
+                statusCode: EnumFeatureFlagStatusCodeError.disabled,
                 statusCodeKey:
                     EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.predefinedKeyTypeInvalid
+                        EnumFeatureFlagStatusCodeError.disabled
                     ],
-                messagePath: 'featureFlag.error.predefinedKeyTypeInvalid',
+                messagePath: 'featureFlag.error.disabled',
             });
         });
 
-        it('throws FeatureFlagPredefinedKeyTypeInvalidException when metadata carries no such sub-key', async () => {
+        it('throws FeatureFlagDisabledException (404) when metadata carries no such sub-key', async () => {
             featureFlagCache.getByKeyAndCache.mockResolvedValue({
                 ...baseFlag,
                 metadata: {},
@@ -388,19 +359,19 @@ describe('FeatureFlagDomain', () => {
             await expect(
                 domain.validateFeatureFlagMetadata('loginWithGoogle', 'enabled')
             ).rejects.toMatchObject({
-                constructor: FeatureFlagPredefinedKeyTypeInvalidException,
+                constructor: FeatureFlagDisabledException,
+                httpStatus: HttpStatus.NOT_FOUND,
                 module: 'featureFlag',
-                statusCode:
-                    EnumFeatureFlagStatusCodeError.predefinedKeyTypeInvalid,
+                statusCode: EnumFeatureFlagStatusCodeError.disabled,
                 statusCodeKey:
                     EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.predefinedKeyTypeInvalid
+                        EnumFeatureFlagStatusCodeError.disabled
                     ],
-                messagePath: 'featureFlag.error.predefinedKeyTypeInvalid',
+                messagePath: 'featureFlag.error.disabled',
             });
         });
 
-        it('throws FeatureFlagPredefinedKeyTypeInvalidException when the flag carries no metadata at all', async () => {
+        it('throws FeatureFlagDisabledException (404) when the flag carries no metadata at all', async () => {
             featureFlagCache.getByKeyAndCache.mockResolvedValue({
                 ...baseFlag,
                 metadata: null,
@@ -409,15 +380,15 @@ describe('FeatureFlagDomain', () => {
             await expect(
                 domain.validateFeatureFlagMetadata('loginWithGoogle', 'enabled')
             ).rejects.toMatchObject({
-                constructor: FeatureFlagPredefinedKeyTypeInvalidException,
+                constructor: FeatureFlagDisabledException,
+                httpStatus: HttpStatus.NOT_FOUND,
                 module: 'featureFlag',
-                statusCode:
-                    EnumFeatureFlagStatusCodeError.predefinedKeyTypeInvalid,
+                statusCode: EnumFeatureFlagStatusCodeError.disabled,
                 statusCodeKey:
                     EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.predefinedKeyTypeInvalid
+                        EnumFeatureFlagStatusCodeError.disabled
                     ],
-                messagePath: 'featureFlag.error.predefinedKeyTypeInvalid',
+                messagePath: 'featureFlag.error.disabled',
             });
         });
     });

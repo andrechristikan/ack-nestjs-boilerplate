@@ -25,7 +25,7 @@ Only the owner starts an `/ack-*` skill, by typing its name: each carries `disab
 - `/ack-plan`: interrogation, explorer, brainstorming, writing-plans, owner approval; a symptom goes to debugger first.
 - `/ack-build`: a plan or a pin through coder, test-first where `src/` behaviour changes, seeds and run surface too.
 - `/ack-review`: judges a scope at a chosen depth through reviewer: PASS or FAIL, findings as pins.
-- `/ack-spec`: creates or repairs unit, integration, or e2e tests for code that exists; test and coverage prove it.
+- `/ack-spec`: creates or repairs unit tests for code that exists; test and coverage prove it.
 - `/ack-doc`: `docs/*.md`, root people files, `.github/**` but `copilot-instructions.md`; writer, then a reader test.
 - `/ack-pr`: pull requests end to end: description, create, comment, review replies, version notes; merge is an ask.
 - `/ack-harness`: `.claude/**`, `AGENTS.md`, `copilot-instructions.md` through harness; `diagnose` reads a transcript.
@@ -39,7 +39,7 @@ Skills dispatch the agents in `.claude/agents/`:
 - `explorer`: locates code, reads a third-party contract, assesses approaches.
 - `debugger`: reproduces a pinned symptom and finds its root cause with evidence; reports a pin, does not fix.
 - `coder`: implements a named `src/` change, test-first where behaviour changes, seeds included; writes the test and run-surface files a plan task lists and repairs the run surface the change makes stale, `.github/workflows/` and `.github/dependabot.yml` included.
-- `tester`: writes or repairs tests under `test/` for code that exists; does not edit `src/`.
+- `tester`: writes or repairs unit tests under `test/unit/` for code that exists; does not edit `src/`.
 - `reviewer`: judges a named scope at the depth the dispatch sets; reports, does not fix.
 - `writer`: reader-facing prose: `docs/`, the root people files, `.github/` markdown except `copilot-instructions.md`, stale-fact repairs in `.github/` YAML, PR and version text.
 - `harness`: the AI configuration: `.claude/**`, `AGENTS.md`, `.github/copilot-instructions.md`.
@@ -53,8 +53,8 @@ No agent can ask a question: one missing something stops and hands the question 
 - `pnpm spell` always exits 0 (`|| true`). Read its output.
 - `pnpm deadcode` is knip: unused files, exports, types, enum members, and dependencies warn and exit 0; unlisted dependencies, unresolved imports, unlisted binaries, and duplicate exports exit 1.
 - A scoped `pnpm test:cov <path>` exits 1 with every spec passing because the 100% threshold is global. Read the `Tests` line and the per-file rows, not the exit code.
-- `pnpm test` runs unit only, needs no Docker, and applies no threshold (`coverage.enabled` is `false`). `pnpm test:integration` and `pnpm test:e2e` need a running Docker daemon.
-- A Bash call's `timeout` is 10 minutes at most, and `BASH_DEFAULT_TIMEOUT_MS` (`.claude/settings.json` `env`) makes 10 minutes the default. A call still running at its timeout is moved to the background by Claude Code and reports when it ends, so a test run is never wrapped in GNU `timeout`. The first `pnpm test:integration` or `pnpm test:e2e` on a machine pulls the Testcontainers images and can take that long.
+- `pnpm test` runs unit only, needs no Docker, and applies no threshold (`coverage.enabled` is `false`). Integration and e2e are held (`.claude/rules/testing.md`): no script, Vitest project, or folder exists, so `.github/workflows/test-integration.yml` and `test-e2e.yml`, which call those scripts, fail.
+- A Bash call's `timeout` is 10 minutes at most, and `BASH_DEFAULT_TIMEOUT_MS` (`.claude/settings.json` `env`) makes 10 minutes the default. A call still running at its timeout is moved to the background by Claude Code and reports when it ends, so a test run is never wrapped in GNU `timeout`.
 - `npx <pkg>@<version>` runs the local binary when the package is installed.
 - Claude worktrees live under `.claude/worktrees/` (gitignored); a recursive grep from the root reads them, so exclude it.
 

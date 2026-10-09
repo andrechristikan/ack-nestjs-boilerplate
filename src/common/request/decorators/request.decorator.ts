@@ -23,6 +23,7 @@ import type {
     IRequestThrottleOptions,
 } from '@common/request/interfaces/request.interface';
 import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
+import { RequestEnvProtectedEmptyException } from '@common/request/exceptions/request.env-protected-empty.exception';
 
 /**
  * Overrides the global request timeout for a route.
@@ -42,6 +43,10 @@ export function RequestTimeout(seconds: ms.StringValue): MethodDecorator {
 export function RequestEnvProtected(
     ...envs: EnumAppEnvironment[]
 ): MethodDecorator {
+    if (envs.length === 0) {
+        throw new RequestEnvProtectedEmptyException();
+    }
+
     return applyDecorators(
         UseGuards(RequestEnvGuard),
         SetMetadata(RequestEnvMetaKey, envs)

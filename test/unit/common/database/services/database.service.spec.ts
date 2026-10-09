@@ -1,4 +1,5 @@
 import { mock } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { MockProxy } from 'vitest-mock-extended';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -67,11 +68,27 @@ describe('DatabaseService', () => {
             expect(client.$connect).toHaveBeenCalledTimes(1);
         });
 
-        it('rethrows when the connection fails', async () => {
+        it('wraps a failure while subscribing to log events in AppUnknownException', async () => {
+            const error = new Error('subscribe failed');
+            databaseClientFactory.$on.mockImplementation(() => {
+                throw error;
+            });
+
+            await expect(service.onModuleInit()).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
+            expect(client.$connect).not.toHaveBeenCalled();
+        });
+
+        it('wraps a failed connection once in AppUnknownException', async () => {
             const error = new Error('connect failed');
             client.$connect.mockRejectedValue(error);
 
-            await expect(service.onModuleInit()).rejects.toThrow(error);
+            await expect(service.onModuleInit()).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
@@ -130,23 +147,26 @@ describe('DatabaseService', () => {
     });
 
     describe('connect', () => {
-        it('connects the client and logs success', async () => {
+        it('connects the client', async () => {
             client.$connect.mockResolvedValue(undefined);
 
             await expect(service['connect']()).resolves.toBeUndefined();
             expect(client.$connect).toHaveBeenCalledTimes(1);
         });
 
-        it('logs and rethrows when the connection fails', async () => {
+        it('wraps a failed connection in AppUnknownException', async () => {
             const error = new Error('connect failed');
             client.$connect.mockRejectedValue(error);
 
-            await expect(service['connect']()).rejects.toThrow(error);
+            await expect(service['connect']()).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: error,
+            });
         });
     });
 
     describe('disconnect', () => {
-        it('disconnects the client and logs success', async () => {
+        it('disconnects the client', async () => {
             client.$disconnect.mockResolvedValue(undefined);
 
             await expect(service['disconnect']()).resolves.toBeUndefined();

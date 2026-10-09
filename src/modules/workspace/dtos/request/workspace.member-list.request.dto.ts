@@ -8,14 +8,11 @@ import { WorkspaceMemberDefaultAvailableOrderBy } from '@modules/workspace/const
  * @public
  */
 export const WorkspaceMemberListRequestSchema =
-    PaginationCursorQuerySchema.extend({
-        orderBy: z
-            .union([z.string(), z.array(z.string())])
-            .optional()
-            .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${WorkspaceMemberDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-                example: `${WorkspaceMemberDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-            }),
+    PaginationCursorQuerySchema.omit({ search: true }).extend({
+        orderBy: PaginationCursorQuerySchema.shape.orderBy.meta({
+            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${WorkspaceMemberDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            example: `${WorkspaceMemberDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+        }),
         role: z.string().optional().meta({
             description: 'Filter by role, comma-delimited',
             example: '',

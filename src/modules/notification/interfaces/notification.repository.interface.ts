@@ -29,6 +29,7 @@ export interface INotificationRepository {
         termPolicyId: string,
         userIds: string[]
     ): Promise<INotificationTermPolicyRecipientState[]>;
+    existsTermPolicyRecipient(termPolicyId: string): Promise<boolean>;
     createTermPolicyRecipients(
         proceedBy: string,
         termPolicyId: string,

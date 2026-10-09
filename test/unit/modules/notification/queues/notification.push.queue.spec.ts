@@ -69,7 +69,13 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.temporaryPasswordByAdmin,
-                { send, data, completedSteps: [], failureTokens: null },
+                {
+                    send,
+                    data,
+                    completedSteps: [],
+                    failureTokens: null,
+                    pendingTokens: null,
+                },
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.high,
@@ -88,7 +94,13 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.resetPassword,
-                { send, data: null, completedSteps: [], failureTokens: null },
+                {
+                    send,
+                    data: null,
+                    completedSteps: [],
+                    failureTokens: null,
+                    pendingTokens: null,
+                },
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.medium,
@@ -107,7 +119,13 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.forgotPassword,
-                { send, data: null, completedSteps: [], failureTokens: null },
+                {
+                    send,
+                    data: null,
+                    completedSteps: [],
+                    failureTokens: null,
+                    pendingTokens: null,
+                },
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.high,
@@ -126,7 +144,13 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.resetTwoFactorByAdmin,
-                { send, data: null, completedSteps: [], failureTokens: null },
+                {
+                    send,
+                    data: null,
+                    completedSteps: [],
+                    failureTokens: null,
+                    pendingTokens: null,
+                },
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.high,
@@ -164,7 +188,13 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.newDeviceLogin,
-                { send, data, completedSteps: [], failureTokens: null },
+                {
+                    send,
+                    data,
+                    completedSteps: [],
+                    failureTokens: null,
+                    pendingTokens: null,
+                },
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.high,
@@ -192,7 +222,13 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.workspaceInvite,
-                { send, data, completedSteps: [], failureTokens: null },
+                {
+                    send,
+                    data,
+                    completedSteps: [],
+                    failureTokens: null,
+                    pendingTokens: null,
+                },
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.high,
@@ -217,7 +253,13 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.workspaceJoinRequest,
-                { send, data, completedSteps: [], failureTokens: null },
+                {
+                    send,
+                    data,
+                    completedSteps: [],
+                    failureTokens: null,
+                    pendingTokens: null,
+                },
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.medium,
@@ -238,7 +280,13 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.workspaceJoinAccepted,
-                { send, data, completedSteps: [], failureTokens: null },
+                {
+                    send,
+                    data,
+                    completedSteps: [],
+                    failureTokens: null,
+                    pendingTokens: null,
+                },
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.medium,
@@ -264,7 +312,13 @@ describe('NotificationPushQueue', () => {
 
             expect(notificationPushQueue.add).toHaveBeenCalledWith(
                 EnumNotificationPushProcess.workspaceJoinRejected,
-                { send, data, completedSteps: [], failureTokens: null },
+                {
+                    send,
+                    data,
+                    completedSteps: [],
+                    failureTokens: null,
+                    pendingTokens: null,
+                },
                 {
                     jobId: 'notification-id-sendPush',
                     priority: EnumQueuePriority.medium,

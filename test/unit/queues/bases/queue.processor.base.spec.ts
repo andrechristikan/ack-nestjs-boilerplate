@@ -2,7 +2,10 @@ import { UnrecoverableError } from 'bullmq';
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { SentryService } from '@common/sentry/services/sentry.service';
+import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceProcessorService } from '@modules/workspace/services/workspace.processor.service';
 import { WorkspaceProcessor } from '@modules/workspace/processors/workspace.processor';
@@ -74,14 +77,18 @@ describe('QueueProcessorBase', () => {
             );
         });
 
-        it('logs the failure line and rethrows an Error raised by the handler', async () => {
+        it('logs the failure line and wraps an Error raised by the handler in AppUnknownException', async () => {
             const job = buildProcessorJob({});
             const error = new Error('handle failed');
             workspaceProcessorService.processExpireStaleInvites.mockRejectedValue(
                 error
             );
 
-            await expect(processor.process(job)).rejects.toBe(error);
+            await expect(processor.process(job)).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: error,
+            });
 
             expect(job.log).toHaveBeenNthCalledWith(
                 3,
@@ -89,20 +96,51 @@ describe('QueueProcessorBase', () => {
             );
         });
 
-        it('logs the failure line with String(error) and rethrows a non-Error raised by the handler', async () => {
+        it('logs the failure line with String(error) and wraps a non-Error raised by the handler', async () => {
             const job = buildProcessorJob({});
             workspaceProcessorService.processExpireStaleInvites.mockRejectedValue(
                 'raw failure reason'
             );
 
-            await expect(processor.process(job)).rejects.toBe(
-                'raw failure reason'
-            );
+            await expect(processor.process(job)).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: 'raw failure reason',
+            });
 
             expect(job.log).toHaveBeenNthCalledWith(
                 3,
                 'Job failed raw failure reason'
             );
+        });
+
+        it('rethrows a QueueException raised by the handler unchanged', async () => {
+            const job = buildProcessorJob({});
+            const error = new QueueException('send failed', true);
+            workspaceProcessorService.processExpireStaleInvites.mockRejectedValue(
+                error
+            );
+
+            await expect(processor.process(job)).rejects.toBe(error);
+        });
+
+        it('rethrows an AppBaseException raised by the handler unchanged', async () => {
+            const job = buildProcessorJob({});
+            const error = new DatabaseUnavailableException();
+            workspaceProcessorService.processExpireStaleInvites.mockRejectedValue(
+                error
+            );
+
+            await expect(processor.process(job)).rejects.toBe(error);
+        });
+
+        it('rethrows an UnrecoverableError raised by the handler unchanged', async () => {
+            const job = buildProcessorJob({});
+            const error = new UnrecoverableError('hopeless');
+            workspaceProcessorService.processExpireStaleInvites.mockRejectedValue(
+                error
+            );
+
+            await expect(processor.process(job)).rejects.toBe(error);
         });
     });
 

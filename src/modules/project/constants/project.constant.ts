@@ -73,10 +73,21 @@ export const DocProjectRoleErrorResponses = {
         statusCode: EnumProjectStatusCodeError.notFound,
         messagePath: 'project.error.notFound',
     }),
-    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumProjectStatusCodeError.roleForbidden,
-        messagePath: 'project.error.roleForbidden',
-    }),
+    forbidden: DocResponseError(
+        HttpStatus.FORBIDDEN,
+        {
+            statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
+            messagePath: 'workspace.error.memberForbidden',
+        },
+        {
+            statusCode: EnumProjectStatusCodeError.memberForbidden,
+            messagePath: 'project.error.memberForbidden',
+        },
+        {
+            statusCode: EnumProjectStatusCodeError.roleForbidden,
+            messagePath: 'project.error.roleForbidden',
+        }
+    ),
 } as const;
 
 /**

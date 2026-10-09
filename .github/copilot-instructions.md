@@ -35,7 +35,7 @@ A `*.dto.ts` file exports one schema const and its type: `export const XRequestS
 
 ## Concurrency
 
-Async-first: independent operations run concurrently, each call written directly as an element of `Promise.all([...])` (one failure fails the whole) or `Promise.allSettled([...])` (each outcome handled on its own). A `const` holds a promise, and a sequential `await` runs independent work, only in the cases `.claude/rules/code-style.md` lists.
+Async-first: independent calls run concurrently, each an element of `Promise.all([...])` (one failure fails the whole) or `Promise.allSettled([...])` (each outcome handled on its own). A `const` holds a promise, and a sequential `await` runs independent work, only in the cases `.claude/rules/code-style.md` lists.
 
 ## Imports
 
@@ -43,8 +43,12 @@ Aliases: `tsconfig.json` `paths`. A class Nest injects is a value import, not `i
 
 ## Tests
 
-A spec mirrors its subject's `src/` path under `test/unit/`, `test/integration/`, or `test/e2e/`; an e2e flow across several routes is `test/e2e/flows/<module>.<flow>.spec.ts`. `pnpm test user` filters unit specs, and `pnpm test:integration` and `pnpm test:e2e` need Docker. Functions and arrows in a spec: the `ts/test-spec` block in `eslint.config.mjs`; reused logic is a helper. Rule: `.claude/rules/testing.md`.
+A spec mirrors its subject's `src/` path under `test/unit/`; `pnpm test user` filters. Integration and e2e are held: no script or folder exists. Functions and arrows in a spec: the `ts/test-spec` block in `eslint.config.mjs`; reused logic is a helper. Rule: `.claude/rules/testing.md`.
+
+## Errors
+
+A request failure extends `AppBaseException`, any other runtime failure `AppUnknownException`. No `throw new Error(...)`; rethrow only inside an `instanceof` guard of our own exception, else `throw new AppUnknownException(err)`. Rule: `.claude/rules/exceptions.md`.
 
 ## Prisma schema
 
-Edit `prisma/schema.prisma`; do not apply it. The commands that apply it are the owner's (`AGENTS.md`).
+Edit `prisma/schema.prisma`; do not apply it. Applying it is the owner's (`AGENTS.md`).

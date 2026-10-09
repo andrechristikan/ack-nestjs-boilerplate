@@ -201,7 +201,7 @@ export class DeviceDomain {
         const notificationProvider =
             this.deviceUtil.resolveNotificationProvider(data.platform);
         const now = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userDeviceRefresh,
             }),
@@ -224,7 +224,7 @@ export class DeviceDomain {
                 );
             });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -249,7 +249,7 @@ export class DeviceDomain {
         const now = this.helperDateService.create();
 
         try {
-            const { revokedSessions, events } =
+            const { revokedSessions, activityLogs } =
                 await this.databaseService.withTransaction(async tx => {
                     const sessions =
                         await this.sessionDomain.revokeByDeviceOwnershipInTx(
@@ -286,14 +286,17 @@ export class DeviceDomain {
                         }),
                     ];
 
-                    return { revokedSessions: sessions, events: prepared };
+                    return {
+                        revokedSessions: sessions,
+                        activityLogs: prepared,
+                    };
                 });
             await this.sessionDomain.purgeRevokedLogins(
                 userId,
                 revokedSessions
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -322,7 +325,7 @@ export class DeviceDomain {
         const now = this.helperDateService.create();
 
         try {
-            const { revokedSessions, events } =
+            const { revokedSessions, activityLogs } =
                 await this.databaseService.withTransaction(async tx => {
                     const sessions =
                         await this.sessionDomain.revokeByDeviceOwnershipInTx(
@@ -364,24 +367,27 @@ export class DeviceDomain {
                                 removedBy,
                                 sessions.length
                             );
-                        const removedByAdminEvent =
+                        const removedByAdminActivityLog =
                             this.activityLogDomain.prepare({
                                 action: EnumActivityLogAction.userRemoveDeviceByAdmin,
                                 userId,
                                 createdBy: removedBy,
                                 metadata: targetMetadata,
                             });
-                        prepared.push(removedByAdminEvent);
+                        prepared.push(removedByAdminActivityLog);
                     }
 
-                    return { revokedSessions: sessions, events: prepared };
+                    return {
+                        revokedSessions: sessions,
+                        activityLogs: prepared,
+                    };
                 });
             await this.sessionDomain.purgeRevokedLogins(
                 userId,
                 revokedSessions
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {

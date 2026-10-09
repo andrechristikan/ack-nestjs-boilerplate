@@ -23,6 +23,8 @@ import type {
     IAuthJwtRefreshTokenPayload,
 } from '@modules/auth/interfaces/auth.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
+import { AuthJwtConfigInvalidException } from '@modules/auth/exceptions/auth.jwt-config-invalid.exception';
+import { AuthJwtConfigMissingException } from '@modules/auth/exceptions/auth.jwt-config-missing.exception';
 
 const accessKeyPair = generateKeyPairSync('ec', { namedCurve: 'P-256' });
 const accessPrivateKeyBase64 = accessKeyPair.privateKey
@@ -534,6 +536,11 @@ describe('AuthJwtDomain', () => {
                 domain['parseRequiredBase64DerPrivateKey'](
                     'auth.jwt.accessToken.privateKey'
                 )
+            ).toThrow(AuthJwtConfigMissingException);
+            expect(() =>
+                domain['parseRequiredBase64DerPrivateKey'](
+                    'auth.jwt.accessToken.privateKey'
+                )
             ).toThrow(
                 'Invalid JWT configuration: auth.jwt.accessToken.privateKey is missing.'
             );
@@ -546,6 +553,11 @@ describe('AuthJwtDomain', () => {
                     : configValues[key]
             );
 
+            expect(() =>
+                domain['parseRequiredBase64DerPrivateKey'](
+                    'auth.jwt.accessToken.privateKey'
+                )
+            ).toThrow(AuthJwtConfigInvalidException);
             expect(() =>
                 domain['parseRequiredBase64DerPrivateKey'](
                     'auth.jwt.accessToken.privateKey'
@@ -576,6 +588,11 @@ describe('AuthJwtDomain', () => {
                 domain['parseRequiredBase64DerPublicKey'](
                     'auth.jwt.accessToken.publicKey'
                 )
+            ).toThrow(AuthJwtConfigMissingException);
+            expect(() =>
+                domain['parseRequiredBase64DerPublicKey'](
+                    'auth.jwt.accessToken.publicKey'
+                )
             ).toThrow(
                 'Invalid JWT configuration: auth.jwt.accessToken.publicKey is missing.'
             );
@@ -588,6 +605,11 @@ describe('AuthJwtDomain', () => {
                     : configValues[key]
             );
 
+            expect(() =>
+                domain['parseRequiredBase64DerPublicKey'](
+                    'auth.jwt.accessToken.publicKey'
+                )
+            ).toThrow(AuthJwtConfigInvalidException);
             expect(() =>
                 domain['parseRequiredBase64DerPublicKey'](
                     'auth.jwt.accessToken.publicKey'

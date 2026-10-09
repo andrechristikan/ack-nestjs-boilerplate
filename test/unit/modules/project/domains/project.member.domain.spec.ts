@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -20,16 +21,16 @@ import type {
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type {
-    IActivityLogStagedEvent,
+    IActivityLogStaged,
     IActivityLogStageInput,
 } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { ProjectWorkspaceOwnerStoreKey } from '@modules/project/constants/project.constant';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 describe('ProjectMemberDomain', () => {
@@ -101,7 +102,7 @@ describe('ProjectMemberDomain', () => {
         activityLogDomain.prepare.mockImplementation(
             <A extends EnumActivityLogAction>(
                 input: IActivityLogStageInput<A>
-            ): IActivityLogStagedEvent => ({
+            ): IActivityLogStaged => ({
                 onError: false,
                 userId: null,
                 createdBy: null,
@@ -130,20 +131,21 @@ describe('ProjectMemberDomain', () => {
     });
 
     describe('validateProjectMemberGuard', () => {
-        it('throws AuthJwtAccessTokenInvalidException when userId is null', async () => {
+        it('throws UserNotAuthenticatedException when userId is null', async () => {
             await expect(
                 domain.validateProjectMemberGuard(
                     '507f1f77bcf86cd799439011',
                     null
                 )
             ).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notAuthenticated,
                 statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtAccessTokenInvalid
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.notAuthenticated
                     ],
-                messagePath: 'auth.error.accessTokenUnauthorized',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+                messagePath: 'user.error.notAuthenticated',
             });
         });
 
@@ -225,7 +227,7 @@ describe('ProjectMemberDomain', () => {
             });
         });
 
-        it('throws ProjectRoleForbiddenException when workspaceMember is null', async () => {
+        it('throws WorkspaceMemberForbiddenException when workspaceMember is null', async () => {
             await expect(
                 domain.validateProjectRoleGuard(
                     '507f1f77bcf86cd799439011',
@@ -233,13 +235,14 @@ describe('ProjectMemberDomain', () => {
                     [EnumProjectMemberRole.admin]
                 )
             ).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.roleForbidden,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
                 statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.roleForbidden
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.memberForbidden
                     ],
-                messagePath: 'project.error.roleForbidden',
+                httpStatus: HttpStatus.FORBIDDEN,
+                messagePath: 'workspace.error.memberForbidden',
             });
         });
 
@@ -259,7 +262,7 @@ describe('ProjectMemberDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('throws ProjectRoleForbiddenException when the caller holds no project member row', async () => {
+        it('throws ProjectMemberForbiddenException when the caller holds no project member row', async () => {
             projectUtil.isWorkspaceOwner.mockReturnValue(false);
             projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
                 null
@@ -274,12 +277,13 @@ describe('ProjectMemberDomain', () => {
 
             await expect(rejection).rejects.toMatchObject({
                 module: 'project',
-                statusCode: EnumProjectStatusCodeError.roleForbidden,
+                statusCode: EnumProjectStatusCodeError.memberForbidden,
                 statusCodeKey:
                     EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.roleForbidden
+                        EnumProjectStatusCodeError.memberForbidden
                     ],
-                messagePath: 'project.error.roleForbidden',
+                httpStatus: HttpStatus.FORBIDDEN,
+                messagePath: 'project.error.memberForbidden',
             });
         });
 
@@ -484,7 +488,7 @@ describe('ProjectMemberDomain', () => {
             });
         });
 
-        it('assigns the target member and stages both events when the actor differs from the target', async () => {
+        it('assigns the target member and stages both activity logs when the actor differs from the target', async () => {
             requestStoreService.get.mockReturnValue(true);
             const project = baseProject;
             const actorId = '507f1f77bcf86cd799439033';
@@ -536,7 +540,7 @@ describe('ProjectMemberDomain', () => {
             ]);
         });
 
-        it('stages one event when the actor assigns themselves', async () => {
+        it('stages one activity log when the actor assigns themselves', async () => {
             requestStoreService.get.mockReturnValue(true);
             const project = baseProject;
             const actorId = '507f1f77bcf86cd799439033';
@@ -625,7 +629,7 @@ describe('ProjectMemberDomain', () => {
             });
         });
 
-        it('updates the role and stages both events when the actor differs from the target', async () => {
+        it('updates the role and stages both activity logs when the actor differs from the target', async () => {
             const project = baseProject;
             const actorId = '507f1f77bcf86cd799439033';
             const targetMember = {
@@ -669,7 +673,7 @@ describe('ProjectMemberDomain', () => {
             ]);
         });
 
-        it('stages one event when the actor updates their own role', async () => {
+        it('stages one activity log when the actor updates their own role', async () => {
             const project = baseProject;
             const actorId = '507f1f77bcf86cd799439033';
             const targetMember = {
@@ -777,7 +781,7 @@ describe('ProjectMemberDomain', () => {
             });
         });
 
-        it('removes the member and stages both events', async () => {
+        it('removes the member and stages both activity logs', async () => {
             const project = baseProject;
             const actorId = '507f1f77bcf86cd799439033';
             const targetMember = {
@@ -817,7 +821,7 @@ describe('ProjectMemberDomain', () => {
     });
 
     describe('leaveProject', () => {
-        it('removes the member and stages the left event', async () => {
+        it('removes the member and stages the left activity log', async () => {
             const project = baseProject;
             const member = baseProjectMember;
 

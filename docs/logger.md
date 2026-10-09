@@ -766,11 +766,10 @@ Forwarded levels are environment-aware:
 
 **Exceptions (Sentry Issues).** Exception reporting goes through `SentryService.captureException`:
 
-- `AppBaseExceptionFilter`: reports `rawError ?? exception` for any `AppBaseException` with HTTP status >= 500
-- `AppHttpFilter`: reports the `HttpException` for framework errors with HTTP status >= 500
-- `AppGeneralFilter`: reports all unhandled exceptions (catch-all 500)
+- `AppGeneralFilter`: logs and reports `rawError ?? exception` only when the resolved exception answers HTTP status >= 500. An `AppBaseException` below 500 produces neither a log line nor a report.
+- `AppHttpFilter`: logs and reports the `HttpException` for framework errors with HTTP status >= 500
 - `QueueProcessorBase`:
-    - In `process`, it writes BullMQ `job.log` lines (start, metadata-only input, finish or failure). On catch it calls Nest `Logger.error` once, then rethrows.
+    - In `process`, it writes BullMQ `job.log` lines (start, metadata-only input, finish or failure). On catch it calls Nest `Logger.error` once, then rethrows a `QueueException`, `AppBaseException`, or `UnrecoverableError` unchanged and wraps any other error in `AppUnknownException`.
     - In `onFailed`, it reports a failed job once when BullMQ will not retry it (final attempt, or immediately for an `UnrecoverableError`), and only when the error is fatal.
     - Before `captureException`, `withScope` sets `job.id`, `job.name`, `job.attemptsMade`, and `job.maxAttempts`.
     - A `QueueException` is reported only when `isFatal` is set.

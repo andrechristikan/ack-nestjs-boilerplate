@@ -1,5 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 
@@ -28,8 +29,8 @@ describe('RequestContextMissingException', () => {
                 'RequestLogStore.ipAddress'
             );
 
-            expect(exception.rawError).toBeInstanceOf(Error);
-            expect((exception.rawError as Error).message).toBe(
+            expect(exception.rawError).toBeInstanceOf(AppUnknownException);
+            expect((exception.rawError as AppUnknownException).message).toBe(
                 'RequestContextMissingException: no value for "RequestLogStore.ipAddress"'
             );
         });

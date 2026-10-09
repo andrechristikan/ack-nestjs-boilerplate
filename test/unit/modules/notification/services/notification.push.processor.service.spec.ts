@@ -61,6 +61,7 @@ describe('NotificationPushProcessorService', () => {
         ],
         failedSteps: [],
         failureTokens: ['bad'],
+        pendingTokens: [],
     };
     const failed: INotificationPushStepResult = {
         message: 'm',
@@ -69,7 +70,21 @@ describe('NotificationPushProcessorService', () => {
             { step: EnumNotificationStep.cleanupTokens, error: 'redis' },
         ],
         failureTokens: ['bad'],
+        pendingTokens: [],
     };
+    const outage: INotificationPushStepResult = {
+        message: 'm',
+        completedSteps: [EnumNotificationStep.updateProcessAt],
+        failedSteps: [
+            {
+                step: EnumNotificationStep.sendMulticast,
+                error: '2 tokens pending retry',
+            },
+        ],
+        failureTokens: [],
+        pendingTokens: ['t1', 't2'],
+    };
+    const pending = ['t1', 't2'];
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -136,6 +151,7 @@ describe('NotificationPushProcessorService', () => {
             data,
             completedSteps: [EnumNotificationStep.updateProcessAt],
             failureTokens: null,
+            pendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -156,13 +172,15 @@ describe('NotificationPushProcessorService', () => {
                 send,
                 data,
                 [EnumNotificationStep.updateProcessAt],
-                null
+                null,
+                pending
             );
             expect(job.updateData).toHaveBeenCalledTimes(1);
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
                 failureTokens: ['bad'],
+                pendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -190,6 +208,32 @@ describe('NotificationPushProcessorService', () => {
                 ...job.data,
                 completedSteps: progress,
                 failureTokens: ['bad'],
+                pendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushSecurityDomain.processNewDeviceLogin.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processNewDeviceLogin(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message:
+                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                failureTokens: [],
+                pendingTokens: pending,
             });
         });
     });
@@ -200,6 +244,7 @@ describe('NotificationPushProcessorService', () => {
             data: null,
             completedSteps: [EnumNotificationStep.updateProcessAt],
             failureTokens: null,
+            pendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -219,13 +264,15 @@ describe('NotificationPushProcessorService', () => {
             ).toHaveBeenCalledWith(
                 send,
                 [EnumNotificationStep.updateProcessAt],
-                null
+                null,
+                pending
             );
             expect(job.updateData).toHaveBeenCalledTimes(1);
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
                 failureTokens: ['bad'],
+                pendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -253,6 +300,32 @@ describe('NotificationPushProcessorService', () => {
                 ...job.data,
                 completedSteps: progress,
                 failureTokens: ['bad'],
+                pendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushSecurityDomain.processResetTwoFactorByAdmin.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processResetTwoFactorByAdmin(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message:
+                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                failureTokens: [],
+                pendingTokens: pending,
             });
         });
     });
@@ -267,6 +340,7 @@ describe('NotificationPushProcessorService', () => {
             data,
             completedSteps: [EnumNotificationStep.updateProcessAt],
             failureTokens: null,
+            pendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -287,13 +361,15 @@ describe('NotificationPushProcessorService', () => {
                 send,
                 data,
                 [EnumNotificationStep.updateProcessAt],
-                null
+                null,
+                pending
             );
             expect(job.updateData).toHaveBeenCalledTimes(1);
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
                 failureTokens: ['bad'],
+                pendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -321,6 +397,32 @@ describe('NotificationPushProcessorService', () => {
                 ...job.data,
                 completedSteps: progress,
                 failureTokens: ['bad'],
+                pendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushSecurityDomain.processTemporaryPasswordByAdmin.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processTemporaryPasswordByAdmin(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message:
+                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                failureTokens: [],
+                pendingTokens: pending,
             });
         });
     });
@@ -331,6 +433,7 @@ describe('NotificationPushProcessorService', () => {
             data: null,
             completedSteps: [EnumNotificationStep.updateProcessAt],
             failureTokens: null,
+            pendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -350,13 +453,15 @@ describe('NotificationPushProcessorService', () => {
             ).toHaveBeenCalledWith(
                 send,
                 [EnumNotificationStep.updateProcessAt],
-                null
+                null,
+                pending
             );
             expect(job.updateData).toHaveBeenCalledTimes(1);
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
                 failureTokens: ['bad'],
+                pendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -384,6 +489,32 @@ describe('NotificationPushProcessorService', () => {
                 ...job.data,
                 completedSteps: progress,
                 failureTokens: ['bad'],
+                pendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushSecurityDomain.processResetPassword.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processResetPassword(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message:
+                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                failureTokens: [],
+                pendingTokens: pending,
             });
         });
     });
@@ -394,6 +525,7 @@ describe('NotificationPushProcessorService', () => {
             data: null,
             completedSteps: [EnumNotificationStep.updateProcessAt],
             failureTokens: null,
+            pendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -413,13 +545,15 @@ describe('NotificationPushProcessorService', () => {
             ).toHaveBeenCalledWith(
                 send,
                 [EnumNotificationStep.updateProcessAt],
-                null
+                null,
+                pending
             );
             expect(job.updateData).toHaveBeenCalledTimes(1);
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
                 failureTokens: ['bad'],
+                pendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -447,6 +581,32 @@ describe('NotificationPushProcessorService', () => {
                 ...job.data,
                 completedSteps: progress,
                 failureTokens: ['bad'],
+                pendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushSecurityDomain.processForgotPassword.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processForgotPassword(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message:
+                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                failureTokens: [],
+                pendingTokens: pending,
             });
         });
     });
@@ -465,6 +625,7 @@ describe('NotificationPushProcessorService', () => {
             data,
             completedSteps: [EnumNotificationStep.updateProcessAt],
             failureTokens: null,
+            pendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -485,13 +646,15 @@ describe('NotificationPushProcessorService', () => {
                 send,
                 data,
                 [EnumNotificationStep.updateProcessAt],
-                null
+                null,
+                pending
             );
             expect(job.updateData).toHaveBeenCalledTimes(1);
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
                 failureTokens: ['bad'],
+                pendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -519,6 +682,32 @@ describe('NotificationPushProcessorService', () => {
                 ...job.data,
                 completedSteps: progress,
                 failureTokens: ['bad'],
+                pendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceInvite.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processWorkspaceInvite(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message:
+                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                failureTokens: [],
+                pendingTokens: pending,
             });
         });
     });
@@ -534,6 +723,7 @@ describe('NotificationPushProcessorService', () => {
             data,
             completedSteps: [EnumNotificationStep.updateProcessAt],
             failureTokens: null,
+            pendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -554,13 +744,15 @@ describe('NotificationPushProcessorService', () => {
                 send,
                 data,
                 [EnumNotificationStep.updateProcessAt],
-                null
+                null,
+                pending
             );
             expect(job.updateData).toHaveBeenCalledTimes(1);
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
                 failureTokens: ['bad'],
+                pendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -588,6 +780,32 @@ describe('NotificationPushProcessorService', () => {
                 ...job.data,
                 completedSteps: progress,
                 failureTokens: ['bad'],
+                pendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceJoinRequest.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processWorkspaceJoinRequest(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message:
+                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                failureTokens: [],
+                pendingTokens: pending,
             });
         });
     });
@@ -599,6 +817,7 @@ describe('NotificationPushProcessorService', () => {
             data,
             completedSteps: [EnumNotificationStep.updateProcessAt],
             failureTokens: null,
+            pendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -619,13 +838,15 @@ describe('NotificationPushProcessorService', () => {
                 send,
                 data,
                 [EnumNotificationStep.updateProcessAt],
-                null
+                null,
+                pending
             );
             expect(job.updateData).toHaveBeenCalledTimes(1);
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
                 failureTokens: ['bad'],
+                pendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -653,6 +874,32 @@ describe('NotificationPushProcessorService', () => {
                 ...job.data,
                 completedSteps: progress,
                 failureTokens: ['bad'],
+                pendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceJoinAccepted.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processWorkspaceJoinAccepted(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message:
+                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                failureTokens: [],
+                pendingTokens: pending,
             });
         });
     });
@@ -668,6 +915,7 @@ describe('NotificationPushProcessorService', () => {
             data,
             completedSteps: [EnumNotificationStep.updateProcessAt],
             failureTokens: null,
+            pendingTokens: pending,
         };
 
         it('records progress and the failed tokens, then returns the step response when every step succeeded', async () => {
@@ -688,13 +936,15 @@ describe('NotificationPushProcessorService', () => {
                 send,
                 data,
                 [EnumNotificationStep.updateProcessAt],
-                null
+                null,
+                pending
             );
             expect(job.updateData).toHaveBeenCalledTimes(1);
             expect(job.updateData).toHaveBeenCalledWith({
                 ...job.data,
                 completedSteps: completed.completedSteps,
                 failureTokens: ['bad'],
+                pendingTokens: [],
             });
             expect(result).toEqual({
                 message: 'm',
@@ -722,6 +972,32 @@ describe('NotificationPushProcessorService', () => {
                 ...job.data,
                 completedSteps: progress,
                 failureTokens: ['bad'],
+                pendingTokens: [],
+            });
+        });
+
+        it('records the pending tokens then throws a fatal QueueException on a total outage', async () => {
+            notificationPushWorkspaceDomain.processWorkspaceJoinRejected.mockResolvedValue(
+                outage
+            );
+            const job = buildQueueJob<
+                INotificationPushQueuePayload<typeof data>,
+                IQueueResponse,
+                EnumNotificationPushProcess
+            >(jobData);
+
+            await expect(
+                service.processWorkspaceJoinRejected(job)
+            ).rejects.toMatchObject({
+                isFatal: true,
+                message:
+                    'Notification steps failed: sendMulticast:2 tokens pending retry',
+            });
+            expect(job.updateData).toHaveBeenCalledWith({
+                ...job.data,
+                completedSteps: outage.completedSteps,
+                failureTokens: [],
+                pendingTokens: pending,
             });
         });
     });

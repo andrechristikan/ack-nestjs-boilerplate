@@ -1,3 +1,4 @@
+import { AnalyticDeviceProliferationAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticDeviceProliferationListRequestSchema } from '@modules/analytic/dtos/request/analytic.device-proliferation-list.request.dto';
 
 describe('AnalyticDeviceProliferationListRequestSchema', () => {
@@ -36,5 +37,20 @@ describe('AnalyticDeviceProliferationListRequestSchema', () => {
                 extra: true,
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticDeviceProliferationListRequestSchema.safeParse({
+                search: 'x',
+            }).success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticDeviceProliferationListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticDeviceProliferationAvailableOrderBy.join(', '));
     });
 });

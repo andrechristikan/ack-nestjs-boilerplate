@@ -428,8 +428,8 @@ The shared `ResponseMetadataService` (`src/common/response/services/response.met
     timezone: string;
     version: string;
     repoVersion: string;
-    requestId: string;
-    correlationId: string;
+    requestId: string | null;
+    correlationId: string | null;
   };
   data?: T;
 }
@@ -448,8 +448,8 @@ The shared `ResponseMetadataService` (`src/common/response/services/response.met
     timezone: string;
     version: string;
     repoVersion: string;
-    requestId: string;
-    correlationId: string;
+    requestId: string | null;
+    correlationId: string | null;
 
     // Pagination metadata
     type: 'offset' | 'cursor';
@@ -526,7 +526,7 @@ See [NestJS Cache Manager](https://docs.nestjs.com/techniques/caching) and [Cach
 
 All responses automatically include these headers (set by interceptors):
 
-- `x-custom-lang`: Response language (read from the request store `RequestLanguageStoreKey`, fallback config `message.language`)
+- `x-custom-lang`: Response language (read from the request store `RequestLanguageStoreKey`, fallback config `message.language` when the store holds no value or a value outside `EnumMessageLanguage`)
 - `x-timestamp`: Response timestamp
 - `x-timezone`: Response timezone
 - `x-version`: API version (read from the request store `RequestVersionStoreKey`, fallback config `app.urlVersion.version`)
@@ -541,7 +541,7 @@ All responses automatically include these headers (set by interceptors):
     - `ResponseTimestampHeaderName`, `ResponseTimezoneHeaderName`, `ResponseVersionHeaderName`, and `ResponseRepoVersionHeaderName` in `src/common/response/constants/response.constant.ts`
 - All seven are in `request.cors.exposedHeader`, so a cross-origin browser client can read them.
 - The same store-sourced `language`, `version`, `requestId`, and `correlationId` feed the response `metadata`.
-- `requestId` and `correlationId` are required metadata fields, present on every response.
+- `requestId` and `correlationId` are nullable metadata fields: they are `null` when the request store holds no value, and the matching header is then omitted.
 - `RequestRequestIdMiddleware` also sets `request.id` and `request.correlationId`. Nothing reads them: the response and the logger both read the request store.
 
 <!-- REFERENCES -->

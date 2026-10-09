@@ -63,6 +63,7 @@ export class NotificationPushQueue {
                 data: { passwordCreatedAt, passwordExpiredAt },
                 completedSteps: [],
                 failureTokens: null,
+                pendingTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -103,6 +104,7 @@ export class NotificationPushQueue {
             data: null,
             completedSteps: [],
             failureTokens: null,
+            pendingTokens: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -143,6 +145,7 @@ export class NotificationPushQueue {
             data: null,
             completedSteps: [],
             failureTokens: null,
+            pendingTokens: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -183,6 +186,7 @@ export class NotificationPushQueue {
             data: null,
             completedSteps: [],
             failureTokens: null,
+            pendingTokens: null,
         };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -225,6 +229,7 @@ export class NotificationPushQueue {
                 data,
                 completedSteps: [],
                 failureTokens: null,
+                pendingTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -281,6 +286,7 @@ export class NotificationPushQueue {
                 },
                 completedSteps: [],
                 failureTokens: null,
+                pendingTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -327,6 +333,7 @@ export class NotificationPushQueue {
                 data: { workspaceId, workspaceName, requesterName },
                 completedSteps: [],
                 failureTokens: null,
+                pendingTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -370,6 +377,7 @@ export class NotificationPushQueue {
                 data,
                 completedSteps: [],
                 failureTokens: null,
+                pendingTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(
@@ -413,6 +421,7 @@ export class NotificationPushQueue {
                 data,
                 completedSteps: [],
                 failureTokens: null,
+                pendingTokens: null,
             };
 
         const deduplicationId = this.helperStringService.fillPattern(

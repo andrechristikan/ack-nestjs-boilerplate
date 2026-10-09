@@ -5,10 +5,6 @@
     "error": {
         "notFound": "Feature flag not found.",
         "invalidMetadata": "Feature flag metadata is invalid.",
-        "predefinedKeyEmpty": "Predefined key cannot be empty.",
-        "predefinedKeyLengthExceeded": "Predefined key length exceeded the maximum allowed.",
-        "predefinedKeyNotFound": "Predefined key is not registered as a feature flag.",
-        "predefinedKeyTypeInvalid": "Predefined key type is invalid.",
         "disabled": "This feature is not available."
     }
 }

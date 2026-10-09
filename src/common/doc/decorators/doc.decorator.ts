@@ -205,6 +205,9 @@ export function Doc(options?: IDocOptions): MethodDecorator {
         DocGlobalErrorResponses.schemaMissing,
         DocGlobalErrorResponses.contextMissing,
         DocGlobalErrorResponses.uniqueValueGenerationFailed,
+        DocGlobalErrorResponses.databaseWriteConflict,
+        DocGlobalErrorResponses.databaseUnavailable,
+        DocGlobalErrorResponses.redisUnavailable,
         DocGlobalErrorResponses.s3NotConfigured
     );
 }

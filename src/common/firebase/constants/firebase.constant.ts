@@ -5,7 +5,21 @@
 export const FirebaseInvalidTokenCodes = [
     'messaging/invalid-registration-token',
     'messaging/registration-token-not-registered',
-    'messaging/invalid-argument',
+    'messaging/mismatched-credential',
+];
+
+/**
+ * FCM and Admin SDK error codes marking a transient send failure; the token stays valid and the send is retried.
+ * @public
+ */
+export const FirebaseRetryableTokenCodes = [
+    'messaging/server-unavailable',
+    'messaging/internal-error',
+    'messaging/message-rate-exceeded',
+    'messaging/device-message-rate-exceeded',
+    'messaging/unknown-error',
+    'app/network-error',
+    'app/network-timeout',
 ];
 
 /**

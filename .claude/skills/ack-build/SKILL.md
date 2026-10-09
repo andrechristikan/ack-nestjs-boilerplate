@@ -64,7 +64,7 @@ Invoke `superpowers:verification-before-completion`. The evidence for `pnpm type
 pnpm test <module>
 ```
 
-`<module>` is a path filter naming each module the work changed; a module only read is out of scope. When a plan task names its own acceptance commands (`pnpm test:integration`, `pnpm test:e2e`, the unit parity counts), run and read each of those too. How to read `deadcode`, `spell`, and a scoped `test:cov`: `.claude/CLAUDE.md` Gotchas. A coverage gap beyond the TDD specs is named with file and lines for the hand-back.
+`<module>` is a path filter naming each module the work changed; a module only read is out of scope. When a plan task names its own acceptance commands (the unit parity counts), run and read each of those too; integration and e2e are held (`.claude/rules/testing.md`), so a task naming them is a hand-back. How to read `deadcode`, `spell`, and a scoped `test:cov`: `.claude/CLAUDE.md` Gotchas. A coverage gap beyond the TDD specs is named with file and lines for the hand-back.
 
 ## 6. Finish
 

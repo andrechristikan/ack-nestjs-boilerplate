@@ -5,6 +5,8 @@ import { ThrottlerStorageRecord } from '@nestjs/throttler/dist/throttler-storage
 import Keyv from 'keyv';
 import KeyvRedis from '@keyv/redis';
 import type { RedisClientConnectionType } from '@keyv/redis';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { RequestThrottleResponseInvalidException } from '@common/request/exceptions/request.throttle-response-invalid.exception';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 
@@ -158,9 +160,7 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
 
             if (!Array.isArray(results) || results.length < 4) {
                 this.logger.error(
-                    new Error(
-                        `Invalid Redis response: ${JSON.stringify(results)}`
-                    ),
+                    new RequestThrottleResponseInvalidException(results),
                     `Throttler got an invalid response, allowing request. Key: ${key}`
                 );
 
@@ -170,9 +170,7 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
             const parsed = (results as unknown[]).map(r => Number(r));
             if (parsed.some(n => isNaN(n))) {
                 this.logger.error(
-                    new Error(
-                        `Invalid number from Redis: ${JSON.stringify(results)}`
-                    ),
+                    new RequestThrottleResponseInvalidException(results),
                     `Throttler got a non-numeric value, allowing request. Key: ${key}`
                 );
 
@@ -192,10 +190,10 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
                 timeToBlockExpire,
             };
         } catch (error: unknown) {
-            const message =
-                error instanceof Error ? error.message : String(error);
             this.logger.error(
-                error instanceof Error ? error : new Error(message),
+                error instanceof Error
+                    ? error
+                    : new AppUnknownException(error, String(error)),
                 `Redis unavailable for throttling, allowing request. Key: ${key}`
             );
 

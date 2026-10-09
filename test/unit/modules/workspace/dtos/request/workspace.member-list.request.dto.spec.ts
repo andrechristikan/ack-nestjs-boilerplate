@@ -1,3 +1,4 @@
+import { WorkspaceMemberDefaultAvailableOrderBy } from '@modules/workspace/constants/workspace.list.constant';
 import { WorkspaceMemberListRequestSchema } from '@modules/workspace/dtos/request/workspace.member-list.request.dto';
 
 describe('WorkspaceMemberListRequestSchema', () => {
@@ -27,5 +28,17 @@ describe('WorkspaceMemberListRequestSchema', () => {
         expect(() =>
             WorkspaceMemberListRequestSchema.parse({ extra: true })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            WorkspaceMemberListRequestSchema.safeParse({ search: 'x' }).success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            WorkspaceMemberListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(WorkspaceMemberDefaultAvailableOrderBy.join(', '));
     });
 });

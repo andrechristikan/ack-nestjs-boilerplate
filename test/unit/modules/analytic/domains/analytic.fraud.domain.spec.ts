@@ -103,10 +103,10 @@ describe('AnalyticFraudDomain', () => {
         'analytic.fraud.forgotPasswordTokenAbuse.windowInMs': 86400000,
         'analytic.fraud.forgotPasswordTokenAbuse.minUnusedTokens': 2,
         'analytic.fraud.refreshSpike.windowInMs': 86400000,
-        'analytic.fraud.refreshSpike.minEvents': 2,
+        'analytic.fraud.refreshSpike.minCount': 2,
         'analytic.fraud.backupCodeNewDevice.windowInMs': 86400000,
         'analytic.fraud.apiKeyBurst.windowInMs': 86400000,
-        'analytic.fraud.apiKeyBurst.minEvents': 2,
+        'analytic.fraud.apiKeyBurst.minCount': 2,
         'analytic.fraud.bands.monitorMax': 10,
         'analytic.fraud.bands.reviewMax': 30,
         'analytic.fraud.bands.elevateMax': 50,
@@ -188,7 +188,9 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('computes and caches the summary on a cache miss', async () => {
-            userLoginAnalyticDomain.getFailedLoginEvents.mockResolvedValue([]);
+            userLoginAnalyticDomain.getFailedLoginActivityLogs.mockResolvedValue(
+                []
+            );
 
             const result = await domain.credentialStuffingSummary(600000);
 
@@ -202,7 +204,9 @@ describe('AnalyticFraudDomain', () => {
 
     describe('credentialStuffingList', () => {
         it('pages computed rows', async () => {
-            userLoginAnalyticDomain.getFailedLoginEvents.mockResolvedValue([]);
+            userLoginAnalyticDomain.getFailedLoginActivityLogs.mockResolvedValue(
+                []
+            );
 
             const result = await domain.credentialStuffingList(
                 null,
@@ -213,7 +217,9 @@ describe('AnalyticFraudDomain', () => {
         });
 
         it('sorts the computed rows before it slices the page', async () => {
-            userLoginAnalyticDomain.getFailedLoginEvents.mockResolvedValue([]);
+            userLoginAnalyticDomain.getFailedLoginActivityLogs.mockResolvedValue(
+                []
+            );
             const sorted = [
                 { ipAddress: '10.0.0.1', uniqueUsers: 4, failCount: 9 },
                 { ipAddress: '10.0.0.2', uniqueUsers: 2, failCount: 5 },
@@ -1214,35 +1220,37 @@ describe('AnalyticFraudDomain', () => {
 
     describe('computeCredentialStuffing', () => {
         it('groups unique users per ip and treats a missing ip as unknown', async () => {
-            userLoginAnalyticDomain.getFailedLoginEvents.mockResolvedValue([
-                {
-                    id: 'e1',
-                    userId: 'user-1',
-                    action: EnumActivityLogAction.userLoginFailed,
-                    ipAddress: '10.0.0.1',
-                    createdAt: startDate,
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'e2',
-                    userId: 'user-2',
-                    action: EnumActivityLogAction.userLoginFailed,
-                    ipAddress: '10.0.0.1',
-                    createdAt: startDate,
-                    workspaceId: null,
-                    userAgent: null,
-                },
-                {
-                    id: 'e3',
-                    userId: 'user-3',
-                    action: EnumActivityLogAction.userLoginFailed,
-                    ipAddress: null,
-                    createdAt: startDate,
-                    workspaceId: null,
-                    userAgent: null,
-                },
-            ]);
+            userLoginAnalyticDomain.getFailedLoginActivityLogs.mockResolvedValue(
+                [
+                    {
+                        id: 'e1',
+                        userId: 'user-1',
+                        action: EnumActivityLogAction.userLoginFailed,
+                        ipAddress: '10.0.0.1',
+                        createdAt: startDate,
+                        workspaceId: null,
+                        userAgent: null,
+                    },
+                    {
+                        id: 'e2',
+                        userId: 'user-2',
+                        action: EnumActivityLogAction.userLoginFailed,
+                        ipAddress: '10.0.0.1',
+                        createdAt: startDate,
+                        workspaceId: null,
+                        userAgent: null,
+                    },
+                    {
+                        id: 'e3',
+                        userId: 'user-3',
+                        action: EnumActivityLogAction.userLoginFailed,
+                        ipAddress: null,
+                        createdAt: startDate,
+                        workspaceId: null,
+                        userAgent: null,
+                    },
+                ]
+            );
 
             const result = await domain['computeCredentialStuffing'](86400000);
 
@@ -1391,7 +1399,7 @@ describe('AnalyticFraudDomain', () => {
                     },
                 ]
             );
-            userLoginAnalyticDomain.getLoginEvents
+            userLoginAnalyticDomain.getLoginActivityLogs
                 .mockResolvedValueOnce([
                     {
                         id: 'login-1',
@@ -1436,7 +1444,7 @@ describe('AnalyticFraudDomain', () => {
     });
 
     describe('computeRefreshSpike', () => {
-        it('keeps users at or above the min event count', async () => {
+        it('keeps users at or above the min count', async () => {
             activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
                 [
                     {
@@ -1472,6 +1480,26 @@ describe('AnalyticFraudDomain', () => {
             const result = await domain['computeRefreshSpike'](86400000);
 
             expect(result).toEqual([{ userId: 'user-1', count: 2 }]);
+        });
+
+        it('excludes users below the min count', async () => {
+            activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
+                [
+                    {
+                        id: 'r1',
+                        userId: 'user-1',
+                        action: EnumActivityLogAction.userRefreshToken,
+                        ipAddress: null,
+                        createdAt: startDate,
+                        workspaceId: null,
+                        userAgent: null,
+                    },
+                ]
+            );
+
+            const result = await domain['computeRefreshSpike'](86400000);
+
+            expect(result).toEqual([]);
         });
     });
 
@@ -1526,7 +1554,7 @@ describe('AnalyticFraudDomain', () => {
     });
 
     describe('computeApiKeyBurst', () => {
-        it('keeps users at or above the min event count', async () => {
+        it('keeps users at or above the min count', async () => {
             activityLogAnalyticDomain.getManyByActionsInRange.mockResolvedValue(
                 [
                     {

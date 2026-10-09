@@ -1,6 +1,8 @@
 import { Injectable, StandardSchemaValidationPipe } from '@nestjs/common';
 import type { ArgumentMetadata } from '@nestjs/common';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { RequestSchemaMissingException } from '@common/request/exceptions/request.schema-missing.exception';
 
 /**
@@ -53,7 +55,11 @@ export class RequestSchemaValidationPipe extends StandardSchemaValidationPipe {
                 metadata.data
             );
             const exception = this.exceptionFactory(stampedIssues);
-            throw exception;
+            if (exception instanceof AppBaseException) {
+                throw exception;
+            }
+
+            throw new AppUnknownException(exception);
         }
 
         return this.isTransformEnabled ? result.value : value;

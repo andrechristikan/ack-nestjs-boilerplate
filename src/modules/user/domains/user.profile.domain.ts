@@ -87,7 +87,7 @@ export class UserProfileDomain {
         }
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userUpdateProfile,
                 }),
@@ -97,7 +97,7 @@ export class UserProfileDomain {
                 ...data,
             });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -157,14 +157,14 @@ export class UserProfileDomain {
                 { access: EnumAwsS3Accessibility.public }
             );
 
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userUpdatePhotoProfile,
                 }),
             ];
             await this.userRepository.updatePhotoProfile(userId, aws);
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -213,14 +213,14 @@ export class UserProfileDomain {
                 `Photo profile uploaded to S3 with key: ${key}`
             );
 
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userUpdatePhotoProfile,
                 }),
             ];
             await this.userRepository.updatePhotoProfile(userId, aws);
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -251,14 +251,14 @@ export class UserProfileDomain {
         }
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userClaimUsername,
                 }),
             ];
             await this.userRepository.claimUsername(userId, { username });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {

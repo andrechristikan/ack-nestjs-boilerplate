@@ -1,3 +1,4 @@
+import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 import { DeviceAdminListRequestSchema } from '@modules/device/dtos/request/device.admin-list.request.dto';
 
 describe('DeviceAdminListRequestSchema', () => {
@@ -41,5 +42,17 @@ describe('DeviceAdminListRequestSchema', () => {
         expect(() =>
             DeviceAdminListRequestSchema.parse({ extra: true })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            DeviceAdminListRequestSchema.safeParse({ search: 'x' }).success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            DeviceAdminListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(DeviceDefaultAvailableOrderBy.join(', '));
     });
 });

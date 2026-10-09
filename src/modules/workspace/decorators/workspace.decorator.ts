@@ -21,6 +21,8 @@ import {
 } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
+import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 
 /**
  * Requires `x-workspace-id` to resolve to an existing, non-deleted workspace. Place directly above `@UserProtected()`.
@@ -35,7 +37,7 @@ export function WorkspaceProtected(): MethodDecorator {
 }
 
 /**
- * Reads the current workspace, or one of its fields, that `WorkspaceGuard` stored; throws when either is absent.
+ * Reads the current workspace, or one of its fields, that `WorkspaceGuard` stored. Throws `WorkspaceNotFoundException` when the workspace is absent and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const WorkspaceCurrent = createParamDecorator<
@@ -50,7 +52,7 @@ export const WorkspaceCurrent = createParamDecorator<
                 WorkspaceStoreKey
             ) ?? null;
         if (workspace === null) {
-            throw new RequestContextMissingException(WorkspaceStoreKey);
+            throw new WorkspaceNotFoundException();
         }
 
         const fieldKey = field ?? null;
@@ -90,7 +92,7 @@ export function WorkspaceMemberProtected(
 }
 
 /**
- * Reads the caller's workspace member row, or one of its fields, that `WorkspaceMemberGuard` stored; throws when either is absent.
+ * Reads the caller's workspace member row, or one of its fields, that `WorkspaceMemberGuard` stored. Throws `WorkspaceMemberForbiddenException` when the member is absent and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const WorkspaceMemberCurrent = createParamDecorator<
@@ -110,7 +112,7 @@ export const WorkspaceMemberCurrent = createParamDecorator<
                 WorkspaceMemberStoreKey
             ) ?? null;
         if (workspaceMember === null) {
-            throw new RequestContextMissingException(WorkspaceMemberStoreKey);
+            throw new WorkspaceMemberForbiddenException();
         }
 
         const fieldKey = field ?? null;

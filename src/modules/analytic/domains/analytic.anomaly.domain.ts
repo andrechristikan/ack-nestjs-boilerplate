@@ -155,18 +155,16 @@ export class AnalyticAnomalyDomain {
             end,
             Duration.fromMillis(windowMs)
         );
-        const events = await this.userLoginAnalyticDomain.getLoginEvents(
-            start,
-            end
-        );
+        const activityLogs =
+            await this.userLoginAnalyticDomain.getLoginActivityLogs(start, end);
         const map = new Map<string, Set<string>>();
         const attempts = new Map<string, number>();
-        for (const e of events) {
-            const ip = e.ipAddress ?? 'unknown';
+        for (const activityLog of activityLogs) {
+            const ip = activityLog.ipAddress ?? 'unknown';
             if (!map.has(ip)) {
                 map.set(ip, new Set());
             }
-            map.get(ip)!.add(e.userId);
+            map.get(ip)!.add(activityLog.userId);
             attempts.set(ip, (attempts.get(ip) ?? 0) + 1);
         }
         return [...map.entries()]
@@ -192,17 +190,15 @@ export class AnalyticAnomalyDomain {
             Duration.fromObject({ days: 30 })
         );
         const start = startDate ?? defaultStart;
-        const events = await this.userLoginAnalyticDomain.getLoginEvents(
-            start,
-            end
-        );
+        const activityLogs =
+            await this.userLoginAnalyticDomain.getLoginActivityLogs(start, end);
         const byUser = new Map<string, number[]>();
-        for (const e of events) {
-            const hour = e.createdAt.getUTCHours();
-            if (!byUser.has(e.userId)) {
-                byUser.set(e.userId, []);
+        for (const activityLog of activityLogs) {
+            const hour = activityLog.createdAt.getUTCHours();
+            if (!byUser.has(activityLog.userId)) {
+                byUser.set(activityLog.userId, []);
             }
-            byUser.get(e.userId)!.push(hour);
+            byUser.get(activityLog.userId)!.push(hour);
         }
         const anomalous: IAnalyticLoginTimeAnomaly[] = [];
         for (const [userId, hours] of byUser) {

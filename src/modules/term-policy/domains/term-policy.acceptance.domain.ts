@@ -7,7 +7,7 @@ import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
+import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -35,7 +35,7 @@ export class TermPolicyAcceptanceDomain {
         requiredTermPolicies: EnumTermPolicyType[]
     ): Promise<void> {
         if (!user) {
-            throw new AuthJwtAccessTokenInvalidException();
+            throw new UserNotAuthenticatedException();
         }
 
         const { termPolicy } = user;
@@ -107,7 +107,7 @@ export class TermPolicyAcceptanceDomain {
         }
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userAcceptTermPolicy,
                 }),
@@ -124,7 +124,7 @@ export class TermPolicyAcceptanceDomain {
                 await this.userDomain.acceptTermPolicyInTx(tx, user.id, type);
             });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             await this.notificationQueue.sendUserAcceptTermPolicy(user.id, {
                 termPolicyId: policy.id,

@@ -1,3 +1,5 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -13,7 +15,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
@@ -149,19 +151,19 @@ export class WorkspaceDomain {
         users: IUser[],
         mode: EnumUserCreateMode,
         adminPayloadAction?: IUserOnboardingAdminAction
-    ): IActivityLogStagedEvent[] {
-        const events: IActivityLogStagedEvent[] = [];
+    ): IActivityLogStaged[] {
+        const activityLogs: IActivityLogStaged[] = [];
         if (adminPayloadAction) {
             const adminPayloadMetadata =
                 this.userOnboardingDomain.buildAdminPayloadMetadata(
                     adminPayloadAction,
                     users
                 );
-            const adminPayloadEvent = this.activityLogDomain.prepare({
+            const adminPayloadActivityLog = this.activityLogDomain.prepare({
                 action: adminPayloadAction,
                 metadata: adminPayloadMetadata,
             });
-            events.push(adminPayloadEvent);
+            activityLogs.push(adminPayloadActivityLog);
         }
 
         for (const [index, input] of inputs.entries()) {
@@ -173,7 +175,7 @@ export class WorkspaceDomain {
                 );
 
             for (const activity of onboardingActivities) {
-                const activityEvent = this.activityLogDomain.prepare({
+                const activityLog = this.activityLogDomain.prepare({
                     action: activity.action,
                     userId: activity.userId,
                     createdBy: activity.createdBy,
@@ -182,11 +184,11 @@ export class WorkspaceDomain {
                     }),
                     metadata: activity.metadata,
                 });
-                events.push(activityEvent);
+                activityLogs.push(activityLog);
             }
         }
 
-        return events;
+        return activityLogs;
     }
 
     async validateWorkspaceGuard(
@@ -362,19 +364,19 @@ export class WorkspaceDomain {
                             );
                         }
 
-                        const events = this.prepareOnboardingActivities(
+                        const activityLogs = this.prepareOnboardingActivities(
                             inputs,
                             rows,
                             mode,
                             adminPayloadAction
                         );
 
-                        return { rows, events };
+                        return { rows, activityLogs };
                     },
                     { timeout: timeoutInMs }
                 );
 
-                this.activityLogDomain.stagePrepared(onboarded.events);
+                this.activityLogDomain.stagePrepared(onboarded.activityLogs);
 
                 return onboarded.rows;
             } catch (error: unknown) {
@@ -386,9 +388,13 @@ export class WorkspaceDomain {
                     continue;
                 }
 
-                const exception =
+                const mapped =
                     this.userOnboardingUtil.mapCreateCollision(error);
-                throw exception;
+                if (mapped instanceof AppBaseException) {
+                    throw mapped;
+                }
+
+                throw new AppUnknownException(mapped);
             }
         }
 
@@ -410,7 +416,7 @@ export class WorkspaceDomain {
 
         for (const slug of slugCandidates) {
             const workspaceId = this.databaseUtil.createId();
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceCreated,
                     userId: userId,
@@ -430,13 +436,17 @@ export class WorkspaceDomain {
                     'slug'
                 );
                 if (!isSlugCollision) {
-                    throw error;
+                    if (error instanceof AppBaseException) {
+                        throw error;
+                    }
+
+                    throw new AppUnknownException(error);
                 }
 
                 continue;
             }
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return workspace;
         }
@@ -453,7 +463,7 @@ export class WorkspaceDomain {
         actorId: string,
         update: IWorkspaceUpdate
     ): Promise<Workspace> {
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceUpdated,
                 userId: actorId,
@@ -467,7 +477,7 @@ export class WorkspaceDomain {
             update
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return row;
     }
@@ -477,7 +487,7 @@ export class WorkspaceDomain {
         actorId: string,
         isPublic: boolean
     ): Promise<Workspace> {
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceVisibilityUpdated,
                 userId: actorId,
@@ -491,7 +501,7 @@ export class WorkspaceDomain {
             isPublic
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return row;
     }
@@ -512,7 +522,7 @@ export class WorkspaceDomain {
             throw new WorkspaceSlugAlreadyExistsException();
         }
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceUpdated,
                 userId: actorId,
@@ -526,7 +536,7 @@ export class WorkspaceDomain {
             slug
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return row;
     }
@@ -539,7 +549,7 @@ export class WorkspaceDomain {
             userId
         );
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceSwitched,
                 userId: userId,
@@ -550,14 +560,14 @@ export class WorkspaceDomain {
 
         await this.userDomain.setLastWorkspace(userId, workspaceId);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async softDeleteWorkspace(
         workspaceId: string,
         actorId: string
     ): Promise<void> {
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceDeleted,
                 userId: actorId,
@@ -589,7 +599,7 @@ export class WorkspaceDomain {
             );
         });
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async getListOffsetByAdmin(

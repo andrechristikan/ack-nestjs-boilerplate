@@ -19,7 +19,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -60,7 +60,7 @@ describe('UserVerificationDomain', () => {
 
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-01T00:00:00.000Z');
-    const event: IActivityLogStagedEvent = {
+    const activityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userSendVerificationEmail,
         metadata: {},
         onError: false,
@@ -150,7 +150,7 @@ describe('UserVerificationDomain', () => {
         vi.resetAllMocks();
 
         configGet.mockImplementation(key => configValues[key]);
-        activityLogDomain.prepare.mockReturnValue(event);
+        activityLogDomain.prepare.mockReturnValue(activityLog);
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -288,7 +288,7 @@ describe('UserVerificationDomain', () => {
                 now
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
             expect(notificationQueue.sendVerifiedEmail).toHaveBeenCalledWith(
                 verification.userId,
@@ -382,7 +382,7 @@ describe('UserVerificationDomain', () => {
                 now
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
             expect(notificationQueue.sendVerificationEmail).toHaveBeenCalled();
         });
@@ -539,7 +539,7 @@ describe('UserVerificationDomain', () => {
     });
 
     describe('markVerified', () => {
-        it('marks the user verified and stages the activity log event', async () => {
+        it('marks the user verified and stages the activity log', async () => {
             await domain.markVerified('user-flint');
 
             expect(userRepository.markVerified).toHaveBeenCalledWith(
@@ -547,13 +547,13 @@ describe('UserVerificationDomain', () => {
                 now
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
     });
 
     describe('persistVerificationEmail', () => {
-        it('persists the verification and stages the activity log event', async () => {
+        it('persists the verification and stages the activity log', async () => {
             const emailVerification: IUserVerificationCreate = {
                 reference: 'VRF-random-token',
                 expiredAt: new Date('2026-03-05T00:00:00.000Z'),
@@ -580,7 +580,7 @@ describe('UserVerificationDomain', () => {
                 now
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
     });

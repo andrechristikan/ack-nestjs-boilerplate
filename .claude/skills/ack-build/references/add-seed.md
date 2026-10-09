@@ -8,10 +8,10 @@ Follow the sibling seed that writes the same kind of row:
 
 | Seed needs | Inject | Reference |
 | --- | --- | --- |
-| plain rows on one model | `DatabaseService` | `src/migration/seeds/migration.country.seed.ts:30-33` |
+| plain rows on one model | `DatabaseService` | `src/migration/seeds/migration.country.seed.ts:31-34` |
 | a feature's write rules | that feature's repository, with `<Feature>RepositoryModule` in `MigrationModule` `imports` | `src/migration/migration.module.ts:37-42` |
 | a feature's domain | that feature's domain module in `imports` | `UserDomainModule`, `src/migration/migration.module.ts:40` |
-| a kit service | `AwsSESService` or `AwsS3Service`, with `AwsModule` imported | `src/migration/seeds/migration.template-notification.seed.ts:27-35` |
+| a kit service | `AwsSESService` or `AwsS3Service`, with `AwsModule` imported | `src/migration/seeds/migration.template-notification.seed.ts:28-36` |
 
 Do not add a second path to a collection a sibling already seeds.
 
@@ -21,15 +21,15 @@ Static rows live in `src/migration/data/migration.<concern>.data.ts` as a Pascal
 
 ## 3. Seed class
 
-`src/migration/seeds/migration.<concern>.seed.ts`, from `src/migration/seeds/migration.country.seed.ts:15-94`:
+`src/migration/seeds/migration.<concern>.seed.ts`, from `src/migration/seeds/migration.country.seed.ts:16-93`:
 
 - `@Command({ name: '<concern>', description, allowUnknownOptions: false })`; `name` is camelCase (`apiKey`, `featureFlag`, `templateEmailNotification`).
 - `class Migration<Concern>Seed extends MigrationSeedBase implements IMigrationSeed` (`src/migration/bases/migration.seed.base.ts:9`, `src/migration/interfaces/migration.seed.interface.ts`). The base owns `--type seed|remove`; the class implements both `seed()` and `remove()`.
-- Constructor calls `super()`, reads `database.seedTransactionTimeoutInMs` from `ConfigService` (`:38-41`).
-- `seed()` opens `this.databaseService.withTransaction(async tx => { … }, { timeout })` and holds statements only; hashing, key drawing, and row building happen before the callback (`:48-67`). Every write is an upsert, an existence check, or `createMany({ skipDuplicates: true })`, never a blind `create`.
-- Every row carries `createdBy` and `updatedBy` set to `MigrationUserSuperAdminId` (`src/migration/data/migration.user.data.ts:4`), on the `create` branch, the `update` branch, and every nested row (`:55-62`).
-- `remove()` resets the collections `seed()` owns with `deleteMany` (`:78-93`).
-- Log through a private `Logger`, rethrow after logging.
+- Constructor calls `super()`, reads `database.seedTransactionTimeoutInMs` from `ConfigService` (`:39-41`).
+- `seed()` opens `this.databaseService.withTransaction(async tx => { … }, { timeout })` and holds statements only; hashing, key drawing, and row building happen before the callback (`:48-71`). Every write is an upsert, an existence check, or `createMany({ skipDuplicates: true })`, never a blind `create`.
+- Every row carries `createdBy` and `updatedBy` set to `MigrationUserSuperAdminId` (`src/migration/data/migration.user.data.ts:4`), on the `create` branch, the `update` branch, and every nested row (`:56-63`).
+- `remove()` resets the collections `seed()` owns with `deleteMany` (`:78-92`).
+- A failed write is wrapped and thrown with no log before it, `throw new AppUnknownException(error)` (`:70`; `.claude/rules/exceptions.md`, `.claude/rules/config.md`); `throw new Error(...)` and a bare rethrow fail `pnpm lint`.
 
 A seed whose fixed id may already belong to another row checks first and stops with a message naming the email and both ids (`src/migration/seeds/migration.user.seed.ts`).
 

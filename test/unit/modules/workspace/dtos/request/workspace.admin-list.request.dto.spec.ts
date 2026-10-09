@@ -1,4 +1,8 @@
 import { WorkspaceAdminListRequestSchema } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
+import {
+    WorkspaceDefaultAvailableSearch,
+    WorkspaceDefaultAvailableOrderBy,
+} from '@modules/workspace/constants/workspace.list.constant';
 
 describe('WorkspaceAdminListRequestSchema', () => {
     it('parses page, perPage, search, orderBy, and isPublic', () => {
@@ -43,5 +47,14 @@ describe('WorkspaceAdminListRequestSchema', () => {
         expect(() =>
             WorkspaceAdminListRequestSchema.parse({ extra: true })
         ).toThrow();
+    });
+
+    it('keeps the module search and orderBy descriptions', () => {
+        expect(
+            WorkspaceAdminListRequestSchema.shape.search.meta()?.description
+        ).toContain(WorkspaceDefaultAvailableSearch.join(', '));
+        expect(
+            WorkspaceAdminListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(WorkspaceDefaultAvailableOrderBy.join(', '));
     });
 });

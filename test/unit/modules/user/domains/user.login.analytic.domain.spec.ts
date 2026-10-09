@@ -121,7 +121,7 @@ describe('UserLoginAnalyticDomain', () => {
         });
     });
 
-    describe('getLoginEvents', () => {
+    describe('getLoginActivityLogs', () => {
         it('delegates to the activity log analytic domain', async () => {
             const rows = [
                 {
@@ -139,7 +139,7 @@ describe('UserLoginAnalyticDomain', () => {
             );
 
             await expect(
-                domain.getLoginEvents(startDate, endDate)
+                domain.getLoginActivityLogs(startDate, endDate)
             ).resolves.toBe(rows);
             expect(
                 activityLogAnalyticDomain.getManyByActionsInRange
@@ -151,7 +151,7 @@ describe('UserLoginAnalyticDomain', () => {
         });
     });
 
-    describe('getFailedLoginEvents', () => {
+    describe('getFailedLoginActivityLogs', () => {
         it('delegates to the activity log analytic domain with the failed actions', async () => {
             const rows = [
                 {
@@ -169,7 +169,7 @@ describe('UserLoginAnalyticDomain', () => {
             );
 
             await expect(
-                domain.getFailedLoginEvents(startDate, endDate)
+                domain.getFailedLoginActivityLogs(startDate, endDate)
             ).resolves.toBe(rows);
             expect(
                 activityLogAnalyticDomain.getManyByActionsInRange

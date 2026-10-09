@@ -24,4 +24,17 @@ describe('AnalyticWorkspacesMembershipListRequestSchema', () => {
             })
         ).toThrow();
     });
+
+    it('rejects search and orderBy', () => {
+        expect(
+            AnalyticWorkspacesMembershipListRequestSchema.safeParse({
+                search: 'x',
+            }).success
+        ).toBe(false);
+        expect(
+            AnalyticWorkspacesMembershipListRequestSchema.safeParse({
+                orderBy: 'createdAt:desc',
+            }).success
+        ).toBe(false);
+    });
 });

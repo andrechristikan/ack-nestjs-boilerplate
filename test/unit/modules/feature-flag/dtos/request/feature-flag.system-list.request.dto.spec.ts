@@ -1,4 +1,8 @@
 import { FeatureFlagSystemListRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.system-list.request.dto';
+import {
+    FeatureFlagDefaultAvailableSearch,
+    FeatureFlagDefaultAvailableOrderBy,
+} from '@modules/feature-flag/constants/feature-flag.list.constant';
 
 describe('FeatureFlagSystemListRequestSchema', () => {
     it('parses cursor, perPage, search, and a string orderBy', () => {
@@ -35,5 +39,14 @@ describe('FeatureFlagSystemListRequestSchema', () => {
         expect(() =>
             FeatureFlagSystemListRequestSchema.parse({ extra: true })
         ).toThrow();
+    });
+
+    it('keeps the module search and orderBy descriptions', () => {
+        expect(
+            FeatureFlagSystemListRequestSchema.shape.search.meta()?.description
+        ).toContain(FeatureFlagDefaultAvailableSearch.join(', '));
+        expect(
+            FeatureFlagSystemListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(FeatureFlagDefaultAvailableOrderBy.join(', '));
     });
 });

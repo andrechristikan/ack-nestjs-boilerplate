@@ -1,3 +1,4 @@
+import { AnalyticImpossibleTravelAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticImpossibleTravelListRequestSchema } from '@modules/analytic/dtos/request/analytic.impossible-travel-list.request.dto';
 
 describe('AnalyticImpossibleTravelListRequestSchema', () => {
@@ -45,5 +46,19 @@ describe('AnalyticImpossibleTravelListRequestSchema', () => {
                 extra: true,
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticImpossibleTravelListRequestSchema.safeParse({ search: 'x' })
+                .success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticImpossibleTravelListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticImpossibleTravelAvailableOrderBy.join(', '));
     });
 });

@@ -1,4 +1,8 @@
 import { ProjectAdminListRequestSchema } from '@modules/project/dtos/request/project.admin-list.request.dto';
+import {
+    ProjectDefaultAvailableSearch,
+    ProjectDefaultAvailableOrderBy,
+} from '@modules/project/constants/project.list.constant';
 
 describe('ProjectAdminListRequestSchema', () => {
     it('parses page, perPage, search, orderBy, and workspaceId', () => {
@@ -43,5 +47,14 @@ describe('ProjectAdminListRequestSchema', () => {
         expect(() =>
             ProjectAdminListRequestSchema.parse({ extra: true })
         ).toThrow();
+    });
+
+    it('keeps the module search and orderBy descriptions', () => {
+        expect(
+            ProjectAdminListRequestSchema.shape.search.meta()?.description
+        ).toContain(ProjectDefaultAvailableSearch.join(', '));
+        expect(
+            ProjectAdminListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(ProjectDefaultAvailableOrderBy.join(', '));
     });
 });

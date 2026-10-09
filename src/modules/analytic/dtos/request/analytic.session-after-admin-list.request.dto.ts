@@ -9,15 +9,14 @@ import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/a
  * @public
  */
 export const AnalyticSessionAfterAdminListRequestSchema =
-    PaginationOffsetQuerySchema.extend({
-        orderBy: z
-            .union([z.string(), z.array(z.string())])
-            .optional()
-            .meta({
+    PaginationOffsetQuerySchema.omit({ search: true })
+        .extend({
+            orderBy: PaginationOffsetQuerySchema.shape.orderBy.meta({
                 description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${AnalyticSessionAfterAdminAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
                 example: `${AnalyticSessionAfterAdminAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
-    }).extend(AnalyticDateRangeRequestSchema.shape);
+        })
+        .extend(AnalyticDateRangeRequestSchema.shape);
 
 /**
  * Inferred DTO for AnalyticSessionAfterAdminListRequestSchema.

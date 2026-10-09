@@ -1,3 +1,4 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -129,7 +130,7 @@ export class ProjectRepository implements IProjectRepository {
                     'slug'
                 );
                 if (!isSlugCollision) {
-                    throw error;
+                    throw new AppUnknownException(error);
                 }
             }
         }

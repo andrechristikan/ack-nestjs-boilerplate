@@ -1,6 +1,7 @@
 import {
     FirebaseInvalidTokenCodes,
     FirebaseMaxSendPushBatchSize,
+    FirebaseRetryableTokenCodes,
 } from '@common/firebase/constants/firebase.constant';
 import type {
     IFirebasePushPayload,
@@ -16,6 +17,8 @@ import * as firebaseAdmin from 'firebase-admin';
 import type { App as FirebaseApp } from 'firebase-admin/app';
 import { Messaging, getMessaging } from 'firebase-admin/messaging';
 import type { Notification } from 'firebase-admin/messaging';
+import { FirebaseInitializationFailedException } from '@common/firebase/exceptions/firebase.initialization-failed.exception';
+import { FirebasePrivateKeyInvalidException } from '@common/firebase/exceptions/firebase.private-key-invalid.exception';
 
 @Injectable()
 export class FirebaseService implements OnModuleInit {
@@ -57,6 +60,12 @@ export class FirebaseService implements OnModuleInit {
         return FirebaseInvalidTokenCodes.includes(error?.code ?? '');
     }
 
+    private isRetryableTokenError(error: { code?: string } | null): boolean {
+        const code = error?.code ?? null;
+
+        return code === null || FirebaseRetryableTokenCodes.includes(code);
+    }
+
     private buildMessageContent(payload: IFirebasePushPayload): {
         notification: Notification;
         data?: Record<string, string>;
@@ -84,7 +93,7 @@ export class FirebaseService implements OnModuleInit {
         }
 
         if (!this.privateKey) {
-            throw new Error('Firebase private key could not be normalized');
+            throw new FirebasePrivateKeyInvalidException();
         }
 
         try {
@@ -98,9 +107,7 @@ export class FirebaseService implements OnModuleInit {
 
             this.messaging = getMessaging(this.app);
         } catch (error: unknown) {
-            throw new Error('Failed to initialize Firebase Admin SDK', {
-                cause: error,
-            });
+            throw new FirebaseInitializationFailedException(error);
         }
 
         this.logger.log('Firebase Admin SDK initialized successfully');
@@ -158,6 +165,7 @@ export class FirebaseService implements OnModuleInit {
 
             return {
                 failureTokens: [],
+                retryTokens: [],
                 successCount: 0,
                 failureCount: tokens.length,
             };
@@ -166,6 +174,7 @@ export class FirebaseService implements OnModuleInit {
         if (tokens.length === 0) {
             return {
                 failureTokens: [],
+                retryTokens: [],
                 successCount: 0,
                 failureCount: 0,
             };
@@ -190,6 +199,7 @@ export class FirebaseService implements OnModuleInit {
         let successCount = 0;
         let failureCount = 0;
         const failureTokens: string[] = [];
+        const retryTokens: string[] = [];
 
         for (let chunkIndex = 0; chunkIndex < responses.length; chunkIndex++) {
             const response = responses[chunkIndex]!;
@@ -203,20 +213,25 @@ export class FirebaseService implements OnModuleInit {
                     tokenIndex,
                     resp,
                 ] of response.value.responses.entries()) {
-                    if (!resp.success && resp.error) {
-                        const isInvalidToken = this.isInvalidTokenError(
-                            resp.error as { code?: string }
-                        );
+                    if (!resp.success) {
+                        const error = (resp.error ?? null) as {
+                            code?: string;
+                        } | null;
+                        const isInvalidToken = this.isInvalidTokenError(error);
+                        const isRetryable = this.isRetryableTokenError(error);
                         if (isInvalidToken) {
                             failureTokens.push(chunk[tokenIndex]!);
+                        } else if (isRetryable) {
+                            retryTokens.push(chunk[tokenIndex]!);
                         }
                     }
                 }
             } else {
                 failureCount += chunk.length;
+                retryTokens.push(...chunk);
             }
         }
 
-        return { successCount, failureCount, failureTokens };
+        return { successCount, failureCount, failureTokens, retryTokens };
     }
 }

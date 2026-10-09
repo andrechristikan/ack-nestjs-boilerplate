@@ -144,7 +144,7 @@ Facts about the image:
 - The image carries no `keys/`.
 - The build creates an empty `.env`.
 - The container listens on port 3000 and its health check calls `http://127.0.0.1:3000/api/public/hello`.
-- The command is `pnpm start:prod`, which runs `node --import ./dist/instrument.js dist/main.js`.
+- The command runs `node --import ./dist/instrument.js dist/main.js` directly, with no `pnpm` and no init wrapper.
 - The image holds `dist/migration.js` and `nest-commander`.
 - The image lacks the Prisma CLI and the Nest CLI, which are devDependencies, so the schema push runs from a checkout.
 - The seed values under `src/migration/data/` are compiled into `dist/` at build time, so the seeds also run from a checkout.
@@ -336,6 +336,7 @@ flowchart LR
 ```
 
 - `apis` waits for `mongo`, `redis`, and `jwks-server` to pass their health checks, then answers on port 3000.
+- `redis-bullboard` carries its own health check, which requests `http://127.0.0.1:3000/login` inside the container.
 - The `apis` health check calls `http://127.0.0.1:3000/api/public/hello`.
 - `mongo` starts through `ci/mongo/entrypoint.sh`. Its replica set member host is `mongo:27017` on the Compose network.
 - `jwks-server` serves `keys/access-jwks.json` and `keys/refresh-jwks.json`, so the API verifies tokens against `http://jwks-server/.well-known/...`.

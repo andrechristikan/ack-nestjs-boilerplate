@@ -289,12 +289,13 @@ flowchart LR
 ```
 
 1. Kit base schemas live under `src/common/pagination/dtos/`:
-    - `PaginationOffsetQuerySchema` (`page` / `perPage`)
-    - `PaginationCursorQuerySchema` (`cursor` / `perPage`)
-    - `search` and `orderBy` live in the module list schemas, not in the kit base schemas.
-    - `PaginationQueryUtil.offset` takes `PaginationOffsetQueryDto & IPaginationListQuery`, and `.cursor` takes `PaginationCursorQueryDto & IPaginationListQuery`.
-    - `IPaginationListQuery` (`pagination.interface.ts`) is `{ search?: string | undefined; orderBy?: string | string[] | undefined }`. The inferred type of every module list schema is assignable to it.
-2. A module list DTO `.extend`s `search` / `orderBy` only when its allow-lists are non-empty, plus any filter fields.
+    - `PaginationOffsetQuerySchema` (`page` / `perPage` / `search` / `orderBy`)
+    - `PaginationCursorQuerySchema` (`cursor` / `perPage` / `search` / `orderBy`)
+    - `search` and `orderBy` carry generic `.meta` text in the base schemas.
+    - `PaginationQueryUtil.offset` takes `PaginationOffsetQueryDto`, and `.cursor` takes `PaginationCursorQueryDto`.
+2. A module list DTO builds on a base schema.
+    - It overrides the `.meta` of `search` and `orderBy` to name its allow-lists, and adds its filter fields.
+    - It drops a field its allow-list leaves empty with `.omit({ search: true })` or `.omit({ search: true, orderBy: true })`.
     - Each `*.dto.ts` file holds one schema const.
 3. The controller binds one `@Query({ schema })` and passes the whole DTO to the HTTP service.
 4. The HTTP service calls `PaginationQueryUtil.offset` / `.cursor` (plus filter helpers) to produce `IPaginationQueryOffsetParams` / `IPaginationQueryCursorParams` and a `storePatch`.
@@ -313,12 +314,16 @@ flowchart LR
 export const PaginationOffsetQuerySchema = z.strictObject({
     page: z.coerce.number().int().optional().meta({ … }),
     perPage: z.coerce.number().int().optional().meta({ … }),
+    search: z.string().optional().meta({ … }),
+    orderBy: z.union([z.string(), z.array(z.string())]).optional().meta({ … }),
 });
 
 // src/common/pagination/dtos/pagination.cursor-query.dto.ts
 export const PaginationCursorQuerySchema = z.strictObject({
     cursor: z.string().optional().meta({ … }),
     perPage: z.coerce.number().int().optional().meta({ … }),
+    search: z.string().optional().meta({ … }),
+    orderBy: z.union([z.string(), z.array(z.string())]).optional().meta({ … }),
 });
 ```
 
@@ -326,11 +331,11 @@ Module example (`src/modules/user/dtos/request/user.list.request.dto.ts`):
 
 ```typescript
 export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
-    search: z.string().optional().meta({
+    search: PaginationOffsetQuerySchema.shape.search.meta({
         description: `Search query, available fields: ${UserDefaultAvailableSearch.join(', ')}. …`,
         example: '',
     }),
-    orderBy: z.union([z.string(), z.array(z.string())]).optional().meta({
+    orderBy: PaginationOffsetQuerySchema.shape.orderBy.meta({
         description: `Order by field in \`field:direction\` format. Available fields: ${UserDefaultAvailableOrderBy.join(', ')}. …`,
         example: `${UserDefaultAvailableOrderBy[0]}:desc`,
     }),
@@ -351,7 +356,7 @@ export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
 
 **Absent allow-lists omit the fields from the schema.**
 
-- `undefined` or `[]` means the module does not `.extend` `search` / `orderBy`, so Swagger does not advertise them.
+- `undefined` or `[]` means the module drops the field with `.omit`, so the schema rejects it and Swagger does not advertise it.
 - There is no search predicate.
 - Order falls to `PaginationDefaultOrderBy` (`createdAt` desc).
 
@@ -427,8 +432,8 @@ export const AnalyticNearLockoutAvailableOrderBy: (keyof IAnalyticNearLockout)[]
 
 | Allow-list | Schema / OpenAPI | Parse behaviour |
 | --- | --- | --- |
-| `undefined` or `[]` | module does not `.extend` `search` / `orderBy` | no search predicate; order falls to `PaginationDefaultOrderBy` |
-| non-empty | module `.extend`s optional field with `.meta` describing the allow-list | search → `contains` `OR`; bad `orderBy` → the order exceptions above |
+| `undefined` or `[]` | module `.omit`s `search` / `orderBy` | no search predicate; order falls to `PaginationDefaultOrderBy` |
+| non-empty | module overrides the base field's `.meta` to describe the allow-list | search → `contains` `OR`; bad `orderBy` → the order exceptions above |
 
 - An allow-list is set wherever the endpoint has a defensible sort order or a real search column, and left out where it does not.
 - An `availableOrderBy` names keys the returned row carries.

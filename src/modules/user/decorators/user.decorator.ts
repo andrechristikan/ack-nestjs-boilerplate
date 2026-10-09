@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
 
 /**
  * Applies the user guard; pass `false` to skip the email-verified requirement.
@@ -29,7 +30,7 @@ export function UserProtected(isVerified: boolean = true): MethodDecorator {
 }
 
 /**
- * Reads the current user, or one of its fields, that `UserGuard` stored; throws when either is absent.
+ * Reads the current user, or one of its fields, that `UserGuard` stored. Throws `UserNotAuthenticatedException` when the user is absent and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const UserCurrent = createParamDecorator<
@@ -43,7 +44,7 @@ export const UserCurrent = createParamDecorator<
             ClsServiceManager.getClsService().get<IUser | null>(UserStoreKey) ??
             null;
         if (user === null) {
-            throw new RequestContextMissingException(UserStoreKey);
+            throw new UserNotAuthenticatedException();
         }
 
         const fieldKey = field ?? null;

@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import type { ExecutionContext, Type } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
@@ -10,18 +11,23 @@ import type {
 } from '@generated/prisma-client/client';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
-import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
-import { WorkspaceRoleMetaKey } from '@modules/workspace/constants/workspace.constant';
+import {
+    WorkspaceMemberStoreKey,
+    WorkspaceRoleMetaKey,
+    WorkspaceStoreKey,
+} from '@modules/workspace/constants/workspace.constant';
 import {
     WorkspaceCurrent,
     WorkspaceMemberCurrent,
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
+import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
 import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
 import { WorkspaceRoleGuard } from '@modules/workspace/guards/workspace.role.guard';
 import { getParamDecoratorFactory } from '@test/unit/helpers/test.unit.decorator.helper';
+import { expectRequestContextMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('workspace.decorator', () => {
     describe('WorkspaceProtected', () => {
@@ -87,6 +93,9 @@ describe('workspace.decorator', () => {
             ) as IDocResponseEntry[];
             expect(stored).toEqual([
                 expect.objectContaining({
+                    messagePath: 'workspace.error.memberForbidden',
+                }),
+                expect.objectContaining({
                     messagePath: 'workspace.error.roleForbidden',
                 }),
             ]);
@@ -94,6 +103,17 @@ describe('workspace.decorator', () => {
     });
 
     describe('WorkspaceCurrent', () => {
+        const workspaceNotFound = {
+            module: 'workspace',
+            statusCode: EnumWorkspaceStatusCodeError.notFound,
+            statusCodeKey:
+                EnumWorkspaceStatusCodeError[
+                    EnumWorkspaceStatusCodeError.notFound
+                ],
+            httpStatus: HttpStatus.NOT_FOUND,
+            messagePath: 'workspace.error.notFound',
+        };
+
         const clsService: MockProxy<
             ReturnType<typeof ClsServiceManager.getClsService>
         > = mock<ReturnType<typeof ClsServiceManager.getClsService>>();
@@ -143,7 +163,7 @@ describe('workspace.decorator', () => {
             expect(factory('slug', executionContext)).toBe('acme-team');
         });
 
-        it('throws RequestContextMissingException when the workspace store is undefined', () => {
+        it('throws WorkspaceNotFoundException when the workspace store is undefined', () => {
             clsService.get.mockReturnValue(undefined);
             const target = {} as Type<unknown>;
             WorkspaceCurrent()(target, 'workspace', 0);
@@ -156,22 +176,10 @@ describe('workspace.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.contextMissing
-                    ],
-                messagePath: 'request.error.contextMissing',
-                rawError: expect.objectContaining({
-                    message:
-                        'RequestContextMissingException: no value for "WorkspaceStoreKey"',
-                }),
-            });
+            expect(thrown).toMatchObject(workspaceNotFound);
         });
 
-        it('throws RequestContextMissingException when the workspace store is null', () => {
+        it('throws WorkspaceNotFoundException when the workspace store is null', () => {
             clsService.get.mockReturnValue(null);
             const target = {} as Type<unknown>;
             WorkspaceCurrent()(target, 'workspace', 0);
@@ -184,19 +192,7 @@ describe('workspace.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.contextMissing
-                    ],
-                messagePath: 'request.error.contextMissing',
-                rawError: expect.objectContaining({
-                    message:
-                        'RequestContextMissingException: no value for "WorkspaceStoreKey"',
-                }),
-            });
+            expect(thrown).toMatchObject(workspaceNotFound);
         });
 
         it('throws RequestContextMissingException when the requested field is absent', () => {
@@ -212,23 +208,25 @@ describe('workspace.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.contextMissing
-                    ],
-                messagePath: 'request.error.contextMissing',
-                rawError: expect.objectContaining({
-                    message:
-                        'RequestContextMissingException: no value for "WorkspaceStoreKey.description"',
-                }),
-            });
+            expectRequestContextMissingWithKey(
+                thrown,
+                `${WorkspaceStoreKey}.description`
+            );
         });
     });
 
     describe('WorkspaceMemberCurrent', () => {
+        const memberForbidden = {
+            module: 'workspace',
+            statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
+            statusCodeKey:
+                EnumWorkspaceStatusCodeError[
+                    EnumWorkspaceStatusCodeError.memberForbidden
+                ],
+            httpStatus: HttpStatus.FORBIDDEN,
+            messagePath: 'workspace.error.memberForbidden',
+        };
+
         const clsService: MockProxy<
             ReturnType<typeof ClsServiceManager.getClsService>
         > = mock<ReturnType<typeof ClsServiceManager.getClsService>>();
@@ -278,7 +276,7 @@ describe('workspace.decorator', () => {
             );
         });
 
-        it('throws RequestContextMissingException when the member store is undefined', () => {
+        it('throws WorkspaceMemberForbiddenException when the member store is undefined', () => {
             clsService.get.mockReturnValue(undefined);
             const target = {} as Type<unknown>;
             WorkspaceMemberCurrent()(target, 'member', 0);
@@ -291,22 +289,10 @@ describe('workspace.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.contextMissing
-                    ],
-                messagePath: 'request.error.contextMissing',
-                rawError: expect.objectContaining({
-                    message:
-                        'RequestContextMissingException: no value for "WorkspaceMemberStoreKey"',
-                }),
-            });
+            expect(thrown).toMatchObject(memberForbidden);
         });
 
-        it('throws RequestContextMissingException when the member store is null', () => {
+        it('throws WorkspaceMemberForbiddenException when the member store is null', () => {
             clsService.get.mockReturnValue(null);
             const target = {} as Type<unknown>;
             WorkspaceMemberCurrent()(target, 'member', 0);
@@ -319,19 +305,7 @@ describe('workspace.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.contextMissing
-                    ],
-                messagePath: 'request.error.contextMissing',
-                rawError: expect.objectContaining({
-                    message:
-                        'RequestContextMissingException: no value for "WorkspaceMemberStoreKey"',
-                }),
-            });
+            expect(thrown).toMatchObject(memberForbidden);
         });
 
         it('throws RequestContextMissingException when the requested field is absent', () => {
@@ -347,19 +321,10 @@ describe('workspace.decorator', () => {
                 thrown = error;
             }
 
-            expect(thrown).toMatchObject({
-                module: 'request',
-                statusCode: EnumRequestStatusCodeError.contextMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.contextMissing
-                    ],
-                messagePath: 'request.error.contextMissing',
-                rawError: expect.objectContaining({
-                    message:
-                        'RequestContextMissingException: no value for "WorkspaceMemberStoreKey.createdBy"',
-                }),
-            });
+            expectRequestContextMissingWithKey(
+                thrown,
+                `${WorkspaceMemberStoreKey}.createdBy`
+            );
         });
     });
 });

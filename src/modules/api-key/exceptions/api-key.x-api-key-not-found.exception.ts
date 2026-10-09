@@ -10,7 +10,7 @@ export class ApiKeyXApiKeyNotFoundException extends AppBaseException {
     readonly module = 'apiKey';
     readonly statusCode = EnumApiKeyStatusCodeError.xApiKeyNotFound;
     readonly statusCodeKey = EnumApiKeyStatusCodeError[this.statusCode];
-    readonly httpStatus = HttpStatus.FORBIDDEN;
+    readonly httpStatus = HttpStatus.UNAUTHORIZED;
 
     constructor() {
         super('apiKey.error.xApiKey.notFound');

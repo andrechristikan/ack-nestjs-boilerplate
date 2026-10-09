@@ -1,4 +1,8 @@
 import { UserListRequestSchema } from '@modules/user/dtos/request/user.list.request.dto';
+import {
+    UserDefaultAvailableSearch,
+    UserDefaultAvailableOrderBy,
+} from '@modules/user/constants/user.list.constant';
 
 describe('UserListRequestSchema', () => {
     const payload = {
@@ -33,5 +37,14 @@ describe('UserListRequestSchema', () => {
         expect(() =>
             UserListRequestSchema.parse({ ...payload, name: 'john' })
         ).toThrow();
+    });
+
+    it('keeps the module search and orderBy descriptions', () => {
+        expect(
+            UserListRequestSchema.shape.search.meta()?.description
+        ).toContain(UserDefaultAvailableSearch.join(', '));
+        expect(
+            UserListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(UserDefaultAvailableOrderBy.join(', '));
     });
 });

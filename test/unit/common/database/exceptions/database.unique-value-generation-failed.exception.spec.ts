@@ -18,7 +18,7 @@ describe('DatabaseUniqueValueGenerationFailedException', () => {
                     EnumDatabaseStatusCodeError[
                         EnumDatabaseStatusCodeError.uniqueValueGenerationFailed
                     ],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+                httpStatus: HttpStatus.CONFLICT,
                 messagePath: 'database.error.uniqueValueGenerationFailed',
             });
         });

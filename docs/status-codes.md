@@ -32,27 +32,28 @@ This page is the human catalog.
 | `50200` | `pagination`   | `50200`–`50215` | 16      |
 | `50300` | `request`      | `50300`–`50304` | 5       |
 | `50400` | `session`      | `50400`–`50401` | 2       |
-| `50500` | `role`         | `50500`–`50504` | 5       |
-| `50600` | `feature-flag` | `50600`–`50606` | 7       |
-| `50700` | `api-key`      | `50700`–`50708` | 9       |
+| `50500` | `role`         | `50500`–`50503` | 4       |
+| `50600` | `feature-flag` | `50600`–`50602` | 3       |
+| `50700` | `api-key`      | `50700`–`50707` | 8       |
 | `50800` | `auth`         | `50800`–`50818` | 19      |
 | `50900` | `country`      | `50900`–`50902` | 3       |
 | `51000` | `user`         | `51000`–`51027` | 28      |
-| `51100` | `policy`       | `51100`–`51103` | 4       |
+| `51100` | `policy`       | `51100`–`51102` | 3       |
 | `51200` | `notification` | `51200`–`51203` | 4       |
 | `51300` | `device`       | `51300`         | 1       |
 | `51400` | `aws`          | `51400`–`51406` | 7       |
 | `51500` | `term-policy`  | `51500`–`51509` | 10      |
 | `51600` | `workspace`    | `51600`–`51620` | 21      |
 | `51700` | `project`      | `51700`–`51707` | 8       |
-| `51800` | `database`     | `51800`         | 1       |
+| `51800` | `database`     | `51800`–`51802` | 3       |
 | `51900` | `response`     | `51900`–`51903` | 4       |
 | `52000` | `activity-log` | `52000`         | 1       |
 | `52100` | `analytic`     | `52100`         | 1       |
 | `52200` | `helper`       | `52200`–`52202` | 3       |
 | `52300` | `firebase`     | `52300`         | 1       |
+| `52400` | `redis`        | `52400`         | 1       |
 
-- Next free hundred: `52400`.
+- Next free hundred: `52500`.
 - The enum files are the source of this map.
 
 ## `app`
@@ -107,7 +108,18 @@ This page is the human catalog.
 | `schemaMissing` | `50303` | `schemaMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.schemaMissing` | The request could not be validated. Please try again later. |
 | `contextMissing` | `50304` | `contextMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.contextMissing` | The request could not be processed. Please try again later. |
 
-- `contextMissing` is thrown by `RequestContextMissingException` when a store parameter decorator or `@AuthJwtPayload()` finds no value that its guard or middleware writes, or when the named field of that value is absent.
+- `RequestContextMissingException` raises `contextMissing` in three cases:
+    - `@RequestIPAddress()`, `@RequestUserAgent()`, `@RequestGeoLocation()`, or `@AuthJwtPayload()` finds no value, because the middleware or guard that writes it has no exception of its own;
+    - any store parameter decorator is asked for a field whose value is `null`;
+    - `@RoleCurrent()` finds a stored user whose `role` is `null`.
+- A decorator that reads a value a guard stores answers that guard's exception when the store key is empty:
+    - `UserNotAuthenticatedException` (`51027`) for `@UserCurrent()` and `@RoleCurrent()`
+    - `PolicyForbiddenException` (`51100`) for `@PolicyCurrent()`
+    - `WorkspaceNotFoundException` for `@WorkspaceCurrent()`
+    - `WorkspaceMemberForbiddenException` for `@WorkspaceMemberCurrent()`
+    - `ProjectNotFoundException` for `@ProjectCurrent()`
+    - `ProjectMemberForbiddenException` for `@ProjectMemberCurrent()`
+    - `ApiKeyXApiKeyRequiredException` for `@ApiKeyPayload()`
 - See [Security and Middleware](security-and-middleware.md#store-parameter-decorators).
 
 `50300` is the one code shared by more than one exception class, so it does not map to a single `httpStatus`, `messagePath`, or `module`:
@@ -136,9 +148,8 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | --- | --- | --- | --- | --- | --- |
 | `notFound` | `50500` | `notFound` | 404 (`NOT_FOUND`) | `role.error.notFound` | Sorry, we couldn't find the requested role. |
 | `exist` | `50501` | `exist` | 409 (`CONFLICT`) | `role.error.exist` | A role with this name already exists. |
-| `predefinedNotFound` | `50502` | `predefinedNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `role.error.predefinedNotFound` | Predefined roles not setted. |
-| `forbidden` | `50503` | `forbidden` | 403 (`FORBIDDEN`) | `role.error.forbidden` | Sorry, your role doesn't grant access to this resource. |
-| `used` | `50504` | `used` | 409 (`CONFLICT`) | `role.error.used` | This role is currently in use and cannot be deleted. |
+| `forbidden` | `50502` | `forbidden` | 403 (`FORBIDDEN`) | `role.error.forbidden` | Sorry, your role doesn't grant access to this resource. |
+| `used` | `50503` | `used` | 409 (`CONFLICT`) | `role.error.used` | This role is currently in use and cannot be deleted. |
 
 ## `feature-flag`
 
@@ -147,26 +158,27 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `notFound` | `50600` | `notFound` | 404 (`NOT_FOUND`) | `featureFlag.error.notFound` | Feature flag not found. |
 | `disabled` | `50601` | `disabled` | 404 (`NOT_FOUND`) | `featureFlag.error.disabled` | This feature is not available. |
 | `invalidMetadata` | `50602` | `invalidMetadata` | 400 (`BAD_REQUEST`) | `featureFlag.error.invalidMetadata` | Feature flag metadata is invalid. |
-| `predefinedKeyLengthExceeded` | `50603` | `predefinedKeyLengthExceeded` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyLengthExceeded` | Predefined key length exceeded the maximum allowed. |
-| `predefinedKeyEmpty` | `50604` | `predefinedKeyEmpty` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyEmpty` | Predefined key cannot be empty. |
-| `predefinedKeyTypeInvalid` | `50605` | `predefinedKeyTypeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyTypeInvalid` | Predefined key type is invalid. |
-| `predefinedKeyNotFound` | `50606` | `predefinedKeyNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyNotFound` | Predefined key is not registered as a feature flag. |
 
-`disabled` is raised by `FeatureFlagDomain` when the flag is off, when its rollout excludes the caller, when a partial rollout meets a request with no user and no anonymous id, or when the boolean metadata key a route checks is `false`.
+- `notFound` is raised by `FeatureFlagDomain` at runtime when the route's key has no flag row.
+- `disabled` is raised by `FeatureFlagDomain` in these cases:
+    - the flag is off;
+    - its rollout excludes the caller;
+    - a partial rollout meets a request with no user and no anonymous id;
+    - the metadata key a route checks is `false` or not a boolean.
+- An empty or dotted key given to `@FeatureFlagProtected()` raises `FeatureFlagKeyEmptyException` or `FeatureFlagKeyNestedException` when the decorator is evaluated. Both extend `AppUnknownException` and carry no status code.
 
 ## `api-key`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 | --- | --- | --- | --- | --- | --- |
 | `xApiKeyRequired` | `50700` | `xApiKeyRequired` | 401 (`UNAUTHORIZED`) | `apiKey.error.xApiKey.required` | Please provide your API key to continue. |
-| `xApiKeyNotFound` | `50701` | `xApiKeyNotFound` | 403 (`FORBIDDEN`) | `apiKey.error.xApiKey.notFound` | We couldn't find this API key in our system. |
+| `xApiKeyNotFound` | `50701` | `xApiKeyNotFound` | 401 (`UNAUTHORIZED`) | `apiKey.error.xApiKey.notFound` | We couldn't find this API key in our system. |
 | `xApiKeyInvalid` | `50702` | `xApiKeyInvalid` | 401 (`UNAUTHORIZED`) | `apiKey.error.xApiKey.invalid` | Sorry, this API key appears to be invalid. |
 | `xApiKeyForbidden` | `50703` | `xApiKeyForbidden` | 403 (`FORBIDDEN`) | `apiKey.error.xApiKey.forbidden` | You don't have permission to use this API key. |
-| `xApiKeyPredefinedNotFound` | `50704` | `xApiKeyPredefinedNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `apiKey.error.xApiKey.predefinedNotFound` | Predefined API key not found in the system. |
-| `expired` | `50705` | `expired` | 400 (`BAD_REQUEST`) | `apiKey.error.expired` | This API key has expired. Would you like to create a new one? |
-| `notFound` | `50706` | `notFound` | 404 (`NOT_FOUND`) | `apiKey.error.notFound` | We couldn't locate this API key. Please check and try again. |
-| `inactive` | `50707` | `inactive` | 400 (`BAD_REQUEST`) | `apiKey.error.inactive` | This API key is currently inactive. |
-| `startAtNotFuture` | `50708` | `startAtNotFuture` | 400 (`BAD_REQUEST`) | `apiKey.error.startAtNotFuture` | The start date must be in the future. |
+| `expired` | `50704` | `expired` | 400 (`BAD_REQUEST`) | `apiKey.error.expired` | This API key has expired. Would you like to create a new one? |
+| `notFound` | `50705` | `notFound` | 404 (`NOT_FOUND`) | `apiKey.error.notFound` | We couldn't locate this API key. Please check and try again. |
+| `inactive` | `50706` | `inactive` | 400 (`BAD_REQUEST`) | `apiKey.error.inactive` | This API key is currently inactive. |
+| `startAtNotFuture` | `50707` | `startAtNotFuture` | 400 (`BAD_REQUEST`) | `apiKey.error.startAtNotFuture` | The start date must be in the future. |
 
 ## `auth`
 
@@ -212,7 +224,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `emailExist` | `51002` | `emailExist` | 409 (`CONFLICT`) | `user.error.emailExist` | This email already exists. |
 | `usernameExist` | `51003` | `usernameExist` | 409 (`CONFLICT`) | `user.error.usernameExist` | This username has already been taken. |
 | `mobileNumberNotFound` | `51004` | `mobileNumberNotFound` | 404 (`NOT_FOUND`) | `user.error.mobileNumberNotFound` | Mobile number not found. |
-| `statusInvalid` | `51005` | `statusInvalid` | none | `user.error.statusInvalid` | Invalid user status. |
+| `statusInvalid` | `51005` | `statusInvalid` | none | `user.error.statusInvalid` | Reserved enum member; no exception. The i18n key exists: "Invalid user status." |
 | `blockedInvalid` | `51006` | `blockedInvalid` | 400 (`BAD_REQUEST`) | `user.error.blockedInvalid` | This user account has been blocked. |
 | `inactiveForbidden` | `51007` | `inactiveForbidden` | 403 (`FORBIDDEN`) | `user.error.inactive` | This user is inactive. |
 | `blockedForbidden` | `51008` | `blockedForbidden` | 403 (`FORBIDDEN`) | `user.error.blocked` | This user account has been blocked. |
@@ -241,9 +253,8 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 | --- | --- | --- | --- | --- | --- |
 | `forbidden` | `51100` | `forbidden` | 403 (`FORBIDDEN`) | `policy.error.forbidden` | Sorry, you don't have the necessary permissions to perform this action. |
-| `predefinedNotFound` | `51101` | `predefinedNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `policy.error.predefinedNotFound` | Predefined policies not setted. |
-| `notFound` | `51102` | `notFound` | 404 (`NOT_FOUND`) | `policy.error.notFound` | Sorry, we couldn't find the requested policy. |
-| `exist` | `51103` | `exist` | 409 (`CONFLICT`) | `policy.error.exist` | This role already grants a policy for that subject. |
+| `notFound` | `51101` | `notFound` | 404 (`NOT_FOUND`) | `policy.error.notFound` | Sorry, we couldn't find the requested policy. |
+| `exist` | `51102` | `exist` | 409 (`CONFLICT`) | `policy.error.exist` | This role already grants a policy for that subject. |
 
 ## `notification`
 
@@ -338,7 +349,17 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 | --- | --- | --- | --- | --- | --- |
-| `uniqueValueGenerationFailed` | `51800` | `uniqueValueGenerationFailed` | 500 (`INTERNAL_SERVER_ERROR`) | `database.error.uniqueValueGenerationFailed` | We couldn't complete this action. Please try again. |
+| `uniqueValueGenerationFailed` | `51800` | `uniqueValueGenerationFailed` | 409 (`CONFLICT`) | `database.error.uniqueValueGenerationFailed` | We couldn't complete this action. Please try again. |
+| `writeConflict` | `51801` | `writeConflict` | 409 (`CONFLICT`) | `database.error.writeConflict` | The request conflicted with another change. Please try again. |
+| `unavailable` | `51802` | `unavailable` | 503 (`SERVICE_UNAVAILABLE`) | `database.error.unavailable` | The service is temporarily unavailable. Please try again later. |
+
+- `DatabaseUniqueValueGenerationFailedException` (`51800`) is thrown directly when every attempt to draw a unique generated value collides. `DatabaseUtil.toException` never produces it.
+- `DatabaseWriteConflictException` (`51801`) is the mapped form of a Prisma `P2034` write conflict between concurrent transactions.
+    - The server does not retry a write conflict. It answers 409 at once and the client retries.
+- `DatabaseUnavailableException` (`51802`) is the mapped form of two failures:
+    - a `PrismaClientInitializationError`
+    - a Prisma error whose code is in `DatabaseUnavailableCodes` (`src/common/database/constants/database.constant.ts`): `P1001`, `P1002`, `P1008`, `P1017`, `P2024`
+- `DatabaseUtil.toException` maps only `51801` and `51802`, and `AppGeneralFilter` renders them. See [Handling Error](handling-error.md).
 
 ## `response`
 
@@ -376,8 +397,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 - `AuthTwoFactorDomain` turns a `decryptFailed` on a stored TOTP secret into `twoFactorSecretUnavailable` (409).
 - `NotificationEmailProcessor` turns a `decryptFailed` into a BullMQ `UnrecoverableError`.
 - `HelperPatternTokenMissingException` carries the offending token in `messageProperties.token`.
-- `HelperStringService.fillPattern` raises it when a `{token}` in the pattern has no entry in the values it was given.
-- A configured pattern that disagrees with its call site raises an error, so no key ever holds the literal `{token}`.
+- `HelperStringService.fillPattern` raises it when a `{token}` in the pattern has no entry in the values it was given, so no key ever holds the literal `{token}`.
 
 ## `firebase`
 
@@ -386,6 +406,16 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `chunkSizeInvalid` | `52300` | `chunkSizeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `firebase.error.chunkSizeInvalid` | The push notification batch size is out of range. |
 
 `FirebaseChunkSizeInvalidException` is raised by `FirebaseService.sendMulticast` when the chunk size falls outside 1 to `FirebaseMaxSendPushBatchSize` (500).
+
+## `redis`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+| --- | --- | --- | --- | --- | --- |
+| `unavailable` | `52400` | `unavailable` | 503 (`SERVICE_UNAVAILABLE`) | `redis.error.unavailable` | The service is temporarily unavailable. Please try again later. |
+
+- `RedisUnavailableException` is the mapped form of one failure: the Keyv Redis not-connected error (`RedisErrorMessages.RedisClientNotConnectedThrown`).
+- `RedisUtil.toException` produces it, and `AppGeneralFilter` renders it.
+- Any other Redis error answers `50000`, including a failure of the BullMQ (ioredis) connection.
 
 ## Related documents
 

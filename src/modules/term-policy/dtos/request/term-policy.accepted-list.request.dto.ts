@@ -8,14 +8,11 @@ import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-polic
  * @public
  */
 export const TermPolicyAcceptedListRequestSchema =
-    PaginationCursorQuerySchema.extend({
-        orderBy: z
-            .union([z.string(), z.array(z.string())])
-            .optional()
-            .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${TermPolicyAcceptanceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-                example: `${TermPolicyAcceptanceDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-            }),
+    PaginationCursorQuerySchema.omit({ search: true }).extend({
+        orderBy: PaginationCursorQuerySchema.shape.orderBy.meta({
+            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${TermPolicyAcceptanceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            example: `${TermPolicyAcceptanceDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+        }),
     });
 
 /**

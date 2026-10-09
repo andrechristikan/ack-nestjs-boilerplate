@@ -9,15 +9,14 @@ import { AnalyticOptionalDateRangeRequestSchema } from '@modules/analytic/dtos/r
  * @public
  */
 export const AnalyticImpossibleTravelListRequestSchema =
-    PaginationOffsetQuerySchema.extend({
-        orderBy: z
-            .union([z.string(), z.array(z.string())])
-            .optional()
-            .meta({
+    PaginationOffsetQuerySchema.omit({ search: true })
+        .extend({
+            orderBy: PaginationOffsetQuerySchema.shape.orderBy.meta({
                 description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${AnalyticImpossibleTravelAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
                 example: `${AnalyticImpossibleTravelAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
-    }).extend(AnalyticOptionalDateRangeRequestSchema.shape);
+        })
+        .extend(AnalyticOptionalDateRangeRequestSchema.shape);
 
 /**
  * Inferred DTO for AnalyticImpossibleTravelListRequestSchema.

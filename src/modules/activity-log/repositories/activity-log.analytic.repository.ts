@@ -5,8 +5,8 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { IActivityLogAnalyticRepository } from '@modules/activity-log/interfaces/activity-log.analytic-repository.interface';
 import type {
+    IActivityLogAnalytic,
     IActivityLogAnalyticActionCount,
-    IActivityLogAnalyticEvent,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
@@ -56,7 +56,7 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date
-    ): Promise<IActivityLogAnalyticEvent[]> {
+    ): Promise<IActivityLogAnalytic[]> {
         return this.databaseService.client.activityLog.findMany({
             where: {
                 action: { in: actions },

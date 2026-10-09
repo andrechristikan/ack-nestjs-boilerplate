@@ -242,12 +242,12 @@ describe('AnalyticAnomalyDomain', () => {
 
             expect(result).toEqual(cached);
             expect(
-                userLoginAnalyticDomain.getLoginEvents
+                userLoginAnalyticDomain.getLoginActivityLogs
             ).not.toHaveBeenCalled();
         });
 
         it('uses the configured window when windowMs is omitted', async () => {
-            userLoginAnalyticDomain.getLoginEvents.mockResolvedValue([]);
+            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
 
             const result = await domain.loginSpikeIpSummary(null);
 
@@ -259,7 +259,7 @@ describe('AnalyticAnomalyDomain', () => {
         });
 
         it('uses the supplied windowMs when present', async () => {
-            userLoginAnalyticDomain.getLoginEvents.mockResolvedValue([]);
+            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
 
             const result = await domain.loginSpikeIpSummary(600000);
 
@@ -274,7 +274,7 @@ describe('AnalyticAnomalyDomain', () => {
 
     describe('loginSpikeIpList', () => {
         it('pages spike rows for the configured window', async () => {
-            userLoginAnalyticDomain.getLoginEvents.mockResolvedValue([]);
+            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
 
             const result = await domain.loginSpikeIpList(null, pagination);
 
@@ -291,7 +291,7 @@ describe('AnalyticAnomalyDomain', () => {
         });
 
         it('slices the sorted rows and counts them', async () => {
-            userLoginAnalyticDomain.getLoginEvents.mockResolvedValue([]);
+            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
             const sorted = [
                 { ipAddress: '10.0.0.1', uniqueUsers: 4, attempts: 9 },
                 { ipAddress: '10.0.0.2', uniqueUsers: 2, attempts: 5 },
@@ -500,7 +500,7 @@ describe('AnalyticAnomalyDomain', () => {
         });
 
         it('computes and caches the summary on a cache miss', async () => {
-            userLoginAnalyticDomain.getLoginEvents.mockResolvedValue([]);
+            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
 
             const result = await domain.loginTimeSummary(startDate, endDate);
 
@@ -515,7 +515,7 @@ describe('AnalyticAnomalyDomain', () => {
 
     describe('loginTimeList', () => {
         it('pages login-time anomalies through PaginationService.offsetPage', async () => {
-            userLoginAnalyticDomain.getLoginEvents.mockResolvedValue([]);
+            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
 
             const result = await domain.loginTimeList(
                 startDate,
@@ -536,7 +536,7 @@ describe('AnalyticAnomalyDomain', () => {
         });
 
         it('slices the sorted rows and counts them', async () => {
-            userLoginAnalyticDomain.getLoginEvents.mockResolvedValue([]);
+            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
             const sorted = [
                 {
                     userId: 'user-1',
@@ -734,7 +734,7 @@ describe('AnalyticAnomalyDomain', () => {
 
     describe('computeLoginSpikeIp', () => {
         it('groups unique users per ip, treats a missing ip as unknown, and sorts by unique users', async () => {
-            userLoginAnalyticDomain.getLoginEvents.mockResolvedValue([
+            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([
                 {
                     id: 'e1',
                     userId: 'user-1',
@@ -804,7 +804,7 @@ describe('AnalyticAnomalyDomain', () => {
         it('uses now and a 30-day lookback when dates are omitted', async () => {
             const defaultStart = new Date('2026-01-30T00:00:00.000Z');
             helperDateService.backward.mockReturnValue(defaultStart);
-            userLoginAnalyticDomain.getLoginEvents.mockResolvedValue([]);
+            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([]);
 
             await domain['computeLoginTimeAnomalies'](null, null);
 
@@ -812,14 +812,13 @@ describe('AnalyticAnomalyDomain', () => {
                 now,
                 Duration.fromObject({ days: 30 })
             );
-            expect(userLoginAnalyticDomain.getLoginEvents).toHaveBeenCalledWith(
-                defaultStart,
-                now
-            );
+            expect(
+                userLoginAnalyticDomain.getLoginActivityLogs
+            ).toHaveBeenCalledWith(defaultStart, now);
         });
 
         it('skips users with fewer than five logins and flags a rare last hour', async () => {
-            userLoginAnalyticDomain.getLoginEvents.mockResolvedValue([
+            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([
                 {
                     id: 'e0',
                     userId: 'user-1',
@@ -891,7 +890,7 @@ describe('AnalyticAnomalyDomain', () => {
         });
 
         it('does not flag a last hour at or above the frequency threshold', async () => {
-            userLoginAnalyticDomain.getLoginEvents.mockResolvedValue([
+            userLoginAnalyticDomain.getLoginActivityLogs.mockResolvedValue([
                 {
                     id: 'keep-0',
                     userId: 'user-keep',

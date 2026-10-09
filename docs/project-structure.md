@@ -66,7 +66,7 @@ Every import between `src/` folders goes through a `tsconfig.json` path alias:
 The App Module is the root module. It:
 
 - Imports `CommonModule` (shared infrastructure and global feature modules) and the project's own `RouterModule` from `src/router/router.module.ts` (HTTP route mounting and the queue processor mount)
-- Registers five global exception filters: general, application, HTTP, validation, and import validation
+- Registers four global exception filters: general, HTTP, validation, and import validation
 
 ## Common Module
 
@@ -352,7 +352,7 @@ Type-safe enumerations for status codes, types, or other fixed sets of values re
 
 ### Exceptions
 
-- Dedicated exception classes, one per error, each extending `AppBaseException`.
+- Dedicated exception classes, one per error, each extending `AppBaseException`, or `AppUnknownException` for a runtime error outside a request.
 - Files are named `<module>.<kebab-error>.exception.ts` (e.g., `user.not-found.exception.ts`).
 
 ### Factories
@@ -425,6 +425,7 @@ Below are explanations for the root folders and files outside `src/`:
 
 - **.github/**: GitHub-specific configuration: Actions workflows, issue and pull request templates, and Dependabot settings.
     - `.github/workflows/test-unit.yml` runs `NODE_ENV=test pnpm test` on `workflow_dispatch`.
+    - `.github/workflows/test-integration.yml` and `test-e2e.yml` run `pnpm test:integration` and `pnpm test:e2e` on `workflow_dispatch`. `package.json` defines neither script, so both fail.
     - `.github/workflows/linter.yml` runs on `pull_request` and `workflow_dispatch`.
     - The three `release-with-*.yml` workflows build `ci/dockerfile.production` and deploy it, as described in [Release](release.md).
     - Dependabot bumps the production Dockerfile and `ci/docker-compose.production.yml` within the current major version.
@@ -459,6 +460,7 @@ Below are explanations for the root folders and files outside `src/`:
     - `generate-secret.ts` writes the JWT keys, JWKS, encryption secrets, and the MongoDB keyfile (`pnpm generate:secret`).
     - `generate-package.ts` writes `src/generated/package/package.ts` (`pnpm generate:package`).
 - **test/**: The Vitest spec tree.
+    - `test/` holds `unit/` and `helpers/`. The integration and e2e suites are held, so no folder exists for them.
     - `test/unit/` holds the unit specs.
         - They mirror `src/` (`test/unit/app/`, `test/unit/common/`, `test/unit/modules/`, `test/unit/queues/`).
         - Unit-only helpers sit in `test/unit/helpers/`.

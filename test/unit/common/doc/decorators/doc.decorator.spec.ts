@@ -1,5 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 import { z } from 'zod';
+import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
+import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
 import {
     Doc,
     DocErrors,
@@ -267,6 +269,43 @@ describe('doc.decorator', () => {
                 descriptor.value
             ) as IDocResponseEntry[];
             expect(stored.length).toBeGreaterThan(1);
+        });
+
+        it('documents the database and redis kit errors at the status their exceptions answer', () => {
+            const descriptor: IMethodDescriptor = { value: vi.fn() };
+
+            Doc()({}, 'exampleMethod', descriptor);
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.CONFLICT,
+                        statusCode:
+                            EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
+                        messagePath:
+                            'database.error.uniqueValueGenerationFailed',
+                    }),
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.CONFLICT,
+                        statusCode: EnumDatabaseStatusCodeError.writeConflict,
+                        messagePath: 'database.error.writeConflict',
+                    }),
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+                        statusCode: EnumDatabaseStatusCodeError.unavailable,
+                        messagePath: 'database.error.unavailable',
+                    }),
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+                        statusCode: EnumRedisStatusCodeError.unavailable,
+                        messagePath: 'redis.error.unavailable',
+                    }),
+                ])
+            );
         });
 
         it('applies with no options given', () => {

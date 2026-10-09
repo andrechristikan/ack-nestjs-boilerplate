@@ -2,6 +2,8 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@generated/prisma-client/client';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseClientToken } from '@common/database/constants/database.constant';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
 import type {
@@ -26,7 +28,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
 
     /**
-     * Opens the connection and rethrows on failure, so boot fails loudly rather than serving a
+     * Opens the connection and throws on failure, so boot fails loudly rather than serving a
      * process with no database.
      */
     private async connect(): Promise<void> {
@@ -34,8 +36,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             await this.client.$connect();
             this.logger.log('Successfully connected to the database');
         } catch (error: unknown) {
-            this.logger.error(error, 'Failed to connect to the database');
-            throw error;
+            throw new AppUnknownException(error);
         }
     }
 
@@ -138,8 +139,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             await this.setupLogging();
             await this.connect();
         } catch (error: unknown) {
-            this.logger.error(error, 'Failed to initialize database service');
-            throw error;
+            if (error instanceof AppBaseException) {
+                throw error;
+            }
+
+            throw new AppUnknownException(error);
         }
     }
 

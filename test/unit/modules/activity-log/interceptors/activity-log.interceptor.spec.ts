@@ -1,3 +1,4 @@
+import { HttpStatus, NotFoundException } from '@nestjs/common';
 import type { CallHandler, ExecutionContext } from '@nestjs/common';
 import type { HttpArgumentsHost } from '@nestjs/common/interfaces/index';
 import { Test } from '@nestjs/testing';
@@ -5,6 +6,8 @@ import type { TestingModule } from '@nestjs/testing';
 import { of } from 'rxjs';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
@@ -13,6 +16,7 @@ import {
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ActivityLogInterceptor } from '@modules/activity-log/interceptors/activity-log.interceptor';
+import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
 import {
     buildErrorObservable,
     subscribeError,
@@ -66,7 +70,7 @@ describe('ActivityLogInterceptor', () => {
             expect(activityLogDomain.flushStaged).not.toHaveBeenCalled();
         });
 
-        it('flushes every staged event with the authenticated user on success', async () => {
+        it('flushes every staged activity log with the authenticated user on success', async () => {
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             const httpArgumentsHost: MockProxy<HttpArgumentsHost> =
@@ -138,7 +142,7 @@ describe('ActivityLogInterceptor', () => {
             expect(result).toBe('handled');
         });
 
-        it('flushes only onError events and rethrows the original error on failure', async () => {
+        it('flushes only onError activity logs and wraps a non-typed error in AppUnknownException on failure', async () => {
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             const httpArgumentsHost: MockProxy<HttpArgumentsHost> =
@@ -159,6 +163,28 @@ describe('ActivityLogInterceptor', () => {
                 interceptor.intercept(executionContext, callHandler)
             );
 
+            expect(caught).toBeInstanceOf(AppUnknownException);
+            expect(caught).toMatchObject({ rawError: handlerError });
+            expect(activityLogDomain.flushStaged).toHaveBeenCalledWith({
+                payloadUserId: 'user-1',
+                isError: true,
+            });
+        });
+
+        it('flushes onError activity logs and rethrows an AppBaseException unchanged', async () => {
+            const executionContext = buildHttpExecutionContext({ user });
+            executionContext.getType.mockReturnValue('http');
+            const callHandler: MockProxy<CallHandler> = mock<CallHandler>();
+            const handlerError = new DatabaseUnavailableException();
+            callHandler.handle.mockReturnValue(
+                buildErrorObservable(handlerError)
+            );
+            activityLogDomain.flushStaged.mockResolvedValue(undefined);
+
+            const caught = await subscribeError(
+                interceptor.intercept(executionContext, callHandler)
+            );
+
             expect(caught).toBe(handlerError);
             expect(activityLogDomain.flushStaged).toHaveBeenCalledWith({
                 payloadUserId: 'user-1',
@@ -166,7 +192,25 @@ describe('ActivityLogInterceptor', () => {
             });
         });
 
-        it('swallows a flush failure on error and still rethrows the original error', async () => {
+        it('flushes onError activity logs and rethrows an HttpException unchanged', async () => {
+            const executionContext = buildHttpExecutionContext({ user });
+            executionContext.getType.mockReturnValue('http');
+            const callHandler: MockProxy<CallHandler> = mock<CallHandler>();
+            const handlerError = new NotFoundException();
+            callHandler.handle.mockReturnValue(
+                buildErrorObservable(handlerError)
+            );
+            activityLogDomain.flushStaged.mockResolvedValue(undefined);
+
+            const caught = await subscribeError(
+                interceptor.intercept(executionContext, callHandler)
+            );
+
+            expect(caught).toBe(handlerError);
+            expect(caught).toMatchObject({ status: HttpStatus.NOT_FOUND });
+        });
+
+        it('swallows a flush failure on error and still wraps the original error', async () => {
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             const httpArgumentsHost: MockProxy<HttpArgumentsHost> =
@@ -189,12 +233,13 @@ describe('ActivityLogInterceptor', () => {
                 interceptor.intercept(executionContext, callHandler)
             );
 
-            expect(caught).toBe(handlerError);
+            expect(caught).toBeInstanceOf(AppUnknownException);
+            expect(caught).toMatchObject({ rawError: handlerError });
         });
     });
 
     describe('flushSafe', () => {
-        it('flushes staged events for the given payload user and error flag', async () => {
+        it('flushes staged activity logs for the given payload user and error flag', async () => {
             activityLogDomain.flushStaged.mockResolvedValue(undefined);
 
             await interceptor['flushSafe']('user-1', false);

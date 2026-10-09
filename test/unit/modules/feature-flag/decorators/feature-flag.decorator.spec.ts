@@ -6,6 +6,8 @@ import { FeatureFlagKeyPathMetaKey } from '@modules/feature-flag/constants/featu
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 import { FeatureFlagGuard } from '@modules/feature-flag/guards/feature-flag.guard';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { FeatureFlagKeyEmptyException } from '@modules/feature-flag/exceptions/feature-flag.key-empty.exception';
+import { FeatureFlagKeyNestedException } from '@modules/feature-flag/exceptions/feature-flag.key-nested.exception';
 
 describe('feature-flag.decorator', () => {
     describe('FeatureFlagProtected', () => {
@@ -30,7 +32,7 @@ describe('feature-flag.decorator', () => {
             ).toBe('changePassword');
         });
 
-        it('documents the predefined-key error kit at 500 and the disabled error at 404', () => {
+        it('documents the notFound and disabled errors at 404', () => {
             const entries = Reflect.getMetadata(
                 DocResponseEntryMetaKey,
                 handler
@@ -39,23 +41,9 @@ describe('feature-flag.decorator', () => {
             expect(entries).toEqual(
                 expect.arrayContaining([
                     expect.objectContaining({
-                        httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                        statusCode:
-                            EnumFeatureFlagStatusCodeError.predefinedKeyNotFound,
-                        messagePath: 'featureFlag.error.predefinedKeyNotFound',
-                    }),
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                        statusCode:
-                            EnumFeatureFlagStatusCodeError.predefinedKeyLengthExceeded,
-                        messagePath:
-                            'featureFlag.error.predefinedKeyLengthExceeded',
-                    }),
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                        statusCode:
-                            EnumFeatureFlagStatusCodeError.predefinedKeyEmpty,
-                        messagePath: 'featureFlag.error.predefinedKeyEmpty',
+                        httpStatus: HttpStatus.NOT_FOUND,
+                        statusCode: EnumFeatureFlagStatusCodeError.notFound,
+                        messagePath: 'featureFlag.error.notFound',
                     }),
                     expect.objectContaining({
                         httpStatus: HttpStatus.NOT_FOUND,
@@ -63,6 +51,18 @@ describe('feature-flag.decorator', () => {
                         messagePath: 'featureFlag.error.disabled',
                     }),
                 ])
+            );
+        });
+
+        it('throws at evaluation on an empty key', () => {
+            expect(() => FeatureFlagProtected('')).toThrow(
+                FeatureFlagKeyEmptyException
+            );
+        });
+
+        it('throws at evaluation on a dotted key', () => {
+            expect(() => FeatureFlagProtected('login.google')).toThrow(
+                FeatureFlagKeyNestedException
             );
         });
     });

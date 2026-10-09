@@ -1,4 +1,8 @@
 import { WorkspaceInviteListRequestSchema } from '@modules/workspace/dtos/request/workspace.invite-list.request.dto';
+import {
+    WorkspaceInviteDefaultAvailableSearch,
+    WorkspaceInviteDefaultAvailableOrderBy,
+} from '@modules/workspace/constants/workspace.list.constant';
 
 describe('WorkspaceInviteListRequestSchema', () => {
     it('parses cursor, perPage, search, orderBy, and status', () => {
@@ -29,5 +33,14 @@ describe('WorkspaceInviteListRequestSchema', () => {
         expect(() =>
             WorkspaceInviteListRequestSchema.parse({ extra: true })
         ).toThrow();
+    });
+
+    it('keeps the module search and orderBy descriptions', () => {
+        expect(
+            WorkspaceInviteListRequestSchema.shape.search.meta()?.description
+        ).toContain(WorkspaceInviteDefaultAvailableSearch.join(', '));
+        expect(
+            WorkspaceInviteListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(WorkspaceInviteDefaultAvailableOrderBy.join(', '));
     });
 });

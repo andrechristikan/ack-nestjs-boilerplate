@@ -27,11 +27,6 @@ export interface IPaginationQuery {
     availableOrderBy: readonly string[];
 }
 
-export interface IPaginationListQuery {
-    search?: string | undefined;
-    orderBy?: string | string[] | undefined;
-}
-
 export interface IPaginationQueryOffsetOptions {
     availableOrderBy?: readonly string[];
     availableSearch?: readonly string[];

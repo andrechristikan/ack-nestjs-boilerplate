@@ -1,7 +1,7 @@
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import type {
+    IActivityLogAnalytic,
     IActivityLogAnalyticActionCount,
-    IActivityLogAnalyticEvent,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAnalyticLockoutMetrics } from '@modules/analytic/interfaces/analytic.interface';
 import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
@@ -52,10 +52,10 @@ export class UserLoginAnalyticDomain {
         return { failed, maxAttempt };
     }
 
-    getLoginEvents(
+    getLoginActivityLogs(
         startDate: Date,
         endDate: Date
-    ): Promise<IActivityLogAnalyticEvent[]> {
+    ): Promise<IActivityLogAnalytic[]> {
         return this.activityLogAnalyticDomain.getManyByActionsInRange(
             UserLoginAnalyticActions,
             startDate,
@@ -63,10 +63,10 @@ export class UserLoginAnalyticDomain {
         );
     }
 
-    getFailedLoginEvents(
+    getFailedLoginActivityLogs(
         startDate: Date,
         endDate: Date
-    ): Promise<IActivityLogAnalyticEvent[]> {
+    ): Promise<IActivityLogAnalytic[]> {
         return this.activityLogAnalyticDomain.getManyByActionsInRange(
             [
                 EnumActivityLogAction.userLoginFailed,

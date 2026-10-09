@@ -14,7 +14,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
 import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
 import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
@@ -22,7 +22,6 @@ import { ApiKeyStartAtNotFutureException } from '@modules/api-key/exceptions/api
 import { ApiKeyXApiKeyForbiddenException } from '@modules/api-key/exceptions/api-key.x-api-key-forbidden.exception';
 import { ApiKeyXApiKeyInvalidException } from '@modules/api-key/exceptions/api-key.x-api-key-invalid.exception';
 import { ApiKeyXApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.x-api-key-not-found.exception';
-import { ApiKeyXApiKeyPredefinedNotFoundException } from '@modules/api-key/exceptions/api-key.x-api-key-predefined-not-found.exception';
 import { ApiKeyXApiKeyRequiredException } from '@modules/api-key/exceptions/api-key.x-api-key-required.exception';
 import type {
     IApiKey,
@@ -79,7 +78,7 @@ export class ApiKeyDomain {
         apiKey: Pick<ApiKey, 'id' | 'name' | 'type'>,
         timestamp: Date,
         onError: boolean
-    ): IActivityLogStagedEvent {
+    ): IActivityLogStaged {
         const metadata = this.apiKeyUtil.mapActivityLogMetadata(
             apiKey,
             timestamp
@@ -117,7 +116,7 @@ export class ApiKeyDomain {
             this.apiKeyCredentialUtil.generateCredential();
         const apiKeyId = this.databaseUtil.createId();
         const createdAt = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyCreate,
                 { id: apiKeyId, name: others.name, type: others.type },
@@ -148,7 +147,7 @@ export class ApiKeyDomain {
             hash
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return { apiKey: created, secret };
     }
@@ -172,7 +171,7 @@ export class ApiKeyDomain {
             throw new ApiKeyExpiredException();
         }
 
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyUpdateStatus,
                 apiKey,
@@ -183,7 +182,7 @@ export class ApiKeyDomain {
         const updated = await this.apiKeyRepository.updateStatus(id, {
             isActive,
         });
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
         return updated;
@@ -195,7 +194,7 @@ export class ApiKeyDomain {
         this.validateApiKey(apiKey, true);
 
         const updatedAt = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyUpdate,
                 {
@@ -208,7 +207,7 @@ export class ApiKeyDomain {
             ),
         ];
         const updated = await this.apiKeyRepository.updateName(id, name);
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
         return updated;
@@ -233,7 +232,7 @@ export class ApiKeyDomain {
         });
 
         const timestamp = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyUpdateDate,
                 apiKey,
@@ -245,7 +244,7 @@ export class ApiKeyDomain {
             startAt: newStartAt,
             endAt: newEndAt,
         });
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
         return updated;
@@ -262,7 +261,7 @@ export class ApiKeyDomain {
             secret
         );
         const timestamp = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyReset,
                 apiKey,
@@ -271,7 +270,7 @@ export class ApiKeyDomain {
             ),
         ];
         const updated = await this.apiKeyRepository.updateHash(id, hash);
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
         return { apiKey: updated, secret };
@@ -285,7 +284,7 @@ export class ApiKeyDomain {
         }
 
         const timestamp = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminApiKeyDelete,
                 apiKey,
@@ -294,7 +293,7 @@ export class ApiKeyDomain {
             ),
         ];
         const deleted = await this.apiKeyRepository.delete(id);
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
         await this.apiKeyCache.deleteCacheByKey(apiKey.key);
 
         return deleted;
@@ -361,12 +360,8 @@ export class ApiKeyDomain {
         apiKey: ApiKey | null,
         apiKeyTypes: EnumApiKeyType[]
     ): boolean {
-        if (apiKeyTypes.length === 0) {
-            throw new ApiKeyXApiKeyPredefinedNotFoundException();
-        }
-
         if (!apiKey) {
-            throw new ApiKeyXApiKeyForbiddenException();
+            throw new ApiKeyXApiKeyRequiredException();
         }
 
         const isTypeAllowed = this.apiKeyUtil.validateType(apiKey, apiKeyTypes);

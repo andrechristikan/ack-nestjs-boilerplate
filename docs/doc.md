@@ -87,7 +87,9 @@ Coverage:
     - Too many requests (429)
     - Helper decrypt / encryption-secret / pattern-token failures (500)
     - Missing request schema or request context (500)
-    - Unique-value generation failure (500)
+    - Unique-value generation failure (409)
+    - Database write conflict (409)
+    - Database or Redis unavailable (503)
     - S3 integration not configured (404)
 
 **Usage:**
@@ -181,7 +183,7 @@ Module `*Protected` / auth kits:
 | `@Param('…', { schema })` / `@Query({ schema })` / `@Query('…', { schema })` / `@Body({ schema })` | zod via `standardSchemaConverter` in `src/swagger.ts` (`.meta` for description, example, required) |
 | Path placeholder a **guard** reads; the handler has no `@Param` | the owning Protected decorator (for example `ProjectProtected` emits `ApiParam('projectId')`) |
 | Multipart upload | `FileUploadSingle` / `FileUploadMultiple` / `FileUploadMultipleFields`: `ApiConsumes('multipart/form-data')` plus binary `ApiBody` from field name(s) plus upload error kit |
-| List query (`page` / `cursor` / `perPage` / `search` / `orderBy` + filters) | the list zod schema on `@Query({ schema })`, built from `PaginationOffsetQuerySchema` / `PaginationCursorQuerySchema` plus `.extend` |
+| List query (`page` / `cursor` / `perPage` / `search` / `orderBy` + filters) | the list zod schema on `@Query({ schema })`, built from `PaginationOffsetQuerySchema` / `PaginationCursorQuerySchema` plus `.extend` (and `.omit` for a field with no allow-list) |
 
 - A hand-written schema object beside a zod schema is a mirror.
 - Every field carries `.meta({ description, example })` on the zod schema.
@@ -222,7 +224,7 @@ OpenAPI security scheme names are the module constants below. `ApiBearerAuth`, `
 
 Two kits carry a 404 beside their other entries:
 
-- `FeatureFlagProtected` publishes `DocFeatureFlagErrorResponses`: the `predefined` group (500) and `disabled` (404, `featureFlag.error.disabled`)
+- `FeatureFlagProtected` publishes `DocFeatureFlagErrorResponses.disabled` (404): `featureFlag.error.notFound` and `featureFlag.error.disabled`
 - `AuthSocialGoogleProtected` and `AuthSocialAppleProtected` publish `DocAuthSocialGoogleErrorResponses` / `DocAuthSocialAppleErrorResponses`: the `unauthorized` group (401) and `notConfigured` (404, `auth.error.socialGoogleNotConfigured` / `auth.error.socialAppleNotConfigured`)
 
 - `auth.error.accessTokenUnauthorized` belongs to `AuthJwtAccessProtected`.
@@ -285,7 +287,7 @@ Two ways, both outside production only:
 
 2. **Via Generated File:**
     - The file is written at: `generated/swagger.json`
-    - Written every time the app starts in a non-production environment.
+    - Written every time the app starts in a non-production environment, after the `generated/` directory is created when missing.
     - Use for CI/CD, external tools, or static documentation.
 
 Both methods provide the same OpenAPI spec: one served live, one written to disk.
@@ -458,7 +460,7 @@ async list(
 }
 ```
 
-- `UserListRequestSchema` extends `PaginationOffsetQuerySchema` with `search`, `orderBy`, and filter fields.
+- `UserListRequestSchema` extends `PaginationOffsetQuerySchema`, overrides the `search` and `orderBy` meta, and adds filter fields.
 - Allow-list text in `.meta({ description })` uses the same constants the HTTP service passes to `PaginationQueryUtil`.
 - Flow: [Pagination Documentation][ref-doc-pagination].
 

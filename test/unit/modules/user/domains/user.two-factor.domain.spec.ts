@@ -16,7 +16,7 @@ import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
@@ -60,7 +60,7 @@ describe('UserTwoFactorDomain', () => {
 
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-01T00:00:00.000Z');
-    const event: IActivityLogStagedEvent = {
+    const activityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userVerifyTwoFactor,
         metadata: {},
         onError: false,
@@ -164,7 +164,7 @@ describe('UserTwoFactorDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        activityLogDomain.prepare.mockReturnValue(event);
+        activityLogDomain.prepare.mockReturnValue(activityLog);
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -218,7 +218,7 @@ describe('UserTwoFactorDomain', () => {
                 'challenge-token'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -422,7 +422,7 @@ describe('UserTwoFactorDomain', () => {
             },
         };
 
-        it('confirms the pending authenticator, returns backup codes, and stages the event in order', async () => {
+        it('confirms the pending authenticator, returns backup codes, and stages the activity log in order', async () => {
             authCache.getChallenge.mockResolvedValue(challenge);
             userRepository.findOneWithRoleById.mockResolvedValue(pendingUser);
             authTwoFactorDomain.generateBackupCodes.mockReturnValue({
@@ -456,7 +456,7 @@ describe('UserTwoFactorDomain', () => {
                 action: EnumActivityLogAction.userEnableTwoFactor,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
             expect(callOrder).toEqual(['enableTwoFactor', 'stagePrepared']);
         });
@@ -683,7 +683,7 @@ describe('UserTwoFactorDomain', () => {
     });
 
     describe('setupTwoFactor', () => {
-        it('starts a fresh setup and stages the event in order when two-factor is not enabled', async () => {
+        it('starts a fresh setup and stages the activity log in order when two-factor is not enabled', async () => {
             const user = {
                 ...baseUser,
                 twoFactor: { ...baseTwoFactor, enabled: false },
@@ -723,7 +723,7 @@ describe('UserTwoFactorDomain', () => {
                 createdBy: user.id,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
             expect(callOrder).toEqual(['setupTwoFactor', 'stagePrepared']);
         });
@@ -776,7 +776,7 @@ describe('UserTwoFactorDomain', () => {
                 user.twoFactor!.backupCodes
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -849,7 +849,7 @@ describe('UserTwoFactorDomain', () => {
     });
 
     describe('enableTwoFactor', () => {
-        it('confirms the pending authenticator, returns backup codes, and stages the event in order', async () => {
+        it('confirms the pending authenticator, returns backup codes, and stages the activity log in order', async () => {
             const user = {
                 ...baseUser,
                 twoFactor: {
@@ -883,7 +883,7 @@ describe('UserTwoFactorDomain', () => {
                 action: EnumActivityLogAction.userEnableTwoFactor,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
             expect(callOrder).toEqual(['enableTwoFactor', 'stagePrepared']);
         });
@@ -1017,7 +1017,7 @@ describe('UserTwoFactorDomain', () => {
                 user.id
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -1094,7 +1094,7 @@ describe('UserTwoFactorDomain', () => {
     });
 
     describe('regenerateTwoFactorBackupCodes', () => {
-        it('regenerates fresh backup codes and stages the event in order', async () => {
+        it('regenerates fresh backup codes and stages the activity log in order', async () => {
             const user = baseUser;
             userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
                 verifiedResult
@@ -1131,7 +1131,7 @@ describe('UserTwoFactorDomain', () => {
                 action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
             expect(callOrder).toEqual([
                 'regenerateTwoFactorBackupCodes',
@@ -1212,7 +1212,7 @@ describe('UserTwoFactorDomain', () => {
     });
 
     describe('resetTwoFactorByAdmin', () => {
-        it('resets two-factor, revokes sessions, stages both events in order, and notifies the user', async () => {
+        it('resets two-factor, revokes sessions, stages both activity logs in order, and notifies the user', async () => {
             const user = baseUser;
             userRepository.findOneWithRoleById.mockResolvedValue(user);
             const actorMetadata = { userId: 'user-quartz' };
@@ -1221,7 +1221,7 @@ describe('UserTwoFactorDomain', () => {
             userUtil.mapActivityLogTargetMetadata.mockReturnValue(
                 targetMetadata
             );
-            const actorEvent: IActivityLogStagedEvent = {
+            const actorActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminUserResetTwoFactor,
                 metadata: {},
                 onError: false,
@@ -1229,7 +1229,7 @@ describe('UserTwoFactorDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            const targetEvent: IActivityLogStagedEvent = {
+            const targetActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userResetTwoFactorByAdmin,
                 metadata: {},
                 onError: false,
@@ -1238,8 +1238,8 @@ describe('UserTwoFactorDomain', () => {
                 workspaceId: null,
             };
             activityLogDomain.prepare
-                .mockReturnValueOnce(actorEvent)
-                .mockReturnValueOnce(targetEvent);
+                .mockReturnValueOnce(actorActivityLog)
+                .mockReturnValueOnce(targetActivityLog);
             const callOrder: string[] = [];
             sessionDomain.purgeLoginsByUser.mockImplementation(async () => {
                 callOrder.push('purgeLoginsByUser');
@@ -1281,8 +1281,8 @@ describe('UserTwoFactorDomain', () => {
                 metadata: targetMetadata,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                actorEvent,
-                targetEvent,
+                actorActivityLog,
+                targetActivityLog,
             ]);
             expect(
                 notificationQueue.sendResetTwoFactorByAdmin

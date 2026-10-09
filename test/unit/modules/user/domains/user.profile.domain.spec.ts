@@ -23,7 +23,7 @@ import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import type { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
@@ -51,7 +51,7 @@ describe('UserProfileDomain', () => {
 
     let domain: UserProfileDomain;
 
-    const event: IActivityLogStagedEvent = {
+    const activityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userUpdateProfile,
         metadata: {},
         onError: false,
@@ -147,7 +147,7 @@ describe('UserProfileDomain', () => {
         vi.resetAllMocks();
 
         configGet.mockImplementation(() => 'photo-profile/{userId}');
-        activityLogDomain.prepare.mockReturnValue(event);
+        activityLogDomain.prepare.mockReturnValue(activityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -185,7 +185,7 @@ describe('UserProfileDomain', () => {
     });
 
     describe('updateProfile', () => {
-        it('updates the profile and stages the activity log event', async () => {
+        it('updates the profile and stages the activity log', async () => {
             countryDomain.existsById.mockResolvedValue(true);
 
             await domain.updateProfile(profile.id, {
@@ -203,7 +203,7 @@ describe('UserProfileDomain', () => {
                 }
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -338,7 +338,7 @@ describe('UserProfileDomain', () => {
             size: 2048,
         };
 
-        it('maps the presign and stages the activity log event', async () => {
+        it('maps the presign and stages the activity log', async () => {
             awsS3Service.isInitialized.mockReturnValue(true);
             awsS3Service.mapPresign.mockReturnValue(aws);
 
@@ -356,7 +356,7 @@ describe('UserProfileDomain', () => {
                 aws
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -443,7 +443,7 @@ describe('UserProfileDomain', () => {
             size: 2048,
         };
 
-        it('uploads the file and stages the activity log event', async () => {
+        it('uploads the file and stages the activity log', async () => {
             fileService.extractExtensionFromFilename.mockReturnValue(
                 EnumFileExtensionImage.png
             );
@@ -467,7 +467,7 @@ describe('UserProfileDomain', () => {
                 aws
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -535,7 +535,7 @@ describe('UserProfileDomain', () => {
     describe('claimUsername', () => {
         const username: Lowercase<string> = 'persimmon';
 
-        it('claims the username and stages the activity log event', async () => {
+        it('claims the username and stages the activity log', async () => {
             userUtil.checkUsernamePattern.mockReturnValue(false);
             userUtil.checkBadWord.mockResolvedValue(false);
             userRepository.existsByUsername.mockResolvedValue(false);
@@ -547,7 +547,7 @@ describe('UserProfileDomain', () => {
                 { username }
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 

@@ -16,7 +16,7 @@ Key features:
 - **Step-Tracked Jobs**: a job records the steps it completed in its own data, so a retry skips the steps recorded as completed
 - **Delivery Tracking**:
     - `silent` and `inApp` deliveries are pre-marked at creation time.
-    - `push` deliveries record `processedAt`, `sentAt`, and `failureTokens` as the processor runs.
+    - `push` deliveries record `processedAt`, `sentAt`, and `failureTokens` as the processor runs, and `sentAt` waits until no token is pending retry.
     - `email` deliveries carry no timestamps at all.
 
 ## Related Documents
@@ -45,6 +45,7 @@ Key features:
 - [Push Notifications](#push-notifications)
     - [Push Token Management](#push-token-management)
     - [Token Cleanup Strategy](#token-cleanup-strategy)
+    - [Retrying Transient Failures](#retrying-transient-failures)
     - [FCM Rate Limiting](#fcm-rate-limiting)
 - [Email Notifications](#email-notifications)
 - [Delivery Tracking](#delivery-tracking)
@@ -78,7 +79,7 @@ Each notification record carries one or more `NotificationDelivery` rows, one pe
 | Channel | Delivery | `processedAt` / `sentAt` |
 | --- | --- | --- |
 | `email` | Via AWS SES (queued) | Never set. The email channel domains send through SES and do not touch the delivery record |
-| `push` | Via Firebase FCM (queued) | Set by the push channel domains: `processedAt` before the send, `sentAt` after it |
+| `push` | Via Firebase FCM (queued) | Set by the push channel domains: `processedAt` before each send attempt, `sentAt` once the send completes with no token pending retry |
 | `inApp` | In-application UI | Pre-filled at notification creation time |
 | `silent` | No external delivery; record-only | Pre-filled at notification creation time |
 
@@ -199,20 +200,22 @@ Every orchestration job except the bulk `publishTermPolicy` job, and every push 
 
 How a run records progress:
 
-1. The producer builds the payload with `completedSteps: []`. A push payload also carries `failureTokens: null`.
-2. The domain skips each step already in `completedSteps` and returns an `INotificationStepResult`: a `message`, the `completedSteps`, and the `failedSteps` (each a step and an error string). A push domain adds `failureTokens`.
-3. The processor service writes `completedSteps` back with `job.updateData` (plus `failureTokens` for push). It writes before it decides whether the run failed.
+1. The producer builds the payload with `completedSteps: []`. A push payload also carries `failureTokens: null` and `pendingTokens: null`.
+2. The domain skips each step already in `completedSteps` and returns an `INotificationStepResult`: a `message`, the `completedSteps`, and the `failedSteps` (each a step and an error string). A push domain adds `failureTokens` and `pendingTokens`.
+3. The processor service writes `completedSteps` back with `job.updateData` (plus `failureTokens` and `pendingTokens` for push). It writes before it decides whether the run failed.
 4. When `failedSteps` is not empty, the processor service throws `QueueException(summary, true)`. The summary reads `Notification steps failed: sendEmail:<error>, sendPush:<error>`.
 
 Behavior of a retried run:
 
 - A failed step does not stop its siblings: the steps of one run settle together and each outcome is read.
-- BullMQ retries a failed run up to `queue.job.attempts`. The retry skips every step in `completedSteps` and runs the rest.
+- BullMQ runs a job at most `queue.job.attempts` (3) times in total, the first run included, and retries each failed run until then. The retry skips every step in `completedSteps` and runs the rest.
 - `updateProcessAt` is outside the step outcomes. A missing notification row makes it throw out of the domain, so the run fails with no failed step and no `completedSteps` write, and BullMQ retries the job.
 - `isFatal` is `true`, so Sentry receives the report on the last attempt only.
 - A crash between the commit of `createMany` and the `updateData` write leaves `completedSteps` empty. The retry calls `createMany` again, which creates nothing and does not throw.
 - `updateProcessAt` is the one step a retry does not skip: the call runs on every attempt, because the push message is rendered from the notification row it returns.
-- A multicast with `failureCount > 0` is not a failed step. The invalid tokens go to `failureTokens` and the job succeeds.
+    - Each run re-stamps `processedAt`, so it holds the time of the latest attempt that reached the call.
+- A multicast whose failed tokens are all invalid is not a failed step. The invalid tokens go to `failureTokens` and the job succeeds.
+- A multicast that leaves tokens in `retryTokens` fails the `sendMulticast` step with the error `<n> tokens pending retry`. See [Retrying Transient Failures](#retrying-transient-failures).
 - A skip (no active user, Firebase not initialized) returns a message with no failed step, so the job completes.
 
 The job id of a channel job is `{notificationId}-{step}`, from `NotificationStepJobIdPattern`:
@@ -331,7 +334,7 @@ A payload that fails to open (a rotated key, a tampered value, the wrong recipie
 
 - Inside `handle`, `NotificationEmailProcessor` maps that to a BullMQ `UnrecoverableError`, so the job fails at once without retries.
 - `QueueProcessorBase.onFailed` counts an `UnrecoverableError` as the last attempt and reports it to Sentry.
-- Every other email failure is rethrown as it is and retried.
+- Every other email failure fails the job and is retried. A `QueueException`, an `AppBaseException`, or an `UnrecoverableError` passes through, and anything else is wrapped in `AppUnknownException`.
 
 ### Job Payloads
 
@@ -347,7 +350,7 @@ Orchestration, email, and push jobs carry an envelope, and `data` holds the extr
 | Email | `{ send: { userId, notificationId, email, username, cc, bcc }, data }` |
 | Email, `publishTermPolicy` (bulk) | `{ data: { termPolicyId, type, version }, batchId, proceedBy }`, one job per batch of up to `email.batchSize` users, with no `send` list: the job reads its recipients by `batchId` |
 | Email, recipient without an account | `{ send: { email, cc, bcc }, data }` |
-| Push | `{ send: { userId, notificationId, notificationTokens, username }, data, completedSteps, failureTokens }` |
+| Push | `{ send: { userId, notificationId, notificationTokens, username }, data, completedSteps, failureTokens, pendingTokens }` |
 | Push, `cleanupTokens` | `{ userId, failureTokens }` |
 | Push, `cleanupStaleTokens` | `{}` |
 
@@ -410,7 +413,9 @@ sequenceDiagram
 
 **Publish:**
 
-1. `TermPolicyDomain` checks the policy status. A policy already `published` answers `400` (`statusInvalid`) and adds no job.
+1. `TermPolicyDomain` checks the policy status. A policy already `published` takes one of two paths:
+    - With no `TermPolicyRecipient` marker, it adds the orchestration job again and writes nothing else.
+    - With a marker, it answers `400` (`statusInvalid`) and adds no job.
 2. The publish transaction runs an `updateMany` that matches the policy only while its status is `draft`.
 3. After the transaction commits, `TermPolicyDomain` adds the orchestration job.
     - The job id is `publishTermPolicy-{termPolicyId}`.
@@ -421,11 +426,11 @@ What the publish guarantees:
 - The `updateMany` separates two concurrent publishes of one draft: one commits.
 - The losing publish adds no job and answers one of two ways:
     - `400` (`statusInvalid`) when its `updateMany` runs after the winner commits.
-    - `500` (`AppUnknownException`) when the two transactions overlap. MongoDB raises a write conflict (`P2034`) and nothing retries it.
+    - `409` (`DatabaseWriteConflictException`, `51801`) when the two transactions overlap. MongoDB raises a write conflict (`P2034`) and nothing retries it.
 - The job is added after the commit.
 - When the add fails, the request answers `500`, the policy stays `published`, and no email goes out.
-- A later publish of that policy is refused by the status pre-check, so nothing adds the job again.
-- A publish therefore produces one orchestration job, and a failed add leaves every user without an email.
+- A later publish of that policy adds the job again while no marker exists, and the status pre-check refuses it once a marker exists.
+- A publish therefore produces one orchestration job, and a failed add leaves every user without an email until a later publish adds it again.
 - The marker unique on `termPolicyId` and `userId` stops a duplicate `Notification` row and a second batch for one user.
 - A repeat send to one user is possible at the SES boundary (see the email job below).
 
@@ -510,16 +515,24 @@ For push token registration, revocation, and session-linking details, see the [D
 
 ### Token Cleanup Strategy
 
-After each multicast send, `FirebaseService.sendMulticast()` returns `failureTokens`: the tokens that FCM identified as invalid (codes in `FirebaseInvalidTokenCodes`). These are:
+After each multicast send, `FirebaseService.sendMulticast()` returns `failureTokens`: the tokens that FCM identified as invalid. A token is invalid when its response error code is in `FirebaseInvalidTokenCodes`:
 
-1. Held in the push job data as `failureTokens`, so a retry reuses them without sending again.
-2. Queued as a `cleanupTokens` job in `EnumQueue.notificationPush` through `NotificationPushQueue.sendCleanupTokens()`.
+- `messaging/invalid-registration-token`
+- `messaging/registration-token-not-registered`
+- `messaging/mismatched-credential`
+
+A response with any other code, such as `messaging/invalid-argument` for a bad payload, is a plain failure. It counts only in the `failureCount` of the result, and its token is neither purged nor retried.
+
+The invalid tokens go through three steps:
+
+1. Merged into the `failureTokens` of the push job data after every send, including a send that leaves tokens pending. Once the `sendMulticast` step is complete, a retry of a later step reuses them without sending again.
+2. Once no token is pending, queued as a `cleanupTokens` job in `EnumQueue.notificationPush` through `NotificationPushQueue.sendCleanupTokens()`.
     - The job id is `{notificationId}-cleanupTokens`. The job carries no deduplication option.
     - A send with no invalid token enqueues nothing.
     - `NotificationPushMaintenanceDomain.processCleanupTokens()` handles it.
     - It calls `DeviceDomain.cleanupNotificationTokens()`, which resolves the user's devices holding those tokens through `DeviceOwnershipRepository.findDeviceIdsByUserAndTokens()`.
     - It clears `notificationToken` and `notificationProvider` on them through `DeviceRepository.clearTokens()`.
-3. Stored on the delivery record via `NotificationRepository.updateSentAt()` (`failureTokens` field).
+3. Once no token is pending, stored on the delivery record via `NotificationRepository.updateSentAt()` (`failureTokens` field).
 
 Stale tokens are those whose device has no `lastActiveAt` activity within `notification.push.staleTokenThresholdInMs` (30 days). The recurring `cleanupStaleTokens` job registered at startup prunes them daily:
 
@@ -529,8 +542,12 @@ Stale tokens are those whose device has no `lastActiveAt` activity within `notif
 
 ```mermaid
 graph TD
-    A[FCM Multicast Send] --> B{Any failureTokens?}
-    B -->|Yes| C[Keep failureTokens <br/> in the job data]
+    A[FCM Multicast Send] --> M[Merge new failureTokens <br/> into the job data]
+    M --> R{Any retryTokens?}
+    R -->|Yes| P[Keep pendingTokens <br/> in the job data]
+    P --> Q[Fail sendMulticast step; <br/> retry sends pendingTokens only]
+    R -->|No| B{Any failureTokens?}
+    B -->|Yes| C[Use the merged failureTokens]
     C --> D[Enqueue cleanupTokens job]
     C --> E[Store failureTokens <br/> on delivery record]
     D --> J[DeviceRepository clears <br/> invalid tokens]
@@ -539,6 +556,50 @@ graph TD
     G[Module Init] --> H[Register daily <br/> cleanupStaleTokens job]
     H --> I[Job runs at midnight; removes <br/> tokens inactive >= 30 days]
 ```
+
+### Retrying Transient Failures
+
+`FirebaseService.sendMulticast()` also returns `retryTokens`: the tokens whose send failed for a reason that may pass.
+
+A token lands in `retryTokens` under one of three conditions:
+
+1. Its response error code is in `FirebaseRetryableTokenCodes`:
+    - `messaging/server-unavailable`
+    - `messaging/internal-error`
+    - `messaging/message-rate-exceeded`
+    - `messaging/device-message-rate-exceeded`
+    - `messaging/unknown-error`
+    - `app/network-error`
+    - `app/network-timeout`
+2. Its response carries no error code.
+3. The request of its chunk rejected, which puts every token of that chunk there.
+
+A token is never in both `failureTokens` and `retryTokens`.
+
+The push job keeps the retry tokens as `pendingTokens`:
+
+1. `sendMulticastStep` in the push channel domain sends to `pendingTokens` when the job carries them, and to all `notificationTokens` when `pendingTokens` is `null`.
+    - An empty `pendingTokens` array counts as carried: it selects no recipient, `sendMulticast()` returns without calling FCM, and the step completes.
+    - The array is empty only after a send that left nothing pending.
+2. It merges the new `failureTokens` into the ones the job already holds, without duplicates.
+3. It stores the new `retryTokens` as `pendingTokens`.
+4. When any token is pending, the `sendMulticast` step fails with the error `<n> tokens pending retry`. The step stays out of `completedSteps`, and BullMQ retries the job.
+5. When none is pending, the step completes. Only then do `cleanupTokens` and `updateSentAt` run, so `sentAt` is stamped once nothing is pending.
+
+A run that fails a step writes `completedSteps`, the merged `failureTokens`, and the new `pendingTokens` back to the job data before it throws. A retry therefore sends only to the tokens still pending.
+
+The retry schedule comes from the push queue options:
+
+- `queue.job.attempts` (3) is the number of runs in total.
+- The backoff is exponential from `queue.job.pushBackoffDelayInMs` (5 seconds).
+
+When the attempts run out with tokens still pending:
+
+1. The job ends failed with the last `QueueException`, whose summary reads `Notification steps failed: sendMulticast:<n> tokens pending retry`.
+2. Sentry receives one report, on the last attempt only, because the exception is fatal.
+3. The `cleanupTokens` step never runs, so the invalid tokens found are not purged from the devices.
+4. The `updateSentAt` step never runs, so `sentAt` stays null and the delivery keeps an empty `failureTokens`.
+5. The failed job keeps its data, including the pending and invalid tokens, for `queue.job.removeOnFailAgeInSeconds` (14 days). Nothing retries it afterwards.
 
 ### FCM Rate Limiting
 
@@ -578,8 +639,8 @@ Each `Notification` record has related `NotificationDelivery` rows in `Notificat
 
 | Field | Description |
 | --- | --- |
-| `processedAt` | When the processor started handling the delivery. Written for `push`, pre-filled for `silent` / `inApp`, never written for `email` |
-| `sentAt` | When the message was handed to FCM. Same coverage as `processedAt` |
+| `processedAt` | When the latest attempt started handling the delivery: each push attempt overwrites it. Written for `push`, pre-filled for `silent` / `inApp`, never written for `email` |
+| `sentAt` | When the `updateSentAt` step ran, after a send that left no token pending retry. On a job that retried, it is the attempt that cleared the last pending token. Stays null when the attempts run out with tokens pending. Same coverage as `processedAt` |
 | `failureTokens` | FCM tokens that were invalid (push channel only) |
 
 ### Immediate channels (`silent`, `inApp`)
@@ -611,21 +672,27 @@ sequenceDiagram
     P->>DB: updateProcessAt (processedAt = now)
     DB-->>P: Notification row
     P->>FCM: sendMulticast
-    FCM-->>P: result with failureTokens
-    P->>Q: Add cleanupTokens job, when any token is invalid
-    P->>DB: updateSentAt (sentAt = now, failureTokens)
+    FCM-->>P: result with failureTokens and retryTokens
+    P->>P: Merge failureTokens into the job data
+    alt Any retryTokens
+        P->>Q: Keep pendingTokens, fail the sendMulticast step, retry; sentAt stays null
+    else Nothing pending
+        P->>Q: Add cleanupTokens job, when any token is invalid
+        P->>DB: updateSentAt (sentAt = now, failureTokens)
+    end
 ```
 
 The skip returns a message rather than throwing, so a push job on a deployment with Firebase disabled completes instead of being retried.
 
 - `updateProcessAt` is an `update` that returns the notification row the message is rendered from. A missing row makes it throw, and the job retries.
-- `sendMulticast` is skipped on a retry when it is in `completedSteps`. The invalid tokens come from the job data.
+- `sendMulticast` is skipped on a retry when it is in `completedSteps`. The invalid tokens come from the job data, which holds them after a send that completed.
+- A retry of a `sendMulticast` that left tokens pending sends to `pendingTokens` only.
 - The `cleanupTokens` enqueue and `updateSentAt` settle together, and each is recorded on its own (see [Step Tracking](#step-tracking)).
 
 The email lifecycle is only: job dequeued, sealed fields opened, `AwsSESService.send()` or `sendBulk()`, done.
 
 - With SES unconfigured, both calls log a warning and return an empty output, so the job completes and no email leaves.
-- A send failure is logged and rethrown, so the job retries under the queue's own retry policy.
+- A send failure is logged and fails the job, so it retries under the queue's own retry policy. The processor wraps an untyped error in `AppUnknownException`.
 - A field that fails to open ends the job without retries (see [Payload Encryption](#payload-encryption)).
 
 ## User Notification Settings

@@ -2,8 +2,8 @@ import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogWorkspaceVolumeContract } from '@modules/activity-log/contracts/activity-log.workspace-volume.contract';
 import type {
+    IActivityLogAnalytic,
     IActivityLogAnalyticActionCount,
-    IActivityLogAnalyticEvent,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogAnalyticRepository } from '@modules/activity-log/repositories/activity-log.analytic.repository';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
@@ -46,7 +46,7 @@ export class ActivityLogAnalyticDomain {
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date
-    ): Promise<IActivityLogAnalyticEvent[]> {
+    ): Promise<IActivityLogAnalytic[]> {
         return this.activityLogAnalyticRepository.findManyByActionsInRange(
             actions,
             startDate,

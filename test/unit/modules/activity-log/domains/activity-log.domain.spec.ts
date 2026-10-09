@@ -18,7 +18,7 @@ import { EnumActivityLogStatusCodeError } from '@modules/activity-log/enums/acti
 import { ActivityLogContractInvalidException } from '@modules/activity-log/exceptions/activity-log.contract-invalid.exception';
 import { ActivityLogEmptyMetadataSchema } from '@modules/activity-log/dtos/activity-log.empty-metadata.dto';
 import type {
-    IActivityLogStagedEvent,
+    IActivityLogStaged,
     IActivityLogStageInput,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
@@ -83,7 +83,7 @@ describe('ActivityLogDomain', () => {
     });
 
     describe('prepare', () => {
-        it('stages a target-user event with the staged user, createdBy, and no workspace', () => {
+        it('stages a target-user activity log with the staged user, createdBy, and no workspace', () => {
             const input: IActivityLogStageInput<EnumActivityLogAction> = {
                 action: EnumActivityLogAction.userLoginCredential,
                 userId: 'user-1',
@@ -102,7 +102,7 @@ describe('ActivityLogDomain', () => {
             });
         });
 
-        it('marks the event onError when onError is true', () => {
+        it('marks the activity log onError when onError is true', () => {
             const result = domain.prepare({
                 action: EnumActivityLogAction.userLoginCredential,
                 userId: 'user-1',
@@ -128,7 +128,7 @@ describe('ActivityLogDomain', () => {
             });
         });
 
-        it('stages a target-workspace event with its workspaceId', () => {
+        it('stages a target-workspace activity log with its workspaceId', () => {
             const result = domain.prepare({
                 action: EnumActivityLogAction.workspaceCreated,
                 userId: 'user-1',
@@ -247,16 +247,16 @@ describe('ActivityLogDomain', () => {
     });
 
     describe('stagePrepared', () => {
-        it('does nothing when given no events', () => {
+        it('does nothing when given no activity logs', () => {
             domain.stagePrepared([]);
 
             expect(requestStoreService.get).not.toHaveBeenCalled();
             expect(requestStoreService.set).not.toHaveBeenCalled();
         });
 
-        it('sets the store to the given events when nothing was staged before', () => {
+        it('sets the store to the given activity logs when nothing was staged before', () => {
             requestStoreService.get.mockReturnValue(null);
-            const events: IActivityLogStagedEvent[] = [
+            const activityLogs: IActivityLogStaged[] = [
                 {
                     action: EnumActivityLogAction.userLoginCredential,
                     metadata: {},
@@ -267,16 +267,16 @@ describe('ActivityLogDomain', () => {
                 },
             ];
 
-            domain.stagePrepared(events);
+            domain.stagePrepared(activityLogs);
 
             expect(requestStoreService.set).toHaveBeenCalledWith(
                 ActivityLogStageStoreKey,
-                events
+                activityLogs
             );
         });
 
-        it('appends the given events onto what was already staged', () => {
-            const alreadyStaged: IActivityLogStagedEvent = {
+        it('appends the given activity logs onto what was already staged', () => {
+            const alreadyStaged: IActivityLogStaged = {
                 action: EnumActivityLogAction.userLogout,
                 metadata: {},
                 onError: false,
@@ -285,7 +285,7 @@ describe('ActivityLogDomain', () => {
                 workspaceId: null,
             };
             requestStoreService.get.mockReturnValue([alreadyStaged]);
-            const events: IActivityLogStagedEvent[] = [
+            const activityLogs: IActivityLogStaged[] = [
                 {
                     action: EnumActivityLogAction.userLoginCredential,
                     metadata: {},
@@ -296,11 +296,11 @@ describe('ActivityLogDomain', () => {
                 },
             ];
 
-            domain.stagePrepared(events);
+            domain.stagePrepared(activityLogs);
 
             expect(requestStoreService.set).toHaveBeenCalledWith(
                 ActivityLogStageStoreKey,
-                [alreadyStaged, ...events]
+                [alreadyStaged, ...activityLogs]
             );
         });
     });
@@ -322,8 +322,8 @@ describe('ActivityLogDomain', () => {
             expect(activityLogRepository.createMany).not.toHaveBeenCalled();
         });
 
-        it('resets the store and skips the repository when every staged event fails the error filter', async () => {
-            const staged: IActivityLogStagedEvent[] = [
+        it('resets the store and skips the repository when every staged activity log fails the error filter', async () => {
+            const staged: IActivityLogStaged[] = [
                 {
                     action: EnumActivityLogAction.userLoginCredential,
                     metadata: {},
@@ -345,7 +345,7 @@ describe('ActivityLogDomain', () => {
         });
 
         it('throws when the request log is missing', async () => {
-            const staged: IActivityLogStagedEvent[] = [
+            const staged: IActivityLogStaged[] = [
                 {
                     action: EnumActivityLogAction.userLoginCredential,
                     metadata: {},
@@ -378,8 +378,8 @@ describe('ActivityLogDomain', () => {
             });
         });
 
-        it('flushes every staged event for a target-user action on success', async () => {
-            const staged: IActivityLogStagedEvent[] = [
+        it('flushes every staged activity log for a target-user action on success', async () => {
+            const staged: IActivityLogStaged[] = [
                 {
                     action: EnumActivityLogAction.userLoginCredential,
                     metadata: {},
@@ -423,8 +423,8 @@ describe('ActivityLogDomain', () => {
             );
         });
 
-        it('flushes only the onError events for a payload-user action on error', async () => {
-            const staged: IActivityLogStagedEvent[] = [
+        it('flushes only the onError activity logs for a payload-user action on error', async () => {
+            const staged: IActivityLogStaged[] = [
                 {
                     action: EnumActivityLogAction.userUpdateProfile,
                     metadata: {},
@@ -1015,8 +1015,8 @@ describe('ActivityLogDomain', () => {
     });
 
     describe('buildFlushCreate', () => {
-        it('assembles the create row from a staged event', () => {
-            const event: IActivityLogStagedEvent = {
+        it('assembles the create row from a staged activity log', () => {
+            const activityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userLoginCredential,
                 metadata: {},
                 onError: false,
@@ -1028,7 +1028,11 @@ describe('ActivityLogDomain', () => {
                 'User login with credential'
             );
 
-            const result = domain['buildFlushCreate'](event, null, requestLog);
+            const result = domain['buildFlushCreate'](
+                activityLog,
+                null,
+                requestLog
+            );
 
             expect(result).toEqual({
                 userId: 'user-1',

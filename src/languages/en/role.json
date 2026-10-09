@@ -8,7 +8,6 @@
         "notFound": "Sorry, we couldn't find the requested role.",
         "exist": "A role with this name already exists.",
         "used": "This role is currently in use and cannot be deleted.",
-        "forbidden": "Sorry, your role doesn't grant access to this resource.",
-        "predefinedNotFound": "Predefined roles not setted."
+        "forbidden": "Sorry, your role doesn't grant access to this resource."
     }
 }

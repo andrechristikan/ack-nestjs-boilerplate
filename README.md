@@ -171,7 +171,7 @@ See [package.json][ref-package-json] for the full list.
 ### 🔔 Notifications
 
 - **Multi-channel delivery**: Email, push, in-app, and silent, with per-type and per-channel preferences
-- **AWS SES + Firebase FCM**: Templated email and multicast push, including token cleanup
+- **AWS SES + Firebase FCM**: Templated email and multicast push, including token cleanup and retry of transient send failures
 - **BullMQ workers**: Async delivery and other background jobs in the same process as the API
 
 📖 [Notification Documentation][ref-doc-notification] covers setup and usage.
@@ -192,7 +192,7 @@ See [package.json][ref-package-json] for the full list.
 - **OpenAPI 3.1**: Swagger UI and `generated/swagger.json` from the same route schemas (off in production)
 - **Zod contracts**: Request and response shapes checked end to end
 - **i18n**: Localized messages via `x-custom-lang`
-- **Vitest**: Unit suite under `test/unit/`. `pnpm test:cov` enforces 100% coverage
+- **Vitest**: Unit suite under `test/unit/`. `pnpm test:cov` enforces 100% coverage. The integration and e2e suites are held, so none exists.
 - **Lint & hooks**: ESLint (incl. security), Prettier, cspell, knip, Husky, and commitlint
 - **Docker Compose**: MongoDB replica set, Redis, BullBoard, and JWKS locally, with optional `apis` and `vault` profiles. A separate production Compose file and image run the stack on one Docker host ([release][ref-doc-release])
 - **HashiCorp Vault**: Optional secret sync into `.env` ([docs][ref-doc-vault])
@@ -239,7 +239,7 @@ The API also runs inside Compose through the `apis` profile: `docker-compose --p
 
 - `HTTP_HOST` is `0.0.0.0`.
 - `DATABASE_URL`, `CACHE_REDIS_URL`, `QUEUE_REDIS_URL`, and the two JWKS URIs point at the Compose service hosts `mongo`, `redis`, and `jwks-server`.
-- MongoDB reports `host.docker.internal:27017` as its replica set member host.
+- MongoDB reports `host.docker.internal:27017` as its replica set member host. `DOCKER_MONGO_PORT` changes the port, and the port in `DATABASE_URL` matches it.
 - Compose maps `host.docker.internal` to the host gateway on the `mongo` and `apis` services (`extra_hosts`), so the name resolves inside those two containers.
 - The host machine resolves `host.docker.internal` through its own OS. When it does not resolve, add `127.0.0.1 host.docker.internal` to the host's `/etc/hosts`.
 

@@ -13,8 +13,10 @@ import { ClsServiceManager } from 'nestjs-cls';
 import { EnumRoleType } from '@generated/prisma-client/client';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
+import { RoleProtectedEmptyException } from '@modules/role/exceptions/role.protected-empty.exception';
 
 /**
  * Restricts a route to the given role types via RoleGuard and documents role kits.
@@ -23,16 +25,19 @@ import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface'
 export function RoleProtected(
     ...requiredRoles: EnumRoleType[]
 ): MethodDecorator {
+    if (requiredRoles.length === 0) {
+        throw new RoleProtectedEmptyException();
+    }
+
     return applyDecorators(
         UseGuards(RoleGuard),
         SetMetadata(RoleRequiredMetaKey, requiredRoles),
-        DocRoleErrorResponses.forbidden,
-        DocRoleErrorResponses.predefinedNotFound
+        DocRoleErrorResponses.forbidden
     );
 }
 
 /**
- * Reads the current user's role with its policies, or one of its fields, that `UserGuard` stored; throws when either is absent.
+ * Reads the current user's role with its policies, or one of its fields, that `UserGuard` stored; throws `UserNotAuthenticatedException` when the user is absent and `RequestContextMissingException` when the role or the requested field is null.
  * @public
  */
 export const RoleCurrent = createParamDecorator<
@@ -51,7 +56,7 @@ export const RoleCurrent = createParamDecorator<
             ClsServiceManager.getClsService().get<IUser | null>(UserStoreKey) ??
             null;
         if (user === null) {
-            throw new RequestContextMissingException(UserStoreKey);
+            throw new UserNotAuthenticatedException();
         }
 
         const role = user.role ?? null;

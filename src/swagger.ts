@@ -2,7 +2,7 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestApplication } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { writeFileSync } from 'fs';
+import { mkdirSync, writeFileSync } from 'fs';
 import { createSchema } from 'zod-openapi';
 import { z } from 'zod';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
@@ -82,6 +82,7 @@ export default async function (app: NestApplication): Promise<void> {
         });
 
         try {
+            mkdirSync('generated', { recursive: true });
             writeFileSync('generated/swagger.json', JSON.stringify(document));
         } catch (err: unknown) {
             logger.warn(err, 'Failed to write swagger.json');

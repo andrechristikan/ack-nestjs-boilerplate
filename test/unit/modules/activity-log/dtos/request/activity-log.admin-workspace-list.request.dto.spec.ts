@@ -1,3 +1,4 @@
+import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 import { ActivityLogAdminWorkspaceListRequestSchema } from '@modules/activity-log/dtos/request/activity-log.admin-workspace-list.request.dto';
 
 describe('ActivityLogAdminWorkspaceListRequestSchema', () => {
@@ -37,5 +38,20 @@ describe('ActivityLogAdminWorkspaceListRequestSchema', () => {
         expect(() =>
             ActivityLogAdminWorkspaceListRequestSchema.parse({ extra: true })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            ActivityLogAdminWorkspaceListRequestSchema.safeParse({
+                search: 'x',
+            }).success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            ActivityLogAdminWorkspaceListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(ActivityLogDefaultAvailableOrderBy.join(', '));
     });
 });

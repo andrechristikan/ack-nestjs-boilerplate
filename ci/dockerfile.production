@@ -1,8 +1,6 @@
 # Build stage base
 FROM node:24.15.0-alpine AS base
 LABEL maintainer="andrechristikan@gmail.com"
-ARG NODE_ENV
-ENV NODE_ENV=${NODE_ENV}
 # pnpm version is pinned via the "packageManager" field in package.json
 RUN corepack enable
 WORKDIR /app
@@ -19,6 +17,8 @@ RUN pnpm build
 
 # Main Stage
 FROM base AS main
+ARG NODE_ENV
+ENV NODE_ENV=${NODE_ENV}
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN set -x && pnpm install --frozen-lockfile --prod --ignore-scripts
 
@@ -38,4 +38,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/public/hello
 
-CMD ["pnpm", "start:prod"]
+CMD ["node", "--import", "./dist/instrument.js", "dist/main.js"]

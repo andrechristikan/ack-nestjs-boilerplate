@@ -1,3 +1,4 @@
+import { WorkspaceJoinRequestDefaultAvailableOrderBy } from '@modules/workspace/constants/workspace.list.constant';
 import { WorkspaceJoinRequestListRequestSchema } from '@modules/workspace/dtos/request/workspace.join-request-list.request.dto';
 
 describe('WorkspaceJoinRequestListRequestSchema', () => {
@@ -27,5 +28,19 @@ describe('WorkspaceJoinRequestListRequestSchema', () => {
         expect(() =>
             WorkspaceJoinRequestListRequestSchema.parse({ extra: true })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            WorkspaceJoinRequestListRequestSchema.safeParse({ search: 'x' })
+                .success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            WorkspaceJoinRequestListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(WorkspaceJoinRequestDefaultAvailableOrderBy.join(', '));
     });
 });

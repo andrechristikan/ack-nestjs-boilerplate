@@ -8,14 +8,11 @@ import { WorkspaceJoinRequestDefaultAvailableOrderBy } from '@modules/workspace/
  * @public
  */
 export const WorkspaceJoinRequestListRequestSchema =
-    PaginationCursorQuerySchema.extend({
-        orderBy: z
-            .union([z.string(), z.array(z.string())])
-            .optional()
-            .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${WorkspaceJoinRequestDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-                example: `${WorkspaceJoinRequestDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-            }),
+    PaginationCursorQuerySchema.omit({ search: true }).extend({
+        orderBy: PaginationCursorQuerySchema.shape.orderBy.meta({
+            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${WorkspaceJoinRequestDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            example: `${WorkspaceJoinRequestDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+        }),
         status: z.string().optional().meta({
             description: 'Filter by status, comma-delimited',
             example: '',

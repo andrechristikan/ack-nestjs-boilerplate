@@ -13,26 +13,17 @@ export const FeatureFlagKeyPathMetaKey = 'FeatureFlagKeyPathMetaKey';
  * @public
  */
 export const DocFeatureFlagErrorResponses = {
-    predefined: DocResponseError(
-        HttpStatus.INTERNAL_SERVER_ERROR,
+    disabled: DocResponseError(
+        HttpStatus.NOT_FOUND,
         {
-            statusCode: EnumFeatureFlagStatusCodeError.predefinedKeyNotFound,
-            messagePath: 'featureFlag.error.predefinedKeyNotFound',
+            statusCode: EnumFeatureFlagStatusCodeError.notFound,
+            messagePath: 'featureFlag.error.notFound',
         },
         {
-            statusCode:
-                EnumFeatureFlagStatusCodeError.predefinedKeyLengthExceeded,
-            messagePath: 'featureFlag.error.predefinedKeyLengthExceeded',
-        },
-        {
-            statusCode: EnumFeatureFlagStatusCodeError.predefinedKeyEmpty,
-            messagePath: 'featureFlag.error.predefinedKeyEmpty',
+            statusCode: EnumFeatureFlagStatusCodeError.disabled,
+            messagePath: 'featureFlag.error.disabled',
         }
     ),
-    disabled: DocResponseError(HttpStatus.NOT_FOUND, {
-        statusCode: EnumFeatureFlagStatusCodeError.disabled,
-        messagePath: 'featureFlag.error.disabled',
-    }),
 } as const;
 
 /**

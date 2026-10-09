@@ -138,9 +138,9 @@ When a user reaches the maximum allowed attempts (5 failed verifications), 2FA v
 
 Redis failures:
 
-- A failure while writing the lock answers 500, because the lock is the brute-force barrier. The attempt counter in the database has already incremented.
+- A failure while writing the lock answers 500 (503 when Redis is not connected), because the lock is the brute-force barrier. The attempt counter in the database has already incremented.
 - A failure while clearing the lock is logged and the request continues.
-- A failure while storing the login challenge answers 500.
+- A failure while storing the login challenge answers 500 (503 when Redis is not connected).
 - A failure while deleting a used challenge is logged.
 
 Details: [Cache][ref-doc-cache].
@@ -292,7 +292,7 @@ sequenceDiagram
     API->>API: Generate challenge token
     API->>Cache: Store challenge (5min TTL)
     alt Redis failure
-        API->>User: Error (500)
+        API->>User: Error (500, or 503 when Redis is not connected)
     end
     API->>User: Return challengeToken
     User->>API: PATCH /public/user/login/2fa/verify {challengeToken, method: code, code}

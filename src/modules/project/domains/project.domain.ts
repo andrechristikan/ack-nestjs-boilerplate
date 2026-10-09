@@ -116,7 +116,7 @@ export class ProjectDomain {
         actorId: string,
         create: IProjectCreate
     ): Promise<Project> {
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectCreated,
                 userId: actorId,
@@ -132,7 +132,7 @@ export class ProjectDomain {
             slugCandidates
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return project;
     }
@@ -146,7 +146,7 @@ export class ProjectDomain {
         actorId: string,
         update: IProjectUpdate
     ): Promise<Project> {
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectUpdated,
                 userId: actorId,
@@ -160,7 +160,7 @@ export class ProjectDomain {
             update
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return row;
     }
@@ -182,7 +182,7 @@ export class ProjectDomain {
             throw new ProjectSlugAlreadyExistsException();
         }
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectUpdated,
                 userId: actorId,
@@ -193,13 +193,13 @@ export class ProjectDomain {
 
         const row = await this.projectRepository.updateSlug(project.id, slug);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return row;
     }
 
     async softDeleteProject(project: Project, actorId: string): Promise<void> {
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectDeleted,
                 userId: actorId,
@@ -211,7 +211,7 @@ export class ProjectDomain {
 
         await this.projectRepository.softDelete(project.id, deletedAt);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async softDeleteByWorkspaceInTx(

@@ -388,7 +388,7 @@ const aws: IAwsS3 | null = await this.awsS3Service.putItem(
 - otherwise the domain:
     1. prepares `userUpdatePhotoProfile`
     2. stores the S3 reference with one `UserRepository.updatePhotoProfile` update (no transaction)
-    3. stages the event
+    3. stages the activity log
 
 **Multiple Files Upload:**
 
@@ -801,14 +801,14 @@ export class UserProfileDomain {
                 { access: EnumAwsS3Accessibility.public }
             );
 
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userUpdatePhotoProfile,
                 }),
             ];
             await this.userRepository.updatePhotoProfile(userId, aws);
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -840,6 +840,8 @@ S3 not configured:
 **Step 4: Client-Side Upload**
 
 ```typescript
+class S3UploadFailedException extends Error {}
+
 async function uploadPhotoSimple(file: File) {
     try {
         // Step 1: Request presigned URL
@@ -871,7 +873,7 @@ async function uploadPhotoSimple(file: File) {
         });
 
         if (!uploadResponse.ok) {
-            throw new Error('S3 upload failed');
+            throw new S3UploadFailedException('S3 upload failed');
         }
 
         // Step 3: Notify backend
@@ -989,7 +991,7 @@ sequenceDiagram
     - Client notifies backend with S3 key and file size
     - Backend maps presign data to `IAwsS3`
     - `UserProfileDomain` prepares `userUpdatePhotoProfile`, then `UserRepository.updatePhotoProfile` stores the S3 file reference in one update with no transaction
-    - After the update the event is staged.
+    - After the update the activity log is staged.
     - `ActivityLogInterceptor` writes it with the IP address, user agent, and geolocation from the request store (`RequestLogStoreKey`)
 
 ### Term Policy Content Presign

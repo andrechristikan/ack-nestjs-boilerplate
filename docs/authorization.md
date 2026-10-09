@@ -120,10 +120,11 @@ Placement rules:
     - Neither depends on its position in the stack.
     - Routes declare it below `@ApiKeyProtected()`, so the rate limit reads next to the guards protecting the same route.
 - Activity logging takes no slot. See [Activity Log][ref-doc-activity-log].
-    - Domains build events with `ActivityLogDomain.prepare` and queue them with `ActivityLogDomain.stagePrepared`.
+    - Domains build activity logs with `ActivityLogDomain.prepare` and queue them with `ActivityLogDomain.stagePrepared`.
     - The global `ActivityLogInterceptor` writes them after the handler settles.
 - A guard that depends on state an earlier guard sets sits ABOVE that guard in source, so it runs after it.
 - `@FeatureFlagProtected()` sits ABOVE `@AuthJwtAccessProtected()` so the flag guard sees `request.user`. Below it the guard always takes its anonymous branch, which makes `targetUserIds` and any rollout below 100% inert on that route.
+- One guard condition answers one exception and one HTTP status in every guard. A missing authenticated user is `UserNotAuthenticatedException` (401) from the user, role, policy, workspace-member, project-member, and term-policy checks alike, and a missing workspace or project membership is `WorkspaceMemberForbiddenException` or `ProjectMemberForbiddenException` (403).
 - The workspace and project slots are used by the `/user` scope. The `/admin` scope reaches the same resources through `@RoleProtected()` + `@PolicyProtected()` instead, and takes the workspace or project id from the path.
 
 ## User Protected
@@ -167,7 +168,10 @@ async profile(
 
 Reads back the authenticated user `UserGuard` stored, or one of its fields when a field name is passed.
 
-**Returns:** `IUser`, or the named field of it. Both are non-null: an empty store key, or a field holding `null`, throws `RequestContextMissingException` (500, `50304`).
+**Returns:** `IUser`, or the named field of it. Both are non-null:
+
+- An empty store key throws `UserNotAuthenticatedException` (401, `51027`).
+- A field holding `null` throws `RequestContextMissingException` (500, `50304`).
 
 **Usage:**
 
@@ -259,6 +263,7 @@ flowchart TD
 **Parameters:**
 
 - `...requiredRoles` (EnumRoleType[]): One or more role types required to access the route
+    - Called with none, the decorator throws `RoleProtectedEmptyException` when it is evaluated.
 
 **Available Role Types:**
 
@@ -297,10 +302,12 @@ async list(
 
 Two parameter decorators read the role:
 
-- `@RoleCurrent(field?)` returns the role `UserGuard` loaded (`IRoleWithPolicies`), or one of its fields: `type`, `name`, `policies`, and the rest. It reads `UserStoreKey`, so a missing user, role, or field throws `RequestContextMissingException` (500, `50304`).
+- `@RoleCurrent(field?)` returns the role `UserGuard` loaded (`IRoleWithPolicies`), or one of its fields: `type`, `name`, `policies`, and the rest. It reads `UserStoreKey`.
+    - A missing user throws `UserNotAuthenticatedException` (401, `51027`).
+    - A `null` role on the stored user, or a `null` field, throws `RequestContextMissingException` (500, `50304`).
 - `@PolicyCurrent()` returns the `Policy[]` `RoleGuard` stored under `PolicyStoreKey`.
     - An empty list is a valid value (a `superAdmin`).
-    - A route without `@RoleProtected()` throws `RequestContextMissingException`.
+    - A route without `@RoleProtected()` stores no list, so the read throws `PolicyForbiddenException` (403, `51100`), the answer `PolicyGuard` gives a caller with no policies.
 
 `@UserCurrent()` also carries the role on the returned `IUser`: `user.role.type`, `user.role.name`, and `user.role.policies`.
 
@@ -314,9 +321,8 @@ The `RoleProtected` decorator follows this validation sequence:
 
 1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) exists
 2. **Super Admin Bypass**: If user role is `superAdmin`, grants immediate access with an empty policy array
-3. **Required Roles Check**: Validates that required roles are defined
-4. **Role Match**: Confirms user's role type matches one of the required roles
-5. **Policy Population**: Stores `role.policies` via `RequestStoreService.set(PolicyStoreKey, policies)` for downstream use
+3. **Role Match**: Confirms user's role type matches one of the required roles. A handler with no required roles matches none, so the guard denies it
+4. **Policy Population**: Stores `role.policies` via `RequestStoreService.set(PolicyStoreKey, policies)` for downstream use
 
 **Flow Diagram:**
 
@@ -326,14 +332,11 @@ flowchart TD
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
     UserGuard --> CheckUser{Stored user UserStoreKey<br/>exists?}
 
-    CheckUser -->|No| ErrorUser[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
+    CheckUser -->|No| ErrorUser[Throw UserNotAuthenticatedException<br/>401 Unauthorized]
     CheckUser -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
 
     CheckSuperAdmin -->|Yes| GrantSuperAdmin[Grant access with<br/>empty policy array]
-    CheckSuperAdmin -->|No| CheckRequired{Required roles<br/>defined?}
-
-    CheckRequired -->|No| ErrorPredefined[Throw RolePredefinedNotFoundException<br/>500 Internal Server Error]
-    CheckRequired -->|Yes| CheckRoleMatch{User role matches<br/>required roles?}
+    CheckSuperAdmin -->|No| CheckRoleMatch{User role matches<br/>required roles?}
 
     CheckRoleMatch -->|No| ErrorForbidden[Throw RoleForbiddenException<br/>403 Forbidden]
     CheckRoleMatch -->|Yes| SetAbilities[Store policies via<br/>RequestStoreService.set PolicyStoreKey, policies]
@@ -342,7 +345,6 @@ flowchart TD
     SetAbilities --> Success
 
     ErrorUser --> End([Request Rejected])
-    ErrorPredefined --> End
     ErrorForbidden --> End
 ```
 
@@ -351,7 +353,7 @@ flowchart TD
 - `@RoleProtected()` reads the user `@UserProtected()` stored, which in turn depends on `@AuthJwtAccessProtected()`
 - The stack reads top to bottom `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
 - This decorator stores the role's policies via `RequestStoreService.set(PolicyStoreKey, policies)` (read back with `RequestStoreService.get(PolicyStoreKey)`), which is what `PolicyGuard` evaluates
-- Without a stored user the guard throws `AuthJwtAccessTokenInvalidException` (401)
+- Without a stored user the guard throws `UserNotAuthenticatedException` (401)
 - Users with `superAdmin` role type have unrestricted access to all `@RoleProtected` routes, regardless of the specified required roles. The guard returns an empty policy array for super admins, as they bypass the policy check.
 
 ## Policy Protected
@@ -368,6 +370,8 @@ flowchart TD
 **Parameters:**
 
 - `...requiredPolicies` (PolicyRequestDto[]): One or more `{ subject, action[] }` objects naming the required permissions
+    - Called with none, the decorator throws `PolicyProtectedEmptyException` when it is evaluated.
+    - A policy with an empty `action` list throws `PolicyProtectedActionEmptyException` when it is evaluated.
 
 **Available Policy Actions:**
 
@@ -472,10 +476,9 @@ The `PolicyProtected` decorator follows this validation sequence:
 
 1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) exists
 2. **Super Admin Bypass**: If user role is `superAdmin`, grants immediate access
-3. **Required Policies Check**: Validates that required policies are declared on the handler
-4. **Ability Creation**: Creates CASL ability rules from the stored policies (`RequestStoreService.get(PolicyStoreKey)`)
-5. **Permission Validation**: Checks that every required `(subject, action)` pair is allowed
-6. **Access Decision**: Grants or denies access based on permission match
+3. **Ability Creation**: Creates CASL ability rules from the stored policies (`RequestStoreService.get(PolicyStoreKey)`)
+4. **Permission Validation**: Checks that every required `(subject, action)` pair is allowed. An empty policy list or an empty action list is denied
+5. **Access Decision**: Grants or denies access based on permission match
 
 **Flow Diagram:**
 
@@ -486,14 +489,11 @@ flowchart TD
     UserGuard --> RoleGuard[ @RoleProtected<br/>Validate role and load abilities]
     RoleGuard --> CheckUser{Stored user UserStoreKey<br/>exists?}
 
-    CheckUser -->|No| ErrorUser[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
+    CheckUser -->|No| ErrorUser[Throw UserNotAuthenticatedException<br/>401 Unauthorized]
     CheckUser -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
 
     CheckSuperAdmin -->|Yes| GrantSuperAdmin[Grant immediate access]
-    CheckSuperAdmin -->|No| CheckRequired{Required abilities<br/>defined?}
-
-    CheckRequired -->|No| ErrorPredefined[Throw PolicyPredefinedNotFoundException<br/>500 Internal Server Error]
-    CheckRequired -->|Yes| CreateAbilities[Create CASL ability rules<br/>from RequestStoreService.get PolicyStoreKey]
+    CheckSuperAdmin -->|No| CreateAbilities[Create CASL ability rules<br/>from RequestStoreService.get PolicyStoreKey]
 
     CreateAbilities --> ValidateAbilities{All required abilities<br/>present in user abilities?}
 
@@ -504,7 +504,6 @@ flowchart TD
     GrantAccess --> Success
 
     ErrorUser --> End([Request Rejected])
-    ErrorPredefined --> End
     ErrorForbidden --> End
 ```
 
@@ -515,13 +514,13 @@ The project uses [CASL][casl] for permission checks:
 **PolicyAbilityFactory:**
 
 - `createByUser(policies)`: Builds CASL ability rules from the role's stored policies
-- `handlerPolicies(userPolicies, policies)`: Returns true only when every required action on each subject is allowed, using CASL's `can()`
+- `handlerPolicies(userPolicies, policies)`: Returns true only when at least one policy is required and every required action on each subject is allowed, using CASL's `can()`. An empty policy list or an empty action list returns false
 
 ### Important Notes
 
 - `@PolicyProtected()` reads the policies `@RoleProtected()` stored and the user `@UserProtected()` stored, both of which depend on `@AuthJwtAccessProtected()`
 - The stack reads top to bottom `@PolicyProtected()` → `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
-- Without a stored user the guard throws `AuthJwtAccessTokenInvalidException` (401)
+- Without a stored user the guard throws `UserNotAuthenticatedException` (401)
 - Users with `superAdmin` role type have unrestricted access to all `@PolicyProtected` routes, bypassing all ability checks.
 - Access needs every action of a required policy in the user's policies. Requiring `[EnumPolicyAction.update, EnumPolicyAction.delete]` on the `EnumPolicySubject.user` subject grants access only when the user holds both actions.
 
@@ -595,7 +594,7 @@ flowchart TD
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
     UserGuard --> CheckUser{Stored user UserStoreKey<br/>exists?}
 
-    CheckUser -->|No| ErrorUser[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
+    CheckUser -->|No| ErrorUser[Throw UserNotAuthenticatedException<br/>401 Unauthorized]
     CheckUser -->|Yes| CheckRequired{Required term policies<br/>specified?}
 
     CheckRequired -->|No| SetDefault[Set default policies:<br/>termsOfService and privacy]
@@ -620,7 +619,7 @@ flowchart TD
 - `@TermPolicyAcceptanceProtected()` reads the user `@UserProtected()` stored, which depends on `@AuthJwtAccessProtected()`
 - Decorator order from top to bottom: `@TermPolicyAcceptanceProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`
 - For more details about `@AuthJwtAccessProtected()`, see [Authentication Documentation][ref-doc-authentication]
-- Without the required decorators the stored user is never populated, so the guard throws `AuthJwtAccessTokenInvalidException` (401 Unauthorized)
+- Without the required decorators the stored user is never populated, so the guard throws `UserNotAuthenticatedException` (401 Unauthorized)
 - If no term policies are specified, it defaults to requiring `termsOfService` and `privacy` acceptance
 - Access is granted only when the user has accepted every specified term policy
 

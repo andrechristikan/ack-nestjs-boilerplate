@@ -1,6 +1,8 @@
 import type { ArgumentMetadata } from '@nestjs/common';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { z } from 'zod';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { RequestSchemaValidationPipe } from '@common/request/pipes/request.schema-validation.pipe';
 import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { buildRequestSchemaValidationPipe } from '@test/unit/helpers/test.unit.request.helper';
@@ -83,6 +85,25 @@ describe('RequestSchemaValidationPipe', () => {
                         EnumRequestStatusCodeError.validation
                     ],
                 messagePath: 'request.error.validation',
+            });
+        });
+
+        it('wraps a non-AppBaseException exceptionFactory result in AppUnknownException', async () => {
+            const factoryResult = new Error('factory result');
+            const pipe = new RequestSchemaValidationPipe({
+                transform: true,
+                exceptionFactory: vi.fn().mockReturnValue(factoryResult),
+            });
+            const metadata: ArgumentMetadata = {
+                type: 'query',
+                schema: z.string(),
+            } as unknown as ArgumentMetadata;
+
+            const promise = pipe.transform(5, metadata);
+
+            await expect(promise).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: factoryResult,
             });
         });
 

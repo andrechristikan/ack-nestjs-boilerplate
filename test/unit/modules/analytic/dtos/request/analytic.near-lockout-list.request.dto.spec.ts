@@ -1,3 +1,4 @@
+import { AnalyticNearLockoutAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticNearLockoutListRequestSchema } from '@modules/analytic/dtos/request/analytic.near-lockout-list.request.dto';
 
 describe('AnalyticNearLockoutListRequestSchema', () => {
@@ -33,5 +34,19 @@ describe('AnalyticNearLockoutListRequestSchema', () => {
         expect(() =>
             AnalyticNearLockoutListRequestSchema.parse({ page: 1, extra: true })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticNearLockoutListRequestSchema.safeParse({ search: 'x' })
+                .success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticNearLockoutListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticNearLockoutAvailableOrderBy.join(', '));
     });
 });

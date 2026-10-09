@@ -25,7 +25,7 @@ export class RequestEnvGuard implements CanActivate {
             EnumAppEnvironment[]
         >(RequestEnvMetaKey, [context.getHandler(), context.getClass()]);
 
-        if (!required || !required.includes(this.env)) {
+        if (!required.includes(this.env)) {
             throw new RequestEnvForbiddenException();
         }
 

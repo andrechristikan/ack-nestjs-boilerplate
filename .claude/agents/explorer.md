@@ -20,7 +20,7 @@ The working tree is the source, including unstaged and untracked files; read fil
 
 ## Locate
 
-Grep and Glob find the exact token and the path. A file enters the table only after you opened it. Where each entry point is declared: `.claude/rules/layering.md` (routes and the router modules), `.claude/rules/queue.md` (`@QueueProcessor`; a grep for a bare `@Processor` finds nothing), `.claude/rules/seeding.md` (`@Command` seeds). A spec lives under `test/unit/`, `test/integration/`, or `test/e2e/`, mirroring `src/`; helpers sit in `test/<type>/helpers/` or `test/helpers/`. `pnpm test`, `pnpm test:integration`, and `pnpm test:e2e` run them; the last two need a running Docker daemon.
+Grep and Glob find the exact token and the path. A file enters the table only after you opened it. Where each entry point is declared: `.claude/rules/layering.md` (routes and the router modules), `.claude/rules/queue.md` (`@QueueProcessor`; a grep for a bare `@Processor` finds nothing), `.claude/rules/seeding.md` (`@Command` seeds). A spec lives under `test/unit/`, mirroring `src/`; helpers sit in `test/unit/helpers/` or `test/helpers/`. `pnpm test` runs them. Integration and e2e are held (`.claude/rules/testing.md`): no `test/integration/` or `test/e2e/` exists.
 
 ## Contract
 

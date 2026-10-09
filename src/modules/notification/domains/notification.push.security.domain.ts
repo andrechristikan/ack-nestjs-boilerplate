@@ -1,3 +1,4 @@
+import type { IFirebasePushPayload } from '@common/firebase/interfaces/firebase.interface';
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
@@ -6,6 +7,7 @@ import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import { EnumNotificationStep } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationNewDeviceLoginPayload,
+    INotificationPushSendOutcome,
     INotificationPushStepResult,
     INotificationSendPushPayload,
     INotificationStepFailure,
@@ -29,6 +31,43 @@ export class NotificationPushSecurityDomain {
         private readonly notificationUtil: NotificationUtil
     ) {}
 
+    private async sendMulticastStep(
+        notificationTokens: string[],
+        payload: IFirebasePushPayload,
+        failureTokens: string[] | null,
+        pendingTokens: string[] | null
+    ): Promise<INotificationPushSendOutcome> {
+        const recipients = pendingTokens ?? notificationTokens;
+        try {
+            const result = await this.firebaseService.sendMulticast(
+                recipients,
+                payload
+            );
+            const merged = [...(failureTokens ?? []), ...result.failureTokens];
+            const pending = result.retryTokens;
+            const failure: INotificationStepFailure | null =
+                pending.length > 0
+                    ? {
+                          step: EnumNotificationStep.sendMulticast,
+                          error: `${pending.length} tokens pending retry`,
+                      }
+                    : null;
+
+            return {
+                failureTokens: [...new Set(merged)],
+                pendingTokens: pending,
+                failure,
+            };
+        } catch (error: unknown) {
+            const failure = this.notificationUtil.toStepFailure(
+                EnumNotificationStep.sendMulticast,
+                error
+            );
+
+            return { failureTokens, pendingTokens, failure };
+        }
+    }
+
     async processNewDeviceLogin(
         {
             notificationTokens,
@@ -38,7 +77,8 @@ export class NotificationPushSecurityDomain {
         }: INotificationSendPushPayload,
         data: INotificationNewDeviceLoginPayload,
         completedSteps: EnumNotificationStep[],
-        failureTokens: string[] | null
+        failureTokens: string[] | null,
+        pendingTokens: string[] | null
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
@@ -48,6 +88,7 @@ export class NotificationPushSecurityDomain {
                 completedSteps,
                 failedSteps: [],
                 failureTokens,
+                pendingTokens,
             };
         }
 
@@ -62,6 +103,7 @@ export class NotificationPushSecurityDomain {
         }
 
         let tokens = failureTokens;
+        let pending = pendingTokens;
         if (!done.includes(EnumNotificationStep.sendMulticast)) {
             const device = this.requestContextService.resolveDevice(
                 data.requestLog.userAgent
@@ -77,26 +119,25 @@ export class NotificationPushSecurityDomain {
             const body = this.messageService.setMessage(notification.body, {
                 properties: { device, city, username, loginAt },
             });
-            try {
-                const result = await this.firebaseService.sendMulticast(
-                    notificationTokens,
-                    { title, body }
-                );
-                tokens = result.failureTokens;
-                done.push(EnumNotificationStep.sendMulticast);
-            } catch (error: unknown) {
-                const failure = this.notificationUtil.toStepFailure(
-                    EnumNotificationStep.sendMulticast,
-                    error
-                );
-
+            const sent = await this.sendMulticastStep(
+                notificationTokens,
+                { title, body },
+                tokens,
+                pending
+            );
+            tokens = sent.failureTokens;
+            pending = sent.pendingTokens;
+            if (sent.failure !== null) {
                 return {
                     message: 'New login notification failed',
                     completedSteps: done,
-                    failedSteps: [failure],
+                    failedSteps: [sent.failure],
                     failureTokens: tokens,
+                    pendingTokens: pending,
                 };
             }
+
+            done.push(EnumNotificationStep.sendMulticast);
         }
 
         const recordedTokens = tokens ?? [];
@@ -144,6 +185,7 @@ export class NotificationPushSecurityDomain {
             completedSteps: done,
             failedSteps,
             failureTokens: tokens,
+            pendingTokens: pending,
         };
     }
 
@@ -155,7 +197,8 @@ export class NotificationPushSecurityDomain {
             userId,
         }: INotificationSendPushPayload,
         completedSteps: EnumNotificationStep[],
-        failureTokens: string[] | null
+        failureTokens: string[] | null,
+        pendingTokens: string[] | null
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
@@ -165,6 +208,7 @@ export class NotificationPushSecurityDomain {
                 completedSteps,
                 failedSteps: [],
                 failureTokens,
+                pendingTokens,
             };
         }
 
@@ -179,31 +223,31 @@ export class NotificationPushSecurityDomain {
         }
 
         let tokens = failureTokens;
+        let pending = pendingTokens;
         if (!done.includes(EnumNotificationStep.sendMulticast)) {
             const title = this.messageService.setMessage(notification.title);
             const body = this.messageService.setMessage(notification.body, {
                 properties: { username },
             });
-            try {
-                const result = await this.firebaseService.sendMulticast(
-                    notificationTokens,
-                    { title, body }
-                );
-                tokens = result.failureTokens;
-                done.push(EnumNotificationStep.sendMulticast);
-            } catch (error: unknown) {
-                const failure = this.notificationUtil.toStepFailure(
-                    EnumNotificationStep.sendMulticast,
-                    error
-                );
-
+            const sent = await this.sendMulticastStep(
+                notificationTokens,
+                { title, body },
+                tokens,
+                pending
+            );
+            tokens = sent.failureTokens;
+            pending = sent.pendingTokens;
+            if (sent.failure !== null) {
                 return {
                     message: 'Reset two-factor notification failed',
                     completedSteps: done,
-                    failedSteps: [failure],
+                    failedSteps: [sent.failure],
                     failureTokens: tokens,
+                    pendingTokens: pending,
                 };
             }
+
+            done.push(EnumNotificationStep.sendMulticast);
         }
 
         const recordedTokens = tokens ?? [];
@@ -251,6 +295,7 @@ export class NotificationPushSecurityDomain {
             completedSteps: done,
             failedSteps,
             failureTokens: tokens,
+            pendingTokens: pending,
         };
     }
 
@@ -263,7 +308,8 @@ export class NotificationPushSecurityDomain {
         }: INotificationSendPushPayload,
         data: INotificationTemporaryPasswordPushPayload,
         completedSteps: EnumNotificationStep[],
-        failureTokens: string[] | null
+        failureTokens: string[] | null,
+        pendingTokens: string[] | null
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
@@ -273,6 +319,7 @@ export class NotificationPushSecurityDomain {
                 completedSteps,
                 failedSteps: [],
                 failureTokens,
+                pendingTokens,
             };
         }
 
@@ -287,6 +334,7 @@ export class NotificationPushSecurityDomain {
         }
 
         let tokens = failureTokens;
+        let pending = pendingTokens;
         if (!done.includes(EnumNotificationStep.sendMulticast)) {
             const passwordExpiredAtDate = this.helperDateService.createFromIso(
                 data.passwordExpiredAt
@@ -298,26 +346,25 @@ export class NotificationPushSecurityDomain {
             const body = this.messageService.setMessage(notification.body, {
                 properties: { username, passwordExpiredAt },
             });
-            try {
-                const result = await this.firebaseService.sendMulticast(
-                    notificationTokens,
-                    { title, body }
-                );
-                tokens = result.failureTokens;
-                done.push(EnumNotificationStep.sendMulticast);
-            } catch (error: unknown) {
-                const failure = this.notificationUtil.toStepFailure(
-                    EnumNotificationStep.sendMulticast,
-                    error
-                );
-
+            const sent = await this.sendMulticastStep(
+                notificationTokens,
+                { title, body },
+                tokens,
+                pending
+            );
+            tokens = sent.failureTokens;
+            pending = sent.pendingTokens;
+            if (sent.failure !== null) {
                 return {
                     message: 'Temporary password notification failed',
                     completedSteps: done,
-                    failedSteps: [failure],
+                    failedSteps: [sent.failure],
                     failureTokens: tokens,
+                    pendingTokens: pending,
                 };
             }
+
+            done.push(EnumNotificationStep.sendMulticast);
         }
 
         const recordedTokens = tokens ?? [];
@@ -365,6 +412,7 @@ export class NotificationPushSecurityDomain {
             completedSteps: done,
             failedSteps,
             failureTokens: tokens,
+            pendingTokens: pending,
         };
     }
 
@@ -376,7 +424,8 @@ export class NotificationPushSecurityDomain {
             userId,
         }: INotificationSendPushPayload,
         completedSteps: EnumNotificationStep[],
-        failureTokens: string[] | null
+        failureTokens: string[] | null,
+        pendingTokens: string[] | null
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
@@ -386,6 +435,7 @@ export class NotificationPushSecurityDomain {
                 completedSteps,
                 failedSteps: [],
                 failureTokens,
+                pendingTokens,
             };
         }
 
@@ -400,31 +450,31 @@ export class NotificationPushSecurityDomain {
         }
 
         let tokens = failureTokens;
+        let pending = pendingTokens;
         if (!done.includes(EnumNotificationStep.sendMulticast)) {
             const title = this.messageService.setMessage(notification.title);
             const body = this.messageService.setMessage(notification.body, {
                 properties: { username },
             });
-            try {
-                const result = await this.firebaseService.sendMulticast(
-                    notificationTokens,
-                    { title, body }
-                );
-                tokens = result.failureTokens;
-                done.push(EnumNotificationStep.sendMulticast);
-            } catch (error: unknown) {
-                const failure = this.notificationUtil.toStepFailure(
-                    EnumNotificationStep.sendMulticast,
-                    error
-                );
-
+            const sent = await this.sendMulticastStep(
+                notificationTokens,
+                { title, body },
+                tokens,
+                pending
+            );
+            tokens = sent.failureTokens;
+            pending = sent.pendingTokens;
+            if (sent.failure !== null) {
                 return {
                     message: 'Reset password notification failed',
                     completedSteps: done,
-                    failedSteps: [failure],
+                    failedSteps: [sent.failure],
                     failureTokens: tokens,
+                    pendingTokens: pending,
                 };
             }
+
+            done.push(EnumNotificationStep.sendMulticast);
         }
 
         const recordedTokens = tokens ?? [];
@@ -472,6 +522,7 @@ export class NotificationPushSecurityDomain {
             completedSteps: done,
             failedSteps,
             failureTokens: tokens,
+            pendingTokens: pending,
         };
     }
 
@@ -483,7 +534,8 @@ export class NotificationPushSecurityDomain {
             userId,
         }: INotificationSendPushPayload,
         completedSteps: EnumNotificationStep[],
-        failureTokens: string[] | null
+        failureTokens: string[] | null,
+        pendingTokens: string[] | null
     ): Promise<INotificationPushStepResult> {
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
@@ -493,6 +545,7 @@ export class NotificationPushSecurityDomain {
                 completedSteps,
                 failedSteps: [],
                 failureTokens,
+                pendingTokens,
             };
         }
 
@@ -507,31 +560,31 @@ export class NotificationPushSecurityDomain {
         }
 
         let tokens = failureTokens;
+        let pending = pendingTokens;
         if (!done.includes(EnumNotificationStep.sendMulticast)) {
             const title = this.messageService.setMessage(notification.title);
             const body = this.messageService.setMessage(notification.body, {
                 properties: { username },
             });
-            try {
-                const result = await this.firebaseService.sendMulticast(
-                    notificationTokens,
-                    { title, body }
-                );
-                tokens = result.failureTokens;
-                done.push(EnumNotificationStep.sendMulticast);
-            } catch (error: unknown) {
-                const failure = this.notificationUtil.toStepFailure(
-                    EnumNotificationStep.sendMulticast,
-                    error
-                );
-
+            const sent = await this.sendMulticastStep(
+                notificationTokens,
+                { title, body },
+                tokens,
+                pending
+            );
+            tokens = sent.failureTokens;
+            pending = sent.pendingTokens;
+            if (sent.failure !== null) {
                 return {
                     message: 'Forgot password notification failed',
                     completedSteps: done,
-                    failedSteps: [failure],
+                    failedSteps: [sent.failure],
                     failureTokens: tokens,
+                    pendingTokens: pending,
                 };
             }
+
+            done.push(EnumNotificationStep.sendMulticast);
         }
 
         const recordedTokens = tokens ?? [];
@@ -579,6 +632,7 @@ export class NotificationPushSecurityDomain {
             completedSteps: done,
             failedSteps,
             failureTokens: tokens,
+            pendingTokens: pending,
         };
     }
 }

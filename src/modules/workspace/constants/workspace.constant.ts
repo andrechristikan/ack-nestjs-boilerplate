@@ -41,10 +41,17 @@ export const DocWorkspaceErrorResponses = {
  * @public
  */
 export const DocWorkspaceRoleErrorResponses = {
-    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
-        messagePath: 'workspace.error.roleForbidden',
-    }),
+    forbidden: DocResponseError(
+        HttpStatus.FORBIDDEN,
+        {
+            statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
+            messagePath: 'workspace.error.memberForbidden',
+        },
+        {
+            statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
+            messagePath: 'workspace.error.roleForbidden',
+        }
+    ),
 } as const;
 
 /**

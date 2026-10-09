@@ -1,3 +1,4 @@
+import { TermPolicyDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyAdminListRequestSchema } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
 
 describe('TermPolicyAdminListRequestSchema', () => {
@@ -34,5 +35,11 @@ describe('TermPolicyAdminListRequestSchema', () => {
         expect(() =>
             TermPolicyAdminListRequestSchema.parse({ search: 'x' })
         ).toThrow();
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            TermPolicyAdminListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(TermPolicyDefaultAvailableOrderBy.join(', '));
     });
 });

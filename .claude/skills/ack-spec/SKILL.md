@@ -1,12 +1,12 @@
 ---
 name: ack-spec
 description: >-
-    Creates or repairs unit, integration, or e2e tests for code that exists through tester, unit to 100% coverage per file, integration and e2e on Testcontainers. Use for a failing suite, a coverage gap, or orphan specs. Not for new behaviour or a symptom whose cause is not in hand (ack-plan), or a src/ change from a plan or a pin (ack-build).
+    Creates or repairs unit tests for code that exists through tester, to 100% coverage per file; integration and e2e are held. Use for a failing suite, a coverage gap, or orphan specs. Not for new behaviour or a symptom whose cause is not in hand (ack-plan), or a src/ change from a plan or a pin (ack-build).
 disable-model-invocation: true
 model: sonnet
 effort: high
 context: fork
-argument-hint: '<module or path filter, or the failing suite> [unit|integration|e2e]'
+argument-hint: '<module or path filter, or the failing suite>'
 ---
 
 !`git status --short` !`git diff --name-only HEAD`
@@ -20,13 +20,11 @@ You orchestrate in a fork. `tester` writes `test/`; `coder` writes a confirmed n
 Run the suite for the named scope and kind and read the failure; the scope is a Vitest path filter. Clear the cache before believing a coverage gap.
 
 ```bash
-pnpm test <scope>                           # unit
-pnpm test:integration <scope>               # integration, Docker daemon running
-pnpm test:e2e <scope>                       # e2e, Docker daemon running
+pnpm test <scope>
 pnpm exec vitest --clearCache
 ```
 
-Kind: `unit` continues. `integration` or `e2e` first checks `docker info` exits 0, then that the type's global-setup and setup files start every engine and fake the subject needs (`.claude/rules/testing.md`, Integration and e2e). A stopped daemon, or an engine the setup does not start, is a hand-back naming what is missing.
+Kind: `unit` continues. Integration and e2e are held (`.claude/rules/testing.md`): no script, Vitest project, or folder exists, so a request for either is a hand-back naming the hold.
 
 ## 2. Classify
 
@@ -52,9 +50,8 @@ Dispatch `tester`:
 ```
 Agent: tester
 Scope: <src paths in scope and their test/ mirrors>
-Kind: unit | integration | e2e
-Bar: unit, 100% statements, branches, functions, and lines on every file in scope;
-  integration and e2e, every subject in scope asserted the way testing.md sets
+Kind: unit
+Bar: 100% statements, branches, functions, and lines on every file in scope
 Source of truth: the code as it is on disk, including repairs this run landed
 Mode: cover | repair | relocate only (move green specs, no new assertion)
 Rules to read: <the output of bash .claude/hooks/rules.sh over the paths in Scope, pasted>
@@ -86,11 +83,11 @@ Invoke `superpowers:verification-before-completion`. The evidence is the output 
 
 ## Boundaries
 
-Do not write a spec or a repair yourself; dispatch. Do not delete, `.skip`, or weaken a spec, lower a threshold, extend the exclude list, or add an ignore comment. Do not run the owner's DB and seed commands (`db:migrate`, `migration:*`, `db:studio`, `mongosh`, `redis-cli`); the reset and seeding inside the integration and e2e test helpers are part of the suites and run with them. No boot. Commits go through `ask`; propose the subject only.
+Do not write a spec or a repair yourself; dispatch. Do not delete, `.skip`, or weaken a spec, lower a threshold, extend the exclude list, or add an ignore comment. Do not run the owner's DB and seed commands (`db:migrate`, `migration:*`, `db:studio`, `mongosh`, `redis-cli`). No boot. Commits go through `ask`; propose the subject only.
 
 ## Hand back
 
-Specs written or repaired by file; every no-flow bug fixed (file, line, change); every flow or decision handed back or logged; per-file coverage with the command; files at 100 and files short with the reason; sweep rows opened and rows marked SOLVED; a missing engine or fake when the kind was integration or e2e; one line per thing noticed outside the scope.
+Specs written or repaired by file; every no-flow bug fixed (file, line, change); every flow or decision handed back or logged; per-file coverage with the command; files at 100 and files short with the reason; sweep rows opened and rows marked SOLVED; one line per thing noticed outside the scope.
 
 ## Next
 

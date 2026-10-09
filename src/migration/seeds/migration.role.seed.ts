@@ -8,6 +8,7 @@ import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interf
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
 /**
  * Seeds the superadmin, admin, and user roles. The policy rows each role grants are seeded by
@@ -69,8 +70,7 @@ export class MigrationRoleSeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error seeding roles');
-            throw error;
+            throw new AppUnknownException(error);
         }
 
         this.logger.log('Roles seeded successfully.');
@@ -84,8 +84,7 @@ export class MigrationRoleSeed
         try {
             await this.databaseService.client.role.deleteMany({});
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing roles');
-            throw error;
+            throw new AppUnknownException(error);
         }
 
         this.logger.log('Roles removed successfully.');

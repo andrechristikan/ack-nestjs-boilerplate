@@ -7,16 +7,14 @@ import { SessionCursorAvailableOrderBy } from '@modules/session/constants/sessio
  * Session Shared List Request schema for paginated list query.
  * @public
  */
-export const SessionSharedListRequestSchema =
-    PaginationCursorQuerySchema.extend({
-        orderBy: z
-            .union([z.string(), z.array(z.string())])
-            .optional()
-            .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${SessionCursorAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-                example: `${SessionCursorAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-            }),
-    });
+export const SessionSharedListRequestSchema = PaginationCursorQuerySchema.omit({
+    search: true,
+}).extend({
+    orderBy: PaginationCursorQuerySchema.shape.orderBy.meta({
+        description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${SessionCursorAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+        example: `${SessionCursorAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+    }),
+});
 
 /**
  * Inferred DTO for SessionSharedListRequestSchema.

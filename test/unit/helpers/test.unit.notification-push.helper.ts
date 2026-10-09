@@ -71,6 +71,7 @@ export function expectPushSentWithCleanup(
         completedSteps: PushAllSteps,
         failedSteps: [],
         failureTokens: ['bad'],
+        pendingTokens: [],
     });
 }
 
@@ -134,4 +135,68 @@ export function expectPushSendFailure(
         EnumNotificationStep.updateProcessAt,
     ]);
     expect(result.failureTokens).toBeNull();
+    expect(result.pendingTokens).toBeNull();
+}
+
+export function expectPushOutagePending(
+    { notificationPushQueue, notificationRepository }: INotificationPushDoubles,
+    result: INotificationPushStepResult
+): void {
+    expect(notificationRepository.updateSentAt).not.toHaveBeenCalled();
+    expect(notificationPushQueue.sendCleanupTokens).not.toHaveBeenCalled();
+    expect(result.failedSteps).toEqual([
+        {
+            step: EnumNotificationStep.sendMulticast,
+            error: '2 tokens pending retry',
+        },
+    ]);
+    expect(result.completedSteps).toEqual([
+        EnumNotificationStep.updateProcessAt,
+    ]);
+    expect(result.failureTokens).toEqual([]);
+    expect(result.pendingTokens).toEqual(['t1', 't2']);
+}
+
+export function expectPushRetrySendsPending(
+    {
+        firebaseService,
+        notificationPushQueue,
+        notificationRepository,
+    }: INotificationPushDoubles,
+    send: INotificationSendPushPayload,
+    result: INotificationPushStepResult
+): void {
+    expect(firebaseService.sendMulticast).toHaveBeenCalledWith(
+        ['t2'],
+        expect.any(Object)
+    );
+    expect(notificationPushQueue.sendCleanupTokens).toHaveBeenCalledWith(
+        send.notificationId,
+        send.userId,
+        ['bad']
+    );
+    expect(notificationRepository.updateSentAt).toHaveBeenCalledWith(
+        send.userId,
+        send.notificationId,
+        EnumNotificationChannel.push,
+        ['bad']
+    );
+    expect(result.failedSteps).toEqual([]);
+    expect(result.completedSteps).toEqual(PushAllSteps);
+    expect(result.pendingTokens).toEqual([]);
+}
+
+export function expectPushFailureTokensMerged(
+    { notificationRepository }: INotificationPushDoubles,
+    send: INotificationSendPushPayload,
+    result: INotificationPushStepResult
+): void {
+    expect(notificationRepository.updateSentAt).toHaveBeenCalledWith(
+        send.userId,
+        send.notificationId,
+        EnumNotificationChannel.push,
+        ['old', 'bad']
+    );
+    expect(result.failureTokens).toEqual(['old', 'bad']);
+    expect(result.pendingTokens).toEqual([]);
 }

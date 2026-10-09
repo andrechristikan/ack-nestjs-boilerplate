@@ -148,6 +148,19 @@ const newDateRestriction = {
     message: 'Use HelperDateService.',
 };
 
+const throwNewErrorRestriction = {
+    selector: 'ThrowStatement > NewExpression[callee.name="Error"]',
+    message:
+        'Throw a typed exception: AppUnknownException (or a subclass) outside an HTTP request, AppBaseException for one that answers a request.',
+};
+
+const throwIdentifierRestriction = {
+    selector:
+        "ThrowStatement[argument.type='Identifier']:not(IfStatement:matches([test.operator='instanceof'], [test.type='LogicalExpression']:has(.test BinaryExpression[operator='instanceof'])) ThrowStatement)",
+    message:
+        'Rethrow a caught value only inside an instanceof guard of our own exception (if (err instanceof AppBaseException) { throw err; }); otherwise throw new AppUnknownException(err).',
+};
+
 const orderDirectionRestriction = {
     selector: 'Literal[value=/^(asc|desc)$/]:not(TSEnumMember > Literal)',
     message: 'Use EnumPaginationOrderDirectionType.',
@@ -224,6 +237,8 @@ const codeStyleRules = {
         ...codeStyleSyntaxRestrictions,
         newDateRestriction,
         orderDirectionRestriction,
+        throwNewErrorRestriction,
+        throwIdentifierRestriction,
     ],
     '@typescript-eslint/member-ordering': [
         'error',

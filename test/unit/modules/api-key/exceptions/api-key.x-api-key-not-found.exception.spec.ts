@@ -16,7 +16,7 @@ describe('ApiKeyXApiKeyNotFoundException', () => {
                     EnumApiKeyStatusCodeError[
                         EnumApiKeyStatusCodeError.xApiKeyNotFound
                     ],
-                httpStatus: HttpStatus.FORBIDDEN,
+                httpStatus: HttpStatus.UNAUTHORIZED,
                 messagePath: 'apiKey.error.xApiKey.notFound',
             });
         });

@@ -39,7 +39,7 @@ describe('ResponseMetadataService', () => {
     let service: ResponseMetadataService;
 
     const configValues: Record<string, unknown> = {
-        'message.language': EnumMessageLanguage.en,
+        'message.language': 'id',
         'app.urlVersion.version': '1',
         'app.version': '1.0.0',
     };
@@ -67,7 +67,7 @@ describe('ResponseMetadataService', () => {
             helperDateService.getZone.mockReturnValue('Asia/Jakarta');
             requestStoreService.get.mockImplementation((key: string) => {
                 const stored: Record<string, unknown> = {
-                    [RequestLanguageStoreKey]: 'id',
+                    [RequestLanguageStoreKey]: EnumMessageLanguage.en,
                     [RequestVersionStoreKey]: '2',
                     [RequestIdStoreKey]: 'request-id',
                     [RequestCorrelationIdStoreKey]: 'correlation-id',
@@ -78,7 +78,7 @@ describe('ResponseMetadataService', () => {
             const result = service.create();
 
             expect(result).toEqual<ResponseMetadataDto>({
-                language: 'id' as EnumMessageLanguage,
+                language: EnumMessageLanguage.en,
                 timestamp: today.getTime(),
                 timezone: 'Asia/Jakarta',
                 version: '2',
@@ -102,8 +102,8 @@ describe('ResponseMetadataService', () => {
 
             const result = service.create();
 
-            expect(result).toEqual<ResponseMetadataDto>({
-                language: EnumMessageLanguage.en,
+            expect(result).toMatchObject({
+                language: 'id',
                 timestamp: today.getTime(),
                 timezone: 'Asia/Jakarta',
                 version: '1',
@@ -111,6 +111,58 @@ describe('ResponseMetadataService', () => {
                 requestId: 'request-id',
                 correlationId: 'correlation-id',
             });
+        });
+
+        it('falls back to the default language when the stored language is not an enum member', () => {
+            helperDateService.create.mockReturnValue(today);
+            helperDateService.getTimestamp.mockReturnValue(today.getTime());
+            helperDateService.getZone.mockReturnValue('Asia/Jakarta');
+            requestStoreService.get.mockImplementation((key: string) => {
+                const stored: Record<string, unknown> = {
+                    [RequestLanguageStoreKey]: 'klingon',
+                    [RequestIdStoreKey]: 'request-id',
+                    [RequestCorrelationIdStoreKey]: 'correlation-id',
+                };
+                return stored[key] ?? null;
+            });
+
+            const result = service.create();
+
+            expect(result.language).toBe('id');
+        });
+
+        it('answers a null request id when the store carries none', () => {
+            helperDateService.create.mockReturnValue(today);
+            helperDateService.getTimestamp.mockReturnValue(today.getTime());
+            helperDateService.getZone.mockReturnValue('Asia/Jakarta');
+            requestStoreService.get.mockImplementation((key: string) => {
+                const stored: Record<string, unknown> = {
+                    [RequestCorrelationIdStoreKey]: 'correlation-id',
+                };
+                return stored[key] ?? null;
+            });
+
+            const result = service.create();
+
+            expect(result.requestId).toBeNull();
+            expect(result.correlationId).toBe('correlation-id');
+        });
+
+        it('answers a null correlation id when the store carries none', () => {
+            helperDateService.create.mockReturnValue(today);
+            helperDateService.getTimestamp.mockReturnValue(today.getTime());
+            helperDateService.getZone.mockReturnValue('Asia/Jakarta');
+            requestStoreService.get.mockImplementation((key: string) => {
+                const stored: Record<string, unknown> = {
+                    [RequestIdStoreKey]: 'request-id',
+                };
+                return stored[key] ?? null;
+            });
+
+            const result = service.create();
+
+            expect(result.requestId).toBe('request-id');
+            expect(result.correlationId).toBeNull();
         });
     });
 
@@ -165,6 +217,31 @@ describe('ResponseMetadataService', () => {
                 metadata.correlationId
             );
             expect(response.setHeader).toHaveBeenCalledTimes(7);
+        });
+
+        it('sets no request id or correlation id header when either is null', () => {
+            const response: MockProxy<Response> = mock<Response>();
+            const metadata: ResponseMetadataDto = {
+                language: EnumMessageLanguage.en,
+                timestamp: today.getTime(),
+                timezone: 'Asia/Jakarta',
+                version: '1',
+                repoVersion: '1.0.0',
+                requestId: null,
+                correlationId: null,
+            };
+
+            service.setHeaders(response, metadata);
+
+            expect(response.setHeader).not.toHaveBeenCalledWith(
+                RequestIdHeaderName,
+                expect.anything()
+            );
+            expect(response.setHeader).not.toHaveBeenCalledWith(
+                RequestCorrelationIdHeaderName,
+                expect.anything()
+            );
+            expect(response.setHeader).toHaveBeenCalledTimes(5);
         });
     });
 });

@@ -1,3 +1,4 @@
+import { AnalyticSessionAfterAdminAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticSessionAfterAdminListRequestSchema } from '@modules/analytic/dtos/request/analytic.session-after-admin-list.request.dto';
 
 describe('AnalyticSessionAfterAdminListRequestSchema', () => {
@@ -39,5 +40,22 @@ describe('AnalyticSessionAfterAdminListRequestSchema', () => {
                 extra: true,
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticSessionAfterAdminListRequestSchema.safeParse({
+                search: 'x',
+                startDate,
+                endDate,
+            }).success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticSessionAfterAdminListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticSessionAfterAdminAvailableOrderBy.join(', '));
     });
 });

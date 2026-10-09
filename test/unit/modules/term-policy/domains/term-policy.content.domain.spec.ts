@@ -16,7 +16,7 @@ import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import {
     EnumActivityLogAction,
     EnumTermPolicyStatus,
@@ -45,7 +45,7 @@ describe('TermPolicyContentDomain', () => {
         mock<HelperDateService>();
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
-    const preparedEvent: IActivityLogStagedEvent = {
+    const preparedActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.adminTermPolicyUpdateContent,
         metadata: {},
         onError: false,
@@ -98,7 +98,7 @@ describe('TermPolicyContentDomain', () => {
             termPolicyVersion: 1,
             timestamp,
         });
-        activityLogDomain.prepare.mockReturnValue(preparedEvent);
+        activityLogDomain.prepare.mockReturnValue(preparedActivityLog);
         termPolicyUtil.toContents.mockReturnValue([existingContent]);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -323,7 +323,7 @@ describe('TermPolicyContentDomain', () => {
                 { language: EnumMessageLanguage.en, ...mapped }
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                preparedEvent,
+                preparedActivityLog,
             ]);
         });
 
@@ -495,7 +495,7 @@ describe('TermPolicyContentDomain', () => {
                 { language: EnumMessageLanguage.en, ...mapped }
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                preparedEvent,
+                preparedActivityLog,
             ]);
         });
 
@@ -636,7 +636,7 @@ describe('TermPolicyContentDomain', () => {
                 { language: EnumMessageLanguage.en }
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                preparedEvent,
+                preparedActivityLog,
             ]);
         });
 
@@ -808,7 +808,7 @@ describe('TermPolicyContentDomain', () => {
     });
 
     describe('prepareActivityLog', () => {
-        it('builds the metadata through the util and prepares the activity log event', () => {
+        it('builds the metadata through the util and prepares the activity log', () => {
             const result = domain['prepareActivityLog'](
                 EnumActivityLogAction.adminTermPolicyUpdateContent,
                 {
@@ -819,7 +819,7 @@ describe('TermPolicyContentDomain', () => {
                 timestamp
             );
 
-            expect(result).toBe(preparedEvent);
+            expect(result).toBe(preparedActivityLog);
             expect(termPolicyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 {
                     id: 'term-policy-1',

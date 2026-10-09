@@ -1,11 +1,12 @@
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
+import { RedisUtil } from '@common/redis/utils/redis.util';
 import { createKeyv } from '@keyv/redis';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 /**
- * Global module providing the shared Keyv Redis client used as the cache backend.
+ * Global module providing the shared Keyv Redis client used as the cache backend, and `RedisUtil`.
  */
 @Module({})
 export class RedisCacheModule {
@@ -35,8 +36,8 @@ export class RedisCacheModule {
             module: RedisCacheModule,
             global: true,
             imports: [],
-            providers: [redisCacheProvider],
-            exports: [redisCacheProvider],
+            providers: [redisCacheProvider, RedisUtil],
+            exports: [redisCacheProvider, RedisUtil],
         };
     }
 }

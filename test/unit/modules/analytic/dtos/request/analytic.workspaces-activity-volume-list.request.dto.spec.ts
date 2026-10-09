@@ -38,4 +38,21 @@ describe('AnalyticWorkspacesActivityVolumeListRequestSchema', () => {
             })
         ).toThrow();
     });
+
+    it('rejects search and orderBy', () => {
+        expect(
+            AnalyticWorkspacesActivityVolumeListRequestSchema.safeParse({
+                search: 'x',
+                startDate,
+                endDate,
+            }).success
+        ).toBe(false);
+        expect(
+            AnalyticWorkspacesActivityVolumeListRequestSchema.safeParse({
+                orderBy: 'createdAt:desc',
+                startDate,
+                endDate,
+            }).success
+        ).toBe(false);
+    });
 });

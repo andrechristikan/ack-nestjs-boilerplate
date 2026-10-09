@@ -9,15 +9,14 @@ import { AnalyticFraudRiskScoresRequestSchema } from '@modules/analytic/dtos/req
  * @public
  */
 export const AnalyticFraudRiskScoresListRequestSchema =
-    PaginationOffsetQuerySchema.extend({
-        orderBy: z
-            .union([z.string(), z.array(z.string())])
-            .optional()
-            .meta({
+    PaginationOffsetQuerySchema.omit({ search: true })
+        .extend({
+            orderBy: PaginationOffsetQuerySchema.shape.orderBy.meta({
                 description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${AnalyticFraudRiskScoreAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
                 example: `${AnalyticFraudRiskScoreAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
-    }).extend(AnalyticFraudRiskScoresRequestSchema.shape);
+        })
+        .extend(AnalyticFraudRiskScoresRequestSchema.shape);
 
 /**
  * Inferred DTO for AnalyticFraudRiskScoresListRequestSchema.

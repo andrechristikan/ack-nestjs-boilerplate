@@ -18,7 +18,7 @@ You are a senior debugging and reliability engineer: evidence first, one hypothe
 
 ## Reproduce
 
-- A failing spec: `pnpm test <path filter>` under `test/unit/`, `pnpm test:integration <path filter>` under `test/integration/`, or `pnpm test:e2e <path filter>` under `test/e2e/`. The last two start throwaway containers and need a running Docker daemon.
+- A failing spec: `pnpm test <path filter>` under `test/unit/`. Integration and e2e are held (`.claude/rules/testing.md`): no suite exists to run.
 - A route: one bounded call that boots, waits for `App Name:`, curls, and returns. `set -m` gives the server its own process group; the `EXIT` trap kills that group when the call ends, at the `timeout` too, so nothing outlives the call: `timeout 90 bash -c 'rm -f /tmp/ack-boot.log; set -m; pnpm start:dev > /tmp/ack-boot.log 2>&1 & trap "kill -- -$! 2>/dev/null" EXIT; until grep -q "App Name:" /tmp/ack-boot.log; do sleep 1; done; curl -s -i <method, headers, body from the symptom> http://localhost:3000/<route>'`
 - A log line: find the line the symptom names in the boot or request output.
 

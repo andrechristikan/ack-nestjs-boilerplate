@@ -7,7 +7,9 @@ import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/a
  * @public
  */
 export const AnalyticWorkspacesActivityVolumeListRequestSchema =
-    PaginationOffsetQuerySchema.extend(AnalyticDateRangeRequestSchema.shape);
+    PaginationOffsetQuerySchema.omit({ search: true, orderBy: true }).extend(
+        AnalyticDateRangeRequestSchema.shape
+    );
 
 /**
  * Inferred DTO for AnalyticWorkspacesActivityVolumeListRequestSchema.

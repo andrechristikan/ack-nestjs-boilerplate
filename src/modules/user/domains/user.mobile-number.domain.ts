@@ -55,7 +55,7 @@ export class UserMobileNumberDomain {
         }
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userAddMobileNumber,
                 }),
@@ -72,7 +72,7 @@ export class UserMobileNumberDomain {
                 return mobileNumber;
             });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return row;
         } catch (err: unknown) {
@@ -126,7 +126,7 @@ export class UserMobileNumberDomain {
                 : false;
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userUpdateMobileNumber,
                 }),
@@ -148,7 +148,7 @@ export class UserMobileNumberDomain {
                 return mobileNumber;
             });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return row;
         } catch (err: unknown) {
@@ -175,7 +175,7 @@ export class UserMobileNumberDomain {
         }
 
         try {
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userDeleteMobileNumber,
                 }),
@@ -191,7 +191,7 @@ export class UserMobileNumberDomain {
                 return mobileNumber;
             });
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return row;
         } catch (err: unknown) {

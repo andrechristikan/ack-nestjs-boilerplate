@@ -1,3 +1,4 @@
+import { AnalyticKeyCountAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticMassRegistrationListRequestSchema } from '@modules/analytic/dtos/request/analytic.mass-registration-list.request.dto';
 
 describe('AnalyticMassRegistrationListRequestSchema', () => {
@@ -38,5 +39,19 @@ describe('AnalyticMassRegistrationListRequestSchema', () => {
                 extra: true,
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticMassRegistrationListRequestSchema.safeParse({ search: 'x' })
+                .success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticMassRegistrationListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticKeyCountAvailableOrderBy.join(', '));
     });
 });

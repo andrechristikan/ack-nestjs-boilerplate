@@ -21,7 +21,7 @@ import type {
     Prisma,
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
@@ -408,7 +408,7 @@ describe('DeviceDomain', () => {
             );
             helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.touchInTx.mockResolvedValue('device-1');
-            const event: IActivityLogStagedEvent = {
+            const activityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userDeviceRefresh,
                 metadata: {},
                 onError: false,
@@ -416,7 +416,7 @@ describe('DeviceDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(event);
+            activityLogDomain.prepare.mockReturnValue(activityLog);
             databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
@@ -440,7 +440,7 @@ describe('DeviceDomain', () => {
                 action: EnumActivityLogAction.userDeviceRefresh,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -581,7 +581,7 @@ describe('DeviceDomain', () => {
             deviceOwnershipRepository.existsActive.mockResolvedValue(true);
             helperDateService.create.mockReturnValue(now);
             const revokedSessions = [{ id: 'session-1' }];
-            const event: IActivityLogStagedEvent = {
+            const activityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userRemoveDevice,
                 metadata: {},
                 onError: false,
@@ -600,7 +600,7 @@ describe('DeviceDomain', () => {
                 deviceId: 'device-1',
                 sessionCount: 1,
             });
-            activityLogDomain.prepare.mockReturnValue(event);
+            activityLogDomain.prepare.mockReturnValue(activityLog);
             databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
@@ -647,7 +647,7 @@ describe('DeviceDomain', () => {
                 revokedSessions
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -700,11 +700,11 @@ describe('DeviceDomain', () => {
             });
         });
 
-        it('stages only the admin actor event when the admin removes their own device', async () => {
+        it('stages only the admin actor activity log when the admin removes their own device', async () => {
             deviceOwnershipRepository.existsActive.mockResolvedValue(true);
             helperDateService.create.mockReturnValue(now);
             const revokedSessions = [{ id: 'session-1' }];
-            const actorEvent: IActivityLogStagedEvent = {
+            const actorActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminDeviceRemove,
                 metadata: {},
                 onError: false,
@@ -726,7 +726,7 @@ describe('DeviceDomain', () => {
                 targetUsername: 'jane',
                 timestamp: now,
             });
-            activityLogDomain.prepare.mockReturnValue(actorEvent);
+            activityLogDomain.prepare.mockReturnValue(actorActivityLog);
             databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
@@ -750,18 +750,18 @@ describe('DeviceDomain', () => {
                 },
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                actorEvent,
+                actorActivityLog,
             ]);
             expect(
                 deviceUtil.mapActivityLogTargetMetadata
             ).not.toHaveBeenCalled();
         });
 
-        it('stages both the actor and the target-user events when an admin removes another user device', async () => {
+        it('stages both the actor and the target-user activity logs when an admin removes another user device', async () => {
             deviceOwnershipRepository.existsActive.mockResolvedValue(true);
             helperDateService.create.mockReturnValue(now);
             const revokedSessions = [{ id: 'session-1' }];
-            const actorEvent: IActivityLogStagedEvent = {
+            const actorActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminDeviceRemove,
                 metadata: {},
                 onError: false,
@@ -769,7 +769,7 @@ describe('DeviceDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            const targetEvent: IActivityLogStagedEvent = {
+            const targetActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userRemoveDeviceByAdmin,
                 metadata: {},
                 onError: false,
@@ -799,8 +799,8 @@ describe('DeviceDomain', () => {
                 timestamp: now,
             });
             activityLogDomain.prepare
-                .mockReturnValueOnce(actorEvent)
-                .mockReturnValueOnce(targetEvent);
+                .mockReturnValueOnce(actorActivityLog)
+                .mockReturnValueOnce(targetActivityLog);
             databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
@@ -847,8 +847,8 @@ describe('DeviceDomain', () => {
                 },
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                actorEvent,
-                targetEvent,
+                actorActivityLog,
+                targetActivityLog,
             ]);
             expect(sessionDomain.purgeRevokedLogins).toHaveBeenCalledWith(
                 'user-1',

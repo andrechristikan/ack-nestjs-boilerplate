@@ -1,3 +1,4 @@
+import { PasswordHistoryCursorAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistorySharedListRequestSchema } from '@modules/password-history/dtos/request/password-history.shared-list.request.dto';
 
 describe('PasswordHistorySharedListRequestSchema', () => {
@@ -36,5 +37,19 @@ describe('PasswordHistorySharedListRequestSchema', () => {
                 page: 1,
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            PasswordHistorySharedListRequestSchema.safeParse({ search: 'x' })
+                .success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            PasswordHistorySharedListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(PasswordHistoryCursorAvailableOrderBy.join(', '));
     });
 });

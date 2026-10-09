@@ -10,6 +10,7 @@ import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
 /**
  * Seeds environment-specific API keys; removal also clears their cache entries.
@@ -89,8 +90,7 @@ export class MigrationApiKeySeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error seeding Api Keys');
-            throw error;
+            throw new AppUnknownException(error);
         }
 
         this.logger.log('Api Keys seeded successfully.');
@@ -114,8 +114,7 @@ export class MigrationApiKeySeed
             });
             await Promise.all(deletions);
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing Api Keys');
-            throw error;
+            throw new AppUnknownException(error);
         }
 
         this.logger.log('Api Keys removed successfully.');

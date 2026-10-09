@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import type {
     CallHandler,
     ExecutionContext,
@@ -6,13 +6,15 @@ import type {
 } from '@nestjs/common';
 import { Observable, from, throwError } from 'rxjs';
 import { catchError, concatMap } from 'rxjs/operators';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 
 /**
- * Flushes staged activity-log events after the handler settles.
- * Success flushes every staged event; error flushes only `onError: true` events.
- * A flush failure never changes the handler outcome.
+ * Flushes staged activity logs after the handler settles.
+ * Success flushes every staged activity log; error flushes only `onError: true` activity logs.
+ * A flush failure never changes the handler outcome; an error that is neither an `AppBaseException` nor an `HttpException` leaves wrapped in `AppUnknownException`.
  */
 @Injectable()
 export class ActivityLogInterceptor implements NestInterceptor {
@@ -54,7 +56,15 @@ export class ActivityLogInterceptor implements NestInterceptor {
                 from(
                     (async () => {
                         await this.flushSafe(payloadUserId, true);
-                        throw error;
+
+                        if (
+                            error instanceof AppBaseException ||
+                            error instanceof HttpException
+                        ) {
+                            throw error;
+                        }
+
+                        throw new AppUnknownException(error);
                     })()
                 ).pipe(catchError((err: unknown) => throwError(() => err)))
             )

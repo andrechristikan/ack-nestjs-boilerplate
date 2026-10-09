@@ -221,6 +221,7 @@ SENTRY_DSN=
 # Docker Compose (Optional; read by Compose, not by the application)
 DOCKER_MONGO_ROOT_USERNAME=
 DOCKER_MONGO_ROOT_PASSWORD=
+DOCKER_MONGO_PORT=
 DOCKER_REDIS_PASSWORD=
 DOCKER_BULLBOARD_USER=
 DOCKER_BULLBOARD_PASSWORD=
@@ -475,7 +476,9 @@ MongoDB connection string.
 - It targets a **replica set** (Prisma transactions need one).
 - Docker Compose is the recommended local path.
 - Without Docker, use [MongoDB Atlas][ref-mongodb-atlas] or any MongoDB 8.0+ replica set.
-- The project runs MongoDB 8: the production Compose file pins `mongo:8.3.11`.
+- The project runs MongoDB 9: the production Compose file pins `mongo:9.0.2`, and the local Compose file uses `mongo:latest`.
+- The local Compose port is `DOCKER_MONGO_PORT` (default `27017`).
+- Changing `DOCKER_MONGO_PORT` does not change `DATABASE_URL`. Set the port in `DATABASE_URL` to the same value by hand.
 - Setup: [Installation][ref-doc-installation].
 
 ```bash
@@ -869,7 +872,7 @@ SENTRY_DSN=
 >
 > - Docker Compose reads them to configure the `mongo`, `redis`, and `redis-bullboard` services.
 > - The application never reads them, and `AppEnvSchema` does not validate them.
-> - Each is read as `${VAR:-default}` in `docker-compose.yml` and `ci/docker-compose.production.yml`, so an unset variable and an empty one both take the default.
+> - Each is read as `${VAR:-default}` in `docker-compose.yml`, and all but `DOCKER_MONGO_PORT` also in `ci/docker-compose.production.yml`, so an unset variable and an empty one both take the default.
 > - The two passwords default to empty, which means no authentication.
 > - The production file takes its values only when started with `--env-file .env` (see [Release][ref-doc-release]).
 
@@ -905,6 +908,19 @@ Turns MongoDB authentication on.
 
 ```bash
 DOCKER_MONGO_ROOT_PASSWORD=
+```
+
+**`DOCKER_MONGO_PORT`** _(optional)_  
+Host port the local `mongo` service publishes.
+
+- It falls back to `27017`.
+- Only `docker-compose.yml` reads it. The production file keeps the member host `mongo:27017` on the Compose network.
+- It does not change `DATABASE_URL`. Set the port in `DATABASE_URL` to the same value by hand.
+- `docker-compose.yml` passes `RS_HOST=host.docker.internal:<port>` to the `mongo` container, and `ci/mongo/entrypoint.sh` uses it as the replica set member host when it first initiates the replica set on an empty volume.
+- The replica set advertises that member host to every client with `replicaSet=rs0`, `localhost` URLs included, so the host machine must resolve `host.docker.internal`. See [Installation][ref-doc-installation].
+
+```bash
+DOCKER_MONGO_PORT=
 ```
 
 **`DOCKER_REDIS_PASSWORD`** _(optional)_  

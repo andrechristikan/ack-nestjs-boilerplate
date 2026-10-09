@@ -1,30 +1,18 @@
 import { HttpStatus } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
-import cors from 'cors';
-import type { CorsOptions } from 'cors';
-import { RequestCorsMiddleware } from '@common/request/middlewares/request.cors.middleware';
-import { createRequestCorsMiddleware } from '@test/unit/helpers/test.unit.request.helper';
-
-vi.mock('cors', () => ({
-    default: vi.fn(),
-}));
+import type { RequestCorsMiddleware } from '@common/request/middlewares/request.cors.middleware';
+import {
+    createFreshRequestCorsMiddleware,
+    createRequestCorsMiddleware,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('RequestCorsMiddleware', () => {
     let req: Request;
     let res: Response;
     let next: NextFunction;
-    let handler: ReturnType<typeof vi.fn>;
-    let capturedOptions: CorsOptions;
 
     beforeEach(() => {
         vi.resetAllMocks();
-
-        handler = vi.fn();
-        capturedOptions = {} as CorsOptions;
-        vi.mocked(cors).mockImplementation(options => {
-            capturedOptions = options as CorsOptions;
-            return handler as unknown as ReturnType<typeof cors>;
-        });
 
         req = {} as Request;
         res = {} as Response;
@@ -33,16 +21,17 @@ describe('RequestCorsMiddleware', () => {
 
     describe('use', () => {
         it('applies cors with the configured options and delegates to the handler', async () => {
-            const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: ['https://example.com'],
-                allowedMethod: ['GET', 'POST'],
-                allowedHeader: ['content-type'],
-                exposedHeader: ['x-request-id'],
-            });
+            const { middleware, handler, captured } =
+                await createFreshRequestCorsMiddleware({
+                    allowedOrigin: ['https://example.com'],
+                    allowedMethod: ['GET', 'POST'],
+                    allowedHeader: ['content-type'],
+                    exposedHeader: ['x-request-id'],
+                });
 
             middleware.use(req, res, next);
 
-            expect(capturedOptions).toMatchObject({
+            expect(captured.options).toMatchObject({
                 methods: ['GET', 'POST'],
                 allowedHeaders: ['content-type'],
                 exposedHeaders: ['x-request-id'],
@@ -51,34 +40,36 @@ describe('RequestCorsMiddleware', () => {
                 optionsSuccessStatus: HttpStatus.NO_CONTENT,
                 maxAge: 86400,
             });
-            expect(typeof capturedOptions.origin).toBe('function');
+            expect(typeof captured.options.origin).toBe('function');
             expect(handler).toHaveBeenCalledWith(req, res, next);
         });
 
         it('disables credentials for a wildcard string origin', async () => {
-            const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: '*',
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
-            });
+            const { middleware, captured } =
+                await createFreshRequestCorsMiddleware({
+                    allowedOrigin: '*',
+                    allowedMethod: [],
+                    allowedHeader: [],
+                    exposedHeader: [],
+                });
 
             middleware.use(req, res, next);
 
-            expect(capturedOptions.credentials).toBe(false);
+            expect(captured.options.credentials).toBe(false);
         });
 
         it('allows any origin when the origin function is invoked with no origin header', async () => {
-            const middleware = await createRequestCorsMiddleware({
-                allowedOrigin: '*',
-                allowedMethod: [],
-                allowedHeader: [],
-                exposedHeader: [],
-            });
+            const { middleware, captured } =
+                await createFreshRequestCorsMiddleware({
+                    allowedOrigin: '*',
+                    allowedMethod: [],
+                    allowedHeader: [],
+                    exposedHeader: [],
+                });
 
             middleware.use(req, res, next);
 
-            const originFn = capturedOptions.origin as (
+            const originFn = captured.options.origin as (
                 origin: string | undefined,
                 callback: (err: Error | null, allow?: boolean) => void
             ) => void;

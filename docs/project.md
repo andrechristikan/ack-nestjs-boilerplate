@@ -181,9 +181,13 @@ Workspace roles and project access:
 **Method decorator**. Stack it above `@ProjectProtected()`. The two argument forms bind **different** guards, and the difference is the point:
 
 - **No arguments** applies `ProjectMemberGuard` alone, storing the row under `ProjectMemberStoreKey`.
+    - No authenticated user throws `UserNotAuthenticatedException` (401, `51027`).
     - No row throws `ProjectMemberForbiddenException` (403, `51701`).
     - This is the form used by `member leave`, which has nothing to remove without a row.
-- **With roles** applies `ProjectRoleGuard` alone. A missing workspace membership, a missing project membership, or a role outside the list throws `ProjectRoleForbiddenException` (403, `51702`).
+- **With roles** applies `ProjectRoleGuard` alone, which throws:
+    - `WorkspaceMemberForbiddenException` (403, `51601`) for a missing workspace membership
+    - `ProjectMemberForbiddenException` (403, `51701`) for a missing project membership
+    - `ProjectRoleForbiddenException` (403, `51702`) for a role outside the list
 
 Because the role form does not bind `ProjectMemberGuard`:
 
@@ -201,9 +205,10 @@ Because the role form does not bind `ProjectMemberGuard`:
 
 Per decorator:
 
-- `ProjectCurrent()` on a route without `@ProjectProtected()` answers `RequestContextMissingException` (500, `50304`).
+- `ProjectCurrent()` on a route without `@ProjectProtected()` answers `ProjectNotFoundException` (404, `51700`).
+- A field name that holds `null` answers `RequestContextMissingException` (500, `50304`) on either decorator.
 - `ProjectMemberCurrent()` is valid only on a route carrying the role-less `@ProjectMemberProtected()`, the form that binds `ProjectMemberGuard`.
-    - A role-gated route stores no member row, so the read answers `RequestContextMissingException` (500, `50304`) there.
+    - A role-gated route stores no member row, so the read answers `ProjectMemberForbiddenException` (403, `51701`) there.
     - `ProjectMemberDomain.leaveProject` receives the row itself.
     - The guard already refuses the caller's missing membership with `ProjectMemberForbiddenException` (403, `51701`).
 
@@ -230,9 +235,9 @@ The store readers: [Security and Middleware][ref-doc-security-and-middleware].
 - `createProject` prepares `projectCreated`, then calls `ProjectRepository.create(workspaceId, dto, slugCandidates)`.
     - The repository runs one `client.project.create` per candidate with no transaction.
     - A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate.
-    - The event is staged once, after the create resolves, so a collision stages nothing.
-    - Any other error is rethrown untouched.
-    - Exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`).
+    - The activity log is staged once, after the create resolves, so a collision stages nothing.
+    - Any other error is wrapped in `AppUnknownException`.
+    - Exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (409, `51800`).
     - See [Generated Unique Values][ref-doc-database-generated-unique-values].
 
 ## Membership
@@ -289,7 +294,7 @@ Its activity rows are prepared before the write and staged after it.
 2. Calls `ProjectRepository.softDelete`, which runs `client.project.softDelete` with no transaction.
     - It sets `deletedAt`.
     - It stamps `deletedBy` and `updatedBy` from the caller.
-3. Stages the event.
+3. Stages the activity log.
 
 **It cascades to nothing**: `ProjectMember` rows and any invite referencing the project are left as they are, and the slug stays occupied.
 

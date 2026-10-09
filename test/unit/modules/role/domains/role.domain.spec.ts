@@ -22,8 +22,8 @@ import {
 } from '@generated/prisma-client/client';
 import type { Prisma, Role } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type {
@@ -67,7 +67,7 @@ describe('RoleDomain', () => {
         updatedAt: roleWithPolicies.updatedAt,
         updatedBy: roleWithPolicies.updatedBy,
     };
-    const stagedEvent: IActivityLogStagedEvent = {
+    const stagedActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.adminRoleCreate,
         metadata: { roleId: role.id },
         onError: false,
@@ -81,7 +81,7 @@ describe('RoleDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         helperDateService.create.mockReturnValue(now);
-        activityLogDomain.prepare.mockReturnValue(stagedEvent);
+        activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -281,7 +281,7 @@ describe('RoleDomain', () => {
             });
         });
 
-        it('creates the role and stages the create event', async () => {
+        it('creates the role and stages the create activity log', async () => {
             roleRepository.existsByName.mockResolvedValue(false);
             databaseUtil.createId.mockReturnValue(role.id);
             roleRepository.create.mockResolvedValue(roleWithPolicies);
@@ -291,7 +291,7 @@ describe('RoleDomain', () => {
             expect(result).toBe(roleWithPolicies);
             expect(roleRepository.create).toHaveBeenCalledWith(role.id, create);
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
     });
@@ -317,7 +317,7 @@ describe('RoleDomain', () => {
             });
         });
 
-        it('updates the role and stages the update event', async () => {
+        it('updates the role and stages the update activity log', async () => {
             roleRepository.findOneById.mockResolvedValue(role);
             roleRepository.update.mockResolvedValue(roleWithPolicies);
 
@@ -326,7 +326,7 @@ describe('RoleDomain', () => {
             expect(result).toBe(roleWithPolicies);
             expect(roleRepository.update).toHaveBeenCalledWith(role.id, update);
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
     });
@@ -364,7 +364,7 @@ describe('RoleDomain', () => {
             });
         });
 
-        it('deletes the role and stages the delete event', async () => {
+        it('deletes the role and stages the delete activity log', async () => {
             roleRepository.findOneById.mockResolvedValue(role);
             roleRepository.isUsedById.mockResolvedValue(false);
             roleRepository.delete.mockResolvedValue(role);
@@ -374,7 +374,7 @@ describe('RoleDomain', () => {
             expect(result).toBe(role);
             expect(roleRepository.delete).toHaveBeenCalledWith(role.id);
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
     });
@@ -421,20 +421,20 @@ describe('RoleDomain', () => {
             twoFactor: null,
         };
 
-        it('throws AuthJwtAccessTokenInvalidException when the user is null', async () => {
+        it('throws UserNotAuthenticatedException when the user is null', async () => {
             const rejection = domain.validateRoleGuard(null, [
                 EnumRoleType.admin,
             ]);
 
             await expect(rejection).rejects.toMatchObject({
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notAuthenticated,
                 statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtAccessTokenInvalid
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.notAuthenticated
                     ],
                 httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'auth.error.accessTokenUnauthorized',
+                messagePath: 'user.error.notAuthenticated',
             });
         });
 
@@ -447,26 +447,6 @@ describe('RoleDomain', () => {
             const result = await domain.validateRoleGuard(user, []);
 
             expect(result).toEqual([]);
-        });
-
-        it('throws RolePredefinedNotFoundException when no role is required and the caller is not superAdmin', async () => {
-            const user = {
-                ...baseUser,
-                role: { ...roleWithPolicies, type: EnumRoleType.admin },
-            };
-
-            await expect(
-                domain.validateRoleGuard(user, [])
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.predefinedNotFound,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[
-                        EnumRoleStatusCodeError.predefinedNotFound
-                    ],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'role.error.predefinedNotFound',
-            });
         });
 
         it('throws RoleForbiddenException when the caller role is not in the required list', async () => {
@@ -502,7 +482,7 @@ describe('RoleDomain', () => {
     });
 
     describe('prepareActivityLog', () => {
-        it('maps the metadata and prepares the activity log event', () => {
+        it('maps the metadata and prepares the activity log', () => {
             const metadata = { roleId: role.id };
             roleUtil.mapActivityLogMetadata.mockReturnValue(metadata);
 
@@ -512,7 +492,7 @@ describe('RoleDomain', () => {
                 now
             );
 
-            expect(result).toBe(stagedEvent);
+            expect(result).toBe(stagedActivityLog);
             expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 roleWithPolicies,
                 now

@@ -264,8 +264,8 @@ Workspace and project counts cover live rows only:
     - the anomaly and fraud `/list` routes
     - `GET /fraud/risk-scores`
     - the three dashboard distributions `GET /workspaces/membership`, `GET /workspaces/activity-volume`, and `GET /projects/membership`
-- Anomaly and fraud lists carry order-by allow-lists in `analytic.list.constant.ts`.
-- The three dashboard membership and activity-volume lists extend the kit offset schema only and declare no `orderBy` allow-list.
+- Anomaly and fraud lists omit `search` from the kit offset schema and carry order-by allow-lists in `analytic.list.constant.ts`.
+- The three dashboard membership and activity-volume lists omit both `search` and `orderBy` from the kit offset schema and declare no allow-list.
 
 Summary responses:
 
@@ -373,7 +373,7 @@ By cause:
 How Analytic reads them:
 
 - `UserLoginAnalyticDomain.getLockoutMetrics` (`GET /admin/analytic/auth/lockout`) counts `userLoginFailed` and `userReachMaxPasswordAttempt`
-- `UserLoginAnalyticDomain.getFailedLoginEvents` lists those two for the credential-stuffing signal
+- `UserLoginAnalyticDomain.getFailedLoginActivityLogs` lists those two for the credential-stuffing signal
 
 An action one user takes on another writes an actor row and a target row ([Activity Log](activity-log.md#actor-and-target-rows)). The metrics that read those actions count one side of each pair:
 
@@ -399,7 +399,7 @@ Session after admin revoke:
 Workspace activity volume:
 
 - `ActivityLogWorkspaceVolumeContract` (owned by the activity-log module) lists the eleven workspace and project target actions.
-- `workspaceCreatedByAdmin` stays counted, because the admin's row for that event carries no workspace.
+- `workspaceCreatedByAdmin` stays counted, because the admin's row for that action carries no workspace.
 
 <!-- REFERENCES -->
 

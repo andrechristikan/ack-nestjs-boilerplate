@@ -1,4 +1,8 @@
 import { WorkspaceUserListRequestSchema } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
+import {
+    WorkspaceDefaultAvailableSearch,
+    WorkspaceCursorAvailableOrderBy,
+} from '@modules/workspace/constants/workspace.list.constant';
 
 describe('WorkspaceUserListRequestSchema', () => {
     it('parses cursor, perPage, search, and orderBy', () => {
@@ -27,5 +31,14 @@ describe('WorkspaceUserListRequestSchema', () => {
         expect(() =>
             WorkspaceUserListRequestSchema.parse({ extra: true })
         ).toThrow();
+    });
+
+    it('keeps the module search and orderBy descriptions', () => {
+        expect(
+            WorkspaceUserListRequestSchema.shape.search.meta()?.description
+        ).toContain(WorkspaceDefaultAvailableSearch.join(', '));
+        expect(
+            WorkspaceUserListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(WorkspaceCursorAvailableOrderBy.join(', '));
     });
 });

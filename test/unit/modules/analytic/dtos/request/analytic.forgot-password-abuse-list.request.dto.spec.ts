@@ -1,3 +1,4 @@
+import { AnalyticForgotPasswordAbuseAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticForgotPasswordAbuseListRequestSchema } from '@modules/analytic/dtos/request/analytic.forgot-password-abuse-list.request.dto';
 
 describe('AnalyticForgotPasswordAbuseListRequestSchema', () => {
@@ -38,5 +39,20 @@ describe('AnalyticForgotPasswordAbuseListRequestSchema', () => {
                 extra: true,
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticForgotPasswordAbuseListRequestSchema.safeParse({
+                search: 'x',
+            }).success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticForgotPasswordAbuseListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticForgotPasswordAbuseAvailableOrderBy.join(', '));
     });
 });

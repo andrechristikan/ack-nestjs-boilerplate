@@ -115,6 +115,8 @@ This project uses **TypeScript** with `strict`, `exactOptionalPropertyTypes`, an
     ```bash
     pnpm test
     ```
+    - It runs the unit suite under `test/unit/`.
+    - The integration and e2e suites are held, so none exists: `package.json` defines no `test:integration` or `test:e2e` script, and `test/` holds `unit/` and `helpers/`.
 - `any` is a lint error in `src/` (`@typescript-eslint/no-explicit-any`).
 - Every public method and function carries explicit types (`explicit-function-return-type`, `explicit-module-boundary-types`).
 
@@ -208,7 +210,8 @@ The Checklist and the gates:
 - Tests go under How Has This Been Tested?.
 - The Husky pre-commit hook runs `lint-staged`, typecheck, deadcode, spell, and the unit tests locally.
 - The Linter workflow runs `pnpm lint` on pull requests, and its trigger branches are listed in `.github/workflows/linter.yml`.
-- The test workflows run on manual dispatch only.
+- The unit test workflow runs on manual dispatch only.
+- `test-integration.yml` and `test-e2e.yml` run on manual dispatch and call `pnpm test:integration` and `pnpm test:e2e`, which `package.json` does not define, so they fail.
 
 **PR will be rejected if:**
 

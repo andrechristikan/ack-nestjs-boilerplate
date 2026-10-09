@@ -41,4 +41,27 @@ describe('PaginationOffsetQuerySchema', () => {
             PaginationOffsetQuerySchema.parse({ ...payload, cursor: 'x' })
         ).toThrow();
     });
+
+    it('accepts search and a single orderBy string', () => {
+        const result = PaginationOffsetQuerySchema.safeParse({
+            search: 'jane',
+            orderBy: 'createdAt:desc',
+        });
+
+        expect(result.success).toBe(true);
+    });
+
+    it('accepts orderBy repeated as an array', () => {
+        const result = PaginationOffsetQuerySchema.safeParse({
+            orderBy: ['createdAt:desc', 'name:asc'],
+        });
+
+        expect(result.success).toBe(true);
+    });
+
+    it('rejects a non-string orderBy', () => {
+        const result = PaginationOffsetQuerySchema.safeParse({ orderBy: 1 });
+
+        expect(result.success).toBe(false);
+    });
 });

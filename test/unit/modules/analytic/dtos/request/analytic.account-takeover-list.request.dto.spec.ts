@@ -1,3 +1,4 @@
+import { AnalyticAccountTakeoverAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticAccountTakeoverListRequestSchema } from '@modules/analytic/dtos/request/analytic.account-takeover-list.request.dto';
 
 describe('AnalyticAccountTakeoverListRequestSchema', () => {
@@ -39,5 +40,22 @@ describe('AnalyticAccountTakeoverListRequestSchema', () => {
                 extra: true,
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticAccountTakeoverListRequestSchema.safeParse({
+                search: 'x',
+                startDate,
+                endDate,
+            }).success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticAccountTakeoverListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticAccountTakeoverAvailableOrderBy.join(', '));
     });
 });

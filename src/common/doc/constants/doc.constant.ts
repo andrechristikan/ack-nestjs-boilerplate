@@ -5,6 +5,7 @@ import { DocResponseError } from '@common/doc/decorators/doc.decorator';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { EnumHelperStatusCodeError } from '@common/helper/enums/helper.status-code.enum';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
+import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { EnumResponseStatusCodeError } from '@common/response/enums/response.status-code.enum';
 import { HttpStatus } from '@nestjs/common';
@@ -20,7 +21,8 @@ export const DocResponseEntryMetaKey = 'DocResponseEntryMetaKey';
 /**
  * Error responses every documented endpoint can return: server error, timeout, validation,
  * rate limit, the helper failures, a missing request schema, a missing request context, a
- * failed unique-value generation and an S3 integration that is not configured.
+ * failed unique-value generation, a database write conflict, an unreachable database or Redis,
+ * and an S3 integration that is not configured.
  * @public
  */
 export const DocGlobalErrorResponses = {
@@ -63,13 +65,22 @@ export const DocGlobalErrorResponses = {
         statusCode: EnumRequestStatusCodeError.contextMissing,
         messagePath: 'request.error.contextMissing',
     }),
-    uniqueValueGenerationFailed: DocResponseError(
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        {
-            statusCode: EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
-            messagePath: 'database.error.uniqueValueGenerationFailed',
-        }
-    ),
+    uniqueValueGenerationFailed: DocResponseError(HttpStatus.CONFLICT, {
+        statusCode: EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
+        messagePath: 'database.error.uniqueValueGenerationFailed',
+    }),
+    databaseWriteConflict: DocResponseError(HttpStatus.CONFLICT, {
+        statusCode: EnumDatabaseStatusCodeError.writeConflict,
+        messagePath: 'database.error.writeConflict',
+    }),
+    databaseUnavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
+        statusCode: EnumDatabaseStatusCodeError.unavailable,
+        messagePath: 'database.error.unavailable',
+    }),
+    redisUnavailable: DocResponseError(HttpStatus.SERVICE_UNAVAILABLE, {
+        statusCode: EnumRedisStatusCodeError.unavailable,
+        messagePath: 'redis.error.unavailable',
+    }),
     s3NotConfigured: DocResponseError(HttpStatus.NOT_FOUND, {
         statusCode: EnumAwsStatusCodeError.s3NotConfigured,
         messagePath: 'aws.error.s3NotConfigured',

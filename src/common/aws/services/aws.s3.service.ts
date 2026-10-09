@@ -93,6 +93,7 @@ import {
     AwsS3MaxPartNumber,
 } from '@common/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import type { AwsS3PresignPartRequestDto } from '@common/aws/dtos/request/aws.s3-presign-part.request.dto';
 import type { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
@@ -590,8 +591,12 @@ export class AwsS3Service implements OnModuleInit {
 
                 throw new AwsS3ObjectExistException();
             } catch (error: unknown) {
-                if (!(error instanceof NotFound)) {
+                if (error instanceof AwsS3ObjectExistException) {
                     throw error;
+                }
+
+                if (!(error instanceof NotFound)) {
+                    throw new AppUnknownException(error);
                 }
             }
         }
@@ -782,8 +787,12 @@ export class AwsS3Service implements OnModuleInit {
 
                 throw new AwsS3ObjectExistException();
             } catch (error: unknown) {
-                if (!(error instanceof NotFound)) {
+                if (error instanceof AwsS3ObjectExistException) {
                     throw error;
+                }
+
+                if (!(error instanceof NotFound)) {
+                    throw new AppUnknownException(error);
                 }
             }
         }
@@ -1009,8 +1018,12 @@ export class AwsS3Service implements OnModuleInit {
 
                 throw new AwsS3ObjectExistException();
             } catch (error: unknown) {
-                if (!(error instanceof NotFound)) {
+                if (error instanceof AwsS3ObjectExistException) {
                     throw error;
+                }
+
+                if (!(error instanceof NotFound)) {
+                    throw new AppUnknownException(error);
                 }
             }
         }

@@ -21,7 +21,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
@@ -151,7 +151,7 @@ describe('UserDomain', () => {
         twoFactor,
     };
 
-    const event: IActivityLogStagedEvent = {
+    const activityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userUpdateStatus,
         metadata: {},
         onError: false,
@@ -163,7 +163,7 @@ describe('UserDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
 
-        activityLogDomain.prepare.mockReturnValue(event);
+        activityLogDomain.prepare.mockReturnValue(activityLog);
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -484,14 +484,12 @@ describe('UserDomain', () => {
 
     describe('resetTermPolicyInTx', () => {
         it('delegates to the repository', async () => {
-            await domain.resetTermPolicyInTx(
+            await domain.resetTermPolicyInTx(tx, EnumTermPolicyType.marketing);
+
+            expect(userRepository.resetTermPolicyInTx).toHaveBeenCalledWith(
                 tx,
                 EnumTermPolicyType.marketing
             );
-
-            expect(
-                userRepository.resetTermPolicyInTx
-            ).toHaveBeenCalledWith(tx, EnumTermPolicyType.marketing);
         });
     });
 
@@ -584,9 +582,9 @@ describe('UserDomain', () => {
             const ids = ['user-cobalt', 'user-indigo'];
             userRepository.findIdsCursor.mockResolvedValue(ids);
 
-            await expect(
-                domain.getListIdCursor('user-amber', 2)
-            ).resolves.toBe(ids);
+            await expect(domain.getListIdCursor('user-amber', 2)).resolves.toBe(
+                ids
+            );
             expect(userRepository.findIdsCursor).toHaveBeenCalledWith(
                 'user-amber',
                 2
@@ -925,7 +923,9 @@ describe('UserDomain', () => {
             sessionDomain.revokeActiveByUserInTx.mockResolvedValue([
                 { id: 'session-one' },
             ]);
-            sessionDomain.prepareRevokeAllByAdmin.mockReturnValue([event]);
+            sessionDomain.prepareRevokeAllByAdmin.mockReturnValue([
+                activityLog,
+            ]);
 
             await domain.updateStatusByAdmin(
                 'user-cobalt',
@@ -951,11 +951,11 @@ describe('UserDomain', () => {
             );
             expect(sessionDomain.finalizeRevokeAll).toHaveBeenCalledWith(
                 'user-cobalt',
-                [event]
+                [activityLog]
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
-                event,
+                activityLog,
+                activityLog,
             ]);
         });
 
@@ -994,8 +994,8 @@ describe('UserDomain', () => {
             expect(sessionDomain.revokeActiveByUserInTx).not.toHaveBeenCalled();
             expect(sessionDomain.finalizeRevokeAll).not.toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
-                event,
+                activityLog,
+                activityLog,
             ]);
         });
 
@@ -1077,8 +1077,8 @@ describe('UserDomain', () => {
     });
 
     describe('deleteSelf', () => {
-        it('deletes the account, revokes sessions and devices, and stages the activity log event', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([event]);
+        it('deletes the account, revokes sessions and devices, and stages the activity log', async () => {
+            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
 
             await domain.deleteSelf('user-cobalt');
 
@@ -1105,15 +1105,15 @@ describe('UserDomain', () => {
             );
             expect(sessionDomain.finalizeRevokeAll).toHaveBeenCalledWith(
                 'user-cobalt',
-                [event]
+                [activityLog]
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([event]);
+            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
             const error = new UserNotFoundException();
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
@@ -1130,7 +1130,7 @@ describe('UserDomain', () => {
         });
 
         it('wraps an unknown error raised inside the transaction', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([event]);
+            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
             const error = new Error('boom');
             databaseService.withTransaction.mockRejectedValueOnce(error);
 

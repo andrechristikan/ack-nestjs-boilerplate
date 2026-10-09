@@ -56,7 +56,7 @@ Use [MongoDB Atlas][ref-mongodb] and your own Redis only when you cannot run Doc
 Without Docker you also need:
 
 - A [MongoDB Atlas][ref-mongodb] cluster, or any MongoDB 8.0+ **replica set** (Prisma transactions need one).
-- The project runs MongoDB 8: the production Compose file pins `mongo:8.3.11`.
+- The project runs MongoDB 9: the production Compose file pins `mongo:9.0.2`, and the local Compose file uses `mongo:latest`.
 - A Redis 6.0+ instance for cache (`db:0`) and queues (`db:1`). `SessionCache` runs `SCAN` with the `TYPE` option, which Redis supports from 6.0.
 
 > [!IMPORTANT] Prefer [Installation with Docker](#installation-with-docker-recommended). Local single-node MongoDB without a replica set will break Prisma transactions.
@@ -77,7 +77,7 @@ The API runs on the host with `pnpm start:dev`, or in Compose with the `apis` pr
 
 ### What's Included
 
-- **MongoDB replica set**: Ready for Prisma transactions (port 27017). Authentication is off unless `DOCKER_MONGO_ROOT_PASSWORD` is set
+- **MongoDB replica set**: Ready for Prisma transactions (port 27017, or `DOCKER_MONGO_PORT`). Authentication is off unless `DOCKER_MONGO_ROOT_PASSWORD` is set
 - **Redis**: Cache on `db:0`, queues on `db:1` (port 6379). Authentication is off unless `DOCKER_REDIS_PASSWORD` is set
 - **JWKS server**: Serves your JWT public keys (port 3011)
 - **BullMQ Dashboard**: Queue UI on port 3010, default login `admin` / `admin123`
@@ -246,7 +246,7 @@ docker-compose --profile apis up -d
 
 That brings up:
 
-- MongoDB single-node replica set on `27017`
+- MongoDB single-node replica set on `27017` (`DOCKER_MONGO_PORT` changes the host port)
 - Redis on `6379`
 - JWKS server on `3011`
 - BullBoard on `3010`
@@ -261,7 +261,7 @@ docker-compose logs -f
 
 - The Compose file for local work is `docker-compose.yml`, and the API image is the root `dockerfile`.
 - A production host uses `ci/docker-compose.production.yml` and `ci/dockerfile.production`, described in [Release][ref-doc-release].
-- MongoDB, Redis, the JWKS server, the API container, and Vault (profile `vault`) carry health checks.
+- MongoDB, Redis, BullBoard, the JWKS server, the API container, and Vault (profile `vault`) carry health checks.
 - A service that depends on one starts after that check passes, so `vault-bootstrap` waits for Vault.
 
 #### API container (`apis` profile)
@@ -285,9 +285,10 @@ AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://jwks-server/.well-known/refresh-jwks.json
 
 The same file feeds `pnpm start:dev` on the host, which needs the `localhost` values from [Create Environment](#create-environment). With authentication on, the credentials from that section go into these URLs too.
 
-MongoDB reports its replica set member as `host.docker.internal:27017`:
+MongoDB reports its replica set member as `host.docker.internal:27017`, or `host.docker.internal:<DOCKER_MONGO_PORT>` when that variable is set:
 
-- `ci/mongo/entrypoint.sh` sets that host through `RS_HOST`, and `docker-compose.yml` does not override it.
+- `docker-compose.yml` passes the member host to `ci/mongo/entrypoint.sh` as `RS_HOST`, built from `DOCKER_MONGO_PORT`.
+- The port in `DATABASE_URL` matches `DOCKER_MONGO_PORT`.
 - A client with `replicaSet=rs0` connects to the member host the replica set reports.
 - Compose maps `host.docker.internal` to the host gateway on both the `mongo` and the `apis` services (`extra_hosts`), so the name resolves inside `apis` and inside `mongo`. The host machine resolves it through its own OS.
 
@@ -301,8 +302,8 @@ Steps:
 ### Troubleshooting
 
 - **Port conflicts**: Compose publishes ports `27017`, `6379`, `3010`, and `3011` on the host, so a process already on one of them blocks the start.
-    - The published MongoDB host port is `27017`, the port in the replica set member host.
-    - The replica set member host is `host.docker.internal:27017`, so the host machine and the containers reach the same member.
+    - Set `DOCKER_MONGO_PORT` to move the MongoDB host port, and change the port in `DATABASE_URL` to match.
+    - The published MongoDB host port is also the port in the replica set member host `host.docker.internal:<port>`, so the host machine and the containers reach the same member.
 - **Host resolution**: Add `127.0.0.1 host.docker.internal` to the host machine's `/etc/hosts` when the name does not resolve there. The containers need no entry.
 - **Bind mount error naming a file under `keys/`**: The file does not exist yet. Run `pnpm generate:secret`.
 - **Replica set still starting**: The replica set takes a minute or two after the first `up`.
@@ -502,12 +503,13 @@ pnpm spell
 
 `pnpm test` is `TZ=UTC vitest run --project unit`:
 
-- `vitest.config.ts` declares one project, `unit`.
+- `vitest.config.ts` declares one project, `unit`. The integration and e2e suites are held: no project exists, and `package.json` defines no script for either.
     - Its specs live under `test/unit/`, mirroring `src/`.
     - `test/helpers/test.logger.helper.ts` is the setup file.
 - No coverage by default (`coverage.enabled` is `false` in `vitest.config.ts`)
 - `pnpm test:cov` adds `--coverage` and applies the 100% thresholds
 - `pre-commit` and CI (`.github/workflows/test-unit.yml`, `workflow_dispatch`) run `NODE_ENV=test pnpm test`
+- `.github/workflows/test-integration.yml` and `test-e2e.yml` run on `workflow_dispatch` and call scripts `package.json` does not define, so they fail
 - `.github/workflows/linter.yml` runs on `pull_request` and `workflow_dispatch`
 - `testTimeout` is 5000ms
 

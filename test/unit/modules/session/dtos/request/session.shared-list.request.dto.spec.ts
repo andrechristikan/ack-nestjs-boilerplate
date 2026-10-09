@@ -1,3 +1,4 @@
+import { SessionCursorAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 import { SessionSharedListRequestSchema } from '@modules/session/dtos/request/session.shared-list.request.dto';
 
 describe('SessionSharedListRequestSchema', () => {
@@ -23,5 +24,17 @@ describe('SessionSharedListRequestSchema', () => {
         expect(() =>
             SessionSharedListRequestSchema.parse({ ...query, page: 1 })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            SessionSharedListRequestSchema.safeParse({ search: 'x' }).success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            SessionSharedListRequestSchema.shape.orderBy.meta()?.description
+        ).toContain(SessionCursorAvailableOrderBy.join(', '));
     });
 });

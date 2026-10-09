@@ -24,7 +24,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
@@ -80,7 +80,7 @@ describe('UserPasswordDomain', () => {
 
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-01T00:00:00.000Z');
-    const event: IActivityLogStagedEvent = {
+    const activityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.userChangePassword,
         metadata: {},
         onError: false,
@@ -178,7 +178,7 @@ describe('UserPasswordDomain', () => {
         vi.resetAllMocks();
 
         configGet.mockImplementation(key => configValues[key]);
-        activityLogDomain.prepare.mockReturnValue(event);
+        activityLogDomain.prepare.mockReturnValue(activityLog);
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -287,7 +287,7 @@ describe('UserPasswordDomain', () => {
 
     describe('reachMaxPasswordAttempt', () => {
         it('deactivates the account and revokes sessions and devices', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([event]);
+            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
 
             await domain.reachMaxPasswordAttempt('user-hollow');
 
@@ -308,15 +308,15 @@ describe('UserPasswordDomain', () => {
             );
             expect(sessionDomain.finalizeRevokeAll).toHaveBeenCalledWith(
                 'user-hollow',
-                [event]
+                [activityLog]
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([event]);
+            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
             const error = new UserNotFoundException();
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
@@ -333,7 +333,7 @@ describe('UserPasswordDomain', () => {
         });
 
         it('wraps an unknown error raised inside the transaction', async () => {
-            sessionDomain.prepareRevokeAllSelf.mockReturnValue([event]);
+            sessionDomain.prepareRevokeAllSelf.mockReturnValue([activityLog]);
             const error = new Error('boom');
             databaseService.withTransaction.mockRejectedValueOnce(error);
 
@@ -351,7 +351,7 @@ describe('UserPasswordDomain', () => {
     });
 
     describe('updatePasswordByAdmin', () => {
-        it('sets a temporary password, revokes sessions, stages both events in order, and notifies the user', async () => {
+        it('sets a temporary password, revokes sessions, stages both activity logs in order, and notifies the user', async () => {
             const user = baseUser;
             userRepository.findOneById.mockResolvedValue(user);
             authPasswordUtil.createPasswordRandom.mockReturnValue(
@@ -368,7 +368,7 @@ describe('UserPasswordDomain', () => {
             userUtil.mapActivityLogTargetMetadata.mockReturnValue(
                 targetMetadata
             );
-            const actorEvent: IActivityLogStagedEvent = {
+            const actorActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.adminUserUpdatePassword,
                 metadata: {},
                 onError: false,
@@ -376,7 +376,7 @@ describe('UserPasswordDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            const targetEvent: IActivityLogStagedEvent = {
+            const targetActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userUpdatePasswordByAdmin,
                 metadata: {},
                 onError: false,
@@ -385,8 +385,8 @@ describe('UserPasswordDomain', () => {
                 workspaceId: null,
             };
             activityLogDomain.prepare
-                .mockReturnValueOnce(actorEvent)
-                .mockReturnValueOnce(targetEvent);
+                .mockReturnValueOnce(actorActivityLog)
+                .mockReturnValueOnce(targetActivityLog);
             const callOrder: string[] = [];
             sessionDomain.purgeLoginsByUser.mockImplementation(async () => {
                 callOrder.push('purgeLoginsByUser');
@@ -431,8 +431,8 @@ describe('UserPasswordDomain', () => {
                 metadata: targetMetadata,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                actorEvent,
-                targetEvent,
+                actorActivityLog,
+                targetActivityLog,
             ]);
             expect(
                 notificationQueue.sendTemporaryPasswordByAdmin
@@ -571,7 +571,7 @@ describe('UserPasswordDomain', () => {
             createdBy: null,
         };
 
-        it('changes the password, commits, purges, and stages the event in order when no two-factor is enabled', async () => {
+        it('changes the password, commits, purges, and stages the activity log in order when no two-factor is enabled', async () => {
             const user = {
                 ...baseUser,
                 twoFactor: { ...baseTwoFactor, enabled: false },
@@ -636,7 +636,7 @@ describe('UserPasswordDomain', () => {
                 action: EnumActivityLogAction.userChangePassword,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
             expect(notificationQueue.sendChangePassword).toHaveBeenCalledWith(
                 user.id
@@ -649,7 +649,7 @@ describe('UserPasswordDomain', () => {
             ]);
         });
 
-        it('verifies two-factor, records it in the same transaction, and stages both events when enabled', async () => {
+        it('verifies two-factor, records it in the same transaction, and stages both activity logs when enabled', async () => {
             const user = {
                 ...baseUser,
                 twoFactor: { ...baseTwoFactor, enabled: true },
@@ -662,7 +662,7 @@ describe('UserPasswordDomain', () => {
             userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
                 verifiedResult
             );
-            const changePasswordEvent: IActivityLogStagedEvent = {
+            const changePasswordActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userChangePassword,
                 metadata: {},
                 onError: false,
@@ -670,7 +670,7 @@ describe('UserPasswordDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            const verifyTwoFactorEvent: IActivityLogStagedEvent = {
+            const verifyTwoFactorActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userVerifyTwoFactor,
                 metadata: {},
                 onError: false,
@@ -679,8 +679,8 @@ describe('UserPasswordDomain', () => {
                 workspaceId: null,
             };
             activityLogDomain.prepare
-                .mockReturnValueOnce(changePasswordEvent)
-                .mockReturnValueOnce(verifyTwoFactorEvent);
+                .mockReturnValueOnce(changePasswordActivityLog)
+                .mockReturnValueOnce(verifyTwoFactorActivityLog);
 
             await domain.changePassword(user, {
                 newPassword: 'new-password',
@@ -699,8 +699,8 @@ describe('UserPasswordDomain', () => {
                 createdBy: user.id,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                changePasswordEvent,
-                verifyTwoFactorEvent,
+                changePasswordActivityLog,
+                verifyTwoFactorActivityLog,
             ]);
         });
 
@@ -730,7 +730,7 @@ describe('UserPasswordDomain', () => {
                 user.id
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -889,7 +889,7 @@ describe('UserPasswordDomain', () => {
             createdBy: null,
         };
 
-        it('creates the reset request, stages the event in order, when there is no previous one', async () => {
+        it('creates the reset request, stages the activity log in order, when there is no previous one', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
             userPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
                 null
@@ -900,7 +900,7 @@ describe('UserPasswordDomain', () => {
                 'https://example.com/reset?token=random-token'
             );
 
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userForgotPassword,
                 metadata: {},
                 onError: false,
@@ -908,7 +908,7 @@ describe('UserPasswordDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
             const callOrder: string[] = [];
             userPasswordRepository.createReplacingUnused.mockImplementation(
                 async () => {
@@ -940,7 +940,7 @@ describe('UserPasswordDomain', () => {
                 createdBy: 'user-hollow',
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
             expect(notificationQueue.sendForgotPassword).toHaveBeenCalled();
             expect(callOrder).toEqual([
@@ -970,7 +970,7 @@ describe('UserPasswordDomain', () => {
                 userPasswordRepository.createReplacingUnused
             ).toHaveBeenCalled();
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                event,
+                activityLog,
             ]);
         });
 
@@ -1096,7 +1096,7 @@ describe('UserPasswordDomain', () => {
             newBackupCodes: null,
         };
 
-        it('resets the password, commits, purges, and stages the event in order when two-factor is disabled', async () => {
+        it('resets the password, commits, purges, and stages the activity log in order when two-factor is disabled', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
                 resetRecord
@@ -1104,7 +1104,7 @@ describe('UserPasswordDomain', () => {
             passwordHistoryDomain.getActiveByUser.mockResolvedValue([]);
             authPasswordUtil.checkPasswordPeriod.mockReturnValue(null);
             authPasswordUtil.createPassword.mockReturnValue(password);
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userResetPassword,
                 metadata: {},
                 onError: false,
@@ -1112,7 +1112,7 @@ describe('UserPasswordDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
             const callOrder: string[] = [];
             userPasswordRepository.markUsedInTx.mockImplementation(async () => {
                 callOrder.push('markUsedInTx');
@@ -1156,7 +1156,7 @@ describe('UserPasswordDomain', () => {
                 createdBy: resetRecord.userId,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
             expect(notificationQueue.sendResetPassword).toHaveBeenCalledWith(
                 resetRecord.userId
@@ -1169,7 +1169,7 @@ describe('UserPasswordDomain', () => {
             ]);
         });
 
-        it('verifies two-factor, records it in the same transaction, and stages both events when enabled', async () => {
+        it('verifies two-factor, records it in the same transaction, and stages both activity logs when enabled', async () => {
             helperHashService.sha256Hash.mockReturnValue('hashed-token');
             userPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
                 {
@@ -1186,7 +1186,7 @@ describe('UserPasswordDomain', () => {
             userLoginDomain.handleTwoFactorValidation.mockResolvedValue(
                 verifiedResult
             );
-            const resetPasswordEvent: IActivityLogStagedEvent = {
+            const resetPasswordActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userResetPassword,
                 metadata: {},
                 onError: false,
@@ -1194,7 +1194,7 @@ describe('UserPasswordDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            const verifyTwoFactorEvent: IActivityLogStagedEvent = {
+            const verifyTwoFactorActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userVerifyTwoFactor,
                 metadata: {},
                 onError: false,
@@ -1203,8 +1203,8 @@ describe('UserPasswordDomain', () => {
                 workspaceId: null,
             };
             activityLogDomain.prepare
-                .mockReturnValueOnce(resetPasswordEvent)
-                .mockReturnValueOnce(verifyTwoFactorEvent);
+                .mockReturnValueOnce(resetPasswordActivityLog)
+                .mockReturnValueOnce(verifyTwoFactorActivityLog);
 
             await domain.resetPassword({
                 newPassword: 'new-password',
@@ -1227,8 +1227,8 @@ describe('UserPasswordDomain', () => {
                 createdBy: resetRecord.userId,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                resetPasswordEvent,
-                verifyTwoFactorEvent,
+                resetPasswordActivityLog,
+                verifyTwoFactorActivityLog,
             ]);
         });
 

@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -19,9 +20,9 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
@@ -57,7 +58,7 @@ describe('WorkspaceMemberDomain', () => {
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
 
-    const stagedEvent: IActivityLogStagedEvent = {
+    const stagedActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.workspaceMemberLeft,
         metadata: {},
         onError: false,
@@ -68,7 +69,7 @@ describe('WorkspaceMemberDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        activityLogDomain.prepare.mockReturnValue(stagedEvent);
+        activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -86,18 +87,19 @@ describe('WorkspaceMemberDomain', () => {
     });
 
     describe('validateWorkspaceMemberGuard', () => {
-        it('throws AuthJwtAccessTokenInvalidException when userId is null', async () => {
+        it('throws UserNotAuthenticatedException when userId is null', async () => {
             await expect(
                 domain.validateWorkspaceMemberGuard('workspace-1', null)
             ).rejects.toMatchObject({
-                constructor: AuthJwtAccessTokenInvalidException,
-                module: 'auth',
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
+                constructor: UserNotAuthenticatedException,
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notAuthenticated,
                 statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtAccessTokenInvalid
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.notAuthenticated
                     ],
-                messagePath: 'auth.error.accessTokenUnauthorized',
+                httpStatus: HttpStatus.UNAUTHORIZED,
+                messagePath: 'user.error.notAuthenticated',
             });
         });
 
@@ -154,7 +156,7 @@ describe('WorkspaceMemberDomain', () => {
     });
 
     describe('validateWorkspaceRoleGuard', () => {
-        it('throws WorkspaceRoleForbiddenException when no member is given', () => {
+        it('throws WorkspaceMemberForbiddenException when no member is given', () => {
             let thrown: unknown;
             try {
                 domain.validateWorkspaceRoleGuard(null, [
@@ -165,13 +167,15 @@ describe('WorkspaceMemberDomain', () => {
             }
 
             expect(thrown).toMatchObject({
+                constructor: WorkspaceMemberForbiddenException,
                 module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
+                statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
                 statusCodeKey:
                     EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.roleForbidden
+                        EnumWorkspaceStatusCodeError.memberForbidden
                     ],
-                messagePath: 'workspace.error.roleForbidden',
+                httpStatus: HttpStatus.FORBIDDEN,
+                messagePath: 'workspace.error.memberForbidden',
             });
         });
 
@@ -311,13 +315,13 @@ describe('WorkspaceMemberDomain', () => {
             });
         });
 
-        it('transfers ownership and stages both actor and target events', async () => {
+        it('transfers ownership and stages both actor and target activity logs', async () => {
             const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
             const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
             workspaceMemberRepository.findOneByWorkspaceAndUser.mockResolvedValue(
                 target
             );
-            const transferredEvent: IActivityLogStagedEvent = {
+            const transferredActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceOwnershipTransferred,
                 metadata: {},
                 onError: false,
@@ -325,7 +329,7 @@ describe('WorkspaceMemberDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            const transferredByOwnerEvent: IActivityLogStagedEvent = {
+            const transferredByOwnerActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
                 metadata: {},
                 onError: false,
@@ -334,8 +338,8 @@ describe('WorkspaceMemberDomain', () => {
                 workspaceId: null,
             };
             activityLogDomain.prepare
-                .mockReturnValueOnce(transferredEvent)
-                .mockReturnValueOnce(transferredByOwnerEvent);
+                .mockReturnValueOnce(transferredActivityLog)
+                .mockReturnValueOnce(transferredByOwnerActivityLog);
 
             await domain.transferOwnership('workspace-1', actor, 'user-2');
 
@@ -357,8 +361,8 @@ describe('WorkspaceMemberDomain', () => {
                 workspaceMemberRepository.transferOwnership
             ).toHaveBeenCalledWith('member-1', 'member-2');
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                transferredEvent,
-                transferredByOwnerEvent,
+                transferredActivityLog,
+                transferredByOwnerActivityLog,
             ]);
         });
     });
@@ -394,7 +398,7 @@ describe('WorkspaceMemberDomain', () => {
                 role: EnumWorkspaceMemberRole.owner,
             };
             workspaceMemberRepository.countOwners.mockResolvedValue(2);
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceMemberLeft,
                 metadata: {},
                 onError: false,
@@ -402,7 +406,7 @@ describe('WorkspaceMemberDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
             await domain.leaveWorkspace('workspace-1', owner);
 
@@ -410,7 +414,7 @@ describe('WorkspaceMemberDomain', () => {
                 owner.id
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
 
@@ -429,7 +433,7 @@ describe('WorkspaceMemberDomain', () => {
                 member.id
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
     });
@@ -577,13 +581,13 @@ describe('WorkspaceMemberDomain', () => {
             expect(workspaceMemberRepository.updateRole).not.toHaveBeenCalled();
         });
 
-        it('updates the role and stages the by-admin event when the target differs from the actor', async () => {
+        it('updates the role and stages the by-admin activity log when the target differs from the actor', async () => {
             const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
             const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
                 target
             );
-            const actorEvent: IActivityLogStagedEvent = {
+            const actorActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceMemberRoleUpdated,
                 metadata: {},
                 onError: false,
@@ -591,7 +595,7 @@ describe('WorkspaceMemberDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            const byAdminEvent: IActivityLogStagedEvent = {
+            const byAdminActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
                 metadata: {},
                 onError: false,
@@ -600,8 +604,8 @@ describe('WorkspaceMemberDomain', () => {
                 workspaceId: null,
             };
             activityLogDomain.prepare
-                .mockReturnValueOnce(actorEvent)
-                .mockReturnValueOnce(byAdminEvent);
+                .mockReturnValueOnce(actorActivityLog)
+                .mockReturnValueOnce(byAdminActivityLog);
 
             await domain.updateMemberRole(
                 'workspace-1',
@@ -619,8 +623,8 @@ describe('WorkspaceMemberDomain', () => {
                 metadata: { actorUserId: 'user-1' },
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                actorEvent,
-                byAdminEvent,
+                actorActivityLog,
+                byAdminActivityLog,
             ]);
         });
     });
@@ -700,7 +704,7 @@ describe('WorkspaceMemberDomain', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('removes the target member and stages the by-admin event in order', async () => {
+        it('removes the target member and stages the by-admin activity log in order', async () => {
             const actor = {
                 ...baseMember,
                 id: 'member-1',
@@ -716,7 +720,7 @@ describe('WorkspaceMemberDomain', () => {
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
                 target
             );
-            const removedEvent: IActivityLogStagedEvent = {
+            const removedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceMemberRemoved,
                 metadata: {},
                 onError: false,
@@ -724,7 +728,7 @@ describe('WorkspaceMemberDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            const removedByAdminEvent: IActivityLogStagedEvent = {
+            const removedByAdminActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
                 metadata: {},
                 onError: false,
@@ -733,8 +737,8 @@ describe('WorkspaceMemberDomain', () => {
                 workspaceId: null,
             };
             activityLogDomain.prepare
-                .mockReturnValueOnce(removedEvent)
-                .mockReturnValueOnce(removedByAdminEvent);
+                .mockReturnValueOnce(removedActivityLog)
+                .mockReturnValueOnce(removedByAdminActivityLog);
             const callOrder: string[] = [];
             workspaceMemberRepository.removeMember.mockImplementation(
                 async () => {
@@ -766,8 +770,8 @@ describe('WorkspaceMemberDomain', () => {
                 'member-2'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                removedEvent,
-                removedByAdminEvent,
+                removedActivityLog,
+                removedByAdminActivityLog,
             ]);
             expect(callOrder).toEqual(['removeMember', 'stagePrepared']);
         });

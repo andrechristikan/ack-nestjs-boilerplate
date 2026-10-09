@@ -52,7 +52,7 @@ Prisma + MongoDB replica set, transactions, seeds, and the Database Module.
 
 Without Docker, use a [MongoDB Atlas][ref-mongodb-atlas] cluster or any MongoDB 8.0+ **replica set**.
 
-The project runs MongoDB 8: the production Compose file pins `mongo:8.3.11`.
+The project runs MongoDB 9: the production Compose file pins `mongo:9.0.2`.
 
 Prisma transactions need a replica set, so a standalone local MongoDB will not work.
 
@@ -677,12 +677,13 @@ The same interface file exports `IDatabaseTransactionClient`, the `tx` type for 
 
 `Prisma.TransactionClient` does not match the extended client, so derive from this instead.
 
-The module also owns one shared error, thrown directly by a repository when a generated unique value cannot be settled:
+The module also owns three typed errors (`enums/database.status-code.enum.ts`):
 
-- `EnumDatabaseStatusCodeError.uniqueValueGenerationFailed` (`51800`, `enums/database.status-code.enum.ts`)
-- `DatabaseUniqueValueGenerationFailedException` (`exceptions/database.unique-value-generation-failed.exception.ts`, HTTP 500, message `database.error.uniqueValueGenerationFailed`)
+- `DatabaseUniqueValueGenerationFailedException` (`51800`, HTTP 409, message `database.error.uniqueValueGenerationFailed`) is thrown directly by a repository when a generated unique value cannot be settled. See [Generated Unique Values](#generated-unique-values).
+- `DatabaseWriteConflictException` (`51801`, HTTP 409, message `database.error.writeConflict`) is the mapped form of a Prisma `P2034` write conflict. A write conflict is not retried.
+- `DatabaseUnavailableException` (`51802`, HTTP 503, message `database.error.unavailable`) is the mapped form of a Prisma initialization error or a connection-failure code.
 
-See [Generated Unique Values](#generated-unique-values).
+`DatabaseUtil.toException(error)` returns the mapped exception or `null`, and `AppGeneralFilter` renders it, also when a layer has wrapped the Prisma error in `AppUnknownException`. See [Handling Error](handling-error.md).
 
 What that means for callers:
 
@@ -700,7 +701,7 @@ What that means for callers:
     - `DeviceDomain` composes the two.
     - Another model's row is reached through that model's repository, composed by a domain.
 - Outside the seeds (the `user` seed writes its activity rows on `tx`), `ActivityLogRepository.createMany` is the only writer of `ActivityLog`. See [Activity Log][ref-doc-activity-log].
-    - Feature domains prepare events with `ActivityLogDomain.prepare`.
+    - Feature domains prepare activity logs with `ActivityLogDomain.prepare`.
     - They stage them with `ActivityLogDomain.stagePrepared` after the audited write.
     - `ActivityLogInterceptor` flushes them after the handler settles.
 - Who opens the transaction depends on how many statements and repositories the write spans:
@@ -750,7 +751,7 @@ Callers:
     2. `ProjectDomain.softDeleteByWorkspaceInTx` soft-deletes the still-active projects through `updateMany` with the same `deletedAt` and an explicit `deletedBy` (the `updateMany` hook stamps no `deletedBy`).
     3. Pending invites are expired.
     4. Pending join requests are cancelled.
-    5. After the commit, the domain stages the prepared event.
+    5. After the commit, the domain stages the prepared activity log.
 
 Methods:
 
@@ -795,7 +796,7 @@ The shape is the same in all three places:
 2. The consumer writes with one candidate at a time.
     - A unique collision on that column fails that write (rolling back its transaction where there is one).
     - The next candidate is then tried.
-3. When the list runs out, it throws `DatabaseUniqueValueGenerationFailedException` (`51800`, HTTP 500).
+3. When the list runs out, it throws `DatabaseUniqueValueGenerationFailedException` (`51800`, HTTP 409).
 
 The collision is recognised by `DatabaseUtil.isUniqueCollision(error, field)`: true for a `Prisma.PrismaClientKnownRequestError` with code `P2002` whose `meta.target` names `field`, case-insensitively.
 
@@ -807,7 +808,7 @@ The collision is recognised by `DatabaseUtil.isUniqueCollision(error, field)`: t
 
 Three rules hold across all of them:
 
-- **A `P2002` on a value the repository did not draw is rethrown untouched.**
+- **A `P2002` on a value the repository did not draw never counts as a collision of the generated value.**
     - `isUniqueCollision` is asked about the generated column by name, so a violation on a client-supplied field stays the caller's error.
     - Onboarding translates the two it owns through `UserOnboardingUtil.mapCreateCollision`: a `username` collision becomes `UserUsernameExistException` and an `email` collision becomes `UserEmailExistException`.
 - **The candidate list is an argument, never a client field.**

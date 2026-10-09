@@ -16,7 +16,8 @@ import { FileService } from '@common/file/services/file.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
+import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
@@ -52,14 +53,16 @@ export class TermPolicyDomain {
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly userDomain: UserDomain
+        private readonly userDomain: UserDomain,
+        private readonly notificationDomain: NotificationDomain
     ) {}
 
     private prepareActivityLog(
         action: EnumActivityLogAction,
         termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
-        timestamp: Date
-    ): IActivityLogStagedEvent {
+        timestamp: Date,
+        onError: boolean
+    ): IActivityLogStaged {
         const metadata = this.termPolicyUtil.mapActivityLogMetadata(
             termPolicy,
             timestamp
@@ -68,7 +71,26 @@ export class TermPolicyDomain {
         return this.activityLogDomain.prepare({
             action,
             metadata,
+            onError,
         });
+    }
+
+    private async enqueuePublishNotification(
+        termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
+        updatedBy: string
+    ): Promise<void> {
+        try {
+            await this.notificationQueue.sendPublishTermPolicy(
+                {
+                    termPolicyId: termPolicy.id,
+                    type: termPolicy.type,
+                    version: termPolicy.version,
+                },
+                updatedBy
+            );
+        } catch (err: unknown) {
+            throw new AppUnknownException(err);
+        }
     }
 
     mapPublicContent(
@@ -155,11 +177,12 @@ export class TermPolicyDomain {
             );
             const termPolicyId = this.databaseUtil.createId();
             const timestamp = this.helperDateService.create();
-            const events = [
+            const activityLogs = [
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyCreate,
                     { id: termPolicyId, type, version },
-                    timestamp
+                    timestamp,
+                    false
                 ),
             ];
             const created = await this.termPolicyRepository.create(
@@ -168,7 +191,7 @@ export class TermPolicyDomain {
                 mappedContents
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return created;
         } catch (err: unknown) {
@@ -192,11 +215,12 @@ export class TermPolicyDomain {
         try {
             const contentPath = this.termPolicyUtil.getPath(termPolicy);
             const timestamp = this.helperDateService.create();
-            const events = [
+            const activityLogs = [
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyDelete,
                     termPolicy,
-                    timestamp
+                    timestamp,
+                    false
                 ),
             ];
             const [deleted] = await Promise.all([
@@ -206,7 +230,7 @@ export class TermPolicyDomain {
                 }),
             ]);
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return deleted;
         } catch (err: unknown) {
@@ -228,7 +252,17 @@ export class TermPolicyDomain {
             throw new TermPolicyNotFoundException();
         }
         if (termPolicy.status === EnumTermPolicyStatus.published) {
-            throw new TermPolicyStatusInvalidException();
+            const hasRecipients =
+                await this.notificationDomain.existsTermPolicyRecipient(
+                    termPolicyId
+                );
+            if (hasRecipients) {
+                throw new TermPolicyStatusInvalidException();
+            }
+
+            await this.enqueuePublishNotification(termPolicy, updatedBy);
+
+            return;
         }
 
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
@@ -258,7 +292,7 @@ export class TermPolicyDomain {
             const newContents = this.mapPublicContent(newItems, contents);
 
             // Sequential by design: write must not run if an earlier step throws
-            const events = await this.databaseService.withTransaction(
+            const activityLogs = await this.databaseService.withTransaction(
                 async tx => {
                     const published =
                         await this.termPolicyRepository.publishInTx(
@@ -287,22 +321,16 @@ export class TermPolicyDomain {
                         this.prepareActivityLog(
                             EnumActivityLogAction.adminTermPolicyPublish,
                             row,
-                            row.updatedAt
+                            row.updatedAt,
+                            true
                         ),
                     ];
                 }
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
-            await this.notificationQueue.sendPublishTermPolicy(
-                {
-                    termPolicyId,
-                    type: termPolicy.type,
-                    version: termPolicy.version,
-                },
-                updatedBy
-            );
+            await this.enqueuePublishNotification(termPolicy, updatedBy);
 
             return;
         } catch (err: unknown) {

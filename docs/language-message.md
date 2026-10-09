@@ -84,7 +84,7 @@ Message files use JSON format with nested structure.
 | `auth.json` | Authentication messages |
 | `aws.json` | AWS service messages |
 | `country.json` | Country-related messages |
-| `database.json` | Database-related messages |
+| `database.json` | Database kit errors (unique value generation, write conflict, unavailable) |
 | `device.json` | Device management messages |
 | `doc.json` | API documentation messages |
 | `featureFlag.json` | Feature flag messages |
@@ -99,6 +99,7 @@ Message files use JSON format with nested structure.
 | `passwordHistory.json` | Password history messages |
 | `policy.json` | Policy messages |
 | `project.json` | Project messages |
+| `redis.json` | Redis kit errors (unavailable) |
 | `request.json` | Request validation messages |
 | `response.json` | Response kit errors (serialization, pagination shape, file download data) |
 | `role.json` | Role messages |

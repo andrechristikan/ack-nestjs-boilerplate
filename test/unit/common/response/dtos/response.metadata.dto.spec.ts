@@ -46,6 +46,24 @@ describe('ResponseMetadataSchema', () => {
         expect(() => ResponseMetadataSchema.parse(incomplete)).toThrow();
     });
 
+    it('accepts a null requestId', () => {
+        const result = ResponseMetadataSchema.parse({
+            ...payload,
+            requestId: null,
+        });
+
+        expect(result.requestId).toBeNull();
+    });
+
+    it('accepts a null correlationId', () => {
+        const result = ResponseMetadataSchema.parse({
+            ...payload,
+            correlationId: null,
+        });
+
+        expect(result.correlationId).toBeNull();
+    });
+
     it('rejects a language outside the enum', () => {
         expect(() =>
             ResponseMetadataSchema.parse({ ...payload, language: 'klingon' })

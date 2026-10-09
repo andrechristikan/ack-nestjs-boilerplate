@@ -21,7 +21,7 @@ AWS S3, AWS SES, Firebase, Sentry, Google, and Apple are optional. `AppEnvSchema
     - A call that reaches the provider logs a warning and returns without calling it.
     - S3 returns `null`, `[]`, `false`, or nothing.
     - SES returns an empty SDK output.
-    - Firebase returns `false` from `sendPush`, and a result with `failureCount: tokens.length` and `failureTokens: []` from `sendMulticast`.
+    - Firebase returns `false` from `sendPush`, and a result with `failureCount: tokens.length`, `failureTokens: []`, and `retryTokens: []` from `sendMulticast`.
     - Two S3 calls behave differently: `putItemMultiPart` returns the multipart record it received unchanged, and `mapPresign` never checks initialization because it builds the record from config without a provider call.
 - A request path that cannot work without S3 throws `AwsS3NotConfiguredException` (HTTP 404). See [Error Codes](#error-codes).
 - A disabled or unconfigured capability answers 404 (`FeatureFlagDisabledException`, `AwsS3NotConfiguredException`, `AuthSocialGoogleNotConfiguredException`, `AuthSocialAppleNotConfiguredException`). The exception filters report only 5xx to Sentry, so these stay out of it.
@@ -260,10 +260,13 @@ FIREBASE_PRIVATE_KEY=<your_firebase_private_key>
 **Unconfigured:** with all three blank, `FirebaseService` stays uninitialized.
 
 - `sendPush` returns `false`.
-- `sendMulticast` returns `failureCount: tokens.length` with `failureTokens: []`, with no call to FCM.
+- `sendMulticast` returns `failureCount: tokens.length` with `failureTokens: []` and `retryTokens: []`, with no call to FCM.
 - The push domains check `isInitialized()` first and skip the job before calling `sendMulticast`, so no token cleanup runs.
 
-**Configured but broken:** a private key that does not normalize to PEM, or an Admin SDK initialization error, fails boot.
+**Configured but broken:** boot fails with an `AppUnknownException` subclass.
+
+- A private key that does not normalize to PEM raises `FirebasePrivateKeyInvalidException`.
+- An Admin SDK initialization error raises `FirebaseInitializationFailedException`, with the SDK error in `rawError`.
 
 `FirebaseService.sendMulticast` raises `FirebaseChunkSizeInvalidException` (`52300`, `firebase.error.chunkSizeInvalid`, HTTP 500) when the chunk size falls outside 1 to `FirebaseMaxSendPushBatchSize` (500).
 

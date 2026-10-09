@@ -8,7 +8,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
@@ -42,7 +42,7 @@ export class TermPolicyContentDomain {
         action: EnumActivityLogAction,
         termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
         timestamp: Date
-    ): IActivityLogStagedEvent {
+    ): IActivityLogStaged {
         const metadata = this.termPolicyUtil.mapActivityLogMetadata(
             termPolicy,
             timestamp
@@ -138,7 +138,7 @@ export class TermPolicyContentDomain {
                 ...presign,
             };
             const timestamp = this.helperDateService.create();
-            const events = [
+            const activityLogs = [
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyUpdateContent,
                     termPolicy,
@@ -151,7 +151,7 @@ export class TermPolicyContentDomain {
                 mappedContent
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -198,7 +198,7 @@ export class TermPolicyContentDomain {
                 ...presign,
             };
             const timestamp = this.helperDateService.create();
-            const events = [
+            const activityLogs = [
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyAddContent,
                     termPolicy,
@@ -210,7 +210,7 @@ export class TermPolicyContentDomain {
                 mappedContent
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {
@@ -242,7 +242,7 @@ export class TermPolicyContentDomain {
 
         try {
             const timestamp = this.helperDateService.create();
-            const events = [
+            const activityLogs = [
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyRemoveContent,
                     termPolicy,
@@ -255,7 +255,7 @@ export class TermPolicyContentDomain {
                 { language }
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return;
         } catch (err: unknown) {

@@ -7,6 +7,7 @@ import {
 import { ApiSecurity } from '@nestjs/swagger';
 import { ClsServiceManager } from 'nestjs-cls';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { ApiKeyXApiKeyRequiredException } from '@modules/api-key/exceptions/api-key.x-api-key-required.exception';
 import {
     ApiKeyDocSecurityName,
     ApiKeyStoreKey,
@@ -19,7 +20,7 @@ import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 
 /**
- * Reads the authenticated `ApiKey`, or one of its fields, that `@ApiKeyProtected()` or `@ApiKeySystemProtected()` stored; throws when either is absent.
+ * Reads the authenticated `ApiKey`, or one of its fields, that `@ApiKeyProtected()` or `@ApiKeySystemProtected()` stored. Throws `ApiKeyXApiKeyRequiredException` when the key is absent and `RequestContextMissingException` when the requested field is null.
  * @public
  */
 export const ApiKeyPayload = createParamDecorator<
@@ -34,7 +35,7 @@ export const ApiKeyPayload = createParamDecorator<
                 ApiKeyStoreKey
             ) ?? null;
         if (current === null) {
-            throw new RequestContextMissingException(ApiKeyStoreKey);
+            throw new ApiKeyXApiKeyRequiredException();
         }
 
         const fieldKey = field ?? null;
@@ -63,8 +64,7 @@ export function ApiKeySystemProtected(): MethodDecorator {
         SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.system]),
         ApiSecurity(ApiKeyDocSecurityName),
         DocApiKeyErrorResponses.unauthorized,
-        DocApiKeyErrorResponses.forbidden,
-        DocApiKeyErrorResponses.predefinedNotFound
+        DocApiKeyErrorResponses.forbidden
     );
 }
 
@@ -78,7 +78,6 @@ export function ApiKeyProtected(): MethodDecorator {
         SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.default]),
         ApiSecurity(ApiKeyDocSecurityName),
         DocApiKeyErrorResponses.unauthorized,
-        DocApiKeyErrorResponses.forbidden,
-        DocApiKeyErrorResponses.predefinedNotFound
+        DocApiKeyErrorResponses.forbidden
     );
 }

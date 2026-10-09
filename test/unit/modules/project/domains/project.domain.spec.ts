@@ -19,7 +19,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import type {
@@ -73,7 +73,7 @@ describe('ProjectDomain', () => {
         updatedBy: null,
     };
 
-    const stagedEvent: IActivityLogStagedEvent = {
+    const stagedActivityLog: IActivityLogStaged = {
         action: EnumActivityLogAction.projectCreated,
         metadata: {},
         onError: false,
@@ -93,7 +93,7 @@ describe('ProjectDomain', () => {
             };
             return values[key];
         });
-        activityLogDomain.prepare.mockReturnValue(stagedEvent);
+        activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -274,7 +274,7 @@ describe('ProjectDomain', () => {
     });
 
     describe('createProject', () => {
-        it('prepares the created event, draws slug candidates, creates, and stages the event', async () => {
+        it('prepares the created activity log, draws slug candidates, creates, and stages the activity log', async () => {
             const project = baseProject;
             helperStringService.generateSlug.mockReturnValue('p-abc123');
             projectRepository.create.mockResolvedValue(project);
@@ -307,7 +307,7 @@ describe('ProjectDomain', () => {
                 ['p-abc123', 'p-abc123', 'p-abc123', 'p-abc123', 'p-abc123']
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
     });
@@ -321,7 +321,7 @@ describe('ProjectDomain', () => {
     });
 
     describe('updateProject', () => {
-        it('prepares the updated event, updates the details, and stages the event', async () => {
+        it('prepares the updated activity log, updates the details, and stages the activity log', async () => {
             const project = baseProject;
             const updated = { ...baseProject, name: 'New Name' };
             projectRepository.updateDetails.mockResolvedValue(updated);
@@ -348,7 +348,7 @@ describe('ProjectDomain', () => {
                 update
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
     });
@@ -418,7 +418,7 @@ describe('ProjectDomain', () => {
             ).toHaveBeenCalledWith(project.workspaceId, 'p-taken', project.id);
         });
 
-        it('updates the slug, prepares the event, and stages it when the slug is free', async () => {
+        it('updates the slug, prepares the activity log, and stages it when the slug is free', async () => {
             const project = baseProject;
             const updated = { ...baseProject, slug: 'p-new-slug' };
             projectRepository.existsBySlugInWorkspace.mockResolvedValue(false);
@@ -442,13 +442,13 @@ describe('ProjectDomain', () => {
                 workspaceId: project.workspaceId,
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
     });
 
     describe('softDeleteProject', () => {
-        it('prepares the deleted event, soft-deletes at the current date, and stages the event', async () => {
+        it('prepares the deleted activity log, soft-deletes at the current date, and stages the activity log', async () => {
             const project = baseProject;
             const deletedAt = new Date('2026-02-01T00:00:00.000Z');
             helperDateService.create.mockReturnValue(deletedAt);
@@ -466,7 +466,7 @@ describe('ProjectDomain', () => {
                 deletedAt
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
         });
     });

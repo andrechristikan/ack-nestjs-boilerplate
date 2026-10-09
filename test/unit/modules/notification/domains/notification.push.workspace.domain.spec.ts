@@ -8,6 +8,7 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import { NotificationPushWorkspaceDomain } from '@modules/notification/domains/notification.push.workspace.domain';
+import { EnumNotificationStep } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationSendPushPayload,
     INotificationWorkspaceInvitePushPayload,
@@ -21,6 +22,9 @@ import { NotificationUtil } from '@modules/notification/utils/notification.util'
 import {
     buildPushNotification,
     expectPushAllStepsSkipped,
+    expectPushFailureTokensMerged,
+    expectPushOutagePending,
+    expectPushRetrySendsPending,
     expectPushRetrySkipsSend,
     expectPushSendFailure,
     expectPushSentAtFailure,
@@ -48,13 +52,21 @@ describe('NotificationPushWorkspaceDomain', () => {
     const notification = buildPushNotification();
     const partialFailure = {
         failureTokens: ['bad'],
+        retryTokens: [],
         successCount: 1,
         failureCount: 1,
     };
     const fullSuccess = {
         failureTokens: [],
+        retryTokens: [],
         successCount: 2,
         failureCount: 0,
+    };
+    const totalOutage = {
+        failureTokens: [],
+        retryTokens: ['t1', 't2'],
+        successCount: 0,
+        failureCount: 2,
     };
     const recorded = PushRecordedSteps;
     const doubles: INotificationPushDoubles = {
@@ -109,7 +121,8 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
-                null
+                null,
+                ['t1']
             );
 
             expect(result).toEqual({
@@ -118,6 +131,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 completedSteps: [],
                 failedSteps: [],
                 failureTokens: null,
+                pendingTokens: ['t1'],
             });
         });
 
@@ -128,6 +142,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
@@ -159,7 +174,8 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 recorded,
-                ['bad']
+                ['bad'],
+                null
             );
 
             expectPushRetrySkipsSend(doubles, send, result);
@@ -170,6 +186,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 PushAllSteps,
+                null,
                 null
             );
 
@@ -186,6 +203,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
@@ -199,10 +217,53 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
             expectPushSendFailure(doubles, result);
+        });
+
+        it('fails the multicast step and records every retry token as pending on a total outage', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(totalOutage);
+
+            const result = await domain.processWorkspaceInvite(
+                send,
+                data,
+                [],
+                null,
+                null
+            );
+
+            expectPushOutagePending(doubles, result);
+        });
+
+        it('sends a retry only to the pending tokens and merges the recorded failure tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+
+            const result = await domain.processWorkspaceInvite(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                ['bad'],
+                ['t2']
+            );
+
+            expectPushRetrySendsPending(doubles, send, result);
+        });
+
+        it('deduplicates the failure tokens merged across attempts', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
+
+            const result = await domain.processWorkspaceInvite(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                ['old', 'bad'],
+                ['t2']
+            );
+
+            expectPushFailureTokensMerged(doubles, send, result);
         });
     });
 
@@ -226,7 +287,8 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
-                null
+                null,
+                ['t1']
             );
 
             expect(result).toEqual({
@@ -235,6 +297,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 completedSteps: [],
                 failedSteps: [],
                 failureTokens: null,
+                pendingTokens: ['t1'],
             });
         });
 
@@ -245,6 +308,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
@@ -272,7 +336,8 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 recorded,
-                ['bad']
+                ['bad'],
+                null
             );
 
             expectPushRetrySkipsSend(doubles, send, result);
@@ -283,6 +348,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 PushAllSteps,
+                null,
                 null
             );
 
@@ -299,6 +365,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
@@ -312,10 +379,53 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
             expectPushSendFailure(doubles, result);
+        });
+
+        it('fails the multicast step and records every retry token as pending on a total outage', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(totalOutage);
+
+            const result = await domain.processWorkspaceJoinRequest(
+                send,
+                data,
+                [],
+                null,
+                null
+            );
+
+            expectPushOutagePending(doubles, result);
+        });
+
+        it('sends a retry only to the pending tokens and merges the recorded failure tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+
+            const result = await domain.processWorkspaceJoinRequest(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                ['bad'],
+                ['t2']
+            );
+
+            expectPushRetrySendsPending(doubles, send, result);
+        });
+
+        it('deduplicates the failure tokens merged across attempts', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
+
+            const result = await domain.processWorkspaceJoinRequest(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                ['old', 'bad'],
+                ['t2']
+            );
+
+            expectPushFailureTokensMerged(doubles, send, result);
         });
     });
 
@@ -338,7 +448,8 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
-                null
+                null,
+                ['t1']
             );
 
             expect(result).toEqual({
@@ -347,6 +458,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 completedSteps: [],
                 failedSteps: [],
                 failureTokens: null,
+                pendingTokens: ['t1'],
             });
         });
 
@@ -357,6 +469,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
@@ -383,7 +496,8 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 recorded,
-                ['bad']
+                ['bad'],
+                null
             );
 
             expectPushRetrySkipsSend(doubles, send, result);
@@ -394,6 +508,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 PushAllSteps,
+                null,
                 null
             );
 
@@ -410,6 +525,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
@@ -423,10 +539,53 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
             expectPushSendFailure(doubles, result);
+        });
+
+        it('fails the multicast step and records every retry token as pending on a total outage', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(totalOutage);
+
+            const result = await domain.processWorkspaceJoinAccepted(
+                send,
+                data,
+                [],
+                null,
+                null
+            );
+
+            expectPushOutagePending(doubles, result);
+        });
+
+        it('sends a retry only to the pending tokens and merges the recorded failure tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+
+            const result = await domain.processWorkspaceJoinAccepted(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                ['bad'],
+                ['t2']
+            );
+
+            expectPushRetrySendsPending(doubles, send, result);
+        });
+
+        it('deduplicates the failure tokens merged across attempts', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
+
+            const result = await domain.processWorkspaceJoinAccepted(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                ['old', 'bad'],
+                ['t2']
+            );
+
+            expectPushFailureTokensMerged(doubles, send, result);
         });
     });
 
@@ -451,7 +610,8 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
-                null
+                null,
+                ['t1']
             );
 
             expect(result).toEqual({
@@ -460,6 +620,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 completedSteps: [],
                 failedSteps: [],
                 failureTokens: null,
+                pendingTokens: ['t1'],
             });
         });
 
@@ -470,6 +631,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
@@ -501,7 +663,8 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 recorded,
-                ['bad']
+                ['bad'],
+                null
             );
 
             expectPushRetrySkipsSend(doubles, send, result);
@@ -512,6 +675,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 PushAllSteps,
+                null,
                 null
             );
 
@@ -528,6 +692,7 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
@@ -541,10 +706,53 @@ describe('NotificationPushWorkspaceDomain', () => {
                 send,
                 data,
                 [],
+                null,
                 null
             );
 
             expectPushSendFailure(doubles, result);
+        });
+
+        it('fails the multicast step and records every retry token as pending on a total outage', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(totalOutage);
+
+            const result = await domain.processWorkspaceJoinRejected(
+                send,
+                data,
+                [],
+                null,
+                null
+            );
+
+            expectPushOutagePending(doubles, result);
+        });
+
+        it('sends a retry only to the pending tokens and merges the recorded failure tokens', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(fullSuccess);
+
+            const result = await domain.processWorkspaceJoinRejected(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                ['bad'],
+                ['t2']
+            );
+
+            expectPushRetrySendsPending(doubles, send, result);
+        });
+
+        it('deduplicates the failure tokens merged across attempts', async () => {
+            firebaseService.sendMulticast.mockResolvedValue(partialFailure);
+
+            const result = await domain.processWorkspaceJoinRejected(
+                send,
+                data,
+                [EnumNotificationStep.updateProcessAt],
+                ['old', 'bad'],
+                ['t2']
+            );
+
+            expectPushFailureTokensMerged(doubles, send, result);
         });
     });
 });

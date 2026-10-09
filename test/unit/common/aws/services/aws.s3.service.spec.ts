@@ -2,6 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { NotFound } from '@aws-sdk/client-s3';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3MaxPartNumber } from '@common/aws/constants/aws.constant';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
@@ -652,7 +653,7 @@ describe('AwsS3Service', () => {
             );
         });
 
-        it('rethrows an unrelated head-check error', async () => {
+        it('wraps an unrelated head-check error in AppUnknownException', async () => {
             const service = await createInitializedAwsS3Service(
                 configValues,
                 {},
@@ -666,7 +667,11 @@ describe('AwsS3Service', () => {
                     { key: 'users/avatar.jpg', size: file.length, file },
                     { access: EnumAwsS3Accessibility.public }
                 )
-            ).rejects.toBe(error);
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: error,
+            });
         });
 
         it('defaults size to 0 when the file carries none', async () => {
@@ -967,7 +972,7 @@ describe('AwsS3Service', () => {
             );
         });
 
-        it('rethrows an unrelated head-check error', async () => {
+        it('wraps an unrelated head-check error in AppUnknownException', async () => {
             const service = await createInitializedAwsS3Service(
                 configValues,
                 {},
@@ -982,7 +987,11 @@ describe('AwsS3Service', () => {
                     10,
                     { access: EnumAwsS3Accessibility.public }
                 )
-            ).rejects.toBe(error);
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: error,
+            });
         });
 
         it('defaults size to 0 when the file carries none', async () => {
@@ -1295,7 +1304,7 @@ describe('AwsS3Service', () => {
             );
         });
 
-        it('rethrows an unrelated head-check error', async () => {
+        it('wraps an unrelated head-check error in AppUnknownException', async () => {
             const service = await createInitializedAwsS3Service(
                 configValues,
                 {},
@@ -1308,7 +1317,11 @@ describe('AwsS3Service', () => {
                 service.presignPutItem(dto, {
                     access: EnumAwsS3Accessibility.public,
                 })
-            ).rejects.toBe(error);
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: error,
+            });
         });
 
         it('uses the given expiry over the default', async () => {

@@ -13,7 +13,7 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
+import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
 import { ProjectWorkspaceOwnerStoreKey } from '@modules/project/constants/project.constant';
 import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
@@ -24,6 +24,7 @@ import { ProjectRoleForbiddenException } from '@modules/project/exceptions/proje
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
+import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
 import { Injectable } from '@nestjs/common';
 
@@ -61,7 +62,7 @@ export class ProjectMemberDomain {
         userId: string | null
     ): Promise<ProjectMember> {
         if (!userId) {
-            throw new AuthJwtAccessTokenInvalidException();
+            throw new UserNotAuthenticatedException();
         } else if (!projectId) {
             throw new ProjectNotFoundException();
         }
@@ -86,7 +87,7 @@ export class ProjectMemberDomain {
         if (!projectId) {
             throw new ProjectNotFoundException();
         } else if (!workspaceMember) {
-            throw new ProjectRoleForbiddenException();
+            throw new WorkspaceMemberForbiddenException();
         }
 
         const isWorkspaceOwner =
@@ -100,7 +101,9 @@ export class ProjectMemberDomain {
                 projectId,
                 workspaceMember.userId
             );
-        if (!member || !allowedProjectRoles.includes(member.role)) {
+        if (!member) {
+            throw new ProjectMemberForbiddenException();
+        } else if (!allowedProjectRoles.includes(member.role)) {
             throw new ProjectRoleForbiddenException();
         }
 
@@ -156,7 +159,7 @@ export class ProjectMemberDomain {
             throw new ProjectMemberAlreadyAssignedException();
         }
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberAssigned,
                 userId: actorId,
@@ -166,14 +169,14 @@ export class ProjectMemberDomain {
             }),
         ];
         if (targetMember.userId !== actorId) {
-            const assignedByAdminEvent = this.activityLogDomain.prepare({
+            const assignedByAdminActivityLog = this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberAssignedByAdmin,
                 userId: targetMember.userId,
                 createdBy: actorId,
                 workspaceId: project.workspaceId,
                 metadata: { actorUserId: actorId },
             });
-            events.push(assignedByAdminEvent);
+            activityLogs.push(assignedByAdminActivityLog);
         }
 
         const member = await this.projectMemberRepository.create(
@@ -183,7 +186,7 @@ export class ProjectMemberDomain {
             actorId
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return member;
     }
@@ -210,7 +213,7 @@ export class ProjectMemberDomain {
             newRole
         );
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberRoleUpdated,
                 userId: actorId,
@@ -220,19 +223,20 @@ export class ProjectMemberDomain {
             }),
         ];
         if (targetMember.userId !== actorId) {
-            const roleUpdatedByAdminEvent = this.activityLogDomain.prepare({
-                action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
-                userId: targetMember.userId,
-                createdBy: actorId,
-                workspaceId: project.workspaceId,
-                metadata: { actorUserId: actorId },
-            });
-            events.push(roleUpdatedByAdminEvent);
+            const roleUpdatedByAdminActivityLog =
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
+                    userId: targetMember.userId,
+                    createdBy: actorId,
+                    workspaceId: project.workspaceId,
+                    metadata: { actorUserId: actorId },
+                });
+            activityLogs.push(roleUpdatedByAdminActivityLog);
         }
 
         await this.projectMemberRepository.updateRole(targetMember.id, newRole);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async removeMember(
@@ -259,7 +263,7 @@ export class ProjectMemberDomain {
             targetMember.role
         );
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberRemoved,
                 userId: actorId,
@@ -278,11 +282,11 @@ export class ProjectMemberDomain {
 
         await this.projectMemberRepository.removeMember(targetMember.id);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async leaveProject(project: Project, member: ProjectMember): Promise<void> {
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberLeft,
                 userId: member.userId,
@@ -293,6 +297,6 @@ export class ProjectMemberDomain {
 
         await this.projectMemberRepository.removeMember(member.id);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 }

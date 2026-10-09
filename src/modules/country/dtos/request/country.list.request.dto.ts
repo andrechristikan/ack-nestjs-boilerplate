@@ -11,20 +11,14 @@ import {
  * @public
  */
 export const CountryListRequestSchema = PaginationCursorQuerySchema.extend({
-    search: z
-        .string()
-        .optional()
-        .meta({
-            description: `Search query, available fields: ${CountryDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
-            example: '',
-        }),
-    orderBy: z
-        .union([z.string(), z.array(z.string())])
-        .optional()
-        .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${CountryDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-            example: `${CountryDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-        }),
+    search: PaginationCursorQuerySchema.shape.search.meta({
+        description: `Search query, available fields: ${CountryDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
+        example: '',
+    }),
+    orderBy: PaginationCursorQuerySchema.shape.orderBy.meta({
+        description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${CountryDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+        example: `${CountryDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+    }),
 });
 
 /**

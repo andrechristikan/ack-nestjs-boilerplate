@@ -1,3 +1,4 @@
+import { AnalyticFraudRiskScoreAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticFraudRiskScoresListRequestSchema } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores-list.request.dto';
 
 describe('AnalyticFraudRiskScoresListRequestSchema', () => {
@@ -38,5 +39,19 @@ describe('AnalyticFraudRiskScoresListRequestSchema', () => {
                 extra: true,
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticFraudRiskScoresListRequestSchema.safeParse({ search: 'x' })
+                .success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticFraudRiskScoresListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticFraudRiskScoreAvailableOrderBy.join(', '));
     });
 });

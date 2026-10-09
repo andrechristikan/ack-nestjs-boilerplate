@@ -17,7 +17,7 @@ import {
     EnumNotificationType,
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogStaged } from '@modules/activity-log/interfaces/activity-log.interface';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { EnumNotificationStatusCodeError } from '@modules/notification/enums/notification.status-code.enum';
 import { NotificationAlreadyReadException } from '@modules/notification/exceptions/notification.already-read.exception';
@@ -246,7 +246,7 @@ describe('NotificationDomain', () => {
         });
 
         it('writes the setting inside a transaction, touches the user, and stages the activity log', async () => {
-            const stagedEvent: IActivityLogStagedEvent = {
+            const stagedActivityLog: IActivityLogStaged = {
                 action: EnumActivityLogAction.userUpdateNotificationSetting,
                 metadata: {},
                 onError: false,
@@ -254,7 +254,7 @@ describe('NotificationDomain', () => {
                 createdBy: null,
                 workspaceId: null,
             };
-            activityLogDomain.prepare.mockReturnValue(stagedEvent);
+            activityLogDomain.prepare.mockReturnValue(stagedActivityLog);
             const tx = {} as IDatabaseTransactionClient;
             databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
@@ -278,8 +278,35 @@ describe('NotificationDomain', () => {
                 'user-id'
             );
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
-                stagedEvent,
+                stagedActivityLog,
             ]);
+        });
+    });
+
+    describe('existsTermPolicyRecipient', () => {
+        it('returns true when the repository finds a recipient row', async () => {
+            notificationRepository.existsTermPolicyRecipient.mockResolvedValue(
+                true
+            );
+
+            const result =
+                await domain.existsTermPolicyRecipient('term-policy-1');
+
+            expect(result).toBe(true);
+            expect(
+                notificationRepository.existsTermPolicyRecipient
+            ).toHaveBeenCalledWith('term-policy-1');
+        });
+
+        it('returns false when the repository finds no recipient row', async () => {
+            notificationRepository.existsTermPolicyRecipient.mockResolvedValue(
+                false
+            );
+
+            const result =
+                await domain.existsTermPolicyRecipient('term-policy-1');
+
+            expect(result).toBe(false);
         });
     });
 

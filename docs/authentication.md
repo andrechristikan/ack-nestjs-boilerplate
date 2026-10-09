@@ -335,7 +335,7 @@ Both rows are written on every lockout, including one where the user had no acti
 The transaction runs once:
 
 - A domain exception raised inside it travels out as it is.
-- Every other failure, a MongoDB write conflict (`P2034`) included, answers 500 (`AppUnknownException`). On that path nothing is purged and no row is staged, and the attempt counter stays at the limit, so the next login runs the lockout again.
+- Every other failure is wrapped in `AppUnknownException`, and the filter maps a MongoDB write conflict (`P2034`) to 409 (`DatabaseWriteConflictException`, `51801`) and any unmapped failure to 500. On that path nothing is purged and no row is staged, and the attempt counter stays at the limit, so the next login runs the lockout again.
 
 ```mermaid
 sequenceDiagram
@@ -352,7 +352,7 @@ sequenceDiagram
         API->>API: throw UserPasswordAttemptMaxException
     else Aborted
         Database-->>API: Aborted
-        API->>API: 500 (AppUnknownException), nothing purged or staged
+        API->>API: 409 (write conflict) or 500 (AppUnknownException), nothing purged or staged
     end
 ```
 
@@ -363,7 +363,7 @@ Two branches then short-circuit before any session or token is created:
     - The verification email is sent.
     - The login fails with `UserEmailNotVerifiedException`.
 - **Two-factor enabled**: no session and no tokens are created.
-    - The challenge is written to Redis (`AuthCache.createChallenge`), concurrently with the secret provisioning when setup is required. A Redis failure there answers 500.
+    - The challenge is written to Redis (`AuthCache.createChallenge`), concurrently with the secret provisioning when setup is required. A Redis failure there answers 500, or 503 (`52400`) when Redis is not connected.
     - The response carries `data.isTwoFactorEnable: true` and `data.twoFactor` with `challengeToken`, `challengeExpiresInMs`, `isRequiredSetup`, and `backupCodesRemaining`.
     - When `isRequiredSetup` is true, the response also provisions the secret and carries `otpauthUrl` and `secret`.
     - See [Two-Factor Authentication (TOTP)](#two-factor-authentication-totp).
@@ -397,7 +397,7 @@ Then:
 
 - The login row is staged once that batch settles.
 - A purge failure is logged and the login still succeeds.
-- A failed session key write answers 500 and stages no row.
+- A failed session key write answers 500, or 503 (`52400`) when Redis is not connected, and stages no row.
 
 #### JWT Refresh Token Flow
 
@@ -446,7 +446,7 @@ sequenceDiagram
                 Redis-->>API: Not written
                 API-->>Client: 401 Unauthorized (SessionRevokedException, 50401)
             else Redis failure
-                API-->>Client: 500 (AppUnknownException)
+                API-->>Client: 500 (AppUnknownException), or 503 (RedisUnavailableException)
             end
         end
     end
@@ -1088,7 +1088,7 @@ An admin write that changes or deletes a key runs in this order:
 2. The staged activity row.
 3. The delete of the key's cache entry.
 
-A failed cache delete answers 500 with the database change applied.
+A failed cache delete answers 500, or 503 (`52400`) when Redis is not connected, with the database change applied.
 
 Details: [Cache][ref-doc-cache].
 
@@ -1212,7 +1212,9 @@ async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
 
 - With no argument it returns the whole `ApiKey`.
 - With a field name typed against `ApiKey` it returns that field.
-- Both are non-null, so a route that reads it without the guard, or names a field holding `null`, answers `RequestContextMissingException` (500, `50304`).
+- Both are non-null.
+    - A route that reads it without the guard answers `ApiKeyXApiKeyRequiredException` (401, `50700`).
+    - A field name that holds `null` answers `RequestContextMissingException` (500, `50304`).
 
 See [Security and Middleware][ref-doc-security-and-middleware].
 
@@ -1250,7 +1252,7 @@ sequenceDiagram
         end
 
         alt API Key Not Found
-            Guard-->>Client: 403 Forbidden (ApiKeyXApiKeyNotFoundException)
+            Guard-->>Client: 401 Unauthorized (ApiKeyXApiKeyNotFoundException)
         else API Key Found
             Guard->>Guard: Validate secret against hash
             Guard->>Guard: Check isActive status

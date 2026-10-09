@@ -7,6 +7,7 @@ import { NotificationTemplateTermPolicyDomain } from '@modules/notification/doma
 import { NotificationTemplateWorkspaceDomain } from '@modules/notification/domains/notification.template.workspace.domain';
 import { Logger } from '@nestjs/common';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
 /**
  * Imports email notification templates into AWS SES, skipping any already present. Skips with a warning when SES is not configured.
@@ -240,8 +241,7 @@ export class MigrationTemplateEmailNotificationSeed
             try {
                 await Promise.all(promises);
             } catch (error: unknown) {
-                this.logger.error(error, 'Error seeding emails');
-                throw error;
+                throw new AppUnknownException(error);
             }
         }
 
@@ -274,8 +274,7 @@ export class MigrationTemplateEmailNotificationSeed
                 this.notificationTemplateWorkspaceDomain.emailDeleteWorkspaceJoinRejected(),
             ]);
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing emails');
-            throw error;
+            throw new AppUnknownException(error);
         }
 
         this.logger.log('Emails removed successfully.');

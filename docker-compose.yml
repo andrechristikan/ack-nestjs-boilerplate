@@ -238,6 +238,15 @@ services:
         depends_on:
             redis:
                 condition: service_healthy
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'wget -q --spider http://127.0.0.1:3000/login || exit 1',
+                ]
+            interval: 10s
+            timeout: 30s
+            retries: 5
         deploy:
             resources:
                 limits:
@@ -248,9 +257,10 @@ services:
         image: mongo:latest
         hostname: mongo
         ports:
-            - '27017:27017'
+            - '${DOCKER_MONGO_PORT:-27017}:27017'
         environment:
             HOME: /tmp
+            RS_HOST: host.docker.internal:${DOCKER_MONGO_PORT:-27017}
             MONGO_INITDB_ROOT_USERNAME: ${DOCKER_MONGO_ROOT_USERNAME:-root}
             MONGO_INITDB_ROOT_PASSWORD: ${DOCKER_MONGO_ROOT_PASSWORD:-}
         networks:

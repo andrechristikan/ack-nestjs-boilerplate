@@ -105,7 +105,7 @@ export class UserLoginDomain {
     }
 
     async recordLoginFailed(userId: string): Promise<void> {
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userLoginFailed,
                 userId,
@@ -115,7 +115,7 @@ export class UserLoginDomain {
         ];
         await this.userRepository.increasePasswordAttempt(userId);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 
     async createTokenAndSession(
@@ -142,7 +142,7 @@ export class UserLoginDomain {
 
         const loginAction =
             this.userUtil.resolveLoginActivityLogAction(loginWith);
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: loginAction,
                 userId: user.id,
@@ -232,7 +232,7 @@ export class UserLoginDomain {
 
         await Promise.all(promises);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         return tokens;
     }
@@ -301,7 +301,7 @@ export class UserLoginDomain {
                 challengePromise,
                 this.authTwoFactorDomain.setupTwoFactor(user.id, user.email),
             ]);
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userSetupTwoFactor,
                     userId: user.id,
@@ -313,7 +313,7 @@ export class UserLoginDomain {
                 encryptedSecret
             );
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return {
                 isTwoFactorEnable: true,
@@ -476,7 +476,7 @@ export class UserLoginDomain {
                 expiredInMs,
             } = this.authJwtDomain.refreshToken(user, refreshToken);
 
-            const events = [
+            const activityLogs = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userRefreshToken,
                 }),
@@ -506,7 +506,7 @@ export class UserLoginDomain {
                 throw new SessionRevokedException();
             }
 
-            this.activityLogDomain.stagePrepared(events);
+            this.activityLogDomain.stagePrepared(activityLogs);
 
             return tokens;
         } catch (err: unknown) {
@@ -526,7 +526,7 @@ export class UserLoginDomain {
         // Sequential by design: gate before the work it guards
         await this.sessionDomain.validateActive(userId, sessionId);
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userLogout,
             }),
@@ -553,6 +553,6 @@ export class UserLoginDomain {
             { id: sessionId },
         ]);
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
     }
 }

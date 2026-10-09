@@ -78,7 +78,7 @@ export class NotificationDomain {
     ): Promise<void> {
         this.validateUserSetting(data.type, data.channel);
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userUpdateNotificationSetting,
                 metadata: {
@@ -97,7 +97,13 @@ export class NotificationDomain {
             await this.userDomain.touchUpdatedByInTx(tx, userId);
         });
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
+    }
+
+    async existsTermPolicyRecipient(termPolicyId: string): Promise<boolean> {
+        return this.notificationRepository.existsTermPolicyRecipient(
+            termPolicyId
+        );
     }
 
     async createDefaultsInTx(

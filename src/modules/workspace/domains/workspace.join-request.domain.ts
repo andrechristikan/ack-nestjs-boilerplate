@@ -153,7 +153,7 @@ export class WorkspaceJoinRequestDomain {
             throw new WorkspaceJoinRequestDuplicateException();
         }
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceJoinRequested,
                 userId: userId,
@@ -169,7 +169,7 @@ export class WorkspaceJoinRequestDomain {
                 message: create.message,
             });
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         await this.sendJoinRequestNotifications(workspace, joinRequest, userId);
 
@@ -204,7 +204,7 @@ export class WorkspaceJoinRequestDomain {
             workspace.id
         );
         const reviewedAt = this.helperDateService.create();
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceJoinAccepted,
                 userId: reviewerId,
@@ -214,7 +214,7 @@ export class WorkspaceJoinRequestDomain {
             }),
         ];
         if (joinRequest.userId !== reviewerId) {
-            const workspaceJoinAcceptedByAdminEvent =
+            const workspaceJoinAcceptedByAdminActivityLog =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceJoinAcceptedByAdmin,
                     userId: joinRequest.userId,
@@ -222,7 +222,7 @@ export class WorkspaceJoinRequestDomain {
                     workspaceId: joinRequest.workspaceId,
                     metadata: { actorUserId: reviewerId },
                 });
-            events.push(workspaceJoinAcceptedByAdminEvent);
+            activityLogs.push(workspaceJoinAcceptedByAdminActivityLog);
         }
 
         // Sequential by design: write must not run if an earlier step throws
@@ -242,7 +242,7 @@ export class WorkspaceJoinRequestDomain {
             );
         });
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         await this.notificationQueue.sendWorkspaceJoinAccepted(
             joinRequest.userId,
@@ -269,7 +269,7 @@ export class WorkspaceJoinRequestDomain {
         );
         const reviewedAt = this.helperDateService.create();
 
-        const events = [
+        const activityLogs = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceJoinRejected,
                 userId: reviewerId,
@@ -279,7 +279,7 @@ export class WorkspaceJoinRequestDomain {
             }),
         ];
         if (joinRequest.userId !== reviewerId) {
-            const workspaceJoinRejectedByAdminEvent =
+            const workspaceJoinRejectedByAdminActivityLog =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceJoinRejectedByAdmin,
                     userId: joinRequest.userId,
@@ -287,7 +287,7 @@ export class WorkspaceJoinRequestDomain {
                     workspaceId: workspace.id,
                     metadata: { actorUserId: reviewerId },
                 });
-            events.push(workspaceJoinRejectedByAdminEvent);
+            activityLogs.push(workspaceJoinRejectedByAdminActivityLog);
         }
 
         // Sequential by design: write must not run if an earlier step throws
@@ -298,7 +298,7 @@ export class WorkspaceJoinRequestDomain {
             reviewedAt
         );
 
-        this.activityLogDomain.stagePrepared(events);
+        this.activityLogDomain.stagePrepared(activityLogs);
 
         await this.notificationQueue.sendWorkspaceJoinRejected(
             joinRequest.userId,

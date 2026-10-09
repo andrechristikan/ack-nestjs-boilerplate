@@ -4,6 +4,7 @@ import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
+    NotificationTermPolicyRecipientIdSelect,
     NotificationTermPolicyRecipientSendSelect,
     NotificationTermPolicyRecipientSendWhere,
     NotificationTermPolicyRecipientStateSelect,
@@ -140,6 +141,16 @@ export class NotificationRepository implements INotificationRepository {
             where: { termPolicyId, userId: { in: userIds } },
             select: NotificationTermPolicyRecipientStateSelect,
         });
+    }
+
+    async existsTermPolicyRecipient(termPolicyId: string): Promise<boolean> {
+        const recipient =
+            await this.databaseService.client.termPolicyRecipient.findFirst({
+                where: { termPolicyId },
+                select: NotificationTermPolicyRecipientIdSelect,
+            });
+
+        return recipient !== null;
     }
 
     async createTermPolicyRecipients(

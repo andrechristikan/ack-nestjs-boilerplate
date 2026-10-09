@@ -1,3 +1,4 @@
+import { AnalyticLoginTimeAnomalyAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticLoginTimeAnomalyListRequestSchema } from '@modules/analytic/dtos/request/analytic.login-time-anomaly-list.request.dto';
 
 describe('AnalyticLoginTimeAnomalyListRequestSchema', () => {
@@ -45,5 +46,19 @@ describe('AnalyticLoginTimeAnomalyListRequestSchema', () => {
                 extra: true,
             })
         ).toThrow();
+    });
+
+    it('rejects search', () => {
+        expect(
+            AnalyticLoginTimeAnomalyListRequestSchema.safeParse({ search: 'x' })
+                .success
+        ).toBe(false);
+    });
+
+    it('keeps the module orderBy description', () => {
+        expect(
+            AnalyticLoginTimeAnomalyListRequestSchema.shape.orderBy.meta()
+                ?.description
+        ).toContain(AnalyticLoginTimeAnomalyAvailableOrderBy.join(', '));
     });
 });
