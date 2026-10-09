@@ -149,10 +149,7 @@ export class ProjectRepository implements IProjectRepository {
     ): Promise<Project> {
         return this.databaseService.client.project.update({
             where: { id: projectId },
-            data: {
-                ...(name !== null && { name }),
-                ...(description !== null && { description }),
-            },
+            data: { name, description },
         });
     }
 

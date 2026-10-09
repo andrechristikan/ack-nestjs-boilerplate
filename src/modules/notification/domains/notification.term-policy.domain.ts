@@ -175,12 +175,12 @@ export class NotificationTermPolicyDomain {
         notificationId: string,
         completedSteps: EnumNotificationStep[]
     ): Promise<INotificationStepResult> {
-        const user = await this.userDomain.getOneActive(userId);
+        const user = await this.userDomain.getOneById(userId);
 
         if (!user) {
             return {
                 message:
-                    'User not active, skipping user accept term policy notification',
+                    'User not found, skipping user accept term policy notification',
                 completedSteps,
                 failedSteps: [],
             };

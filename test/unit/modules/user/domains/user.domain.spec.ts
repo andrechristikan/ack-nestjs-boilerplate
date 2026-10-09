@@ -445,6 +445,16 @@ describe('UserDomain', () => {
         });
     });
 
+    describe('getOneById', () => {
+        it('delegates to the repository', async () => {
+            const user = baseUser;
+            userRepository.findOneById.mockResolvedValue(user);
+
+            await expect(domain.getOneById(user.id)).resolves.toBe(user);
+            expect(userRepository.findOneById).toHaveBeenCalledWith(user.id);
+        });
+    });
+
     describe('getOneActiveByEmail', () => {
         it('delegates to the repository', async () => {
             const user = baseUser;

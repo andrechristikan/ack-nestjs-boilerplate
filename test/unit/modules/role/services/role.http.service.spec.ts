@@ -256,7 +256,10 @@ describe('RoleHttpService', () => {
 
     describe('updateByAdmin', () => {
         it('updates the role and wraps the result', async () => {
-            const body: RoleUpdateRequestDto = { type: EnumRoleType.user };
+            const body: RoleUpdateRequestDto = {
+                description: 'Team lead role',
+                type: EnumRoleType.user,
+            };
             roleDomain.updateByAdmin.mockResolvedValue(roleWithPolicies);
 
             const result = await service.updateByAdmin(
@@ -265,6 +268,21 @@ describe('RoleHttpService', () => {
             );
 
             expect(result).toEqual({ data: roleWithPolicies });
+            expect(roleDomain.updateByAdmin).toHaveBeenCalledWith(
+                roleWithPolicies.id,
+                { description: 'Team lead role', type: EnumRoleType.user }
+            );
+        });
+
+        it('passes a null description through to clear it', async () => {
+            const body: RoleUpdateRequestDto = {
+                description: null,
+                type: EnumRoleType.user,
+            };
+            roleDomain.updateByAdmin.mockResolvedValue(roleWithPolicies);
+
+            await service.updateByAdmin(roleWithPolicies.id, body);
+
             expect(roleDomain.updateByAdmin).toHaveBeenCalledWith(
                 roleWithPolicies.id,
                 { description: null, type: EnumRoleType.user }

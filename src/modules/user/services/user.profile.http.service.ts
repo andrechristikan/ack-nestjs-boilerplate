@@ -26,7 +26,7 @@ export class UserProfileHttpService {
         await this.userProfileDomain.updateProfile(userId, {
             countryId,
             gender,
-            name: name ?? null,
+            name,
         });
 
         return {};

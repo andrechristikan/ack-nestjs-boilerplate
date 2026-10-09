@@ -81,7 +81,7 @@ export class ProjectHttpService {
         const updated = await this.projectDomain.updateProject(
             project,
             actorId,
-            { name: name ?? null, description: description ?? null }
+            { name, description }
         );
 
         return { data: updated };

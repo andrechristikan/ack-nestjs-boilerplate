@@ -84,10 +84,6 @@ export const DocProjectRoleErrorResponses = {
     forbidden: DocResponseError(
         HttpStatus.FORBIDDEN,
         {
-            statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
-            messagePath: 'workspace.error.memberForbidden',
-        },
-        {
             statusCode: EnumProjectStatusCodeError.memberForbidden,
             messagePath: 'project.error.memberForbidden',
         },

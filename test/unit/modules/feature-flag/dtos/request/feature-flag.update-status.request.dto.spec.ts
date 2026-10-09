@@ -15,13 +15,23 @@ describe('FeatureFlagUpdateStatusRequestSchema', () => {
         });
     });
 
-    it('parses with targetUserIds omitted', () => {
-        const result = FeatureFlagUpdateStatusRequestSchema.parse({
-            isEnable: false,
-            rolloutPercent: 0,
-        });
+    it('rejects a body missing targetUserIds', () => {
+        expect(() =>
+            FeatureFlagUpdateStatusRequestSchema.parse({
+                isEnable: false,
+                rolloutPercent: 0,
+            })
+        ).toThrow();
+    });
 
-        expect(result).toEqual({ isEnable: false, rolloutPercent: 0 });
+    it('rejects a null targetUserIds', () => {
+        expect(() =>
+            FeatureFlagUpdateStatusRequestSchema.parse({
+                isEnable: false,
+                rolloutPercent: 0,
+                targetUserIds: null,
+            })
+        ).toThrow();
     });
 
     it('parses an empty targetUserIds array', () => {
@@ -43,6 +53,7 @@ describe('FeatureFlagUpdateStatusRequestSchema', () => {
             FeatureFlagUpdateStatusRequestSchema.parse({
                 isEnable: true,
                 rolloutPercent: -1,
+                targetUserIds: [],
             })
         ).toThrow();
     });
@@ -52,6 +63,7 @@ describe('FeatureFlagUpdateStatusRequestSchema', () => {
             FeatureFlagUpdateStatusRequestSchema.parse({
                 isEnable: true,
                 rolloutPercent: 101,
+                targetUserIds: [],
             })
         ).toThrow();
     });
@@ -61,6 +73,7 @@ describe('FeatureFlagUpdateStatusRequestSchema', () => {
             FeatureFlagUpdateStatusRequestSchema.parse({
                 isEnable: true,
                 rolloutPercent: 50.5,
+                targetUserIds: [],
             })
         ).toThrow();
     });
@@ -77,7 +90,10 @@ describe('FeatureFlagUpdateStatusRequestSchema', () => {
 
     it('rejects a missing isEnable', () => {
         expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({ rolloutPercent: 50 })
+            FeatureFlagUpdateStatusRequestSchema.parse({
+                rolloutPercent: 50,
+                targetUserIds: [],
+            })
         ).toThrow();
     });
 
@@ -86,6 +102,7 @@ describe('FeatureFlagUpdateStatusRequestSchema', () => {
             FeatureFlagUpdateStatusRequestSchema.parse({
                 isEnable: true,
                 rolloutPercent: 50,
+                targetUserIds: [],
                 extra: true,
             })
         ).toThrow();

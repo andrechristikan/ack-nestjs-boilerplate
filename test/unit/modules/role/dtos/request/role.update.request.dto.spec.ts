@@ -14,12 +14,19 @@ describe('RoleUpdateRequestSchema', () => {
         });
     });
 
-    it('parses with only the required type', () => {
+    it('parses a null description to clear it', () => {
         const result = RoleUpdateRequestSchema.parse({
+            description: null,
             type: EnumRoleType.user,
         });
 
-        expect(result).toEqual({ type: EnumRoleType.user });
+        expect(result).toEqual({ description: null, type: EnumRoleType.user });
+    });
+
+    it('rejects a body missing the description', () => {
+        expect(() =>
+            RoleUpdateRequestSchema.parse({ type: EnumRoleType.user })
+        ).toThrow();
     });
 
     it('rejects a missing type', () => {
@@ -39,13 +46,17 @@ describe('RoleUpdateRequestSchema', () => {
 
     it('rejects an invalid type', () => {
         expect(() =>
-            RoleUpdateRequestSchema.parse({ type: 'invalid' })
+            RoleUpdateRequestSchema.parse({
+                description: 'Team lead role',
+                type: 'invalid',
+            })
         ).toThrow();
     });
 
     it('rejects an undeclared key', () => {
         expect(() =>
             RoleUpdateRequestSchema.parse({
+                description: 'Team lead role',
                 type: EnumRoleType.admin,
                 extra: true,
             })

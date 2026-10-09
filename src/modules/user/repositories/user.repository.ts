@@ -302,11 +302,7 @@ export class UserRepository implements IUserRepository {
     ): Promise<User> {
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
-            data: {
-                ...(name !== null && { name }),
-                gender,
-                countryId,
-            },
+            data: { name, gender, countryId },
         });
     }
 

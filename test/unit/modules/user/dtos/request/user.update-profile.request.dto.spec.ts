@@ -14,6 +14,42 @@ describe('UserUpdateProfileRequestSchema', () => {
         expect(result).toEqual(payload);
     });
 
+    it('parses a null name to clear it', () => {
+        const result = UserUpdateProfileRequestSchema.parse({
+            ...payload,
+            name: null,
+        });
+
+        expect(result).toEqual({ ...payload, name: null });
+    });
+
+    it('rejects a body missing the name', () => {
+        expect(() =>
+            UserUpdateProfileRequestSchema.parse({
+                countryId: payload.countryId,
+                gender: payload.gender,
+            })
+        ).toThrow();
+    });
+
+    it('rejects a body missing the country', () => {
+        expect(() =>
+            UserUpdateProfileRequestSchema.parse({
+                name: payload.name,
+                gender: payload.gender,
+            })
+        ).toThrow();
+    });
+
+    it('rejects a body missing the gender', () => {
+        expect(() =>
+            UserUpdateProfileRequestSchema.parse({
+                name: payload.name,
+                countryId: payload.countryId,
+            })
+        ).toThrow();
+    });
+
     it('rejects a gender outside EnumUserGender', () => {
         expect(() =>
             UserUpdateProfileRequestSchema.parse({

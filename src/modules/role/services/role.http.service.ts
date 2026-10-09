@@ -127,7 +127,7 @@ export class RoleHttpService {
         body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
         const updated = await this.roleDomain.updateByAdmin(id, {
-            description: body.description ?? null,
+            description: body.description,
             type: body.type,
         });
 

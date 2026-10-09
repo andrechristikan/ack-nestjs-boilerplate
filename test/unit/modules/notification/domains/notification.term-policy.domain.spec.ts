@@ -540,8 +540,8 @@ describe('NotificationTermPolicyDomain', () => {
     describe('processUserAcceptTermPolicy', () => {
         const acceptData = { ...data, termPolicyId: 'term-policy-id' };
 
-        it('skips when the user is not active', async () => {
-            userDomain.getOneActive.mockResolvedValue(null);
+        it('skips when the user no longer exists', async () => {
+            userDomain.getOneById.mockResolvedValue(null);
 
             const result = await domain.processUserAcceptTermPolicy(
                 'user-id',
@@ -552,7 +552,7 @@ describe('NotificationTermPolicyDomain', () => {
 
             expect(result).toEqual({
                 message:
-                    'User not active, skipping user accept term policy notification',
+                    'User not found, skipping user accept term policy notification',
                 completedSteps: [],
                 failedSteps: [],
             });
@@ -560,7 +560,7 @@ describe('NotificationTermPolicyDomain', () => {
         });
 
         it('creates the row with the job notification id and reports the step completed', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
+            userDomain.getOneById.mockResolvedValue(user);
             notificationRepository.createMany.mockResolvedValue([notification]);
 
             const result = await domain.processUserAcceptTermPolicy(
@@ -592,8 +592,31 @@ describe('NotificationTermPolicyDomain', () => {
             });
         });
 
+        it('creates the row for a user that is no longer active', async () => {
+            userDomain.getOneById.mockResolvedValue({
+                ...user,
+                status: EnumUserStatus.inactive,
+            });
+            notificationRepository.createMany.mockResolvedValue([notification]);
+
+            const result = await domain.processUserAcceptTermPolicy(
+                'user-id',
+                acceptData,
+                'n-1',
+                []
+            );
+
+            expect(userDomain.getOneById).toHaveBeenCalledWith('user-id');
+            expect(notificationRepository.createMany).toHaveBeenCalledTimes(1);
+            expect(result).toEqual({
+                message: 'User accept term policy notification processed',
+                completedSteps: [EnumNotificationStep.createNotification],
+                failedSteps: [],
+            });
+        });
+
         it('skips the create on a retry', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
+            userDomain.getOneById.mockResolvedValue(user);
 
             const result = await domain.processUserAcceptTermPolicy(
                 'user-id',
@@ -611,7 +634,7 @@ describe('NotificationTermPolicyDomain', () => {
         });
 
         it('names the create step when the rows cannot be written', async () => {
-            userDomain.getOneActive.mockResolvedValue(user);
+            userDomain.getOneById.mockResolvedValue(user);
             notificationRepository.createMany.mockRejectedValue(
                 new Error('mongo')
             );

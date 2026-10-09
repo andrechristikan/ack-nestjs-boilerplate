@@ -77,7 +77,7 @@ export class WorkspaceHttpService {
         const workspace = await this.workspaceDomain.updateWorkspace(
             workspaceId,
             actorId,
-            { name: name ?? null, description: description ?? null }
+            { name, description }
         );
 
         return { data: workspace };

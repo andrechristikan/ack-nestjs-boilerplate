@@ -77,7 +77,7 @@ export class FeatureFlagHttpService {
         const updated = await this.featureFlagDomain.updateStatusByAdmin(id, {
             isEnable: body.isEnable,
             rolloutPercent: body.rolloutPercent,
-            targetUserIds: body.targetUserIds ?? null,
+            targetUserIds: body.targetUserIds,
         });
 
         return {

@@ -64,7 +64,7 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
             data: {
                 isEnable,
                 rolloutPercent,
-                ...(targetUserIds !== null && { targetUserIds }),
+                targetUserIds,
             },
         });
     }

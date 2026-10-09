@@ -48,7 +48,7 @@ export interface IWorkspaceOwnedUser {
 }
 
 export interface IWorkspaceUpdate {
-    name: string | null;
+    name: string;
     description: string | null;
 }
 

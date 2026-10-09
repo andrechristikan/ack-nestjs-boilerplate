@@ -11,6 +11,6 @@ export interface IProjectCreate {
 }
 
 export interface IProjectUpdate {
-    name: string | null;
+    name: string;
     description: string | null;
 }

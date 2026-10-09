@@ -133,8 +133,9 @@ describe('UserProfileHttpService', () => {
             );
         });
 
-        it('passes a null name when the dto omits it', async () => {
+        it('passes a null name through to clear it', async () => {
             const dto: UserUpdateProfileRequestDto = {
+                name: null,
                 countryId: 'country-sable',
                 gender: EnumUserGender.male,
             };

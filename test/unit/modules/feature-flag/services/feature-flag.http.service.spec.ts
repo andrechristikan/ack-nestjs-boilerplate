@@ -148,6 +148,7 @@ describe('FeatureFlagHttpService', () => {
             const body: FeatureFlagUpdateStatusRequestDto = {
                 isEnable: false,
                 rolloutPercent: 0,
+                targetUserIds: [],
             };
             const updated = { ...featureFlag, isEnable: false };
             featureFlagDomain.updateStatusByAdmin.mockResolvedValue(updated);
@@ -160,7 +161,7 @@ describe('FeatureFlagHttpService', () => {
             expect(result).toEqual({ data: updated });
             expect(featureFlagDomain.updateStatusByAdmin).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439011',
-                { isEnable: false, rolloutPercent: 0, targetUserIds: null }
+                { isEnable: false, rolloutPercent: 0, targetUserIds: [] }
             );
         });
     });

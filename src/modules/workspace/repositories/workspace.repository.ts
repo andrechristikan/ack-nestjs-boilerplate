@@ -141,10 +141,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     ): Promise<Workspace> {
         return this.databaseService.client.workspace.update({
             where: { id: workspaceId },
-            data: {
-                ...(name !== null && { name }),
-                ...(description !== null && { description }),
-            },
+            data: { name, description },
         });
     }
 

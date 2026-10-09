@@ -195,8 +195,15 @@ describe('ProjectHttpService', () => {
 
     describe('updateProject', () => {
         it('updates the project and wraps it in the response envelope', async () => {
-            const body: ProjectUpdateRequestDto = { name: 'New Name' };
-            const updated = { ...project, name: 'New Name' };
+            const body: ProjectUpdateRequestDto = {
+                name: 'New Name',
+                description: 'New description',
+            };
+            const updated = {
+                ...project,
+                name: 'New Name',
+                description: 'New description',
+            };
             projectDomain.updateProject.mockResolvedValue(updated);
 
             const result = await service.updateProject(
@@ -209,15 +216,16 @@ describe('ProjectHttpService', () => {
             expect(projectDomain.updateProject).toHaveBeenCalledWith(
                 project,
                 '507f1f77bcf86cd799439015',
-                { name: 'New Name', description: null }
+                { name: 'New Name', description: 'New description' }
             );
         });
 
-        it('passes null for the name when the body omits it', async () => {
+        it('passes a null description through to clear it', async () => {
             const body: ProjectUpdateRequestDto = {
-                description: 'New description',
+                name: 'New Name',
+                description: null,
             };
-            const updated = { ...project, description: 'New description' };
+            const updated = { ...project, name: 'New Name', description: null };
             projectDomain.updateProject.mockResolvedValue(updated);
 
             await service.updateProject(
@@ -229,7 +237,7 @@ describe('ProjectHttpService', () => {
             expect(projectDomain.updateProject).toHaveBeenCalledWith(
                 project,
                 '507f1f77bcf86cd799439015',
-                { name: null, description: 'New description' }
+                { name: 'New Name', description: null }
             );
         });
     });

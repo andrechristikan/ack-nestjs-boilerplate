@@ -137,10 +137,7 @@ export class RoleRepository implements IRoleRepository {
     ): Promise<IRoleWithPolicies> {
         return this.databaseService.client.role.update({
             where: { id },
-            data: {
-                ...(description !== null && { description }),
-                type,
-            },
+            data: { description, type },
             include: { policies: true },
         });
     }

@@ -162,7 +162,10 @@ describe('WorkspaceHttpService', () => {
 
     describe('updateWorkspace', () => {
         it('updates the workspace and wraps it in the response envelope', async () => {
-            const body: WorkspaceUpdateRequestDto = { name: 'Acme 2' };
+            const body: WorkspaceUpdateRequestDto = {
+                name: 'Acme 2',
+                description: 'Our team workspace',
+            };
             workspaceDomain.updateWorkspace.mockResolvedValue(workspace);
 
             const result = await service.updateWorkspace(
@@ -175,13 +178,14 @@ describe('WorkspaceHttpService', () => {
             expect(workspaceDomain.updateWorkspace).toHaveBeenCalledWith(
                 'workspace-1',
                 'user-1',
-                { name: 'Acme 2', description: null }
+                { name: 'Acme 2', description: 'Our team workspace' }
             );
         });
 
-        it('passes null for the name when the body omits it', async () => {
+        it('passes a null description through to clear it', async () => {
             const body: WorkspaceUpdateRequestDto = {
-                description: 'New description',
+                name: 'Acme 2',
+                description: null,
             };
             workspaceDomain.updateWorkspace.mockResolvedValue(workspace);
 
@@ -190,7 +194,7 @@ describe('WorkspaceHttpService', () => {
             expect(workspaceDomain.updateWorkspace).toHaveBeenCalledWith(
                 'workspace-1',
                 'user-1',
-                { name: null, description: 'New description' }
+                { name: 'Acme 2', description: null }
             );
         });
     });

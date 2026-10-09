@@ -277,6 +277,11 @@ describe('project.decorator', () => {
                     }),
                     expect.objectContaining({
                         httpStatus: HttpStatus.FORBIDDEN,
+                        statusCode: EnumProjectStatusCodeError.memberForbidden,
+                        messagePath: 'project.error.memberForbidden',
+                    }),
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.FORBIDDEN,
                         statusCode: EnumProjectStatusCodeError.roleForbidden,
                         messagePath: 'project.error.roleForbidden',
                     }),
@@ -290,6 +295,14 @@ describe('project.decorator', () => {
                         statusCode:
                             EnumWorkspaceStatusCodeError.memberGuardMissing,
                         messagePath: 'workspace.error.memberGuardMissing',
+                    }),
+                ])
+            );
+            expect(entries).not.toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        statusCode:
+                            EnumWorkspaceStatusCodeError.memberForbidden,
                     }),
                 ])
             );

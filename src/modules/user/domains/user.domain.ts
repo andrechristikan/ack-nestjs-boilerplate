@@ -160,6 +160,10 @@ export class UserDomain {
         );
     }
 
+    async getOneById(userId: string): Promise<User | null> {
+        return this.userRepository.findOneById(userId);
+    }
+
     async getOneActive(userId: string): Promise<User | null> {
         return this.userRepository.findOneActiveById(userId);
     }
