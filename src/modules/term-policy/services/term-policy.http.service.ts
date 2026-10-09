@@ -36,11 +36,10 @@ export class TermPolicyHttpService {
     async getListByAdmin(
         query: TermPolicyAdminListRequestDto
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.TermPolicyWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.TermPolicy
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.TermPolicy
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.TermPolicyWhereInput>(
                 query,

@@ -1,4 +1,4 @@
-import { createPrismaAbility } from '@casl/prisma';
+import { createPrismaAbility } from '@casl/prisma/runtime';
 import type { Prisma } from '@generated/prisma-client/client';
 import type {
     IPolicyConditions,

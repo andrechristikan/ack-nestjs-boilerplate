@@ -69,11 +69,10 @@ export class UserImportHttpService {
     async exportByAdmin(
         query: UserExportRequestDto
     ): Promise<IResponseFileReturn> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.UserWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.User
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.User
+        );
         const status = this.paginationQueryUtil.inEnum(
             Prisma.UserScalarFieldEnum.status,
             query.status,

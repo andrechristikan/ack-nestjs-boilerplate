@@ -50,11 +50,10 @@ export class UserHttpService {
     async getListOffsetByAdmin(
         query: UserListRequestDto
     ): Promise<IResponsePaginationReturn<IUserList>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.UserWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.User
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.User
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query, {
                 availableSearch: UserDefaultAvailableSearch,

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ForbiddenError } from '@casl/ability';
-import { accessibleBy } from '@casl/prisma';
+import { accessibleBy } from '@casl/prisma/runtime';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -14,12 +14,27 @@ import type {
     IPolicyRequired,
     PolicyAbility,
     PolicyAbilitySubject,
+    PolicyModelSubject,
+    PolicyWhereInput,
 } from '@modules/policy/interfaces/policy.interface';
 
 /** Reads required request context and answers what a built ability allows. */
 @Injectable()
 export class PolicyAbilityDomain {
     constructor(private readonly requestStoreService: RequestStoreService) {}
+
+    /** Reads the ability `PolicyAbilityGuard` stored for the request. */
+    private getAbility(): PolicyAbility {
+        const ability = this.requireStored<PolicyAbility>(
+            PolicyAbilityStoreKey
+        );
+
+        return ability;
+    }
+
+    private toSubjectName(target: PolicyAbilitySubject): EnumPolicySubject {
+        return typeof target === 'string' ? target : target.__caslSubjectType__;
+    }
 
     /** Reads a value an earlier guard stored for the request, and throws `RequestContextMissingException` naming the key when nothing is stored. The one place a guard or an HTTP service reads required request context. */
     requireStored<T>(key: string): T {
@@ -31,16 +46,11 @@ export class PolicyAbilityDomain {
         return value;
     }
 
-    /** Reads the ability `PolicyAbilityGuard` stored for the request. */
-    private getAbility(): PolicyAbility {
-        return this.requireStored<PolicyAbility>(PolicyAbilityStoreKey);
-    }
-
-    /** Returns the Prisma where clause the stored ability grants for a subject, and throws `PolicyForbiddenException` when the ability holds no rule for it, so a caller never queries without the predicate. */
-    accessibleWhere<TWhere = Record<string, unknown>>(
+    /** Returns the Prisma where clause the stored ability grants for a model subject, and throws `PolicyForbiddenException` when the ability holds no rule for it, so a caller never queries without the predicate. */
+    accessibleWhere<TSubject extends PolicyModelSubject>(
         action: EnumPolicyAction,
-        subjectName: EnumPolicySubject
-    ): TWhere {
+        subjectName: TSubject
+    ): PolicyWhereInput<TSubject> {
         const ability = this.getAbility();
         if (ability.rulesFor(action, subjectName).length === 0) {
             throw new PolicyForbiddenException({
@@ -48,7 +58,7 @@ export class PolicyAbilityDomain {
             });
         }
 
-        return accessibleBy(ability, action).ofType(subjectName) as TWhere;
+        return accessibleBy(ability, action).ofType(subjectName);
     }
 
     /**
@@ -127,7 +137,10 @@ export class PolicyAbilityDomain {
      */
     getEffectivePermissions<TSubject extends EnumPolicySubject>(
         targets: PolicyAbilitySubject<TSubject>[]
-    ): IEffectivePermission<TSubject>[] {
+    ): IEffectivePermission<TSubject>[];
+    getEffectivePermissions(
+        targets: PolicyAbilitySubject[]
+    ): IEffectivePermission[] {
         const ability = this.getAbility();
 
         return targets
@@ -138,13 +151,5 @@ export class PolicyAbilityDomain {
                 ),
             }))
             .filter(permission => permission.actions.length > 0);
-    }
-
-    private toSubjectName<TSubject extends EnumPolicySubject>(
-        target: PolicyAbilitySubject<TSubject>
-    ): TSubject {
-        return (
-            typeof target === 'string' ? target : target.__caslSubjectType__
-        ) as TSubject;
     }
 }

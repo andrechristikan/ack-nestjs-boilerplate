@@ -37,11 +37,10 @@ export class SessionHttpService {
         userId: string,
         query: SessionAdminListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.SessionWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.Session
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.Session
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.SessionWhereInput>(query, {
                 availableOrderBy: SessionDefaultAvailableOrderBy,

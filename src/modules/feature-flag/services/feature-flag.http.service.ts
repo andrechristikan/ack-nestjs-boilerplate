@@ -36,11 +36,10 @@ export class FeatureFlagHttpService {
     async getListByAdmin(
         query: FeatureFlagAdminListRequestDto
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.FeatureFlagWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.FeatureFlag
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.FeatureFlag
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.FeatureFlagWhereInput>(
                 query,

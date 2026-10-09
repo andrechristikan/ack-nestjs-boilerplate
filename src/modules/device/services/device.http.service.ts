@@ -36,11 +36,10 @@ export class DeviceHttpService {
         userId: string,
         query: DeviceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.DeviceOwnershipWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.Device
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.DeviceOwnership
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.DeviceOwnershipWhereInput>(
                 query,
@@ -141,7 +140,7 @@ export class DeviceHttpService {
         );
         this.policyAbilityDomain.assertCan(
             EnumPolicyAction.delete,
-            subject(EnumPolicySubject.Device, stored)
+            subject(EnumPolicySubject.DeviceOwnership, stored)
         );
         await this.deviceDomain.removeByAdmin(
             userId,

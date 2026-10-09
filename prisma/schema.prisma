@@ -779,6 +779,7 @@ enum EnumPolicySubject {
   TermPolicy
   FeatureFlag
   Device
+  DeviceOwnership
   Workspace
   Project
   WorkspaceMember

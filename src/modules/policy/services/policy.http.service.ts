@@ -7,7 +7,6 @@ import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    type Prisma,
 } from '@generated/prisma-client/client';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
@@ -25,11 +24,10 @@ export class PolicyHttpService {
     async listByAdmin(
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.RoleWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.Role
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.Role
+        );
         const policies = await this.policyDomain.findManyByRole(
             roleId,
             accessibleWhere

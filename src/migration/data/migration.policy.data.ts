@@ -17,6 +17,7 @@ const PlatformAdminSubjects: EnumPolicySubject[] = [
     EnumPolicySubject.ActivityLog,
     EnumPolicySubject.ApiKey,
     EnumPolicySubject.Device,
+    EnumPolicySubject.DeviceOwnership,
     EnumPolicySubject.FeatureFlag,
     EnumPolicySubject.PasswordHistory,
     EnumPolicySubject.Role,

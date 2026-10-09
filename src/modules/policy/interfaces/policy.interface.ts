@@ -1,5 +1,9 @@
-import type { Ability, ForcedSubject, RawRuleOf } from '@casl/ability';
-import type { PrismaQuery } from '@casl/prisma';
+import type { Ability, RawRuleOf } from '@casl/ability';
+import type {
+    PrismaQueryOf,
+    Subjects,
+    WhereInputOf,
+} from '@casl/prisma/runtime';
 import type {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -34,13 +38,31 @@ export interface IEffectivePermission<
     actions: EnumPolicyAction[];
 }
 
+export type PolicyModelSubject = Extract<EnumPolicySubject, Prisma.ModelName>;
+
+type PolicyModelRecordMap = {
+    [TSubject in PolicyModelSubject]: Partial<
+        Prisma.TypeMap['model'][TSubject]['payload']['scalars']
+    >;
+};
+
+type PolicyModelAbilitySubject = Subjects<PolicyModelRecordMap>;
+
+export type PolicyWhereInput<TSubject extends PolicyModelSubject> =
+    WhereInputOf<Prisma.TypeMap, TSubject>;
+
 export type PolicyAbilitySubject<
     TSubject extends EnumPolicySubject = EnumPolicySubject,
-> = TSubject | ForcedSubject<TSubject>;
+> =
+    | TSubject
+    | Extract<
+          PolicyModelAbilitySubject,
+          { readonly __caslSubjectType__: TSubject }
+      >;
 
 export type PolicyAbility = Ability<
     [EnumPolicyAction, PolicyAbilitySubject],
-    PrismaQuery
+    PrismaQueryOf<Prisma.TypeMap>
 >;
 
 export type PolicyAbilityRule = RawRuleOf<PolicyAbility>;

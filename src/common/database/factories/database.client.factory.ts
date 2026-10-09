@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { createCaslExtension } from '@casl/prisma';
+import { createCaslExtension } from '@casl/prisma/runtime';
 import { PrismaClient } from '@generated/prisma-client/client';
 import type { IDatabaseClientOptions } from '@common/database/interfaces/database.client.interface';
 import { DatabaseExtensionUtil } from '@common/database/utils/database.extension.util';

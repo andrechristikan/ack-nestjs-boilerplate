@@ -40,11 +40,10 @@ export class ProjectHttpService {
         workspaceId: string,
         query: ProjectUserListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.ProjectWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.Project
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.Project
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ProjectWhereInput>(query, {
                 availableSearch: ProjectDefaultAvailableSearch,
@@ -137,11 +136,10 @@ export class ProjectHttpService {
     async getListForAdmin(
         query: ProjectAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.ProjectWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.Project
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.Project
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ProjectWhereInput>(query, {
                 availableSearch: ProjectDefaultAvailableSearch,

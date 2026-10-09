@@ -31,11 +31,10 @@ export class PasswordHistoryHttpService {
         userId: string,
         query: PasswordHistoryAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.PasswordHistoryWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.PasswordHistory
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.PasswordHistory
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.PasswordHistoryWhereInput>(
                 query,

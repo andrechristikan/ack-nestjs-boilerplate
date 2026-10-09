@@ -18,6 +18,7 @@ export const EnumPolicyPlatformSubject = {
     TermPolicy: EnumPolicySubject.TermPolicy,
     FeatureFlag: EnumPolicySubject.FeatureFlag,
     Device: EnumPolicySubject.Device,
+    DeviceOwnership: EnumPolicySubject.DeviceOwnership,
     Workspace: EnumPolicySubject.Workspace,
     WorkspaceMember: EnumPolicySubject.WorkspaceMember,
     Project: EnumPolicySubject.Project,

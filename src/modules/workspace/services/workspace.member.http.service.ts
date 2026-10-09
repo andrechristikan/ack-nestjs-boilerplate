@@ -61,11 +61,10 @@ export class WorkspaceMemberHttpService {
         workspaceId: string,
         query: WorkspaceMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.WorkspaceMemberWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.WorkspaceMember
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.WorkspaceMember
+        );
 
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.WorkspaceMemberWhereInput>(
@@ -149,11 +148,10 @@ export class WorkspaceMemberHttpService {
         workspaceId: string,
         query: WorkspaceAdminMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.WorkspaceMemberWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.WorkspaceMember
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.WorkspaceMember
+        );
 
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.WorkspaceMemberWhereInput>(

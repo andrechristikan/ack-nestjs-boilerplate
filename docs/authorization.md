@@ -419,11 +419,12 @@ The service authorizes its loaded copy. The domain reloads the data it needs and
 
 ### Collection Queries
 
-`PolicyAbilityDomain.accessibleWhere(action, subject)` converts the stored ability into a Prisma where-input with `accessibleBy(ability, action).ofType(subject)`. It throws `PolicyForbiddenException` when the ability holds no rule for that action and subject, and a missing stored ability throws `RequestContextMissingException`.
+`PolicyAbilityDomain.accessibleWhere(action, subject)` converts the stored ability into a Prisma where-input with `accessibleBy(ability, action).ofType(subject)`. The subject is typed as a generic `K extends PolicyModelSubject`, and the return type is that model's `WhereInput` (for example `Prisma.RoleWhereInput` for `Role`), so a call site passes no type argument and needs no cast. It throws `PolicyForbiddenException` when the ability holds no rule for that action and subject, and a missing stored ability throws `RequestContextMissingException`.
 
 | Collection | Policy predicate |
 |---|---|
-| Admin user, session, device, API key, role, password-history, term-policy, feature-flag, workspace, workspace-member, and project lists | `accessibleWhere(read, <subject>)` |
+| Admin user, session, API key, role, password-history, term-policy, feature-flag, workspace, workspace-member, and project lists | `accessibleWhere(read, <subject>)` |
+| Admin device list | `accessibleWhere(read, Device)`, nested as `{ device: <where> }` on the `DeviceOwnership` query |
 | Admin activity-log lists | `accessibleWhere(read, ActivityLog)` |
 | Admin policy list | `accessibleWhere(read, Role)` through the policy's `role` relation |
 | Admin user export | `accessibleWhere(read, User)` |
@@ -450,7 +451,9 @@ The HTTP service passes the predicate to the domain as an optional `where`. The 
 
 ### CASL Integration
 
-The project uses [CASL][casl] with `@casl/prisma`. The ability is a typed Prisma ability created by `createPrismaAbility`, so a stored condition is a Prisma where-input.
+The project uses [CASL][casl] with `@casl/prisma`. The ability is a typed Prisma ability created by `createPrismaAbility`, so a stored condition is a Prisma where-input. `PolicyAbility` is typed with `PrismaQueryFactory<Prisma.TypeMap>`, which ties each model subject to its Prisma row type.
+
+**Subject types.** `PolicyModelSubject` is the members of `EnumPolicySubject` named after a Prisma model; `PolicyNonModelSubject` is the rest (`all`, `Analytic`, `WorkspaceAnalytic`). A record passed to an ability check is `ForcedSubject<K> & Partial<model>` for a model subject `K`, so its fields are type-checked against the model row. A non-model subject is checked by name only.
 
 **Rule model.** A `Policy` row is one rule:
 

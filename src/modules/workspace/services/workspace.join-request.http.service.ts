@@ -52,11 +52,10 @@ export class WorkspaceJoinRequestHttpService {
         workspaceId: string,
         query: WorkspaceJoinRequestListRequestDto
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.WorkspaceJoinRequestWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.WorkspaceJoinRequest
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.WorkspaceJoinRequest
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.WorkspaceJoinRequestWhereInput>(
                 query,

@@ -31,11 +31,10 @@ export class ActivityLogHttpService {
         scope: IActivityLogScope,
         query: ActivityLogAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.ActivityLogWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.ActivityLog
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.ActivityLog
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
                 query,

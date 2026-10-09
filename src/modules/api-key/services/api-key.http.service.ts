@@ -42,11 +42,10 @@ export class ApiKeyHttpService {
     async getListByAdmin(
         query: ApiKeyListRequestDto
     ): Promise<IResponsePaginationReturn<IApiKeyList>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.ApiKeyWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.ApiKey
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.ApiKey
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.ApiKeyWhereInput>(query, {
                 availableSearch: ApiKeyDefaultAvailableSearch,

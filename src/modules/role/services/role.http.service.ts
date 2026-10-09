@@ -40,11 +40,10 @@ export class RoleHttpService {
     async getListOffsetByAdmin(
         query: RoleAdminListRequestDto
     ): Promise<IResponsePaginationReturn<RoleListResponseDto>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.RoleWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.Role
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.Role
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.RoleWhereInput>(query, {
                 availableSearch: RoleDefaultAvailableSearch,

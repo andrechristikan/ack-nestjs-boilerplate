@@ -157,11 +157,10 @@ export class WorkspaceHttpService {
     async getListForAdmin(
         query: WorkspaceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Workspace>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.WorkspaceWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.Workspace
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.Workspace
+        );
 
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.WorkspaceWhereInput>(query, {

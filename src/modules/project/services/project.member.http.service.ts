@@ -39,11 +39,10 @@ export class ProjectMemberHttpService {
         project: Project,
         query: ProjectMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
-        const accessibleWhere =
-            this.policyAbilityDomain.accessibleWhere<Prisma.ProjectMemberWhereInput>(
-                EnumPolicyAction.read,
-                EnumPolicySubject.ProjectMember
-            );
+        const accessibleWhere = this.policyAbilityDomain.accessibleWhere(
+            EnumPolicyAction.read,
+            EnumPolicySubject.ProjectMember
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ProjectMemberWhereInput>(
                 query,
