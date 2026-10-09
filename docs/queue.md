@@ -35,6 +35,7 @@ Code lives in two places:
 - [Usage](#usage)
     - [Adding Jobs to Queue](#adding-jobs-to-queue)
     - [Job Options](#job-options)
+    - [Re-adding a Job by Id](#re-adding-a-job-by-id)
 - [Creating New Queue](#creating-new-queue)
 - [Creating New Processor](#creating-new-processor)
 - [QueueProcessorBase](#queueprocessorbase)
@@ -60,8 +61,9 @@ queue: {
 
 Job defaults (attempts, backoff delays, `keepLogs`, completed and failed retention age) are in `src/configs/queue.config.ts`.
 
-- `QueueModule.forRoot()` (`src/queues/queue.module.ts`) applies shared connection defaults.
-- Each named queue's owning feature sets its own backoff and `keepLogs` through a `RegisterQueueOptionsFactory` on that feature's domain module.
+- `QueueModule.forRoot()` (`src/queues/queue.module.ts`) applies shared connection defaults to both connections.
+    - The default backoff is the `notificationBackoffDelayInMs` value (3 s). The key carries the notification queue's name, and the default applies to every queue on the connection.
+- Each named queue's owning feature sets its own backoff and `keepLogs` through a `RegisterQueueOptionsFactory` on that feature's domain module, which overrides the connection default. The `EnumQueue.notification` factory reads the same `notificationBackoffDelayInMs` key, so that queue's backoff equals the connection default.
 
 Environment variables:
 
@@ -77,7 +79,7 @@ The queue system consists of:
 2. **Queue Processor Base** (`src/queues/bases/queue.processor.base.ts`): concrete `process` template (`job.log`, await `handle`, Nest `Logger.error` on failure), fatal-gate `onFailed` with Sentry `withScope`
 3. **Queue Processor Decorator** (`src/queues/decorators/queue.decorator.ts`): Custom decorator for processor registration
 4. **Queue Constants** (`src/queues/constants/queue.constant.ts`): `QueueConfigKey` and `QueueProcessorConfigKey`
-5. **Queue Enums, Exception, Interface** (`src/queues/enums/queue.enum.ts`, `exceptions/queue.exception.ts`, `interfaces/queue.interface.ts`): `EnumQueue` and `EnumQueuePriority`, `QueueException`, `IQueueResponse`
+5. **Queue Enums, Exception, Interface** (`src/queues/enums/queue.enum.ts`, `exceptions/queue.exception.ts`, `interfaces/queue.interface.ts`): `EnumQueue`, `EnumQueuePriority` and `EnumQueueJobState`, `QueueException`, `IQueueResponse`
 
 **An enqueue lives in a queue class, never in a util or a service.**
 
@@ -126,6 +128,11 @@ Queue priorities defined in `EnumQueuePriority`:
 - `high`: 1
 - `medium`: 5
 - `low`: 10
+
+Job states defined in `EnumQueueJobState`:
+
+- BullMQ exports its `JobState` as a type only, so the enum names the strings `Job.getState()` returns: `completed`, `failed`, `active`, `delayed`, `prioritized`, `waiting`, `waitingChildren` (`waiting-children`), and `unknown`.
+- Code that branches on a job state switches on `EnumQueueJobState`, never on a string literal.
 
 ## Usage
 
@@ -211,8 +218,8 @@ await this.notificationPushQueue.sendNewDeviceLogin(sendPayload, data);
 
 Default job options come from `queue.config.ts` (interface `IConfigQueue`).
 
-- Connection-level defaults on `QueueModule.forRoot()` use `notificationBackoffDelayInMs`.
-- Each queue factory overrides backoff for its own queue and sets `keepLogs` from `queue.job.keepLogs` (20).
+- The connection-level backoff default on `QueueModule.forRoot()` is `notificationBackoffDelayInMs`, a connection default that takes the notification queue's key name.
+- Each queue factory overrides backoff for its own queue with the key in the table below and sets `keepLogs` from `queue.job.keepLogs` (20).
 - Retention is age-based.
 
 Every queue shares:
@@ -248,6 +255,37 @@ For example, the `notificationEmail` queue:
 
 - A single `add()` call overrides any of these options for that job.
 - `keepLogs` retains the BullMQ `job.log` lines the base writes for that retention window.
+
+### Re-adding a Job by Id
+
+BullMQ ignores an `add` whose `jobId` still exists in the queue. A queue method that must re-run a job under a stable id reads the existing job first and decides by its state.
+
+`NotificationQueue.sendPublishTermPolicy` is the one such method. It uses the `jobId` `publishTermPolicy-{termPolicyId}`:
+
+1. `getJob(jobId)` returns the existing job, or none.
+2. With no job, it adds one.
+3. With a job, `getState()` is switched on `EnumQueueJobState`:
+    - `failed`: `retry(EnumQueueJobState.failed, { resetAttemptsMade: true })` puts the job back with its attempt count reset. A `JobNotInState` error from BullMQ means the job left `failed` in the meantime and is treated as in progress.
+    - `waiting`, `prioritized`, `delayed`, `active`, `waitingChildren`: the method throws `TermPolicyPublishInProgressException` (`409`, `51510`) and adds nothing. The `term-policy` module owns that exception and its code (`EnumTermPolicyStatusCodeError.publishInProgress`).
+    - `completed`, `unknown`: `remove()` deletes the old job, then a new one is added under the same id.
+
+Any other error from the retry is wrapped in `AppUnknownException` and answers `500`. The effect on users and markers is in [Notification][ref-doc-notification].
+
+The read and the add are two separate Redis calls with no lock around them:
+
+- Two simultaneous first publishes both see no job, and both call `add` with the same `jobId`.
+- BullMQ ignores the second `add` because the `jobId` already exists, and raises no error.
+- The second caller therefore gets a success answer, not `TermPolicyPublishInProgressException`, although its own `add` created nothing.
+- The same window exists between `remove()` and the new `add` of a completed job.
+
+**Per-batch email jobs.** `NotificationEmailQueue.sendPublishTermPolicyBatch` adds one job per recipient batch under the `jobId` `publishTermPolicy-{termPolicyId}-{batchId}`, with a `delay` of `index * email.batchDelayInMs`. It checks no job state, so BullMQ's duplicate rule decides a re-publish:
+
+1. A re-publish runs `processPublishTermPolicy` again, and users that already hold a recipient marker are skipped.
+2. A batch whose markers carry no `enqueuedAt` is added again under its stored `batchId`.
+    - BullMQ ignores that `add` while a job with the id still exists in the email queue (waiting, delayed, active, or kept after completion or failure).
+    - Once the old job has expired, the same `add` creates a new job.
+3. A batch already marked enqueued is not added again.
+4. Users with no marker form a new batch with a new `batchId`, so they get a new job.
 
 ## Creating New Queue
 
@@ -415,6 +453,8 @@ export abstract class QueueProcessorBase extends WorkerHost {
         super();
     }
 
+    protected abstract handle(job: Job): Promise<IQueueResponse>;
+
     async process(job: Job): Promise<IQueueResponse> {
         const maxAttempts = job.opts.attempts ?? 1;
 
@@ -474,16 +514,16 @@ export abstract class QueueProcessorBase extends WorkerHost {
             return;
         }
 
-        this.sentryService.withScope(scope => {
+        const sentryService = this.sentryService;
+
+        sentryService.withScope(scope => {
             scope.setAttribute('job.id', String(job.id));
             scope.setAttribute('job.name', job.name);
             scope.setAttribute('job.attemptsMade', job.attemptsMade);
             scope.setAttribute('job.maxAttempts', maxAttempts);
-            this.sentryService.captureException(error);
+            sentryService.captureException(error);
         });
     }
-
-    protected abstract handle(job: Job): Promise<IQueueResponse>;
 }
 ```
 

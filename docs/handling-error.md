@@ -13,7 +13,7 @@ Exception filters turn thrown errors into the same HTTP error body, with i18n me
 - [Status Codes Documentation][ref-doc-status-codes]: Application `statusCode` catalog by module
 - [Language Message Documentation][ref-doc-message]: Error message i18n
 - [Logger Documentation][ref-doc-logger]: Error logging and Sentry
-- [Doc Documentation][ref-doc-doc]: OpenAPI kit errors from `@Doc`, `*Protected` / auth kits, and when used `@ResponsePagination` / `FileUpload*` / `@ResponseFile`. Module-flow domain exceptions appear only when an endpoint opts in with `@DocErrors`
+- [Doc Documentation][ref-doc-doc]: OpenAPI error kits. `@Doc`, the `*Protected` and auth decorators, `@ResponsePagination`, `FileUpload*`, and `@ResponseFile` each publish their own kit. A module-flow domain exception appears only when an endpoint opts in with `@DocErrors`
 
 ## Table of Contents
 
@@ -33,6 +33,7 @@ Exception filters turn thrown errors into the same HTTP error body, with i18n me
     - [Error with message interpolation](#error-with-message-interpolation)
     - [Error wrapping a cause](#error-wrapping-a-cause)
     - [Runtime errors outside a request](#runtime-errors-outside-a-request)
+    - [Guard store exceptions](#guard-store-exceptions)
     - [Defining a new exception](#defining-a-new-exception)
 
 ## Filter Chain
@@ -187,6 +188,9 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 | `PrismaClientInitializationError`, or a Prisma code in `DatabaseUnavailableCodes` (`P1001`, `P1002`, `P1008`, `P1017`, `P2024`) | `DatabaseUnavailableException` | `51802` | 503 |
 | Prisma `P2034` write conflict | `DatabaseWriteConflictException` | `51801` | 409 |
 | Keyv Redis not-connected error | `RedisUnavailableException` | `52400` | 503 |
+
+- A JWT guard reads the session from Redis. A store error there reaches the filter wrapped in `AppUnknownException`. A not-connected error renders as `RedisUnavailableException` (503), and any other store error stays a 500.
+- An unreachable JWKS endpoint, Google certificate fetch, or Apple key fetch during JWT or social-token verification throws `AuthProviderUnavailableException` (`50819`, 503) directly. A bad token answers 401.
 
 **Behavior**:
 
@@ -390,9 +394,9 @@ super('user.error.passwordMustNew', { messageProperties: { period } });
 A caught error leaves the `catch` as a typed exception.
 
 - `throw new Error(...)` is rejected by ESLint. Code throws a typed exception: `AppBaseException` when the error answers a request, `AppUnknownException` or a subclass otherwise.
-- A bare `throw err` is allowed only inside an `instanceof` guard that names a class of ours. Everything else is wrapped as `throw new AppUnknownException(err)`.
+- A bare `throw err` is allowed only inside an `if` branch whose `instanceof` check names a class of ours. Everything else is wrapped as `throw new AppUnknownException(err)`.
 - The cause rides in `rawError`. It is reported to Sentry for 5xx errors and never serialized into the response body.
-- A guard that lets a typed exception through first keeps a domain exception raised inside the `try` on its own status code.
+- An `instanceof` check that rethrows a typed exception first keeps a domain exception raised inside the `try` on its own status code.
 
 ```typescript
 try {
@@ -408,12 +412,12 @@ try {
 
 `AppGeneralFilter` maps a wrapped Prisma or Redis failure to its typed exception, so a `catch` around a repository call needs no database-specific branch.
 
-**Classes a guard names**:
+**Classes an `instanceof` check names**:
 
-1. Domains guard `AppBaseException`, which covers `AppUnknownException` and its subclasses.
-2. `QueueProcessorBase.process` logs the failure once at error level, then guards `QueueException`, `AppBaseException`, and BullMQ's `UnrecoverableError`, and wraps every other error in `AppUnknownException`. A processor that catches inside `handle` follows the same split.
-3. `ActivityLogInterceptor` guards `AppBaseException` and the framework `HttpException`, so a framework error keeps its own filter. It wraps every other error in `AppUnknownException`.
-4. Seeds guard nothing. Every caught error is wrapped in `AppUnknownException`.
+1. Domains check `AppBaseException`, which covers `AppUnknownException` and its subclasses.
+2. `QueueProcessorBase.process` logs the failure once at error level, then checks `QueueException`, `AppBaseException`, and BullMQ's `UnrecoverableError`, and wraps every other error in `AppUnknownException`. A processor that catches inside `handle` follows the same split.
+3. `ActivityLogInterceptor` checks `AppBaseException` and the framework `HttpException`, so a framework error keeps its own filter. It wraps every other error in `AppUnknownException`.
+4. A seed's own `catch` checks nothing. It wraps every caught error, an `AppBaseException` included, in `AppUnknownException` with a `description` naming the step (`Seeding roles failed`). The migration runner's `serviceErrorHandler` is a separate layer, described under [Runtime errors outside a request](#runtime-errors-outside-a-request).
 
 ### Runtime errors outside a request
 
@@ -432,7 +436,20 @@ try {
 - Firebase initialization (`FirebasePrivateKeyInvalidException`, `FirebaseInitializationFailedException`).
 - JWT configuration (`AuthJwtConfigMissingException`, `AuthJwtConfigInvalidException`).
 
-**Decorator-argument errors** throw when the route decorator is evaluated at load, so a misdecorated route fails the boot (`RequestEnvProtectedEmptyException`, `RoleProtectedEmptyException`, `PolicyProtectedEmptyException`, `PolicyProtectedActionEmptyException`, `FeatureFlagKeyEmptyException`, `FeatureFlagKeyNestedException`).
+Both entrypoints, `src/main.ts` (HTTP) and `src/migration.ts` (seeds), end a failed start the same way:
+
+1. The `bootstrap().catch` handler logs one `fatal` line carrying the error.
+2. It sends the error to Sentry and waits for the flush (`AppBootstrapSentryFlushTimeoutInMs`, 2000 ms).
+3. The process exits with code 1.
+
+The path a seed failure takes to that handler in `src/migration.ts`:
+
+1. The seed's own `catch` wraps the caught error in `AppUnknownException`.
+2. nest-commander passes the thrown error to the runner's `serviceErrorHandler`.
+3. `serviceErrorHandler` rethrows an `AppBaseException` (the seed's wrapped error included) and wraps any other error in `AppUnknownException`.
+4. The rethrow rejects `bootstrap()`, so a seed that fails mid-run reaches the same `bootstrap().catch`.
+
+**Decorator-argument errors** throw when the route decorator is evaluated at load, so a route decorated with a bad argument fails the boot. A misordered or missing guard is not one of them: that stack boots and fails per request (see [Guard store exceptions](#guard-store-exceptions)). The table below lists them.
 
 **The throttle exception** is logged, never thrown:
 
@@ -453,6 +470,19 @@ try {
 | `FeatureFlagKeyNestedException` | `FeatureFlagProtected` receives a key with dots |
 | `AuthJwtConfigMissingException` | A required JWT key is not configured |
 | `AuthJwtConfigInvalidException` | A configured JWT key does not parse as its expected format |
+
+### Guard store exceptions
+
+A guard reads what a guard that runs earlier stored on the request. Decorators apply bottom-up, so the decorator written lower in the source runs earlier. When the entry is empty, the guard throws the guard-only exception of the missing subject.
+
+- Identity subjects answer 401: the JWT payload (`AuthJwtGuardMissingException`), the user (`UserGuardMissingException`), the API key (`ApiKeyGuardMissingException`).
+- Authorization subjects answer 403: policies, workspace, workspace member, project, project member (`PolicyGuardMissingException`, `WorkspaceGuardMissingException`, `WorkspaceMemberGuardMissingException`, `ProjectGuardMissingException`, `ProjectMemberGuardMissingException`).
+- The `*Current` and `*Payload` parameter decorators throw the same exception for the same empty entry.
+- No check for a missing or misordered guard runs when a route is decorated, so a misordered stack boots and fails on every request, not only the first.
+- A bad decorator argument is the opposite case: it throws at load and the boot fails (`RoleProtectedEmptyException`, `PolicyProtectedEmptyException`, `PolicyProtectedActionEmptyException`, `RequestEnvProtectedEmptyException`).
+- A stored value with a `null` field throws `RequestContextMissingException` (500) when a decorator asks for that field.
+
+[Authorization][ref-doc-authorization] lists each guard with the entry it reads, and [Status Codes][ref-doc-status-codes] lists the codes.
 
 ### Defining a new exception
 
@@ -481,3 +511,4 @@ export class ExampleSomethingException extends AppBaseException {
 [ref-doc-logger]: logger.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
 [ref-doc-doc]: doc.md
+[ref-doc-authorization]: authorization.md

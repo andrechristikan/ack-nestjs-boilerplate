@@ -256,6 +256,13 @@ The credential lockout (`UserPasswordDomain.reachMaxPasswordAttempt`) is the sec
 | `GET` | `/admin/user/:userId/device/list` | List a user's devices, revoked ones included (offset-based, orderable by `createdAt` or `lastActiveAt`), filterable by `isRevoked`. The query loads no sessions, so `isCurrentDevice` is `false` on every entry |
 | `DELETE` | `/admin/user/:userId/device/remove/:deviceOwnershipId` | Remove a user's device; revokes all its sessions immediately |
 
+Both lists validate `orderBy` in their request schema:
+
+- The shared cursor list accepts `createdAt`.
+- The admin offset list accepts `createdAt` and `lastActiveAt`.
+- A field or direction outside that list answers `422` with status code `50300` (`request.error.validation`).
+- The response metadata names the accepted fields in `availableOrderBy`.
+
 ## Policy Control
 
 Device endpoints are protected using `EnumPolicySubject.device`. Admin endpoints carry both `user` (read) and `device` (read/delete) abilities:

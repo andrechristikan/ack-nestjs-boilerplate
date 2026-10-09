@@ -138,7 +138,7 @@ export class SessionCache {
 ```
 
 - `SessionCache` is the only injection site of `SessionCacheProvider`.
-- `SessionCache` also injects `RedisClientCachedProvider` for the two operations the cache manager cannot express (see [Session Cache](#session-cache)).
+- `SessionCache` also injects `RedisClientCachedProvider` for the three operations the cache manager cannot express: `getLogin`, `updateLogin`, and `deleteLoginsByUser` (see [Session Cache](#session-cache)).
 
 `SessionCacheProvider` is registered inside `SessionDomainModule` and stays internal to it. The module:
 
@@ -160,7 +160,7 @@ Both cache modules:
 
 | Method | What it does |
 | --- | --- |
-| `getLogin(userId, sessionId)` | Reads the entry through the cache manager; `null` on a miss |
+| `getLogin(userId, sessionId)` | Reads the entry through the Keyv client, so a Redis failure rejects; `null` on a miss |
 | `setLogin(userId, sessionId, jti, expiredAt)` | Writes the entry through the cache manager, with a TTL running to `expiredAt` |
 | `updateLogin(userId, sessionId, session, jti, expiredInMs)` | Rewrites the entry with the new `jti` and TTL on the shared client (see below); returns whether it wrote |
 | `deleteLogins(userId, sessions)` | Deletes exactly the given session entries through `mdel`; nothing when the list is empty |
@@ -189,11 +189,13 @@ A refresh rotates the entry with `updateLogin` after its database commit. When t
 
 Reads through the cache manager (`get`, `ttl`) resolve to a miss when Redis fails, so a read falls through to the database or to the caller's miss handling.
 
-Writes and deletes split into three groups:
+`SessionCache.getLogin` is the exception: it reads through the Keyv client and rejects, so an outage never reads as a revoked session.
+
+The remaining calls split into three groups:
 
 | Group | Calls | On a Redis failure |
 | --- | --- | --- |
-| Propagate | `SessionCache.setLogin` (every login), `SessionCache.updateLogin` (refresh), `AuthCache.createChallenge` (login with two-factor), `AuthCache.lockTwoFactorAttempt` (the lock set when a failed verification reaches the attempt limit), `ApiKeyCache.deleteCacheByKey` (API key admin writes, `MigrationApiKeySeed.remove`) | The request answers 500, or 503 (`52400`) when the failure is the Keyv not-connected error |
+| Propagate | `SessionCache.getLogin` (the session check of every JWT access and refresh token, and the refresh endpoint), `SessionCache.setLogin` (every login), `SessionCache.updateLogin` (refresh), `AuthCache.createChallenge` (login with two-factor), `AuthCache.lockTwoFactorAttempt` (the lock set when a failed verification reaches the attempt limit), `ApiKeyCache.deleteCacheByKey` (API key admin writes, `MigrationApiKeySeed.remove`) | The request answers 500, or 503 (`52400`) when the failure is the Keyv not-connected error |
 | Caught in the cache class and logged | `AuthCache.clearChallenge`, `AuthCache.clearLockTwoFactorAttempt`, `ApiKeyCache.setCacheByKey`, every `FeatureFlagCache` and `AnalyticCache` call | The request continues |
 | Caught in `SessionDomain` and logged | `SessionCache.deleteLogins`, `SessionCache.deleteLoginsByUser` | The request continues |
 

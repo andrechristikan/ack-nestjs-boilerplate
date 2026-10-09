@@ -251,6 +251,11 @@ Both strategies:
 
 The configured `publicKey` is only used by `AuthJwtDomain.validateAccessToken` / `AuthJwtDomain.validateRefreshToken`.
 
+An unreachable JWKS endpoint answers `AuthProviderUnavailableException` (503, `50819`) on both guards, not a token error:
+
+- `AuthUtil.toProviderUnavailableException` maps a JWKS client error or a network error code (`ECONNREFUSED`, `ECONNRESET`, `ENOTFOUND`, `ETIMEDOUT`, `EAI_AGAIN`, `EHOSTUNREACH`, `ENETUNREACH`) to it.
+- Any other Passport failure answers `AuthJwtAccessTokenInvalidException` (401, `50800`) or `AuthJwtRefreshTokenInvalidException` (401, `50801`).
+
 ### JWT Flow
 
 #### JWT Access Token Flow
@@ -303,6 +308,11 @@ sequenceDiagram
         Note over API: Token signature valid but session invalid/revoked<br/>or jti does not match (potential token reuse).<br/>AuthJwtAccessTokenInvalidException covers signature/Passport failures.
     end
 ```
+
+The session read goes straight to the Redis store (`SessionCache.getLogin`), so a store failure is not read as a missing session:
+
+- A Redis outage during the read answers 503 (`RedisUnavailableException`, `52400`) when Redis is not connected, and 500 (`AppUnknownException`) for any other store error.
+- A missing key or a `jti` mismatch answers `SessionRevokedException` (401, `50401`).
 
 The route itself is gated by `@FeatureFlagProtected('loginWithCredential')` and `@ApiKeyProtected()`, so a disabled flag rejects the request with `FeatureFlagDisabledException` (404, `50601`) before any credential is read.
 
@@ -453,6 +463,7 @@ sequenceDiagram
 ```
 
 - `AuthJwtRefreshGuard` runs the first session check before the handler. A missing key or a `jti` mismatch answers `SessionRevokedException` (401, `50401`), the same answer `AuthJwtAccessGuard` gives.
+- A Redis outage during that first check answers the same as on an access request: 503 (`RedisUnavailableException`, `52400`) when Redis is not connected, and 500 (`AppUnknownException`) for any other store error.
 - `refreshSession` repeats the check against the same key and answers `SessionRevokedException` (401, `50401`) when it fails.
 - The same `SessionRevokedException` answers a lost refresh race: the rotation matches no live session row (`SessionDomain.updateJtiInTx`), or the Redis rewrite finds the key purged.
 - A refresh token without a `jti` answers `AuthJwtRefreshTokenInvalidException` (401, `50801`), in the guard and in `refreshSession` before any cache read.
@@ -610,12 +621,13 @@ async profile(
 }
 ```
 
+Decorators apply bottom-up, so the decorator written lower in the source runs earlier. In the stack above, `@ApiKeyProtected()` runs first, then `@AuthJwtAccessProtected()`, then `@UserProtected()`, then `@TermPolicyAcceptanceProtected()`. "Below" and "above" on this page mean position in the source: a guard written below another runs before it.
+
 Refresh uses `@AuthJwtRefreshProtected` on `POST /refresh`:
 
 ```typescript
 @Doc({ summary: 'refresh token' })
 @Response('user.refresh', { schema: AuthTokenResponseSchema })
-@TermPolicyAcceptanceProtected()
 @UserProtected()
 @AuthJwtRefreshProtected()
 @ApiKeyProtected()
@@ -660,7 +672,11 @@ async profile(
 - Without a field it returns the whole payload
 - With a field it returns that field, non-null
 - The social login routes read `@AuthJwtPayload<IAuthSocialPayload>('email')`
-- An empty `request.user` (a route that reads the payload without an authenticating guard), or a named field the payload does not carry, throws `RequestContextMissingException` (500, `50304`)
+- An empty `request.user` (a route that reads the payload without an authenticating guard) throws `AuthJwtGuardMissingException` (401, `50820`).
+- A named field that is `null` or absent from the payload throws `RequestContextMissingException` (500, `50304`).
+- `UserGuard` throws `AuthJwtGuardMissingException` too when it finds no payload on the request.
+- No check for a missing or misordered guard runs when the route is decorated. A route stacked in the wrong order boots and answers the guard-only exception on every request.
+- A decorator argument check still throws when the route is decorated and fails the boot (`RoleProtectedEmptyException`, `PolicyProtectedEmptyException`, `PolicyProtectedActionEmptyException`, `RequestEnvProtected()` with no environment).
 
 #### Getting Raw Token
 
@@ -669,7 +685,6 @@ To access the raw JWT token string, use the `@AuthJwtToken()` decorator:
 Refresh is the call site:
 
 ```typescript
-@TermPolicyAcceptanceProtected()
 @UserProtected()
 @AuthJwtRefreshProtected()
 @ApiKeyProtected()
@@ -702,6 +717,7 @@ A unique identifier (32-character random string) generated during login and toke
     - API hashes both values with SHA-256 and compares the hashes with `HelperHashService.sha256Compare`, a constant-time comparison (`AuthDomain`)
     - **If jti matches**: Request is allowed
     - **If jti doesn't match**: Request is rejected (401 Unauthorized, potential token reuse)
+    - **If the Redis read fails**: Request is rejected (503 when Redis is not connected, otherwise 500)
 
 3. **During Token Refresh (Refresh Token)**
     - Client sends the refresh token to the API
@@ -779,10 +795,12 @@ sequenceDiagram
         AuthSocialDomain-->>AuthDomain: Payload {email, email_verified}
         AuthDomain-->>Guard: {email, emailVerified}
     end
-    Note over AuthDomain: Rethrows a not-configured exception as is;<br/>wraps any other verification error in<br/>AuthSocialGoogleInvalidException / AuthSocialAppleInvalidException
+    Note over AuthDomain: Rethrows a not-configured exception as is;<br/>maps an unreachable provider to AuthProviderUnavailableException;<br/>wraps any other verification error in<br/>AuthSocialGoogleInvalidException / AuthSocialAppleInvalidException
 
     alt Provider not configured
         Guard-->>Client: 404 Not Found (AuthSocialGoogleNotConfiguredException 50817 /<br/>AuthSocialAppleNotConfiguredException 50818)
+    else Provider unreachable
+        Guard-->>Client: 503 Service Unavailable (AuthProviderUnavailableException 50819)
     else Token Valid
         Guard->>API: request.user = {email, emailVerified}
         API->>Database: Find user by email
@@ -829,6 +847,7 @@ A missing or malformed `Authorization` header fails with `AuthSocialGoogleRequir
 A provider with no client id configured answers 404 before the token is verified: `AuthSocialGoogleNotConfiguredException` (`50817`) or `AuthSocialAppleNotConfiguredException` (`50818`).
 
 - `AuthDomain` rethrows these two as they are.
+- A provider whose key or certificate endpoint cannot be reached answers `AuthProviderUnavailableException` (503, `50819`): `AuthUtil.toProviderUnavailableException` recognizes a failed Google certificate fetch, a JWKS client error, an error flagged `isEndpointUnavailable`, and the network error codes of the JWKS paragraph above.
 - Every other verification failure becomes `AuthSocialGoogleInvalidException` / `AuthSocialAppleInvalidException` (401).
 
 Every social login first resolves the workspace context: from `inviteToken` when present, otherwise a personal workspace.
@@ -1213,8 +1232,8 @@ async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
 - With no argument it returns the whole `ApiKey`.
 - With a field name typed against `ApiKey` it returns that field.
 - Both are non-null.
-    - A route that reads it without the guard answers `ApiKeyXApiKeyRequiredException` (401, `50700`).
-    - A field name that holds `null` answers `RequestContextMissingException` (500, `50304`).
+    - A route that reads it without the guard answers `ApiKeyGuardMissingException` (401, `50707`).
+    - A field name that is `null` or absent from the stored key answers `RequestContextMissingException` (500, `50304`).
 
 See [Security and Middleware][ref-doc-security-and-middleware].
 
@@ -1252,7 +1271,7 @@ sequenceDiagram
         end
 
         alt API Key Not Found
-            Guard-->>Client: 401 Unauthorized (ApiKeyXApiKeyNotFoundException)
+            Guard-->>Client: 401 Unauthorized (ApiKeyXApiKeyInvalidException)
         else API Key Found
             Guard->>Guard: Validate secret against hash
             Guard->>Guard: Check isActive status
@@ -1276,6 +1295,15 @@ sequenceDiagram
         end
     end
 ```
+
+- A key that does not exist answers `ApiKeyXApiKeyInvalidException` (401, `50701`), the same answer as a wrong secret, an inactive key, or a key outside its `startAt`/`endAt` window, so a caller cannot probe which keys exist.
+- `@ApiKeyProtected()` and `@ApiKeySystemProtected()` install both guards in one `UseGuards` call, in the order `ApiKeyXApiKeyGuard`, then `ApiKeyXApiKeyTypeGuard`. The first writes the key under `ApiKeyStoreKey`, and the second reads it.
+- `ApiKeyXApiKeyTypeGuard` answers `ApiKeyGuardMissingException` (401, `50707`) for an empty store. Because one decorator installs both guards, a route reaches that answer only through `@ApiKeyPayload()` on a route without either decorator.
+- The cache is an optimization, and the database stays the authority:
+    - A cache read that fails reads as a miss, so the lookup falls through to the database.
+    - A cache write that fails after a database hit is logged at error level and ignored, so the request still authenticates.
+    - A key that is not found in the database is not cached, so every request naming an unknown key reads the database.
+- `ApiKeyNotFoundException` (404, `50704`) belongs to the admin API key routes, which look a key up by id.
 
 ## Session Management
 
@@ -1303,6 +1331,12 @@ Global prefix `/api` and version `v1` apply as elsewhere.
 | `GET` | `/admin/user/:userId/session/list` | A user's sessions (offset), filterable by `isRevoked` |
 | `DELETE` | `/admin/user/:userId/session/revoke/:sessionId` | Revoke one session of a user |
 | `DELETE` | `/admin/user/:userId/session/revoke-all` | Revoke every active session of a user |
+
+List query:
+
+- Both list routes take `orderBy` as `field:direction`, repeatable.
+- Each route's request schema validates it against that route's allow-list, so an unlisted field answers a validation error (422, `50300`).
+- The allow-list also rides in the response metadata as `availableOrderBy`.
 
 Route guards:
 
@@ -1546,12 +1580,19 @@ Both rows are written on every self-deletion, including one with no active sessi
 
 Account status is also enforced per request. `UserGuard`, applied through `@UserProtected()`, re-reads the user from the database on every call:
 
+- It rejects a valid token whose user row no longer exists (`UserAccountNotFoundException`, 401, `51024`). The lookup filters `deletedAt: null`, so a soft-deleted user counts as gone.
+- It rejects a request that carries no JWT payload (`AuthJwtGuardMissingException`, 401, `50820`).
 - It rejects a blocked account (`UserBlockedForbiddenException`).
 - It rejects any other non-active status (`UserInactiveForbiddenException`).
 - It rejects an expired password (`UserPasswordExpiredException`).
 - It rejects an unverified email (`UserEmailNotVerifiedException`) unless the route opts out with `@UserProtected(false)`.
 
 The same re-read is why a password that expires mid-session locks the caller out without any session being revoked.
+
+Which deletion answers `UserAccountNotFoundException` and which answers `SessionRevokedException`:
+
+- A self-deleted user (`DELETE /user/user/self/delete`) is soft-deleted, and every session is revoked and purged from Redis. The next request with an old token fails at the JWT guard with `SessionRevokedException` (401, `50401`), before `UserGuard` runs.
+- `UserAccountNotFoundException` needs a session key that still validates while the user row is gone. That happens when the Redis purge after a self-deletion failed (the failure is logged and swallowed) and the key has not yet expired, or when the row was removed outside the API.
 
 ### Session Validation Flow
 
@@ -1565,17 +1606,22 @@ sequenceDiagram
 
     Client->>API: API Request with Access Token
 
-    API->>JWT: Verify Token Signature (ES256)
-    alt Invalid Signature
+    API->>JWT: Verify the token (signature ES256, expiry, nbf, audience, issuer)
+    alt JWKS endpoint unreachable
+        JWT-->>Client: 503 Service Unavailable (AuthProviderUnavailableException, 50819)
+    else Any other Passport failure (signature, expiry, nbf, audience, issuer, missing token)
         JWT-->>Client: 401 Unauthorized (AuthJwtAccessTokenInvalidException)
-    else Valid Signature
-        JWT->>API: Signature valid
+    else Token verified
+        JWT->>API: Token valid
 
         API->>API: Extract sessionId & jti from payload
 
         API->>Redis: GET User:{userId}:Session:{sessionId}
 
-        alt Session Not Found
+        alt Redis read fails
+            Redis-->>API: store error
+            API-->>Client: 503 (RedisUnavailableException, 52400) or 500 (AppUnknownException)
+        else Session Not Found
             Redis-->>API: null
             API-->>Client: 401 Unauthorized (SessionRevokedException)
         else Session Found

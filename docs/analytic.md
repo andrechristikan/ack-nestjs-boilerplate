@@ -264,8 +264,12 @@ Workspace and project counts cover live rows only:
     - the anomaly and fraud `/list` routes
     - `GET /fraud/risk-scores`
     - the three dashboard distributions `GET /workspaces/membership`, `GET /workspaces/activity-volume`, and `GET /projects/membership`
-- Anomaly and fraud lists omit `search` from the kit offset schema and carry order-by allow-lists in `analytic.list.constant.ts`.
-- The three dashboard membership and activity-volume lists omit both `search` and `orderBy` from the kit offset schema and declare no allow-list.
+- Anomaly and fraud lists omit `search` from the kit offset schema and declare `orderBy` inline over an allow-list in `analytic.list.constant.ts`.
+    - A sort outside the allow-list fails validation and answers 422.
+    - The response `metadata.availableOrderBy` reports the allow-list.
+- The three dashboard membership and activity-volume lists omit `search`, declare no `orderBy`, and declare no allow-list.
+    - The strict schema rejects an `orderBy` key, and the repository fixes the order.
+    - The response `metadata.availableOrderBy` is `[]`.
 
 Summary responses:
 

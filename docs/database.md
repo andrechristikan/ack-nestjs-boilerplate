@@ -154,6 +154,12 @@ Work that does not touch the database runs before the transaction:
     - A row the superadmin later creates through the admin API carries the same id, so no `remove()` filters on it.
     - The `workspace` seed's `remove()` finds its rows by the name `<username>'s Workspace` together with an owner membership of that user.
 
+**Seed failures.**
+
+- A failed `seed()` or `remove()` throws `AppUnknownException` whose `description` names the operation, for example `Seeding users failed` or `Removing API keys failed`.
+- `src/migration.ts` wraps any other error that reaches the command runner as `Running the migration command failed`.
+- A failed command logs at `fatal`, reports to Sentry, and exits with code 1.
+
 **One module at a time:**
 
 - Seed: `pnpm migration {module} --type seed`
@@ -643,6 +649,9 @@ Three roles, wired together in `src/common/database/database.module.ts`:
     - types that map with `IDatabaseModelRelations` against `Prisma.TypeMap`, so a schema change that adds, removes, or retargets a relation fails `pnpm typecheck` until the map matches
 - **`DatabaseService`** (`services/database.service.ts`):
     - owns the Prisma event log handlers and the connect/disconnect lifecycle
+        - A failed `$connect` throws `AppUnknownException` described `Connecting to the database failed`, so boot stops.
+        - Any other failure in `onModuleInit` is wrapped as `Initializing the database service failed`.
+        - A failed `$disconnect` is logged and swallowed, so the shutdown sequence continues.
     - exposes two public members: `client` and `withTransaction(fn, options?)`
     - `withTransaction` runs `fn` inside `client.$transaction` with the `tx` client
 

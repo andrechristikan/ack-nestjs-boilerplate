@@ -34,6 +34,7 @@ The sections under [Shared by every path](#shared-by-every-path) apply to all th
 - [Database Documentation][ref-doc-database]: Schema sync and seeding
 - [Vault Documentation][ref-doc-vault]: Optional secret store behind the `vault` profile
 - [Queue Documentation][ref-doc-queue]: BullBoard
+- [Logger Documentation][ref-doc-logger]: Boot failure logging
 
 ## Table of Contents
 
@@ -169,6 +170,7 @@ Facts about both commands:
 
 - They run from a checkout on a machine with Node.js >= 24.15.0, or in a one-off container (below).
 - They read `.env` from the checkout and the process environment.
+- A seed that throws ends `pnpm migration:seed` with exit code `1` and skips the seeds after it.
 - The seed process builds the same `CommonModule` as the API.
     - It validates the whole `.env`.
     - It opens the same MongoDB, Redis cache, and BullMQ connections.
@@ -221,6 +223,7 @@ Facts about the check:
 - `/api/public/hello` (`HelloPublicController`) is the one public route that needs no `x-api-key`.
 - Every other public route rejects a request without a valid key.
 - A container started from the image reports `healthy` in `docker ps` once the same endpoint answers inside the container.
+- A failure while the application starts, such as an invalid `.env` value or an unreachable MongoDB, logs one `FATAL [Bootstrap]` line, reports to Sentry when `SENTRY_DSN` is set, and ends the container process with exit code `1`. [Logger Documentation][ref-doc-logger] lists the cases.
 - Swagger is off when `APP_ENV` is `production`.
 
 ## Path 1: Existing dependencies
@@ -601,3 +604,4 @@ Any pipeline that releases the application needs these steps:
 [ref-doc-database]: database.md
 [ref-doc-vault]: vault.md
 [ref-doc-queue]: queue.md#bull-board-dashboard
+[ref-doc-logger]: logger.md#startup-and-boot-failure

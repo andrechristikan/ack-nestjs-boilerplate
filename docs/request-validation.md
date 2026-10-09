@@ -155,6 +155,8 @@ userId?: string
 ### Query Parameters
 
 - Pagination, search, and filtering arrive through list request schemas on `@Query({ schema })` plus `PaginationQueryUtil` in the HTTP service (see [Pagination][ref-doc-pagination]).
+- A list schema extends a kit base schema (`PaginationOffsetQuerySchema` or `PaginationCursorQuerySchema`), which carries `page` or `cursor`, `perPage`, and a trimmed `search` of at most 100 characters.
+- A list schema declares its own `orderBy` as a `z.templateLiteral` of `z.enum(<allow-list>)`, `':'`, and `z.enum(EnumPaginationOrderDirectionType)`, as a union with an array of the same template and `''`. A sort outside the allow-list fails validation and answers 422.
 - A single extra filter is read with `@Query()` and validated by a schema on the query parameter, as above.
 
 ## Schema Shape
@@ -344,7 +346,7 @@ Messages are translated using [nestjs-i18n][ref-nestjs-i18n] through the [Messag
 
 **Message path pattern**: `request.error.{key}`
 
-**Message file** (`src/languages/en/request.json`), one entry per zod issue code plus the nested groups a shared validation points at:
+**Message file** (`src/languages/en/request.json`), an excerpt: one entry per zod issue code plus the nested groups a shared validation points at:
 
 ```json
 {

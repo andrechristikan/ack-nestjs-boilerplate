@@ -23,7 +23,7 @@ One exception: a workspace `owner` reaches every project in the workspace withou
 - [Workspace][ref-doc-workspace]: The workspace that scopes every project
 - [Authorization][ref-doc-authorization]: Where the project guards sit in the full protection stack
 - [Feature Flag][ref-doc-feature-flag]: The `workspace` flag that gates the whole user-scope surface
-- [Status Codes][ref-doc-status-codes]: The full `51700`-`51707` block
+- [Status Codes][ref-doc-status-codes]: The full `51700`-`51709` block
 - [Pagination][ref-doc-pagination]: Cursor pagination on the `/user` list endpoints, offset on `/admin/project/list`
 
 ## Table of Contents
@@ -118,6 +118,7 @@ One exception: a workspace `owner` reaches every project in the workspace withou
 
 - On the member routes, `:projectId` leads the target segment, because the target is an attribute of that project.
 - `PUT /user/project/update/:projectId` takes `name` and `description` as optional fields. A field left out keeps its stored value.
+- The list routes take `search` and `orderBy` query params. `orderBy` is `field:direction`, repeatable, and each route's request schema validates it against that route's allow-list, so an unlisted field answers a validation error (422, `50300`). The allow-list also rides in the response metadata as `availableOrderBy`.
 
 ### Admin Scope
 
@@ -135,9 +136,13 @@ These routes are:
 | `GET` | `/admin/project/list` | Cross-workspace paginated list. Optional `workspaceId` query param narrows it. Includes soft-deleted projects |
 | `GET` | `/admin/project/get/:projectId` | Any project by id, with no workspace scope and no active filter, so a soft-deleted project is still returned |
 
+- `/admin/project/list` takes `search` and `orderBy` query params.
+- `ProjectAdminListRequestSchema` validates `orderBy` against `ProjectDefaultAvailableOrderBy` the same way the user lists do, so an unlisted field answers a validation error (422, `50300`).
+- The allow-list rides in the response metadata as `availableOrderBy`.
+
 ## Access Control
 
-The guards run in this order, first to last:
+Decorators apply bottom-up, so a decorator written lower in the source runs earlier. "Below" and "above" on this page mean position in the source, and the guards run in this order, first to last:
 
 1. `ApiKeyXApiKeyGuard`
 2. JWT
@@ -149,11 +154,26 @@ The guards run in this order, first to last:
 8. `ProjectRoleGuard` (or `ProjectMemberGuard`)
 9. `TermPolicyGuard`
 
-Each guard reads what the previous one stored and never re-fetches.
+Each guard reads what the guards that run earlier stored and never re-fetches. When a store it needs is empty, it throws the guard-only exception of the subject that store belongs to:
+
+| Empty store      | Exception                              | Status       |
+| ---------------- | -------------------------------------- | ------------ |
+| user             | `UserGuardMissingException`            | 401, `51027` |
+| workspace        | `WorkspaceGuardMissingException`       | 403, `51622` |
+| workspace member | `WorkspaceMemberGuardMissingException` | 403, `51623` |
+| project          | `ProjectGuardMissingException`         | 403, `51708` |
+| project member   | `ProjectMemberGuardMissingException`   | 403, `51709` |
+
+- The `*Current` param decorators throw the same exceptions when they read an empty store.
+- No check for a missing or misordered guard runs when a route is decorated. A route stacked in the wrong order boots and answers one of these on every request.
+- A decorator argument check still throws when the route is decorated: `RoleProtectedEmptyException`, `PolicyProtectedEmptyException`, and `PolicyProtectedActionEmptyException` fail the boot. `@ProjectMemberProtected(...roles)` and `@ProjectProtected()` take no argument that can be empty.
+
+The guards:
 
 - **`ProjectGuard`** reads the `projectId` route param and the workspace `WorkspaceGuard` resolved, then loads the project **constrained to that workspace and to non-deleted rows**.
-    - A missing param, a soft-deleted project, and a project belonging to a different workspace all collapse into the same `ProjectNotFoundException` (404, `51700`).
+    - A malformed id, a soft-deleted project, and a project belonging to a different workspace all collapse into the same `ProjectNotFoundException` (404, `51700`).
     - Cross-workspace probing therefore cannot distinguish "not yours" from "does not exist".
+    - A route with no `:projectId` path param answers `RequestContextMissingException` (500, `50304`).
 - **`@ProjectMemberProtected()`** with no arguments demands a real `ProjectMember` row and has no owner bypass.
 - **`@ProjectMemberProtected(...roles)`** enforces the roles and **lets a workspace `owner` through without a `ProjectMember` row**. That bypass is recorded under `ProjectWorkspaceOwnerStoreKey`, which the peer rules below read.
 
@@ -169,23 +189,28 @@ Workspace roles and project access:
 
 #### `ProjectProtected()`
 
-**Method decorator** that applies `ProjectGuard`. It requires `@WorkspaceProtected()` below it: a project is always reached through its workspace.
+**Method decorator** that applies `ProjectGuard`. A project is always reached through its workspace, so `ProjectGuard` reads the workspace store that `WorkspaceGuard` writes.
+
+- `@WorkspaceProtected()` is written below it, so it runs earlier.
+- Nothing checks that order when the route is decorated. Without the workspace guard the project guard answers `WorkspaceGuardMissingException` on every request.
 
 - It reads the `projectId` **route parameter** (there is no project header).
 - It resolves it through `ProjectDomain.validateProjectGuard`, constrained to the workspace `WorkspaceGuard` resolved.
 - It stores the result under `ProjectStoreKey`.
-- No active workspace throws `WorkspaceNotFoundException` (404, `51600`).
+- An empty workspace store throws `WorkspaceGuardMissingException` (403, `51622`).
 
 #### `ProjectMemberProtected(...roles)`
 
 **Method decorator**. Stack it above `@ProjectProtected()`. The two argument forms bind **different** guards, and the difference is the point:
 
 - **No arguments** applies `ProjectMemberGuard` alone, storing the row under `ProjectMemberStoreKey`.
-    - No authenticated user throws `UserNotAuthenticatedException` (401, `51027`).
+    - An empty user store throws `UserGuardMissingException` (401, `51027`).
+    - An empty project store throws `ProjectGuardMissingException` (403, `51708`).
     - No row throws `ProjectMemberForbiddenException` (403, `51701`).
     - This is the form used by `member leave`, which has nothing to remove without a row.
 - **With roles** applies `ProjectRoleGuard` alone, which throws:
-    - `WorkspaceMemberForbiddenException` (403, `51601`) for a missing workspace membership
+    - `ProjectGuardMissingException` (403, `51708`) for an empty project store
+    - `WorkspaceMemberGuardMissingException` (403, `51623`) for an empty workspace member store
     - `ProjectMemberForbiddenException` (403, `51701`) for a missing project membership
     - `ProjectRoleForbiddenException` (403, `51702`) for a role outside the list
 
@@ -205,12 +230,11 @@ Because the role form does not bind `ProjectMemberGuard`:
 
 Per decorator:
 
-- `ProjectCurrent()` on a route without `@ProjectProtected()` answers `ProjectNotFoundException` (404, `51700`).
+- `ProjectCurrent()` on a route without `@ProjectProtected()` answers `ProjectGuardMissingException` (403, `51708`).
 - A field name that holds `null` answers `RequestContextMissingException` (500, `50304`) on either decorator.
 - `ProjectMemberCurrent()` is valid only on a route carrying the role-less `@ProjectMemberProtected()`, the form that binds `ProjectMemberGuard`.
-    - A role-gated route stores no member row, so the read answers `ProjectMemberForbiddenException` (403, `51701`) there.
-    - `ProjectMemberDomain.leaveProject` receives the row itself.
-    - The guard already refuses the caller's missing membership with `ProjectMemberForbiddenException` (403, `51701`).
+    - On the role-less form the guard has stored the row. A caller with no row never reaches the handler: the guard throws `ProjectMemberForbiddenException` (403, `51701`). `member leave` passes the stored row to `ProjectMemberDomain.leaveProject`.
+    - A role-gated route stores no member row, so the read answers `ProjectMemberGuardMissingException` (403, `51709`) there. No other guard throws that exception.
 
 The store readers: [Security and Middleware][ref-doc-security-and-middleware].
 
@@ -340,6 +364,8 @@ Deleting the **workspace** soft-deletes its still-active projects in the same tr
 | `memberAlreadyAssigned` | `51705` | 400 | User already belongs to the project |
 | `slugAlreadyExists` | `51706` | 400 | Slug already taken in this workspace |
 | `slugInvalid` | `51707` | 400 | Slug fails the pattern or the length cap |
+| `guardMissing` | `51708` | 403 | A guard or `@ProjectCurrent()` found the project store empty |
+| `memberGuardMissing` | `51709` | 403 | A guard or `@ProjectMemberCurrent()` found the project member store empty |
 
 Full catalog: [Status Codes][ref-doc-status-codes].
 

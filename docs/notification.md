@@ -154,7 +154,7 @@ Jobs reach this queue through `NotificationQueue`, which deduplicates on the pro
 | a publication | the term policy id, as the BullMQ `jobId` |
 
 - The TTL is `notification.dedupTtlInMs` (1 second), so two different events for the same user never collapse into one.
-- A publication has no deduplication TTL: its job id `publishTermPolicy-{termPolicyId}` is unique per term policy.
+- A publication has no deduplication TTL: its job id `publishTermPolicy-{termPolicyId}` is unique per term policy, and a repeat publish request reuses it (see [Term-Policy Publication Email](#term-policy-publication-email)).
 
 **Supported processes (`EnumNotificationProcess`):**
 
@@ -378,7 +378,7 @@ Orchestration, email, and push jobs carry an envelope, and `data` holds the extr
 
 ### Term-Policy Publication Email
 
-Publishing a term policy adds one `publishTermPolicy` orchestration job. That job fans out to one email job per batch of users.
+Publishing a term policy queues one `publishTermPolicy` orchestration job: a repeat publish request retries a failed job and re-adds a completed one. That job fans out to one email job per batch of users.
 
 **Recipients:**
 
@@ -397,8 +397,8 @@ sequenceDiagram
     participant EM as Email job
     participant SES
 
-    TP->>DB: Publish, updateMany where status is draft
-    TP->>OQ: Add publishTermPolicy-{termPolicyId}
+    TP->>DB: Publish a draft, updateMany where status is draft
+    TP->>OQ: Read the job publishTermPolicy-{termPolicyId}, then add it, retry it, or answer 409 by its state
     loop Each page of email.batchSize non-deleted users
         OQ->>DB: Create Notification rows and markers for users without one
         OQ->>EQ: Add publishTermPolicy-{termPolicyId}-{batchId}, delay index * email.batchDelayInMs
@@ -413,13 +413,18 @@ sequenceDiagram
 
 **Publish:**
 
-1. `TermPolicyDomain` checks the policy status. A policy already `published` takes one of two paths:
-    - With no `TermPolicyRecipient` marker, it adds the orchestration job again and writes nothing else.
-    - With a marker, it answers `400` (`statusInvalid`) and adds no job.
-2. The publish transaction runs an `updateMany` that matches the policy only while its status is `draft`.
-3. After the transaction commits, `TermPolicyDomain` adds the orchestration job.
-    - The job id is `publishTermPolicy-{termPolicyId}`.
-    - The job has no deduplication TTL.
+1. `TermPolicyDomain` reads the policy and takes one of two paths by status:
+    - A `draft` policy publishes: the contents are copied to the public bucket, then one transaction runs an `updateMany` that matches the policy only while its status is `draft`, rewrites the contents, and resets the acceptances of the policy type.
+    - A `published` policy skips that step and writes nothing.
+2. `TermPolicyDomain` calls `NotificationQueue.sendPublishTermPolicy`: after the transaction commits for a draft, at once for a published policy.
+3. `sendPublishTermPolicy` reads the job `publishTermPolicy-{termPolicyId}` and decides by its BullMQ state (`EnumQueueJobState`):
+
+| Job state | Result |
+| --- | --- |
+| no job | adds the job |
+| `failed` | retries the job in place with its attempt count reset |
+| `waiting`, `prioritized`, `delayed`, `active`, `waitingChildren` | adds nothing and answers `409` (`TermPolicyPublishInProgressException`, `51510`, `publishInProgress`) |
+| `completed`, `unknown` | removes the old job and adds a new one |
 
 What the publish guarantees:
 
@@ -427,11 +432,12 @@ What the publish guarantees:
 - The losing publish adds no job and answers one of two ways:
     - `400` (`statusInvalid`) when its `updateMany` runs after the winner commits.
     - `409` (`DatabaseWriteConflictException`, `51801`) when the two transactions overlap. MongoDB raises a write conflict (`P2034`) and nothing retries it.
+- A copy set that misses a language of the draft throws before the transaction. The request answers `500` and the policy stays `draft`, so a partial copy set never publishes.
 - The job is added after the commit.
-- When the add fails, the request answers `500`, the policy stays `published`, and no email goes out.
-- A later publish of that policy adds the job again while no marker exists, and the status pre-check refuses it once a marker exists.
-- A publish therefore produces one orchestration job, and a failed add leaves every user without an email until a later publish adds it again.
-- The marker unique on `termPolicyId` and `userId` stops a duplicate `Notification` row and a second batch for one user.
+- A retry whose job left `failed` in the meantime answers the same `409`. Any other retry error, and any other failure of the queue call, answers `500`.
+- When the queue call fails, the policy stays `published` and no email goes out. A later publish request runs the state decision again.
+- A repeat publish request of a `published` policy changes no acceptance. It retries a failed job, re-adds a completed one, and never runs two jobs for the policy at once.
+- The marker unique on `termPolicyId` and `userId` stops a duplicate `Notification` row and a second batch for one user, so a re-added job mails only the users with no marker and the batches still without `enqueuedAt`.
 - A repeat send to one user is possible at the SES boundary (see the email job below).
 
 **Orchestration job:**
@@ -466,7 +472,7 @@ When the job exhausts its attempts:
 - Pages before the failing one keep their markers and email jobs.
 - Nothing retries the job automatically.
 - The failed job stays in the queue for `queue.job.removeOnFailAgeInSeconds` (14 days).
-- No route adds the job again, because the publish is its only producer and a `published` policy refuses a second publish.
+- A repeat publish request of the policy retries the failed job with its attempt count reset (see the publish steps above). The run starts again from the first page and skips every user who already has a marker.
 - `QueueProcessorBase.onFailed` reports the final failure to Sentry.
 
 **Email job:**
@@ -727,6 +733,12 @@ Under router prefix `/shared` and controller path `/notification` (plus global `
 | `PATCH` | `/shared/notification/update/:notificationId/read` | Mark one notification read |
 | `POST` | `/shared/notification/update/read` | Mark all notifications read |
 | `PUT` | `/shared/notification/setting/update` | Update a type+channel setting |
+
+The notification list is cursor-paginated:
+
+- `orderBy` accepts `createdAt`, written `createdAt:asc` or `createdAt:desc`.
+- A field outside that list answers `422` with status code `50300` (`request.error.validation`).
+- The response metadata names the accepted fields in `availableOrderBy`.
 
 <!-- REFERENCES -->
 

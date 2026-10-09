@@ -350,9 +350,7 @@ async uploadPhotoProfile(
   )
   file: IFile
 ): Promise<IResponseReturn<void>> {
-  await this.userProfileHttpService.uploadPhotoProfile(userId, file);
-
-  return {};
+  return this.userProfileHttpService.uploadPhotoProfile(userId, file);
 }
 ```
 
@@ -461,9 +459,7 @@ async import(
   )
   data: UserImportRequestDto[]
 ): Promise<IResponseReturn<void>> {
-  await this.userImportHttpService.importByAdmin(data, createdBy);
-
-  return {};
+  return this.userImportHttpService.importByAdmin(data, createdBy);
 }
 ```
 
@@ -745,9 +741,7 @@ export class UserSharedController {
         @Body({ schema: UserUpdateProfilePhotoRequestSchema })
         body: UserUpdateProfilePhotoRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.userProfileHttpService.updatePhotoProfile(userId, body);
-
-        return {};
+        return this.userProfileHttpService.updatePhotoProfile(userId, body);
     }
 }
 ```

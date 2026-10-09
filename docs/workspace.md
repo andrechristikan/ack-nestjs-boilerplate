@@ -23,7 +23,7 @@ The module covers four things:
 - [Security and Middleware][ref-doc-security-and-middleware]: How `x-workspace-id` reaches the guards
 - [Feature Flag][ref-doc-feature-flag]: The `workspace` flag and its `invitationAllowed` / `joinRequestAllowed` metadata
 - [Queue][ref-doc-queue]: The workspace queue that expires stale invites
-- [Status Codes][ref-doc-status-codes]: The full `51600`-`51620` block
+- [Status Codes][ref-doc-status-codes]: The full `51600`-`51623` block
 
 ## Table of Contents
 
@@ -133,7 +133,8 @@ Fields:
 1. `RequestWorkspaceMiddleware` copies the `x-workspace-id` header (`RequestWorkspaceIdHeaderName`) into the request store under `RequestWorkspaceIdStoreKey`, or `null` when the header is absent.
     - It performs no validation.
 2. `WorkspaceGuard` reads that key, loads the active workspace, and stores the row under `WorkspaceStoreKey`.
-    - A missing header and an unknown id both throw `WorkspaceNotFoundException` (404, `51600`).
+    - A missing or empty header throws `WorkspaceHeaderMissingException` (400, `51621`).
+    - An unknown, soft-deleted, or malformed id throws `WorkspaceNotFoundException` (404, `51600`).
 3. `WorkspaceMemberGuard` then confirms the caller's membership and stores the `WorkspaceMember` row.
 
 `POST /user/workspace/switch`:
@@ -161,9 +162,12 @@ Five user-scope routes carry no workspace header, because they act across worksp
 
 **Method decorator** that applies `WorkspaceGuard`. Place it directly above `@UserProtected()`.
 
+- Decorators apply bottom-up, so a decorator written lower in the source runs earlier. "Below" and "above" on this page mean position in the source.
 - It requires `x-workspace-id` to resolve to an existing, non-deleted workspace, through `WorkspaceDomain.validateWorkspaceGuard`.
 - It stores the row under `WorkspaceStoreKey`.
-- A missing header and an id that matches no active workspace both throw `WorkspaceNotFoundException` (404, `51600`), so the two cases are indistinguishable.
+- A missing or empty header throws `WorkspaceHeaderMissingException` (400, `51621`).
+- A malformed id (not a valid ObjectId) and a well-formed id that names no active workspace (unknown or soft-deleted) both throw `WorkspaceNotFoundException` (404, `51600`), so a caller cannot tell the cases apart.
+- `WorkspaceGuard` has no guard-missing case. It reads the request workspace id that `RequestWorkspaceMiddleware` wrote, not a store that another guard wrote, so an absent id is the header error above.
 
 ### `WorkspaceMemberProtected(...roles)`
 
@@ -171,14 +175,18 @@ Five user-scope routes carry no workspace header, because they act across worksp
 
 - With no arguments it applies `WorkspaceMemberGuard` alone.
 - With roles it applies `WorkspaceMemberGuard` **and** `WorkspaceRoleGuard`.
+- Each guard checks, at request time, the store that a guard running earlier wrote. No check for a missing or misordered guard runs when the route is decorated, so a route stacked in the wrong order boots and answers a guard-only exception on every request.
+
+The two guards:
 
 - `WorkspaceMemberGuard` confirms the user loaded by `UserGuard` has a `WorkspaceMember` row in the resolved workspace, and stores it under `WorkspaceMemberStoreKey`.
-    - No authenticated user throws `UserNotAuthenticatedException` (401, `51027`).
+    - An empty user store throws `UserGuardMissingException` (401, `51027`).
+    - An empty workspace store throws `WorkspaceGuardMissingException` (403, `51622`).
     - No membership throws `WorkspaceMemberForbiddenException` (403, `51601`).
 - `WorkspaceRoleGuard` enforces the declared roles against that stored membership.
-    - A missing stored membership throws `WorkspaceMemberForbiddenException` (403, `51601`).
+    - An empty workspace member store throws `WorkspaceMemberGuardMissingException` (403, `51623`).
     - A mismatch throws `WorkspaceRoleForbiddenException` (403, `51602`).
--   - **The `owner` role always passes, whatever roles were declared.**
+    - **The `owner` role always passes, whatever roles were declared.**
         - Owner is never listed in a route's `allowedRoles`.
         - Folding it in would make every `@WorkspaceMemberProtected(admin)` route reject the owner.
 
@@ -188,7 +196,7 @@ Five user-scope routes carry no workspace header, because they act across worksp
 
 - Each takes an optional field name typed against its model: `@WorkspaceCurrent()` returns the whole row, `@WorkspaceCurrent('id')` returns that field
 - Both return a non-null value.
-    - A route that reads one without the matching guard answers that guard's exception: `WorkspaceNotFoundException` (404, `51600`) for `WorkspaceCurrent()`, `WorkspaceMemberForbiddenException` (403, `51601`) for `WorkspaceMemberCurrent()`.
+    - A route that reads one without the matching guard answers the guard-only exception of that store: `WorkspaceGuardMissingException` (403, `51622`) for `WorkspaceCurrent()`, `WorkspaceMemberGuardMissingException` (403, `51623`) for `WorkspaceMemberCurrent()`.
     - A field name that holds `null` answers `RequestContextMissingException` (500, `50304`)
 
 See [Security and Middleware][ref-doc-security-and-middleware].
@@ -283,6 +291,7 @@ Callers:
 
 - The `owner` role satisfies every `admin` and `member` requirement above.
 - `PUT /user/workspace/update` takes `name` and `description` as optional fields. A field left out keeps its stored value.
+- The list routes take `search` and `orderBy` query params. `orderBy` is `field:direction`, repeatable, and each route's request schema validates it against that route's allow-list, so an unlisted field answers a validation error (422, `50300`). The allow-list also rides in the response metadata as `availableOrderBy`.
 - Current-workspace analytic metrics for the active `x-workspace-id` live under `/user/analytic/workspace/*`. See [Analytic](analytic.md).
     - The summary is open to any member.
     - Invite funnel, join outcomes, member roles, and activity are for workspace admin.
@@ -320,6 +329,10 @@ These routes are:
 | `GET` | `/admin/workspace/list` | All workspaces including soft-deleted. Optional `isPublic` filter |
 | `GET` | `/admin/workspace/get/:workspaceId` | Any workspace by id, with no active filter |
 | `GET` | `/admin/workspace/get/:workspaceId/members` | Members of any workspace |
+
+- Both admin list routes (`/admin/workspace/list` and `/admin/workspace/get/:workspaceId/members`) take `orderBy` and validate it in zod, the same way the user lists do.
+- `WorkspaceAdminListRequestSchema` checks it against `WorkspaceDefaultAvailableOrderBy`, and `WorkspaceAdminMemberListRequestSchema` against `WorkspaceMemberDefaultAvailableOrderBy`.
+- An unlisted field answers a validation error (422, `50300`).
 
 ## Roles and Ownership
 
@@ -609,6 +622,9 @@ Two layers, and they are not the same check.
 | `joinRequestAlreadyProcessed` | `51618`    | 400        |
 | `selfTransfer`                | `51619`    | 400        |
 | `slugInvalid`                 | `51620`    | 400        |
+| `headerMissing`               | `51621`    | 400        |
+| `guardMissing`                | `51622`    | 403        |
+| `memberGuardMissing`          | `51623`    | 403        |
 
 Full catalog: [Status Codes][ref-doc-status-codes].
 

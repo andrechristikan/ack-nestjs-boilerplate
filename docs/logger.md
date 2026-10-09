@@ -15,8 +15,8 @@ Pino logs cover:
 
 Environment behavior:
 
-- Dev environments pretty-print.
-- Health routes are excluded.
+- `LOGGER_PRETTIER` switches pretty-printing on or off.
+- Health, hello, and docs routes are left out of auto-logging and Sentry (`logger.excludedRoutes`).
 - Memory and uptime fields appear outside production.
 
 `LoggerModule.forRoot()` registers `nestjs-pino` with two providers:
@@ -41,6 +41,10 @@ Environment behavior:
 - [Usage](#usage)
     - [Log Levels](#log-levels)
     - [Log Severity](#log-severity)
+- [Startup and Boot Failure](#startup-and-boot-failure)
+    - [Logger Handover](#logger-handover)
+    - [Boot Failure](#boot-failure)
+    - [Migration Command Failure](#migration-command-failure)
 - [Sensitive Data Redaction](#sensitive-data-redaction)
     - [Sensitive Paths](#sensitive-paths)
     - [Sensitive Fields](#sensitive-fields)
@@ -95,29 +99,30 @@ LOGGER_AUTO=false
 SENTRY_DSN=<your_sentry_dsn>
 ```
 
-| Variable | Description | Type | Default | Required |
+| Variable | Description | Type | In `.env.example` | Required |
 | --- | --- | --- | --- | --- |
-| `LOGGER_ENABLE` | Enable/disable logging | `boolean` | `true` | Yes |
-| `LOGGER_LEVEL` | Minimum log level | `EnumLoggerLevel` | `debug` | Yes |
+| `LOGGER_ENABLE` | Enable/disable logging; `false` sets the Pino level to `silent` | `boolean` | `true` | Yes |
+| `LOGGER_LEVEL` | Minimum log level once Pino is attached | `EnumLoggerLevel` | `debug` | Yes |
 | `LOGGER_INTO_FILE` | Write logs to files | `boolean` | `true` | Yes |
 | `LOGGER_PRETTIER` | Enable pretty-printing in console | `boolean` | `true` | Yes |
 | `LOGGER_AUTO` | Enable automatic HTTP request/response logging | `boolean` | `false` | Yes |
-| `SENTRY_DSN` | Sentry Data Source Name for error tracking; a URL, and a blank line counts as unset | `string` | `null` | No |
+| `SENTRY_DSN` | Sentry Data Source Name for error tracking; a URL, and a blank line counts as unset | `string` | empty | No |
 
 ### Configuration Interface
 
 `IConfigLogger` (`src/configs/logger.config.ts`), registered under the `logger` key:
 
-| Option | Description | Default |
+| Option | Description | Value |
 | --- | --- | --- |
-| `enable` | Enable/disable logging | `false` |
-| `level` | Minimum log level, typed `EnumLoggerLevel` (`fatal`, `error`, `warn`, `info`, `debug`, `trace`) | `debug` |
-| `intoFile` | Write logs to files | `false` |
+| `enable` | Enable/disable logging | `LOGGER_ENABLE` |
+| `level` | Minimum log level, typed `EnumLoggerLevel` (`fatal`, `error`, `warn`, `info`, `debug`, `trace`) | `LOGGER_LEVEL` |
+| `intoFile` | Write logs to files | `LOGGER_INTO_FILE` |
 | `filePath` | Directory path for log files | `/logs` |
-| `auto` | Enable automatic HTTP request/response logging | `false` |
-| `prettier` | Enable pretty-printing in console | `false` |
-| `sentry.dsn` | Sentry DSN for error tracking | `null` |
-| `sentry.timeoutInMs` | Timeout value carried on the config; `Sentry.init` is configured from `sentry.dsn` | `ms('10s')` |
+| `auto` | Enable automatic HTTP request/response logging | `LOGGER_AUTO` |
+| `excludedRoutes` | Routes left out of auto-logging and Sentry (see [Excluded Routes](#excluded-routes)) | built from `app.globalPrefix` and `doc.prefix` |
+| `prettier` | Enable pretty-printing in console | `LOGGER_PRETTIER` |
+| `sentry.dsn` | Sentry DSN for error tracking | `SENTRY_DSN`, `null` when blank or unset |
+| `sentry.timeoutInMs` | Declared on the config and read by no consumer. `Sentry.init` takes `sentry.dsn` and the sample rates, and the boot `catch` waits `AppBootstrapSentryFlushTimeoutInMs`, not this key | `ms('10s')` |
 | `sentry.tracesSampleRate` | Traces sample rate outside production | `1` |
 | `sentry.tracesSampleRateProduction` | Traces sample rate in production | `0.3` |
 | `sentry.profilesSampleRate` | Profiles sample rate outside production | `0.5` |
@@ -202,6 +207,65 @@ this.logger.verbose('Verbose message'); // trace level (method is verbose, not t
 | ≥ 30       | `INFO`     | General information           |
 | ≥ 20       | `DEBUG`    | Debug information             |
 | < 20       | `TRACE`    | Trace-level debugging         |
+
+## Startup and Boot Failure
+
+Both entrypoints pass the same three logging options to Nest:
+
+- `ConfigureOptions` in `src/configure.ts` serves `NestFactory.create` in `src/main.ts`.
+- `src/migration.ts` passes the three inline to `CommandFactory.createWithoutRunning`.
+
+### Logger Handover
+
+- `bufferLogs: true` attaches Nest's log buffer. Every `Logger` call made while it is attached waits in the buffer until a flush.
+- `logger: ['fatal']` limits Nest's default console logger to `fatal` entries. It covers only the window before `useLogger(Pino)`.
+- `abortOnError: false` makes a failed module build reject the `bootstrap()` promise, so the bootstrap `catch` handler runs and the process does not exit on its own.
+- `configure(app)` calls `app.useLogger(PinoLogger)`. `src/migration.ts` calls `app.useLogger(app.get(LoggerPino))` and then `app.flushLogs()`.
+- From the `useLogger` call on, Pino follows `LOGGER_ENABLE` and `LOGGER_LEVEL`, and the `['fatal']` limit holds only before it.
+
+What flushes the buffer, and through which logger the waiting entries print:
+
+1. In `src/migration.ts` the `useLogger` call itself flushes, because Nest sets flush-on-override for the application context that `CommandFactory` creates. The explicit `app.flushLogs()` that follows finds the buffer empty. The waiting entries print through Pino.
+2. In `src/main.ts` the `useLogger` call in `configure(app)` does not flush, because `NestFactory.create` does not set flush-on-override. The buffer stays attached until `app.listen` binds the port, and its listen callback flushes (`autoFlushLogs` defaults to `true`). The waiting entries print through Pino.
+3. A failure while Nest builds the module graph flushes the buffer before it rethrows. The entries print through the default console logger, so only `fatal` entries appear.
+4. `Logger.flush()` in the bootstrap `catch` handler flushes whatever is still waiting, through the logger attached at that moment.
+
+### Boot Failure
+
+A rejected `bootstrap()` runs the same `catch` handler in `src/main.ts` and `src/migration.ts`:
+
+```mermaid
+flowchart LR
+    Reject["bootstrap() rejects"] --> Fatal["Logger('Bootstrap').fatal(error)"]
+    Fatal --> Flush["Logger.flush()"]
+    Flush --> Capture["Sentry.captureException(error)"]
+    Capture --> SentryFlush["Sentry.flush(2000 ms)"]
+    SentryFlush --> Exit["process.exit(1)"]
+```
+
+- The handler writes one `FATAL [Bootstrap]` line per failure.
+- While the buffer is attached, that line waits in it, and `Logger.flush()` prints it together with every other waiting entry.
+- A failure before the handover prints through Nest's console logger. Its level is `fatal` only, so the `Bootstrap` line appears and buffered `error`, `warn`, and `log` entries are dropped. Pino never receives them.
+- A failure after the handover prints through Pino, so `LOGGER_ENABLE=false` silences the line. In `src/main.ts` the buffer is still attached at that point when the failure comes before `app.listen` binds, so the flush in the handler also replays the buffered startup entries through Pino. The Sentry report and the exit code stay.
+- `AppBootstrapSentryFlushTimeoutInMs` (`src/app/constants/app.constant.ts`) is the 2000 ms the handler waits for Sentry to deliver the report. The `sentry.timeoutInMs` config key (10 s) is a different value that no code reads.
+- Without `SENTRY_DSN`, `Sentry.init` never runs and the report goes nowhere.
+- These failures reach the handler:
+    - an environment variable that fails `AppEnvSchema` validation
+    - a database connection that fails in `DatabaseService.onModuleInit`
+    - a rejected `app.listen`
+
+`src/instrument.ts` runs before Nest and before `AppEnvSchema` validation, so it initializes Sentry from the unvalidated environment.
+
+- With a usable `SENTRY_DSN` set, `Sentry.init` has already run when an environment validation failure reaches the handler, so the handler's `Sentry.captureException` reports it.
+- When `SENTRY_DSN` is unset or blank, the validation failure is logged and the process exits with code 1, and no report is sent.
+
+### Migration Command Failure
+
+- `src/migration.ts` passes nest-commander a `serviceErrorHandler`.
+- The handler rethrows an `AppBaseException` unchanged and wraps any other error in `AppUnknownException` (`Running the migration command failed`).
+- The rethrown error reaches the bootstrap `catch` handler, so a command that throws exits with code `1`.
+- A seed that logs an error and returns, such as a missing prerequisite row, completes normally and exits with code `0`.
+- A successful run closes the application and calls `process.exit(0)`.
 
 ## Sensitive Data Redaction
 
@@ -766,7 +830,9 @@ Forwarded levels are environment-aware:
 
 **Exceptions (Sentry Issues).** Exception reporting goes through `SentryService.captureException`:
 
-- `AppGeneralFilter`: logs and reports `rawError ?? exception` only when the resolved exception answers HTTP status >= 500. An `AppBaseException` below 500 produces neither a log line nor a report.
+- `AppGeneralFilter`: logs and reports only when the resolved exception answers HTTP status >= 500. An `AppBaseException` below 500 produces neither a log line nor a report.
+    - An `AppUnknownException` with a `description` is reported as itself, so Sentry shows the description with the cause chained.
+    - Any other `AppBaseException` is reported as its `rawError` when it has one, otherwise as itself.
 - `AppHttpFilter`: logs and reports the `HttpException` for framework errors with HTTP status >= 500
 - `QueueProcessorBase`:
     - In `process`, it writes BullMQ `job.log` lines (start, metadata-only input, finish or failure). On catch it calls Nest `Logger.error` once, then rethrows a `QueueException`, `AppBaseException`, or `UnrecoverableError` unchanged and wraps any other error in `AppUnknownException`.
@@ -774,6 +840,7 @@ Forwarded levels are environment-aware:
     - Before `captureException`, `withScope` sets `job.id`, `job.name`, `job.attemptsMade`, and `job.maxAttempts`.
     - A `QueueException` is reported only when `isFatal` is set.
 - `AuthTwoFactorDomain`: reports a stored TOTP secret that fails to decrypt, before answering `409 twoFactorSecretUnavailable`
+- The bootstrap `catch` handler in `src/main.ts` and `src/migration.ts`: reports a boot failure with `Sentry.captureException` and waits for `Sentry.flush` before the process exits (see [Boot Failure](#boot-failure))
 
 `beforeSend` is the last filter every Issue passes through. It drops:
 
@@ -834,7 +901,7 @@ The Sentry configuration is defined in `src/configs/logger.config.ts`:
 ```typescript
 sentry: {
     dsn: string | null; // Sentry Data Source Name, null when SENTRY_DSN is unset
-    timeoutInMs: number; // ms('10s')
+    timeoutInMs: number; // ms('10s'), read by no consumer
     tracesSampleRate: number; // 1
     tracesSampleRateProduction: number; // 0.3
     profilesSampleRate: number; // 0.5
@@ -842,7 +909,7 @@ sentry: {
 }
 ```
 
-`instrument.ts` is loaded first, through `node --import ./dist/instrument.js` in the start scripts and `import '@instrument'` at the top of `src/main.ts`.
+`instrument.ts` is loaded first, through `node --import ./dist/instrument.js` in the start and migration scripts and `import '@instrument'` at the top of `src/main.ts`.
 
 - It reads `sentry.dsn` and skips `Sentry.init` entirely when it is `null`.
 - The sample rates come from the logger config: in production `tracesSampleRateProduction` and `profilesSampleRateProduction`, in every other environment `tracesSampleRate` and `profilesSampleRate`.

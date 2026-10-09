@@ -60,7 +60,7 @@ flowchart TD
     B --> C[Extract key from metadata]
     C --> I[Get feature flag by key with cache]
     I --> J{Feature flag row exists?}
-    J -->|No| J1[Throw: notFound]
+    J -->|No| J1[Throw: notConfigured]
     J -->|Yes| L{isEnable = true?}
     L -->|No| K[Throw: disabled]
     L -->|Yes| S{User exists in request?}
@@ -80,7 +80,7 @@ flowchart TD
     W -->|Yes| T
     T --> X[Return true - Access granted]
     K --> Y[Return 404 Not Found]
-    J1 --> Y
+    J1 --> Z[Return 500 Internal Server Error]
 ```
 
 Every denial (a disabled flag, a lost rollout bucket, an anonymous caller below 100% without a valid `x-anonymous-id`) throws `FeatureFlagDisabledException`:
@@ -89,13 +89,16 @@ Every denial (a disabled flag, a lost rollout bucket, an anonymous caller below 
 - status code `disabled` (50601)
 - message `featureFlag.error.disabled`
 
-A key with no flag row throws `FeatureFlagNotFoundException`:
+A key with no flag row throws `FeatureFlagNotConfiguredException`:
 
-- HTTP 404
-- status code `notFound` (50600)
-- message `featureFlag.error.notFound`
+- HTTP 500
+- status code `notConfigured` (50603)
+- message `featureFlag.error.notConfigured`
+- The missing key rides in `rawError` for the log and Sentry, never in the response.
 
-A route behind a disabled or unknown flag answers as if it does not exist.
+A route behind a disabled flag answers as if it does not exist. A route whose key has no flag row is a deployment defect and answers 500.
+
+`FeatureFlagNotFoundException` (404, `notFound`, 50600) belongs to the admin update routes, which look a flag up by id.
 
 ## Usage
 
@@ -207,12 +210,12 @@ await this.featureFlagDomain.validateFeatureFlagMetadata(
 
 It throws:
 
-| Condition                       | statusCode | HTTP |
-| ------------------------------- | ---------- | ---- |
-| flag row is missing             | `notFound` | 404  |
-| flag is disabled                | `disabled` | 404  |
-| metadata value is not a boolean | `disabled` | 404  |
-| boolean is `false`              | `disabled` | 404  |
+| Condition                       | statusCode      | HTTP |
+| ------------------------------- | --------------- | ---- |
+| flag row is missing             | `notConfigured` | 500  |
+| flag is disabled                | `disabled`      | 404  |
+| metadata value is not a boolean | `disabled`      | 404  |
+| boolean is `false`              | `disabled`      | 404  |
 
 - Metadata is per-feature config (small on/off and typed values).
 - For per-user targeting use `targetUserIds` (see [Targeting](#targeting)), not metadata.
@@ -293,7 +296,7 @@ Feature flags are cached. Configuration in `src/configs/feature-flag.config.ts`:
 - Key format: `FeatureFlag:{key}`
 - Best-effort: cache read/write/delete failures are logged and fall through to the database, so a cache outage never breaks evaluation.
 - There is no fail-open:
-    - an unknown flag key still returns 404 (`notFound`)
+    - a flag key with no row still returns 500 (`notConfigured`)
     - a disabled flag still returns 404 (`disabled`)
 
 See [Cache Documentation][ref-doc-cache] for cache system details.

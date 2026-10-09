@@ -17,6 +17,7 @@ Environment variables are listed in `.env.example`.
 - [Authentication Documentation][ref-doc-authentication]: JWT and OAuth
 - [Vault Documentation][ref-doc-vault]: Optional secret sync into `.env`
 - [Email Documentation][ref-doc-email]: SES templates
+- [Logger Documentation][ref-doc-logger]: Boot failure logging and the logger variables
 
 ## Table of Contents
 
@@ -104,7 +105,10 @@ If validation fails:
 
 - The application does not start.
 - It reports which environment variables are missing or invalid.
-- The error reaches the `bootstrap().catch()` handler in `src/main.ts`, which writes the stack to `stderr` and calls `process.exit(1)`.
+- The error reaches the `bootstrap().catch()` handler in `src/main.ts`.
+- The handler logs one `FATAL [Bootstrap]` line, reports the error to Sentry when `SENTRY_DSN` is set, and calls `process.exit(1)`.
+- `src/migration.ts` runs the same handler for the seed commands.
+- Details: [Logger Documentation][ref-doc-logger].
 
 ## Example Configuration
 
@@ -357,12 +361,15 @@ HTTP_TRUSTED_PROXY=173.245.48.0/20,103.21.244.0/22
 **`LOGGER_ENABLE`** _(required)_  
 Enable or disable application logging.
 
+- `false` sets the Pino level to `silent`.
+- Nest's default console logger prints `fatal` entries before Pino is attached, whatever this value says.
+
 ```bash
 LOGGER_ENABLE=true
 ```
 
 **`LOGGER_LEVEL`** _(required)_  
-Minimum log level.
+Minimum log level once Pino is attached.
 
 - It is validated against `EnumLoggerLevel`, which declares Pino's own level set.
 - Options: `fatal`, `error`, `warn`, `info`, `debug`, `trace`
@@ -386,7 +393,7 @@ LOGGER_PRETTIER=true
 ```
 
 **`LOGGER_AUTO`** _(required)_  
-Enable automatic logging features.
+Log every HTTP request and response automatically, except the routes in `logger.excludedRoutes`.
 
 ```bash
 LOGGER_AUTO=false
@@ -959,6 +966,7 @@ DOCKER_BULLBOARD_PASSWORD=
 [ref-doc-two-factor]: two-factor.md
 [ref-doc-vault]: vault.md
 [ref-doc-email]: email.md
+[ref-doc-logger]: logger.md#startup-and-boot-failure
 [ref-doc-release]: release.md
 [ref-mongodb-atlas]: https://www.mongodb.com/products/platform/atlas-database
 [ref-elasticache]: https://aws.amazon.com/elasticache/

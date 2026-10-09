@@ -120,29 +120,38 @@ sequenceDiagram
     Note over Admin,Users: Publishing Process
 
     Admin->>API: Publish policy
-    API->>Database: Already published: re-queue when it has no recipient marker, else reject<br/>Draft: reject a policy with no content
-    API->>API: Reject when S3 is not configured (404)
-    API->>S3 Public: Copy all content files from the private bucket
-    API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to the public items,<br/>non-deleted users termPolicy[type] = false
-    API->>Users: Queue publishTermPolicy notification
+    API->>Database: Read the policy (404 when missing)
+    alt Draft
+        API->>Database: Reject a policy with no content (400)
+        API->>API: Reject when S3 is not configured (404)
+        API->>S3 Public: Copy all content files from the private bucket
+        API->>API: Reject a copy set that misses a language (500)
+        API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to the public items,<br/>non-deleted users termPolicy[type] = false
+    end
+    API->>Users: Decide by job state, then queue publishTermPolicy notification
     API->>Admin: Policy published
 
     Note over Users: Users re-accept before the next protected call
 ```
 
-Publishing is the one admin action that fans out to every user. After the transaction commits it queues one `publishTermPolicy` job:
+Publishing is the one admin action that fans out to every user. It ends in one `publishTermPolicy` job:
 
-- A policy already `published` takes one of two paths at the status pre-check:
-    - With no `TermPolicyRecipient` marker, it queues the job again and writes nothing else.
-    - With a marker, it fails with `400` (`statusInvalid`) and queues nothing.
+- A `draft` policy publishes first, and the job is queued after the transaction commits.
+- A policy already `published` skips the publish and goes straight to the queue decision. It writes nothing else and resets no acceptance.
 - The status update matches the policy only while it is `draft`, so one of two concurrent publishes commits.
     - The losing publish queues nothing and answers `400` (`statusInvalid`) when its update runs after the winner commits.
     - It answers `409` (`DatabaseWriteConflictException`, `51801`) when the two transactions overlap: MongoDB raises a write conflict (`P2034`) and nothing retries it.
-- The job is queued after the commit.
-    - When the add fails, the request answers `500`.
-    - When the add fails, the policy stays `published` and no email goes out.
-    - A later publish of the same policy queues the job again while no recipient marker exists.
-- The job id is `publishTermPolicy-{termPolicyId}`, with no deduplication TTL.
+- The copy to the public bucket must return a file for every language of the draft.
+    - A copy that matches no content, or a language with no copy, throws before the transaction and the request answers `500`.
+    - The policy stays `draft`, so a partial copy set never publishes.
+- The job id is `publishTermPolicy-{termPolicyId}`, with no deduplication TTL. It is the same id on every publish request of the policy.
+- `NotificationQueue.sendPublishTermPolicy` reads the job under that id and decides by its BullMQ state (`EnumQueueJobState`):
+    - No job: it adds one.
+    - `failed`: it retries the job in place with its attempt count reset.
+    - `waiting`, `prioritized`, `delayed`, `active`, or `waitingChildren`: it adds nothing and answers `409` (`TermPolicyPublishInProgressException`, `51510`, `publishInProgress`).
+    - `completed` or `unknown`: it removes the old job and adds a new one.
+- A retry whose job left `failed` in the meantime answers the same `409`. Any other retry error answers `500`.
+- A queue failure other than that `409` answers `500`. The policy stays `published` and no email goes out until a later publish request runs the queue decision again.
 - The job targets every non-deleted user, whatever the user's status.
     - Each user gets one marker per term policy, which stops a duplicate `Notification` row and a second batch.
     - A repeat send is possible at the SES boundary when the `sentAt` update fails or the worker stalls after the send. See [Notification Documentation][ref-doc-notification].
@@ -201,11 +210,15 @@ Users interact with term policies through acceptance and viewing their acceptanc
 
 Users can view all published policies available for acceptance:
 
-```typescript
-GET / public / term - policy / list;
+```http
+GET /public/term-policy/list
 ```
 
 Returns policies with cursor pagination, optionally filtered by type.
+
+- `orderBy` accepts `publishedAt` and `version`, each as `field:direction`.
+- A field outside that list answers `422` with status code `50300` (`request.error.validation`).
+- The response metadata names the accepted fields in `availableOrderBy`.
 
 ### Accept Policy
 
@@ -218,6 +231,7 @@ POST /shared/user/term-policy/accept
 }
 ```
 
+- The route carries no `@TermPolicyAcceptanceProtected()`, so a user who has not accepted can reach it.
 - The request names only the type. The server resolves it to the **latest published version** of that type and records the acceptance against that record.
 - The duplicate check is per policy record, not per type, so a user who accepted version 1 accepts version 2 again once it is published.
 - Accepting the same version twice returns `409` (`alreadyAccepted`).
@@ -228,11 +242,14 @@ POST /shared/user/term-policy/accept
 
 Users can view their acceptance history:
 
-```typescript
-GET / shared / user / term - policy / acceptance / list;
+```http
+GET /shared/user/term-policy/acceptance/list
 ```
 
 Returns all policies the user has accepted with timestamps and policy details.
+
+- The route is cursor-paginated and `orderBy` accepts `createdAt`.
+- A field outside that list answers `422` with status code `50300`.
 
 ## Admin Endpoints
 
@@ -338,14 +355,20 @@ Publish policy and invalidate all user acceptances:
 PATCH /admin/term-policy/publish/:termPolicyId
 ```
 
-Publishing:
+Publishing a draft:
 
 - sets `termPolicy[type]` to `false` for every non-deleted user, whatever the status, so each one accepts again
 - queues the publication email described under [Admin Flow Diagram](#admin-flow-diagram)
-- an already-published policy with a `TermPolicyRecipient` marker returns `400` (`statusInvalid`)
-- an already-published policy with no marker queues the publication email again
 - a policy with no content returns `400` (`contentEmpty`)
 - a stored content with an unknown language or access returns `500` (`contentInvalid`)
+- a copy set that misses a language returns `500` and leaves the policy `draft`
+
+Publishing a policy that is already published:
+
+- skips the publish and the acceptance reset
+- retries a failed job
+- adds a new job when the last one completed
+- answers `409` (`publishInProgress`) while a job is waiting, delayed, or active
 
 Once published:
 
@@ -360,7 +383,10 @@ List all policies with optional filters:
 GET /admin/term-policy/list?type=termsOfService&status=draft
 ```
 
-Offset pagination, unlike the public list. `type` and `status` each accept a comma-delimited set of values.
+Offset pagination, unlike the public list.
+
+- `type` and `status` each accept a comma-delimited set of values.
+- `orderBy` accepts `publishedAt` and `version`, and a field outside that list answers `422` with status code `50300`.
 
 ### Delete Policy
 
@@ -378,7 +404,7 @@ DELETE /admin/term-policy/delete/:termPolicyId
 
 The `@TermPolicyAcceptanceProtected()` decorator protects endpoints by requiring users to accept specific policies before accessing them.
 
-The guard reads the user out of the request store, which `@UserProtected()` fills and `@AuthJwtAccessProtected()` feeds. Without both, it resolves no user and throws `UserNotAuthenticatedException` (`401 Unauthorized`, `51027`).
+The guard reads the user out of the request store, which `@UserProtected()` fills and `@AuthJwtAccessProtected()` feeds. Without both, it resolves no user and throws `UserGuardMissingException` (`401 Unauthorized`, `51027`, `guardMissing`).
 
 **Decorator order** (from top to bottom):
 
@@ -419,7 +445,6 @@ export class TermPolicySharedController {
 
     @Doc({ summary: 'user accepts term or policy' })
     @Response('termPolicy.accept')
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -431,9 +456,7 @@ export class TermPolicySharedController {
         @Body({ schema: TermPolicyAcceptRequestSchema })
         body: TermPolicyAcceptRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyAcceptanceHttpService.userAccept(user, body);
-
-        return {};
+        return this.termPolicyAcceptanceHttpService.userAccept(user, body);
     }
 }
 ```
@@ -450,7 +473,7 @@ flowchart TD
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
     UserGuard --> CheckUser{RequestStoreService.get UserStoreKey<br/>resolves a user?}
 
-    CheckUser -->|No| ErrorUser[Throw UserNotAuthenticatedException<br/>401 Unauthorized]
+    CheckUser -->|No| ErrorUser[Throw UserGuardMissingException<br/>401 Unauthorized]
     CheckUser -->|Yes| CheckRequired{Required term policies<br/>specified?}
 
     CheckRequired -->|No| SetDefault[Use Default:<br/>termsOfService + privacy]
@@ -480,7 +503,7 @@ flowchart TD
 - Decorator order from top to bottom: `@TermPolicyAcceptanceProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`
 - For more details about `@AuthJwtAccessProtected()`, see [Authentication Documentation][ref-doc-authentication]
 - For more details about `@UserProtected()`, see [Authorization Documentation][ref-doc-authorization]
-- Without the required decorators, the guard finds no user and throws `UserNotAuthenticatedException` (`401 Unauthorized`, `51027`)
+- Without the required decorators, the guard finds no user and throws `UserGuardMissingException` (`401 Unauthorized`, `51027`)
 - If no term policies are specified, it defaults to requiring `termsOfService` and `privacy` acceptance
 - Access is granted only when the user has accepted every specified term policy
 - A user missing any required acceptance gets `403 Forbidden` (`requiredInvalid`)
@@ -509,6 +532,8 @@ src/migration/seeds/migration.template-term-policy.seed.ts  # command: templateT
 pnpm migration templateTermPolicy --type seed
 pnpm migration templateTermPolicy --type remove
 ```
+
+A failing seed wraps its cause in `AppUnknownException`. The command logs one `fatal` line, reports the error to Sentry, and exits with code `1`.
 
 <!-- REFERENCES -->
 

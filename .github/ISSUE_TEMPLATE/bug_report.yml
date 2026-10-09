@@ -74,8 +74,8 @@ body:
       id: error-identity
       attributes:
           label: Error identity (if applicable)
-          description: From the API error body — `statusCode`, `statusCodeKey`, and/or `messagePath`.
-          placeholder: e.g. 51000 / notFound / user.error.notFound
+          description: 'From the API error body: `statusCode`, `statusCodeKey`, and/or `module`.'
+          placeholder: e.g. 51000 / notFound / user
       validations:
           required: false
     - type: textarea

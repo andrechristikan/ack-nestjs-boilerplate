@@ -59,7 +59,11 @@ All configuration files are in `src/configs`.
     - A boolean is `process.env.KEY === 'true'`.
     - A number is converted inline with `Number(...)`.
     - An optional key is `process.env.KEY === '' ? null : (process.env.KEY ?? null)`, so a blank or missing value reads as `null`.
-- Only `src/configs/`, `src/main.ts`, `src/instrument.ts`, and `src/queues/decorators/queue.decorator.ts` read `process.env`. Every other file reads `ConfigService`.
+- Only `src/configs/` and `src/queues/decorators/queue.decorator.ts` read `process.env`. Every other file reads `ConfigService`.
+- `src/main.ts` writes `process.env.NODE_ENV` from `app.env` and `process.env.TZ` from `app.timezone` once the config is loaded.
+- `src/instrument.ts` runs before Nest starts:
+    - It loads `.env` through `dotenv/config`.
+    - It calls `appConfigFunction()` and `loggerConfigFunction()` directly, so Sentry initializes from unvalidated values.
 
 `src/configs/index.ts` imports and registers the configuration modules as an array, and `src/common/common.module.ts` loads that array:
 
@@ -394,7 +398,7 @@ ses: {
 **`enable`**: Enable/disable logging
 
 ```typescript
-enable: boolean; // Turn logging on/off
+enable: boolean; // Turn logging on/off; false sets the Pino level to silent
 ```
 
 **`level`**: Log level configuration
@@ -402,6 +406,8 @@ enable: boolean; // Turn logging on/off
 ```typescript
 level: EnumLoggerLevel; // Log level: fatal, error, warn, info, debug, trace
 ```
+
+The level applies once `configure(app)` attaches Pino. Before that, `ConfigureOptions` limits Nest's default logger to `fatal` (see [Logger][ref-doc-logger]).
 
 **`intoFile`**: File logging option
 
@@ -1207,3 +1213,4 @@ cache: {
 [ref-doc-environment]: environment.md
 [ref-doc-database]: database.md
 [ref-doc-cache]: cache.md
+[ref-doc-logger]: logger.md#startup-and-boot-failure

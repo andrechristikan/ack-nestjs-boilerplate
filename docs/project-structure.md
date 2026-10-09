@@ -200,6 +200,8 @@ The migration file is the nest-commander entry point, which boots `MigrationModu
 - Logs through Pino
 - Runs the named seed command, then closes the process
 - Invoked as `pnpm migration` followed by the command name
+- Wraps an error that is not an `AppBaseException` as `AppUnknownException` with the description `Running the migration command failed`
+- Logs a failure at `fatal`, reports it to Sentry, and exits with code 1
 
 ## Modules
 
@@ -365,7 +367,9 @@ Health-check indicators that report the status of a dependency or subsystem (use
 
 ### Guards
 
-Authorization and access control logic, protecting routes and resources based on user roles or permissions.
+- Authorization and access control logic, protecting routes and resources based on user roles or permissions.
+- A guard that depends on the store entry of an earlier guard checks it when the request arrives and throws the guard-missing exception of that subject (for example `user.guard-missing.exception.ts`, or `workspace.member-guard-missing.exception.ts` for a member row).
+- The identity subjects answer 401 and every other subject answers 403. See [Security and Middleware](security-and-middleware.md#guard-prerequisites).
 
 ### Interfaces
 

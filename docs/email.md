@@ -75,14 +75,15 @@ pnpm migration templateEmailNotification --type remove
     - A template already in SES stays as it is.
 - On `remove`, the matching `emailDelete*` runs for all of them.
 - When SES is unconfigured, `seed` logs a warning and skips.
+- A failed SES call throws, and the command exits with code `1` (see [Logger Documentation][ref-doc-logger]).
 
 SES credentials and the unconfigured state: [Third Party Integration: SES][ref-doc-third-party-ses].
 
 ## Sending
 
-`NotificationEmailProcessorService` routes each job to an email channel domain (`NotificationEmailAccountDomain`, `NotificationEmailSecurityDomain`, `NotificationEmailTermPolicyDomain`, `NotificationEmailWorkspaceDomain`). That domain:
+`NotificationEmailProcessor` dispatches each job by its `EnumNotificationProcess` name to `NotificationEmailProcessorService`, which calls an email channel domain (`NotificationEmailAccountDomain`, `NotificationEmailSecurityDomain`, `NotificationEmailTermPolicyDomain`, `NotificationEmailWorkspaceDomain`). That domain:
 
-- calls `AwsSESService.send()` (or `sendBulk()` for `publishTermPolicy`) with the SES template named after the job's `EnumNotificationProcess` value
+- calls `AwsSESService.send()` (or `sendBulk()` for `publishTermPolicy`) with the SES template named after the job's `EnumNotificationProcess` value (`workspaceInviteUnregistered` sends the `workspaceInvite` template)
 - sends from `EMAIL_NO_REPLY`
 - merges `defaultTemplateData` (`homeName`, `supportEmail` from `EMAIL_SUPPORT`, `homeUrl`) into the template data
 
@@ -103,4 +104,5 @@ Queue names, rate limits, dedup, and payload encryption: [Notification Documenta
 [ref-doc-third-party-ses]: third-party-integration.md#ses-email
 [ref-doc-environment]: environment.md
 [ref-doc-configuration]: configuration.md
+[ref-doc-logger]: logger.md#migration-command-failure
 [ref-doc-term-policy]: term-policy.md#migration--seeding

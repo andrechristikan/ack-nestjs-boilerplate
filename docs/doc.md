@@ -183,7 +183,7 @@ Module `*Protected` / auth kits:
 | `@Param('…', { schema })` / `@Query({ schema })` / `@Query('…', { schema })` / `@Body({ schema })` | zod via `standardSchemaConverter` in `src/swagger.ts` (`.meta` for description, example, required) |
 | Path placeholder a **guard** reads; the handler has no `@Param` | the owning Protected decorator (for example `ProjectProtected` emits `ApiParam('projectId')`) |
 | Multipart upload | `FileUploadSingle` / `FileUploadMultiple` / `FileUploadMultipleFields`: `ApiConsumes('multipart/form-data')` plus binary `ApiBody` from field name(s) plus upload error kit |
-| List query (`page` / `cursor` / `perPage` / `search` / `orderBy` + filters) | the list zod schema on `@Query({ schema })`, built from `PaginationOffsetQuerySchema` / `PaginationCursorQuerySchema` plus `.extend` (and `.omit` for a field with no allow-list) |
+| List query (`page` / `cursor` / `perPage` / `search` / `orderBy` + filters) | the list zod schema on `@Query({ schema })`, built from `PaginationOffsetQuerySchema` / `PaginationCursorQuerySchema` plus `.extend`, which declares `orderBy` over the list's allow-list (and `.omit({ search: true })` for a list with no search column) |
 
 - A hand-written schema object beside a zod schema is a mirror.
 - Every field carries `.meta({ description, example })` on the zod schema.
@@ -209,6 +209,44 @@ Each `*Protected` / auth decorator emits exactly the throw set of the guard clas
 
 - Where a decorator installs a different guard class depending on its arguments, each class takes its own kit.
 
+A guard reads the store its prerequisite guard wrote, at request time. When that store is empty the guard throws the exception of the missing guard's subject, and the same exception comes from a param decorator reading that store (`@UserCurrent()`, `@WorkspaceCurrent()`).
+
+- The exception is owned by the subject's module, and its message path is `<module>.error.<name>` with the name set by the class (the table below lists each class and path).
+- An identity subject (the API key, the JWT payload, the user) answers 401.
+- An authorization subject (the policy, the workspace and its member, the project and its member) answers 403.
+- A `*Protected` decorator does not inspect the other guards mounted on the route, so each kit publishes the `guardMissing` entries its own guard can throw.
+- Decorators apply bottom-up, so the decorator written lower in the source runs earlier. Nothing checks a missing or misordered guard when the route is decorated, so such a stack fails on every request. A decorator argument check still throws at load (`RoleProtectedEmptyException`, `PolicyProtectedEmptyException`, `PolicyProtectedActionEmptyException`, `RequestEnvProtected()` with no environment).
+
+| Subject | Exception | Message path |
+| --- | --- | --- |
+| API key (401) | `ApiKeyGuardMissingException` | `apiKey.error.guardMissing` |
+| JWT payload (401) | `AuthJwtGuardMissingException` | `auth.error.jwtGuardMissing` |
+| user (401) | `UserGuardMissingException` | `user.error.guardMissing` |
+| policy (403) | `PolicyGuardMissingException` | `policy.error.guardMissing` |
+| workspace (403) | `WorkspaceGuardMissingException` | `workspace.error.guardMissing` |
+| workspace member (403) | `WorkspaceMemberGuardMissingException` | `workspace.error.memberGuardMissing` |
+| project (403) | `ProjectGuardMissingException` | `project.error.guardMissing` |
+| project member (403) | `ProjectMemberGuardMissingException` | `project.error.memberGuardMissing` |
+
+Each decorator publishes the entries of the subjects whose stores its own guards read:
+
+| Decorator | `guardMissing` entries it publishes |
+| --- | --- |
+| `ApiKeyProtected`, `ApiKeySystemProtected` | API key (401) |
+| `UserProtected` | JWT payload (401) |
+| `RoleProtected`, `TermPolicyAcceptanceProtected` | user (401) |
+| `PolicyProtected` | user (401), policy (403) |
+| `WorkspaceProtected` | none: `WorkspaceGuard` reads the request workspace id, not a guard's store, and a missing header answers `WorkspaceHeaderMissingException` (400) |
+| `WorkspaceMemberProtected()` | user (401), workspace (403) |
+| `WorkspaceMemberProtected(...roles)` | user (401), workspace (403), workspace member (403) |
+| `ProjectProtected` | workspace (403) |
+| `ProjectMemberProtected()` | user (401), project (403) |
+| `ProjectMemberProtected(...roles)` | project (403), workspace member (403) |
+
+- `ApiKeyProtected` and `ApiKeySystemProtected` install two guards in one call, in order: `ApiKeyXApiKeyGuard` writes the API key store and `ApiKeyXApiKeyTypeGuard` reads it. The API key entry belongs to the reader. One decorator installs both, so the store is filled whenever the first guard passes.
+- `ProjectMemberProtected(...roles)` lists project and workspace member but not user, because `ProjectRoleGuard` reads only the project store and the workspace member store. `WorkspaceMemberGuard` reads the user store before it writes the workspace member store, so a present workspace member entry means the user entry was present.
+- `ProjectMemberGuardMissingException` is thrown only by `@ProjectMemberCurrent()` on a route without the role-less `@ProjectMemberProtected()`. No guard throws it, so no `*Protected` kit publishes it.
+
 OpenAPI security scheme names are the module constants below. `ApiBearerAuth`, `ApiSecurity`, `DocumentBuilder.addBearerAuth`, and `DocumentBuilder.addApiKey` take those consts:
 
 | Const | Scheme value | Registered in |
@@ -222,13 +260,12 @@ OpenAPI security scheme names are the module constants below. `ApiBearerAuth`, `
 - Scheme values are camelCase.
 - The API key transport header is `x-api-key`: `addApiKey` takes `ApiKeyHeaderName` as its `name`.
 
-Two kits carry a 404 beside their other entries:
+Two kits carry a 404, and the feature flag kit a 500 as well:
 
-- `FeatureFlagProtected` publishes `DocFeatureFlagErrorResponses.disabled` (404): `featureFlag.error.notFound` and `featureFlag.error.disabled`
+- `FeatureFlagProtected` publishes `DocFeatureFlagErrorResponses.disabled` (404, `featureFlag.error.disabled`) and `DocFeatureFlagErrorResponses.notConfigured` (500, `featureFlag.error.notConfigured`, a flag key with no stored row)
 - `AuthSocialGoogleProtected` and `AuthSocialAppleProtected` publish `DocAuthSocialGoogleErrorResponses` / `DocAuthSocialAppleErrorResponses`: the `unauthorized` group (401) and `notConfigured` (404, `auth.error.socialGoogleNotConfigured` / `auth.error.socialAppleNotConfigured`)
 
-- `auth.error.accessTokenUnauthorized` belongs to `AuthJwtAccessProtected`.
-- A Protected decorator whose domain also throws when the principal is missing does not publish that 401 again.
+- `auth.error.accessTokenUnauthorized` belongs to `AuthJwtAccessProtected`, and `UserProtected` does not publish it.
 
 ### Published errors
 
@@ -460,8 +497,9 @@ async list(
 }
 ```
 
-- `UserListRequestSchema` extends `PaginationOffsetQuerySchema`, overrides the `search` and `orderBy` meta, and adds filter fields.
-- Allow-list text in `.meta({ description })` uses the same constants the HTTP service passes to `PaginationQueryUtil`.
+- `UserListRequestSchema` extends `PaginationOffsetQuerySchema`, overrides the `search` meta, declares `orderBy` over `UserDefaultAvailableOrderBy`, and adds filter fields.
+- The `orderBy` enum and the allow-list text in `.meta({ description })` use the same constants the HTTP service passes to `PaginationQueryUtil`.
+- The response `metadata` reports the allow-lists as `availableSearch` and `availableOrderBy`.
 - Flow: [Pagination Documentation][ref-doc-pagination].
 
 ### File Upload Endpoint

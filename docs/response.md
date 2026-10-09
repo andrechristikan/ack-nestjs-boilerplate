@@ -166,7 +166,7 @@ async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
 
 - validates pagination data
 - supports offset and cursor-based pagination
-- includes search/filter/sort metadata from `PaginationStoreKey`
+- includes search, filter, and sort metadata from `PaginationStoreKey`, including the `availableSearch` and `availableOrderBy` allow-lists the HTTP service passed to `PaginationQueryUtil`
 
 **Offset-based Pagination:**
 
@@ -412,7 +412,7 @@ The shared `ResponseMetadataService` (`src/common/response/services/response.met
 
 - `create()` returns a `ResponseMetadataDto` from the request store.
 - `setHeaders(response, metadata)` mirrors it to response headers.
-- The three response interceptors and the five app filters build their metadata and headers through it.
+- The three response interceptors and the four app filters build their metadata and headers through it.
 
 ## Response Structure
 
@@ -481,6 +481,11 @@ The shared `ResponseMetadataService` (`src/common/response/services/response.met
 
 - `ResponsePaginationInterceptor` flattens the service-level `IPaginationOrderBy[]` (`[{ createdAt: 'desc' }]`) into `field:direction` entries (`['createdAt:desc']`), which is also the format the `orderBy` query parameter accepts.
 - An empty order renders `[]`.
+
+`metadata.availableOrderBy` and `metadata.availableSearch` are required arrays.
+
+- Each reports the allow-list the HTTP service passed to `PaginationQueryUtil`.
+- A list with no allow-list reports `[]`.
 
 Cursor pagination is forward-only:
 

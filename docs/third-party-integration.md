@@ -136,13 +136,18 @@ pnpm migration awsS3Config --type seed
 
 `--type remove` is a no-op for this command.
 
-The command runs the public and private buckets concurrently. Within one bucket, it applies these steps in this order (later steps depend on earlier ones):
+The command runs the public and private buckets concurrently. Each bucket receives five settings:
 
-1. **Block public access**: Public access restrictions
-2. **Disable ACL**: Bucket-owner ownership controls
-3. **Bucket policy**: Read/write permissions for public vs private
-4. **CORS**: Cross-origin rules
-5. **Lifecycle**: Deletes incomplete multipart uploads
+- **Block public access**: Public access restrictions
+- **Disable ACL**: Bucket-owner ownership controls
+- **Bucket policy**: Read/write permissions for public vs private
+- **CORS**: Cross-origin rules
+- **Lifecycle**: Deletes incomplete multipart uploads
+
+Ordering:
+
+- On the public bucket, block public access finishes before the bucket policy applies. The other settings run alongside them.
+- On the private bucket, all five settings run concurrently.
 
 **Public bucket:**
 
@@ -331,6 +336,8 @@ QUEUE_REDIS_URL=redis://localhost:6379/1
 - Background job queues (DB 1)
 - Rate limiting data
 
+**Unreachable:** a Redis call that must succeed, such as the session check of a JWT-protected request, answers `RedisUnavailableException` (`52400`, HTTP 503) when the Keyv client is not connected. A cache read elsewhere falls through as a miss. The per-call behaviour is in [Cache][ref-doc-cache].
+
 For cache implementation, see [Cache][ref-doc-cache].
 
 For queue details, see [Queue][ref-doc-queue].
@@ -385,6 +392,8 @@ AUTH_SOCIAL_GOOGLE_CLIENT_ID=<your_google_client_id>
 - Google sign-in throws `AuthSocialGoogleNotConfiguredException` (`50817`, HTTP 404).
 - The `google` health indicator reports it down.
 
+**Unreachable:** when Google's certificate fetch fails, sign-in throws `AuthProviderUnavailableException` (`50819`, HTTP 503). A bad token answers 401.
+
 For authentication flow details, see [Authentication][ref-doc-authentication].
 
 ### Apple Sign In
@@ -411,6 +420,8 @@ AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=<your_apple_sign_in_client_id>
 
 - Apple sign-in throws `AuthSocialAppleNotConfiguredException` (`50818`, HTTP 404).
 - The `apple` health indicator reports it down.
+
+**Unreachable:** when Apple's key fetch fails, sign-in throws `AuthProviderUnavailableException` (`50819`, HTTP 503). A bad token answers 401.
 
 For authentication flow details, see [Authentication][ref-doc-authentication].
 

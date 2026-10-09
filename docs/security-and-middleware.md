@@ -31,6 +31,8 @@ Boot and per-request order are separate.
 
 1. Imports `@instrument`, which starts Sentry.
 2. Calls `NestFactory.create(AppModule, ConfigureOptions)`.
+    - `ConfigureOptions` buffers logs and limits Nest's default console logger to `fatal`. That limit covers only the window before `configure(app)` attaches Pino with `app.useLogger`.
+    - From that call on, Pino follows `LOGGER_ENABLE` and `LOGGER_LEVEL`, and the buffered entries print through Pino once `listen` binds the port. See [Logger][ref-doc-logger].
 3. Writes `NODE_ENV` from `app.env` (`APP_ENV`) and `TZ` from `app.timezone` (`APP_TIMEZONE`) into `process.env`.
 4. Enables the shutdown hooks.
 5. Calls `configure(app)` once.
@@ -109,6 +111,7 @@ flowchart TD
     - [@RequestEnvProtected](#requestenvprotected)
     - [@RequestThrottle](#requestthrottle)
     - [Store Parameter Decorators](#store-parameter-decorators)
+    - [Guard Prerequisites](#guard-prerequisites)
 
 ## Authentication & Authorization
 
@@ -272,9 +275,7 @@ async changePassword(
     @Body({ schema: UserChangePasswordRequestSchema })
     body: UserChangePasswordRequestDto
 ): Promise<IResponseReturn<void>> {
-    await this.userPasswordHttpService.changePassword(user, body);
-
-    return {};
+    return this.userPasswordHttpService.changePassword(user, body);
 }
 ```
 
@@ -441,7 +442,7 @@ Restricts endpoint access based on environment.
 
 - `RequestEnvProtected` takes one or more `EnumAppEnvironment` values.
 - Called with none, it throws `RequestEnvProtectedEmptyException` when the decorator is evaluated.
-- A request in an environment outside the list answers `RequestEnvForbiddenException` (403, `50302`).
+- A request in an environment outside the list answers `RequestEnvNotAllowedException` (404, `50302`), the same response as an unknown route.
 - No controller stacks it.
 
 **Configuration:** See [Configuration][ref-doc-configuration]
@@ -651,14 +652,18 @@ Feature modules own the rest of the keys, each declared in its own `constants/` 
 | `ActivityLogStageStoreKey` | `ActivityLogDomain.stagePrepared` | the staged activity events of the request |
 | `PaginationStoreKey` | HTTP services via `PaginationQueryUtil` `storePatch` | the response-metadata block `ResponsePaginationInterceptor` emits |
 
+`ApiKeyXApiKeyGuard` validates the `x-api-key` header and writes the key. `ApiKeyXApiKeyTypeGuard` runs right after it, in the same `UseGuards` call of `@ApiKeyProtected()` and `@ApiKeySystemProtected()`, reads that key from the store, and checks its type against the route (`default` for `@ApiKeyProtected()`, `system` for `@ApiKeySystemProtected()`).
+
 **Request log (`RequestLogStoreKey`):**
 
 - `RequestRequestLogMiddleware` calls the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), which resolves `userAgent`, `ipAddress`, and `geoLocation` once per request.
 - `ActivityLogDomain.flushStaged` reads `get<IRequestLog>(RequestLogStoreKey)` when it writes the staged rows. It throws `ActivityLogContractInvalidException` when the key is absent (the interceptor logs it).
-- `UserLoginDomain` reads the same key with a non-null assertion (no fallback object) and threads the `IRequestLog` to the session and device writes, since the middleware always populates the key before any handler runs.
+- `UserLoginDomain.createTokenAndSession` reads the same key, throws `RequestContextMissingException` when it is absent, and threads the `IRequestLog` to the session and device writes.
 - Nothing recomputes ua/ip/geo.
 - `IRequestLog` declares all three fields as present: `ipAddress` and `geoLocation` are `null` when unresolved, never absent.
 - The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators each read one fixed field of that entry and take no argument. See [Store Parameter Decorators](#store-parameter-decorators).
+    - The stored entry holds `null` for an unresolved field, but a decorator never returns `null`.
+    - Each throws `RequestContextMissingException` (500, `50304`) when the request log is absent and when its own field is `null`.
 
 `ClsModule.forRoot({ global: true, middleware: { mount: true } })` is registered in `RequestModule` (before `RequestMiddlewareModule`).
 
@@ -756,8 +761,8 @@ StoreReader<K extends Extract<keyof Model, string>>(field?: K): ParameterDecorat
 - Every reader fails fast.
     - A `field` whose value is `null` or `undefined` throws `RequestContextMissingException` (500, `50304`, message `request.error.contextMissing`).
     - A present store whose `role` is `null` throws `RequestContextMissingException` from `@RoleCurrent()`.
-    - An empty store key throws the exception in the last column of the table below.
-    - `@PolicyCurrent()` takes no field and accepts an empty list, which is what a `superAdmin` carries.
+    - An empty store key throws the exception in the last column of the table below: a guard-missing exception for a key a guard writes, and `RequestContextMissingException` for the request log, which middleware writes.
+    - `@PolicyCurrent()` takes no field and accepts an empty list, which is what a `superAdmin` carries. Only an absent store entry throws.
     - The key name travels only in the exception's `rawError` and never reaches the response body.
     - A missing value means the guard or middleware that writes the key did not run on the route.
 - A handler parameter therefore takes the non-null type, as in `@UserCurrent() user: IUser`.
@@ -765,17 +770,55 @@ StoreReader<K extends Extract<keyof Model, string>>(field?: K): ParameterDecorat
 | Decorator | Reads | Store key | Written by | Empty store key throws |
 | --- | --- | --- | --- | --- |
 | `@RequestIPAddress()`, `@RequestGeoLocation()`, `@RequestUserAgent()` | one fixed field of the request log, no argument | `RequestLogStoreKey` | `RequestRequestLogMiddleware` | `RequestContextMissingException` |
-| `@UserCurrent(field?)` | `IUser` | `UserStoreKey` | `UserGuard` | `UserNotAuthenticatedException` |
-| `@RoleCurrent(field?)` | `IRoleWithPolicies`, the role on the stored user | `UserStoreKey` | `UserGuard` | `UserNotAuthenticatedException` |
-| `@PolicyCurrent()` | `Policy[]`, no argument | `PolicyStoreKey` | `RoleGuard` | `PolicyForbiddenException` |
-| `@ApiKeyPayload(field?)` | `ApiKey` | `ApiKeyStoreKey` | `ApiKeyXApiKeyGuard` | `ApiKeyXApiKeyRequiredException` |
-| `@WorkspaceCurrent(field?)` | `Workspace` | `WorkspaceStoreKey` | `WorkspaceGuard` | `WorkspaceNotFoundException` |
-| `@WorkspaceMemberCurrent(field?)` | `WorkspaceMember` | `WorkspaceMemberStoreKey` | `WorkspaceMemberGuard` | `WorkspaceMemberForbiddenException` |
-| `@ProjectCurrent(field?)` | `Project` | `ProjectStoreKey` | `ProjectGuard` | `ProjectNotFoundException` |
-| `@ProjectMemberCurrent(field?)` | `ProjectMember` | `ProjectMemberStoreKey` | `ProjectMemberGuard`, bound by the role-less `@ProjectMemberProtected()` | `ProjectMemberForbiddenException` |
+| `@UserCurrent(field?)` | `IUser` | `UserStoreKey` | `UserGuard` | `UserGuardMissingException` |
+| `@RoleCurrent(field?)` | `IRoleWithPolicies`, the role on the stored user | `UserStoreKey` | `UserGuard` | `UserGuardMissingException` |
+| `@PolicyCurrent()` | `Policy[]`, no argument | `PolicyStoreKey` | `RoleGuard` | `PolicyGuardMissingException` |
+| `@ApiKeyPayload(field?)` | `ApiKey` | `ApiKeyStoreKey` | `ApiKeyXApiKeyGuard` | `ApiKeyGuardMissingException` |
+| `@WorkspaceCurrent(field?)` | `Workspace` | `WorkspaceStoreKey` | `WorkspaceGuard` | `WorkspaceGuardMissingException` |
+| `@WorkspaceMemberCurrent(field?)` | `WorkspaceMember` | `WorkspaceMemberStoreKey` | `WorkspaceMemberGuard` | `WorkspaceMemberGuardMissingException` |
+| `@ProjectCurrent(field?)` | `Project` | `ProjectStoreKey` | `ProjectGuard` | `ProjectGuardMissingException` |
+| `@ProjectMemberCurrent(field?)` | `ProjectMember` | `ProjectMemberStoreKey` | `ProjectMemberGuard`, bound by the role-less `@ProjectMemberProtected()` | `ProjectMemberGuardMissingException` |
 
-- `@ProjectMemberCurrent()` is valid only on a route carrying the role-less `@ProjectMemberProtected()`. The role form binds `ProjectRoleGuard` instead, which stores no member row, so the read throws `ProjectMemberForbiddenException` there.
-- `@AuthJwtPayload<T, K>(field?)` reads `request.user` rather than the store: an empty `request.user`, or a missing field on it, throws `RequestContextMissingException`. See [Authentication][ref-doc-authentication].
+- `@ProjectMemberCurrent()` is valid only on a route carrying the role-less `@ProjectMemberProtected()`. The role form binds `ProjectRoleGuard` instead, which stores no member row, so the read throws `ProjectMemberGuardMissingException` there.
+- `@AuthJwtPayload<T, K>(field?)` reads `request.user` rather than the store: an empty `request.user` throws `AuthJwtGuardMissingException`, and a missing field on it throws `RequestContextMissingException`. See [Authentication][ref-doc-authentication].
+
+### Guard Prerequisites
+
+- A guard that depends on the store entry of an earlier guard checks it when the request arrives.
+- Decorators apply bottom-up, so the decorator written lower in the source runs earlier. "Below" and "above" mean position in the source.
+- No check for a missing or misordered guard runs when the decorator is applied, so such a stack boots and fails on every request, not only the first. A decorator argument check still throws at load: `RoleProtectedEmptyException`, `PolicyProtectedEmptyException`, `PolicyProtectedActionEmptyException`, and `RequestEnvProtected()` with no environment.
+- An empty entry throws a guard-missing exception. It marks a route whose guard stack is incomplete or in the wrong order.
+- The exception belongs to the subject whose guard did not run.
+    - The identity subjects (JWT payload, API key, user) answer `401`.
+    - Every other subject answers `403`.
+- The same exceptions serve the param decorators in the table above.
+
+| Missing prerequisite | Exception | HTTP | Code |
+| --- | --- | --- | --- |
+| JWT payload on `request.user` | `AuthJwtGuardMissingException` | 401 | `50820` |
+| `ApiKeyStoreKey` | `ApiKeyGuardMissingException` | 401 | `50707` |
+| `UserStoreKey` | `UserGuardMissingException` | 401 | `51027` |
+| `PolicyStoreKey` | `PolicyGuardMissingException` | 403 | `51103` |
+| `WorkspaceStoreKey` | `WorkspaceGuardMissingException` | 403 | `51622` |
+| `WorkspaceMemberStoreKey` | `WorkspaceMemberGuardMissingException` | 403 | `51623` |
+| `ProjectStoreKey` | `ProjectGuardMissingException` | 403 | `51708` |
+| `ProjectMemberStoreKey` | `ProjectMemberGuardMissingException` | 403 | `51709` |
+
+Which guard checks which entry:
+
+| Guard | Checks |
+| --- | --- |
+| `WorkspaceGuard` | `RequestWorkspaceIdStoreKey`, written by `RequestWorkspaceMiddleware`; an absent id throws `WorkspaceHeaderMissingException` (400, `51621`), not a guard-missing exception |
+| `UserGuard` | JWT payload |
+| `ApiKeyXApiKeyTypeGuard` | `ApiKeyStoreKey` |
+| `RoleGuard` | `UserStoreKey` |
+| `PolicyGuard` | `UserStoreKey`, then `PolicyStoreKey` |
+| `TermPolicyGuard` | `UserStoreKey` |
+| `WorkspaceMemberGuard` | `UserStoreKey`, then `WorkspaceStoreKey` |
+| `WorkspaceRoleGuard` | `WorkspaceMemberStoreKey` |
+| `ProjectGuard` | `WorkspaceStoreKey` |
+| `ProjectMemberGuard` | `UserStoreKey`, then `ProjectStoreKey` |
+| `ProjectRoleGuard` | `ProjectStoreKey`, then `WorkspaceMemberStoreKey` |
 
 <!-- REFERENCES -->
 

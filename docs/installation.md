@@ -14,6 +14,7 @@ Use [MongoDB Atlas][ref-mongodb] and your own Redis only when you cannot run Doc
 - [Database Documentation][ref-doc-database]: Schema sync and seeding
 - [Configuration Documentation][ref-doc-configuration]: Config structure
 - [Release Documentation][ref-doc-release]: Releasing to a production host
+- [Logger Documentation][ref-doc-logger]: Boot failure and seed exit codes
 
 ## Table of Contents
 
@@ -430,6 +431,12 @@ pnpm migration:remove
 - Realign with `pnpm migration:remove`, then `pnpm migration:seed`.
 - Details: [Database Documentation][ref-doc-database].
 
+Exit codes of a seed command:
+
+- A seed that throws exits with code `1` after one `FATAL [Bootstrap]` line. In `pnpm migration:seed` the `&&` between commands skips the remaining seeds.
+- A seed that logs an error and returns, such as the superadmin check above, exits with code `0`, and the next seed still runs.
+- Details: [Logger Documentation][ref-doc-logger].
+
 **Reset and reseed:**
 
 > [!WARNING] `migration:fresh` runs `prisma db push --force-reset`, which drops all existing data.
@@ -485,6 +492,11 @@ pnpm start:prod
 ```
 
 Production on a host with Docker runs the same build in a container: [Release][ref-doc-release].
+
+A failure while the application starts, such as an invalid `.env` value or an unreachable MongoDB, logs one `FATAL [Bootstrap]` line and exits with code `1`:
+
+- The `apis` Compose service carries `restart: on-failure`, so Compose starts the container again.
+- Details: [Logger Documentation][ref-doc-logger].
 
 With `--profile apis` the API container already serves port 3000, so `pnpm start:dev` on the host is skipped. The container reads the `.env` values listed under [API container](#api-container-apis-profile).
 
@@ -547,6 +559,7 @@ Quick checks:
 [ref-doc-configuration]: configuration.md
 [ref-doc-vault]: vault.md
 [ref-doc-release]: release.md
+[ref-doc-logger]: logger.md#startup-and-boot-failure
 [ref-doc-email]: email.md
 [ref-doc-term-policy]: term-policy.md#migration--seeding
 [ref-doc-third-party-s3]: third-party-integration.md#bucket-setup

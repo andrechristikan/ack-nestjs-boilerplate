@@ -29,22 +29,22 @@ This page is the human catalog.
 | ------- | -------------- | --------------- | ------- |
 | `50000` | `app`          | `50000`         | 1       |
 | `50100` | `file`         | `50100`–`50109` | 10      |
-| `50200` | `pagination`   | `50200`–`50215` | 16      |
+| `50200` | `pagination`   | `50200`–`50213` | 14      |
 | `50300` | `request`      | `50300`–`50304` | 5       |
 | `50400` | `session`      | `50400`–`50401` | 2       |
 | `50500` | `role`         | `50500`–`50503` | 4       |
-| `50600` | `feature-flag` | `50600`–`50602` | 3       |
+| `50600` | `feature-flag` | `50600`–`50603` | 4       |
 | `50700` | `api-key`      | `50700`–`50707` | 8       |
-| `50800` | `auth`         | `50800`–`50818` | 19      |
+| `50800` | `auth`         | `50800`–`50820` | 21      |
 | `50900` | `country`      | `50900`–`50902` | 3       |
 | `51000` | `user`         | `51000`–`51027` | 28      |
-| `51100` | `policy`       | `51100`–`51102` | 3       |
+| `51100` | `policy`       | `51100`–`51103` | 4       |
 | `51200` | `notification` | `51200`–`51203` | 4       |
 | `51300` | `device`       | `51300`         | 1       |
 | `51400` | `aws`          | `51400`–`51406` | 7       |
-| `51500` | `term-policy`  | `51500`–`51509` | 10      |
-| `51600` | `workspace`    | `51600`–`51620` | 21      |
-| `51700` | `project`      | `51700`–`51707` | 8       |
+| `51500` | `term-policy`  | `51500`–`51510` | 11      |
+| `51600` | `workspace`    | `51600`–`51623` | 24      |
+| `51700` | `project`      | `51700`–`51709` | 10      |
 | `51800` | `database`     | `51800`–`51802` | 3       |
 | `51900` | `response`     | `51900`–`51903` | 4       |
 | `52000` | `activity-log` | `52000`         | 1       |
@@ -81,22 +81,23 @@ This page is the human catalog.
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 | --- | --- | --- | --- | --- | --- |
-| `orderByNotAllowed` | `50200` | `orderByNotAllowed` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.orderByNotAllowed` | The 'orderBy' field '{field}' is not allowed. Allowed fields are: {allowedFields}. |
-| `filterInvalidValue` | `50201` | `filterInvalidValue` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.filterInvalidValue` or `pagination.error.filterInvalidValueEnum` | '{property}' value provided is invalid (enum variant uses the Enum messagePath). |
-| `invalidPerPage` | `50202` | `invalidPerPage` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidPerPage` | The 'perPage' parameter must be between 1 and {maxPerPage}. |
-| `invalidCursorPaginationParams` | `50203` | `invalidCursorPaginationParams` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidCursorPaginationParams` | Invalid cursor pagination parameters provided. |
-| `cursorTooLong` | `50204` | `cursorTooLong` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.cursorTooLong` | The cursor length must not exceed {maxCursorLength} characters. |
-| `invalidCursorFormat` | `50205` | `invalidCursorFormat` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidCursorFormat` | The provided cursor is not in a valid format. |
-| `invalidOffsetPaginationParams` | `50206` | `invalidOffsetPaginationParams` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidOffsetPaginationParams` | Invalid offset pagination parameters provided. |
-| `invalidPage` | `50207` | `invalidPage` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidPage` | The 'page' parameter must be a positive integer and maximum {maxPage}. |
-| `pageExceedsMaximum` | `50208` | `pageExceedsMaximum` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.pageExceedsMaximum` | The 'page' parameter exceeds the maximum allowed value of {maxPage}. Received: {receivedPage}. |
-| `pageCannotBeLessThanOne` | `50209` | `pageCannotBeLessThanOne` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.pageCannotBeLessThanOne` | The 'page' parameter cannot be less than {minPage}. Received: {receivedPage}. |
-| `perPageExceedsMaximum` | `50210` | `perPageExceedsMaximum` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.perPageExceedsMaximum` | The 'perPage' parameter exceeds the maximum allowed value of {maxPerPage}. Received: {receivedPerPage}. |
-| `perPageCannotBeLessThanOne` | `50211` | `perPageCannotBeLessThanOne` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.perPageCannotBeLessThanOne` | The 'perPage' parameter cannot be less than {minPerPage}. Received: {receivedPerPage}. |
-| `invalidCursorData` | `50212` | `invalidCursorData` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidCursorData` | The provided cursor data is invalid. |
-| `failedToEncodeCursor` | `50213` | `failedToEncodeCursor` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.failedToEncodeCursor` | Failed to encode cursor data. |
-| `failedToDecodeCursor` | `50214` | `failedToDecodeCursor` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.failedToDecodeCursor` | Failed to decode cursor data. |
-| `orderDirectionNotAllowed` | `50215` | `orderDirectionNotAllowed` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.orderDirectionNotAllowed` | The 'orderBy' direction is not allowed. Allowed directions are: {allowedDirections}. |
+| `filterInvalidValue` | `50200` | `filterInvalidValue` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.filterInvalidValue` or `pagination.error.filterInvalidValueEnum` | '{property}' value provided is invalid (enum variant uses the Enum messagePath). |
+| `invalidPerPage` | `50201` | `invalidPerPage` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidPerPage` | The 'perPage' parameter must be between 1 and {maxPerPage}. |
+| `invalidCursorPaginationParams` | `50202` | `invalidCursorPaginationParams` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidCursorPaginationParams` | Invalid cursor pagination parameters provided. |
+| `cursorTooLong` | `50203` | `cursorTooLong` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.cursorTooLong` | The cursor length must not exceed {maxCursorLength} characters. |
+| `invalidCursorFormat` | `50204` | `invalidCursorFormat` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidCursorFormat` | The provided cursor is not in a valid format. |
+| `invalidOffsetPaginationParams` | `50205` | `invalidOffsetPaginationParams` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidOffsetPaginationParams` | Invalid offset pagination parameters provided. |
+| `invalidPage` | `50206` | `invalidPage` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidPage` | The 'page' parameter must be a positive integer and maximum {maxPage}. |
+| `pageExceedsMaximum` | `50207` | `pageExceedsMaximum` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.pageExceedsMaximum` | The 'page' parameter exceeds the maximum allowed value of {maxPage}. Received: {receivedPage}. |
+| `pageCannotBeLessThanOne` | `50208` | `pageCannotBeLessThanOne` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.pageCannotBeLessThanOne` | The 'page' parameter cannot be less than {minPage}. Received: {receivedPage}. |
+| `perPageExceedsMaximum` | `50209` | `perPageExceedsMaximum` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.perPageExceedsMaximum` | The 'perPage' parameter exceeds the maximum allowed value of {maxPerPage}. Received: {receivedPerPage}. |
+| `perPageCannotBeLessThanOne` | `50210` | `perPageCannotBeLessThanOne` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.perPageCannotBeLessThanOne` | The 'perPage' parameter cannot be less than {minPerPage}. Received: {receivedPerPage}. |
+| `invalidCursorData` | `50211` | `invalidCursorData` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidCursorData` | The provided cursor data is invalid. |
+| `failedToEncodeCursor` | `50212` | `failedToEncodeCursor` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.failedToEncodeCursor` | Failed to encode cursor data. |
+| `failedToDecodeCursor` | `50213` | `failedToDecodeCursor` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.failedToDecodeCursor` | Failed to decode cursor data. |
+
+- Each list request schema validates `orderBy` against the route's allow-list of fields and directions.
+- An `orderBy` value outside the allow-list answers 422 with the request validation code `50300`, not a pagination code.
 
 ## `request`
 
@@ -104,22 +105,27 @@ This page is the human catalog.
 | --- | --- | --- | --- | --- | --- |
 | `validation` | `50300` | `validation` | 422 (`UNPROCESSABLE_ENTITY`) | `request.error.validation` | There are validation errors. |
 | `timeout` | `50301` | `timeout` | 408 (`REQUEST_TIMEOUT`) | `http.clientError.requestTimeOut` | Request Timeout |
-| `envForbidden` | `50302` | `envForbidden` | 403 (`FORBIDDEN`) | `http.clientError.forbidden` | Forbidden |
+| `envNotAllowed` | `50302` | `envNotAllowed` | 404 (`NOT_FOUND`) | `http.clientError.notFound` | Not Found |
 | `schemaMissing` | `50303` | `schemaMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.schemaMissing` | The request could not be validated. Please try again later. |
 | `contextMissing` | `50304` | `contextMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.contextMissing` | The request could not be processed. Please try again later. |
 
-- `RequestContextMissingException` raises `contextMissing` in three cases:
-    - `@RequestIPAddress()`, `@RequestUserAgent()`, `@RequestGeoLocation()`, or `@AuthJwtPayload()` finds no value, because the middleware or guard that writes it has no exception of its own;
-    - any store parameter decorator is asked for a field whose value is `null`;
-    - `@RoleCurrent()` finds a stored user whose `role` is `null`.
-- A decorator that reads a value a guard stores answers that guard's exception when the store key is empty:
-    - `UserNotAuthenticatedException` (`51027`) for `@UserCurrent()` and `@RoleCurrent()`
-    - `PolicyForbiddenException` (`51100`) for `@PolicyCurrent()`
-    - `WorkspaceNotFoundException` for `@WorkspaceCurrent()`
-    - `WorkspaceMemberForbiddenException` for `@WorkspaceMemberCurrent()`
-    - `ProjectNotFoundException` for `@ProjectCurrent()`
-    - `ProjectMemberForbiddenException` for `@ProjectMemberCurrent()`
-    - `ApiKeyXApiKeyRequiredException` for `@ApiKeyPayload()`
+- `envNotAllowed` is raised by `RequestEnvGuard` when the current app environment is not in the route's allowed list, so the route answers as if it does not exist.
+- `RequestContextMissingException` raises `contextMissing` in these cases:
+    - `@RequestIPAddress()`, `@RequestUserAgent()`, or `@RequestGeoLocation()` finds no value in the request-log store, because the middleware that writes it has no exception of its own;
+    - any store parameter decorator, or `@AuthJwtPayload(field)`, is asked for a field whose value is `null`;
+    - `UserDomain.validateUserGuard` receives a JWT payload with no `userId`;
+    - `ProjectDomain.validateProjectGuard` finds no `:projectId` route param;
+    - `UserLoginDomain` finds no request-log store entry while it opens or refreshes a session.
+- A decorator that reads a value a guard stores answers that guard's exception when the store entry is empty:
+    - `AuthJwtGuardMissingException` (`50820`) for `@AuthJwtPayload()`
+    - `UserGuardMissingException` (`51027`) for `@UserCurrent()` and `@RoleCurrent()`
+    - `PolicyGuardMissingException` (`51103`) for `@PolicyCurrent()`
+    - `WorkspaceGuardMissingException` (`51622`) for `@WorkspaceCurrent()`
+    - `WorkspaceMemberGuardMissingException` (`51623`) for `@WorkspaceMemberCurrent()`
+    - `ProjectGuardMissingException` (`51708`) for `@ProjectCurrent()`
+    - `ProjectMemberGuardMissingException` (`51709`) for `@ProjectMemberCurrent()`
+    - `ApiKeyGuardMissingException` (`50707`) for `@ApiKeyPayload()`
+- Each guard throws the same guard-only exception when the store entry a guard below it should have written is empty. No check runs when a route is decorated; the failure surfaces on the request.
 - See [Security and Middleware](security-and-middleware.md#store-parameter-decorators).
 
 `50300` is the one code shared by more than one exception class, so it does not map to a single `httpStatus`, `messagePath`, or `module`:
@@ -138,7 +144,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `notFound` | `50400` | `notFound` | 404 (`NOT_FOUND`) | `session.error.notFound` | Sorry, we couldn't find the session. |
 | `revoked` | `50401` | `revoked` | 401 (`UNAUTHORIZED`) | `session.error.revoked` | Your session has expired or been revoked. Please sign in again. |
 
-- `revoked` is raised by the JWT guards for a missing session key or a `jti` mismatch.
+- `revoked` is raised by the JWT access and refresh strategies for a missing session key or a `jti` mismatch.
 - `UserLoginDomain.refreshSession` and `SessionDomain.updateJtiInTx` raise it for a lost refresh race: the session cache entry is gone, the `jti` hash does not match, the rotation matches no live session row, or the Redis rewrite finds the key purged.
 - A refresh token without a `jti` answers `jwtRefreshTokenInvalid` (`50801`) instead.
 
@@ -158,8 +164,12 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `notFound` | `50600` | `notFound` | 404 (`NOT_FOUND`) | `featureFlag.error.notFound` | Feature flag not found. |
 | `disabled` | `50601` | `disabled` | 404 (`NOT_FOUND`) | `featureFlag.error.disabled` | This feature is not available. |
 | `invalidMetadata` | `50602` | `invalidMetadata` | 400 (`BAD_REQUEST`) | `featureFlag.error.invalidMetadata` | Feature flag metadata is invalid. |
+| `notConfigured` | `50603` | `notConfigured` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.notConfigured` | This feature is not configured. |
 
-- `notFound` is raised by `FeatureFlagDomain` at runtime when the route's key has no flag row.
+- `notFound` is raised by `FeatureFlagDomain` when an admin update targets a flag id with no row.
+- `notConfigured` is raised by `FeatureFlagDomain` when the key a route evaluates has no flag row.
+    - It is a deployment defect, so it answers 500 and reaches Sentry.
+    - The exception carries the missing key in `rawError`, never in the response.
 - `disabled` is raised by `FeatureFlagDomain` in these cases:
     - the flag is off;
     - its rollout excludes the caller;
@@ -172,13 +182,18 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 | --- | --- | --- | --- | --- | --- |
 | `xApiKeyRequired` | `50700` | `xApiKeyRequired` | 401 (`UNAUTHORIZED`) | `apiKey.error.xApiKey.required` | Please provide your API key to continue. |
-| `xApiKeyNotFound` | `50701` | `xApiKeyNotFound` | 401 (`UNAUTHORIZED`) | `apiKey.error.xApiKey.notFound` | We couldn't find this API key in our system. |
-| `xApiKeyInvalid` | `50702` | `xApiKeyInvalid` | 401 (`UNAUTHORIZED`) | `apiKey.error.xApiKey.invalid` | Sorry, this API key appears to be invalid. |
-| `xApiKeyForbidden` | `50703` | `xApiKeyForbidden` | 403 (`FORBIDDEN`) | `apiKey.error.xApiKey.forbidden` | You don't have permission to use this API key. |
-| `expired` | `50704` | `expired` | 400 (`BAD_REQUEST`) | `apiKey.error.expired` | This API key has expired. Would you like to create a new one? |
-| `notFound` | `50705` | `notFound` | 404 (`NOT_FOUND`) | `apiKey.error.notFound` | We couldn't locate this API key. Please check and try again. |
-| `inactive` | `50706` | `inactive` | 400 (`BAD_REQUEST`) | `apiKey.error.inactive` | This API key is currently inactive. |
-| `startAtNotFuture` | `50707` | `startAtNotFuture` | 400 (`BAD_REQUEST`) | `apiKey.error.startAtNotFuture` | The start date must be in the future. |
+| `xApiKeyInvalid` | `50701` | `xApiKeyInvalid` | 401 (`UNAUTHORIZED`) | `apiKey.error.xApiKey.invalid` | Sorry, this API key appears to be invalid. |
+| `xApiKeyForbidden` | `50702` | `xApiKeyForbidden` | 403 (`FORBIDDEN`) | `apiKey.error.xApiKey.forbidden` | You don't have permission to use this API key. |
+| `expired` | `50703` | `expired` | 400 (`BAD_REQUEST`) | `apiKey.error.expired` | This API key has expired. Would you like to create a new one? |
+| `notFound` | `50704` | `notFound` | 404 (`NOT_FOUND`) | `apiKey.error.notFound` | We couldn't locate this API key. Please check and try again. |
+| `inactive` | `50705` | `inactive` | 400 (`BAD_REQUEST`) | `apiKey.error.inactive` | This API key is currently inactive. |
+| `startAtNotFuture` | `50706` | `startAtNotFuture` | 400 (`BAD_REQUEST`) | `apiKey.error.startAtNotFuture` | The start date must be in the future. |
+| `guardMissing` | `50707` | `guardMissing` | 401 (`UNAUTHORIZED`) | `apiKey.error.guardMissing` | The API key could not be verified for this request. |
+
+- `xApiKeyInvalid` answers a header that is not `key:secret`, a key with no active row, a wrong secret, and a key outside its validity window.
+- `xApiKeyRequired` answers an absent or blank header.
+- `xApiKeyForbidden` answers a valid key whose type the route does not accept.
+- `guardMissing` is raised by `ApiKeyXApiKeyTypeGuard` and `@ApiKeyPayload()` when no guard stored the API key on the request.
 
 ## `auth`
 
@@ -203,9 +218,15 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `twoFactorBackupCodeRequired` | `50816` | `twoFactorBackupCodeRequired` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorBackupCodeRequired` | Two-factor authentication is already enabled. Provide an unused backup code to set up a new authenticator. |
 | `socialGoogleNotConfigured` | `50817` | `socialGoogleNotConfigured` | 404 (`NOT_FOUND`) | `auth.error.socialGoogleNotConfigured` | Google login is not configured. |
 | `socialAppleNotConfigured` | `50818` | `socialAppleNotConfigured` | 404 (`NOT_FOUND`) | `auth.error.socialAppleNotConfigured` | Apple login is not configured. |
+| `providerUnavailable` | `50819` | `providerUnavailable` | 503 (`SERVICE_UNAVAILABLE`) | `auth.error.providerUnavailable` | The sign-in provider is temporarily unavailable. Please try again shortly. |
+| `jwtGuardMissing` | `50820` | `jwtGuardMissing` | 401 (`UNAUTHORIZED`) | `auth.error.jwtGuardMissing` | Your session could not be verified. Please sign in again. |
 
 - `socialGoogleNotConfigured` and `socialAppleNotConfigured` are raised by `AuthSocialDomain` when no Google client ID or no Apple client ID is set.
 - `AuthDomain` passes them through unwrapped, so they never become `socialGoogleInvalid` or `socialAppleInvalid`.
+- `providerUnavailable` is raised by `AuthDomain` when the JWKS endpoint, Google's certificate fetch, or Apple's key fetch cannot be reached.
+    - `AuthUtil.toProviderUnavailableException` recognises the failure; a bad token never maps to it.
+    - It covers the JWT access and refresh guards and the Google and Apple sign-in verification.
+- `jwtGuardMissing` is raised by `UserGuard` and `@AuthJwtPayload()` when the request carries no JWT payload.
 
 ## `country`
 
@@ -243,10 +264,13 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `verificationEmailResendLimitExceeded` | `51021` | `verificationEmailResendLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.verificationEmailResendLimitExceeded` | You have exceeded the limit for resending verification emails. Try again after {minutes} minutes. |
 | `forgotPasswordRequestLimitExceeded` | `51022` | `forgotPasswordRequestLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.forgotPasswordRequestLimitExceeded` | You have exceeded the limit for password reset requests. Try again after {minutes} minutes. |
 | `twoFactorMethodRequired` | `51023` | `twoFactorMethodRequired` | none | none | Reserved user enum member; live path uses auth `50813` + `auth.error.twoFactorMethodRequired`. |
-| `notFoundForbidden` | `51024` | `notFoundForbidden` | 403 (`FORBIDDEN`) | `user.error.notFound` | Sorry, we couldn't find the user you requested. |
+| `accountNotFound` | `51024` | `accountNotFound` | 401 (`UNAUTHORIZED`) | `user.error.accountNotFound` | The account of this session no longer exists. |
 | `importEmailExist` | `51025` | `importEmailExist` | 409 (`CONFLICT`) | `user.error.importEmailExist` | There are existing users with the provided email addresses. Email: {emails} |
 | `importUsernameExist` | `51026` | `importUsernameExist` | 409 (`CONFLICT`) | `user.error.importUsernameExist` | There are existing users with the provided usernames. Username: {usernames} |
-| `notAuthenticated` | `51027` | `notAuthenticated` | 401 (`UNAUTHORIZED`) | `user.error.notAuthenticated` | This request does not carry an authenticated user. |
+| `guardMissing` | `51027` | `guardMissing` | 401 (`UNAUTHORIZED`) | `user.error.guardMissing` | Your account could not be verified. Please sign in again. |
+
+- `accountNotFound` is raised by `UserDomain.validateUserGuard` when a valid token names a user whose row no longer exists.
+- `guardMissing` is raised by the role, policy, term-policy, workspace-member, and project-member guards, and by `@UserCurrent()` and `@RoleCurrent()`, when `UserGuard` stored no user.
 
 ## `policy`
 
@@ -255,6 +279,9 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `forbidden` | `51100` | `forbidden` | 403 (`FORBIDDEN`) | `policy.error.forbidden` | Sorry, you don't have the necessary permissions to perform this action. |
 | `notFound` | `51101` | `notFound` | 404 (`NOT_FOUND`) | `policy.error.notFound` | Sorry, we couldn't find the requested policy. |
 | `exist` | `51102` | `exist` | 409 (`CONFLICT`) | `policy.error.exist` | This role already grants a policy for that subject. |
+| `guardMissing` | `51103` | `guardMissing` | 403 (`FORBIDDEN`) | `policy.error.guardMissing` | Your permissions could not be verified for this request. |
+
+`guardMissing` is raised by `PolicyGuard` and `@PolicyCurrent()` when `RoleGuard` stored no policy list.
 
 ## `notification`
 
@@ -303,8 +330,14 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `contentExist` | `51507` | `contentExist` | 409 (`CONFLICT`) | `termPolicy.error.contentExist` | This content already exists in the term policy. |
 | `contentEmpty` | `51508` | `contentEmpty` | 400 (`BAD_REQUEST`) | `termPolicy.error.contentEmpty` | Term policy content cannot be empty. |
 | `contentInvalid` | `51509` | `contentInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `termPolicy.error.contentInvalid` | Term policy content is invalid. |
+| `publishInProgress` | `51510` | `publishInProgress` | 409 (`CONFLICT`) | `termPolicy.error.publishInProgress` | Term policy publish is already in progress. |
 
 - `contentInvalid` is raised by `TermPolicyContentDomain` and `TermPolicyDomain` when `TermPolicyUtil.toContents` finds a stored content whose language or access is not a known enum value.
+- `publishInProgress` is raised by `NotificationQueue.sendPublishTermPolicy`, which keys the publish job by term policy and follows the job's BullMQ state (`EnumQueueJobState`):
+    - `failed`: the job is retried with its attempts reset.
+    - `waiting`, `prioritized`, `delayed`, `active`, or `waitingChildren`: `publishInProgress`.
+    - `completed` or `unknown`: the old job is removed and a new one is added.
+    - A failed job that left the `failed` state before the retry also answers `publishInProgress`.
 
 ## `workspace`
 
@@ -331,6 +364,16 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `joinRequestAlreadyProcessed` | `51618` | `joinRequestAlreadyProcessed` | 400 (`BAD_REQUEST`) | `workspace.error.joinRequestAlreadyProcessed` | This workspace join request is no longer pending. |
 | `selfTransfer` | `51619` | `selfTransfer` | 400 (`BAD_REQUEST`) | `workspace.error.selfTransfer` | You cannot transfer ownership to yourself. |
 | `slugInvalid` | `51620` | `slugInvalid` | 400 (`BAD_REQUEST`) | `workspace.error.slugInvalid` | This workspace slug is not allowed; use letters, digits and hyphens only, within the allowed length. |
+| `headerMissing` | `51621` | `headerMissing` | 400 (`BAD_REQUEST`) | `workspace.error.headerMissing` | The x-workspace-id header is required. |
+| `guardMissing` | `51622` | `guardMissing` | 403 (`FORBIDDEN`) | `workspace.error.guardMissing` | The workspace could not be verified for this request. |
+| `memberGuardMissing` | `51623` | `memberGuardMissing` | 403 (`FORBIDDEN`) | `workspace.error.memberGuardMissing` | Your workspace membership could not be verified for this request. |
+
+- `WorkspaceGuard` resolves the workspace from the `x-workspace-id` header:
+    - `headerMissing` answers an absent header.
+    - `notFound` answers a malformed id or one that names no active workspace.
+- `WorkspaceMemberGuard` answers `memberForbidden` when the caller is not a member.
+- `guardMissing` is raised by `WorkspaceMemberGuard`, `ProjectGuard`, and `@WorkspaceCurrent()` when `WorkspaceGuard` stored no workspace.
+- `memberGuardMissing` is raised by `WorkspaceRoleGuard`, `ProjectRoleGuard`, and `@WorkspaceMemberCurrent()` when `WorkspaceMemberGuard` stored no member.
 
 ## `project`
 
@@ -344,6 +387,12 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `memberAlreadyAssigned` | `51705` | `memberAlreadyAssigned` | 400 (`BAD_REQUEST`) | `project.error.memberAlreadyAssigned` | This user is already assigned to the project. |
 | `slugAlreadyExists` | `51706` | `slugAlreadyExists` | 400 (`BAD_REQUEST`) | `project.error.slugAlreadyExists` | This project slug is already taken in this workspace. |
 | `slugInvalid` | `51707` | `slugInvalid` | 400 (`BAD_REQUEST`) | `project.error.slugInvalid` | This project slug is not allowed; use letters, digits and hyphens only, within the allowed length. |
+| `guardMissing` | `51708` | `guardMissing` | 403 (`FORBIDDEN`) | `project.error.guardMissing` | The project could not be verified for this request. |
+| `memberGuardMissing` | `51709` | `memberGuardMissing` | 403 (`FORBIDDEN`) | `project.error.memberGuardMissing` | Your project membership could not be verified for this request. |
+
+- `ProjectGuard` answers `notFound` (404) when the `:projectId` param is malformed or names no active project in the workspace.
+- `guardMissing` is raised by `ProjectMemberGuard`, `ProjectRoleGuard`, and `@ProjectCurrent()` when `ProjectGuard` stored no project.
+- `memberGuardMissing` is raised by `@ProjectMemberCurrent()` when `ProjectMemberGuard` stored no member, which includes any role-gated route.
 
 ## `database`
 

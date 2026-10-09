@@ -83,8 +83,17 @@ The i18n key is `activityLog.userReachMaxPasswordAttempt` ("Maximum password att
 | `ActivityLogHttpService` | Transport layer for the four list routes; the page it returns is serialized against `ActivityLogResponseSchema` declared on the route |
 | `ActivityLogRepository` | Data access (Prisma), including `createMany`, which inserts every flushed row in one call with no transaction |
 | `ActivityLogUtil` | Builds the i18n description (`getDescription`) |
+| `ActivityLogAnalyticDomain` | Read-only aggregates the analytic module consumes: counts and groupings by action or workspace, and the action-range rows |
+| `ActivityLogAnalyticRepository` | Reads the `ActivityLog` model and writes nothing; the action-range read returns `IActivityLogAnalyticList` rows |
 | `ActivityLogActionContract` | Per-action contract: how `userId` and `workspaceId` resolve, and the metadata schema |
 | `ActivityLogWorkspaceVolumeContract` | Target-side workspace and project actions left out of workspace volume metrics |
+
+Analytic reads:
+
+- `ActivityLogAnalyticDomain` is exported from `ActivityLogDomainModule` and read by the analytic domains of the api-key, user, and analytic modules.
+- `ActivityLogAnalyticListSelect` pins the columns of an action-range read to `id`, `userId`, `action`, `ipAddress`, `createdAt`, `userAgent`, and `workspaceId`, oldest first.
+- A grouping returns `IActivityLogAnalyticActionCount` rows, an action and its count.
+- Workspace volume reads leave out the actions in `ActivityLogWorkspaceVolumeContract`.
 
 ## List Endpoints
 
@@ -96,6 +105,12 @@ The i18n key is `activityLog.userReachMaxPasswordAttempt` ("Maximum password att
 | `GET` | `/admin/activity-log/workspace/:workspaceId/list` | Admin lists a workspace's logs, optionally narrowed by a `userId` query param (offset) |
 
 Global prefix `/api` and version `v1` apply as elsewhere.
+
+Every list takes the pagination query without `search`, and the order is validated per request schema:
+
+- `orderBy` accepts `createdAt`, written `createdAt:asc` or `createdAt:desc`, once or repeated.
+- A field or direction outside that list answers `422` with status code `50300` (`request.error.validation`).
+- The response metadata names the accepted fields in `availableOrderBy`.
 
 The admin workspace list:
 

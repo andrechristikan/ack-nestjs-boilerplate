@@ -9,17 +9,21 @@ Offset and cursor list helpers, plus filter and order-by parsing:
 - **Offset-based pagination**: page number and limit (`/admin/**`)
 - **Cursor-based pagination**: cursor tokens (every other scope)
 - **Filtering**: enum, equality, date range helpers on `PaginationQueryUtil`
-- **Field ordering**: validation and transformation of sort parameters
+- **Field ordering**: each list schema validates `orderBy` against its allow-list, and `PaginationQueryUtil` parses the accepted value
 - **Error handling**: the same error body as the rest of the app
 
 Ordering support is split across three levels:
 
 - **HTTP query level**: `orderBy` uses `field:direction` format in a single query parameter (e.g., `name:asc`, `createdAt:desc`).
     - Multiple entries can be sent as repeated params.
+    - The list request schema accepts only a field from its allow-list and a direction from `EnumPaginationOrderDirectionType`. Any other value answers 422.
 - **Service level**: `orderBy` is always an array of order objects (`IPaginationOrderBy[]`), which is the shape Prisma receives.
 - **Response metadata level**: `metadata.orderBy` is a string array in the same `field:direction` format as the query (e.g., `["createdAt:desc"]`), symmetric with `metadata.availableOrderBy`.
     - `ResponsePaginationInterceptor` performs the conversion.
-    - An empty order renders `[]`.
+    - It holds the order `PaginationQueryUtil` resolved: the requested order, or the default `createdAt:desc` (`PaginationDefaultOrderBy`) when the request gives no `orderBy` or an empty one.
+    - A list with no sort allow-list declares no `orderBy`, so it always reports `["createdAt:desc"]`.
+    - The cursor tiebreaker is not part of it (see [Ordering](#ordering)).
+    - An empty order renders `[]` only when the HTTP service merged no pagination state into the request store.
 
 List query parsing is zod on `@Query({ schema })` plus `PaginationQueryUtil` in the HTTP service.
 
@@ -240,11 +244,11 @@ The encoded cursor is URL-safe base64 over exactly two fields, and nothing else:
 
 **Cursor Validation:**
 
-- Each request recomputes the fingerprint from its own `where` and `orderBy`, then compares it to the `fingerprint` in the supplied cursor. A mismatch throws `PaginationInvalidCursorPaginationParamsException` (50203, 422).
+- Each request recomputes the fingerprint from its own `where` and `orderBy`, then compares it to the `fingerprint` in the supplied cursor. A mismatch throws `PaginationInvalidCursorPaginationParamsException` (50202, 422).
 - Malformed cursors throw:
-    - `PaginationInvalidCursorFormatException` (50205) for a cursor that is empty or not a string
-    - `PaginationInvalidCursorDataException` (50212) for one that decodes to an object missing `cursor` or `fingerprint`
-    - `PaginationFailedToDecodeCursorException` (50214) for one whose base64 or JSON cannot be parsed at all
+    - `PaginationInvalidCursorFormatException` (50204) for a cursor that is empty or not a string
+    - `PaginationInvalidCursorDataException` (50211) for one that decodes to an object missing `cursor` or `fingerprint`
+    - `PaginationFailedToDecodeCursorException` (50213) for one whose base64 or JSON cannot be parsed at all
 - A cursor is bound to the filter, the search term, and the ordering it was issued for. Changing any of them invalidates it, and the client starts again from the first page.
 - For multi-field ordering, the array order feeds the fingerprint, so the same sequence of `orderBy` entries produces a matching cursor and a different sequence does not.
 
@@ -289,13 +293,18 @@ flowchart LR
 ```
 
 1. Kit base schemas live under `src/common/pagination/dtos/`:
-    - `PaginationOffsetQuerySchema` (`page` / `perPage` / `search` / `orderBy`)
-    - `PaginationCursorQuerySchema` (`cursor` / `perPage` / `search` / `orderBy`)
-    - `search` and `orderBy` carry generic `.meta` text in the base schemas.
-    - `PaginationQueryUtil.offset` takes `PaginationOffsetQueryDto`, and `.cursor` takes `PaginationCursorQueryDto`.
+    - `PaginationOffsetQuerySchema` (`page` / `perPage` / `search`)
+    - `PaginationCursorQuerySchema` (`cursor` / `perPage` / `search`)
+    - `search` is trimmed and capped at `PaginationDefaultMaxSearchLength` (100) characters.
+    - `search` carries generic `.meta` text in the base schemas.
+    - The base schemas carry no `orderBy`, because the allowed fields differ per list.
+    - `PaginationQueryUtil.offset` and `.cursor` take the base DTO type (`PaginationOffsetQueryDto`, `PaginationCursorQueryDto`) intersected with `{ orderBy?: IPaginationOrderByQuery }`.
+    - `IPaginationOrderByQuery` is `string | string[] | undefined`, the zod output of the list's `orderBy` field: one `field:direction` string, an array of them, the empty string (default order), or absent.
 2. A module list DTO builds on a base schema.
-    - It overrides the `.meta` of `search` and `orderBy` to name its allow-lists, and adds its filter fields.
-    - It drops a field its allow-list leaves empty with `.omit({ search: true })` or `.omit({ search: true, orderBy: true })`.
+    - It overrides the `.meta` of `search` to name its search fields, and adds its filter fields.
+    - It declares `orderBy` inline over its allow-list (see [Ordering](#ordering)).
+    - It drops `search` with `.omit({ search: true })` when the list has no search columns.
+    - A list with no sort allow-list declares no `orderBy`, so the strict schema rejects the key.
     - Each `*.dto.ts` file holds one schema const.
 3. The controller binds one `@Query({ schema })` and passes the whole DTO to the HTTP service.
 4. The HTTP service calls `PaginationQueryUtil.offset` / `.cursor` (plus filter helpers) to produce `IPaginationQueryOffsetParams` / `IPaginationQueryCursorParams` and a `storePatch`.
@@ -314,16 +323,14 @@ flowchart LR
 export const PaginationOffsetQuerySchema = z.strictObject({
     page: z.coerce.number().int().optional().meta({ … }),
     perPage: z.coerce.number().int().optional().meta({ … }),
-    search: z.string().optional().meta({ … }),
-    orderBy: z.union([z.string(), z.array(z.string())]).optional().meta({ … }),
+    search: z.string().trim().max(PaginationDefaultMaxSearchLength).optional().meta({ … }),
 });
 
 // src/common/pagination/dtos/pagination.cursor-query.dto.ts
 export const PaginationCursorQuerySchema = z.strictObject({
     cursor: z.string().optional().meta({ … }),
     perPage: z.coerce.number().int().optional().meta({ … }),
-    search: z.string().optional().meta({ … }),
-    orderBy: z.union([z.string(), z.array(z.string())]).optional().meta({ … }),
+    search: z.string().trim().max(PaginationDefaultMaxSearchLength).optional().meta({ … }),
 });
 ```
 
@@ -335,10 +342,27 @@ export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
         description: `Search query, available fields: ${UserDefaultAvailableSearch.join(', ')}. …`,
         example: '',
     }),
-    orderBy: PaginationOffsetQuerySchema.shape.orderBy.meta({
-        description: `Order by field in \`field:direction\` format. Available fields: ${UserDefaultAvailableOrderBy.join(', ')}. …`,
-        example: `${UserDefaultAvailableOrderBy[0]}:desc`,
-    }),
+    orderBy: z
+        .union([
+            z.templateLiteral([
+                z.enum(UserDefaultAvailableOrderBy),
+                ':',
+                z.enum(EnumPaginationOrderDirectionType),
+            ]),
+            z.array(
+                z.templateLiteral([
+                    z.enum(UserDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ])
+            ),
+            z.literal(''),
+        ])
+        .optional()
+        .meta({
+            description: `Order by field in \`field:direction\` format. Available fields: ${UserDefaultAvailableOrderBy.join(', ')}. …`,
+            example: `${UserDefaultAvailableOrderBy[0]}:desc`,
+        }),
     status: z.string().optional().meta({ … }),
     roleId: RequestMongoIdSchema.optional().meta({ … }),
     countryId: RequestMongoIdSchema.optional().meta({ … }),
@@ -354,17 +378,24 @@ export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
 | the util / zod schema admit named keys only (strict list DTO) | client-invented query keys reaching Prisma (`?where=`, `?select=`, `?include=`, `?includeCount=`) | no (unconditional) |
 | the allow-lists | a client sorting or searching on a column the endpoint never sanctioned | yes |
 
-**Absent allow-lists omit the fields from the schema.**
+**Absent allow-lists leave the fields out of the schema.**
 
-- `undefined` or `[]` means the module drops the field with `.omit`, so the schema rejects it and Swagger does not advertise it.
-- There is no search predicate.
-- Order falls to `PaginationDefaultOrderBy` (`createdAt` desc).
+- A list with no sort allow-list declares no `orderBy`, so the strict schema rejects an `orderBy` key with 422 through `RequestValidationException`, and Swagger does not advertise it.
+- A list with no search columns drops `search` with `.omit({ search: true })`, so a `search` key answers 422 and there is no search predicate.
+- Order falls to `PaginationDefaultOrderBy` (`createdAt` desc), and `metadata.orderBy` reports `["createdAt:desc"]`.
 
-A **configured** allow-list is enforced in the util:
+**A configured allow-list takes effect in two layers, each with its own job:**
 
-- A field outside `availableOrderBy` throws `PaginationOrderByNotAllowedException` (50200, 422).
-- A direction that is neither `asc` nor `desc`, including a missing one, throws `PaginationOrderDirectionNotAllowedException` (50215, 422).
-- Search builds a Prisma `contains` `OR` across `availableSearch` fields.
+- Sort is validated in zod. The list schema validates `orderBy`, and a field outside the allow-list, or a direction other than `asc` or `desc` (including a missing one), fails zod and answers 422 through `RequestValidationException`. The util has no sort exception of its own.
+- Search is applied in the util. It builds a Prisma `contains` `OR` across `availableSearch` for a non-blank `search`.
+- The `search` length cap is a zod rule too: a `search` longer than `PaginationDefaultMaxSearchLength` (100) characters answers 422 through `RequestValidationException`.
+
+**Options:**
+
+1. `availableOrderBy` is required on `offset` and `cursor`; pass `[]` for a list with no sort allow-list.
+2. `availableSearch` is optional and defaults to `[]`.
+3. `defaultPerPage` is optional; `cursorField` is optional on `cursor`.
+4. The util stores `availableSearch` and `availableOrderBy` in the `storePatch`, and `ResponsePaginationInterceptor` reports them in the response metadata.
 
 #### Filter helpers
 
@@ -417,7 +448,7 @@ this.requestStoreService.merge(PaginationStoreKey, {
 | List kind | Allow-list typing | Filter helper `field` argument |
 | --- | --- | --- |
 | Prisma-backed model list | `Prisma.<Model>ScalarFieldEnum` members with `as const satisfies ReadonlyArray<Prisma.<Model>ScalarFieldEnum>` | `Prisma.<Model>ScalarFieldEnum.<field>` |
-| Computed / analytic list (row is a declared `I*` interface) | `(keyof I<Row>)[]` | N/A when there is no Prisma column |
+| Computed / analytic list (row is a declared `I*` interface) | `as const satisfies ReadonlyArray<keyof I<Row>>` | N/A when there is no Prisma column |
 
 ```typescript
 export const UserDefaultAvailableSearch = [
@@ -426,14 +457,16 @@ export const UserDefaultAvailableSearch = [
     Prisma.UserScalarFieldEnum.email,
 ] as const satisfies ReadonlyArray<Prisma.UserScalarFieldEnum>;
 
-export const AnalyticNearLockoutAvailableOrderBy: (keyof IAnalyticNearLockout)[] =
-    ['createdAt', 'id'];
+export const AnalyticNearLockoutAvailableOrderBy = [
+    'createdAt',
+    'id',
+] as const satisfies ReadonlyArray<keyof IAnalyticNearLockout>;
 ```
 
 | Allow-list | Schema / OpenAPI | Parse behaviour |
 | --- | --- | --- |
-| `undefined` or `[]` | module `.omit`s `search` / `orderBy` | no search predicate; order falls to `PaginationDefaultOrderBy` |
-| non-empty | module overrides the base field's `.meta` to describe the allow-list | search → `contains` `OR`; bad `orderBy` → the order exceptions above |
+| none | module `.omit`s `search` and declares no `orderBy` | no search predicate; order falls to `PaginationDefaultOrderBy` |
+| non-empty | module overrides the `search` `.meta` and declares `orderBy` over the allow-list | search → `contains` `OR`; an unlisted `orderBy` → 422 from zod |
 
 - An allow-list is set wherever the endpoint has a defensible sort order or a real search column, and left out where it does not.
 - An `availableOrderBy` names keys the returned row carries.
@@ -477,11 +510,11 @@ Cursor routes also constrain what they will sort on:
 
 **Constraints:**
 
-- Max page: 20 (`PaginationDefaultMaxPage`); above it throws `PaginationPageExceedsMaximumException` (50208)
-- Max perPage: 100 (`PaginationDefaultMaxPerPage`); above it throws `PaginationPerPageExceedsMaximumException` (50210)
-- Min page: 1; below it throws `PaginationPageCannotBeLessThanOneException` (50209)
-- Min perPage: 1; below it throws `PaginationPerPageCannotBeLessThanOneException` (50211)
-- A non-integer `page` or `perPage` throws `PaginationInvalidPageException` (50207) or `PaginationInvalidPerPageException` (50202)
+- Max page: 20 (`PaginationDefaultMaxPage`); above it throws `PaginationPageExceedsMaximumException` (50207)
+- Max perPage: 100 (`PaginationDefaultMaxPerPage`); above it throws `PaginationPerPageExceedsMaximumException` (50209)
+- Min page: 1; below it throws `PaginationPageCannotBeLessThanOneException` (50208)
+- Min perPage: 1; below it throws `PaginationPerPageCannotBeLessThanOneException` (50210)
+- The schema's `.int()` rejects a non-integer `page` or `perPage` first with a validation error (422). A non-integer that still reaches the util throws `PaginationInvalidPageException` (50206) or `PaginationInvalidPerPageException` (50201)
 
 **Response Example:**
 
@@ -530,11 +563,11 @@ The pagination fields sit inside the `metadata` block of the standard response e
 
 **Constraints:**
 
-- Max cursor length: 256 characters (`PaginationMaxCursorLength`); longer throws `PaginationCursorTooLongException` (50204)
-- Cursor format: URL-safe base64 (A-Za-z0-9_-); any other character throws `PaginationInvalidCursorFormatException` (50205)
-- Fingerprint mismatch: throws `PaginationInvalidCursorPaginationParamsException` (50203)
-- Max perPage: 100; above it throws `PaginationPerPageExceedsMaximumException` (50210)
-- Min perPage: 1; below it throws `PaginationPerPageCannotBeLessThanOneException` (50211)
+- Max cursor length: 256 characters (`PaginationMaxCursorLength`); longer throws `PaginationCursorTooLongException` (50203)
+- Cursor format: URL-safe base64 (A-Za-z0-9_-); any other character throws `PaginationInvalidCursorFormatException` (50204)
+- Fingerprint mismatch: throws `PaginationInvalidCursorPaginationParamsException` (50202)
+- Max perPage: 100; above it throws `PaginationPerPageExceedsMaximumException` (50209)
+- Min perPage: 1; below it throws `PaginationPerPageCannotBeLessThanOneException` (50210)
 
 **Response Example:**
 
@@ -600,7 +633,7 @@ this.paginationQueryUtil.ninEnum(
 // Database: WHERE status NOT IN ('blocked')
 ```
 
-A value outside the enum throws `PaginationFilterInvalidValueEnumException` (422).
+A value outside the enum throws `PaginationFilterInvalidValueEnumException` (50200, 422, message path `pagination.error.filterInvalidValueEnum`). It shares the status code with `PaginationFilterInvalidValueException`: both map to the one `filterInvalidValue` member, and the message path tells them apart.
 
 ### Equality Filters
 
@@ -625,7 +658,7 @@ this.paginationQueryUtil.notEqual(
 ```
 
 - `equalNumber` takes the same Prisma scalar-field enum member as its first argument and coerces the query value to a number.
-- Invalid boolean, number, or date strings throw `PaginationFilterInvalidValueException` (422).
+- Invalid boolean, number, or date strings throw `PaginationFilterInvalidValueException` (50200, 422, message path `pagination.error.filterInvalidValue`). The enum filter's exception shares this status code by design.
 
 ### Date Filters
 
@@ -655,6 +688,7 @@ this.paginationQueryUtil.dateBetween(
 
 - `orderBy` uses `field:direction` format in a single query parameter
 - Repeat the parameter to sort by multiple fields
+- An empty `orderBy=` falls back to the default
 
 **Query Parameters:**
 
@@ -672,6 +706,8 @@ orderBy: [{ createdAt: 'desc' }, { name: 'asc' }];
 - All `orderBy` values passed to the service are arrays.
 - The single-element array `[{ createdAt: 'desc' }]` is the typical default.
 - Cursors do not carry the `orderBy` itself, only a fingerprint of it.
+- With no `orderBy` in the request, or an empty one, the util resolves `PaginationDefaultOrderBy` and stores it, so the default is both applied and reported.
+- On a cursor route the util stores the resolved order before `PaginationService.cursor` appends the `cursorField` tiebreaker, so `metadata.orderBy` never includes the tiebreaker, while the query and the fingerprint do.
 
 **Response Metadata Format:**
 
@@ -680,14 +716,21 @@ orderBy: [{ createdAt: 'desc' }, { name: 'asc' }];
 ```
 
 - The response reports the applied ordering back in the same `field:direction` format the query accepts, not in the internal object form.
-- A client can therefore echo `metadata.orderBy` straight back as repeated `?orderBy=` params.
-- An empty order renders `[]`.
+- A client can echo `metadata.orderBy` back as repeated `?orderBy=` params only when the list's allow-list names every reported field.
+    - The reported default `createdAt:desc` is accepted only where `createdAt` is in the allow-list.
+    - A list with no sort allow-list reports `["createdAt:desc"]` and declares no `orderBy`, so echoing it answers 422.
+    - The cursor tiebreaker is not reported, so it never blocks an echo.
+- An empty order renders `[]` only when the HTTP service merged no pagination state into the request store.
+- `metadata.availableOrderBy` lists the fields the route accepts, so a client reads the allowed sorts from any page. It is a required metadata field: a list with no sort allow-list reports `[]`.
 
-**Field Whitelist:**
+**Field Allow-list:**
 
-- `availableOrderBy` is optional, but a route that declares it accepts sorting on those fields and nothing else.
-- When present it lives as a `<Module>DefaultAvailableOrderBy` or `<Module>CursorAvailableOrderBy` constant.
-- The constant is passed into `PaginationQueryUtil` and mirrored in the list schema `.meta` description:
+- Every list route accepts sorting on its allow-list fields and nothing else.
+- The allow-list lives as a `<Module>DefaultAvailableOrderBy` or `<Module>CursorAvailableOrderBy` constant.
+- The list schema builds its `orderBy` from the constant, a `field:direction` template literal over `z.enum(<allow-list>)` and `z.enum(EnumPaginationOrderDirectionType)`, as a union with an array of the same template and the empty string `''`:
+    - An unlisted field or an unknown direction fails zod and answers 422.
+    - The empty string falls back to the default order.
+- The HTTP service passes the same constant to `PaginationQueryUtil`, which stores it for `metadata.availableOrderBy`:
 
 ```typescript
 this.paginationQueryUtil.offset(query, {
