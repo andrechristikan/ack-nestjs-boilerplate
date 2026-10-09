@@ -48,12 +48,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
             : {};
 
         return {
-            AND: [
-                filters ?? {},
-                ...(where ? [where] : []),
-                roleFilter,
-                { workspaceId },
-            ],
+            AND: [filters ?? {}, where ?? {}, roleFilter, { workspaceId }],
         };
     }
 
@@ -89,11 +84,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
     ): Promise<IWorkspaceMemberWithRole | null> {
         return this.databaseService.client.workspaceMember.findFirst({
             where: {
-                AND: [
-                    { id: workspaceMemberId },
-                    { workspaceId },
-                    ...(where ? [where] : []),
-                ],
+                AND: [{ id: workspaceMemberId }, { workspaceId }, where ?? {}],
             },
             include: WorkspaceMemberRoleInclude,
         });
@@ -150,12 +141,14 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
             where: filters,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>
+        role?: Record<string, IPaginationIn>,
+        where?: Prisma.WorkspaceMemberWhereInput
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
             filters,
-            role
+            role,
+            where
         );
 
         return this.paginationService.offset<

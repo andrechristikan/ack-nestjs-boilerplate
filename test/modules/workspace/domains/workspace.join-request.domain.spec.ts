@@ -6,6 +6,7 @@ import type { DeepMockProxy, MockProxy } from 'vitest-mock-extended';
 
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumActivityLogAction,
@@ -267,6 +268,61 @@ describe('WorkspaceJoinRequestDomain', () => {
     });
 
     it.each([
+        [{ name: null, username: 'requester' }, 'requester'],
+        [{ name: null, username: null }, 'A user'],
+        [null, 'A user'],
+    ])(
+        'names the requester %j as "%s" in the reviewer notification',
+        async (requester, expectedName) => {
+            workspaceRepository.findActiveById.mockResolvedValue(workspace);
+            memberRepository.findOneByWorkspaceAndUser.mockResolvedValue(null);
+            joinRepository.existsPendingByWorkspaceAndUser.mockResolvedValue(
+                false
+            );
+            joinRepository.createPending.mockResolvedValue(joinRequest);
+            userDomain.getNameById.mockResolvedValue(requester as never);
+            memberRepository.findReviewersByWorkspace.mockResolvedValue([
+                { userId: 'reviewer-id' },
+            ]);
+            helperStringService.fillPattern.mockReturnValue(
+                'https://example.com/join/join-id'
+            );
+
+            await domain.createJoinRequest('requester-id', {
+                workspaceId: 'workspace-id',
+            });
+
+            expect(
+                notificationQueue.sendWorkspaceJoinRequest
+            ).toHaveBeenCalledWith(
+                'reviewer-id',
+                expect.objectContaining({ requesterName: expectedName }),
+                'requester-id'
+            );
+        }
+    );
+
+    it('loads the join request the route addresses within the workspace', async () => {
+        joinRepository.findByIdAndWorkspace.mockResolvedValue(joinRequest);
+
+        await expect(
+            domain.getJoinRequest('workspace-id', 'join-id')
+        ).resolves.toBe(joinRequest);
+        expect(joinRepository.findByIdAndWorkspace).toHaveBeenCalledWith(
+            'join-id',
+            'workspace-id'
+        );
+    });
+
+    it('reports a join request outside the workspace as not found', async () => {
+        joinRepository.findByIdAndWorkspace.mockResolvedValue(null);
+
+        await expect(
+            domain.getJoinRequest('workspace-id', 'join-id')
+        ).rejects.toBeInstanceOf(WorkspaceJoinRequestNotFoundException);
+    });
+
+    it.each([
         [null, WorkspaceJoinRequestNotFoundException],
         [
             buildJoinRequest({
@@ -317,6 +373,20 @@ describe('WorkspaceJoinRequestDomain', () => {
             { workspaceId: 'workspace-id', workspaceName: 'Workspace' },
             'reviewer-id'
         );
+    });
+
+    it('stages only the reviewer event when the reviewer accepts their own request', async () => {
+        const reviewerEvent = { id: 'reviewer-event' } as never;
+        joinRepository.findByIdAndWorkspace.mockResolvedValue(joinRequest);
+        helperDateService.create.mockReturnValue(now);
+        activityLogDomain.prepare.mockReturnValue(reviewerEvent);
+
+        await domain.acceptJoinRequest(workspace, 'requester-id', 'join-id');
+
+        expect(activityLogDomain.prepare).toHaveBeenCalledOnce();
+        expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+            reviewerEvent,
+        ]);
     });
 
     it('rejects the acceptance when the member role is missing from the catalog and creates nothing', async () => {
@@ -374,6 +444,25 @@ describe('WorkspaceJoinRequestDomain', () => {
         }
     );
 
+    it('stages only the reviewer event when the reviewer rejects their own request', async () => {
+        const reviewerEvent = { id: 'reviewer-event' } as never;
+        joinRepository.findByIdAndWorkspace.mockResolvedValue(joinRequest);
+        helperDateService.create.mockReturnValue(now);
+        activityLogDomain.prepare.mockReturnValue(reviewerEvent);
+
+        await domain.rejectJoinRequest(
+            workspace,
+            'requester-id',
+            'join-id',
+            EnumWorkspaceJoinRejectReason.other
+        );
+
+        expect(activityLogDomain.prepare).toHaveBeenCalledOnce();
+        expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+            reviewerEvent,
+        ]);
+    });
+
     it('rejects a pending request and notifies the requester', async () => {
         const reviewedAt = new Date('2026-01-01T00:00:00.000Z');
         joinRepository.findByIdAndWorkspace.mockResolvedValue(joinRequest);
@@ -410,5 +499,75 @@ describe('WorkspaceJoinRequestDomain', () => {
             },
             'reviewer-id'
         );
+    });
+
+    describe('getJoinRequestsList', () => {
+        const pagination = {
+            where: undefined,
+            limit: 10,
+            cursor: undefined,
+            cursorField: 'id',
+            orderBy: [],
+        };
+        const status = { status: { in: ['pending'] } };
+        const accessibleWhere = { workspaceId: 'workspace-id' };
+        const page = {
+            type: EnumPaginationType.cursor as const,
+            count: 0,
+            perPage: 10,
+            hasNext: false,
+            cursor: undefined,
+            data: [],
+        };
+
+        it('forwards the status filter and the accessible where to the repository', async () => {
+            joinRepository.findWithPaginationCursor.mockResolvedValue(page);
+
+            await expect(
+                domain.getJoinRequestsList(
+                    'workspace-id',
+                    pagination,
+                    status as never,
+                    accessibleWhere
+                )
+            ).resolves.toBe(page);
+            expect(
+                joinRepository.findWithPaginationCursor
+            ).toHaveBeenCalledWith(
+                'workspace-id',
+                pagination,
+                status,
+                accessibleWhere
+            );
+        });
+
+        it('passes undefined filters to the repository when none are given', async () => {
+            joinRepository.findWithPaginationCursor.mockResolvedValue(page);
+
+            await domain.getJoinRequestsList('workspace-id', pagination);
+
+            expect(
+                joinRepository.findWithPaginationCursor
+            ).toHaveBeenCalledWith(
+                'workspace-id',
+                pagination,
+                undefined,
+                undefined
+            );
+        });
+
+        it('does not list when the join-request feature is disabled', async () => {
+            const error = new Error('disabled');
+            featureFlagDomain.validateFeatureFlagMetadata.mockRejectedValue(
+                error
+            );
+
+            await expect(
+                domain.getJoinRequestsList('workspace-id', pagination)
+            ).rejects.toBe(error);
+            expect(
+                joinRepository.findWithPaginationCursor
+            ).not.toHaveBeenCalled();
+        });
     });
 });

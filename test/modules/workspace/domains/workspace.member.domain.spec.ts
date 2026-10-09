@@ -366,6 +366,30 @@ describe('WorkspaceMemberDomain', () => {
             });
             expect(activityLogDomain.stagePrepared).toHaveBeenCalledOnce();
         });
+
+        it('stages only the actor event when the loaded target resolves to the actor', async () => {
+            const actorEvent = { id: 'actor-event' } as never;
+            memberRepository.findOneByWorkspaceAndUser.mockResolvedValue({
+                ...member,
+                userId: owner.userId,
+            });
+            roleDomain.getByScopeAndKey.mockImplementation(
+                async (_scope, key) =>
+                    key === EnumRoleWorkspaceKey.owner ? ownerRole : adminRole
+            );
+            activityLogDomain.prepare.mockReturnValue(actorEvent);
+
+            await domain.transferOwnership(
+                'workspace-id',
+                owner,
+                member.userId
+            );
+
+            expect(activityLogDomain.prepare).toHaveBeenCalledOnce();
+            expect(activityLogDomain.stagePrepared).toHaveBeenCalledWith([
+                actorEvent,
+            ]);
+        });
     });
 
     describe('leaveWorkspace', () => {
@@ -710,7 +734,34 @@ describe('WorkspaceMemberDomain', () => {
             ).resolves.toBe(paginated);
             expect(
                 memberRepository.findWithPaginationOffset
-            ).toHaveBeenCalledWith('workspace-id', pagination);
+            ).toHaveBeenCalledWith(
+                'workspace-id',
+                pagination,
+                undefined,
+                undefined
+            );
+        });
+
+        it('forwards the accessible where as the trailing repository argument', async () => {
+            const accessibleWhere = { workspaceId: 'workspace-id' };
+            memberRepository.findWithPaginationOffset.mockResolvedValue(
+                paginated
+            );
+
+            await domain.getMembersListForAdmin(
+                'workspace-id',
+                pagination,
+                accessibleWhere
+            );
+
+            expect(
+                memberRepository.findWithPaginationOffset
+            ).toHaveBeenCalledWith(
+                'workspace-id',
+                pagination,
+                undefined,
+                accessibleWhere
+            );
         });
     });
 });

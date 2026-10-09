@@ -300,6 +300,41 @@ describe('WorkspaceInviteDomain', () => {
         );
     });
 
+    it('forwards the status filter and the accessible where to the invite repository', async () => {
+        const pagination = { cursor: null, perPage: 10 } as never;
+        const status = {
+            status: { in: [EnumWorkspaceInviteStatus.pending] },
+        } as never;
+        const accessibleWhere = { workspaceId: workspace.id };
+        const result = { data: [], pagination: {} } as never;
+        inviteRepository.findWithPaginationCursor.mockResolvedValue(result);
+
+        await expect(
+            domain.getInvitesList(
+                workspace.id,
+                pagination,
+                status,
+                accessibleWhere
+            )
+        ).resolves.toBe(result);
+        expect(inviteRepository.findWithPaginationCursor).toHaveBeenCalledWith(
+            workspace.id,
+            pagination,
+            status,
+            accessibleWhere
+        );
+
+        await domain.getInvitesList(workspace.id, pagination);
+        expect(
+            inviteRepository.findWithPaginationCursor
+        ).toHaveBeenLastCalledWith(
+            workspace.id,
+            pagination,
+            undefined,
+            undefined
+        );
+    });
+
     it('expires stale invitations and lists invitations', async () => {
         const pagination = { cursor: null, perPage: 10 } as never;
         const result = { data: [], pagination: {} } as never;
@@ -465,6 +500,26 @@ describe('WorkspaceInviteDomain', () => {
             })
         );
         expect(payload).not.toHaveProperty('workspaceMemberRole');
+    });
+
+    it('loads the invite the route addresses within the workspace', async () => {
+        inviteRepository.findByIdAndWorkspace.mockResolvedValue(invite);
+
+        await expect(domain.getInvite('workspace-id', invite.id)).resolves.toBe(
+            invite
+        );
+        expect(inviteRepository.findByIdAndWorkspace).toHaveBeenCalledWith(
+            invite.id,
+            'workspace-id'
+        );
+    });
+
+    it('reports an invite outside the workspace as not found', async () => {
+        inviteRepository.findByIdAndWorkspace.mockResolvedValue(null);
+
+        await expect(
+            domain.getInvite('workspace-id', invite.id)
+        ).rejects.toBeInstanceOf(WorkspaceInviteNotFoundException);
     });
 
     it.each([

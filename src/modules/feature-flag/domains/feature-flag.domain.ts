@@ -127,10 +127,12 @@ export class FeatureFlagDomain {
     }
 
     async getListByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
+        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>,
+        where?: Prisma.FeatureFlagWhereInput
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.featureFlagRepository.findWithPaginationOffsetByAdmin(
-            pagination
+            pagination,
+            where
         );
     }
 
@@ -138,6 +140,16 @@ export class FeatureFlagDomain {
         pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.featureFlagRepository.findWithPaginationCursor(pagination);
+    }
+
+    /** Returns the stored flag; callers judge it, this method does not. */
+    async getOne(id: string): Promise<FeatureFlag> {
+        const featureFlag = await this.featureFlagRepository.findOneById(id);
+        if (!featureFlag) {
+            throw new FeatureFlagNotFoundException();
+        }
+
+        return featureFlag;
     }
 
     async updateStatusByAdmin(

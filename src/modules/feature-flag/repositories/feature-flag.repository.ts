@@ -21,12 +21,21 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
     ) {}
 
     async findWithPaginationOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
+        {
+            where,
+            ...others
+        }: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>,
+        additionalWhere?: Prisma.FeatureFlagWhereInput
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.paginationService.offset<
             FeatureFlag,
             Prisma.FeatureFlagWhereInput
-        >(this.databaseService.client.featureFlag, pagination);
+        >(this.databaseService.client.featureFlag, {
+            ...others,
+            where: {
+                AND: [where ?? {}, additionalWhere ?? {}],
+            },
+        });
     }
 
     async findWithPaginationCursor(

@@ -55,11 +55,7 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
     ): Promise<IProjectMemberWithRole | null> {
         return this.databaseService.client.projectMember.findFirst({
             where: {
-                AND: [
-                    { id: projectMemberId },
-                    { projectId },
-                    ...(where ? [where] : []),
-                ],
+                AND: [{ id: projectMemberId }, { projectId }, where ?? {}],
             },
             include: ProjectMemberRoleInclude,
         });
@@ -82,7 +78,8 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
+        }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>,
+        additionalWhere?: Prisma.ProjectMemberWhereInput
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
         return this.paginationService.cursor<
             IProjectMember,
@@ -90,8 +87,13 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
         >(this.databaseService.client.projectMember, {
             ...others,
             where: {
-                ...where,
-                projectId,
+                AND: [
+                    {
+                        ...where,
+                        projectId,
+                    },
+                    additionalWhere ?? {},
+                ],
             },
             include: {
                 user: {

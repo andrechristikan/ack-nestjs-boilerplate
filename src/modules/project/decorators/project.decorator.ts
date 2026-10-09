@@ -77,8 +77,9 @@ export const ProjectCurrent = createParamDecorator<
  * Loads the caller's project membership and stores it with its role. Stack above
  * `@ProjectProtected()` and `@WorkspaceMemberProtected()`. The default is strict: a caller with no
  * `ProjectMember` row is rejected with `memberForbidden`. Pass `{ required: false }` only on a
- * policy-gated route that a workspace role must reach without a row (project delete): a caller
- * with no row passes through and no member is stored.
+ * policy-gated route that a workspace-scoped role must reach without a project row (project
+ * read, update, slug update, delete, and the member list, assign, role update and remove
+ * routes): a caller with no row passes through, no member is stored, and the policy checks decide.
  * @public
  */
 export function ProjectMemberProtected(options?: {

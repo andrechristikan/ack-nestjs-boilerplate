@@ -22,7 +22,6 @@ export interface IProjectRepository {
     ): Promise<boolean>;
     findWithPaginationCursorForWorkspace(
         workspaceId: string,
-        memberUserId: string | null,
         params: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
         where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>>;

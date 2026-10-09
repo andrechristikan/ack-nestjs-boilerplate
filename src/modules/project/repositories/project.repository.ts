@@ -59,7 +59,6 @@ export class ProjectRepository implements IProjectRepository {
 
     async findWithPaginationCursorForWorkspace(
         workspaceId: string,
-        memberUserId: string | null,
         {
             where: filters,
             ...others
@@ -75,10 +74,7 @@ export class ProjectRepository implements IProjectRepository {
                         filters ?? {},
                         { workspaceId },
                         ProjectActiveFilter,
-                        ...(where ? [where] : []),
-                        ...(memberUserId
-                            ? [{ members: { some: { userId: memberUserId } } }]
-                            : []),
+                        where ?? {},
                     ],
                 },
             }
@@ -101,7 +97,7 @@ export class ProjectRepository implements IProjectRepository {
                     AND: [
                         filters ?? {},
                         ...(workspaceId ? [{ workspaceId }] : []),
-                        ...(where ? [where] : []),
+                        where ?? {},
                     ],
                 },
             }

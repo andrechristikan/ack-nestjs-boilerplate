@@ -36,6 +36,7 @@ How to clone, install, seed, and run the project locally.
 - [Database Migration \& Seeding](#database-migration--seeding)
 - [Run Project](#run-project)
 - [Development Tools](#development-tools)
+- [End-to-End Tests](#end-to-end-tests)
 - [Accessing the Application](#accessing-the-application)
 
 
@@ -378,6 +379,33 @@ pnpm clean && pnpm install
 
 > [!NOTE]
 > `pnpm clean` removes `node_modules`, `dist`, and the pnpm cache before a fresh install. Useful after dependency conflicts or a broken build.
+
+## End-to-End Tests
+
+The E2E environment uses isolated PostgreSQL, Redis, and JWKS services. Its generated JWT keys
+live under ignored `keys/e2e/`, separate from the development keys in `keys/`.
+
+The initial setup generates the E2E key pairs and JWKS files, then copies the matching encoded
+keys and key IDs into `.env.e2e`:
+
+```bash
+mkdir -p keys/e2e
+cp .env.e2e.example keys/e2e/.env.example
+(cd keys/e2e && node ../../scripts/generate-secret.ts jwt --direct-insert)
+cp keys/e2e/.env .env.e2e
+```
+
+The test lifecycle is:
+
+```bash
+pnpm test:e2e:env:up
+pnpm test:e2e:db:reset
+pnpm test:e2e
+pnpm test:e2e:env:down
+```
+
+Running the setup commands again rotates only the E2E JWT keys. Tokens issued by an earlier
+E2E run then fail verification, while development keys remain unchanged.
 
 
 ## Accessing the Application

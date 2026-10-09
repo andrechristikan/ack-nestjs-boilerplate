@@ -1,22 +1,16 @@
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import {
-    PolicyAbilityStoreKey,
-    PolicyRequiredMetaKey,
-} from '@modules/policy/constants/policy.constant';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyRequiredMetaKey } from '@modules/policy/constants/policy.constant';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyPredefinedNotFoundException } from '@modules/policy/exceptions/policy.predefined-not-found.exception';
-import type {
-    IPolicyRequired,
-    PolicyAbility,
-} from '@modules/policy/interfaces/policy.interface';
+import type { IPolicyRequired } from '@modules/policy/interfaces/policy.interface';
 
 @Injectable()
 export class PolicyGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly policyDomain: PolicyDomain
+        private readonly policyAbilityDomain: PolicyAbilityDomain
     ) {}
 
     canActivate(context: ExecutionContext): boolean {
@@ -28,14 +22,7 @@ export class PolicyGuard implements CanActivate {
             throw new PolicyPredefinedNotFoundException();
         }
 
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
-        for (const { subject, action } of required) {
-            for (const one of action) {
-                this.policyDomain.assertCan(ability, one, subject);
-            }
-        }
+        this.policyAbilityDomain.assertCanEvery(required);
 
         return true;
     }

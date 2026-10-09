@@ -9,6 +9,7 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
+import type { DeviceOwnership } from '@generated/prisma-client/client';
 import type {
     IDeviceOwnership,
     IDeviceOwnershipLoginUpsert,
@@ -188,7 +189,8 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>
+        isRevoked?: Record<string, IPaginationEqual>,
+        additionalWhere?: Prisma.DeviceOwnershipWhereInput
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
         const today = this.helperDateService.create();
 
@@ -198,9 +200,14 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         >(this.databaseService.client.deviceOwnership, {
             ...others,
             where: {
-                ...where,
-                ...isRevoked,
-                userId,
+                AND: [
+                    {
+                        ...where,
+                        ...isRevoked,
+                        userId,
+                    },
+                    additionalWhere ?? {},
+                ],
             },
             include: {
                 device: true,
@@ -292,6 +299,19 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
             },
             include: {
                 device: true,
+            },
+        });
+    }
+
+    async findOneActive(
+        userId: string,
+        deviceOwnershipId: string
+    ): Promise<DeviceOwnership | null> {
+        return this.databaseService.client.deviceOwnership.findFirst({
+            where: {
+                id: deviceOwnershipId,
+                userId,
+                isRevoked: false,
             },
         });
     }

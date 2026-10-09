@@ -179,6 +179,25 @@ describe('ApiKeyDomain', () => {
         });
     });
 
+    describe('getOne', () => {
+        it('returns the stored key without judging it', async () => {
+            apiKeyRepository.findOneById.mockResolvedValue(apiKey);
+
+            await expect(service.getOne(apiKey.id)).resolves.toEqual(apiKey);
+            expect(apiKeyRepository.findOneById).toHaveBeenCalledWith(
+                apiKey.id
+            );
+        });
+
+        it('throws ApiKeyNotFoundException when the key is unknown', async () => {
+            apiKeyRepository.findOneById.mockResolvedValue(null);
+
+            await expect(service.getOne('unknown')).rejects.toBeInstanceOf(
+                ApiKeyNotFoundException
+            );
+        });
+    });
+
     describe('administration', () => {
         it('delegates the administrator list filters', async () => {
             const pagination = { limit: 20, page: 1, skip: 0 };
@@ -193,7 +212,30 @@ describe('ApiKeyDomain', () => {
             expect(apiKeyRepository.findWithPagination).toHaveBeenCalledWith(
                 pagination,
                 isActive,
-                type
+                type,
+                undefined
+            );
+        });
+
+        it('forwards the accessible where as the trailing repository argument of the administrator list', async () => {
+            const pagination = { limit: 20, page: 1, skip: 0 };
+            const accessibleWhere = { isActive: true };
+            const page = mock<IResponsePaginationReturn<never>>();
+            apiKeyRepository.findWithPagination.mockResolvedValue(page);
+
+            await expect(
+                service.getListByAdmin(
+                    pagination,
+                    undefined,
+                    undefined,
+                    accessibleWhere
+                )
+            ).resolves.toBe(page);
+            expect(apiKeyRepository.findWithPagination).toHaveBeenCalledWith(
+                pagination,
+                undefined,
+                undefined,
+                accessibleWhere
             );
         });
 

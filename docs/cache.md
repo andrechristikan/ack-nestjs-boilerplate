@@ -93,6 +93,7 @@ A cache manager is injected into a dedicated cache class, an interceptor, or a h
 - `ApiKeyCache`
 - `AuthCache`
 - `FeatureFlagCache`
+- `PolicyCache`
 - `AnalyticCache`
 - `HealthRedisIndicator`
 - `ResponseCacheInterceptor`
@@ -101,7 +102,7 @@ A cache manager is injected into a dedicated cache class, an interceptor, or a h
 
 | Placeholders | Filled by | Patterns |
 |---|---|---|
-| one | `String.prototype.replace('{name}', () => value)` | `ApiKey:{key}`, `FeatureFlag:{key}`, `Apis:{key}`, `TwoFactor:Challenge:{token}`, `TwoFactor:Lock:{userId}` |
+| one | `String.prototype.replace('{name}', () => value)` | `ApiKey:{key}`, `FeatureFlag:{key}`, `Policy:Role:{roleId}`, `Apis:{key}`, `TwoFactor:Challenge:{token}`, `TwoFactor:Lock:{userId}` |
 | two or more | `HelperStringService.fillPattern(pattern, values)` | `User:{userId}:Session:{sessionId}`, the four `Analytic:*` patterns, the throttle storage patterns |
 
 The function form of `replace` stops a value containing `$&` or `$1` from being read as a replacement pattern. `fillPattern` scans `{token}` once and substitutes from the value map, so a substituted value is never re-read as a token, and a token with no entry raises `HelperPatternTokenMissingException` (`52202`, 500).
@@ -158,8 +159,8 @@ Reads through the cache manager (`get`, `ttl`) resolve to a miss when Redis fail
 
 | Group | Calls | On a Redis failure |
 |---|---|---|
-| Propagate | `SessionCache.setLogin` (every login), `SessionCache.updateLogin` (refresh), `AuthCache.createChallenge` (login with two-factor), `ApiKeyCache.deleteCacheByKey` (API key admin writes, `MigrationApiKeySeed.remove`) | The request answers 500 |
-| Caught in the cache class and logged | `AuthCache.clearChallenge`, `AuthCache.lockTwoFactorAttempt`, `AuthCache.clearLockTwoFactorAttempt`, `ApiKeyCache.setCacheByKey`, every `FeatureFlagCache` and `AnalyticCache` call | The request continues |
+| Propagate | `SessionCache.setLogin` (every login), `SessionCache.updateLogin` (refresh), `AuthCache.createChallenge` (login with two-factor), `ApiKeyCache.deleteCacheByKey` (API key admin writes, `MigrationApiKeySeed.remove`), `PolicyCache.deleteCacheByRoleId` (policy writes, a stale entry would keep a revoked grant working) | The request answers 500 |
+| Caught in the cache class and logged | `AuthCache.clearChallenge`, `AuthCache.lockTwoFactorAttempt`, `AuthCache.clearLockTwoFactorAttempt`, `ApiKeyCache.setCacheByKey`, `PolicyCache.setCacheByRoleIds` (read-through write), every `FeatureFlagCache` and `AnalyticCache` call | The request continues |
 | Caught in `SessionDomain` and logged | `SessionCache.deleteLogins`, `SessionCache.deleteLoginsByUser` | The request continues |
 
 `ResponseCacheInterceptor` inherits the error handling of `@nestjs/cache-manager`'s `CacheInterceptor`, which logs a failed write and runs the handler when the cache lookup fails.

@@ -101,11 +101,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         >(this.databaseService.client.workspace, {
             ...others,
             where: {
-                AND: [
-                    filters ?? {},
-                    { ...isPublic },
-                    ...(where ? [where] : []),
-                ],
+                AND: [filters ?? {}, { ...isPublic }, where ?? {}],
             },
         });
     }

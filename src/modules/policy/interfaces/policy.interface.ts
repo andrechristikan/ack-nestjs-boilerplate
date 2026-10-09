@@ -3,14 +3,16 @@ import type { PrismaQuery } from '@casl/prisma';
 import type {
     EnumPolicyAction,
     EnumPolicySubject,
+    Policy,
     Prisma,
 } from '@generated/prisma-client/client';
+import type { EnumPolicyConditionPlaceholder } from '@modules/policy/constants/policy.constant';
 export type { PolicySubject } from '@modules/policy/enums/policy.enum';
 
 export type IPolicyConditions = Prisma.JsonObject;
 
 export type PolicyPlaceholderValues = Readonly<
-    Record<string, string | undefined>
+    Partial<Record<EnumPolicyConditionPlaceholder, string>>
 >;
 
 export interface IPolicyRequired<
@@ -40,9 +42,11 @@ export type PolicyAbility = Ability<
 
 export type PolicyAbilityRule = RawRuleOf<PolicyAbility>;
 
-/** Request context used to resolve all roles applicable to one ability. */
-export interface IPolicyAbilityBuildInput {
-    user: { id: string; roleId: string };
-    workspace?: { id: string; memberRoleId: string };
-    project?: { id: string; memberRoleId: string | null };
-}
+/** The persisted policy fields that ability building reads; the shape the policy cache stores per role. */
+export type IPolicyRule = Pick<
+    Policy,
+    'subject' | 'action' | 'conditions' | 'inverted' | 'reason'
+>;
+
+/** A policy rule tagged with the role that owns it, as the cache loads it. */
+export type IPolicyRuleWithRole = IPolicyRule & Pick<Policy, 'roleId'>;

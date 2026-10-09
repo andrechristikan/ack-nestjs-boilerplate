@@ -148,13 +148,15 @@ export class UserDomain {
         pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        countryId?: Record<string, IPaginationEqual>,
+        where?: Prisma.UserWhereInput
     ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.userRepository.findWithPaginationOffset(
             pagination,
             status,
             roleId,
-            countryId
+            countryId,
+            where
         );
     }
 

@@ -85,6 +85,8 @@
     "adminApiKeyUpdateDate": "API key expiry date has been updated",
     "adminApiKeyUpdateStatus": "API key status has been updated",
     "adminApiKeyDelete": "API key has been deleted",
+    "adminRoleCreate": "Role has been created",
+    "adminRoleDelete": "Role has been deleted",
     "adminRoleUpdate": "Role has been updated",
     "adminPolicyCreate": "Role policy has been created",
     "adminPolicyUpdate": "Role policy has been updated",

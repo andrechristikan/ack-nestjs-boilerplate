@@ -17,8 +17,8 @@ export const WorkspaceStoreKey = 'WorkspaceStore';
 export const WorkspaceMemberStoreKey = 'WorkspaceMemberStore';
 
 /**
- * Subjects the workspace `/permissions` endpoint reports on: the workspace family plus the
- * workspace role's project-scoped grants.
+ * Subjects the workspace `/permissions` endpoint reports on: the workspace family. `ProjectMember`
+ * is excluded: it needs a project in context.
  * @public
  */
 export const WorkspacePermissionSubjects: EnumPolicySubject[] = [
@@ -27,8 +27,7 @@ export const WorkspacePermissionSubjects: EnumPolicySubject[] = [
     EnumPolicySubject.WorkspaceInvite,
     EnumPolicySubject.WorkspaceJoinRequest,
     EnumPolicySubject.Project,
-    EnumPolicySubject.ProjectMember,
-    EnumPolicySubject.analytic,
+    EnumPolicySubject.WorkspaceAnalytic,
 ];
 
 /**

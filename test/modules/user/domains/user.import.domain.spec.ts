@@ -184,7 +184,29 @@ describe('UserImportDomain', () => {
             status,
             null,
             null,
-            101
+            101,
+            undefined
+        );
+    });
+
+    it('passes the accessible where to the repository export when provided', async () => {
+        userRepository.findExport.mockResolvedValue([]);
+        const accessibleWhere = { roleId: 'role-id' };
+
+        await expect(
+            domain.exportByAdmin(
+                undefined,
+                undefined,
+                undefined,
+                accessibleWhere
+            )
+        ).resolves.toEqual([]);
+        expect(userRepository.findExport).toHaveBeenCalledWith(
+            null,
+            null,
+            null,
+            101,
+            accessibleWhere
         );
     });
 });

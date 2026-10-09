@@ -98,7 +98,7 @@ export class ProjectUserController {
 
     @Doc({
         summary:
-            'list projects in the current workspace; a caller whose platform or workspace role holds Project read sees every project that read allows, others only their assigned projects',
+            'list the projects in the current workspace that the Project read policy of the caller allows; a workspace member sees the projects they are assigned to',
     })
     @ResponsePagination('project.list', {
         schema: ProjectResponseSchema,
@@ -116,14 +116,9 @@ export class ProjectUserController {
     async list(
         @Query({ schema: ProjectUserListRequestSchema })
         query: ProjectUserListRequestDto,
-        @WorkspaceCurrent() workspace: Workspace,
-        @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember
+        @WorkspaceCurrent() workspace: Workspace
     ): Promise<IResponsePaginationReturn<Project>> {
-        return this.projectHttpService.getListForMember(
-            workspace.id,
-            workspaceMember,
-            query
-        );
+        return this.projectHttpService.getListForMember(workspace.id, query);
     }
 
     @Doc({ summary: 'create a project in the current workspace' })
@@ -187,7 +182,7 @@ export class ProjectUserController {
         schema: ProjectPermissionResponseSchema,
     })
     @PolicyAbilityProtected()
-    @ProjectMemberProtected()
+    @ProjectMemberProtected({ required: false })
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -302,14 +297,15 @@ export class ProjectUserController {
     }
 
     @Doc({
-        summary: 'list members of a project; requires the project read policy',
+        summary:
+            'list members of a project; requires the project member read policy',
     })
     @ResponsePagination('project.member.list', {
         schema: ProjectMemberResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @ProjectPolicyProtected({
-        subject: EnumPolicySubject.Project,
+        subject: EnumPolicySubject.ProjectMember,
         action: [EnumPolicyAction.read],
     })
     @ProjectMemberProtected({ required: false })
@@ -387,8 +383,6 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Param('projectMemberId', { schema: RequestUuidSchema })
-        _projectMemberId: string,
-        @Param('projectMemberId', { schema: RequestUuidSchema })
         projectMemberId: string,
         @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
         body: ProjectMemberUpdateRoleRequestDto
@@ -424,8 +418,6 @@ export class ProjectUserController {
     async memberRemove(
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
-        @Param('projectMemberId', { schema: RequestUuidSchema })
-        _projectMemberId: string,
         @Param('projectMemberId', { schema: RequestUuidSchema })
         projectMemberId: string
     ): Promise<void> {

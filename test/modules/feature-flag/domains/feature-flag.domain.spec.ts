@@ -1,3 +1,6 @@
+import { FeatureFlagInvalidMetadataException } from '@modules/feature-flag/exceptions/feature-flag.invalid-metadata.exception';
+import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
+import { FeatureFlagPredefinedKeyLengthExceededException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-length-exceeded.exception';
 import type { IFeatureFlagWithTargetUsers } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagPredefinedKeyEmptyException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-empty.exception';
 import { FeatureFlagPredefinedKeyNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-not-found.exception';
@@ -7,6 +10,7 @@ import { FeatureFlagRepository } from '@modules/feature-flag/repositories/featur
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -109,6 +113,53 @@ describe('FeatureFlagDomain', () => {
             );
         });
 
+        it('rejects a nested key path before reading the cache', async () => {
+            await expect(
+                service.validateFeatureFlag('login.nested', null, null)
+            ).rejects.toBeInstanceOf(
+                FeatureFlagPredefinedKeyLengthExceededException
+            );
+            expect(featureFlagCache.getByKeyAndCache).not.toHaveBeenCalled();
+        });
+
+        it('rejects an untargeted user whose bucket falls outside the rollout', async () => {
+            featureFlagCache.getByKeyAndCache.mockResolvedValue(featureFlag);
+            helperHashService.sha256Hash.mockReturnValue('00000063ffff');
+
+            await expect(
+                service.validateFeatureFlag('new-home', 'user-id', null)
+            ).rejects.toBeInstanceOf(FeatureFlagServiceUnavailableException);
+        });
+
+        it('allows an anonymous caller at full rollout without hashing', async () => {
+            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+                ...featureFlag,
+                rolloutPercent: 100,
+            });
+
+            await expect(
+                service.validateFeatureFlag('new-home', null, null)
+            ).resolves.toBeUndefined();
+            expect(helperHashService.sha256Hash).not.toHaveBeenCalled();
+        });
+
+        it('buckets an anonymous caller by the anonymous id below full rollout', async () => {
+            featureFlagCache.getByKeyAndCache.mockResolvedValue(featureFlag);
+            helperHashService.sha256Hash.mockReturnValue('00000031ffff');
+
+            await expect(
+                service.validateFeatureFlag('new-home', null, 'anonymous-id')
+            ).resolves.toBeUndefined();
+            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
+                'new-home:anonymous-id'
+            );
+
+            helperHashService.sha256Hash.mockReturnValue('00000063ffff');
+            await expect(
+                service.validateFeatureFlag('new-home', null, 'anonymous-id')
+            ).rejects.toBeInstanceOf(FeatureFlagServiceUnavailableException);
+        });
+
         it('rejects an anonymous caller below full rollout without a usable id', async () => {
             featureFlagCache.getByKeyAndCache.mockResolvedValue(featureFlag);
 
@@ -128,6 +179,39 @@ describe('FeatureFlagDomain', () => {
             await expect(
                 service.validateFeatureFlagMetadata('new-home', 'allowed')
             ).resolves.toBeUndefined();
+        });
+
+        it('rejects an unknown flag', async () => {
+            featureFlagCache.getByKeyAndCache.mockResolvedValue(null);
+
+            await expect(
+                service.validateFeatureFlagMetadata('new-home', 'allowed')
+            ).rejects.toBeInstanceOf(FeatureFlagPredefinedKeyNotFoundException);
+        });
+
+        it('rejects a disabled flag as unavailable', async () => {
+            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+                ...featureFlag,
+                isEnable: false,
+                metadata: { allowed: true },
+            });
+
+            await expect(
+                service.validateFeatureFlagMetadata('new-home', 'allowed')
+            ).rejects.toBeInstanceOf(FeatureFlagServiceUnavailableException);
+        });
+
+        it('rejects a flag without metadata as a type violation', async () => {
+            featureFlagCache.getByKeyAndCache.mockResolvedValue({
+                ...featureFlag,
+                metadata: null,
+            });
+
+            await expect(
+                service.validateFeatureFlagMetadata('new-home', 'allowed')
+            ).rejects.toBeInstanceOf(
+                FeatureFlagPredefinedKeyTypeInvalidException
+            );
         });
 
         it('rejects a non-boolean metadata gate', async () => {
@@ -152,6 +236,154 @@ describe('FeatureFlagDomain', () => {
             await expect(
                 service.validateFeatureFlagMetadata('new-home', 'allowed')
             ).rejects.toBeInstanceOf(FeatureFlagServiceUnavailableException);
+        });
+    });
+
+    describe('getListByAdmin', () => {
+        const pagination = { limit: 10, skip: 0, orderBy: [] };
+        const page = {
+            type: EnumPaginationType.offset as const,
+            count: 0,
+            perPage: 10,
+            page: 1,
+            totalPage: 0,
+            hasNext: false,
+            hasPrevious: false,
+            data: [],
+        };
+
+        it('forwards the accessible where as the trailing repository argument', async () => {
+            const accessibleWhere = { isEnable: true };
+            featureFlagRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
+                page
+            );
+
+            await expect(
+                service.getListByAdmin(pagination, accessibleWhere)
+            ).resolves.toBe(page);
+            expect(
+                featureFlagRepository.findWithPaginationOffsetByAdmin
+            ).toHaveBeenCalledWith(pagination, accessibleWhere);
+        });
+
+        it('passes undefined to the repository when no where is given', async () => {
+            featureFlagRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
+                page
+            );
+
+            await service.getListByAdmin(pagination);
+
+            expect(
+                featureFlagRepository.findWithPaginationOffsetByAdmin
+            ).toHaveBeenLastCalledWith(pagination, undefined);
+        });
+    });
+
+    describe('getListCursor', () => {
+        it('delegates the cursor pagination to the repository', async () => {
+            const pagination = {
+                limit: 10,
+                cursor: undefined,
+                cursorField: 'id',
+                orderBy: [],
+            };
+            const page = {
+                type: EnumPaginationType.cursor as const,
+                count: 0,
+                perPage: 10,
+                hasNext: false,
+                cursor: undefined,
+                data: [],
+            };
+            featureFlagRepository.findWithPaginationCursor.mockResolvedValue(
+                page
+            );
+
+            await expect(service.getListCursor(pagination)).resolves.toBe(page);
+            expect(
+                featureFlagRepository.findWithPaginationCursor
+            ).toHaveBeenCalledWith(pagination);
+        });
+    });
+
+    describe('getOne', () => {
+        it('returns the stored flag without judging it', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(featureFlag);
+
+            await expect(service.getOne(featureFlag.id)).resolves.toEqual(
+                featureFlag
+            );
+            expect(featureFlagRepository.findOneById).toHaveBeenCalledWith(
+                featureFlag.id
+            );
+        });
+
+        it('throws FeatureFlagNotFoundException when the flag is unknown', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(null);
+
+            await expect(service.getOne('unknown')).rejects.toBeInstanceOf(
+                FeatureFlagNotFoundException
+            );
+        });
+    });
+
+    describe('updateStatusByAdmin', () => {
+        it('throws FeatureFlagNotFoundException when the flag is unknown', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(null);
+
+            await expect(
+                service.updateStatusByAdmin('flag-id', {
+                    isEnable: true,
+                    rolloutPercent: 50,
+                })
+            ).rejects.toBeInstanceOf(FeatureFlagNotFoundException);
+            expect(featureFlagRepository.updateStatus).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('updateMetadataByAdmin', () => {
+        it('throws FeatureFlagNotFoundException when the flag is unknown', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(null);
+
+            await expect(
+                service.updateMetadataByAdmin('flag-id', { metadata: {} })
+            ).rejects.toBeInstanceOf(FeatureFlagNotFoundException);
+            expect(featureFlagRepository.updateMetadata).not.toHaveBeenCalled();
+        });
+
+        it('throws FeatureFlagInvalidMetadataException when the keys do not match the stored metadata', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(featureFlag);
+            featureFlagUtil.checkMetadataKey.mockReturnValue(false);
+
+            await expect(
+                service.updateMetadataByAdmin('flag-id', {
+                    metadata: { other: true },
+                })
+            ).rejects.toBeInstanceOf(FeatureFlagInvalidMetadataException);
+            expect(featureFlagUtil.checkMetadataKey).toHaveBeenCalledWith(
+                featureFlag.metadata,
+                { other: true }
+            );
+            expect(featureFlagRepository.updateMetadata).not.toHaveBeenCalled();
+        });
+
+        it('updates the metadata and invalidates the flag cache', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(featureFlag);
+            featureFlagUtil.checkMetadataKey.mockReturnValue(true);
+            featureFlagRepository.updateMetadata.mockResolvedValue(featureFlag);
+
+            await expect(
+                service.updateMetadataByAdmin('flag-id', {
+                    metadata: { color: 'red' },
+                })
+            ).resolves.toBe(featureFlag);
+            expect(featureFlagRepository.updateMetadata).toHaveBeenCalledWith(
+                'flag-id',
+                { metadata: { color: 'red' } }
+            );
+            expect(featureFlagCache.deleteCacheByKey).toHaveBeenCalledWith(
+                'new-home'
+            );
         });
     });
 

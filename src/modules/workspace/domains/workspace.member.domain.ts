@@ -318,11 +318,14 @@ export class WorkspaceMemberDomain {
     /** Pages the members of a workspace the admin policy guard already resolved, soft-deleted included, so it reads no workspace row itself. */
     async getMembersListForAdmin(
         workspaceId: string,
-        pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
+        pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
+        where?: Prisma.WorkspaceMemberWhereInput
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         return this.workspaceMemberRepository.findWithPaginationOffset(
             workspaceId,
-            pagination
+            pagination,
+            undefined,
+            where
         );
     }
 }

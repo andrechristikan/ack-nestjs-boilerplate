@@ -1,10 +1,17 @@
 import type { CanActivate } from '@nestjs/common';
 import { Injectable } from '@nestjs/common';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
+import {
+    EnumPolicyConditionPlaceholder,
+    PolicyAbilityStoreKey,
+} from '@modules/policy/constants/policy.constant';
 import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import type {
+    PolicyAbility,
+    PolicyPlaceholderValues,
+} from '@modules/policy/interfaces/policy.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import {
@@ -26,6 +33,7 @@ export class PolicyAbilityGuard implements CanActivate {
     constructor(
         private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly policyDomain: PolicyDomain,
+        private readonly policyAbilityFactory: PolicyAbilityFactory,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -37,7 +45,8 @@ export class PolicyAbilityGuard implements CanActivate {
             return true;
         }
 
-        const user = this.policyDomain.requireStored<IUser>(UserStoreKey);
+        const user =
+            this.policyAbilityDomain.requireStored<IUser>(UserStoreKey);
         const workspace =
             this.requestStoreService.get<Workspace>(WorkspaceStoreKey);
         const workspaceMember =
@@ -50,25 +59,19 @@ export class PolicyAbilityGuard implements CanActivate {
                 ProjectMemberStoreKey
             );
 
-        const ability = await this.policyAbilityDomain.buildAbility({
-            user: { id: user.id, roleId: user.roleId },
-            ...(workspace !== null && workspaceMember !== null
-                ? {
-                      workspace: {
-                          id: workspace.id,
-                          memberRoleId: workspaceMember.roleId,
-                      },
-                  }
-                : {}),
-            ...(project !== null
-                ? {
-                      project: {
-                          id: project.id,
-                          memberRoleId: projectMember?.roleId ?? null,
-                      },
-                  }
-                : {}),
-        });
+        const roleIds = [
+            user.roleId,
+            workspaceMember?.roleId,
+            projectMember?.roleId,
+        ].filter(roleId => roleId != null);
+        const placeholders: PolicyPlaceholderValues = {
+            [EnumPolicyConditionPlaceholder.userId]: user.id,
+            [EnumPolicyConditionPlaceholder.workspaceId]: workspace?.id,
+            [EnumPolicyConditionPlaceholder.projectId]: project?.id,
+        };
+
+        const policies = await this.policyDomain.findManyByRoleIds(...roleIds);
+        const ability = this.policyAbilityFactory.build(policies, placeholders);
 
         this.requestStoreService.set(PolicyAbilityStoreKey, ability);
 

@@ -57,7 +57,8 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
-        status?: Record<string, IPaginationIn>
+        status?: Record<string, IPaginationIn>,
+        additionalWhere?: Prisma.WorkspaceJoinRequestWhereInput
     ): Promise<IPaginationCursorReturn<WorkspaceJoinRequest>> {
         return this.paginationService.cursor<
             WorkspaceJoinRequest,
@@ -65,9 +66,14 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         >(this.databaseService.client.workspaceJoinRequest, {
             ...others,
             where: {
-                ...where,
-                ...(status ?? {}),
-                workspaceId,
+                AND: [
+                    {
+                        ...where,
+                        ...(status ?? {}),
+                        workspaceId,
+                    },
+                    additionalWhere ?? {},
+                ],
             },
         });
     }

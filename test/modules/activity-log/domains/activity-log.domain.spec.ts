@@ -7,6 +7,10 @@ import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumActivityLogAction } from '@generated/prisma-client';
+import {
+    EnumActivityLogUser,
+    EnumActivityLogWorkspace,
+} from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogStageStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ActivityLogContractInvalidException } from '@modules/activity-log/exceptions/activity-log.contract-invalid.exception';
@@ -76,6 +80,25 @@ describe('ActivityLogDomain', () => {
                     },
                 ]
             );
+        });
+
+        it('carries the target user, creator, workspace and error flag the caller supplied', () => {
+            expect(
+                domain.prepare({
+                    action: EnumActivityLogAction.workspaceJoinRequested,
+                    userId: 'target-id',
+                    createdBy: 'creator-id',
+                    workspaceId: 'workspace-id',
+                    onError: true,
+                })
+            ).toEqual({
+                action: EnumActivityLogAction.workspaceJoinRequested,
+                metadata: {},
+                onError: true,
+                userId: 'target-id',
+                createdBy: 'creator-id',
+                workspaceId: 'workspace-id',
+            });
         });
 
         it('rejects an event missing its required target user', () => {
@@ -244,75 +267,304 @@ describe('ActivityLogDomain', () => {
         });
     });
 
-    it('delegates user and workspace list methods to the repository', async () => {
+    it('delegates the offset and cursor lists to the repository with the scope', async () => {
         const offsetPagination = { skip: 0, limit: 10 };
         const cursorPagination = { cursor: 'cursor', limit: 10 };
-
-        activityLogRepository.findUserScopedWithPaginationOffset.mockResolvedValue(
-            {
-                type: EnumPaginationType.offset,
-                data: [],
-                count: 0,
-                perPage: 10,
-                hasNext: false,
-                hasPrevious: false,
-                page: 1,
-                totalPage: 0,
-            }
+        const offsetPage = {
+            type: EnumPaginationType.offset,
+            data: [],
+            count: 0,
+            perPage: 10,
+            hasNext: false,
+            hasPrevious: false,
+            page: 1,
+            totalPage: 0,
+        };
+        const cursorPage = {
+            type: EnumPaginationType.cursor as const,
+            data: [],
+            perPage: 10,
+            hasNext: false,
+        };
+        activityLogRepository.findWithPaginationOffset.mockResolvedValue(
+            offsetPage
         );
-        activityLogRepository.findUserScopedWithPaginationCursor.mockResolvedValue(
-            {
-                type: EnumPaginationType.cursor,
-                data: [],
-                perPage: 10,
-                hasNext: false,
-            }
-        );
-        activityLogRepository.findByWorkspaceWithPaginationOffset.mockResolvedValue(
-            {
-                type: EnumPaginationType.offset,
-                data: [],
-                count: 0,
-                perPage: 10,
-                hasNext: false,
-                hasPrevious: false,
-                page: 1,
-                totalPage: 0,
-            }
-        );
-        activityLogRepository.findByWorkspaceWithPaginationCursor.mockResolvedValue(
-            {
-                type: EnumPaginationType.cursor,
-                data: [],
-                perPage: 10,
-                hasNext: false,
-            }
+        activityLogRepository.findWithPaginationCursor.mockResolvedValue(
+            cursorPage
         );
 
-        await domain.getListOffsetByUser('user-id', offsetPagination);
-        await domain.getListCursorByUser('user-id', cursorPagination);
-        await domain.getListOffsetByWorkspace(
-            'workspace-id',
-            'user-id',
-            offsetPagination
-        );
-        await domain.getListCursorByWorkspace(
-            'workspace-id',
-            null,
-            cursorPagination
-        );
+        const userScope = { userId: 'user-id' };
+        const workspaceScope = { workspaceId: 'workspace-id' };
+
+        await domain.getListOffset(userScope, offsetPagination);
+        await domain.getListCursor(workspaceScope, cursorPagination);
 
         expect(
-            activityLogRepository.findUserScopedWithPaginationOffset
-        ).toHaveBeenCalledWith('user-id', offsetPagination);
+            activityLogRepository.findWithPaginationOffset
+        ).toHaveBeenCalledWith(userScope, offsetPagination, undefined);
         expect(
-            activityLogRepository.findUserScopedWithPaginationCursor
-        ).toHaveBeenCalledWith('user-id', cursorPagination);
+            activityLogRepository.findWithPaginationCursor
+        ).toHaveBeenCalledWith(workspaceScope, cursorPagination, undefined);
+    });
+
+    it('forwards the accessible where as the trailing repository argument', async () => {
+        const offsetPagination = { skip: 0, limit: 10 };
+        const cursorPagination = { cursor: 'cursor', limit: 10 };
+        const accessibleWhere = { userId: 'user-id' };
+        const scope = { workspaceId: 'workspace-id', userId: 'user-id' };
+
+        await domain.getListOffset(scope, offsetPagination, accessibleWhere);
+        await domain.getListCursor(scope, cursorPagination, accessibleWhere);
+
         expect(
-            activityLogRepository.findByWorkspaceWithPaginationOffset
-        ).toHaveBeenCalledWith('workspace-id', 'user-id', offsetPagination);
+            activityLogRepository.findWithPaginationOffset
+        ).toHaveBeenCalledWith(scope, offsetPagination, accessibleWhere);
         expect(
-            activityLogRepository.findByWorkspaceWithPaginationCursor
-        ).toHaveBeenCalledWith('workspace-id', null, cursorPagination);
+            activityLogRepository.findWithPaginationCursor
+        ).toHaveBeenCalledWith(scope, cursorPagination, accessibleWhere);
+    });
+
+    describe('getContract', () => {
+        it('throws ActivityLogContractInvalidException when the action has no contract', () => {
+            expect(() => domain['getContract']('unknown' as never)).toThrow(
+                ActivityLogContractInvalidException
+            );
+        });
+
+        it('returns the contract of a known action', () => {
+            expect(
+                domain['getContract'](EnumActivityLogAction.userUpdateProfile)
+            ).toEqual(
+                expect.objectContaining({ user: EnumActivityLogUser.payload })
+            );
+        });
+    });
+
+    describe('assertTargetOnlyField', () => {
+        it('requires a value when the contract resolves the user from the target', () => {
+            expect(() =>
+                domain['assertTargetOnlyField'](
+                    EnumActivityLogUser.target,
+                    undefined
+                )
+            ).toThrow(ActivityLogContractInvalidException);
+            expect(() =>
+                domain['assertTargetOnlyField'](
+                    EnumActivityLogUser.target,
+                    'user-id'
+                )
+            ).not.toThrow();
+        });
+
+        it('forbids a value when the contract resolves the user from the payload', () => {
+            expect(() =>
+                domain['assertTargetOnlyField'](
+                    EnumActivityLogUser.payload,
+                    'user-id'
+                )
+            ).toThrow(ActivityLogContractInvalidException);
+            expect(() =>
+                domain['assertTargetOnlyField'](
+                    EnumActivityLogUser.payload,
+                    undefined
+                )
+            ).not.toThrow();
+        });
+    });
+
+    describe('assertWorkspaceFields', () => {
+        it('requires a workspace id when the contract resolves the workspace from the target', () => {
+            expect(() =>
+                domain['assertWorkspaceFields'](
+                    EnumActivityLogWorkspace.target,
+                    undefined
+                )
+            ).toThrow(ActivityLogContractInvalidException);
+            expect(() =>
+                domain['assertWorkspaceFields'](
+                    EnumActivityLogWorkspace.target,
+                    'workspace-id'
+                )
+            ).not.toThrow();
+        });
+
+        it('forbids a workspace id when the contract has no workspace', () => {
+            expect(() =>
+                domain['assertWorkspaceFields'](
+                    EnumActivityLogWorkspace.none,
+                    'workspace-id'
+                )
+            ).toThrow(ActivityLogContractInvalidException);
+            expect(() =>
+                domain['assertWorkspaceFields'](
+                    EnumActivityLogWorkspace.none,
+                    undefined
+                )
+            ).not.toThrow();
+            expect(() =>
+                domain['assertWorkspaceFields'](
+                    EnumActivityLogWorkspace.none,
+                    null
+                )
+            ).not.toThrow();
+        });
+
+        it('forbids a workspace id when the contract resolves the workspace from the payload', () => {
+            expect(() =>
+                domain['assertWorkspaceFields'](
+                    EnumActivityLogWorkspace.payload,
+                    'workspace-id'
+                )
+            ).toThrow(ActivityLogContractInvalidException);
+            expect(() =>
+                domain['assertWorkspaceFields'](
+                    EnumActivityLogWorkspace.payload,
+                    undefined
+                )
+            ).not.toThrow();
+        });
+    });
+
+    describe('resolveUserId', () => {
+        it('uses the staged user for a target contract and rejects a missing one', () => {
+            expect(
+                domain['resolveUserId'](
+                    EnumActivityLogUser.target,
+                    'staged-id',
+                    'payload-id'
+                )
+            ).toBe('staged-id');
+            expect(() =>
+                domain['resolveUserId'](
+                    EnumActivityLogUser.target,
+                    undefined,
+                    'payload-id'
+                )
+            ).toThrow(ActivityLogContractInvalidException);
+        });
+
+        it('uses the payload user for a payload contract and rejects a missing one', () => {
+            expect(
+                domain['resolveUserId'](
+                    EnumActivityLogUser.payload,
+                    undefined,
+                    'payload-id'
+                )
+            ).toBe('payload-id');
+            expect(() =>
+                domain['resolveUserId'](
+                    EnumActivityLogUser.payload,
+                    undefined,
+                    null
+                )
+            ).toThrow(ActivityLogContractInvalidException);
+        });
+    });
+
+    describe('resolveCreatedBy', () => {
+        it('uses the staged creator for a target contract and rejects a missing one', () => {
+            expect(
+                domain['resolveCreatedBy'](
+                    EnumActivityLogUser.target,
+                    'staged-by',
+                    'user-id'
+                )
+            ).toBe('staged-by');
+            expect(() =>
+                domain['resolveCreatedBy'](
+                    EnumActivityLogUser.target,
+                    undefined,
+                    'user-id'
+                )
+            ).toThrow(ActivityLogContractInvalidException);
+        });
+
+        it('falls back to the resolved user for a payload contract', () => {
+            expect(
+                domain['resolveCreatedBy'](
+                    EnumActivityLogUser.payload,
+                    undefined,
+                    'user-id'
+                )
+            ).toBe('user-id');
+        });
+    });
+
+    describe('resolveWorkspaceId', () => {
+        it('resolves to null when the contract has no workspace', () => {
+            expect(
+                domain['resolveWorkspaceId'](
+                    EnumActivityLogWorkspace.none,
+                    undefined
+                )
+            ).toBeNull();
+        });
+
+        it('uses the staged workspace for a target contract and rejects a missing one', () => {
+            expect(
+                domain['resolveWorkspaceId'](
+                    EnumActivityLogWorkspace.target,
+                    'workspace-id'
+                )
+            ).toBe('workspace-id');
+            expect(() =>
+                domain['resolveWorkspaceId'](
+                    EnumActivityLogWorkspace.target,
+                    null
+                )
+            ).toThrow(ActivityLogContractInvalidException);
+        });
+
+        it('reads the request workspace for a payload contract and rejects a missing one', () => {
+            requestStore.set(WorkspaceStoreKey, { id: 'request-workspace' });
+            expect(
+                domain['resolveWorkspaceId'](
+                    EnumActivityLogWorkspace.payload,
+                    undefined
+                )
+            ).toBe('request-workspace');
+
+            requestStore.delete(WorkspaceStoreKey);
+            expect(() =>
+                domain['resolveWorkspaceId'](
+                    EnumActivityLogWorkspace.payload,
+                    undefined
+                )
+            ).toThrow(ActivityLogContractInvalidException);
+        });
+    });
+
+    describe('stagePrepared and flushStaged guards', () => {
+        it('stages nothing for an empty batch', () => {
+            domain.stagePrepared([]);
+
+            expect(requestStoreService.set).not.toHaveBeenCalled();
+        });
+
+        it('appends to an already staged batch', () => {
+            const existing = {
+                action: EnumActivityLogAction.userUpdateProfile,
+                metadata: {},
+                onError: false,
+            } satisfies IActivityLogStagedEvent;
+            requestStore.set(ActivityLogStageStoreKey, [existing]);
+
+            domain.stagePrepared([existing]);
+
+            expect(requestStoreService.set).toHaveBeenCalledWith(
+                ActivityLogStageStoreKey,
+                [existing, existing]
+            );
+        });
+
+        it('returns without writing when nothing is staged', async () => {
+            await domain.flushStaged({
+                payloadUserId: 'payload-id',
+                isError: false,
+            });
+
+            expect(activityLogRepository.createMany).not.toHaveBeenCalled();
+            expect(requestStoreService.set).not.toHaveBeenCalled();
+        });
     });
 });

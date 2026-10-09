@@ -29,7 +29,8 @@ export class ApiKeyRepository implements IApiKeyRepository {
             ...params
         }: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
-        type?: Record<string, IPaginationIn>
+        type?: Record<string, IPaginationIn>,
+        additionalWhere?: Prisma.ApiKeyWhereInput
     ): Promise<IResponsePaginationReturn<IApiKeyList>> {
         return this.paginationService.offset<
             IApiKeyList,
@@ -37,9 +38,14 @@ export class ApiKeyRepository implements IApiKeyRepository {
         >(this.databaseService.client.apiKey, {
             ...params,
             where: {
-                ...where,
-                ...isActive,
-                ...type,
+                AND: [
+                    {
+                        ...where,
+                        ...isActive,
+                        ...type,
+                    },
+                    additionalWhere ?? {},
+                ],
             },
             select: ApiKeyAdminListSelect,
         });

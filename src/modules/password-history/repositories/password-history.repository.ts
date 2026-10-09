@@ -30,7 +30,8 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
+        }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>,
+        additionalWhere?: Prisma.PasswordHistoryWhereInput
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         return this.paginationService.offset<
             IPasswordHistoryList,
@@ -38,8 +39,13 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
         >(this.databaseService.client.passwordHistory, {
             ...others,
             where: {
-                ...where,
-                userId,
+                AND: [
+                    {
+                        ...where,
+                        userId,
+                    },
+                    additionalWhere ?? {},
+                ],
             },
             select: PasswordHistoryListSelect,
         });

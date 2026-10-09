@@ -1,7 +1,16 @@
 import type { RoleAdminListRequestDto } from '@modules/role/dtos/request/role.admin-list.request.dto';
 import { RoleAdminListRequestSchema } from '@modules/role/dtos/request/role.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { Body, Controller, Get, Param, Put, Query } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Param,
+    Post,
+    Put,
+    Query,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
@@ -13,12 +22,15 @@ import {
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PlatformPolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import { EnumPolicyPlatformSubject } from '@modules/policy/enums/policy.enum';
 import { RoleHttpService } from '@modules/role/services/role.http.service';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 
+import { RoleCreateRequestSchema } from '@modules/role/dtos/request/role.create.request.dto';
+import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestSchema } from '@modules/role/dtos/request/role.update.request.dto';
 import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import {
@@ -99,5 +111,43 @@ export class RoleAdminController {
         body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
         return this.roleHttpService.updateByAdmin(roleId, body);
+    }
+
+    @Doc({ summary: 'create a role' })
+    @Response('role.create', { schema: RoleSchema })
+    @TermPolicyAcceptanceProtected()
+    @PlatformPolicyProtected({
+        subject: EnumPolicyPlatformSubject.Role,
+        action: [EnumPolicyAction.read, EnumPolicyAction.create],
+    })
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true })
+    @Post('/create')
+    async create(
+        @Body({ schema: RoleCreateRequestSchema })
+        body: RoleCreateRequestDto
+    ): Promise<IResponseReturn<RoleDto>> {
+        return this.roleHttpService.createByAdmin(body);
+    }
+
+    @Doc({ summary: 'delete a role' })
+    @Response('role.delete')
+    @TermPolicyAcceptanceProtected()
+    @PlatformPolicyProtected({
+        subject: EnumPolicyPlatformSubject.Role,
+        action: [EnumPolicyAction.read, EnumPolicyAction.delete],
+    })
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true })
+    @Delete('/delete/:roleId')
+    async delete(
+        @Param('roleId', { schema: RequestUuidSchema })
+        roleId: string
+    ): Promise<IResponseReturn<void>> {
+        return this.roleHttpService.deleteByAdmin(roleId);
     }
 }

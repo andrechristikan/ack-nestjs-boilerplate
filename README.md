@@ -143,7 +143,7 @@ See [package.json][ref-package-json] for the full list.
 - **JWT + stateful sessions** - ES256 access and ES512 refresh tokens, Redis-backed sessions, and instant revocation
 - **Social sign-in** - Google OAuth and Apple Sign In for mobile and web
 - **TOTP 2FA** - Authenticator apps, encrypted secrets, and backup recovery codes
-- **Scoped roles & CASL policies** - Platform, workspace, and project roles from one seeded catalog; each role carries CASL policies that decide every route
+- **Scoped roles & CASL policies** - Platform, workspace, and project roles from a seeded catalog, plus roles an admin creates; each role carries CASL policies that decide every route
 - **API keys & rate limits** - `x-api-key` guards plus Redis sliding-window limits (per IP, per user, per route)
 
 ### 🌐 Workspaces & Projects

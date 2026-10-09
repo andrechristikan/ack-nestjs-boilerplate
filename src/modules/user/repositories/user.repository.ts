@@ -89,18 +89,24 @@ export class UserRepository implements IUserRepository {
         }: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        countryId?: Record<string, IPaginationEqual>,
+        additionalWhere?: Prisma.UserWhereInput
     ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.paginationService.offset<IUserList, Prisma.UserWhereInput>(
             this.databaseService.client.user,
             {
                 ...params,
                 where: {
-                    ...where,
-                    ...status,
-                    ...countryId,
-                    ...roleId,
-                    deletedAt: null,
+                    AND: [
+                        {
+                            ...where,
+                            ...status,
+                            ...countryId,
+                            ...roleId,
+                            deletedAt: null,
+                        },
+                        additionalWhere ?? {},
+                    ],
                 },
                 select: UserAdminListSelect,
             }
@@ -216,14 +222,20 @@ export class UserRepository implements IUserRepository {
         status: Record<string, IPaginationIn> | null,
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null,
-        take: number
+        take: number,
+        where?: Prisma.UserWhereInput
     ): Promise<IUserExport[]> {
         return this.databaseService.client.user.findMany({
             where: {
-                ...status,
-                ...countryId,
-                ...roleId,
-                deletedAt: null,
+                AND: [
+                    {
+                        ...status,
+                        ...countryId,
+                        ...roleId,
+                        deletedAt: null,
+                    },
+                    where ?? {},
+                ],
             },
             include: {
                 role: { select: { name: true } },

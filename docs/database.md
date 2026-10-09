@@ -190,7 +190,7 @@ Roles are rows of one `Role` table. `scope` (`platform`, `workspace`, `project`)
 | `project` | `member` | Member |
 | `project` | `viewer` | Viewer |
 
-The keys live in `EnumRolePlatformKey`, `EnumRoleWorkspaceKey`, and `EnumRoleProjectKey`. Role admin routes update `name` and `description` only; a role is never created or deleted through the API.
+The keys live in `EnumRolePlatformKey`, `EnumRoleWorkspaceKey`, and `EnumRoleProjectKey`. A role listed under these keys is a catalog role: the role admin API updates its `name` and `description` and never deletes it. `POST /admin/role/create` adds a role whose key is a key supplied in the request, and `DELETE /admin/role/delete/:roleId` removes a non-catalog role that nothing references (see [Authorization](authorization.md)).
 
 **Seeded policies.** The `policy` seed writes each role's rules. A rule carries `subject`, `action[]`, `conditions`, `inverted`, and `reason`. It reads the roles by `(scope, key)` first and aborts without writing when one is missing. In one transaction it deletes every policy row of the seeded roles and recreates them from the declarative catalog, so re-running it is safe. Workspace and project rules on a scoped subject carry the scope condition (for example `workspaceId: ${workspaceId}` or `projectId: ${projectId}`), so a rule reaches the active workspace or project only.
 
@@ -420,7 +420,7 @@ A physical delete follows the `onDelete` action declared on each relation in `pr
 |---|---|
 | `Cascade` | Every required foreign key under `User` (`UserMobileNumber`, `UserPhoto`, `Verification`, `PasswordHistory`, `ActivityLog`, `Session`, `DeviceOwnership`, `TwoFactor`, `TermPolicyUserAcceptance`, `ForgotPassword`, `Notification`, `NotificationUserSetting`, `FeatureFlagUser`, `WorkspaceMember`, `WorkspaceJoinRequest`, `ProjectMember`); `Policy.role`; `Session.deviceOwnership`; `DeviceOwnership.device`; `NotificationDelivery.notification`; `Verification.mobileNumber`; `TwoFactorBackupCode.twoFactor`; `TermPolicyContent.termPolicy`; `FeatureFlagUser.featureFlag`; `ActivityLog.workspace`; `WorkspaceMember`, `WorkspaceJoinRequest`, `WorkspaceInvite` and `Project` to `Workspace`; `WorkspaceInvite.project`; `ProjectMember` to `Project` |
 | `SetNull` | `Session.revokedBy`, `DeviceOwnership.revokedBy`, `WorkspaceInvite.invitedBy` (nullable), `WorkspaceInvite.acceptedBy`, `WorkspaceJoinRequest.reviewedBy`, `User.lastWorkspace` |
-| `Restrict` | `User.role`, `WorkspaceMember.role`, `ProjectMember.role`, `WorkspaceInvite.workspaceRole`, `User.country`, `UserMobileNumber.country`, `TermPolicyUserAcceptance.termPolicy` |
+| `Restrict` | `User.role`, `WorkspaceMember.role`, `ProjectMember.role`, `WorkspaceInvite.workspaceRole`, `WorkspaceInvite.projectRole`, `User.country`, `UserMobileNumber.country`, `TermPolicyUserAcceptance.termPolicy` |
 
 Deleting a `Role` row that any user, member, or invite still references is rejected, and a `Role` delete removes its `Policy` rows. Deleting a `User` row therefore removes its photo, sessions, device ownerships, two-factor rows, verifications, password history, notifications, term policy acceptances, workspace and project memberships, and activity log rows, and nulls the actor references other rows hold to it. Deleting a `Workspace` row removes its members, join requests, invites, projects (and their members), and workspace-scoped activity log rows. `migration:remove` for `user` and `workspace` is one `deleteMany` each and relies on this.
 

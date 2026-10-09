@@ -35,7 +35,8 @@ export interface IUserRepository {
         }: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        countryId?: Record<string, IPaginationEqual>,
+        additionalWhere?: Prisma.UserWhereInput
     ): Promise<IResponsePaginationReturn<IUserList>>;
     findActive(): Promise<IUserContact[]>;
     findOneById(id: string): Promise<User | null>;
@@ -52,7 +53,8 @@ export interface IUserRepository {
         status: Record<string, IPaginationIn> | null,
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null,
-        take: number
+        take: number,
+        where?: Prisma.UserWhereInput
     ): Promise<IUserExport[]>;
     existsByEmail(email: string): Promise<boolean>;
     existsByUsername(username: string): Promise<boolean>;

@@ -90,12 +90,14 @@ export class ApiKeyDomain {
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
-        type?: Record<string, IPaginationIn>
+        type?: Record<string, IPaginationIn>,
+        where?: Prisma.ApiKeyWhereInput
     ): Promise<IResponsePaginationReturn<IApiKeyList>> {
         return this.apiKeyRepository.findWithPagination(
             pagination,
             isActive,
-            type
+            type,
+            where
         );
     }
 
@@ -147,6 +149,16 @@ export class ApiKeyDomain {
         this.activityLogDomain.stagePrepared(events);
 
         return { apiKey: created, secret };
+    }
+
+    /** Returns the stored key; callers judge it, this method does not. */
+    async getOne(id: string): Promise<ApiKey> {
+        const apiKey = await this.apiKeyRepository.findOneById(id);
+        if (!apiKey) {
+            throw new ApiKeyNotFoundException();
+        }
+
+        return apiKey;
     }
 
     async updateStatusByAdmin(id: string, isActive: boolean): Promise<ApiKey> {

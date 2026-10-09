@@ -19,8 +19,9 @@ export const EnumPolicyPlatformSubject = {
     FeatureFlag: EnumPolicySubject.FeatureFlag,
     Device: EnumPolicySubject.Device,
     Workspace: EnumPolicySubject.Workspace,
+    WorkspaceMember: EnumPolicySubject.WorkspaceMember,
     Project: EnumPolicySubject.Project,
-    analytic: EnumPolicySubject.analytic,
+    Analytic: EnumPolicySubject.Analytic,
 } as const satisfies PolicySubjectSubset;
 
 /**
@@ -41,7 +42,7 @@ export const EnumPolicyWorkspaceSubject = {
     WorkspaceInvite: EnumPolicySubject.WorkspaceInvite,
     WorkspaceJoinRequest: EnumPolicySubject.WorkspaceJoinRequest,
     Project: EnumPolicySubject.Project,
-    analytic: EnumPolicySubject.analytic,
+    WorkspaceAnalytic: EnumPolicySubject.WorkspaceAnalytic,
 } as const satisfies PolicySubjectSubset;
 
 /**

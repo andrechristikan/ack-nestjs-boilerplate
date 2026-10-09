@@ -15,18 +15,23 @@ not carry conventions from one tree into the other.
 - Environment lifecycle:
 
   ```bash
-  cp .env.e2e.example .env.e2e   # first run only, if .env.e2e is absent
+  mkdir -p keys/e2e
+  cp .env.e2e.example keys/e2e/.env.example
+  (cd keys/e2e && node ../../scripts/generate-secret.ts jwt --direct-insert)
+  cp keys/e2e/.env .env.e2e
   pnpm test:e2e:env:up
   pnpm test:e2e:db:reset
   pnpm test:e2e
   pnpm test:e2e:env:down
   ```
 
-  The Compose project uses host ports `55432` (PostgreSQL), `56379` (Redis), and `5311` (JWKS),
-  isolated from the development Compose project.
-- `pnpm test:e2e:db:reset` applies the current Prisma schema and seeds the baseline roles,
-  policies, feature flags, countries, and term policies. A spec may rely on that baseline
-  existing; it never has to create baseline roles or policies itself.
+  The generator writes the E2E key pairs and JWKS files under ignored `keys/e2e/keys/`, then
+  fills the copied environment file with the matching key IDs and encoded keys. The Compose
+  project uses host ports `55432` (PostgreSQL), `56379` (Redis), and `5311` (JWKS), isolated
+  from the development Compose project.
+- After replaying the current migration history, `pnpm test:e2e:db:reset` seeds the baseline
+  roles, policies, feature flags, countries, and term policies. A spec may rely on that
+  baseline existing; it never has to create baseline roles or policies itself.
 - No coverage is configured for this project. Never add `--coverage` to an E2E invocation.
 
 ## External boundaries

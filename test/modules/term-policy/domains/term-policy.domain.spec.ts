@@ -102,6 +102,25 @@ describe('TermPolicyDomain', () => {
         service = moduleRef.get(TermPolicyDomain);
     });
 
+    describe('getOne', () => {
+        it('returns the stored policy without judging it', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(draft);
+
+            await expect(service.getOne(draft.id)).resolves.toEqual(draft);
+            expect(termPolicyRepository.findOneById).toHaveBeenCalledWith(
+                draft.id
+            );
+        });
+
+        it('throws TermPolicyNotFoundException when the policy is unknown', async () => {
+            termPolicyRepository.findOneById.mockResolvedValue(null);
+
+            await expect(service.getOne('missing')).rejects.toBeInstanceOf(
+                TermPolicyNotFoundException
+            );
+        });
+    });
+
     it('rejects publication of an unknown policy', async () => {
         termPolicyRepository.findOneById.mockResolvedValue(null);
 
@@ -212,6 +231,34 @@ describe('TermPolicyDomain', () => {
         await expect(
             service.getListPublished(pagination, filter)
         ).resolves.toBe(result);
+        expect(termPolicyRepository.find).toHaveBeenCalledWith(
+            pagination,
+            filter,
+            status,
+            undefined
+        );
+    });
+
+    it('forwards the accessible where as the trailing repository argument of the admin list', async () => {
+        const pagination = { page: 1, perPage: 10 } as never;
+        const accessibleWhere = { type: EnumTermPolicyType.privacy };
+        const result = { data: [], pagination: {} } as never;
+        termPolicyRepository.find.mockResolvedValue(result);
+
+        await expect(
+            service.getListByAdmin(
+                pagination,
+                undefined,
+                undefined,
+                accessibleWhere
+            )
+        ).resolves.toBe(result);
+        expect(termPolicyRepository.find).toHaveBeenCalledWith(
+            pagination,
+            undefined,
+            undefined,
+            accessibleWhere
+        );
     });
 
     it('rejects a duplicate type and version', async () => {

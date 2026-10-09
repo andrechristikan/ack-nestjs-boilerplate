@@ -26,7 +26,8 @@ export interface ITermPolicyRepository {
             ...others
         }: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
-        status?: Record<string, IPaginationIn>
+        status?: Record<string, IPaginationIn>,
+        additionalWhere?: Prisma.TermPolicyWhereInput
     ): Promise<IResponsePaginationReturn<TermPolicy>>;
     findPublished(
         {

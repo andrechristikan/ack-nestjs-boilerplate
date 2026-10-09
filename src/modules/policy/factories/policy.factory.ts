@@ -1,20 +1,48 @@
 import { createPrismaAbility } from '@casl/prisma';
-import type { Policy } from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
 import type {
     IPolicyConditions,
+    IPolicyRule,
     PolicyAbility,
     PolicyAbilityRule,
     PolicyPlaceholderValues,
 } from '@modules/policy/interfaces/policy.interface';
+import { isPolicyPlaceholder } from '@modules/policy/constants/policy.constant';
 import { Injectable } from '@nestjs/common';
 
-/** Builds the typed Prisma CASL ability from policy rules. */
+/** Builds the typed Prisma CASL ability from persisted policies and a placeholder map. */
 @Injectable()
 export class PolicyAbilityFactory {
     private isPlainJsonObject(value: unknown): value is IPolicyConditions {
         return (
             value !== null && typeof value === 'object' && !Array.isArray(value)
         );
+    }
+
+    /** Resolves every placeholder in a condition value at any depth; `undefined` when one has no value. */
+    private interpolateValue(
+        value: Prisma.JsonValue,
+        values: PolicyPlaceholderValues
+    ): Prisma.JsonValue | undefined {
+        if (Array.isArray(value)) {
+            const items: Prisma.JsonArray = [];
+            for (const item of value) {
+                const resolved = this.interpolateValue(item, values);
+                if (resolved === undefined) {
+                    return undefined;
+                }
+
+                items.push(resolved);
+            }
+
+            return items;
+        }
+
+        if (this.isPlainJsonObject(value)) {
+            return this.interpolate(value, values) ?? undefined;
+        }
+
+        return isPolicyPlaceholder(value) ? values[value] : value;
     }
 
     private interpolate(
@@ -24,18 +52,10 @@ export class PolicyAbilityFactory {
         const entries: IPolicyConditions = {};
 
         for (const [key, value] of Object.entries(conditions)) {
-            if (
-                value === undefined ||
-                (typeof value === 'object' && value !== null) ||
-                typeof value === 'function' ||
-                typeof value === 'symbol'
-            ) {
-                return null;
-            }
-
-            const isPlaceholder =
-                typeof value === 'string' && /^\$\{[^}]+\}$/.test(value);
-            const resolved = isPlaceholder ? values[value] : value;
+            const resolved =
+                value === undefined
+                    ? undefined
+                    : this.interpolateValue(value, values);
             if (resolved === undefined) {
                 return null;
             }
@@ -43,59 +63,58 @@ export class PolicyAbilityFactory {
             entries[key] = resolved;
         }
 
-        if (!this.isPlainJsonObject(entries)) {
-            return null;
-        }
-
         return entries;
     }
 
+    /**
+     * Resolves one persisted policy into a plain ability rule. Placeholders resolve at any depth,
+     * so a seeded relational condition (`members.some.userId`) keeps its user. An allow whose
+     * placeholder has no value, or whose conditions are not a plain object, is omitted (`null`); an
+     * inverted rule in that state becomes an unconditional deny on its subject and actions. Both
+     * fail closed.
+     */
     private toAbilityRule(
-        policy: Policy,
+        policy: IPolicyRule,
         placeholders: PolicyPlaceholderValues
     ): PolicyAbilityRule | null {
         const { conditions } = policy;
-        const resolved =
-            conditions === null || !this.isPlainJsonObject(conditions)
-                ? null
-                : this.interpolate(conditions, placeholders);
-
-        if (conditions !== null && resolved === null) {
-            return null;
-        }
-
-        return {
+        const base: PolicyAbilityRule = {
             subject: policy.subject,
             action: policy.action,
-            ...(resolved ? { conditions: resolved } : {}),
             inverted: policy.inverted,
             ...(policy.reason ? { reason: policy.reason } : {}),
         };
+        if (conditions === null) {
+            return base;
+        }
+
+        const resolved = this.isPlainJsonObject(conditions)
+            ? this.interpolate(conditions, placeholders)
+            : null;
+        if (resolved !== null) {
+            return { ...base, conditions: resolved };
+        }
+
+        return policy.inverted ? base : null;
     }
 
-    /** Inverted rules are added after allows so a matching deny is authoritative. */
-    build(rules: PolicyAbilityRule[]): PolicyAbility {
+    /**
+     * Builds the typed Prisma CASL ability from persisted policies. Placeholders resolve first
+     * with a fail-closed drop; inverted rules are then added after allows so a matching deny is
+     * authoritative.
+     */
+    build(
+        policies: IPolicyRule[],
+        placeholders: PolicyPlaceholderValues
+    ): PolicyAbility {
+        const rules = policies.flatMap(
+            policy => this.toAbilityRule(policy, placeholders) ?? []
+        );
         const orderedRules = [
             ...rules.filter(rule => !rule.inverted),
             ...rules.filter(rule => rule.inverted),
         ];
 
         return createPrismaAbility<PolicyAbility>(orderedRules);
-    }
-
-    /** Builds a resolved ability from the supplied persisted policies. */
-    buildFromPolicies(
-        policies: Policy[] | null,
-        placeholders: PolicyPlaceholderValues
-    ): PolicyAbility {
-        const rules: PolicyAbilityRule[] = [];
-        for (const policy of policies ?? []) {
-            const rule = this.toAbilityRule(policy, placeholders);
-            if (rule !== null) {
-                rules.push(rule);
-            }
-        }
-
-        return this.build(rules);
     }
 }

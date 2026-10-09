@@ -21,11 +21,13 @@ export class PasswordHistoryDomain {
 
     async getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
+        pagination: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>,
+        where?: Prisma.PasswordHistoryWhereInput
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         return this.passwordHistoryRepository.findWithPaginationOffsetByAdmin(
             userId,
-            pagination
+            pagination,
+            where
         );
     }
 

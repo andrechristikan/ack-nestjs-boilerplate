@@ -19,7 +19,7 @@ Status codes for this module live in the `52100` block. Catalog: [Status Codes](
 
 ## Related Documents
 
-- [Authorization](authorization.md): `EnumPolicySubject.analytic` on admin and workspace routes
+- [Authorization](authorization.md): `EnumPolicySubject.Analytic` on admin routes, `EnumPolicySubject.WorkspaceAnalytic` on workspace routes
 - [Cache](cache.md): `CacheMainProvider` and feature cache classes
 - [Configuration](configuration.md): `analytic.config.ts`
 - [Activity Log](activity-log.md): actions Analytic counts, including `userLoginFailed` and `userReachMaxPasswordAttempt`
@@ -69,7 +69,7 @@ flowchart LR
 - `@ApiKeyProtected`
 - `@AuthJwtAccessProtected`
 - `@UserProtected`
-- `@PlatformPolicyProtected({ subject: EnumPolicySubject.analytic, action: [EnumPolicyAction.read] })`
+- `@PlatformPolicyProtected({ subject: EnumPolicySubject.Analytic, action: [EnumPolicyAction.read] })`
 - `@TermPolicyAcceptanceProtected`
 - `@RequestThrottle({ user: true })`
 
@@ -83,11 +83,11 @@ Admin scope carries no workspace header.
 - `@UserProtected`
 - `@WorkspaceProtected`
 - `@WorkspaceMemberProtected`
-- `@WorkspaceSubjectPolicyProtected({ subject: EnumPolicySubject.analytic, action: [EnumPolicyAction.read] })` on every route except the workspace summary
+- `@WorkspacePolicyProtected({ subject: EnumPolicySubject.WorkspaceAnalytic, action: [EnumPolicyAction.read] })` on every route
 - `@TermPolicyAcceptanceProtected`
 - `@RequestThrottle({ user: true })`
 
-The workspace comes from `x-workspace-id`. The policy is evaluated against the caller's workspace role: the seeded `owner` and `admin` hold `analytic:[read]`, the `member` does not.
+The workspace comes from `x-workspace-id`. The policy is evaluated against the caller's workspace role: the seeded `owner` and `admin` hold `workspaceAnalytic:[read]`, the `member` does not.
 
 ### Admin dashboard
 
@@ -228,7 +228,7 @@ Mounted at `/user/analytic`. One controller: `AnalyticUserController` (`analytic
 
 | Method | Path | Who | Returns |
 |---|---|---|---|
-| `GET` | `/user/analytic/workspace/summary` | Any workspace member | Workspace summary (optional date range) |
+| `GET` | `/user/analytic/workspace/summary` | `analytic:[read]` in the workspace role | Workspace summary (optional date range) |
 | `GET` | `/user/analytic/workspace/invite-funnel` | `analytic:[read]` in the workspace role | Invite status counts for a required date range (`{ statuses: [...] }`) |
 | `GET` | `/user/analytic/workspace/join-outcomes` | `analytic:[read]` in the workspace role | Join-request status counts for a required date range (`{ statuses: [...] }`) |
 | `GET` | `/user/analytic/workspace/member-roles` | `analytic:[read]` in the workspace role | Member counts per workspace role key (`{ roles: [...] }`) |

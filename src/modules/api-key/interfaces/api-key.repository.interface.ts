@@ -18,7 +18,8 @@ export interface IApiKeyRepository {
             ...params
         }: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
-        type?: Record<string, IPaginationIn>
+        type?: Record<string, IPaginationIn>,
+        additionalWhere?: Prisma.ApiKeyWhereInput
     ): Promise<IResponsePaginationReturn<IApiKeyList>>;
     create(
         apiKeyId: string,

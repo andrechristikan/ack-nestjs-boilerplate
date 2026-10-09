@@ -21,9 +21,7 @@ import type {
     IProjectMemberWithRole,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
-import type { PolicyAbility } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';
 
@@ -34,13 +32,18 @@ export class ProjectMemberHttpService {
         private readonly workspaceMemberDomain: WorkspaceMemberDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService,
-        private readonly policyDomain: PolicyDomain
+        private readonly policyAbilityDomain: PolicyAbilityDomain
     ) {}
 
     async getMembersList(
         project: Project,
         query: ProjectMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
+        const accessibleWhere =
+            this.policyAbilityDomain.accessibleWhere<Prisma.ProjectMemberWhereInput>(
+                EnumPolicyAction.read,
+                EnumPolicySubject.ProjectMember
+            );
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.ProjectMemberWhereInput>(
                 query,
@@ -51,7 +54,11 @@ export class ProjectMemberHttpService {
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
         const { data, ...others } =
-            await this.projectMemberDomain.getMembersList(project, params);
+            await this.projectMemberDomain.getMembersList(
+                project,
+                params,
+                accessibleWhere
+            );
 
         return {
             data,
@@ -64,11 +71,7 @@ export class ProjectMemberHttpService {
         actorId: string,
         { userId, roleId }: ProjectMemberAssignRequestDto
     ): Promise<IResponseReturn<IProjectMember>> {
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
-        this.policyDomain.assertCan(
-            ability,
+        this.policyAbilityDomain.assertCan(
             EnumPolicyAction.create,
             subject(EnumPolicySubject.ProjectMember, {
                 projectId: project.id,
@@ -102,11 +105,7 @@ export class ProjectMemberHttpService {
                 project.id,
                 targetMemberId
             );
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
-        this.policyDomain.assertCan(
-            ability,
+        this.policyAbilityDomain.assertCan(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.ProjectMember, targetMember)
         );
@@ -128,11 +127,7 @@ export class ProjectMemberHttpService {
                 project.id,
                 targetMemberId
             );
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
-        this.policyDomain.assertCan(
-            ability,
+        this.policyAbilityDomain.assertCan(
             EnumPolicyAction.delete,
             subject(EnumPolicySubject.ProjectMember, targetMember)
         );

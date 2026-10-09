@@ -182,15 +182,34 @@ export class WorkspaceJoinRequestDomain {
     async getJoinRequestsList(
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
-        status?: Record<string, IPaginationIn>
+        status?: Record<string, IPaginationIn>,
+        where?: Prisma.WorkspaceJoinRequestWhereInput
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
         await this.assertJoinRequestAllowed();
 
         return this.workspaceJoinRequestRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
-            status
+            status,
+            where
         );
+    }
+
+    /** Loads the join request the route addresses within the workspace, so a record outside it reads as not found. */
+    async getJoinRequest(
+        workspaceId: string,
+        workspaceJoinRequestId: string
+    ): Promise<WorkspaceJoinRequest> {
+        const joinRequest =
+            await this.workspaceJoinRequestRepository.findByIdAndWorkspace(
+                workspaceJoinRequestId,
+                workspaceId
+            );
+        if (!joinRequest) {
+            throw new WorkspaceJoinRequestNotFoundException();
+        }
+
+        return joinRequest;
     }
 
     async acceptJoinRequest(

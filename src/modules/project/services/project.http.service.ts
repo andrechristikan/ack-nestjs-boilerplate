@@ -11,13 +11,9 @@ import {
     EnumPolicySubject,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
-import { PolicyAbilityStoreKey } from '@modules/policy/constants/policy.constant';
-import type {
-    IEffectivePermission,
-    PolicyAbility,
-} from '@modules/policy/interfaces/policy.interface';
+import type { Project } from '@generated/prisma-client/client';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
+import type { IEffectivePermission } from '@modules/policy/interfaces/policy.interface';
 import { ProjectPermissionSubjects } from '@modules/project/constants/project.constant';
 import {
     ProjectCursorAvailableOrderBy,
@@ -36,26 +32,17 @@ import { Injectable } from '@nestjs/common';
 export class ProjectHttpService {
     constructor(
         private readonly projectDomain: ProjectDomain,
-        private readonly policyDomain: PolicyDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     async getListForMember(
         workspaceId: string,
-        workspaceMember: WorkspaceMember,
         query: ProjectUserListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
-        const canReadAllProjects = ability.can(
-            EnumPolicyAction.read,
-            EnumPolicySubject.Project
-        );
         const accessibleWhere =
-            this.policyDomain.accessibleWhere<Prisma.ProjectWhereInput>(
-                ability,
+            this.policyAbilityDomain.accessibleWhere<Prisma.ProjectWhereInput>(
                 EnumPolicyAction.read,
                 EnumPolicySubject.Project
             );
@@ -68,10 +55,8 @@ export class ProjectHttpService {
 
         const { data, ...others } = await this.projectDomain.getListForMember(
             workspaceId,
-            workspaceMember,
             params,
-            canReadAllProjects,
-            accessibleWhere ?? undefined
+            accessibleWhere
         );
 
         return {
@@ -85,11 +70,7 @@ export class ProjectHttpService {
         actorId: string,
         { name, description }: ProjectCreateRequestDto
     ): Promise<IResponseReturn<Project>> {
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
-        this.policyDomain.assertCan(
-            ability,
+        this.policyAbilityDomain.assertCan(
             EnumPolicyAction.create,
             subject(EnumPolicySubject.Project, { workspaceId })
         );
@@ -103,17 +84,11 @@ export class ProjectHttpService {
     }
 
     getProject(project: Project): IResponseReturn<Project> {
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
-        this.policyDomain.assertCan(
-            ability,
+        this.policyAbilityDomain.assertCan(
             EnumPolicyAction.read,
             subject(EnumPolicySubject.Project, project)
         );
-        const current = this.projectDomain.getProject(project);
-
-        return { data: current };
+        return { data: project };
     }
 
     async updateProject(
@@ -121,11 +96,7 @@ export class ProjectHttpService {
         actorId: string,
         { name, description }: ProjectUpdateRequestDto
     ): Promise<IResponseReturn<Project>> {
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
-        this.policyDomain.assertCan(
-            ability,
+        this.policyAbilityDomain.assertCan(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Project, project)
         );
@@ -143,11 +114,7 @@ export class ProjectHttpService {
         actorId: string,
         { slug }: ProjectUpdateSlugRequestDto
     ): Promise<IResponseReturn<Project>> {
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
-        this.policyDomain.assertCan(
-            ability,
+        this.policyAbilityDomain.assertCan(
             EnumPolicyAction.update,
             subject(EnumPolicySubject.Project, project)
         );
@@ -161,11 +128,7 @@ export class ProjectHttpService {
     }
 
     async softDeleteProject(project: Project, actorId: string): Promise<void> {
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
-        this.policyDomain.assertCan(
-            ability,
+        this.policyAbilityDomain.assertCan(
             EnumPolicyAction.delete,
             subject(EnumPolicySubject.Project, project)
         );
@@ -175,12 +138,8 @@ export class ProjectHttpService {
     async getListForAdmin(
         query: ProjectAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
         const accessibleWhere =
-            this.policyDomain.requireAccessibleWhere<Prisma.ProjectWhereInput>(
-                ability,
+            this.policyAbilityDomain.accessibleWhere<Prisma.ProjectWhereInput>(
                 EnumPolicyAction.read,
                 EnumPolicySubject.Project
             );
@@ -213,18 +172,18 @@ export class ProjectHttpService {
 
     async getForAdmin(projectId: string): Promise<IResponseReturn<Project>> {
         const project = await this.projectDomain.getByIdForAdmin(projectId);
+        this.policyAbilityDomain.assertCan(
+            EnumPolicyAction.read,
+            subject(EnumPolicySubject.Project, project)
+        );
+
         return { data: project };
     }
 
     getEffectivePermissions(): IResponseReturn<{
         permissions: IEffectivePermission[];
     }> {
-        const ability = this.policyDomain.requireStored<PolicyAbility>(
-            PolicyAbilityStoreKey
-        );
-
-        const permissions = this.policyDomain.getEffectivePermissions(
-            ability,
+        const permissions = this.policyAbilityDomain.getEffectivePermissions(
             ProjectPermissionSubjects
         );
 

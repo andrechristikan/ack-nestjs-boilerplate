@@ -23,6 +23,7 @@ import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/excep
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import type {
+    ITermPolicy,
     ITermPolicyContentCreate,
     ITermPolicyContentUpload,
     ITermPolicyCreate,
@@ -94,9 +95,10 @@ export class TermPolicyDomain {
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
-        status?: Record<string, IPaginationIn>
+        status?: Record<string, IPaginationIn>,
+        where?: Prisma.TermPolicyWhereInput
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
-        return this.termPolicyRepository.find(pagination, type, status);
+        return this.termPolicyRepository.find(pagination, type, status, where);
     }
 
     async getListPublished(
@@ -166,6 +168,17 @@ export class TermPolicyDomain {
 
             throw new AppUnknownException(err);
         }
+    }
+
+    /** Returns the stored policy with its contents; callers judge it, this method does not. */
+    async getOne(termPolicyId: string): Promise<ITermPolicy> {
+        const termPolicy =
+            await this.termPolicyRepository.findOneById(termPolicyId);
+        if (!termPolicy) {
+            throw new TermPolicyNotFoundException();
+        }
+
+        return termPolicy;
     }
 
     async deleteByAdmin(termPolicyId: string): Promise<TermPolicy> {

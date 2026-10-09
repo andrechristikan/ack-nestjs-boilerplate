@@ -14,7 +14,7 @@ import {
     EnumRoleScope,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
@@ -140,19 +140,14 @@ export class ProjectDomain {
         );
     }
 
-    /** Lists projects in the workspace: a caller holding project read sees every project, everyone else sees only the ones they hold a `ProjectMember` row for. */
+    /** Lists projects in the workspace narrowed by the policy predicate from the HTTP layer; which projects a member sees is the policy's call. */
     async getListForMember(
         workspaceId: string,
-        workspaceMember: WorkspaceMember,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
-        canReadAllProjects: boolean,
         where?: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
-        const memberUserId = canReadAllProjects ? null : workspaceMember.userId;
-
         return this.projectRepository.findWithPaginationCursorForWorkspace(
             workspaceId,
-            memberUserId,
             pagination,
             where
         );
@@ -211,10 +206,6 @@ export class ProjectDomain {
         }
 
         throw new DatabaseUniqueValueGenerationFailedException();
-    }
-
-    getProject(project: Project): Project {
-        return project;
     }
 
     async updateProject(

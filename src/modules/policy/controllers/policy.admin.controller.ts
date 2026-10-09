@@ -56,7 +56,7 @@ export class PolicyAdminController {
         @Param('roleId', { schema: RequestUuidSchema })
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
-        return this.policyHttpService.listByRole(roleId);
+        return this.policyHttpService.listByAdmin(roleId);
     }
 
     @Doc({ summary: 'grant a rule to a role' })
@@ -64,7 +64,7 @@ export class PolicyAdminController {
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
         subject: EnumPolicySubject.Role,
-        action: [EnumPolicyAction.read, EnumPolicyAction.create],
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -108,7 +108,7 @@ export class PolicyAdminController {
     @TermPolicyAcceptanceProtected()
     @PlatformPolicyProtected({
         subject: EnumPolicySubject.Role,
-        action: [EnumPolicyAction.read, EnumPolicyAction.delete],
+        action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @UserProtected()
     @AuthJwtAccessProtected()

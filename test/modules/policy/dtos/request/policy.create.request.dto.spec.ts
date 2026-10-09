@@ -21,7 +21,7 @@ describe('PolicyCreateRequestSchema', () => {
     it('accepts a full rule', () => {
         const full = {
             ...valid,
-            conditions: { userId: '${userId}', AND: [{ id: 'x' }] },
+            conditions: { userId: '${userId}', status: 'active', level: 2 },
             inverted: true,
             reason: 'Only owners can update this user',
         };
@@ -36,6 +36,9 @@ describe('PolicyCreateRequestSchema', () => {
         { conditions: [] },
         { conditions: 'x' },
         { conditions: null },
+        { conditions: { AND: [{ id: 'x' }] } },
+        { conditions: { workspace: { id: 'x' } } },
+        { conditions: { userId: '${unknown}' } },
         { inverted: 'yes' },
         { unknown: true },
     ])('rejects a rule with %o', override => {

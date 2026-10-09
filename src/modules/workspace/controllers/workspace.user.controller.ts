@@ -336,7 +336,7 @@ export class WorkspaceUserController {
         body: WorkspaceTransferOwnershipRequestDto
     ): Promise<void> {
         await this.workspaceMemberHttpService.transferOwnership(
-            workspace.id,
+            workspace,
             member,
             body
         );
@@ -482,6 +482,10 @@ export class WorkspaceUserController {
         schema: WorkspaceInviteResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
+    @WorkspacePolicyProtected({
+        subject: EnumPolicySubject.WorkspaceInvite,
+        action: [EnumPolicyAction.read],
+    })
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
@@ -651,6 +655,10 @@ export class WorkspaceUserController {
         schema: WorkspaceJoinRequestResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
+    @WorkspacePolicyProtected({
+        subject: EnumPolicySubject.WorkspaceJoinRequest,
+        action: [EnumPolicyAction.read],
+    })
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()

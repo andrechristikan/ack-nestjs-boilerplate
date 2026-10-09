@@ -27,13 +27,13 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `50200` | `pagination` | `50200`–`50215` | 16 |
 | `50300` | `request` | `50300`–`50304` | 5 |
 | `50400` | `session` | `50400`–`50401` | 2 |
-| `50500` | `role` | `50500`–`50501` | 2 |
+| `50500` | `role` | `50500`–`50504` | 5 |
 | `50600` | `feature-flag` | `50600`–`50606` | 7 |
 | `50700` | `api-key` | `50700`–`50708` | 9 |
 | `50800` | `auth` | `50800`–`50816` | 17 |
 | `50900` | `country` | `50900`–`50902` | 3 |
 | `51000` | `user` | `51000`–`51027` | 28 |
-| `51100` | `policy` | `51100`–`51105` | 6 |
+| `51100` | `policy` | `51100`–`51105` | 5 |
 | `51200` | `notification` | `51200`–`51203` | 4 |
 | `51300` | `device` | `51300` | 1 |
 | `51400` | `aws` | `51400` | 1 |
@@ -124,6 +124,9 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 |---|---|---|---|---|---|
 | `notFound` | `50500` | `notFound` | 404 (`NOT_FOUND`) | `role.error.notFound` | Sorry, we couldn't find the requested role. |
 | `scopeMismatch` | `50501` | `scopeMismatch` | 400 (`BAD_REQUEST`) | `role.error.scopeMismatch` | This role cannot be used for this assignment. |
+| `exist` | `50502` | `exist` | 409 (`CONFLICT`) | `role.error.exist` | A role with this key already exists in that scope. |
+| `used` | `50503` | `used` | 409 (`CONFLICT`) | `role.error.used` | This role is still assigned and cannot be deleted. |
+| `predefined` | `50504` | `predefined` | 403 (`FORBIDDEN`) | `role.error.predefined` | Predefined roles cannot be deleted. |
 
 ## `feature-flag`
 
@@ -221,7 +224,6 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `forbidden` | `51100` | `forbidden` | 403 (`FORBIDDEN`) | `policy.error.forbidden` | Sorry, you don't have the necessary permissions to perform this action. |
 | `predefinedNotFound` | `51101` | `predefinedNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `policy.error.predefinedNotFound` | Predefined policies not setted. |
 | `notFound` | `51102` | `notFound` | 404 (`NOT_FOUND`) | `policy.error.notFound` | Sorry, we couldn't find the requested policy. |
-| `exist` | `51103` | `exist` | 409 (`CONFLICT`) | `policy.error.exist` | This role already has a policy at that priority. |
 | `immutable` | `51104` | `immutable` | 403 (`FORBIDDEN`) | `policy.error.immutable` | The policies of the super administrator role cannot be changed. |
 | `invalidRule` | `51105` | `invalidRule` | 422 (`UNPROCESSABLE_ENTITY`) | `policy.error.invalidRule.<reason>` | One message per reason, listed below. |
 
@@ -229,11 +231,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 
 | reason | description |
 |---|---|
-| `actionNotAllowed` | This action is not valid for that subject. |
 | `roleScopeInvalid` | This subject cannot be granted to a role of that scope. |
-| `scopeMissing` | The rule must carry the workspace or project scope condition for its subject. |
-| `placeholderInvalid` | The rule conditions use a placeholder that is unknown, partial or unsafe. |
-| `conditionInvalid` | The rule conditions reference a column, relation path or operator that the subject does not support. |
 
 ## `notification`
 
